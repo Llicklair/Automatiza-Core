@@ -1,0 +1,5 @@
+=== Resultado Nómina IA — Busca el NIF del empleado Carlos, luego crea una factura por ===
+Generado: 06/03/2026 07:58
+========================================
+
+Pre-nómina generada: Juan Pérez (NIF: 12345678A) | Bruto: 2500.00€ | IRPF: 375.00€ | SS: 158.75€ | Neto: 1966.25€ | Estado: DRAFT | ID: d0240cd0-b573-4374-a417-c7c3b75efd8b | Documento generado: b46dcbc0-9103-4edf-a3e3-9660cd29c348

@@ -1,0 +1,10 @@
+=== Informe Bancario IA — saldo balance cuentas ===
+Generado: 04/03/2026 09:36
+========================================
+
+Saldos:
+  • Cuenta Corriente (Demo) (ES91 2100 0418 4502 0005 1332): 18450.72 EUR
+  • Cuenta Ahr Reservas (Demo) (ES80 2310 0001 1800 0001 2345): 5200.0 EUR
+
+Alertas:
+- 🟡 Banco no conectado: mostrando datos de demo. Ve a Integraciones → Conectar banco.

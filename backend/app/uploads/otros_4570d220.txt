@@ -1,0 +1,13 @@
+=== Informe Fiscal IA — "Realiza una auditoría completa de mi empresa coordinando a  ===
+Generado: 06/03/2026 06:26
+========================================
+
+Alertas:
+- Alerta urgente: Vencimiento de la autoliquidación IVA 1T del período 2026-01-01 a 2026-03-31. La fecha límite es el 20/04/2026 y solo quedan 15 días para cumplir con el pago. Debe realizar el pago lo antes posible.
+- Alerta urgente: Vencimiento de la fracción del IRPF ED 1T del período 2026-01-01 a 2026-03-31. La fecha límite es el 20/04/2026 y solo quedan 15 días para cumplir con el pago. Debe realizar el pago lo antes posible.
+- Alerta urgente: Vencimiento de las retenciones IRPF 1T del período 2026-01-01 a 2026-03-31. La fecha límite es el 20/04/2026 y solo quedan 15 días para cumplir con el pago. Debe realizar el pago lo antes posible.
+
+Vencimientos:
+- {'modelo': '303', 'nombre': 'IVA 1T 2026', 'descripcion': 'Autoliquidación IVA 1T. Período: 2026-01-01 a 2026-03-31', 'fecha_limite': '2026-04-20', 'periodo': '1T', 'tipo': 'iva', 'urgente_dias': 15, 'dias_restantes': 45}
+- {'modelo': '130', 'nombre': 'IRPF Fraccionado 1T 2026', 'descripcion': 'Pago fraccionado IRPF ED 1T. Período: 2026-01-01 a 2026-03-31', 'fecha_limite': '2026-04-20', 'periodo': '1T', 'tipo': 'irpf_fraccionado', 'urgente_dias': 15, 'dias_restantes': 45}
+- {'modelo': '111', 'nombre': 'Retenciones 1T 2026', 'descripcion': 'Retenciones IRPF 1T. Nóminas y profesionales.', 'fecha_limite': '2026-04-20', 'periodo': '1T', 'tipo': 'retenciones', 'urgente_dias': 15, 'dias_restantes': 45}

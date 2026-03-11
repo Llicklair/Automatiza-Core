@@ -1,0 +1,4 @@
+id,fecha,importe,moneda,concepto,deudor,acreedor,iban_deudor,iban_acreedor,estado,tipo,categoria,confianza
+tx_1,2023-10-01,-1500.0,EUR,Pago Alquiler Oficina Octubre,,Inmobiliaria Centro SL,,,confirmada,cargo,alquiler,0.99
+tx_2,2023-10-05,3400.0,EUR,Cobro Factura 2023-44,Cliente Importante SA,,,,confirmada,abono,cliente_cobro,0.99
+tx_3,2023-10-08,-250.0,EUR,Recibo Luz,,Iberdrola Clientes,,,confirmada,cargo,suministros,0.99

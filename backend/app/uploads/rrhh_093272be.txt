@@ -1,0 +1,5 @@
+=== Resultado Nómina IA — Ejecuta el informe diario completo de la empresa: 1) Revisa  ===
+Generado: 05/03/2026 14:09
+========================================
+
+Error: Empleado con NIF 12345678A no encontrado en RRHH.

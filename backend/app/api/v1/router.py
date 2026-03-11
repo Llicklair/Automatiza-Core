@@ -1,0 +1,41 @@
+from fastapi import APIRouter
+
+from app.api.v1.routes import (
+    accounting,
+    advisory,
+    approvals,
+    auth,
+    banking,
+    crm,
+    documents,
+    erp,
+    hr,
+    integrations,
+    projects,
+    quotes,
+    reports,
+    skills,
+    tasks,
+    tenant,
+    workflows,
+)
+
+api_router = APIRouter(prefix="/api/v1")
+
+api_router.include_router(auth.router)
+api_router.include_router(tasks.router)
+api_router.include_router(approvals.router)
+api_router.include_router(integrations.router)
+api_router.include_router(documents.router)
+api_router.include_router(erp.router)
+api_router.include_router(crm.router)
+api_router.include_router(banking.router, prefix="/banking")
+api_router.include_router(hr.router)
+api_router.include_router(projects.router)
+api_router.include_router(accounting.router)
+api_router.include_router(advisory.router)
+api_router.include_router(workflows.router)
+api_router.include_router(skills.router)
+api_router.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
+api_router.include_router(reports.router)
+api_router.include_router(tenant.router)

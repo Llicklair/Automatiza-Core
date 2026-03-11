@@ -1,0 +1,50 @@
+# Variables de entorno — NUNCA commitear, contienen API keys y secretos
+.env
+.env.local
+.env.production
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+*.tsbuildinfo
+
+# Docker
+postgres_data/
+redis_data/
+
+# Uploads y archivos generados
+backend/uploads/
+backend/generated/
+*.pdf
+*.xlsx
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Backups
+backups/
