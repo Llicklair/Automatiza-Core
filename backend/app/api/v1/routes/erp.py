@@ -3,7 +3,7 @@ import os
 import uuid as uuid_mod
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy import desc, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -50,7 +50,7 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"
 @router.get("/clients", response_model=list[ClientResponse], tags=["erp"])
 async def list_clients(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = Query(default=50, le=100),
     client_type: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -150,7 +150,7 @@ async def delete_client(
 async def list_client_invoices(
     client_id: UUID,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(default=100, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -190,7 +190,7 @@ async def list_client_invoices(
 @router.get("/products", response_model=list[ProductResponse], tags=["erp"])
 async def list_products(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = Query(default=50, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -262,7 +262,7 @@ async def create_product(
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])
 async def list_invoices(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = Query(default=50, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

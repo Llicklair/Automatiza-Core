@@ -1,7 +1,7 @@
 """Rutas CRUD de tareas del orquestador."""
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,7 @@ async def create_task(
 @router.get("", response_model=list[TaskOut])
 async def list_tasks(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = Query(default=50, le=100),
     status_filter: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -1,7 +1,7 @@
 """Rutas de autenticación: registro, login y refresh token."""
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.core.security import (
 )
 from app.db.base import get_db
 from app.db.models.models import Tenant, User
+from app.middleware.rate_limit import limiter
 from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserCreate, UserOut
 from app.services.audit import log_action
 
@@ -21,7 +22,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/hour")
+async def register(request: Request, payload: UserCreate, db: AsyncSession = Depends(get_db)):
     # Comprobar email duplicado
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none():
@@ -65,7 +67,8 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/5minutes")
+async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 

@@ -5,9 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.middleware.rate_limit import limiter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,10 +35,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — en producción, restringir a dominio del frontend
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS — solo acepta peticiones del frontend configurado en FRONTEND_URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permitir todos los orígenes temporalmente para development local
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
