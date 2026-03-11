@@ -14,6 +14,8 @@ import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
+
+from app.core.prompt_sanitizer import sanitize_user_input
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -207,7 +209,7 @@ async def run_documents_agent(
     llm = _get_llm()
     messages = [
         SystemMessage(content=CLASSIFICATION_PROMPT),
-        HumanMessage(content=f"Clasifica este documento:\n\n{context_text[:4000]}"),
+        HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(context_text)}"),
     ]
 
     try:

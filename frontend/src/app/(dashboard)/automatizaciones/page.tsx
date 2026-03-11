@@ -377,7 +377,7 @@ export default function WorkflowsPage() {
                                     ? `Cron: ${wf.trigger_config.cron}`
                                     : "Inicio de la automatización";
                             return [
-                                [{ id: "trigger", type: "trigger", data: { label: TRIGGER_LABELS[wf.trigger_type] ?? wf.trigger_type, description: triggerDesc } }],
+                                [{ id: "trigger", type: "trigger", data: { label: TRIGGER_CONFIG[wf.trigger_type]?.label ?? wf.trigger_type, description: triggerDesc } }],
                                 [{ id: "agent", type: "skill", data: { label: "Agente IA", description: wf.action_config?.instruction || "Ejecutar automatización" } }],
                             ];
                         })();

@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.llm_factory import get_llm
+from app.core.prompt_sanitizer import sanitize_user_input
 from app.integrations.boe_scraper import BOEScraper, get_proximos_vencimientos
 
 # ─── LLM ─────────────────────────────────────────────────────────────────────
@@ -255,7 +256,7 @@ async def _accion_consulta_fiscal(user_intent: str, tenant_id: str | None = None
     llm = _get_llm()
     messages = [
         SystemMessage(content=FISCAL_QA_PROMPT.format(contexto=contexto_normativo)),
-        HumanMessage(content=f"Consulta fiscal: {user_intent}"),
+        HumanMessage(content=f"Consulta fiscal: {sanitize_user_input(user_intent)}"),
     ]
 
     try:

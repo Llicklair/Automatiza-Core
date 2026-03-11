@@ -39,6 +39,7 @@ function TasksKanbanContent() {
     // Menú contextual
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { loadData(); }, [projectId]);
 
     // Cierra menú al hacer clic fuera

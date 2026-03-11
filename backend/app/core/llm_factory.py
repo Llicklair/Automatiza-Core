@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import Any, List, Optional
 from uuid import uuid4
@@ -306,13 +307,15 @@ def get_llm(
                 "model": settings.GROQ_MODEL or "llama-3.3-70b-versatile",
                 "api_key": settings.GROQ_API_KEY,
                 "temperature": temperature,
+                "max_tokens": 20000,
+                "timeout": 30,
             }
             if format_output == "json":
                 kwargs["response_format"] = {"type": "json_object"}
             base_llm = ChatGroq(**kwargs)
             return base_llm.with_fallbacks([fallback])
         except Exception as e:
-            print(f"[LLM] Error iniciando Groq ({e}), usando Ollama.")
+            logging.getLogger(__name__).warning("Error iniciando Groq (%s), usando Ollama.", e)
             return fallback
 
     elif selected_provider == "gemini":
@@ -324,10 +327,12 @@ def get_llm(
                 model=settings.GEMINI_MODEL or "gemini-2.5-flash-preview-04-17",
                 google_api_key=settings.GEMINI_API_KEY,
                 temperature=temperature,
+                max_output_tokens=20000,
+                timeout=30,
             )
             return base_llm.with_fallbacks([fallback])
         except Exception as e:
-            print(f"[LLM] Error iniciando Gemini ({e}), usando Ollama.")
+            logging.getLogger(__name__).warning("Error iniciando Gemini (%s), usando Ollama.", e)
             return fallback
 
     elif selected_provider == "anthropic":
@@ -339,10 +344,12 @@ def get_llm(
                 model_name="claude-3-5-sonnet-20240620",
                 temperature=temperature,
                 api_key=settings.ANTHROPIC_API_KEY,
+                max_tokens=4096,
+                timeout=30,
             )
             return base_llm.with_fallbacks([fallback])
         except Exception as e:
-            print(f"[LLM] Error iniciando Anthropic ({e}), usando Ollama.")
+            logging.getLogger(__name__).warning("Error iniciando Anthropic (%s), usando Ollama.", e)
             return fallback
 
     elif selected_provider == "openai":
@@ -353,13 +360,15 @@ def get_llm(
                 "model_name": settings.OPENAI_MODEL or "gpt-4o",
                 "temperature": temperature,
                 "api_key": settings.OPENAI_API_KEY,
+                "max_tokens": 20000,
+                "timeout": 30,
             }
             if format_output == "json":
                 kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
             base_llm = ChatOpenAI(**kwargs)
             return base_llm.with_fallbacks([fallback])
         except Exception as e:
-            print(f"[LLM] Error iniciando OpenAI ({e}), usando Ollama.")
+            logging.getLogger(__name__).warning("Error iniciando OpenAI (%s), usando Ollama.", e)
             return fallback
 
     elif selected_provider == "openrouter":
@@ -402,7 +411,7 @@ def get_llm(
             return primary_llm
             
         except Exception as e:
-            print(f"[LLM] Error iniciando OpenRouter ({e}).")
+            logging.getLogger(__name__).warning("Error iniciando OpenRouter (%s).", e)
             raise e
 
     elif selected_provider == "mock":

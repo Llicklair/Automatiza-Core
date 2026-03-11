@@ -25,6 +25,7 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     worker_prefetch_multiplier=1,  # Un mensaje a la vez por worker
+    result_expires=3600,  # Resultados expiran en 1h para evitar memory leak en Redis
     # ── Celery Beat: tareas periódicas ─────────────────────────────────────────
     beat_schedule={
         "check-scheduled-workflows": {
@@ -54,7 +55,7 @@ def run_async(coro):
         asyncio.set_event_loop(None)
 
 
-@celery_app.task(name="run_orchestrator", bind=True, max_retries=3)
+@celery_app.task(name="run_orchestrator", bind=True, max_retries=3, time_limit=600, soft_time_limit=540)
 def run_orchestrator(self, task_id: str):
     """Ejecuta el orquestador LangGraph para una tarea dada."""
     from app.services.idempotency import SyncIdempotencyGuard
@@ -82,7 +83,7 @@ def run_orchestrator(self, task_id: str):
         raise exc
 
 
-@celery_app.task(name="resume_orchestrator", bind=True, max_retries=3)
+@celery_app.task(name="resume_orchestrator", bind=True, max_retries=3, time_limit=600, soft_time_limit=540)
 def resume_orchestrator(self, task_id: str):
     """Reanuda el orquestador tras una aprobación humana."""
     from app.services.idempotency import SyncIdempotencyGuard
@@ -572,7 +573,7 @@ async def _resume_orchestrator(task_id: str):
 
 # ─── Node Engine tasks ────────────────────────────────────────────────────────
 
-@celery_app.task(name="run_node_engine", bind=True, max_retries=3)
+@celery_app.task(name="run_node_engine", bind=True, max_retries=3, time_limit=600, soft_time_limit=540)
 def run_node_engine(self, execution_id: str):
     """Ejecuta un workflow vía el motor de nodos (grafos con condicionales, delays, etc.)."""
     from app.services.idempotency import SyncIdempotencyGuard
@@ -595,7 +596,7 @@ def run_node_engine(self, execution_id: str):
         raise exc
 
 
-@celery_app.task(name="resume_node_engine", bind=True, max_retries=3)
+@celery_app.task(name="resume_node_engine", bind=True, max_retries=3, time_limit=600, soft_time_limit=540)
 def resume_node_engine(self, execution_id: str, from_node_id: str):
     """Reanuda un workflow del motor de nodos tras delay o approval."""
     from app.services.idempotency import SyncIdempotencyGuard

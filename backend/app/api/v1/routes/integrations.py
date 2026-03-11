@@ -12,8 +12,39 @@ from app.services.encryption import encrypt_credentials, decrypt_credentials
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
-# In-memory state store for OAuth flows (production: use Redis)
-_oauth_states: dict[str, str] = {}
+# OAuth state store backed by Redis (TTL 10min) with in-memory fallback
+import time as _time
+
+_oauth_states_mem: dict[str, tuple[str, float]] = {}  # state -> (tenant_id, expires_at)
+_OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+def _set_oauth_state(state: str, tenant_id: str) -> None:
+    """Store OAuth state in Redis if available, else in-memory with TTL."""
+    try:
+        import redis
+        from app.core.config import settings
+        r = redis.from_url(settings.REDIS_URL)
+        r.setex(f"oauth_state:{state}", _OAUTH_STATE_TTL, tenant_id)
+    except Exception:
+        _oauth_states_mem[state] = (tenant_id, _time.time() + _OAUTH_STATE_TTL)
+
+
+def _pop_oauth_state(state: str) -> str | None:
+    """Retrieve and delete OAuth state. Returns tenant_id or None."""
+    try:
+        import redis
+        from app.core.config import settings
+        r = redis.from_url(settings.REDIS_URL)
+        val = r.getdel(f"oauth_state:{state}")
+        if val:
+            return val.decode()
+    except Exception:
+        pass
+    entry = _oauth_states_mem.pop(state, None)
+    if entry and entry[1] > _time.time():
+        return entry[0]
+    return None
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -339,7 +370,7 @@ async def google_auth_url(current_user: User = Depends(get_current_user)):
     """Generate Google OAuth consent URL."""
     from app.integrations.google_oauth import generate_auth_url
     url, state = generate_auth_url(str(current_user.tenant_id))
-    _oauth_states[state] = str(current_user.tenant_id)
+    _set_oauth_state(state, str(current_user.tenant_id))
     return {"auth_url": url, "state": state}
 
 
@@ -348,9 +379,7 @@ async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_
     """Handle Google OAuth callback — exchanges code for tokens and stores them."""
     from app.integrations.google_oauth import exchange_code
 
-    tenant_id = _oauth_states.pop(state, None)
-    if not tenant_id and ":" in state:
-        tenant_id = state.split(":")[0]
+    tenant_id = _pop_oauth_state(state)
 
     if not tenant_id:
         return HTMLResponse("<html><body><h2>Error: estado OAuth inválido</h2></body></html>", status_code=400)
@@ -479,7 +508,7 @@ async def microsoft_auth_url(current_user: User = Depends(get_current_user)):
     """Generate Microsoft OAuth consent URL."""
     from app.integrations.microsoft_oauth import generate_auth_url
     url, state = generate_auth_url(str(current_user.tenant_id))
-    _oauth_states[state] = str(current_user.tenant_id)
+    _set_oauth_state(state, str(current_user.tenant_id))
     return {"auth_url": url, "state": state}
 
 
@@ -488,9 +517,7 @@ async def microsoft_callback(code: str, state: str, db: AsyncSession = Depends(g
     """Handle Microsoft OAuth callback — exchanges code for tokens and stores them."""
     from app.integrations.microsoft_oauth import exchange_code
 
-    tenant_id = _oauth_states.pop(state, None)
-    if not tenant_id and ":" in state:
-        tenant_id = state.split(":")[0]
+    tenant_id = _pop_oauth_state(state)
 
     if not tenant_id:
         return HTMLResponse("<html><body><h2>Error: estado OAuth inválido</h2></body></html>", status_code=400)

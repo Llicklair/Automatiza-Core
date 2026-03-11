@@ -50,13 +50,28 @@ async def upload_document(
     if not file.filename:
         raise HTTPException(status_code=400, detail="Archivo sin nombre")
 
+    # Validar extensión permitida
+    ALLOWED_EXTENSIONS = {
+        ".pdf", ".doc", ".docx", ".odt", ".txt", ".md",
+        ".xlsx", ".xls", ".csv", ".ods", ".json",
+        ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".tif",
+        ".eml", ".msg", ".zip",
+    }
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Extensión '{ext}' no permitida")
+
+    # Leer con límite de tamaño (50MB)
+    MAX_FILE_SIZE = 50 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="Archivo demasiado grande (máx. 50MB)")
+
     # Guardar a disco
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    ext = os.path.splitext(file.filename)[1]
     unique_name = f"{uuid.uuid4().hex}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
-    contents = await file.read()
     with open(file_path, "wb") as f:
         f.write(contents)
 

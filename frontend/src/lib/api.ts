@@ -34,6 +34,7 @@ async function request<T>(
         }
         // Refresh falló → logout
         localStorage.clear();
+        document.cookie = "auth_flag=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         window.location.href = "/login";
         throw new Error("Sesión expirada");
     }
@@ -60,6 +61,7 @@ async function tryRefresh(): Promise<boolean> {
         const data = await res.json();
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("refresh_token", data.refresh_token);
+        document.cookie = "auth_flag=1; path=/; SameSite=Lax";
         return true;
     } catch {
         return false;

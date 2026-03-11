@@ -128,6 +128,7 @@ export default function LoginPage() {
             const data = await api.auth.login(email, password);
             localStorage.setItem("access_token", data.access_token);
             localStorage.setItem("refresh_token", data.refresh_token);
+            document.cookie = "auth_flag=1; path=/; SameSite=Lax";
             router.push("/");
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Error al iniciar sesión");

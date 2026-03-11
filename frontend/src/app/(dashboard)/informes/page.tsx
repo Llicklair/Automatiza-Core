@@ -155,6 +155,7 @@ export default function InformesPage() {
             });
     }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         loadSnapshot();
     }, [month]);

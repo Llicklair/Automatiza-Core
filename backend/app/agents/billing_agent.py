@@ -13,6 +13,8 @@ Flujo:
 import json
 import re
 from datetime import UTC, date
+
+from app.core.prompt_sanitizer import sanitize_user_input
 from decimal import Decimal, InvalidOperation
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -142,7 +144,7 @@ async def run_billing_agent(
         llm = _get_llm()
         messages = [
             SystemMessage(content=EXTRACTION_SYSTEM_PROMPT.replace("FECHA_HOY", today)),
-            HumanMessage(content=f"Extrae los datos de facturación de esta instrucción:\n\n{anonymized_text}"),
+            HumanMessage(content=f"Extrae los datos de facturación de esta instrucción:\n\n{sanitize_user_input(anonymized_text)}"),
         ]
 
         try:

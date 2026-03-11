@@ -29,6 +29,7 @@ export default function CRMPipelinePage() {
     const [clientId, setClientId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {

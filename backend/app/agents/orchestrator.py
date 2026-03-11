@@ -401,7 +401,7 @@ async def plan_node(state: OrchestratorState) -> dict:
                         continue
                     # Si es error de red → esperar y reintentar
                     elif _attempt < 2:
-                        import time; time.sleep(5 * (_attempt + 1))
+                        import asyncio; await asyncio.sleep(5 * (_attempt + 1))
                     else:
                         raise
 
