@@ -58,8 +58,12 @@ backend/.local/
 backend/celerybeat-schedule
 
 # Runtime / build temporales
+*_tmp/
 _runtime_tmp/
 frontend/_node_modules_tmp/
+backend/_venv_tmp/
+backend/_mypy_cache_tmp/
+backend/_pytest_cache_tmp/
 
 # Backups
 backups/

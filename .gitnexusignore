@@ -1,10 +1,19 @@
 # Solo indexar código fuente del proyecto
+# Carpetas temporales / caches
+*_tmp/
 _runtime_tmp/
 frontend/_node_modules_tmp/
+backend/_venv_tmp/
+backend/_mypy_cache_tmp/
+backend/_pytest_cache_tmp/
+
+# Dependencias
 node_modules/
 frontend/node_modules/
 .venv/
 venv/
+
+# Caches y datos locales
 backend/.cache/
 backend/.local/
 postgres_data/
