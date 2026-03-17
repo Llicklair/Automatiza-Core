@@ -103,7 +103,6 @@ export default function InformesPage() {
     const [error, setError] = useState<string | null>(null);
     const [genOk, setGenOk] = useState(false);
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
     async function loadSnapshot() {
         setLoading(true);
@@ -139,20 +138,12 @@ export default function InformesPage() {
         }
     }
 
-    function handleDownload(id: string, fileName: string) {
-        const url = `/api/v1/reports/${id}/download`;
-        const a = document.createElement("a");
-        a.href = url;
-        // Use fetch with auth header
-        fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.blob())
-            .then(blob => {
-                const burl = URL.createObjectURL(blob);
-                a.href = burl;
-                a.download = fileName;
-                a.click();
-                URL.revokeObjectURL(burl);
-            });
+    async function handleDownload(id: string, fileName: string) {
+        try {
+            await api.reports.download(id, fileName);
+        } catch {
+            setError("No se pudo descargar el informe");
+        }
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps

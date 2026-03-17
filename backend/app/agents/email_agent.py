@@ -157,6 +157,7 @@ def _build_graph(tools_list):
     local_llm_with_tools = local_llm.bind_tools(tools_list)
 
     def agent_node(state: AgentState):
+        extra_init_messages = []
         if "messages" not in state or not state["messages"]:
             has_real = any("DEMO" not in t.name for t in tools_list if hasattr(t, "name"))
             mode_note = "Estás conectado a la cuenta de correo real del tenant." if has_real else \
@@ -186,7 +187,8 @@ def _build_graph(tools_list):
                 )
             )
             user_msg = HumanMessage(content=state.get("current_intent", state["user_intent"]))
-            state["messages"] = [sys_msg, user_msg]
+            extra_init_messages = [sys_msg, user_msg]
+            state["messages"] = extra_init_messages
 
         response = local_llm_with_tools.invoke(state["messages"])
 
@@ -203,7 +205,9 @@ def _build_graph(tools_list):
         if "agent_results" not in state:
             state["agent_results"] = []
         state["agent_results"].append(result_log.model_dump())
-        return {"messages": [response], "agent_results": state["agent_results"]}
+        # Incluir los mensajes de inicialización en el return para que LangGraph
+        # los acumule correctamente en el estado (add_messages reducer)
+        return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
 
     def finalize_node(state: AgentState):
         last_msg = state["messages"][-1]
@@ -344,10 +348,19 @@ async def run_email_agent(
                                 continue
                     return paths
                 
-                # run_email_agent es async, pero las herramientas pueden llamarse en hilos.
-                # Como estamos dentro de un thread de LangChain, usamos run_coroutine_threadsafe o similar si fuera necesario,
-                # pero aquí run_email_agent es async y el grafo corre en el mismo loop.
-                attachment_paths = asyncio.run(resolve_paths())
+                # Ejecutar corrutina: si ya hay un loop activo (FastAPI/LangChain), usamos
+                # get_event_loop().run_until_complete(); si no, asyncio.run().
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as pool:
+                            future = pool.submit(asyncio.run, resolve_paths())
+                            attachment_paths = future.result()
+                    else:
+                        attachment_paths = loop.run_until_complete(resolve_paths())
+                except RuntimeError:
+                    attachment_paths = asyncio.run(resolve_paths())
 
             result = send_email_smtp(
                 creds_snapshot, 
@@ -394,9 +407,10 @@ async def run_email_agent(
     agent_results = result_state.get("agent_results", [])
     final_action = agent_results[-1]["action_taken"] if agent_results else "Sin resultado"
 
+    is_mock = credentials is None
     return EmailAgentResult(
         action=final_action,
         success=True,
         messages=agent_results,
-        error=None,
+        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración." if is_mock else None,
     )

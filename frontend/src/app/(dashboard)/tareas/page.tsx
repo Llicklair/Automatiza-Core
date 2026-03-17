@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Task } from "@/lib/api";
 import { Plus, X, ChevronDown, Bot, Clock, CheckCircle2, AlertCircle, Loader2, RefreshCw, Copy, Check, MessageSquare, Trash2 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const STATUS_COLOR: Record<string, string> = {
     pending: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20",
@@ -192,20 +193,17 @@ function TaskRow({ task, cancelTask }: { task: Task; cancelTask: (id: string) =>
                                         </div>
                                         <div className="p-4 overflow-x-auto flex-1">
                                             {Array.isArray(task.agent_results) && (task.agent_results as any[]).length > 0 ? (
-                                                <div className="space-y-4">
+                                                <div className="space-y-3">
                                                     {(task.agent_results as any[]).map((res: any, i) => (
-                                                        <div key={i} className="p-3 rounded-lg border border-[#27272a] bg-[#111113]">
-                                                            <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#27272a]">
-                                                                <span className="text-xs font-semibold text-zinc-300">{res.agent}</span>
-                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${res.success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                                                                    {res.success ? '✓ ÉXITO' : '✗ ERROR'}
+                                                        <div key={i} className={`p-3 rounded-lg border ${res.success ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                                                            <div className="flex items-center gap-2 mb-1.5">
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${res.success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                    {res.agent}
                                                                 </span>
                                                             </div>
-                                                            {res.output && (
-                                                                <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                                                                    {typeof res.output === 'string' ? res.output : JSON.stringify(res.output, null, 2)}
-                                                                </p>
-                                                            )}
+                                                            <p className="text-sm text-zinc-200 leading-relaxed">
+                                                                {res.summary || (res.error ? `❌ ${res.error}` : (typeof res.output === 'string' ? res.output : '✅ Completado.'))}
+                                                            </p>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -272,7 +270,7 @@ export default function TareasPage() {
     }
 
     async function cancelTask(id: string) {
-        if (!confirm("¿Cancelar esta tarea?")) return;
+        if (!await showConfirm({ message: "¿Cancelar esta tarea?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
         try {
             await api.tasks.cancel(id);
         } catch (err: any) {
@@ -287,7 +285,7 @@ export default function TareasPage() {
         const msg = active.length > 0
             ? `¿Eliminar todas las tareas? ${active.length} tarea(s) activa(s) serán canceladas.`
             : `¿Eliminar ${tasks.length} tarea(s) del historial?`;
-        if (!confirm(msg)) return;
+        if (!await showConfirm({ message: msg, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try {
             await api.tasks.cleanup();
             load();

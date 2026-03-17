@@ -5,6 +5,8 @@ import { api, type Project, type ProjectTask } from "@/lib/api";
 import { Plus, Clock, ArrowRight, FolderGit2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const STAGES = [
     { id: 'todo', label: 'Por Hacer', color: 'border-zinc-500/30 bg-zinc-500/5', dot: 'bg-zinc-400' },
@@ -37,7 +39,7 @@ export default function ProjectTasksPage() {
                 setNewTask(prev => ({ ...prev, project_id: pjs[0].id }));
             }
         } catch (error) {
-            console.error(error);
+            logError("proyectos/mis-tareas/page", error);
         } finally {
             setLoading(false);
         }
@@ -57,7 +59,7 @@ export default function ProjectTasksPage() {
     };
 
     const deleteTask = async (task: ProjectTask) => {
-        if (!confirm(`¿Eliminar la tarea "${task.title}"?`)) return;
+        if (!await showConfirm({ message: `¿Eliminar la tarea "${task.title}"?`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try {
             await api.projects.tasks.delete(task.id);
             setTasks(prev => prev.filter(t => t.id !== task.id));

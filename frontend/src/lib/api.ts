@@ -48,6 +48,23 @@ async function request<T>(
     return res.json();
 }
 
+async function downloadBlob(path: string, filename: string): Promise<void> {
+    const token = getToken();
+    const res = await fetch(`${BASE}${path}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error("Error al descargar el archivo");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 async function tryRefresh(): Promise<boolean> {
     const refresh = localStorage.getItem("refresh_token");
     if (!refresh) return false;
@@ -68,6 +85,30 @@ async function tryRefresh(): Promise<boolean> {
     }
 }
 
+export interface LlmProviderEntry {
+    model: string;
+    enabled: boolean;
+    has_key: boolean;
+}
+
+export interface LlmConfigResponse {
+    active_llm_provider: string;
+    active_embeddings_provider: string;
+    providers: Record<string, LlmProviderEntry>;
+}
+
+export interface LlmProviderConfigUpdate {
+    api_key?: string;
+    model?: string;
+    enabled: boolean;
+}
+
+export interface LlmConfigUpdate {
+    active_llm_provider?: string;
+    active_embeddings_provider?: string;
+    providers?: Record<string, LlmProviderConfigUpdate>;
+}
+
 export const api = {
     auth: {
         login: (email: string, password: string) =>
@@ -84,6 +125,16 @@ export const api = {
             request("/api/v1/auth/register", {
                 method: "POST",
                 body: JSON.stringify(data),
+            }),
+        forgotPassword: (email: string) =>
+            request("/api/v1/auth/forgot-password", {
+                method: "POST",
+                body: JSON.stringify({ email }),
+            }),
+        resetPassword: (token: string, new_password: string) =>
+            request("/api/v1/auth/reset-password", {
+                method: "POST",
+                body: JSON.stringify({ token, new_password }),
             }),
     },
 
@@ -174,6 +225,7 @@ export const api = {
             }
             return res.json();
         },
+        exportZip: () => downloadBlob("/api/v1/documents/export", "documentos_backup.zip"),
         uploadBulk: async (file: File, category?: string): Promise<Document[]> => {
             const token = getToken();
             const form = new FormData();
@@ -259,6 +311,8 @@ export const api = {
                 }),
             delete: (id: string) =>
                 request<void>(`/api/v1/invoices/${id}`, { method: "DELETE" }),
+            downloadPdf: (id: string, invoiceNumber: string | null) =>
+                downloadBlob(`/api/v1/invoices/${id}/pdf`, `Factura_${invoiceNumber || id.slice(0, 8)}.pdf`),
         },
         quotes: {
             list: (params?: { skip?: number; limit?: number }) => {
@@ -401,19 +455,15 @@ export const api = {
         payrolls: {
             list: () => request<Payroll[]>("/api/v1/hr/payrolls"),
             generate: (data: Partial<Payroll>) => request<Payroll>("/api/v1/hr/payrolls", { method: "POST", body: JSON.stringify(data) }),
+            generateAuto: (data: { employee_id: string; period_start: string; period_end: string; issue_date?: string; base_salary?: number; status?: string }) =>
+                request<Payroll>("/api/v1/hr/payrolls/auto", { method: "POST", body: JSON.stringify(data) }),
+            preview: (employeeId: string) =>
+                request<PayrollCalculation>(`/api/v1/hr/employees/${employeeId}/payroll/preview`),
             approve: (id: string) => request<Payroll>(`/api/v1/hr/payrolls/${id}/approve`, { method: "POST" }),
-            downloadPdf: async (id: string, filename: string) => {
-                const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-                const res = await fetch(`${BASE}/api/v1/hr/payrolls/${id}/pdf`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!res.ok) throw new Error("Error descargando PDF");
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = filename; a.click();
-                URL.revokeObjectURL(url);
-            },
+            update: (id: string, data: any) => request<any>(`/api/v1/hr/payrolls/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+            delete: (id: string) => request<void>(`/api/v1/hr/payrolls/${id}`, { method: "DELETE" }),
+            downloadPdf: (id: string, filename: string) =>
+                downloadBlob(`/api/v1/hr/payrolls/${id}/pdf`, filename),
         }
     },
 
@@ -453,7 +503,9 @@ export const api = {
         generate: (month?: string) =>
             request<ReportDoc>(`/api/v1/reports/company-snapshot/generate${month ? `?month=${month}` : ""}`, { method: "POST" }),
         list: () => request<ReportDoc[]>("/api/v1/reports/"),
-        download: (id: string) => `/api/v1/reports/${id}/download`,
+        download: (id: string, filename: string) => downloadBlob(`/api/v1/reports/${id}/download`, filename),
+        libroRegistro: (year: number, type: "emitidas" | "recibidas" = "emitidas") =>
+            downloadBlob(`/api/v1/reports/libro-registro?year=${year}&type=${type}`, `LibroRegistro_${type}_${year}.csv`),
     },
 
     advisory: {
@@ -475,15 +527,61 @@ export const api = {
         executions: (id: string) => request<WorkflowExecution[]>(`/api/v1/workflows/${id}/executions`),
         resumeExecution: (workflowId: string, executionId: string) =>
             request<WorkflowExecution>(`/api/v1/workflows/${workflowId}/executions/${executionId}/resume`, { method: "POST" }),
+        cancelExecution: (workflowId: string, executionId: string) =>
+            request<WorkflowExecution>(`/api/v1/workflows/${workflowId}/executions/${executionId}/cancel`, { method: "POST" }),
+        runWithContext: (workflowId: string, context: string) =>
+            request<WorkflowExecution>(`/api/v1/workflows/${workflowId}/run-with-context`, { method: "POST", body: JSON.stringify({ context }) }),
+        executionLogs: (workflowId: string, executionId: string) =>
+            request<{ lines: string[]; status: string }>(`/api/v1/workflows/${workflowId}/executions/${executionId}/logs`),
+        recentCompletions: (since: number) =>
+            request<{ id: string; status: string; completed_at: string | null; workflow_name: string }[]>(
+                `/api/v1/workflows/recent-completions?since=${since}`
+            ),
     },
 
     tenant: {
-        me: () => request<{ id: string; name: string; nif: string }>("/api/v1/tenant/me"),
-        updateMe: (data: { name?: string; nif?: string }) =>
-            request<{ id: string; name: string; nif: string }>("/api/v1/tenant/me", {
+        me: () => request<{ id: string; name: string; nif: string; address: string | null; phone: string | null; contact_email: string | null }>("/api/v1/tenant/me"),
+        updateMe: (data: { name?: string; nif?: string; address?: string | null; phone?: string | null; contact_email?: string | null }) =>
+            request<{ id: string; name: string; nif: string; address: string | null; phone: string | null; contact_email: string | null }>("/api/v1/tenant/me", {
                 method: "PATCH",
                 body: JSON.stringify(data),
             }),
+        getLlmConfig: () => request<LlmConfigResponse>("/api/v1/tenant/llm-config"),
+        updateLlmConfig: (data: LlmConfigUpdate) =>
+            request<LlmConfigResponse>("/api/v1/tenant/llm-config", {
+                method: "PUT",
+                body: JSON.stringify(data),
+            }),
+    },
+
+    admin: {
+        downloadBackup: async () => {
+            const token = getToken();
+            const res = await fetch(`${BASE}/api/v1/admin/backup`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const blob = await res.blob();
+            const cd = res.headers.get("Content-Disposition") ?? "";
+            const match = cd.match(/filename="([^"]+)"/);
+            const filename = match?.[1] ?? `backup_${Date.now()}.sql`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        },
+        restoreBackup: async (file: File) => {
+            const token = getToken();
+            const form = new FormData();
+            form.append("file", file);
+            const res = await fetch(`${BASE}/api/v1/admin/restore`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: form,
+            });
+            if (!res.ok) throw new Error(await res.text());
+            return res.json() as Promise<{ ok: boolean; message: string }>;
+        },
     },
 
     integrations: {
@@ -783,6 +881,7 @@ export interface Employee {
     role: string | null;
     base_salary: number | null;
     status: string;
+    irpf_rate: number | null;
     join_date: string | null;
     contract_end_date: string | null;
     created_at: string;
@@ -797,11 +896,31 @@ export interface Payroll {
     period_end: string;
     issue_date: string;
     base_salary: number;
+    ss_contingencias_comunes: number;
+    ss_desempleo: number;
+    ss_formacion_profesional: number;
+    ss_mei: number;
+    irpf: number;
+    other_deductions: number;
     deductions: number;
     net_salary: number;
     status: string;
     created_at: string;
     employee?: Employee;
+}
+
+export interface PayrollCalculation {
+    employee_id: string;
+    base_salary: number;
+    ss_contingencias_comunes: number;
+    ss_desempleo: number;
+    ss_formacion_profesional: number;
+    ss_mei: number;
+    total_ss: number;
+    irpf: number;
+    deductions: number;
+    net_salary: number;
+    irpf_rate_applied: number;
 }
 
 export interface Project {

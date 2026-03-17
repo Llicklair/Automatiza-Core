@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { api, type Client } from "@/lib/api";
 import { Truck, Plus, Search, Pencil, Trash2, Loader2, X, Building2, Mail, MapPin, Hash } from "lucide-react";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const EMPTY_FORM = { name: "", nif: "", email: "", address: "", city: "", postal_code: "" };
 
@@ -19,7 +21,7 @@ export default function ProveedoresPage() {
     const load = () =>
         api.erp.clients.list({ client_type: "supplier", limit: 200 })
             .then(setSuppliers)
-            .catch(console.error)
+            .catch(err => logError("compras/proveedores/page", err))
             .finally(() => setLoading(false));
 
     useEffect(() => { load(); }, []);
@@ -50,20 +52,20 @@ export default function ProveedoresPage() {
             setLoading(true);
             load();
         } catch (err) {
-            console.error(err);
+            logError("compras/proveedores/page", err);
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("¿Eliminar este proveedor?")) return;
+        if (!await showConfirm({ message: "¿Eliminar este proveedor?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.clients.delete(id);
             setSuppliers(prev => prev.filter(s => s.id !== id));
         } catch (err) {
-            console.error(err);
+            logError("compras/proveedores/page", err);
         } finally {
             setDeletingId(null);
         }

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { logError } from "@/lib/logger";
 
 export default function PayrollsPage() {
     const [payrolls, setPayrolls] = useState<Payroll[]>([]);
@@ -25,7 +26,7 @@ export default function PayrollsPage() {
         setIsLoading(true);
         try {
             setPayrolls(await api.hr.payrolls.list());
-        } catch (e) { console.error(e); }
+        } catch (e) { logError("rrhh/nominas/page", e); }
         finally { setIsLoading(false); }
     };
 

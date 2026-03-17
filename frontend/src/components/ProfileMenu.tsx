@@ -9,14 +9,19 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getUserEmail(): string {
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+
+function readJwt(): { name: string; email: string } {
     try {
         const token = localStorage.getItem("access_token");
-        if (!token) return "";
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        return payload.sub || payload.email || "";
+        if (!token) return { name: "", email: "" };
+        const p = JSON.parse(atob(token.split(".")[1]));
+        // sub es el UUID del usuario — nunca usarlo como nombre o email
+        const email = p.email ?? "";
+        const name  = p.full_name || p.name || "";
+        return { name, email };
     } catch {
-        return "";
+        return { name: "", email: "" };
     }
 }
 
@@ -25,11 +30,31 @@ function getUserEmail(): string {
 export default function ProfileMenu() {
     const router = useRouter();
     const [open, setOpen] = useState(false);
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        setEmail(getUserEmail());
+        // 1. Carga inmediata desde JWT (sin petición de red)
+        const { name: jwtName, email: jwtEmail } = readJwt();
+        if (jwtName) setName(jwtName);
+        if (jwtEmail) setEmail(jwtEmail);
+
+        // 2. Si falta el nombre en el JWT (token antiguo), pide /auth/me
+        if (!jwtName) {
+            const token = localStorage.getItem("access_token");
+            if (!token) return;
+            fetch(`${API}/api/v1/auth/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data) return;
+                    setName(data.full_name || data.email?.split("@")[0] || "");
+                    if (!jwtEmail) setEmail(data.email || "");
+                })
+                .catch(() => {});
+        }
     }, []);
 
     // Cerrar al clickar fuera
@@ -47,11 +72,12 @@ export default function ProfileMenu() {
         router.push("/login");
     }
 
-    const initials = email ? email[0].toUpperCase() : "U";
+    const displayName = name || email || "Mi cuenta";
+    const initials = name ? name[0].toUpperCase() : (email ? email[0].toUpperCase() : "U");
 
     return (
         <>
-            <div ref={ref} className="relative">
+            <div ref={ref} className="relative z-[9999]">
                 <button
                     onClick={() => setOpen(o => !o)}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors group"
@@ -60,17 +86,17 @@ export default function ProfileMenu() {
                         {initials}
                     </div>
                     <span className="text-sm text-zinc-400 group-hover:text-white transition-colors max-w-[140px] truncate hidden sm:block">
-                        {email || "Mi cuenta"}
+                        {displayName}
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
                 </button>
 
                 {open && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-[#18181b] border border-[#27272a] rounded-xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
+                    <div className="fixed right-6 top-16 w-56 bg-[#18181b] border border-[#27272a] rounded-xl shadow-2xl shadow-black/50 overflow-hidden" style={{ zIndex: 2147483647 }}>
                         {/* Header del menú */}
                         <div className="px-4 py-3 border-b border-[#27272a]">
-                            <p className="text-xs font-semibold text-white truncate">{email || "Usuario"}</p>
-                            <p className="text-[10px] text-zinc-500 mt-0.5">Plan Pro</p>
+                            <p className="text-xs font-semibold text-white truncate">{name || "Usuario"}</p>
+                            <p className="text-[10px] text-zinc-500 mt-0.5 truncate">{email}</p>
                         </div>
 
                         <div className="py-1">

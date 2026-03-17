@@ -168,7 +168,7 @@ export default function LoginPage() {
                         </svg>
                     </div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">AutomatizaPyme</h1>
-                    <p className="mt-1 text-sm text-zinc-400">Accede a tu panel de control</p>
+                    <p className="mt-1 text-sm text-zinc-400">El ERP inteligente para tu empresa</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -226,12 +226,17 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <p className="mt-6 text-center text-xs text-zinc-500">
-                    ¿Sin cuenta?{" "}
-                    <a href="/registro" className="text-indigo-400 hover:text-indigo-300 transition">
-                        Regístrarte aquí
+                <div className="mt-6 flex flex-col items-center gap-2">
+                    <a href="/forgot-password" className="text-xs text-zinc-500 hover:text-zinc-300 transition">
+                        ¿Olvidaste tu contraseña?
                     </a>
-                </p>
+                    <p className="text-xs text-zinc-500">
+                        ¿Sin cuenta?{" "}
+                        <a href="/registro" className="text-indigo-400 hover:text-indigo-300 transition">
+                            Regístrarte aquí
+                        </a>
+                    </p>
+                </div>
             </div>
         </div>
     );

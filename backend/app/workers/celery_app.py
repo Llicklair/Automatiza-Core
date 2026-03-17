@@ -36,6 +36,10 @@ celery_app.conf.update(
             "task": "process_recurring_invoices",
             "schedule": crontab(hour="8", minute="0"),  # Cada día a las 8:00
         },
+        "cleanup-stuck-executions": {
+            "task": "cleanup_stuck_executions",
+            "schedule": crontab(minute="*/10"),  # Cada 10 minutos
+        },
     },
 )
 
@@ -73,12 +77,25 @@ def run_orchestrator(self, task_id: str):
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        # Solo reintentar en errores de infraestructura (red, Redis, etc.)
-        if isinstance(exc, (ConnectionError, OSError, TimeoutError)):
-            # Liberar la clave para que el reintento pueda entrar
+        err_str = str(exc).lower()
+        # Reintentar en errores transitorios: red, Redis, timeout LLM, rate limit
+        is_transient = (
+            isinstance(exc, (ConnectionError, OSError, TimeoutError))
+            or "429" in err_str
+            or "rate limit" in err_str
+            or "timeout" in err_str
+            or "service unavailable" in err_str
+            or "overloaded" in err_str
+            or "connection" in err_str
+        )
+        retry_num = self.request.retries
+        if is_transient and retry_num < 3:
             guard.release("run_orchestrator", task_id)
-            raise self.retry(exc=exc, countdown=30)
-        # Para errores de lógica, marcar como fallida y no reintentar
+            # Backoff exponencial: 30s, 60s, 120s
+            countdown = 30 * (2 ** retry_num)
+            print(f"[RETRY] run_orchestrator:{task_id} reintento {retry_num + 1}/3 en {countdown}s — {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        # Error de lógica o reintentos agotados → marcar fallida
         run_async(_mark_task_failed(task_id, str(exc)))
         raise exc
 
@@ -226,6 +243,44 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
     return nodes, edges
 
 
+async def _build_tenant_context(tenant_id: str, db) -> str:
+    """
+    Carga contexto del tenant desde BD y lo devuelve como string para inyectar en el intent.
+    Incluye: nombre empresa, NIF, fecha actual, primeros clientes disponibles.
+    """
+    from datetime import date
+    from sqlalchemy import select
+    from app.db.models.auth import Tenant
+    from app.db.models.models import Client
+    import uuid as _uuid
+
+    lines = [f"Fecha actual: {date.today().strftime('%d/%m/%Y')}. Moneda: EUR (€). País: España."]
+
+    try:
+        tenant_res = await db.execute(select(Tenant).where(Tenant.id == _uuid.UUID(tenant_id)))
+        tenant = tenant_res.scalar_one_or_none()
+        if tenant:
+            lines.append(f"Empresa emisora: {tenant.name} (NIF: {tenant.nif}).")
+    except Exception:
+        pass
+
+    try:
+        clients_res = await db.execute(
+            select(Client)
+            .where(Client.tenant_id == _uuid.UUID(tenant_id))
+            .order_by(Client.created_at.asc())
+            .limit(5)
+        )
+        clients = clients_res.scalars().all()
+        if clients:
+            client_list = ", ".join(f"{c.name} (NIF: {c.nif})" for c in clients)
+            lines.append(f"Clientes disponibles: {client_list}.")
+    except Exception:
+        pass
+
+    return " ".join(lines)
+
+
 async def _execute_orchestrator(task_id: str):
     from datetime import datetime
 
@@ -249,11 +304,23 @@ async def _execute_orchestrator(task_id: str):
         task.started_at = datetime.now(UTC)
         await db.commit()
 
+        # ── Enrichment: inyectar contexto del tenant en el intent ─────────
+        base_intent = task.user_intent or ""
+        is_automation = bool((task.additional_metadata or {}).get("workflow_id"))
+        if is_automation:
+            try:
+                ctx = await _build_tenant_context(str(task.tenant_id), db)
+                enriched_intent = f"{base_intent}\n\n[Contexto del sistema: {ctx}]"
+            except Exception:
+                enriched_intent = base_intent
+        else:
+            enriched_intent = base_intent
+
         initial_state: OrchestratorState = {
             "task_id": task_id,
             "tenant_id": str(task.tenant_id),
             "user_id": str(task.created_by) if task.created_by else "",
-            "user_intent": task.user_intent or "",
+            "user_intent": enriched_intent,
             # Pasar el domain guardado en BD directamente para no reclasificar
             "classified_domain": task.domain if task.domain else None,
             "plan": None,
@@ -267,7 +334,67 @@ async def _execute_orchestrator(task_id: str):
             "additional_metadata": task.additional_metadata or {},
         }
 
-        final_state = await orchestrator.ainvoke(initial_state, config={"recursion_limit": 50})
+        # ── Streaming con logs en Redis ───────────────────────────────────
+        import redis.asyncio as _aioredis
+        from app.core.config import settings as _settings
+
+        redis_key = f"exec_logs:{task_id}"
+        try:
+            _redis = await _aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+            await _redis.delete(redis_key)  # limpiar logs anteriores
+        except Exception:
+            _redis = None
+
+        async def _push_log(line: str):
+            if _redis:
+                try:
+                    await _redis.rpush(redis_key, line)
+                    await _redis.expire(redis_key, 7200)  # 2h TTL
+                except Exception:
+                    pass
+
+        final_state = None
+        seen_results: set = set()
+
+        await _push_log("🚀 Iniciando automatización…")
+
+        async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
+            for node_name, state_update in chunk.items():
+                if node_name == "__end__":
+                    final_state = state_update
+                    continue
+
+                results: list = state_update.get("agent_results") or []
+                for r in results:
+                    rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))
+                    if rid not in seen_results:
+                        seen_results.add(rid)
+                        agent = r.get("agent", "?")
+                        summary = r.get("summary") or r.get("output", "")
+                        if isinstance(summary, dict):
+                            summary = summary.get("action") or str(summary)[:120]
+                        ok = "✅" if r.get("success") else "❌"
+                        await _push_log(f"{ok} [{agent}] {str(summary)[:200]}")
+
+                err = state_update.get("error_message")
+                if err and err not in seen_results:
+                    seen_results.add(err)
+                    await _push_log(f"⚠️ {err[:200]}")
+
+                if state_update.get("status") in ("done", "failed", "awaiting_approval"):
+                    final_state = state_update
+
+        # Si astream no devolvió __end__, usar el último estado
+        if final_state is None:
+            final_state = initial_state
+
+        if _redis:
+            status_val = final_state.get("status")
+            if hasattr(status_val, "value"):
+                status_val = status_val.value
+            icon = "✅" if status_val == "done" else "❌"
+            await _push_log(f"{icon} Ejecución finalizada ({status_val})")
+            await _redis.aclose()
 
         print("FINAL STATE RETURNED BY LANGGRAPH:", final_state)
 
@@ -730,6 +857,17 @@ async def _check_scheduled_workflows():
                     print(f"[IDEMPOTENCY] Workflow '{wf.name}' ya disparado este minuto. Skip.")
                     continue
 
+                # Bloquear si ya hay una ejecución activa para este workflow
+                existing_exec = await db.execute(
+                    select(WorkflowExecution).where(
+                        WorkflowExecution.workflow_id == wf.id,
+                        WorkflowExecution.status.in_(["running", "pending"]),
+                    )
+                )
+                if existing_exec.scalars().first():
+                    print(f"[BEAT] Workflow '{wf.name}' ya tiene ejecución activa. Skip.")
+                    continue
+
                 print(f"[BEAT] Disparando workflow programado: '{wf.name}'")
                 # Construir instrucción
                 action_config = wf.action_config or {}
@@ -744,26 +882,34 @@ async def _check_scheduled_workflows():
                 text = f"{wf.name} {wf.description or ''} {instruction}".lower()
                 domain = action_config.get("domain") or _infer_domain_from_text(text)
 
-                # Crear Task hija
+                # Crear ejecución primero para obtener su ID
+                execution = WorkflowExecution(
+                    workflow_id=wf.id,
+                    tenant_id=wf.tenant_id,
+                    status="running",
+                    trigger_payload={"source": "celery_beat", "scheduled_at": now.isoformat()},
+                )
+                db.add(execution)
+                await db.flush()
+
+                # Crear Task hija con execution_id en metadata
                 task = Task(
                     tenant_id=wf.tenant_id,
                     created_by=None,
                     domain=domain,
                     user_intent=f"[Automatización programada] {instruction}",
                     status="pending",
-                    additional_metadata={"workflow_id": str(wf.id), "trigger_type": "schedule_based", "scheduled_at": now.isoformat()},
+                    additional_metadata={
+                        "workflow_id": str(wf.id),
+                        "execution_id": str(execution.id),
+                        "trigger_type": "schedule_based",
+                        "scheduled_at": now.isoformat(),
+                    },
                 )
                 db.add(task)
                 await db.flush()
 
-                execution = WorkflowExecution(
-                    workflow_id=wf.id,
-                    tenant_id=wf.tenant_id,
-                    status="running",
-                    task_id=task.id,
-                    trigger_payload={"source": "celery_beat", "scheduled_at": now.isoformat()},
-                )
-                db.add(execution)
+                execution.task_id = task.id
                 await db.flush()
 
                 try:
@@ -902,3 +1048,40 @@ def _infer_domain_from_text(text: str) -> str:
     if any(w in text for w in ["documento", "archivo", "ocr", "contrato"]):
         return "documents"
     return "billing"
+
+
+# ─── Cleanup: ejecuciones atascadas ──────────────────────────────────────────
+
+@celery_app.task(name="cleanup_stuck_executions")
+def cleanup_stuck_executions():
+    """Cada 10 min: marca como 'failed' ejecuciones en 'running' de más de 15 min."""
+    return run_async(_cleanup_stuck_executions())
+
+
+async def _cleanup_stuck_executions():
+    from datetime import datetime, timedelta
+    from sqlalchemy import select, update as sa_update
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.models import WorkflowExecution
+
+    cutoff = datetime.now(UTC) - timedelta(minutes=15)
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(WorkflowExecution).where(
+                WorkflowExecution.status == "running",
+                WorkflowExecution.started_at < cutoff,
+            )
+        )
+        stuck = result.scalars().all()
+        if not stuck:
+            return {"cleaned": 0}
+
+        for ex in stuck:
+            ex.status = "failed"
+            ex.completed_at = datetime.now(UTC)
+            ex.result_log = (ex.result_log or "") + " [Auto-cancelado: timeout 15 min]"
+
+        await db.commit()
+        print(f"[CLEANUP] {len(stuck)} ejecucion(es) atascada(s) marcadas como failed.")
+        return {"cleaned": len(stuck)}

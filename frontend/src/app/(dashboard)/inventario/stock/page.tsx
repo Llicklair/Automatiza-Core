@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, type Product, type StockMovement } from "@/lib/api";
 import {
     Package, Plus, Search, ArrowUpCircle, ArrowDownCircle, SlidersHorizontal,
-    Loader2, X, AlertTriangle, ChevronDown, ChevronUp, Clock
+    Loader2, X, AlertTriangle, ChevronDown, ChevronUp, Clock, Pencil, Trash2, MoreHorizontal
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { useConfirmStore } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const fmt = (n: number) => n.toLocaleString("es-ES");
 
@@ -29,8 +31,19 @@ interface MovementForm {
     notes: string;
 }
 
+interface ProductForm {
+    name: string;
+    sku: string;
+    price: number;
+    stock_min_alert: number;
+    description: string;
+}
+
+const emptyProductForm: ProductForm = { name: "", sku: "", price: 0, stock_min_alert: 0, description: "" };
+
 export default function StockPage() {
     const toast = useToastStore();
+    const confirm = useConfirmStore();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -43,13 +56,43 @@ export default function StockPage() {
     const [movForm, setMovForm] = useState<MovementForm>({ movement_type: "entrada", quantity: 1, reference: "", notes: "" });
     const [saving, setSaving] = useState(false);
 
+    // Product create/edit modal
+    const [showProductModal, setShowProductModal] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
+    const [savingProduct, setSavingProduct] = useState(false);
+
+    // Inline edit for stock_min_alert
+    const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
+    const [alertValue, setAlertValue] = useState(0);
+    const alertInputRef = useRef<HTMLInputElement>(null);
+
+    // Dropdown menu
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
     const load = () =>
         api.erp.products.list({ limit: 200 })
             .then(data => setProducts(data.filter(p => p.item_type === "product")))
-            .catch(console.error)
+            .catch(err => logError("inventario/stock/page", err))
             .finally(() => setLoading(false));
 
     useEffect(() => { load(); }, []);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        if (!openMenuId) return;
+        const handler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest("[data-menu-dropdown]")) setOpenMenuId(null);
+        };
+        document.addEventListener("click", handler);
+        return () => document.removeEventListener("click", handler);
+    }, [openMenuId]);
+
+    // Focus alert input when editing
+    useEffect(() => {
+        if (editingAlertId && alertInputRef.current) alertInputRef.current.focus();
+    }, [editingAlertId]);
 
     const toggleExpand = async (productId: string) => {
         if (expandedId === productId) {
@@ -63,7 +106,7 @@ export default function StockPage() {
                 const movs = await api.erp.stock.movements(productId);
                 setMovements(prev => ({ ...prev, [productId]: movs }));
             } catch (err) {
-                console.error(err);
+                logError("inventario/stock/page", err);
             } finally {
                 setMovementsLoading(null);
             }
@@ -83,7 +126,6 @@ export default function StockPage() {
         try {
             await api.erp.stock.addMovement(selectedProduct.id, movForm);
             setShowModal(false);
-            // Recargar productos y movimientos del producto
             load();
             if (movements[selectedProduct.id]) {
                 const movs = await api.erp.stock.movements(selectedProduct.id);
@@ -93,6 +135,82 @@ export default function StockPage() {
             toast.error(err?.message || "Error al registrar movimiento");
         } finally {
             setSaving(false);
+        }
+    };
+
+    // --- Inline stock_min_alert edit ---
+    const startEditAlert = (product: Product) => {
+        setEditingAlertId(product.id);
+        setAlertValue(product.stock_min_alert);
+    };
+
+    const saveAlert = async (productId: string) => {
+        setEditingAlertId(null);
+        try {
+            await api.erp.products.update(productId, { stock_min_alert: alertValue });
+            load();
+            toast.success("Alerta mínima actualizada");
+        } catch (err: any) {
+            toast.error(err?.message || "Error al actualizar alerta");
+        }
+    };
+
+    // --- Product create/edit ---
+    const openCreateProduct = () => {
+        setEditingProduct(null);
+        setProductForm(emptyProductForm);
+        setShowProductModal(true);
+    };
+
+    const openEditProduct = (product: Product) => {
+        setEditingProduct(product);
+        setProductForm({
+            name: product.name,
+            sku: product.sku || "",
+            price: product.price,
+            stock_min_alert: product.stock_min_alert,
+            description: product.description || "",
+        });
+        setShowProductModal(true);
+        setOpenMenuId(null);
+    };
+
+    const handleProductSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSavingProduct(true);
+        try {
+            if (editingProduct) {
+                await api.erp.products.update(editingProduct.id, productForm);
+                toast.success("Producto actualizado");
+            } else {
+                await api.erp.products.create({ ...productForm, item_type: "product" });
+                toast.success("Producto creado");
+            }
+            setShowProductModal(false);
+            load();
+        } catch (err: any) {
+            toast.error(err?.message || "Error al guardar producto");
+        } finally {
+            setSavingProduct(false);
+        }
+    };
+
+    // --- Delete product ---
+    const handleDelete = async (product: Product) => {
+        setOpenMenuId(null);
+        const ok = await confirm.show({
+            title: "Eliminar producto",
+            message: `Se eliminará "${product.name}" permanentemente. Esta acción no se puede deshacer.`,
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        });
+        if (!ok) return;
+        try {
+            await api.erp.products.delete(product.id);
+            toast.success("Producto eliminado");
+            load();
+        } catch (err: any) {
+            toast.error(err?.message || "Error al eliminar producto");
         }
     };
 
@@ -110,6 +228,12 @@ export default function StockPage() {
                     <h1 className="text-3xl font-bold text-white tracking-tight">Control de Stock</h1>
                     <p className="mt-1 text-sm text-zinc-400">Gestiona el inventario físico de tus productos con entradas, salidas y ajustes.</p>
                 </div>
+                <button
+                    onClick={openCreateProduct}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+                >
+                    <Plus className="w-4 h-4" /> Nuevo producto
+                </button>
             </div>
 
             {/* KPIs */}
@@ -157,11 +281,11 @@ export default function StockPage() {
                 <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
                     {/* Header */}
                     <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-[#27272a] text-xs font-medium text-zinc-500 uppercase tracking-wide bg-[#161618]">
-                        <div className="col-span-4">Producto</div>
+                        <div className="col-span-3">Producto</div>
                         <div className="col-span-2 text-center">Stock actual</div>
                         <div className="col-span-2 text-center">Alerta mínima</div>
                         <div className="col-span-2 text-center">Estado</div>
-                        <div className="col-span-2 text-right">Acción</div>
+                        <div className="col-span-3 text-right">Acciones</div>
                     </div>
                     {filtered.map(product => {
                         const isLow = product.stock_min_alert > 0 && product.stock_quantity <= product.stock_min_alert;
@@ -171,7 +295,7 @@ export default function StockPage() {
                         return (
                             <div key={product.id} className="border-b border-[#27272a]/50 last:border-0">
                                 <div className="grid grid-cols-12 gap-4 px-6 py-3.5 hover:bg-white/[0.02] transition-colors items-center">
-                                    <div className="col-span-4 flex items-center gap-3">
+                                    <div className="col-span-3 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-[#27272a] flex items-center justify-center flex-shrink-0">
                                             <Package className="w-4 h-4 text-zinc-400" />
                                         </div>
@@ -185,10 +309,37 @@ export default function StockPage() {
                                             {fmt(product.stock_quantity)}
                                         </span>
                                     </div>
-                                    <div className="col-span-2 text-center">
-                                        <span className="text-sm text-zinc-500 font-mono">
-                                            {product.stock_min_alert > 0 ? fmt(product.stock_min_alert) : "—"}
-                                        </span>
+                                    <div className="col-span-2 text-center flex items-center justify-center gap-1.5">
+                                        {editingAlertId === product.id ? (
+                                            <form
+                                                onSubmit={e => { e.preventDefault(); saveAlert(product.id); }}
+                                                className="flex items-center gap-1"
+                                            >
+                                                <input
+                                                    ref={alertInputRef}
+                                                    type="number"
+                                                    min={0}
+                                                    value={alertValue}
+                                                    onChange={e => setAlertValue(parseInt(e.target.value) || 0)}
+                                                    onBlur={() => saveAlert(product.id)}
+                                                    onKeyDown={e => { if (e.key === "Escape") setEditingAlertId(null); }}
+                                                    className="w-16 bg-[#18181b] border border-indigo-500 text-white text-sm rounded-lg px-2 py-1 text-center focus:outline-none"
+                                                />
+                                            </form>
+                                        ) : (
+                                            <>
+                                                <span className="text-sm text-zinc-500 font-mono">
+                                                    {product.stock_min_alert > 0 ? fmt(product.stock_min_alert) : "—"}
+                                                </span>
+                                                <button
+                                                    onClick={() => startEditAlert(product)}
+                                                    className="p-0.5 rounded hover:bg-white/10 text-zinc-600 hover:text-zinc-300 transition-colors"
+                                                    title="Editar alerta mínima"
+                                                >
+                                                    <Pencil className="w-3 h-3" />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                     <div className="col-span-2 text-center">
                                         {isOut ? (
@@ -201,13 +352,38 @@ export default function StockPage() {
                                             <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full">OK</span>
                                         )}
                                     </div>
-                                    <div className="col-span-2 flex items-center justify-end gap-2">
+                                    <div className="col-span-3 flex items-center justify-end gap-1.5">
                                         <button
                                             onClick={() => openMovement(product)}
                                             className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
                                         >
                                             <Plus className="w-3 h-3" /> Movimiento
                                         </button>
+                                        {/* Dropdown menu */}
+                                        <div className="relative" data-menu-dropdown>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === product.id ? null : product.id); }}
+                                                className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-colors"
+                                            >
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </button>
+                                            {openMenuId === product.id && (
+                                                <div className="absolute right-0 top-full mt-1 bg-[#1c1c1f] border border-[#3f3f46] rounded-xl shadow-xl py-1 z-30 min-w-[140px]">
+                                                    <button
+                                                        onClick={() => openEditProduct(product)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 hover:text-white transition-colors"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" /> Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(product)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         <button
                                             onClick={() => toggleExpand(product.id)}
                                             className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-colors"
@@ -236,7 +412,7 @@ export default function StockPage() {
                                                             {mov.movement_type === "entrada" ? "+" : mov.movement_type === "salida" ? "-" : "="}{Math.abs(mov.quantity)}
                                                         </span>
                                                         <span className="text-zinc-400 flex-1">{mov.reference || mov.notes || <span className="italic text-zinc-600">Sin referencia</span>}</span>
-                                                        <span className="text-zinc-600 font-mono text-xs">→ {fmt(mov.stock_after)} uds.</span>
+                                                        <span className="text-zinc-600 font-mono text-xs">&rarr; {fmt(mov.stock_after)} uds.</span>
                                                         <span className="text-zinc-700 text-xs flex items-center gap-1">
                                                             <Clock className="w-3 h-3" />
                                                             {new Date(mov.created_at).toLocaleDateString("es-ES")}
@@ -331,6 +507,87 @@ export default function StockPage() {
                                 <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                     {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                                     Registrar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Product create/edit modal */}
+            {showProductModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-8 w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-bold text-white">
+                                {editingProduct ? "Editar producto" : "Nuevo producto"}
+                            </h2>
+                            <button onClick={() => setShowProductModal(false)} className="text-zinc-500 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleProductSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Nombre *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={productForm.name}
+                                    onChange={e => setProductForm(f => ({ ...f, name: e.target.value }))}
+                                    className="w-full bg-[#18181b] border border-[#3f3f46] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+                                    placeholder="Nombre del producto"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">SKU</label>
+                                    <input
+                                        type="text"
+                                        value={productForm.sku}
+                                        onChange={e => setProductForm(f => ({ ...f, sku: e.target.value }))}
+                                        className="w-full bg-[#18181b] border border-[#3f3f46] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+                                        placeholder="SKU-001"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Precio</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        step={0.01}
+                                        value={productForm.price}
+                                        onChange={e => setProductForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
+                                        className="w-full bg-[#18181b] border border-[#3f3f46] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Alerta stock mínimo</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={productForm.stock_min_alert}
+                                    onChange={e => setProductForm(f => ({ ...f, stock_min_alert: parseInt(e.target.value) || 0 }))}
+                                    className="w-full bg-[#18181b] border border-[#3f3f46] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Descripción</label>
+                                <textarea
+                                    value={productForm.description}
+                                    rows={2}
+                                    onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))}
+                                    className="w-full bg-[#18181b] border border-[#3f3f46] text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                                    placeholder="Descripción opcional"
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setShowProductModal(false)} className="flex-1 py-2.5 rounded-xl border border-[#3f3f46] text-zinc-400 text-sm hover:bg-white/5 transition-colors">
+                                    Cancelar
+                                </button>
+                                <button type="submit" disabled={savingProduct} className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                    {savingProduct && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {editingProduct ? "Guardar cambios" : "Crear producto"}
                                 </button>
                             </div>
                         </form>

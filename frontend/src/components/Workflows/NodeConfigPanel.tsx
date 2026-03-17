@@ -4,7 +4,15 @@ import { X } from "lucide-react";
 import { Node } from "reactflow";
 
 const DOMAIN_OPTIONS = [
-    "billing", "hr", "email", "crm", "documents", "banking", "compliance", "excel", "rag",
+    { value: "billing",    label: "Facturación" },
+    { value: "hr",         label: "RRHH / Nóminas" },
+    { value: "crm",        label: "CRM / Clientes" },
+    { value: "email",      label: "Email" },
+    { value: "documents",  label: "Documentos" },
+    { value: "banking",    label: "Banca" },
+    { value: "compliance", label: "Fiscal / Compliance" },
+    { value: "excel",      label: "Excel / Informes" },
+    { value: "rag",        label: "Búsqueda documental" },
 ];
 
 interface NodeConfigPanelProps {
@@ -57,7 +65,7 @@ export default function NodeConfigPanel({ node, onUpdate, onDelete, onClose }: N
                         className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
                     >
                         {DOMAIN_OPTIONS.map(d => (
-                            <option key={d} value={d}>{d}</option>
+                            <option key={d.value} value={d.value}>{d.label}</option>
                         ))}
                     </select>
                 </div>
@@ -66,14 +74,17 @@ export default function NodeConfigPanel({ node, onUpdate, onDelete, onClose }: N
             {/* Instruction (skill/action) */}
             {(type === "skill" || type === "action") && (
                 <div>
-                    <label className="block text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Instrucción</label>
+                    <label className="block text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
+                        Instrucción <span className="text-indigo-400 normal-case">(lo que hará el agente)</span>
+                    </label>
                     <textarea
-                        value={data?.description || ""}
-                        onChange={e => update("description", e.target.value)}
+                        value={data?.instruction || data?.description || ""}
+                        onChange={e => update("instruction", e.target.value)}
                         rows={3}
-                        placeholder="Ej: Generar informe de ventas del mes"
+                        placeholder="Ej: Genera una factura de 100€ para el cliente ACME S.L. por servicios de consultoría"
                         className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500 resize-none"
                     />
+                    <p className="text-[9px] text-zinc-600 mt-1">Escribe en lenguaje natural. Cuanto más específico, mejor resultado.</p>
                 </div>
             )}
 

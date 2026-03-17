@@ -7,6 +7,8 @@ import {
     MoreHorizontal, GraduationCap, ShieldCheck, X, Loader2, Pencil, Trash2
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 export default function EmployeesPage() {
     const toast = useToastStore();
@@ -36,7 +38,7 @@ export default function EmployeesPage() {
             const data = await api.hr.employees.list();
             setEmployees(data);
         } catch (error) {
-            console.error(error);
+            logError("rrhh/empleados/page", error);
         } finally {
             setIsLoading(false);
         }
@@ -64,7 +66,7 @@ export default function EmployeesPage() {
 
     const handleDelete = async (emp: Employee) => {
         setMenuOpenId(null);
-        if (!confirm(`¿Eliminar a "${emp.name}"? Esta acción no se puede deshacer.`)) return;
+        if (!await showConfirm({ message: `¿Eliminar a "${emp.name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(emp.id);
         try {
             await api.hr.employees.delete(emp.id);

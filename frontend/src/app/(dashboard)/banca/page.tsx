@@ -14,6 +14,7 @@ interface Saldo { account_id: string; iban: string; nombre: string; saldo: numbe
 interface Transaction { id: string; fecha: string; concepto: string; importe: number; tipo: string; categoria: string; }
 import { BankTransaction, Invoice } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
+import { logError } from "@/lib/logger";
 
 const CATEGORY_LABELS: Record<string, string> = {
     proveedor_material: "Material", proveedor_servicio: "Servicios",
@@ -294,7 +295,7 @@ function TransaccionesTab() {
             setTxList(txData);
             setInvoices(invData.filter(i => i.status !== "paid"));
         } catch (error) {
-            console.error(error);
+            logError("banca/page", error);
         } finally {
             setIsLoading(false);
         }
@@ -306,7 +307,7 @@ function TransaccionesTab() {
             await api.banking.transactions.sync();
             await loadData();
         } catch (error) {
-            console.error("Error syncing transactions", error);
+            logError("banca/page", error);
         } finally {
             setIsSyncing(false);
         }
@@ -322,7 +323,7 @@ function TransaccionesTab() {
             setSelectedInvoice("");
             await loadData();
         } catch (error) {
-            console.error(error);
+            logError("banca/page", error);
             toast.error("Error al conciliar la transacción.");
         } finally {
             setReconciling(false);

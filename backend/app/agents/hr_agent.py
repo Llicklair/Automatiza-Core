@@ -31,7 +31,9 @@ from app.db.models.models import Employee, Payroll
 from app.core.config import settings
 from app.core.llm_factory import get_llm
 
-llm = get_llm(temperature=0)
+
+def _get_llm():
+    return get_llm(temperature=0)
 
 
 # ─── Herramientas ─────────────────────────────────────────────────────────────
@@ -71,9 +73,16 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                 return f"Error: Empleado con NIF {nif} no encontrado en RRHH."
 
             base_salary = float(employee.base_salary) if employee.base_salary else 0
-            irpf = round(base_salary * 0.15, 2)
-            ss   = round(base_salary * 0.0635, 2)
-            net_salary = max(0.0, base_salary - irpf - ss - deductions)
+            irpf_rate = float(employee.irpf_rate) if employee.irpf_rate is not None else 15.0
+
+            # Desglose SS trabajador
+            ss_cc = round(base_salary * 0.0470, 2)   # Contingencias comunes
+            ss_des = round(base_salary * 0.0155, 2)   # Desempleo (indefinido)
+            ss_fp = round(base_salary * 0.0010, 2)    # Formación profesional
+            ss_mei = round(base_salary * 0.0013, 2)   # MEI
+            irpf = round(base_salary * irpf_rate / 100, 2)
+            total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf + deductions
+            net_salary = max(0.0, base_salary - total_ded)
 
             last_day = monthrange(year, month)[1]
             start_date = datetime(year, month, 1, tzinfo=UTC)
@@ -86,7 +95,13 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                 period_end=end_date,
                 issue_date=datetime.now(UTC),
                 base_salary=base_salary,
-                deductions=irpf + ss + deductions,
+                ss_contingencias_comunes=ss_cc,
+                ss_desempleo=ss_des,
+                ss_formacion_profesional=ss_fp,
+                ss_mei=ss_mei,
+                irpf=irpf,
+                other_deductions=deductions,
+                deductions=total_ded,
                 net_salary=net_salary,
                 status="draft",
             )
@@ -115,15 +130,19 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                     },
                     "company": {
                         "name": tenant_obj.name if tenant_obj else "Empresa Cliente",
-                        "nif": "B-00000000", # Mock o real si existiera en Tenant
+                        "nif": "B-00000000",
                         "address": "Calle Falsa 123, Madrid",
                     },
                     "period_start": start_date.isoformat(),
                     "period_end": end_date.isoformat(),
                     "issue_date": datetime.now(UTC).isoformat(),
                     "base_salary": base_salary,
+                    "ss_contingencias_comunes": ss_cc,
+                    "ss_desempleo": ss_des,
+                    "ss_formacion_profesional": ss_fp,
+                    "ss_mei": ss_mei,
                     "irpf": irpf,
-                    "ss_employee": ss,
+                    "irpf_rate": irpf_rate,
                     "other_deductions": deductions,
                     "net_salary": net_salary,
                 }
@@ -157,7 +176,7 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                     await db_doc.refresh(new_doc)
                     document_id = str(new_doc.id)
             except Exception as pdf_err:
-                print(f"Error PDF RRHH: {pdf_err}")
+                logger.warning(f"Error PDF RRHH: {pdf_err}")
 
             # --- Emitir Evento para Automatización ---
             try:
@@ -181,7 +200,8 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
 
         return (
             f"Pre-nómina generada: {employee.name} (NIF: {nif}) | "
-            f"Bruto: {base_salary:.2f}€ | IRPF: {irpf:.2f}€ | SS: {ss:.2f}€ | "
+            f"Bruto: {base_salary:.2f}€ | SS(CC {ss_cc:.2f}+Des {ss_des:.2f}+FP {ss_fp:.2f}+MEI {ss_mei:.2f}) | "
+            f"IRPF({irpf_rate:.1f}%): {irpf:.2f}€ | "
             f"Neto: {net_salary:.2f}€ | Estado: DRAFT | ID: {payroll.id} | "
             f"Documento generado: {document_id or 'Fallo al generar PDF'}"
         )
@@ -226,9 +246,15 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
             summary_lines = []
             for emp in employees:
                 base_salary = float(emp.base_salary) if emp.base_salary else 0
-                irpf = round(base_salary * 0.15, 2)
-                ss   = round(base_salary * 0.0635, 2)
-                net_salary = max(0.0, base_salary - irpf - ss)
+                irpf_rate = float(emp.irpf_rate) if emp.irpf_rate is not None else 15.0
+
+                ss_cc = round(base_salary * 0.0470, 2)
+                ss_des = round(base_salary * 0.0155, 2)
+                ss_fp = round(base_salary * 0.0010, 2)
+                ss_mei_val = round(base_salary * 0.0013, 2)
+                irpf = round(base_salary * irpf_rate / 100, 2)
+                total_ded = ss_cc + ss_des + ss_fp + ss_mei_val + irpf
+                net_salary = max(0.0, base_salary - total_ded)
 
                 payroll = Payroll(
                     tenant_id=UUID(tenant_id),
@@ -237,7 +263,13 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     period_end=end_date,
                     issue_date=datetime.now(UTC),
                     base_salary=base_salary,
-                    deductions=irpf + ss,
+                    ss_contingencias_comunes=ss_cc,
+                    ss_desempleo=ss_des,
+                    ss_formacion_profesional=ss_fp,
+                    ss_mei=ss_mei_val,
+                    irpf=irpf,
+                    other_deductions=0,
+                    deductions=total_ded,
                     net_salary=net_salary,
                     status="draft",
                 )
@@ -261,8 +293,12 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                         "period_end": end_date.isoformat(),
                         "issue_date": datetime.now(UTC).isoformat(),
                         "base_salary": base_salary,
+                        "ss_contingencias_comunes": ss_cc,
+                        "ss_desempleo": ss_des,
+                        "ss_formacion_profesional": ss_fp,
+                        "ss_mei": ss_mei_val,
                         "irpf": irpf,
-                        "ss_employee": ss,
+                        "irpf_rate": irpf_rate,
                         "other_deductions": 0.0,
                         "net_salary": net_salary,
                     }
@@ -373,7 +409,6 @@ tools = [
     get_tenant_knowledge,
     upsert_tenant_knowledge,
 ]
-llm_with_tools = llm.bind_tools(tools)
 
 
 # ─── Nodos del grafo ──────────────────────────────────────────────────────────
@@ -405,8 +440,12 @@ def hr_agent_node(state: AgentState):
             )
         )
         user_msg = HumanMessage(content=state["user_intent"])
-        state["messages"] = [sys_msg, user_msg]
+        extra_init_messages = [sys_msg, user_msg]
+        state["messages"] = extra_init_messages
+    else:
+        extra_init_messages = []
 
+    llm_with_tools = _get_llm().bind_tools(tools)
     response = llm_with_tools.invoke(state["messages"])
 
     result_log = StepResult(
@@ -424,7 +463,7 @@ def hr_agent_node(state: AgentState):
         state["agent_results"] = []
 
     state["agent_results"].append(result_log.model_dump())
-    return {"messages": [response], "agent_results": state["agent_results"]}
+    return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
 
 
 def hr_finalize_node(state: AgentState):

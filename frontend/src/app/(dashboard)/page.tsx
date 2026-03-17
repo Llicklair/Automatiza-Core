@@ -1,14 +1,131 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, type Task, type Approval, type Invoice } from "@/lib/api";
 import {
     CheckCircle2, AlertCircle, Clock, Zap, Wallet,
     TrendingUp, TrendingDown, ArrowRight, FileText, Activity,
-    BrainCircuit, Sparkles, AlertTriangle, Lightbulb
+    BrainCircuit, Sparkles, AlertTriangle, Lightbulb,
+    SendHorizonal, Loader2, Bot,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
+
+const SUGGESTIONS = [
+    "¿Cuánto he facturado este mes?",
+    "Genera las nóminas del mes",
+    "¿Tengo facturas pendientes de cobro?",
+    "Revisa mis obligaciones fiscales",
+    "Crea una factura para cliente nuevo",
+];
+
+function AiChatBar() {
+    const router = useRouter();
+    const [input, setInput] = useState("");
+    const [sending, setSending] = useState(false);
+    const [lastResult, setLastResult] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    async function send(text: string) {
+        const msg = text.trim();
+        if (!msg) return;
+        setSending(true);
+        setLastResult(null);
+        setInput("");
+        try {
+            const task = await api.tasks.create("coordinator", msg);
+            setLastResult(`Tarea enviada al agente. Puedes seguir el progreso en Tareas IA.`);
+            // Poll breve para resultado rápido
+            let attempts = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                try {
+                    const t = await api.tasks.get(task.id);
+                    if (t.status === "done" && t.agent_results) {
+                        const results = t.agent_results as any[];
+                        const summary = results[results.length - 1]?.summary || results[results.length - 1]?.output_message;
+                        if (summary) setLastResult(summary);
+                        clearInterval(poll);
+                    } else if (["failed", "cancelled"].includes(t.status)) {
+                        setLastResult("El agente no pudo completar la tarea. Revisa Tareas IA.");
+                        clearInterval(poll);
+                    } else if (attempts >= 10) {
+                        clearInterval(poll);
+                    }
+                } catch { clearInterval(poll); }
+            }, 2000);
+        } catch {
+            setLastResult("Error al enviar la tarea. Inténtalo de nuevo.");
+        } finally {
+            setSending(false);
+        }
+    }
+
+    return (
+        <div className="relative z-10">
+            {/* Input bar */}
+            <div className="flex items-center gap-3 bg-[#111113] border border-indigo-500/30 rounded-2xl px-4 py-3 shadow-lg shadow-indigo-500/5 focus-within:border-indigo-500/60 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-3.5 h-3.5 text-white" />
+                </div>
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !e.shiftKey && send(input)}
+                    placeholder="Pregunta o pide algo a tu asistente IA..."
+                    className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm focus:outline-none"
+                    disabled={sending}
+                />
+                <button
+                    onClick={() => send(input)}
+                    disabled={sending || !input.trim()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition flex-shrink-0"
+                >
+                    {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SendHorizonal className="w-3.5 h-3.5" />}
+                    {sending ? "Procesando…" : "Enviar"}
+                </button>
+            </div>
+
+            {/* Sugerencias rápidas */}
+            {!lastResult && (
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                    {SUGGESTIONS.map(s => (
+                        <button
+                            key={s}
+                            onClick={() => send(s)}
+                            disabled={sending}
+                            className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition disabled:opacity-40"
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Resultado inline */}
+            {lastResult && (
+                <div className="mt-3 flex items-start gap-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-xl px-4 py-3">
+                    <Sparkles className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-zinc-200 leading-relaxed">{lastResult}</p>
+                        <button
+                            onClick={() => { setLastResult(null); inputRef.current?.focus(); }}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 mt-1.5 transition"
+                        >
+                            Nueva pregunta
+                        </button>
+                    </div>
+                    <Link href="/tareas" className="text-xs text-zinc-500 hover:text-zinc-300 transition flex-shrink-0">
+                        Ver tareas →
+                    </Link>
+                </div>
+            )}
+        </div>
+    );
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
     pending: { label: "Pendiente", color: "text-zinc-400", dot: "bg-zinc-500" },
@@ -41,6 +158,19 @@ function InvBadge({ status }: { status: string }) {
     }
 }
 
+function getGreeting(name: string) {
+    const h = new Date().getHours();
+    const saludo = h < 14 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
+    return name ? `${saludo}, ${name}` : saludo;
+}
+
+function decodeJwtName(token: string): string {
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.full_name || payload.name || payload.sub?.split("@")[0] || "";
+    } catch { return ""; }
+}
+
 export default function DashboardPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -48,6 +178,12 @@ export default function DashboardPage() {
     const [summary, setSummary] = useState({ ingresos: 0, gastos: 0, neto: 0, margen: 0 });
     const [analytics, setAnalytics] = useState<{ cashflow: any[], insights: any[] }>({ cashflow: [], insights: [] });
     const [loading, setLoading] = useState(true);
+    const [userName, setUserName] = useState("");
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token");
+        if (token) setUserName(decodeJwtName(token));
+    }, []);
 
     useEffect(() => {
         Promise.all([
@@ -70,20 +206,23 @@ export default function DashboardPage() {
     const netoIsPositive = summary.neto >= 0;
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-8 relative">
+        <div className="p-8 max-w-[1400px] mx-auto space-y-8 relative z-0">
             {/* Ambient glow — subtle, only visible en dark backgrounds */}
-            <div className="pointer-events-none fixed top-0 left-64 w-[600px] h-[400px] opacity-30" style={{ zIndex: 0 }}>
+            <div className="pointer-events-none fixed top-0 left-64 w-[600px] h-[400px] opacity-30" style={{ zIndex: -1 }}>
                 <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl animate-pulse" />
                 <div className="absolute top-16 left-48 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "2s", animationDuration: "4s" }} />
             </div>
 
             {/* Header */}
-            <div className="relative">
-                <h1 className="text-3xl font-bold text-white tracking-tight">Hola, buen día 👋</h1>
+            <div className="relative z-10">
+                <h1 className="text-3xl font-bold text-white tracking-tight">{getGreeting(userName)}</h1>
                 <p className="mt-1 text-sm text-zinc-400">
                     Aquí tienes el resumen financiero y operativo de tu negocio.
                 </p>
             </div>
+
+            {/* Chat IA */}
+            <AiChatBar />
 
             {/* KPIs Financieros Principales */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -213,7 +352,7 @@ export default function DashboardPage() {
                                         <RTooltip
                                             contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', fontSize: '12px' }}
                                             itemStyle={{ color: '#e4e4e7' }}
-                                            formatter={(value: number | undefined) => [`${value?.toLocaleString() ?? 0}€`]}
+                                            formatter={((value: unknown) => [`${Number(value)?.toLocaleString() ?? 0}€`]) as never}
                                         />
                                         <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
                                         <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />

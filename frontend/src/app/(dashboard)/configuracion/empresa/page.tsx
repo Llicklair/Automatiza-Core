@@ -7,6 +7,9 @@ import { Loader2, Save } from "lucide-react";
 export default function EmpresaConfigPage() {
     const [name, setName] = useState("");
     const [nif, setNif] = useState("");
+    const [address, setAddress] = useState("");
+    const [phone, setPhone] = useState("");
+    const [contactEmail, setContactEmail] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -19,6 +22,9 @@ export default function EmpresaConfigPage() {
                 if (!mounted) return;
                 setName(t.name);
                 setNif(t.nif);
+                setAddress(t.address || "");
+                setPhone(t.phone || "");
+                setContactEmail(t.contact_email || "");
             })
             .catch((e: any) => {
                 if (!mounted) return;
@@ -36,9 +42,18 @@ export default function EmpresaConfigPage() {
         setSuccess(null);
         try {
             setSaving(true);
-            const updated = await api.tenant.updateMe({ name, nif });
+            const updated = await api.tenant.updateMe({ 
+                name, 
+                nif,
+                address,
+                phone,
+                contact_email: contactEmail
+            });
             setName(updated.name);
             setNif(updated.nif);
+            setAddress(updated.address || "");
+            setPhone(updated.phone || "");
+            setContactEmail(updated.contact_email || "");
             setSuccess("Datos de empresa guardados correctamente.");
         } catch (e: any) {
             setError(e?.message || "No se pudo guardar la empresa");
@@ -51,9 +66,12 @@ export default function EmpresaConfigPage() {
         <div className="p-8 max-w-3xl mx-auto space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-white mb-1">Datos de mi empresa</h1>
-                <p className="text-zinc-400 text-sm">
-                    Esta información se usa como emisor en las facturas y PDFs generados.
+                <p className="text-zinc-400 text-sm mt-2">
+                    Esta información se usa como emisor en las facturas y PDFs generados. 
                 </p>
+                <div className="mt-3 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300">
+                    <strong>Nota importante:</strong> El <i>Nombre / Razón social</i> que configures aquí será exactamente el que verán tus clientes en los encabezados de presupuestos, albaranes, facturas y correos electrónicos automatizados. Asegúrate de escribirlo tal cual deseas presentarte comercial y legalmente.
+                </div>
             </div>
 
             <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6">
@@ -89,6 +107,45 @@ export default function EmpresaConfigPage() {
                                 onChange={(e) => setNif(e.target.value.toUpperCase())}
                                 className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none uppercase"
                                 placeholder="B12345678"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                Dirección Fiscal
+                            </label>
+                            <input
+                                type="text"
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)}
+                                className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none"
+                                placeholder="Calle Mayor 1, 28001 Madrid"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                Teléfono de contacto
+                            </label>
+                            <input
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none"
+                                placeholder="+34 600 000 000"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                Correo Oficial (Facturación)
+                            </label>
+                            <input
+                                type="email"
+                                value={contactEmail}
+                                onChange={(e) => setContactEmail(e.target.value)}
+                                className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none"
+                                placeholder="facturacion@miempresa.com"
                             />
                         </div>
 

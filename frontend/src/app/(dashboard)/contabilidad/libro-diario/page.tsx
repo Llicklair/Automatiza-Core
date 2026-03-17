@@ -5,6 +5,7 @@ import { api, type JournalEntry, type JournalLine } from "@/lib/api";
 import { FileDown, Plus, BookOpen, AlertCircle, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
+import { logError } from "@/lib/logger";
 
 export default function LibroDiarioPage() {
     const toast = useToastStore();
@@ -55,7 +56,7 @@ export default function LibroDiarioPage() {
             const data = await api.accounting.journal.list();
             setEntries(data);
         } catch (error) {
-            console.error(error);
+            logError("contabilidad/libro-diario/page", error);
         } finally {
             setLoading(false);
         }

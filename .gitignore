@@ -31,6 +31,10 @@ redis_data/
 # Uploads y archivos generados
 backend/uploads/
 backend/generated/
+backend/app/uploads/
+nul
+backend/nul
+frontend/nul
 *.pdf
 *.xlsx
 
@@ -46,5 +50,13 @@ Thumbs.db
 .vscode/settings.json
 .idea/
 
+# Caches pip/local
+backend/.cache/
+backend/.local/
+
+# Celery
+backend/celerybeat-schedule
+
 # Backups
 backups/
+.gitnexus

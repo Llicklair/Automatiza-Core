@@ -5,6 +5,7 @@ import { api, Reservation, Client } from "@/lib/api";
 import { CalendarRange, Plus, Search, CalendarClock, CheckCircle2, XCircle, Clock, CalendarCheck, X } from "lucide-react";
 import { format } from "date-fns";
 import { useToastStore } from "@/stores/toast";
+import { logError } from "@/lib/logger";
 
 const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
 
@@ -32,7 +33,7 @@ export default function ReservationsPage() {
             const [res, clis] = await Promise.all([api.crm.reservations.list(), api.erp.clients.list()]);
             setReservations(res);
             setClients(clis);
-        } catch (e) { console.error(e); }
+        } catch (e) { logError("crm/reservas/page", e); }
         finally { setIsLoading(false); }
     };
 
@@ -55,7 +56,7 @@ export default function ReservationsPage() {
         try {
             await api.crm.reservations.update(id, { status });
             await loadData();
-        } catch (e) { console.error(e); }
+        } catch (e) { logError("crm/reservas/page", e); }
     };
 
     const filtered = reservations.filter(r => {

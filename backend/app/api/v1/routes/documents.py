@@ -353,6 +353,55 @@ async def upload_bulk_documents(
     return docs_created
 
 
+@router.get("/export")
+async def export_documents(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Exporta todos los documentos del tenant como un archivo ZIP."""
+    import io
+    import zipfile
+    from fastapi.responses import StreamingResponse
+
+    result = await db.execute(
+        select(TenantDocument)
+        .where(TenantDocument.tenant_id == current_user.tenant_id)
+        .order_by(desc(TenantDocument.created_at))
+        .limit(500)
+    )
+    docs = result.scalars().all()
+
+    zip_buffer = io.BytesIO()
+    added_names: set[str] = set()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for doc in docs:
+            if not doc.file_path:
+                continue
+            normalized = os.path.normpath(doc.file_path)
+            if not os.path.exists(normalized):
+                continue
+            # Deduplicate names inside the ZIP
+            base_name = doc.file_name or os.path.basename(normalized)
+            base, ext = os.path.splitext(base_name)
+            unique_name = base_name
+            counter = 1
+            while unique_name in added_names:
+                unique_name = f"{base}_{counter}{ext}"
+                counter += 1
+            added_names.add(unique_name)
+            zf.write(normalized, unique_name)
+
+    zip_data = zip_buffer.getvalue()
+    return StreamingResponse(
+        io.BytesIO(zip_data),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="documentos_backup.zip"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
 @router.get("", response_model=list[DocumentOut])
 async def list_documents(
     category: str | None = None,

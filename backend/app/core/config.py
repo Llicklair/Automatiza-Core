@@ -43,17 +43,28 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
     # LLM
-    DEFAULT_LLM_PROVIDER: str = "ollama"  # ollama | gemini | openai | anthropic | groq | openrouter
+    DEFAULT_LLM_PROVIDER: str = "anthropic"  # anthropic | gemini | openai | groq | openrouter
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-6"   # claude-sonnet-4-6 | claude-opus-4-6
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash-preview-04-17"
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     OPENROUTER_API_KEY: str = ""
-    OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
-    OLLAMA_BASE_URL: str = "http://ollama:11434"
+    OPENROUTER_MODEL: str = "anthropic/claude-opus-4-6"
+
+    # SMTP (recuperación de contraseña)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_TLS: bool = True
+
+    # Embeddings
+    EMBEDDINGS_PROVIDER: str = "local"  # local | gemini | openai
+    EMBEDDINGS_LOCAL_MODEL: str = "BAAI/bge-m3"  # modelo HuggingFace local
 
     # Cifrado de credenciales de tenants
     TENANT_ENCRYPTION_KEY: str = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"

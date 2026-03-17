@@ -1,10 +1,14 @@
 """Rutas de autenticación: registro, login y refresh token."""
-from datetime import UTC, datetime
+import hashlib
+import secrets
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -13,12 +17,26 @@ from app.core.security import (
     verify_password,
 )
 from app.db.base import get_db
-from app.db.models.models import Tenant, User
+from app.db.models.models import Tenant, User, PasswordResetToken
+from app.core.dependencies import get_current_user
 from app.middleware.rate_limit import limiter
 from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserCreate, UserOut
 from app.services.audit import log_action
+from app.services.email_reset import send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Devuelve los datos básicos del usuario autenticado."""
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name or "",
+        "role": current_user.role,
+        "tenant_id": str(current_user.tenant_id),
+    }
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -84,7 +102,7 @@ async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depe
     user.last_login_at = datetime.now(UTC)
     await db.commit()
 
-    token_data = {"sub": str(user.id), "tenant_id": str(user.tenant_id), "role": user.role}
+    token_data = {"sub": str(user.id), "tenant_id": str(user.tenant_id), "role": user.role, "full_name": user.full_name or "", "email": user.email}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
@@ -97,8 +115,86 @@ async def refresh(payload: RefreshRequest):
     if not data or data.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
 
-    token_data = {"sub": data["sub"], "tenant_id": data["tenant_id"], "role": data["role"]}
+    token_data = {"sub": data["sub"], "tenant_id": data["tenant_id"], "role": data["role"], "full_name": data.get("full_name", ""), "email": data.get("email", "")}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
     )
+
+
+# ── Password Reset ─────────────────────────────────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", status_code=200)
+@limiter.limit("3/hour")
+async def forgot_password(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Solicita un enlace de recuperación. Siempre devuelve 200 para no revelar si el email existe."""
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+
+    if user and user.is_active:
+        # Generar token seguro
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        expires_at = datetime.now(UTC) + timedelta(hours=1)
+
+        # Invalidar tokens anteriores del mismo usuario
+        old = await db.execute(
+            select(PasswordResetToken)
+            .where(PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None))
+        )
+        for old_token in old.scalars().all():
+            old_token.used_at = datetime.now(UTC)
+
+        db.add(PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at))
+        await db.commit()
+
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+        send_password_reset_email(payload.email, reset_url, user.full_name or "")
+
+    return {"message": "Si el email existe, recibirás un enlace en breve."}
+
+
+@router.post("/reset-password", status_code=200)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=422, detail="La contraseña debe tener al menos 8 caracteres.")
+
+    token_hash = hashlib.sha256(payload.token.encode()).hexdigest()
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+    )
+    reset_token = result.scalar_one_or_none()
+
+    if not reset_token:
+        raise HTTPException(status_code=400, detail="Enlace inválido o expirado.")
+    if reset_token.used_at is not None:
+        raise HTTPException(status_code=400, detail="Este enlace ya fue utilizado.")
+    if reset_token.expires_at < datetime.now(UTC):
+        raise HTTPException(status_code=400, detail="El enlace ha expirado. Solicita uno nuevo.")
+
+    # Actualizar contraseña
+    user_result = await db.execute(select(User).where(User.id == reset_token.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuario no encontrado.")
+
+    user.hashed_password = get_password_hash(payload.new_password)
+    reset_token.used_at = datetime.now(UTC)
+    await db.commit()
+
+    return {"message": "Contraseña actualizada correctamente."}

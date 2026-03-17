@@ -1,0 +1,229 @@
+"use client";
+
+import { Zap, X, Loader2, BrainCircuit, Cpu, Info, GitFork } from "lucide-react";
+import { Workflow } from "@/lib/api";
+import WorkflowGraph from "@/components/Workflows/WorkflowGraph";
+import ScheduleBuilder from "./ScheduleBuilder";
+import { hasFanOut } from "./constants";
+
+interface WorkflowFormModalProps {
+    editingWorkflow: Workflow | null;
+    isSubmitting: boolean;
+    name: string;
+    setName: (v: string) => void;
+    description: string;
+    setDescription: (v: string) => void;
+    triggerType: string;
+    setTriggerType: (v: string) => void;
+    triggerConfig: any;
+    setTriggerConfig: (v: any) => void;
+    actionType: string;
+    setActionType: (v: string) => void;
+    actionIntent: string;
+    setActionIntent: (v: string) => void;
+    executionMode: "reasoning" | "deterministic";
+    setExecutionMode: (v: "reasoning" | "deterministic") => void;
+    parsedUiNodes: any[] | null;
+    setParsedUiNodes: (v: any[] | null) => void;
+    parsedUiEdges: any[] | null;
+    setParsedUiEdges: (v: any[] | null) => void;
+    defaultEditorNodes: any[];
+    defaultEditorEdges: any[];
+    graphKey: number;
+    onClose: () => void;
+    onSubmit: (e: React.FormEvent) => void;
+    onAddParallelBranch: () => void;
+}
+
+export default function WorkflowFormModal({
+    editingWorkflow, isSubmitting,
+    name, setName, description, setDescription,
+    triggerType, setTriggerType, triggerConfig, setTriggerConfig,
+    actionType, setActionType, actionIntent, setActionIntent,
+    executionMode, setExecutionMode,
+    parsedUiNodes, setParsedUiNodes, parsedUiEdges, setParsedUiEdges,
+    defaultEditorNodes, defaultEditorEdges, graphKey,
+    onClose, onSubmit, onAddParallelBranch,
+}: WorkflowFormModalProps) {
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#111113] border border-zinc-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-indigo-400" />
+                        {editingWorkflow ? "Editar Automatización" : "Nueva Regla de Automatización"}
+                    </h2>
+                    <button onClick={onClose} className="text-zinc-400 hover:text-white transition">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <form onSubmit={onSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-xs text-zinc-400 mb-1.5 uppercase tracking-wider">Nombre de la regla *</label>
+                        <input required type="text" value={name} onChange={e => setName(e.target.value)}
+                            placeholder="Ej: Alerta facturas vencidas"
+                            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 transition" />
+                    </div>
+                    <div>
+                        <label className="block text-xs text-zinc-400 mb-1.5 uppercase tracking-wider">Descripción</label>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)}
+                            placeholder="¿Qué hace esta regla?"
+                            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 transition resize-none h-16" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-3 border-t border-zinc-800/50">
+                        <div>
+                            <label className="block text-xs font-semibold text-indigo-400 mb-1.5 uppercase tracking-wider">Trigger (Cuándo)</label>
+                            <select value={triggerType} onChange={e => setTriggerType(e.target.value)}
+                                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500">
+                                <option value="event_based">⚡ Eventual — Al ocurrir un Evento ERP</option>
+                                <option value="schedule_based">🕐 De tiempo — Programación (Cron)</option>
+                                <option value="manual">🔄 Constante — A Demanda</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Acción (Qué)</label>
+                            <select value={actionType} onChange={e => setActionType(e.target.value)}
+                                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500">
+                                <option value="ai_task">Lanzar Agente IA</option>
+                                <option value="notify">Notificación</option>
+                                <option value="webhook">Llamar Webhook</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {triggerType === "schedule_based" && (
+                        <ScheduleBuilder value={triggerConfig.cron || "0 9 * * 1"} onChange={cron => setTriggerConfig({ cron })} />
+                    )}
+                    {triggerType === "event_based" && (
+                        <div>
+                            <label className="block text-xs text-zinc-400 mb-2 uppercase tracking-wider">Evento que dispara la automatización</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { value: "invoice_created", label: "Factura creada" },
+                                    { value: "invoice_paid", label: "Factura cobrada" },
+                                    { value: "client_created", label: "Cliente nuevo" },
+                                    { value: "document_uploaded", label: "Documento subido" },
+                                    { value: "any", label: "Cualquier evento" },
+                                ].map(ev => {
+                                    const selected = (triggerConfig.events || []).includes(ev.value);
+                                    return (
+                                        <button
+                                            key={ev.value}
+                                            type="button"
+                                            onClick={() => {
+                                                const cur: string[] = triggerConfig.events || [];
+                                                setTriggerConfig({ events: selected ? cur.filter((e: string) => e !== ev.value) : [...cur, ev.value] });
+                                            }}
+                                            className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${selected ? "border-indigo-500/60 bg-indigo-500/10 text-indigo-300" : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}
+                                        >
+                                            {ev.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-xs text-zinc-400 mb-1.5 uppercase tracking-wider">
+                            Instrucción para el Agente IA *
+                            <span className="text-zinc-600 ml-1 normal-case">(en lenguaje natural)</span>
+                        </label>
+                        <textarea required rows={3} value={actionIntent} onChange={e => setActionIntent(e.target.value)}
+                            placeholder="Ej: Revisa todas las facturas con más de 30 días sin pagar y genera un recordatorio para cada cliente con el importe pendiente"
+                            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 transition resize-none" />
+                    </div>
+
+                    {/* Execution mode selector */}
+                    <div className="pt-3 border-t border-zinc-800/50">
+                        <label className="block text-xs text-zinc-400 mb-2 uppercase tracking-wider">Modo de ejecución</label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setExecutionMode("reasoning")}
+                                className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "reasoning"
+                                    ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
+                                    : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <BrainCircuit className="w-4 h-4" />
+                                    <span className="text-xs font-semibold">Con IA</span>
+                                </div>
+                                <p className="text-[10px] leading-snug opacity-70">
+                                    El LLM interpreta la instrucción en tiempo real. Flexible y adaptable, pero consume tokens en cada ejecución.
+                                </p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setExecutionMode("deterministic")}
+                                className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "deterministic"
+                                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                                    : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Cpu className="w-4 h-4" />
+                                    <span className="text-xs font-semibold">Determinista</span>
+                                </div>
+                                <p className="text-[10px] leading-snug opacity-70">
+                                    Los pasos se compilan una vez al crear la regla. Ejecución directa sin LLM: coste cero y máxima velocidad.
+                                </p>
+                            </button>
+                        </div>
+                        {executionMode === "deterministic" && (
+                            <div className="mt-2 flex items-start gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-2">
+                                <Info className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-[10px] text-emerald-300/80 leading-relaxed">
+                                    Al guardar, se realizará una llamada extra al LLM para precompilar los pasos exactos. A partir de entonces, cada ejecución es instantánea y sin coste de IA.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Editor visual de nodos */}
+                    <div className="pt-3 border-t border-zinc-800/50">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <BrainCircuit className="w-3 h-3 text-indigo-400" /> Editor visual de agentes
+                            </p>
+                            <div className="flex items-center gap-2">
+                                {hasFanOut(parsedUiEdges) && (
+                                    <span className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full border font-semibold text-violet-400 bg-violet-500/10 border-violet-500/20">
+                                        <GitFork className="w-2.5 h-2.5" />
+                                        Ejecución paralela
+                                    </span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={onAddParallelBranch}
+                                    className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full border font-semibold text-violet-300 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20 transition-colors"
+                                    title="Añade una rama paralela al último nodo del grafo"
+                                >
+                                    <GitFork className="w-2.5 h-2.5" />
+                                    Añadir rama paralela
+                                </button>
+                            </div>
+                        </div>
+                        <div className="h-72 rounded-xl overflow-hidden border border-zinc-800">
+                            <WorkflowGraph
+                                key={graphKey}
+                                nodes={parsedUiNodes || defaultEditorNodes}
+                                edges={parsedUiEdges || defaultEditorEdges}
+                                editable
+                                onNodesChange={(n) => setParsedUiNodes(n)}
+                                onEdgesChange={(e) => setParsedUiEdges(e)}
+                            />
+                        </div>
+                    </div>
+                    <div className="pt-4 flex justify-end gap-3 border-t border-zinc-800/50">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-zinc-400 hover:text-white transition text-sm">Cancelar</button>
+                        <button type="submit" disabled={isSubmitting}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition disabled:opacity-50 flex items-center gap-2">
+                            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {isSubmitting ? "Guardando..." : editingWorkflow ? "Guardar cambios" : "Crear Regla"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}

@@ -1,5 +1,0 @@
-=== Resultado Agente CRM —  crea un cliente con estos datos y ejecuta el plan "Coordina ===
-Generado: 05/03/2026 11:03
-========================================
-
-Asistencia CRM completada.

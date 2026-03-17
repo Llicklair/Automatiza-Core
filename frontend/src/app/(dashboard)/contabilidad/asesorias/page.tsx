@@ -23,6 +23,7 @@ import {
     Gavel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logError } from "@/lib/logger";
 
 const CALENDAR_TYPES: Record<string, string[]> = {
     fiscal: ["iva", "irpf_fraccionado", "informativo_anual", "iva_anual"],
@@ -60,7 +61,7 @@ export default function AsesoriasPage() {
                 setEvents(tipos.length > 0 ? (e || []).filter((ev: any) => tipos.includes(ev.tipo)) : []);
                 setGuides(g || []);
             } catch (err) {
-                console.error("Error cargando asesoría:", err);
+                logError("contabilidad/asesorias/page", err);
             } finally {
                 setLoading(false);
             }

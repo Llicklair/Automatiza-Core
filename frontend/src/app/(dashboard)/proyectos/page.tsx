@@ -7,6 +7,7 @@ import {
     CheckCircle2, PlayCircle, FolderKanban, CalendarDays, X, Loader2
 } from "lucide-react";
 import { format, differenceInDays, isAfter, isBefore, addDays } from "date-fns";
+import { logError } from "@/lib/logger";
 
 export default function ProjectsPage() {
     const [projects, setProjects] = useState<Project[]>([]);
@@ -32,7 +33,7 @@ export default function ProjectsPage() {
         try {
             const data = await api.projects.list();
             setProjects(data);
-        } catch (error) { console.error(error); }
+        } catch (error) { logError("proyectos/page", error); }
         finally { setIsLoading(false); }
     };
 

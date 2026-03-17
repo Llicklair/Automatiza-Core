@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -6,6 +6,8 @@ import {
     ClipboardList, Plus, Search, Loader2, X, Pencil, Trash2,
     ChevronDown, Package, Calendar, Check
 } from "lucide-react";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -53,7 +55,7 @@ export default function PedidosPage() {
             setClients(clientsData.filter(c => c.client_type === "customer"));
             setProducts(productsData);
         } catch (err) {
-            console.error(err);
+            logError("ventas/pedidos/page", err);
         } finally {
             setLoading(false);
         }
@@ -108,7 +110,7 @@ export default function PedidosPage() {
             setLoading(true);
             load();
         } catch (err) {
-            console.error(err);
+            logError("ventas/pedidos/page", err);
         } finally {
             setSaving(false);
         }
@@ -121,28 +123,28 @@ export default function PedidosPage() {
             const updated = await api.erp.orders.update(order.id, { status: nextStatus });
             setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
         } catch (err) {
-            console.error(err);
+            logError("ventas/pedidos/page", err);
         }
     };
 
     const handleCancel = async (order: SalesOrder) => {
-        if (!confirm("¿Cancelar este pedido?")) return;
+        if (!await showConfirm({ message: "¿Cancelar este pedido?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
         try {
             const updated = await api.erp.orders.update(order.id, { status: "cancelled" });
             setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
         } catch (err) {
-            console.error(err);
+            logError("ventas/pedidos/page", err);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("¿Eliminar este pedido definitivamente?")) return;
+        if (!await showConfirm({ message: "¿Eliminar este pedido definitivamente?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.orders.delete(id);
             setOrders(prev => prev.filter(o => o.id !== id));
         } catch (err) {
-            console.error(err);
+            logError("ventas/pedidos/page", err);
         } finally {
             setDeletingId(null);
         }

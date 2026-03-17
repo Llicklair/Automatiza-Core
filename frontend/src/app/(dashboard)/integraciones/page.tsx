@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, XCircle, Loader2, Plug, PlugZap, Building2, Mail, Cloud, HardDrive } from "lucide-react";
 import { api, IntegrationStatus } from "@/lib/api";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 /* ─── OAuth popup helper ─────────────────────────────────────────────────── */
 
@@ -98,7 +100,7 @@ export default function IntegracionesPage() {
             const data = await api.integrations.list();
             setIntegrations(data);
         } catch (err) {
-            console.error("[Integraciones] load error:", err);
+            logError("integraciones/page", err);
         } finally {
             setLoading(false);
         }
@@ -139,7 +141,7 @@ export default function IntegracionesPage() {
     }
 
     async function disconnectHolded() {
-        if (!confirm("¿Desconectar Holded?")) return;
+        if (!await showConfirm({ message: "¿Desconectar Holded?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
         setDisconnectingHolded(true); setFeedback(null);
         try {
             await api.integrations.disconnectHolded();
@@ -170,7 +172,7 @@ export default function IntegracionesPage() {
     }
 
     async function disconnectPsd2() {
-        if (!confirm("¿Desconectar tu Banco?")) return;
+        if (!await showConfirm({ message: "¿Desconectar tu Banco?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
         setDisconnectingPsd2(true); setFeedback(null);
         try {
             await api.integrations.disconnectPsd2();
@@ -202,7 +204,7 @@ export default function IntegracionesPage() {
     }
 
     async function disconnectIntegration(type: string, label: string) {
-        if (!confirm(`¿Desconectar ${label}?`)) return;
+        if (!await showConfirm({ message: `¿Desconectar ${label}?`, confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
         setFeedback(null);
         try {
             await api.integrations.disconnect(type);

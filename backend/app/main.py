@@ -82,7 +82,47 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health", tags=["system"])
 async def health_check():
-    return JSONResponse({"status": "ok", "version": settings.APP_VERSION})
+    """Health check extendido: verifica PostgreSQL y Redis."""
+    import time
+
+    health = {
+        "status": "ok",
+        "version": settings.APP_VERSION,
+        "checks": {},
+    }
+
+    # ── PostgreSQL ────────────────────────────────────────────────────────
+    try:
+        from sqlalchemy import text
+        from app.db.base import AsyncSessionLocal
+
+        t0 = time.perf_counter()
+        async with AsyncSessionLocal() as db:
+            await db.execute(text("SELECT 1"))
+        latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+        health["checks"]["postgres"] = {"status": "up", "latency_ms": latency_ms}
+    except Exception as e:
+        health["checks"]["postgres"] = {"status": "down", "error": str(e)[:200]}
+        health["status"] = "degraded"
+
+    # ── Redis ─────────────────────────────────────────────────────────────
+    try:
+        import redis.asyncio as aioredis
+
+        t0 = time.perf_counter()
+        r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        try:
+            await r.ping()
+            latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+            health["checks"]["redis"] = {"status": "up", "latency_ms": latency_ms}
+        finally:
+            await r.aclose()
+    except Exception as e:
+        health["checks"]["redis"] = {"status": "down", "error": str(e)[:200]}
+        health["status"] = "degraded"
+
+    status_code = 200 if health["status"] == "ok" else 503
+    return JSONResponse(health, status_code=status_code)
 
 
 @app.get("/", tags=["system"])

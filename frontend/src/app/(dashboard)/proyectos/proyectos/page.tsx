@@ -6,6 +6,8 @@ import { Plus, FolderGit2, CheckCircle2, Clock, PlayCircle, MoreHorizontal, Penc
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 export default function ProyectosListado() {
     const toast = useToastStore();
@@ -26,7 +28,7 @@ export default function ProyectosListado() {
         try {
             setProjects(await api.projects.list());
         } catch (error) {
-            console.error(error);
+            logError("proyectos/proyectos/page", error);
         } finally {
             setLoading(false);
         }
@@ -66,7 +68,7 @@ export default function ProyectosListado() {
     };
 
     const deleteProject = async (project: Project) => {
-        if (!confirm(`¿Eliminar el proyecto "${project.name}"? Se borrarán también sus tareas.`)) return;
+        if (!await showConfirm({ message: `¿Eliminar el proyecto "${project.name}"? Se borrarán también sus tareas.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try {
             await api.projects.delete(project.id);
             loadData();

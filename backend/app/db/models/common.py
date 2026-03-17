@@ -1,0 +1,25 @@
+"""Imports y utilidades compartidas por todos los modelos de dominio."""
+
+import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import relationship
+
+from app.db.base import Base
+
+
+def utcnow():
+    return datetime.now(UTC)

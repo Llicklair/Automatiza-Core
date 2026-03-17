@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 type TaskStatus = 'todo' | 'in_progress' | 'done';
 
@@ -55,7 +57,7 @@ function TasksKanbanContent() {
             const data = await api.projects.tasks.list(projectId ? { project_id: projectId } : undefined);
             setTasks(data);
         } catch (error) {
-            console.error(error);
+            logError("proyectos/tareas/page", error);
         } finally {
             setIsLoading(false);
         }
@@ -77,7 +79,7 @@ function TasksKanbanContent() {
             setTitle(""); setDescription(""); setDueDate("");
             await loadData();
         } catch (error) {
-            console.error(error);
+            logError("proyectos/tareas/page", error);
             toast.error("Error al crear tarea");
         } finally {
             setSaving(false);
@@ -113,7 +115,7 @@ function TasksKanbanContent() {
 
     const handleDelete = async (task: ProjectTask) => {
         setOpenMenuId(null);
-        if (!confirm(`¿Eliminar la tarea "${task.title}"?`)) return;
+        if (!await showConfirm({ message: `¿Eliminar la tarea "${task.title}"?`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try {
             await api.projects.tasks.delete(task.id);
             setTasks(prev => prev.filter(t => t.id !== task.id));

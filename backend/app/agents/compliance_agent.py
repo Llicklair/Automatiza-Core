@@ -224,15 +224,13 @@ async def _accion_consulta_fiscal(user_intent: str, tenant_id: str | None = None
             import uuid
 
             import sqlalchemy as sa
-            from langchain_ollama import OllamaEmbeddings
-
+            from app.core.llm_factory import get_embedder
             from app.db.base import AsyncSessionLocal
             from app.db.models.embeddings import DocumentEmbedding
-            
-            embedder = OllamaEmbeddings(
-                model="nomic-embed-text",
-                base_url=settings.OLLAMA_BASE_URL,
-            )
+
+            embedder = get_embedder()
+            if embedder is None:
+                raise RuntimeError("No hay proveedor de embeddings configurado")
             query_vector = await embedder.aembed_query(user_intent)
             
             async with AsyncSessionLocal() as db:

@@ -96,7 +96,8 @@ class InvoiceStatusUpdate(BaseModel):
 
 
 class InvoiceCreate(BaseModel):
-    invoice_number: str | None = None
+    serie: str | None = "F"   # Serie de facturación: F=normal, R=rectificativa, T=simplificada
+    invoice_number: str | None = None  # Si se provee se ignora la numeración automática
     date: datetime
     due_date: datetime | None = None
     status: str = "draft"

@@ -25,9 +25,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# Solo libpq necesaria en runtime
+# libpq + pg_dump/psql para backup/restore desde la API
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar paquetes instalados desde el builder
@@ -37,7 +38,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . .
 
 # Ejecutar como usuario no-root
-RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
+RUN mkdir -p /app/app/uploads /app/app/generated \
+    && groupadd -r appuser && useradd -r -g appuser -d /app appuser \
     && chown -R appuser:appuser /app
 USER appuser
 

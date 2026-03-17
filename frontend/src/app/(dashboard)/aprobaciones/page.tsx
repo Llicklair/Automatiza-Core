@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Approval } from "@/lib/api";
 import { CheckCircle2, XCircle, Clock, ShieldCheck, ChevronDown, X, Trash2 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const RISK_STYLE: Record<string, string> = {
     low: "text-zinc-300 bg-zinc-700/50 border-zinc-600",
@@ -153,7 +154,7 @@ export default function AprobacionesPage() {
     }
 
     async function handleCleanup() {
-        if (!confirm("¿Eliminar todas las aprobaciones expiradas y ya resueltas?")) return;
+        if (!await showConfirm({ message: "¿Eliminar todas las aprobaciones expiradas y ya resueltas?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setCleaning(true);
         try {
             await api.approvals.cleanup();

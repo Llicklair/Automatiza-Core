@@ -9,6 +9,8 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 export default function ActivitiesPage() {
     const toast = useToastStore();
@@ -37,7 +39,7 @@ export default function ActivitiesPage() {
             setActivities(actRes);
             setClients(cliRes);
         } catch (error) {
-            console.error(error);
+            logError("crm/actividades/page", error);
         } finally {
             setIsLoading(false);
         }
@@ -59,7 +61,7 @@ export default function ActivitiesPage() {
             setSelectedClient("");
             await loadData();
         } catch (error) {
-            console.error(error);
+            logError("crm/actividades/page", error);
             toast.error("Error al registrar actividad");
         } finally {
             setIsSubmitting(false);
@@ -67,7 +69,7 @@ export default function ActivitiesPage() {
     };
 
     const deleteActivity = async (id: string) => {
-        if (!confirm("¿Eliminar esta actividad del historial?")) return;
+        if (!await showConfirm({ message: "¿Eliminar esta actividad del historial?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try {
             await api.crm.activities.delete(id);
             setActivities(prev => prev.filter(a => a.id !== id));

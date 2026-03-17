@@ -1,5 +1,0 @@
-=== Resultado Agente Email — "Realiza una auditoría completa de mi empresa coordinando a  ===
-Generado: 06/03/2026 06:28
-========================================
-
-[DEMO] Correo de confirmación preparado. Configura las credenciales SMTP en Integraciones para envíos reales.

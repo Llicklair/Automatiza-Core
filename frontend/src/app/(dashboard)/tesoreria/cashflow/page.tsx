@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Invoice, type Payroll } from "@/lib/api";
 import { AreaChart, Wallet, ArrowUpRight, ArrowDownRight, CalendarDays, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logError } from "@/lib/logger";
 
 export default function CashflowPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -22,7 +23,7 @@ export default function CashflowPage() {
             setInvoices(inv);
             setPayrolls(pay);
         } catch (error) {
-            console.error(error);
+            logError("tesoreria/cashflow/page", error);
         } finally {
             setLoading(false);
         }

@@ -13,8 +13,8 @@ import json
 import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 
+from app.core.llm_factory import get_llm, get_embedder
 from app.core.prompt_sanitizer import sanitize_user_input
 from pydantic import BaseModel, Field
 
@@ -75,12 +75,7 @@ REGLAS:
 
 
 def _get_llm():
-    return ChatOllama(
-        model="llama3.2",
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=0,
-        format="json",
-    )
+    return get_llm(temperature=0, format_output="json")
 
 
 # ─── Función principal del agente ────────────────────────────────────────────
@@ -372,22 +367,17 @@ async def run_documents_agent(
             try:
                 import uuid
 
-                from langchain_ollama import OllamaEmbeddings
-
                 from app.db.base import AsyncSessionLocal
                 from app.db.models.embeddings import DocumentEmbedding
-                
-                # Simple chunking by length with overlap roughly by paragraph
+
+                embedder = get_embedder()
+                if embedder is None:
+                    raise RuntimeError("No hay proveedor de embeddings configurado")
+
                 chunk_size = 1500
-                # Using basic overlap and chunking matching simple text logic
                 chunks = []
                 for i in range(0, len(source_text), chunk_size):
                     chunks.append(source_text[i:i+chunk_size])
-                
-                embedder = OllamaEmbeddings(
-                    model="nomic-embed-text",
-                    base_url=settings.OLLAMA_BASE_URL,
-                )
                 
                 # Asynchronously generate embeddings
                 # Note: 'aembed_documents' might raise an error if nomic-embed-text model is not pulled yet

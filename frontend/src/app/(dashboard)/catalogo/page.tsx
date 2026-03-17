@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, Product } from "@/lib/api";
 import { Package, Plus, Search, Tag, DollarSign, Archive, Pencil, Trash2, Loader2, X } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 type FormState = {
     name: string; sku: string; description: string;
@@ -71,7 +72,7 @@ export default function CatalogPage() {
     };
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
+        if (!await showConfirm({ message: `¿Eliminar "${name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.products.delete(id);

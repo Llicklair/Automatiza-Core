@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { api, Quote, Client, Product } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 import {
     FileText, Plus, Search, FileSignature, CheckCircle2,
     XCircle, Clock, Send, FilePlus2, DollarSign,
@@ -45,7 +47,7 @@ export default function QuotesPage() {
             setClients(clientsRes);
             setProducts(prodRes);
         } catch (error) {
-            console.error(error);
+            logError("ventas/presupuestos/page", error);
         } finally {
             setIsLoading(false);
         }
@@ -69,7 +71,7 @@ export default function QuotesPage() {
             resetForm();
             await loadData();
         } catch (error) {
-            console.error(error);
+            logError("ventas/presupuestos/page", error);
             toastNotif.error("Error al emitir presupuesto");
         } finally {
             setIsSubmitting(false);
@@ -77,7 +79,7 @@ export default function QuotesPage() {
     };
 
     const handleConvert = async (q: Quote) => {
-        if (!confirm(`¿Convertir el presupuesto a factura? Se creará una factura de ${formatCurrency(q.amount_total)} para ${q.client?.name ?? 'este cliente'}.`)) return;
+        if (!await showConfirm({ message: `¿Convertir el presupuesto a factura? Se creará una factura de ${formatCurrency(q.amount_total)} para ${q.client?.name ?? 'este cliente'}.`, confirmLabel: "Confirmar", confirmVariant: "primary" })) return;
         setConvertingId(q.id);
         try {
             const result = await api.erp.quotes.convertToInvoice(q.id);
@@ -92,7 +94,7 @@ export default function QuotesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("¿Eliminar este presupuesto?")) return;
+        if (!await showConfirm({ message: "¿Eliminar este presupuesto?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try {
             await api.erp.quotes.delete(id);
             setQuotes(prev => prev.filter(q => q.id !== id));
@@ -108,7 +110,7 @@ export default function QuotesPage() {
             setQuotes(prev => prev.map(q => q.id === id ? { ...q, status: newStatus } : q));
             await api.erp.quotes.update(id, { status: newStatus });
         } catch (error) {
-            console.error(error);
+            logError("ventas/presupuestos/page", error);
             await loadData(); // Revert
         }
     };

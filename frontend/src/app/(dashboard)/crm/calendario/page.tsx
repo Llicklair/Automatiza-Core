@@ -6,6 +6,8 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Trash2, M
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const EVENT_TYPES = [
     { id: "meeting", label: "Reuni\u00f3n" },
@@ -39,7 +41,7 @@ export default function CalendarPage() {
             const [evts, clis] = await Promise.all([api.crm.events.list(), api.erp.clients.list()]);
             setEvents(evts);
             setClients(clis);
-        } catch (e) { console.error(e); }
+        } catch (e) { logError("crm/calendario/page", e); }
         finally { setIsLoading(false); }
     };
 
@@ -61,10 +63,10 @@ export default function CalendarPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("\u00bfEliminar este evento?")) return;
+        if (!await showConfirm({ message: "¿Eliminar este evento?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeleting(true);
         try { await api.crm.events.delete(id); setSelected(null); await loadData(); }
-        catch (e) { console.error(e); }
+        catch (e) { logError("crm/calendario/page", e); }
         finally { setDeleting(false); }
     };
 

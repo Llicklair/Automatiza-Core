@@ -9,30 +9,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useToastStore } from "@/stores/toast";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
-
-function getToken(): string {
-    return typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
-}
+import { showConfirm } from "@/stores/confirm";
 
 async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string | null) {
     try {
-        const res = await fetch(`${API_BASE}/api/v1/invoices/${invoiceId}/pdf`, {
-            headers: { Authorization: `Bearer ${getToken()}` },
-        });
-        if (!res.ok) throw new Error();
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Factura_${invoiceNumber || invoiceId.slice(0, 8)}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        await api.erp.invoices.downloadPdf(invoiceId, invoiceNumber);
     } catch {
-        useToastStore.getState().error("No se pudo descargar el PDF");
+        useToastStore.getState().show("No se pudo descargar el PDF", "error");
     }
 }
 
@@ -118,7 +101,7 @@ export default function ClientesPage() {
     };
 
     const handleDeleteClient = async (client: Client) => {
-        if (!confirm(`¿Eliminar "${client.name}"? Esta acción no se puede deshacer.`)) return;
+        if (!await showConfirm({ message: `¿Eliminar "${client.name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeleting(true);
         try {
             await api.erp.clients.delete(client.id);
@@ -213,18 +196,65 @@ export default function ClientesPage() {
                 ) : error ? (
                     <div className="py-10 text-center text-red-400 text-sm">{error}</div>
                 ) : filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <Building2 className="w-10 h-10 text-zinc-700 mb-3" />
-                        <p className="text-sm text-zinc-400">
-                            {searchTerm ? `Sin resultados para "${searchTerm}"` : "Ningún cliente registrado aún"}
-                        </p>
-                        {!searchTerm && (
-                            <button
-                                onClick={() => setIsCreating(true)}
-                                className="mt-4 text-xs text-indigo-400 hover:text-indigo-300 underline transition"
-                            >
-                                Crear primer cliente
-                            </button>
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        {searchTerm ? (
+                            <>
+                                <div className="bg-zinc-800/60 w-16 h-16 rounded-full flex items-center justify-center mb-4 border border-white/5">
+                                    <Search className="w-7 h-7 text-zinc-500" />
+                                </div>
+                                <h3 className="text-base font-semibold text-white mb-1">Sin resultados</h3>
+                                <p className="text-sm text-zinc-500 max-w-xs">
+                                    No hay clientes que coincidan con <span className="text-zinc-300">&ldquo;{searchTerm}&rdquo;</span>
+                                </p>
+                                <button
+                                    onClick={() => setSearchTerm("")}
+                                    className="mt-4 text-xs text-indigo-400 hover:text-indigo-300 transition"
+                                >
+                                    Limpiar búsqueda
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="bg-indigo-500/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+                                    <Building2 className="w-10 h-10 text-indigo-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Añade tu primer cliente</h3>
+                                <p className="text-zinc-400 max-w-sm mb-6">
+                                    Gestiona tu cartera, consulta el historial de facturas y mantén todos los datos en un solo lugar.
+                                </p>
+                                <button
+                                    onClick={() => setIsCreating(true)}
+                                    className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl transition-all shadow-lg font-medium mb-8"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    Nuevo Cliente
+                                </button>
+                                <div className="flex flex-col items-center gap-3 w-full max-w-md">
+                                    <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">o crea con IA</p>
+                                    <div className="flex flex-wrap justify-center gap-2">
+                                        {[
+                                            "Crea el cliente Empresa Ejemplo S.L. con NIF B12345678",
+                                            "Añade un cliente autónomo llamado Juan García",
+                                            "Importa clientes desde un Excel",
+                                        ].map((suggestion) => (
+                                            <button
+                                                key={suggestion}
+                                                onClick={async () => {
+                                                    try {
+                                                        await api.tasks.create("crm", suggestion);
+                                                        useToastStore.getState().show("Tarea enviada. Revisa Tareas IA.", "info");
+                                                    } catch {
+                                                        useToastStore.getState().show("Error al enviar la tarea", "error");
+                                                    }
+                                                }}
+                                                className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-indigo-500/40 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg transition-all"
+                                            >
+                                                {suggestion}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
                         )}
                     </div>
                 ) : (

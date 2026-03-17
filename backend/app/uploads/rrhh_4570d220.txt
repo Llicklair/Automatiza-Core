@@ -1,5 +1,0 @@
-=== Resultado Nómina IA — "Realiza una auditoría completa de mi empresa coordinando a  ===
-Generado: 06/03/2026 06:26
-========================================
-
-Pre-nómina generada: Laura Sanchez Martin (NIF: 45678901B) | Bruto: 2400.00€ | IRPF: 360.00€ | SS: 152.40€ | Neto: 1887.60€ | Estado: DRAFT | ID: 50f77f0e-1599-4624-945f-f613cef58166 | Documento generado: c0d858bf-c7e6-4347-adee-69eb05c60498

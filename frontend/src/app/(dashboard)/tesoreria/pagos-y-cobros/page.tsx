@@ -10,6 +10,7 @@ import {
 import { format, differenceInDays, isPast } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { logError } from "@/lib/logger";
 
 const fmt = (v: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
@@ -59,7 +60,7 @@ export default function PagosYCobrosPage() {
             setTransactions(txs);
             setSummary(sum);
         } catch (e) {
-            console.error(e);
+            logError("tesoreria/pagos-y-cobros/page", e);
         } finally {
             setLoading(false);
         }

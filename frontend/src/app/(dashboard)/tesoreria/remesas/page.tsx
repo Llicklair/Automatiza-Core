@@ -10,6 +10,7 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { logError } from "@/lib/logger";
 
 const fmt = (v: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
@@ -122,7 +123,7 @@ export default function RemesasPage() {
 
             setItems(newItems);
         } catch (e) {
-            console.error(e);
+            logError("tesoreria/remesas/page", e);
         } finally {
             setLoading(false);
         }

@@ -6,6 +6,8 @@ import { Video, Plus, Search, Clock, MapPin, MoreVertical, ArrowUpRight, VideoOf
 import { format, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
 
@@ -32,7 +34,7 @@ export default function MeetingsPage() {
             const [evts, clis] = await Promise.all([api.crm.events.list(), api.erp.clients.list()]);
             setMeetings(evts.filter(e => e.type === "meeting"));
             setClients(clis);
-        } catch (e) { console.error(e); }
+        } catch (e) { logError("crm/reuniones/page", e); }
         finally { setIsLoading(false); }
     };
 
@@ -54,9 +56,9 @@ export default function MeetingsPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("\u00bfEliminar esta reuni\u00f3n?")) return;
+        if (!await showConfirm({ message: "¿Eliminar esta reunión?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try { await api.crm.events.delete(id); await loadData(); }
-        catch (e) { console.error(e); }
+        catch (e) { logError("crm/reuniones/page", e); }
     };
 
     const filtered = meetings.filter(m => m.title.toLowerCase().includes(search.toLowerCase()) || (m.description ?? "").toLowerCase().includes(search.toLowerCase()));

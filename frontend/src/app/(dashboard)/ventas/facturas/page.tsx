@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, Invoice } from "@/lib/api";
-import { FileText, Plus, Search, Download, Building2, Calendar, AlertTriangle, CheckCircle2, Copy, Loader2 } from "lucide-react";
+import { FileText, Plus, Search, Download, Building2, Calendar, AlertTriangle, CheckCircle2, Copy } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
@@ -109,16 +109,41 @@ export default function FacturasPage() {
                             <FileText className="w-10 h-10 text-indigo-400" />
                         </div>
                         <h3 className="text-xl font-bold text-white mb-2">Crea tu primera factura</h3>
-                        <p className="text-zinc-400 max-w-sm mb-8">
-                            Aún no has emitido ninguna factura de venta. Empieza ahora y lleva el control de tus cobros.
+                        <p className="text-zinc-400 max-w-sm mb-6">
+                            Aún no has emitido ninguna factura de venta. Empieza ahora o deja que la IA lo haga por ti.
                         </p>
                         <Link
                             href="/ventas/facturas/nueva"
-                            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl transition-all shadow-lg font-medium"
+                            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl transition-all shadow-lg font-medium mb-8"
                         >
                             <Plus className="w-5 h-5" />
                             Crear Factura
                         </Link>
+                        <div className="flex flex-col items-center gap-3 w-full max-w-md">
+                            <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">o pide a la IA</p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {[
+                                    "Crea una factura de consultoría por 1.500€",
+                                    "Factura de mantenimiento mensual 500€",
+                                    "Factura de servicios de diseño 800€",
+                                ].map((suggestion) => (
+                                    <button
+                                        key={suggestion}
+                                        onClick={async () => {
+                                            try {
+                                                await api.tasks.create("billing", suggestion);
+                                                useToastStore.getState().show("Tarea enviada a la IA. Revisa Tareas IA para el resultado.", "info");
+                                            } catch {
+                                                useToastStore.getState().show("Error al enviar la tarea", "error");
+                                            }
+                                        }}
+                                        className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-indigo-500/40 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg transition-all"
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -130,6 +155,7 @@ export default function FacturasPage() {
                                     <th className="pb-4 font-medium text-center">Estado</th>
                                     <th className="pb-4 font-medium text-right">Fecha</th>
                                     <th className="pb-4 font-medium text-right">Vencimiento</th>
+                                    <th className="pb-4 font-medium text-right">Generada</th>
                                     <th className="pb-4 font-medium text-right">Total</th>
                                     <th className="pb-4 font-medium text-right pr-4">PDF</th>
                                 </tr>
@@ -163,6 +189,12 @@ export default function FacturasPage() {
                                             <td className="py-4 text-right text-zinc-400">
                                                 {inv.due_date ? new Date(inv.due_date).toLocaleDateString('es-ES') : "-"}
                                             </td>
+                                            <td className="py-4 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-zinc-400 text-xs">{new Date(inv.created_at).toLocaleDateString('es-ES')}</span>
+                                                    <span className="text-zinc-600 text-xs">{new Date(inv.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                                                </div>
+                                            </td>
                                             <td className="py-4 pr-4 text-right font-medium text-white">
                                                 {Number(inv.amount_total).toLocaleString('es-ES', { minimumFractionDigits: 2 })}€
                                             </td>
@@ -180,8 +212,12 @@ export default function FacturasPage() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} className="py-8 text-center text-zinc-500">
-                                            No se encontraron facturas con la búsqueda &quot;{searchTerm}&quot;
+                                        <td colSpan={7} className="py-16 text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <Search className="w-7 h-7 text-zinc-600" />
+                                                <p className="text-zinc-400 text-sm font-medium">Sin resultados para &quot;{searchTerm}&quot;</p>
+                                                <p className="text-zinc-600 text-xs">Prueba con el nombre del cliente o número de factura</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

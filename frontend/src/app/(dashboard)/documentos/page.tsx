@@ -8,6 +8,7 @@ import {
     Mail, Sheet, Upload, Download, Grid2x2, List, Database, Table2, FolderOpen
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -80,6 +81,17 @@ export default function DocumentosPage() {
     const [importFiles, setImportFiles] = useState<File[]>([]);
     const [importDragOver, setImportDragOver] = useState(false);
     const importFileRef = useRef<HTMLInputElement>(null);
+
+    // Docs ZIP Export State
+    const [exportingDocs, setExportingDocs] = useState(false);
+
+    // Backup / Restore State
+    const [backingUp, setBackingUp] = useState(false);
+    const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+    const [restoreFile, setRestoreFile] = useState<File | null>(null);
+    const [restoring, setRestoring] = useState(false);
+    const restoreFileRef = useRef<HTMLInputElement>(null);
+    const { show: showToast } = useToastStore();
 
     const loadFolder = useCallback((folderId: string) => {
         setLoading(true);
@@ -248,6 +260,56 @@ export default function DocumentosPage() {
                     <Database className="w-4 h-4" />
                     Importar BD
                 </button>
+
+                {/* Exportar Docs ZIP */}
+                <button
+                    onClick={async () => {
+                        setExportingDocs(true);
+                        try {
+                            await api.documents.exportZip();
+                            showToast("Documentos exportados correctamente", "success");
+                        } catch {
+                            showToast("Error al exportar documentos", "error");
+                        } finally {
+                            setExportingDocs(false);
+                        }
+                    }}
+                    disabled={exportingDocs}
+                    className="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/10 font-medium"
+                >
+                    {exportingDocs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Exportar Docs
+                </button>
+
+                {/* Backup BD */}
+                <button
+                    onClick={async () => {
+                        setBackingUp(true);
+                        try {
+                            await api.admin.downloadBackup();
+                            showToast("Backup descargado correctamente", "success");
+                        } catch {
+                            showToast("Error al generar el backup", "error");
+                        } finally {
+                            setBackingUp(false);
+                        }
+                    }}
+                    disabled={backingUp}
+                    className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 font-medium"
+                >
+                    {backingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Backup BD
+                </button>
+
+                {/* Restaurar BD */}
+                <button
+                    onClick={() => { setRestoreModalOpen(true); setRestoreFile(null); }}
+                    className="inline-flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg font-medium border border-white/10"
+                >
+                    <Upload className="w-4 h-4" />
+                    Restaurar BD
+                </button>
+
                 <button
                     onClick={() => setUploadModalOpen(true)}
                     className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 font-medium"
@@ -595,6 +657,87 @@ export default function DocumentosPage() {
                     </div>
                 </div>
             )}
+
+            {/* ── Modal Restaurar BD ─────────────────────────────────────── */}
+            {restoreModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}>
+                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-red-500/10 w-10 h-10 rounded-xl flex items-center justify-center border border-red-500/20">
+                                    <Upload className="w-5 h-5 text-red-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-semibold text-white">Restaurar Base de Datos</h2>
+                                    <p className="text-xs text-zinc-500">Sobreescribirá todos los datos actuales</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setRestoreModalOpen(false)} className="text-zinc-500 hover:text-white transition">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3 mb-5 text-xs text-red-300">
+                            ⚠️ Esta operación es irreversible. Asegúrate de tener un backup reciente antes de continuar.
+                        </div>
+
+                        {/* File picker */}
+                        <input
+                            ref={restoreFileRef}
+                            type="file"
+                            accept=".sql"
+                            className="hidden"
+                            onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+                        />
+                        <button
+                            onClick={() => restoreFileRef.current?.click()}
+                            className="w-full border-2 border-dashed border-[#27272a] hover:border-zinc-600 rounded-xl py-6 flex flex-col items-center gap-2 transition mb-4"
+                        >
+                            {restoreFile ? (
+                                <>
+                                    <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+                                    <span className="text-sm text-white font-medium">{restoreFile.name}</span>
+                                    <span className="text-xs text-zinc-500">{(restoreFile.size / 1024).toFixed(0)} KB</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Database className="w-7 h-7 text-zinc-500" />
+                                    <span className="text-sm text-zinc-400">Seleccionar archivo .sql</span>
+                                </>
+                            )}
+                        </button>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setRestoreModalOpen(false)}
+                                className="flex-1 py-2.5 rounded-xl border border-[#27272a] text-zinc-400 hover:text-white hover:border-zinc-600 transition text-sm"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                disabled={!restoreFile || restoring}
+                                onClick={async () => {
+                                    if (!restoreFile) return;
+                                    setRestoring(true);
+                                    try {
+                                        const res = await api.admin.restoreBackup(restoreFile);
+                                        showToast(res.message, "success");
+                                        setRestoreModalOpen(false);
+                                    } catch (err) {
+                                        showToast(err instanceof Error ? err.message : "Error al restaurar", "error");
+                                    } finally {
+                                        setRestoring(false);
+                                    }
+                                }}
+                                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium flex items-center justify-center gap-2 transition"
+                            >
+                                {restoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                Restaurar ahora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -640,7 +783,7 @@ function DocRow({ doc, onReload }: { doc: DocType; onReload: () => void }) {
 
     async function handleCancel(e: React.MouseEvent) {
         e.stopPropagation();
-        if (!confirm("¿Cancelar el procesamiento de este documento?")) return;
+        if (!await showConfirm({ message: "¿Cancelar el procesamiento de este documento?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
         setCancelling(true);
         try {
             await fetch(`${API}/api/v1/documents/${doc.id}`, {
@@ -762,7 +905,7 @@ function DocCard({ doc, onReload }: { doc: DocType; onReload: () => void }) {
 
     async function handleCancel(e: React.MouseEvent) {
         e.stopPropagation();
-        if (!confirm("¿Cancelar el procesamiento de este documento?")) return;
+        if (!await showConfirm({ message: "¿Cancelar el procesamiento de este documento?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
         setCancelling(true);
         try {
             const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";

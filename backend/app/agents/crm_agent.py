@@ -255,7 +255,10 @@ def crm_agent_node(state: AgentState):
             )
         )
         user_msg = HumanMessage(content=state["user_intent"])
-        state["messages"] = [sys_msg, user_msg]
+        extra_init_messages = [sys_msg, user_msg]
+        state["messages"] = extra_init_messages
+    else:
+        extra_init_messages = []
 
     response = llm_with_tools.invoke(state["messages"])
 
@@ -270,7 +273,7 @@ def crm_agent_node(state: AgentState):
         state["agent_results"] = []
 
     state["agent_results"].append(result_log.model_dump())
-    return {"messages": [response], "agent_results": state["agent_results"]}
+    return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
 
 
 def crm_finalize_node(state: AgentState):

@@ -1,14 +1,27 @@
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.agents.orchestrator import (
+    _dispatch_banking,
+    _dispatch_billing,
+    _dispatch_compliance,
+    _dispatch_crm,
+    _dispatch_documents,
+    _dispatch_email,
+    _dispatch_excel,
+    _dispatch_hr,
+    _dispatch_rag,
+)
 from app.api.v1.schemas import workflows as schemas
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models import models
+from app.services.node_engine import has_advanced_nodes
 
 router = APIRouter(prefix="/workflows", tags=["Workflows & Automations"])
 
@@ -22,6 +35,47 @@ async def list_workflows(
         select(models.Workflow).where(models.Workflow.tenant_id == current_user.tenant_id)
     )
     return result.scalars().all()
+
+
+@router.get("/recent-completions")
+async def recent_completions(
+    since: float = Query(default=0.0, description="Unix timestamp; return executions completed after this time"),
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve las ejecuciones de workflow completadas/fallidas recientemente (para toast global)."""
+    since_dt = (
+        datetime.fromtimestamp(since, tz=timezone.utc)
+        if since > 0
+        else datetime.now(timezone.utc)
+    )
+    stmt = (
+        select(
+            models.WorkflowExecution.id,
+            models.WorkflowExecution.status,
+            models.WorkflowExecution.completed_at,
+            models.Workflow.name,
+        )
+        .join(models.Workflow, models.WorkflowExecution.workflow_id == models.Workflow.id)
+        .where(
+            models.WorkflowExecution.tenant_id == current_user.tenant_id,
+            models.WorkflowExecution.status.in_(["completed", "success", "failed"]),
+            models.WorkflowExecution.completed_at >= since_dt,
+        )
+        .order_by(models.WorkflowExecution.completed_at.desc())
+        .limit(5)
+    )
+    result = await db.execute(stmt)
+    rows = result.fetchall()
+    return [
+        {
+            "id": str(r[0]),
+            "status": r[1],
+            "completed_at": r[2].isoformat() if r[2] else None,
+            "workflow_name": r[3],
+        }
+        for r in rows
+    ]
 
 
 @router.post("/", response_model=schemas.WorkflowResponse, status_code=201)
@@ -141,6 +195,19 @@ async def run_workflow_manually(
     if not workflow.is_active:
         raise HTTPException(status_code=400, detail="El workflow está desactivado")
 
+    # Bloquear ejecución simultánea: si ya hay una running/pending, rechazar
+    existing = await db.execute(
+        select(models.WorkflowExecution).where(
+            models.WorkflowExecution.workflow_id == workflow_id,
+            models.WorkflowExecution.status.in_(["running", "pending"]),
+        )
+    )
+    if existing.scalars().first():
+        raise HTTPException(
+            status_code=409,
+            detail="Este workflow ya tiene una ejecución en curso. Espera a que termine antes de lanzarlo de nuevo."
+        )
+
     # 1. Registrar ejecución
     execution = models.WorkflowExecution(
         workflow_id=workflow.id,
@@ -153,7 +220,6 @@ async def run_workflow_manually(
     await db.refresh(execution)
 
     # 2. Detectar si tiene nodos avanzados → NodeEngine directo
-    from app.services.node_engine import has_advanced_nodes
     if workflow.ui_nodes and has_advanced_nodes(workflow.ui_nodes, workflow.ui_edges):
         try:
             from app.workers.celery_app import run_node_engine
@@ -234,6 +300,99 @@ async def run_workflow_manually(
     return execution
 
 
+@router.post("/{workflow_id}/executions/{execution_id}/cancel", response_model=schemas.WorkflowExecutionResponse)
+async def cancel_execution(
+    workflow_id: UUID,
+    execution_id: UUID,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancela una ejecución atascada en estado running."""
+    result = await db.execute(
+        select(models.WorkflowExecution).where(
+            models.WorkflowExecution.id == execution_id,
+            models.WorkflowExecution.workflow_id == workflow_id,
+            models.WorkflowExecution.tenant_id == current_user.tenant_id,
+        )
+    )
+    execution = result.scalar_one_or_none()
+    if not execution:
+        raise HTTPException(status_code=404, detail="Ejecución no encontrada")
+    if execution.status not in ("running", "paused"):
+        raise HTTPException(status_code=400, detail=f"No se puede cancelar una ejecución en estado '{execution.status}'")
+
+    from datetime import datetime, UTC
+    execution.status = "failed"
+    execution.result_log = "Cancelado manualmente por el usuario."
+    execution.completed_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(execution)
+    return execution
+
+
+@router.post("/{workflow_id}/run-with-context", response_model=schemas.WorkflowExecutionResponse)
+async def run_workflow_with_context(
+    workflow_id: UUID,
+    body: dict,
+    background_tasks: BackgroundTasks,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ejecuta un workflow con contexto adicional proporcionado por el usuario."""
+    result = await db.execute(
+        select(models.Workflow).where(
+            models.Workflow.id == workflow_id,
+            models.Workflow.tenant_id == current_user.tenant_id
+        )
+    )
+    workflow = result.scalar_one_or_none()
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow no encontrado")
+    if not workflow.is_active:
+        raise HTTPException(status_code=400, detail="El workflow está desactivado")
+
+    context_msg = (body.get("context") or "").strip()
+    base_instruction = _build_ai_instruction(workflow)
+    full_instruction = f"{base_instruction}\n\nContexto adicional: {context_msg}" if context_msg else base_instruction
+
+    execution = models.WorkflowExecution(
+        workflow_id=workflow.id,
+        tenant_id=current_user.tenant_id,
+        status="running",
+        trigger_payload={"source": "manual_with_context", "user_id": str(current_user.id), "context": context_msg}
+    )
+    db.add(execution)
+    await db.commit()
+    await db.refresh(execution)
+
+    task = models.Task(
+        tenant_id=current_user.tenant_id,
+        created_by=current_user.id,
+        domain=_infer_domain(workflow),
+        user_intent=full_instruction,
+        status="pending",
+        additional_metadata={"workflow_id": str(workflow.id), "execution_id": str(execution.id)},
+    )
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+
+    execution.task_id = task.id
+    await db.commit()
+
+    try:
+        from app.workers.celery_app import run_orchestrator
+        run_orchestrator.apply_async(args=[str(task.id)], task_id=str(task.id))
+        execution.result_log = f"Tarea IA lanzada con contexto [{str(task.id)[:8]}...]."
+    except Exception as e:
+        execution.result_log = f"Error al lanzar: {e}"
+        execution.status = "failed"
+
+    await db.commit()
+    await db.refresh(execution)
+    return execution
+
+
 @router.post("/{workflow_id}/executions/{execution_id}/resume", response_model=schemas.WorkflowExecutionResponse)
 async def resume_execution(
     workflow_id: UUID,
@@ -267,6 +426,47 @@ async def resume_execution(
     await db.commit()
     await db.refresh(execution)
     return execution
+
+
+@router.get("/{workflow_id}/executions/{execution_id}/logs")
+async def get_execution_logs(
+    workflow_id: UUID,
+    execution_id: UUID,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve los logs en tiempo real de una ejecución (desde Redis o result_log)."""
+    result = await db.execute(
+        select(models.WorkflowExecution).where(
+            models.WorkflowExecution.id == execution_id,
+            models.WorkflowExecution.workflow_id == workflow_id,
+            models.WorkflowExecution.tenant_id == current_user.tenant_id,
+        )
+    )
+    execution = result.scalar_one_or_none()
+    if not execution:
+        raise HTTPException(status_code=404, detail="Ejecución no encontrada")
+
+    lines: list[str] = []
+
+    # Intentar Redis primero (logs en tiempo real)
+    if execution.task_id:
+        try:
+            import redis.asyncio as aioredis
+            from app.core.config import settings
+            r = await aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+            redis_lines = await r.lrange(f"exec_logs:{str(execution.task_id)}", 0, -1)
+            await r.aclose()
+            if redis_lines:
+                lines = redis_lines
+        except Exception:
+            pass
+
+    # Fallback: result_log de la ejecución
+    if not lines and execution.result_log:
+        lines = [execution.result_log]
+
+    return {"lines": lines, "status": execution.status}
 
 
 @router.get("/{workflow_id}/executions", response_model=list[schemas.WorkflowExecutionResponse])
@@ -382,27 +582,28 @@ async def fire_workflow_event(
         context_str = ", ".join(f"{k}={v}" for k, v in context.items())
         ai_instruction = f"{_build_ai_instruction(wf)} [Contexto: {event_name} - {context_str}]"
 
+        execution = models.WorkflowExecution(
+            workflow_id=wf.id,
+            tenant_id=current_user.tenant_id,
+            status="running",
+            trigger_payload={"event": event_name, "context": context},
+        )
+        db.add(execution)
+        await db.flush()
+
         task = models.Task(
             tenant_id=current_user.tenant_id,
             created_by=current_user.id,
             domain=_infer_domain(wf),
             user_intent=ai_instruction,
             status="pending",
-            additional_metadata={"workflow_id": str(wf.id), "event": event_name},
+            additional_metadata={"workflow_id": str(wf.id), "execution_id": str(execution.id), "event": event_name},
         )
         db.add(task)
+        await db.flush()
+        execution.task_id = task.id
         await db.commit()
         await db.refresh(task)
-
-        execution = models.WorkflowExecution(
-            workflow_id=wf.id,
-            tenant_id=current_user.tenant_id,
-            status="running",
-            task_id=task.id,
-            trigger_payload={"event": event_name, "context": context},
-        )
-        db.add(execution)
-        await db.commit()
 
         try:
             from app.workers.celery_app import run_orchestrator
@@ -450,26 +651,52 @@ def _generate_preview_nodes(payload: dict) -> tuple[list, list]:
     if not detected:
         detected = [("skill", "Agente IA")]
 
+    CENTER_X = 300
     nodes = [{
         "id": "trigger",
         "type": "trigger",
-        "position": {"x": 250, "y": 0},
+        "position": {"x": CENTER_X, "y": 0},
         "data": {"label": TRIGGER_LABELS.get(trigger_type, "Trigger"), "trigger_type": trigger_type},
     }]
     edges = []
 
-    step_spacing = 130
-    prev_id = "trigger"
-    for i, (agent, label) in enumerate(detected):
-        node_id = f"preview_{agent}_{i}"
+    if len(detected) <= 1:
+        # Single agent — simple linear layout
+        agent, label = detected[0]
+        node_id = "preview_agent_0"
         nodes.append({
-            "id": node_id,
-            "type": "skill",
-            "position": {"x": 250, "y": 150 + i * step_spacing},
-            "data": {"label": label, "domain": agent, "description": instruction[:100]},
+            "id": node_id, "type": "skill",
+            "position": {"x": CENTER_X, "y": 160},
+            "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
         })
-        edges.append({"id": f"e-{prev_id}-{node_id}", "source": prev_id, "target": node_id})
-        prev_id = node_id
+        edges.append({"id": f"e-trigger-{node_id}", "source": "trigger", "target": node_id})
+    else:
+        # Multiple agents — parallel fan-out from trigger, then join node
+        SPACING = 280
+        total_width = (len(detected) - 1) * SPACING
+        start_x = CENTER_X - total_width / 2
+        branch_ids = []
+
+        for i, (agent, label) in enumerate(detected):
+            node_id = f"preview_{agent}_{i}"
+            branch_ids.append(node_id)
+            nodes.append({
+                "id": node_id, "type": "skill",
+                "position": {"x": int(start_x + i * SPACING), "y": 170},
+                "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
+            })
+            edges.append({"id": f"e-trigger-{node_id}", "source": "trigger", "target": node_id})
+
+        # Join/consolidator node — uses billing domain (always has DB access, no files needed)
+        join_id = "preview_consolidar"
+        nodes.append({
+            "id": join_id, "type": "skill",
+            "position": {"x": CENTER_X, "y": 330},
+            "data": {"label": "Informe de resumen", "domain": "billing",
+                     "instruction": f"Genera un informe ejecutivo resumiendo el estado actual del negocio: {instruction[:150]}. Incluye totales, alertas y próximos pasos."},
+        })
+        for bid in branch_ids:
+            edges.append({"id": f"e-{bid}-{join_id}", "source": bid, "target": join_id})
 
     return nodes, edges
 
@@ -485,18 +712,6 @@ async def _execute_deterministic_steps(
     a las funciones _dispatch_* del orquestador con un estado mínimo.
     Devuelve una lista de resultados por paso.
     """
-    from app.agents.orchestrator import (
-        _dispatch_billing,
-        _dispatch_crm,
-        _dispatch_documents,
-        _dispatch_email,
-        _dispatch_excel,
-        _dispatch_banking,
-        _dispatch_hr,
-        _dispatch_rag,
-        _dispatch_compliance,
-    )
-
     _DISPATCH_MAP = {
         "billing": _dispatch_billing,
         "crm": _dispatch_crm,
@@ -530,6 +745,7 @@ async def _execute_deterministic_steps(
         agent_name = step.get("agent", "")
         intent = step.get("params", {}).get("intent", "")
         subtask = {
+            "id": f"det_{agent_name}",
             "subtask_id": f"det_{agent_name}",
             "agent": agent_name,
             "action": step.get("action", ""),

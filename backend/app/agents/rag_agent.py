@@ -13,27 +13,20 @@ import uuid
 
 import sqlalchemy as sa
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama, OllamaEmbeddings
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.llm_factory import get_llm, get_embedder
 from app.db.base import AsyncSessionLocal
 from app.db.models.embeddings import DocumentEmbedding
 
 # ─── LLM y Embeddings ────────────────────────────────────────────────────────
 
 def _get_llm():
-    return ChatOllama(
-        model="llama3.2",
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=0,
-    )
+    return get_llm(temperature=0)
 
 def _get_embedder():
-    return OllamaEmbeddings(
-        model="nomic-embed-text",
-        base_url=settings.OLLAMA_BASE_URL,
-    )
+    return get_embedder()
 
 
 # ─── Resultado del Agente ────────────────────────────────────────────────────

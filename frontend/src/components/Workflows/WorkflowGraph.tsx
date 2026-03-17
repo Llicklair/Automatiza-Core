@@ -12,7 +12,7 @@ import ReactFlow, {
     EdgeChange,
     applyNodeChanges,
     applyEdgeChanges,
-    addEdge,
+    ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { customNodeTypes } from './CustomNodes';
@@ -36,14 +36,13 @@ interface WorkflowGraphProps {
     onEdgesChange?: (edges: Edge[]) => void;
 }
 
-// Status → border glow color
 const STATUS_BORDER: Record<string, string> = {
-    completed: "#10b981",  // emerald
-    running: "#3b82f6",    // blue
-    failed: "#ef4444",     // red
-    waiting: "#3b82f6",    // blue
-    paused: "#f97316",     // orange
-    skipped: "#3f3f46",    // zinc-700
+    completed: "#10b981",
+    running: "#3b82f6",
+    failed: "#ef4444",
+    waiting: "#3b82f6",
+    paused: "#f97316",
+    skipped: "#3f3f46",
 };
 
 const DEFAULT_NODE_DATA: Record<string, any> = {
@@ -53,7 +52,8 @@ const DEFAULT_NODE_DATA: Record<string, any> = {
     approval_gate: { label: "Aprobación", description: "" },
 };
 
-export default function WorkflowGraph({
+// ── Inner component: has access to useReactFlow() ────────────────────────────
+function WorkflowGraphInner({
     nodes,
     edges,
     nodeStates,
@@ -63,13 +63,13 @@ export default function WorkflowGraph({
     onEdgesChange: onEdgesProp,
 }: WorkflowGraphProps) {
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    // Note: do NOT use rfSetNodes/rfSetEdges here — conflicts with controlled mode (nodes prop)
 
     const styledNodes = useMemo(() => {
         return nodes.map(n => {
             const ns = nodeStates?.[n.id];
             const isActive = currentNodeId === n.id;
             const statusColor = ns ? STATUS_BORDER[ns.status] : undefined;
-
             return {
                 ...n,
                 type: n.type && n.type in customNodeTypes ? n.type : (n.type || 'default'),
@@ -97,43 +97,30 @@ export default function WorkflowGraph({
             const branchLabel = e.data?.branch;
             const sourceState = nodeStates?.[e.source];
             const isActive = sourceState?.status === 'completed';
-
             return {
                 ...e,
                 animated: isActive || !nodeStates,
                 type: 'smoothstep',
-                style: {
-                    stroke: isActive ? '#10b981' : '#52525b',
-                    strokeWidth: isActive ? 2 : 1,
-                },
-                markerEnd: {
-                    type: MarkerType.ArrowClosed,
-                    color: isActive ? '#10b981' : '#52525b',
-                },
+                style: { stroke: isActive ? '#10b981' : '#52525b', strokeWidth: isActive ? 2 : 1 },
+                markerEnd: { type: MarkerType.ArrowClosed, color: isActive ? '#10b981' : '#52525b' },
                 label: branchLabel === 'true' ? 'Sí' : branchLabel === 'false' ? 'No' : undefined,
                 labelStyle: {
                     fill: branchLabel === 'true' ? '#10b981' : branchLabel === 'false' ? '#ef4444' : '#a1a1aa',
-                    fontSize: 10,
-                    fontWeight: 600,
+                    fontSize: 10, fontWeight: 600,
                 },
-                labelBgStyle: {
-                    fill: '#18181b',
-                    fillOpacity: 0.9,
-                },
+                labelBgStyle: { fill: '#18181b', fillOpacity: 0.9 },
             };
         });
     }, [edges, nodeStates]);
 
     const handleNodesChange = useCallback((changes: NodeChange[]) => {
         if (!editable || !onNodesProp) return;
-        const updated = applyNodeChanges(changes, nodes);
-        onNodesProp(updated);
+        onNodesProp(applyNodeChanges(changes, nodes));
     }, [editable, nodes, onNodesProp]);
 
     const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
         if (!editable || !onEdgesProp) return;
-        const updated = applyEdgeChanges(changes, edges);
-        onEdgesProp(updated);
+        onEdgesProp(applyEdgeChanges(changes, edges));
     }, [editable, edges, onEdgesProp]);
 
     const handleConnect = useCallback((connection: Connection) => {
@@ -151,23 +138,66 @@ export default function WorkflowGraph({
     const handleAddNode = useCallback((type: "skill" | "conditional" | "delay" | "approval_gate") => {
         if (!onNodesProp) return;
         const id = `${type}_${Date.now()}`;
-        // Place new node below the last node
         const maxY = nodes.reduce((max, n) => Math.max(max, n.position?.y ?? 0), 0);
         const centerX = nodes.length > 0
             ? nodes.reduce((sum, n) => sum + (n.position?.x ?? 0), 0) / nodes.length
             : 250;
         const newNode: Node = {
-            id,
-            type,
+            id, type,
             position: { x: centerX, y: maxY + 130 },
             data: { ...DEFAULT_NODE_DATA[type] },
         };
         onNodesProp([...nodes, newNode]);
     }, [nodes, onNodesProp]);
 
+    const handleAddParallelBranch = useCallback(() => {
+        if (!onNodesProp || !onEdgesProp) return;
+        const ts = Date.now();
+
+        // Fan-out source: trigger node or first node
+        const source = nodes.find(n => n.type === "trigger") || nodes[0];
+        if (!source) return;
+
+        // Direct children of source
+        const childIds = new Set(edges.filter(e => e.source === source.id).map(e => e.target));
+        const siblings = nodes.filter(n => childIds.has(n.id));
+
+        const SPACING = 300;
+        const sourceX = source.position?.x ?? 250;
+        const branchY = (source.position?.y ?? 0) + 170;
+        const totalBranches = siblings.length + 1;
+        const startX = sourceX - ((totalBranches - 1) * SPACING) / 2;
+
+        // Reposition siblings + add new node
+        const newBranchId = `skill_branch_${ts}`;
+        const branchLabel = `Agente IA (rama ${String.fromCharCode(65 + siblings.length)})`;
+
+        const updatedNodes: Node[] = nodes.map(n => {
+            const idx = siblings.findIndex(s => s.id === n.id);
+            if (idx >= 0) return { ...n, position: { x: startX + idx * SPACING, y: branchY } };
+            return n;
+        });
+        updatedNodes.push({
+            id: newBranchId, type: "skill",
+            position: { x: startX + siblings.length * SPACING, y: branchY },
+            data: { label: branchLabel, domain: "billing", instruction: "" },
+        });
+
+        // Rebuild edges from source
+        const otherEdges = edges.filter(e => e.source !== source.id);
+        const siblingEdges: Edge[] = siblings.map(s => ({
+            id: `e-${source.id}-${s.id}`, source: source.id, target: s.id,
+        }));
+        const newEdge: Edge = { id: `e-${source.id}-${newBranchId}`, source: source.id, target: newBranchId };
+        const updatedEdges = [...otherEdges, ...siblingEdges, newEdge];
+
+        onNodesProp(updatedNodes);
+        onEdgesProp(updatedEdges);
+    }, [nodes, edges, onNodesProp, onEdgesProp]);
+
     const handleNodeClick = useCallback((_: any, node: Node) => {
         if (!editable) return;
-        if (node.type === "trigger") return; // trigger not configurable
+        if (node.type === "trigger") return;
         setSelectedNodeId(node.id);
     }, [editable]);
 
@@ -187,10 +217,15 @@ export default function WorkflowGraph({
 
     if (!nodes || nodes.length === 0) {
         return (
-            <div className="flex justify-center items-center h-full w-full bg-zinc-900/50 rounded-xl border border-dashed border-zinc-800">
-                <p className="text-zinc-500 text-sm">
-                    {editable ? "Usa la barra de herramientas para añadir nodos." : "Este workflow no tiene vista de plano generada."}
-                </p>
+            <div className="flex flex-col items-center justify-start h-full w-full bg-zinc-900/50 rounded-xl border border-dashed border-zinc-800 p-4 gap-4">
+                {editable && (
+                    <WorkflowToolbar onAddNode={handleAddNode} onAddParallelBranch={handleAddParallelBranch} />
+                )}
+                <div className="flex-1 flex items-center justify-center">
+                    <p className="text-zinc-500 text-sm">
+                        {editable ? "Añade nodos con la barra de herramientas." : "Este workflow no tiene vista de plano generada."}
+                    </p>
+                </div>
             </div>
         );
     }
@@ -198,8 +233,8 @@ export default function WorkflowGraph({
     return (
         <div className="w-full h-full rounded-xl overflow-hidden border border-zinc-800 relative bg-[#09090b]">
             {editable && (
-                <div className="absolute top-3 left-3 z-10">
-                    <WorkflowToolbar onAddNode={handleAddNode} />
+                <div className="absolute top-3 left-3 z-50 pointer-events-auto">
+                    <WorkflowToolbar onAddNode={handleAddNode} onAddParallelBranch={handleAddParallelBranch} />
                 </div>
             )}
             <ReactFlow
@@ -222,7 +257,7 @@ export default function WorkflowGraph({
                 <Controls showInteractive={false} className="bg-zinc-900 border-zinc-800 fill-zinc-400" />
             </ReactFlow>
             {editable && selectedNode && (
-                <div className="absolute top-3 right-3 z-10">
+                <div className="absolute top-3 right-3 z-50 pointer-events-auto">
                     <NodeConfigPanel
                         node={selectedNode}
                         onUpdate={handleNodeDataUpdate}
@@ -232,5 +267,14 @@ export default function WorkflowGraph({
                 </div>
             )}
         </div>
+    );
+}
+
+// ── Wrapper: provides ReactFlowProvider so inner can use useReactFlow() ───────
+export default function WorkflowGraph(props: WorkflowGraphProps) {
+    return (
+        <ReactFlowProvider>
+            <WorkflowGraphInner {...props} />
+        </ReactFlowProvider>
     );
 }

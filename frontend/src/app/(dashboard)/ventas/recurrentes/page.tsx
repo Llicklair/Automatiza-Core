@@ -7,6 +7,8 @@ import {
     Play, Pause, CheckCircle2, Calendar, AlertCircle
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -55,7 +57,7 @@ export default function RecurrentesPage() {
             ]);
             setRecurrings(recs);
             setClients(cls.filter(c => c.client_type === "customer"));
-        } catch (err) { console.error(err); }
+        } catch (err) { logError("ventas/recurrentes/page", err); }
         finally { setLoading(false); }
     };
 
@@ -108,7 +110,7 @@ export default function RecurrentesPage() {
             setShowModal(false);
             setLoading(true);
             load();
-        } catch (err) { console.error(err); }
+        } catch (err) { logError("ventas/recurrentes/page", err); }
         finally { setSaving(false); }
     };
 
@@ -116,11 +118,11 @@ export default function RecurrentesPage() {
         try {
             const updated = await api.erp.recurring.update(rec.id, { is_active: !rec.is_active } as any);
             setRecurrings(prev => prev.map(r => r.id === rec.id ? updated : r));
-        } catch (err) { console.error(err); }
+        } catch (err) { logError("ventas/recurrentes/page", err); }
     };
 
     const handleRun = async (rec: RecurringInvoice) => {
-        if (!confirm(`¿Generar ahora una factura para "${rec.name}"?`)) return;
+        if (!await showConfirm({ message: `¿Generar ahora una factura para "${rec.name}"?`, confirmLabel: "Generar", confirmVariant: "primary" })) return;
         setRunningId(rec.id);
         try {
             await api.erp.recurring.run(rec.id);
@@ -134,12 +136,12 @@ export default function RecurrentesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("¿Eliminar esta plantilla recurrente?")) return;
+        if (!await showConfirm({ message: "¿Eliminar esta plantilla recurrente?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.recurring.delete(id);
             setRecurrings(prev => prev.filter(r => r.id !== id));
-        } catch (err) { console.error(err); }
+        } catch (err) { logError("ventas/recurrentes/page", err); }
         finally { setDeletingId(null); }
     };
 

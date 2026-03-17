@@ -6,6 +6,8 @@ import { Users, Plus, Search, Building2, MoreHorizontal, DollarSign, Sparkles, U
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 const STAGES = [
     { id: "new", label: "Nuevos", color: "blue" },
@@ -39,7 +41,7 @@ export default function CRMPipelinePage() {
             setOpportunities(oppRes);
             setClients(cliRes);
             if (cliRes.length > 0 && !clientId) setClientId(cliRes[0].id);
-        } catch (e) { console.error(e); }
+        } catch (e) { logError("crm/embudo-de-ventas/page", e); }
         finally { setIsLoading(false); }
     };
 
@@ -63,9 +65,9 @@ export default function CRMPipelinePage() {
 
     const handleDelete = async (oppId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!confirm("\u00bfEliminar esta oportunidad?")) return;
+        if (!await showConfirm({ message: "¿Eliminar esta oportunidad?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         try { await api.crm.opportunities.delete(oppId); await loadData(); }
-        catch (err) { console.error(err); }
+        catch (err) { logError("crm/embudo-de-ventas/page", err); }
     };
 
     const handleAiQualify = async () => {
@@ -73,7 +75,7 @@ export default function CRMPipelinePage() {
         try {
             await api.tasks.create("crm", "Analiza todas mis oportunidades nuevas y cualifícalas según su valor y potencial. Dame un resumen de cuáles debo priorizar esta semana.");
             toast.info("Tarea de análisis CRM enviada a la IA. Revisa /tareas para ver el resultado.");
-        } catch (e) { console.error(e); toast.error("Error al enviar tarea a la IA"); }
+        } catch (e) { logError("crm/embudo-de-ventas/page", e); toast.error("Error al enviar tarea a la IA"); }
         finally { setTaskLoading(false); }
     };
 

@@ -7,6 +7,7 @@ import {
     Pencil, Trash2, TrendingDown, Wallet, Archive
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -128,7 +129,7 @@ export default function ActivosFijosPage() {
     };
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
+        if (!await showConfirm({ message: `¿Eliminar "${name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.accounting.assets.delete(id);

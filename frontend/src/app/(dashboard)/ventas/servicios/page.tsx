@@ -6,6 +6,8 @@ import {
     Plus, Search, ShieldCheck, HeartHandshake, X, Loader2, Pencil, Trash2
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
+import { logError } from "@/lib/logger";
 
 type FormState = {
     name: string; sku: string; description: string;
@@ -39,7 +41,7 @@ export default function ServicesPage() {
             const data = await api.erp.products.list({ limit: 200 });
             setServices(data.filter(p => p.item_type === "service"));
         } catch (error) {
-            console.error(error);
+            logError("ventas/servicios/page", error);
         } finally {
             setIsLoading(false);
         }
@@ -78,7 +80,7 @@ export default function ServicesPage() {
     };
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
+        if (!await showConfirm({ message: `¿Eliminar "${name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.products.delete(id);

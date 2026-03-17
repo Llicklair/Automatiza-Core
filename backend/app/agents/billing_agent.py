@@ -228,6 +228,53 @@ async def run_billing_agent(
             print(f"[BILLING] Error en consulta: {e}")
             return BillingAgentResult(success=False, action="failed", error=str(e))
 
+    # ── Auto-resolución de cliente desde BD ──────────────────────────────
+    # Si falta el NIF pero hay nombre de cliente → buscarlo por nombre en BD
+    # Si no hay ni nombre → coger el primer cliente disponible del tenant
+    if not extracted.client_nif:
+        try:
+            import uuid as _uuid
+            from sqlalchemy import select, or_, func
+            from app.db.base import AsyncSessionLocal
+            from app.db.models.models import Client as ClientModel
+            async with AsyncSessionLocal() as db:
+                if extracted.client_name:
+                    # Búsqueda por nombre exacto primero, luego parcial
+                    name_clean = extracted.client_name.strip()
+                    res = await db.execute(
+                        select(ClientModel)
+                        .where(
+                            ClientModel.tenant_id == _uuid.UUID(tenant_id),
+                            or_(
+                                func.lower(ClientModel.name) == name_clean.lower(),
+                                func.lower(ClientModel.name).contains(name_clean.lower()),
+                            )
+                        )
+                        .limit(1)
+                    )
+                else:
+                    # Sin nombre → primer cliente del tenant
+                    res = await db.execute(
+                        select(ClientModel)
+                        .where(ClientModel.tenant_id == _uuid.UUID(tenant_id))
+                        .order_by(ClientModel.created_at.asc())
+                        .limit(1)
+                    )
+                client = res.scalar_one_or_none()
+                if client:
+                    extracted.client_nif = client.nif
+                    extracted.client_name = client.name
+        except Exception:
+            pass
+
+    # Fecha por defecto: hoy
+    if not extracted.invoice_date:
+        extracted.invoice_date = today
+
+    # Concepto por defecto si sigue vacío
+    if not extracted.concept:
+        extracted.concept = "Servicios generales"
+
     # Si hay campos faltantes críticos, no continuar (Modo CREACIÓN)
     actual_missing = []
     if not extracted.client_nif: actual_missing.append("NIF del cliente")

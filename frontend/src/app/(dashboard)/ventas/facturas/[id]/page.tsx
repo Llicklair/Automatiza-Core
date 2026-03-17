@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api, Invoice } from "@/lib/api";
 import { ArrowLeft, Download, FileText, Loader2, Trash2, CheckCircle2, Clock, XCircle, Send } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
@@ -81,7 +82,8 @@ export default function FacturaDetallePage() {
     };
 
     const handleDelete = async () => {
-        if (!invoice || !confirm("¿Eliminar esta factura? Esta acción no se puede deshacer.")) return;
+        if (!invoice) return;
+        if (!await showConfirm({ message: "¿Eliminar esta factura? Esta acción no se puede deshacer.", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
         setDeleting(true);
         try {
             await api.erp.invoices.delete(invoice.id);

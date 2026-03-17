@@ -29,11 +29,11 @@ async def get_banking_summary(
     # Si no hay facturas, devolvemos un flag is_demo=True para que el frontend lo sepa
     if not invoices:
         return {
-            "ingresos": 18500,
-            "gastos": 12730,
-            "neto": 18500 - 12730,
-            "margen": round(((18500 - 12730) / 18500) * 100),
-            "is_demo": True
+            "ingresos": 0,
+            "gastos": 0,
+            "neto": 0,
+            "margen": 0,
+            "is_demo": False
         }
         
     return {

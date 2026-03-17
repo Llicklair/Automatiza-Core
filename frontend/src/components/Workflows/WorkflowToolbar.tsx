@@ -1,9 +1,10 @@
 "use client";
 
-import { Bot, GitBranch, Clock, ShieldCheck } from "lucide-react";
+import { Bot, GitBranch, Clock, ShieldCheck, GitFork } from "lucide-react";
 
 interface WorkflowToolbarProps {
     onAddNode: (type: "skill" | "conditional" | "delay" | "approval_gate") => void;
+    onAddParallelBranch: () => void;
 }
 
 const NODE_TYPES = [
@@ -20,9 +21,9 @@ const COLOR_MAP: Record<string, string> = {
     orange: "text-orange-400 bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20",
 };
 
-export default function WorkflowToolbar({ onAddNode }: WorkflowToolbarProps) {
+export default function WorkflowToolbar({ onAddNode, onAddParallelBranch }: WorkflowToolbarProps) {
     return (
-        <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900/80 border border-zinc-800 rounded-xl backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-zinc-900/80 border border-zinc-800 rounded-xl backdrop-blur-sm">
             <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mr-1">Añadir:</span>
             {NODE_TYPES.map(({ type, label, icon: Icon, color }) => (
                 <button
@@ -36,6 +37,15 @@ export default function WorkflowToolbar({ onAddNode }: WorkflowToolbarProps) {
                     {label}
                 </button>
             ))}
+            <button
+                type="button"
+                onClick={onAddParallelBranch}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors text-violet-400 bg-violet-500/10 border-violet-500/30 hover:bg-violet-500/20"
+                title="Añadir dos nodos en paralelo conectados al último nodo"
+            >
+                <GitFork className="w-3.5 h-3.5" />
+                Rama paralela
+            </button>
         </div>
     );
 }

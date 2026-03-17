@@ -12,10 +12,10 @@ import json
 from datetime import date, timedelta
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.llm_factory import get_llm
 
 # ─── Umbrales deterministas (sin LLM) ────────────────────────────────────────
 
@@ -49,12 +49,7 @@ REGLAS:
 
 
 def _get_llm():
-    return ChatOllama(
-        model="llama3.2",
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=0,
-        format="json",
-    )
+    return get_llm(temperature=0, format_output="json")
 
 
 # ─── Resultado del agente ─────────────────────────────────────────────────────
