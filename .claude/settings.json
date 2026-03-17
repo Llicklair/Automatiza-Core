@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx gitnexus:*)"
+      "Bash(npx gitnexus:*)",
+      "Bash(curl -s http://127.0.0.1:4748/)"
     ]
   }
 }
