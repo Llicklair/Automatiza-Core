@@ -57,6 +57,10 @@ backend/.local/
 # Celery
 backend/celerybeat-schedule
 
+# Runtime / build temporales
+_runtime_tmp/
+frontend/_node_modules_tmp/
+
 # Backups
 backups/
 .gitnexus

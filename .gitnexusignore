@@ -1,0 +1,13 @@
+# Solo indexar código fuente del proyecto
+_runtime_tmp/
+frontend/_node_modules_tmp/
+node_modules/
+frontend/node_modules/
+.venv/
+venv/
+backend/.cache/
+backend/.local/
+postgres_data/
+redis_data/
+backups/
+*.log
