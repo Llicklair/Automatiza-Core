@@ -32,11 +32,13 @@ redis_data/
 backend/uploads/
 backend/generated/
 backend/app/uploads/
+backend/app/agents/uploads/
 nul
 backend/nul
 frontend/nul
 *.pdf
 *.xlsx
+*.csv
 
 # Logs
 *.log

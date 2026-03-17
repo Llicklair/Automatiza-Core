@@ -1,8 +1,0 @@
-id,fecha,concepto,importe,tipo,categoria
-1,2026-02-22,TRANSFERENCIA RECIBIDA ACME SL,4500,abono,cliente_cobro
-2,2026-02-21,AMAZON WEB SERVICES,-350,cargo,proveedor_servicio
-3,2026-02-20,NOMINAS FEBRERO 2026,-12000,cargo,nominas
-4,2026-02-19,ENGIE ENERGIA FACTURA,-280.5,cargo,suministros
-5,2026-02-18,HOLDED PLAN PRO MENSUAL,-99,cargo,proveedor_servicio
-6,2026-02-17,COBRO FACTURA #2026-041,7200,abono,cliente_cobro
-7,2026-02-15,CUOTA PRESTAMO BANCO,-1100,cargo,financiero
