@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Workflow
-from app.api.v1.schemas.tasks import StepResult
+from app.agents.types import StepResult
 
 
 @dataclass

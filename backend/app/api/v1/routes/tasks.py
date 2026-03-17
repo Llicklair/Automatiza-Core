@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import AuditLog, PendingApproval, Task, TenantDocument, User, WorkflowExecution
-from app.schemas.tasks import AuditLogOut, TaskCreate, TaskOut
+from app.api.v1.schemas.tasks import AuditLogOut, TaskCreate, TaskOut
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 

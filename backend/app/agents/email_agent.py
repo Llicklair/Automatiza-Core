@@ -21,7 +21,7 @@ from app.agents.agent_tools.documents import (
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
-from app.api.v1.schemas.tasks import StepResult
+from app.agents.types import StepResult
 
 # ─── Mock fallback (cuando no hay credenciales configuradas) ──────────────────
 

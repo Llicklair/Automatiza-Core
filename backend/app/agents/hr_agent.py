@@ -26,7 +26,7 @@ from app.agents.agent_tools.documents import (
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
-from app.api.v1.schemas.tasks import StepResult
+from app.agents.types import StepResult
 from app.db.models.models import Employee, Payroll
 from app.core.config import settings
 from app.core.llm_factory import get_llm

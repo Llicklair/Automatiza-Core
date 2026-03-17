@@ -18,7 +18,7 @@ from app.agents.agent_tools.documents import (
     update_existing_document,
 )
 from app.agents.base import AgentState
-from app.api.v1.schemas.tasks import StepResult
+from app.agents.types import StepResult
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Opportunity
 from app.core.config import settings
