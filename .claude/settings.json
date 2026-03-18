@@ -2,7 +2,28 @@
   "permissions": {
     "allow": [
       "Bash(npx gitnexus:*)",
-      "Bash(curl -s http://127.0.0.1:4748/)"
+      "Bash(curl -s http://127.0.0.1:4748/)",
+      "WebFetch(domain:gitnexus.vercel.app)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4747/api/mcp)",
+      "Read(//c/Users/Marcos/Desktop/**)",
+      "Bash(wc -l \"c:/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/api/v1/routes/\"*.py)",
+      "Bash(wc -l \"c:/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/agents/\"*.py)",
+      "Bash(wc -l \"c:/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/services/\"*.py)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/api/v1/routes\" -name \"*.py\" -exec wc -l {} +)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/agents\" -name \"*.py\" -exec wc -l {} +)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/services\" -name \"*.py\" -exec wc -l {} +)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/backend/app/db/models\" -name \"*.py\" -exec wc -l {} +)",
+      "Bash(xargs grep:*)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/frontend/src/components\" -name \"*.tsx\" -exec wc -l {} +)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/frontend/src/app\" -name \"page.tsx\" -exec wc -l {} +)",
+      "Bash(find \"/c/Users/Marcos/Desktop/atomatizacion de empresas/frontend/src/app/\\(dashboard\\)\" -maxdepth 1 -type d)",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''app/workers/celery_app.py'', doraise=True\\); print\\(''celery_app.py OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''app/workers/tasks_orchestrator.py'', doraise=True\\); print\\(''tasks_orchestrator.py OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''app/workers/tasks_node_engine.py'', doraise=True\\); print\\(''tasks_node_engine.py OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''app/workers/tasks_scheduler.py'', doraise=True\\); print\\(''tasks_scheduler.py OK''\\)\")",
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\(''app/workers/celery_app.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(py -3 -c \"import py_compile; py_compile.compile\\(''app/workers/celery_app.py'', doraise=True\\); py_compile.compile\\(''app/workers/tasks_orchestrator.py'', doraise=True\\); py_compile.compile\\(''app/workers/tasks_node_engine.py'', doraise=True\\); py_compile.compile\\(''app/workers/tasks_scheduler.py'', doraise=True\\); print\\(''All 4 files: syntax OK''\\)\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }
