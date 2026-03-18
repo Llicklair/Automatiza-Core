@@ -197,7 +197,7 @@ Actualmente no existe flujo de "olvidé mi contraseña". Si un cliente pierde ac
 **Flujo**:
 ```
 1. Usuario introduce email en /auth/forgot-password
-2. Backend genera token seguro (JWT, expira en 1 hora), lo guarda en Redis
+2. Backend genera token seguro (JWT, expira en 1 hora), lo guarda en BD
 3. Backend envía email con enlace: https://app/auth/reset?token=XXX
 4. Usuario hace clic → formulario de nueva contraseña
 5. Backend valida token (no expirado, no usado), actualiza password, invalida token
@@ -240,27 +240,17 @@ Relevante para cumplimiento GDPR: derecho de acceso (qué datos tiene el sistema
 
 ## 5. Backup automático de base de datos (PRIORIDAD MEDIA)
 
-Sin backup, una corrupción del volumen Docker significa pérdida total de datos del cliente.
+Sin backup, una corrupción de la base de datos significa pérdida total de datos del cliente.
 
-**Solución simple**: añadir servicio `backup` al `docker-compose.yml`.
+**Solución simple**: script `pg_dump` ejecutado por el Programador de tareas de Windows o APScheduler.
 
-```yaml
-backup:
-  image: postgres:15-alpine
-  depends_on:
-    - db
-  environment:
-    PGPASSWORD: ${POSTGRES_PASSWORD}
-  volumes:
-    - ./backups:/backups
-  entrypoint: >
-    sh -c "pg_dump -h db -U ${POSTGRES_USER} ${POSTGRES_DB}
-           > /backups/pyme_db_$$(date +%Y%m%d_%H%M).sql
-           && find /backups -name '*.sql' -mtime +7 -delete"
-  profiles: ["backup"]   # no arranca por defecto, se lanza manualmente o con cron
+```bash
+# Ejemplo: backup diario con retención de 7 días
+pg_dump -h localhost -p 5433 -U pyme_user pyme_db > backups/pyme_db_$(date +%Y%m%d_%H%M).sql
+find backups -name '*.sql' -mtime +7 -delete
 ```
 
-El cliente ejecutaría `docker-compose --profile backup up backup` manualmente o programado con el Programador de tareas de Windows.
+El cliente ejecutaría este script manualmente o programado con el Programador de tareas de Windows.
 
 ---
 
@@ -285,9 +275,9 @@ Sin límites, un usuario que automatice tareas agresivas puede generar facturas 
 
 **Diseño**:
 - Nueva columna `monthly_token_budget: int` en tabla `Tenant` (default: 500.000 tokens/mes)
-- Contador en Redis: `tokens:{tenant_id}:{YYYY-MM}` → se incrementa con cada llamada LLM
+- Contador en BD o memoria: `tokens:{tenant_id}:{YYYY-MM}` → se incrementa con cada llamada LLM
 - Antes de cada llamada al LLM: comprobar si el contador supera el presupuesto → `HTTP 429` si sí
-- Reset automático el día 1 de cada mes (TTL en Redis)
+- Reset automático el día 1 de cada mes
 
 ---
 

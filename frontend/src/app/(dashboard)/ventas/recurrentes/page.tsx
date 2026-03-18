@@ -189,7 +189,7 @@ export default function RecurrentesPage() {
                     <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
                     <p className="text-sm text-amber-300">
                         <span className="font-semibold">{dueToday} plantilla{dueToday > 1 ? "s" : ""}</span> {dueToday > 1 ? "están" : "está"} vencida{dueToday > 1 ? "s" : ""}.
-                        Celery las procesará automáticamente a las 8:00, o usa el botón <span className="font-mono">▶</span> para generarlas ahora.
+                        Se procesarán automáticamente a las 8:00, o usa el botón <span className="font-mono">▶</span> para generarlas ahora.
                     </p>
                 </div>
             )}

@@ -3,7 +3,11 @@
  * Handles JWT auth, token refresh, and blob downloads.
  */
 
-export const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+export const BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:8080`
+    : "http://127.0.0.1:8080");
 
 export function getToken(): string | null {
     if (typeof window === "undefined") return null;

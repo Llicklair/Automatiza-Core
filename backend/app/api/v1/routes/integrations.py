@@ -12,36 +12,21 @@ from app.services.encryption import encrypt_credentials, decrypt_credentials
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
-# OAuth state store backed by Redis (TTL 10min) with in-memory fallback
+# OAuth state store en memoria con TTL
 import time as _time
 
-_oauth_states_mem: dict[str, tuple[str, float]] = {}  # state -> (tenant_id, expires_at)
+_oauth_states: dict[str, tuple[str, float]] = {}  # state -> (tenant_id, expires_at)
 _OAUTH_STATE_TTL = 600  # 10 minutes
 
 
 def _set_oauth_state(state: str, tenant_id: str) -> None:
-    """Store OAuth state in Redis if available, else in-memory with TTL."""
-    try:
-        import redis
-        from app.core.config import settings
-        r = redis.from_url(settings.REDIS_URL)
-        r.setex(f"oauth_state:{state}", _OAUTH_STATE_TTL, tenant_id)
-    except Exception:
-        _oauth_states_mem[state] = (tenant_id, _time.time() + _OAUTH_STATE_TTL)
+    """Store OAuth state in-memory with TTL."""
+    _oauth_states[state] = (tenant_id, _time.time() + _OAUTH_STATE_TTL)
 
 
 def _pop_oauth_state(state: str) -> str | None:
     """Retrieve and delete OAuth state. Returns tenant_id or None."""
-    try:
-        import redis
-        from app.core.config import settings
-        r = redis.from_url(settings.REDIS_URL)
-        val = r.getdel(f"oauth_state:{state}")
-        if val:
-            return val.decode()
-    except Exception:
-        pass
-    entry = _oauth_states_mem.pop(state, None)
+    entry = _oauth_states.pop(state, None)
     if entry and entry[1] > _time.time():
         return entry[0]
     return None

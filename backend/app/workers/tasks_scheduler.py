@@ -1,29 +1,25 @@
 """
-Tareas Celery periódicas: workflows programados, facturas recurrentes, limpieza de ejecuciones.
+Tareas periodicas: workflows programados, facturas recurrentes, limpieza de ejecuciones.
+Coroutines puras invocadas por APScheduler.
 """
+import logging
 from datetime import UTC
 
-from app.workers.celery_app import celery_app, run_async
+from app.services.idempotency import IdempotencyGuard
+from app.services.task_dispatch import dispatch_orchestrator
+
+logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="check_scheduled_workflows")
-def check_scheduled_workflows():
+async def check_scheduled_workflows():
     """
-    Tarea periódica (cada minuto) que evalúa qué workflows schedule_based
-    deben ejecutarse ahora según su trigger_config.
-
-    trigger_config esperado para schedule_based:
-    {
-        "frequency": "daily" | "weekly" | "monthly" | "hourly",
-        "hour": 8,          # Para daily/weekly/monthly
-        "minute": 0,
-        "day_of_week": 0,   # 0=lunes ... 6=domingo (para weekly)
-        "day_of_month": 1,  # Para monthly
-        "instruction": "..."  # Alternativa a action_config.instruction
-    }
-    Si no hay trigger_config, se interpreta la instrucción en lenguaje natural.
+    Tarea periodica (cada minuto) que evalua que workflows schedule_based
+    deben ejecutarse ahora segun su trigger_config.
     """
-    return run_async(_check_scheduled_workflows())
+    try:
+        await _check_scheduled_workflows()
+    except Exception as e:
+        logger.error("[SCHEDULER] Error en check_scheduled_workflows: %s", e)
 
 
 async def _check_scheduled_workflows():
@@ -55,16 +51,15 @@ async def _check_scheduled_workflows():
         for wf in workflows:
             config = wf.trigger_config or {}
             if _should_run_now(config, now_local):
-                # ── Idempotencia: evitar disparar el mismo workflow dos veces en el mismo minuto ──
+                # -- Idempotencia: evitar disparar el mismo workflow dos veces en el mismo minuto --
                 idempotency_key = f"{wf.id}:{now_local.strftime('%Y%m%d%H%M')}"
 
-                from app.services.idempotency import SyncIdempotencyGuard
-                guard = SyncIdempotencyGuard(ttl=120)  # TTL 2 min: suficiente para el mismo minuto
-                if guard.already_executed("workflow_beat", idempotency_key):
-                    print(f"[IDEMPOTENCY] Workflow '{wf.name}' ya disparado este minuto. Skip.")
+                guard = IdempotencyGuard(ttl=120)  # TTL 2 min: suficiente para el mismo minuto
+                if await guard.already_executed("workflow_beat", idempotency_key):
+                    logger.info("[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name)
                     continue
 
-                # Bloquear si ya hay una ejecución activa para este workflow
+                # Bloquear si ya hay una ejecucion activa para este workflow
                 existing_exec = await db.execute(
                     select(WorkflowExecution).where(
                         WorkflowExecution.workflow_id == wf.id,
@@ -72,11 +67,11 @@ async def _check_scheduled_workflows():
                     )
                 )
                 if existing_exec.scalars().first():
-                    print(f"[BEAT] Workflow '{wf.name}' ya tiene ejecución activa. Skip.")
+                    logger.info("[BEAT] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
                     continue
 
-                print(f"[BEAT] Disparando workflow programado: '{wf.name}'")
-                # Construir instrucción
+                logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
+                # Construir instruccion
                 action_config = wf.action_config or {}
                 instruction = (
                     action_config.get("instruction")
@@ -89,12 +84,12 @@ async def _check_scheduled_workflows():
                 text = f"{wf.name} {wf.description or ''} {instruction}".lower()
                 domain = action_config.get("domain") or _infer_domain_from_text(text)
 
-                # Crear ejecución primero para obtener su ID
+                # Crear ejecucion primero para obtener su ID
                 execution = WorkflowExecution(
                     workflow_id=wf.id,
                     tenant_id=wf.tenant_id,
                     status="running",
-                    trigger_payload={"source": "celery_beat", "scheduled_at": now.isoformat()},
+                    trigger_payload={"source": "apscheduler", "scheduled_at": now.isoformat()},
                 )
                 db.add(execution)
                 await db.flush()
@@ -104,7 +99,7 @@ async def _check_scheduled_workflows():
                     tenant_id=wf.tenant_id,
                     created_by=None,
                     domain=domain,
-                    user_intent=f"[Automatización programada] {instruction}",
+                    user_intent=f"[Automatizacion programada] {instruction}",
                     status="pending",
                     additional_metadata={
                         "workflow_id": str(wf.id),
@@ -120,20 +115,19 @@ async def _check_scheduled_workflows():
                 await db.flush()
 
                 try:
-                    from app.workers.tasks_orchestrator import run_orchestrator
-                    run_orchestrator.delay(str(task.id))
-                    guard.mark_executed("workflow_beat", idempotency_key)
+                    await dispatch_orchestrator(str(task.id))
+                    await guard.mark_executed("workflow_beat", idempotency_key)
                 except Exception as e:
                     execution.status = "failed"
                     execution.result_log = f"Error al lanzar orchestrator: {e}"
-                    guard.release("workflow_beat", idempotency_key)
+                    await guard.release("workflow_beat", idempotency_key)
 
         await db.commit()
 
 
 def _should_run_now(config: dict, now) -> bool:
     """
-    Evalúa si un workflow schedule_based debe ejecutarse en este momento basándose en una expresión cron.
+    Evalua si un workflow schedule_based debe ejecutarse en este momento basandose en una expresion cron.
     """
     cron_expr = config.get("cron")
     if not cron_expr:
@@ -158,14 +152,16 @@ def _should_run_now(config: dict, now) -> bool:
                next_run.minute == now.minute
 
     except Exception as e:
-        print(f"[CELERY_BEAT] Error parsing cron: {cron_expr} -> {e}")
+        logger.warning("[SCHEDULER] Error parsing cron: %s -> %s", cron_expr, e)
         return False
 
 
-@celery_app.task(name="process_recurring_invoices")
-def process_recurring_invoices():
+async def process_recurring_invoices():
     """Tarea diaria (8:00) que genera facturas a partir de plantillas recurrentes vencidas."""
-    return run_async(_process_recurring_invoices())
+    try:
+        return await _process_recurring_invoices()
+    except Exception as e:
+        logger.error("[SCHEDULER] Error en process_recurring_invoices: %s", e)
 
 
 async def _process_recurring_invoices():
@@ -235,10 +231,10 @@ async def _process_recurring_invoices():
                 generated += 1
 
             except Exception as e:
-                print(f"[RECURRING] Error procesando plantilla {rec.id}: {e}")
+                logger.error("[RECURRING] Error procesando plantilla %s: %s", rec.id, e)
 
         await db.commit()
-        print(f"[RECURRING] {generated} facturas generadas automáticamente.")
+        logger.info("[RECURRING] %d facturas generadas automaticamente.", generated)
         return {"generated": generated}
 
 
@@ -258,17 +254,19 @@ def _infer_domain_from_text(text: str) -> str:
     return "billing"
 
 
-# ─── Cleanup: ejecuciones atascadas ──────────────────────────────────────────
+# --- Cleanup: ejecuciones atascadas ---
 
-@celery_app.task(name="cleanup_stuck_executions")
-def cleanup_stuck_executions():
-    """Cada 10 min: marca como 'failed' ejecuciones en 'running' de más de 15 min."""
-    return run_async(_cleanup_stuck_executions())
+async def cleanup_stuck_executions():
+    """Cada 10 min: marca como 'failed' ejecuciones en 'running' de mas de 15 min."""
+    try:
+        return await _cleanup_stuck_executions()
+    except Exception as e:
+        logger.error("[SCHEDULER] Error en cleanup_stuck_executions: %s", e)
 
 
 async def _cleanup_stuck_executions():
     from datetime import datetime, timedelta
-    from sqlalchemy import select, update as sa_update
+    from sqlalchemy import select
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
 
@@ -291,5 +289,5 @@ async def _cleanup_stuck_executions():
             ex.result_log = (ex.result_log or "") + " [Auto-cancelado: timeout 15 min]"
 
         await db.commit()
-        print(f"[CLEANUP] {len(stuck)} ejecucion(es) atascada(s) marcadas como failed.")
+        logger.info("[CLEANUP] %d ejecucion(es) atascada(s) marcadas como failed.", len(stuck))
         return {"cleaned": len(stuck)}

@@ -14,7 +14,6 @@ from cryptography.fernet import Fernet
 os.environ["SECRET_KEY"] = "test_secret_key_do_not_use_in_production_1234567890abcdef"
 os.environ["TENANT_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
-os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["DEBUG"] = "true"
 os.environ["FRONTEND_URL"] = "http://localhost:3000"

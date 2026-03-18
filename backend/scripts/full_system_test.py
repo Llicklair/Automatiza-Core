@@ -2,8 +2,7 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║          AUTOMATIZAPYME — TEST INTEGRAL DEL SISTEMA                         ║
 ║  Simula el cerebro IA probando TODAS las funcionalidades via API             ║
-║  Ejecutar desde el contenedor: docker-compose exec api python full_system_test.py
-║  O local: python scripts/full_system_test.py                                 ║
+║  Ejecutar: python scripts/full_system_test.py                                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -1194,8 +1193,8 @@ async def test_automatizaciones(client: httpx.AsyncClient) -> None:
             if r.status_code == 200 and r2.status_code == 404:
                 ok(f"Eliminar workflow schedule {wf_id[:8]}… (confirmado 404)")
 
-    # ── 14.11 Celery Beat — recordatorio informativo ──────────────────────────
-    info("Celery Beat evalúa 'check_scheduled_workflows' cada minuto")
+    # ── 14.11 APScheduler — recordatorio informativo ──────────────────────────
+    info("APScheduler evalúa 'check_scheduled_workflows' cada minuto")
     info("Los workflows schedule-based se evalúan con cron: '0 8 * * 1', '0 9 15 * *', etc.")
 
 

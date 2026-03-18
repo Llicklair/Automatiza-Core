@@ -92,7 +92,7 @@ async def upload_document(
     # Disparar tarea de procesamiento en el orquestador
     try:
         from app.db.models.models import Task
-        from app.workers.celery_app import run_orchestrator
+        from app.services.task_dispatch import dispatch_orchestrator
 
         task = Task(
             tenant_id=current_user.tenant_id,
@@ -110,7 +110,7 @@ async def upload_document(
         await db.commit()
         await db.refresh(doc)
 
-        run_orchestrator.delay(str(task.id))
+        await dispatch_orchestrator(str(task.id))
     except Exception as e:
         logger.warning("Orchestrator dispatch falló para doc %s: %s", doc.id, e)
 
@@ -197,7 +197,7 @@ async def scan_documents(
         await db.refresh(doc)
 
         try:
-            from app.workers.celery_app import run_orchestrator
+            from app.services.task_dispatch import dispatch_orchestrator
 
             task = Task(
                 tenant_id=current_user.tenant_id,
@@ -215,7 +215,7 @@ async def scan_documents(
             await db.commit()
             await db.refresh(doc)
 
-            run_orchestrator.delay(str(task.id))
+            await dispatch_orchestrator(str(task.id))
         except Exception as e:
             logger.warning("Orchestrator dispatch falló en scan para doc %s: %s", doc.id, e)
 
@@ -325,7 +325,7 @@ async def upload_bulk_documents(
                 
                 # Crear tarea para este documento
                 from app.db.models.models import Task
-                from app.workers.celery_app import run_orchestrator
+                from app.services.task_dispatch import dispatch_orchestrator
 
                 task = Task(
                     tenant_id=current_user.tenant_id,
@@ -343,7 +343,7 @@ async def upload_bulk_documents(
                 await db.commit()
                 await db.refresh(doc)
 
-                run_orchestrator.delay(str(task.id))
+                await dispatch_orchestrator(str(task.id))
                 
                 docs_created.append(doc)
                 
@@ -849,7 +849,7 @@ async def import_database(
 
         task_id = None
         try:
-            from app.workers.celery_app import run_orchestrator
+            from app.services.task_dispatch import dispatch_orchestrator
 
             intent_summary = (
                 f"Importar base de datos '{file.filename}' ({len(rows)} filas, "
@@ -874,7 +874,7 @@ async def import_database(
             await db.refresh(doc)
 
             task_id = task.id
-            run_orchestrator.delay(str(task.id))
+            await dispatch_orchestrator(str(task.id))
         except Exception as e:
             logger.warning("Orchestrator dispatch falló en import para doc %s: %s", doc.id, e)
 

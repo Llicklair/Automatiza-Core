@@ -222,8 +222,8 @@ async def run_workflow_manually(
     # 2. Detectar si tiene nodos avanzados → NodeEngine directo
     if workflow.ui_nodes and has_advanced_nodes(workflow.ui_nodes, workflow.ui_edges):
         try:
-            from app.workers.celery_app import run_node_engine
-            run_node_engine.delay(str(execution.id))
+            from app.services.task_dispatch import dispatch_node_engine
+            await dispatch_node_engine(str(execution.id))
             execution.result_log = f"Motor de nodos lanzado para ejecución [{str(execution.id)[:8]}...]."
         except Exception as e:
             execution.result_log = f"Error al lanzar el motor de nodos: {e}"
@@ -288,8 +288,8 @@ async def run_workflow_manually(
     await db.commit()
 
     try:
-        from app.workers.celery_app import run_orchestrator
-        run_orchestrator.apply_async(args=[str(task.id)], task_id=str(task.id))
+        from app.services.task_dispatch import dispatch_orchestrator
+        await dispatch_orchestrator(str(task.id))
         execution.result_log = f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
     except Exception as e:
         execution.result_log = f"Error al lanzar el orquestador: {e}"
@@ -381,8 +381,8 @@ async def run_workflow_with_context(
     await db.commit()
 
     try:
-        from app.workers.celery_app import run_orchestrator
-        run_orchestrator.apply_async(args=[str(task.id)], task_id=str(task.id))
+        from app.services.task_dispatch import dispatch_orchestrator
+        await dispatch_orchestrator(str(task.id))
         execution.result_log = f"Tarea IA lanzada con contexto [{str(task.id)[:8]}...]."
     except Exception as e:
         execution.result_log = f"Error al lanzar: {e}"
@@ -417,8 +417,8 @@ async def resume_execution(
         raise HTTPException(status_code=400, detail="No se puede determinar el nodo desde el que reanudar")
 
     try:
-        from app.workers.celery_app import resume_node_engine
-        resume_node_engine.delay(str(execution_id), execution.current_node_id)
+        from app.services.task_dispatch import dispatch_resume_node_engine
+        await dispatch_resume_node_engine(str(execution_id), execution.current_node_id)
         execution.result_log = f"Reanudación programada desde nodo {execution.current_node_id}."
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al programar la reanudación: {e}")
@@ -435,7 +435,7 @@ async def get_execution_logs(
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Devuelve los logs en tiempo real de una ejecución (desde Redis o result_log)."""
+    """Devuelve los logs de una ejecución."""
     result = await db.execute(
         select(models.WorkflowExecution).where(
             models.WorkflowExecution.id == execution_id,
@@ -449,16 +449,13 @@ async def get_execution_logs(
 
     lines: list[str] = []
 
-    # Intentar Redis primero (logs en tiempo real)
+    # Intentar exec_log_store primero (logs en tiempo real)
     if execution.task_id:
         try:
-            import redis.asyncio as aioredis
-            from app.core.config import settings
-            r = await aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-            redis_lines = await r.lrange(f"exec_logs:{str(execution.task_id)}", 0, -1)
-            await r.aclose()
-            if redis_lines:
-                lines = redis_lines
+            from app.services.exec_log_store import get_all
+            stored_lines = get_all(str(execution.task_id))
+            if stored_lines:
+                lines = stored_lines
         except Exception:
             pass
 
@@ -606,8 +603,8 @@ async def fire_workflow_event(
         await db.refresh(task)
 
         try:
-            from app.workers.celery_app import run_orchestrator
-            run_orchestrator.delay(str(task.id))
+            from app.services.task_dispatch import dispatch_orchestrator
+            await dispatch_orchestrator(str(task.id))
             triggered.append(str(wf.id))
         except Exception as e:
             execution.status = "failed"

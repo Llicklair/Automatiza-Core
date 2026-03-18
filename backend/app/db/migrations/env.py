@@ -19,7 +19,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Sobreescribir la URL con la variable de entorno si está disponible
-# Esto permite ejecutar alembic tanto en local (localhost) como en Docker (db)
+# Sobreescribir con variable de entorno si está disponible
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)

@@ -25,7 +25,7 @@ def create_document(tenant_id: str, file_name: str, content: str, category: str 
     try:
         import uuid
         db = SessionLocal()
-        # En Docker es /app/uploads, en local buscar ruta
+        # Directorio de uploads configurable por entorno
         upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
         if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
             upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")

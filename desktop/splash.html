@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>AutomatizaPyme</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+      user-select: none;
+      overflow: hidden;
+    }
+    .logo {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 48px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .progress-container {
+      width: 320px;
+      height: 4px;
+      background: #334155;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+    #status {
+      font-size: 13px;
+      color: #64748b;
+      min-height: 20px;
+    }
+    .version {
+      position: fixed;
+      bottom: 16px;
+      font-size: 11px;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">AutomatizaPyme</div>
+  <div class="subtitle">ERP Inteligente para PYMEs</div>
+  <div class="progress-container">
+    <div class="progress-bar" id="progress"></div>
+  </div>
+  <div id="status">Iniciando...</div>
+  <div class="version">v1.0.0</div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    ipcRenderer.on('splash-status', (_, data) => {
+      document.getElementById('status').textContent = data.message;
+      document.getElementById('progress').style.width = data.progress + '%';
+    });
+  </script>
+</body>
+</html>

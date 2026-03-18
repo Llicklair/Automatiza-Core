@@ -1,6 +1,5 @@
 """
-Sesión SQLAlchemy síncrona para uso en workers Celery y agentes LLM.
-Los agentes corren en Celery (sync), no pueden usar asyncpg/async.
+Sesión SQLAlchemy síncrona para uso en agentes LLM y scripts.
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker

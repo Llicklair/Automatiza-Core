@@ -56,9 +56,6 @@ Thumbs.db
 backend/.cache/
 backend/.local/
 
-# Celery
-backend/celerybeat-schedule
-
 # Runtime / build temporales
 *_tmp/
 _runtime_tmp/

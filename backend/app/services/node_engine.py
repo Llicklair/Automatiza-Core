@@ -5,7 +5,7 @@ Ejecuta un grafo de workflow nodo a nodo con soporte para:
   - trigger: nodo inicial (schedule, event, manual)
   - skill: ejecuta un agente completo (billing, hr, email, etc.)
   - conditional: bifurca según condición sobre output previo
-  - delay: espera N segundos (suspende y programa Celery)
+  - delay: espera N segundos (suspende y programa reanudación)
   - approval_gate: pausa hasta aprobación humana
 
 Flujo:
@@ -13,7 +13,7 @@ Flujo:
   2. Carga node_states existentes (para resume)
   3. Marca trigger como completed
   4. Loop: busca nodos listos → ejecuta → actualiza node_states en BD
-  5. Si delay/approval → suspende, programa Celery/crea PendingApproval
+  5. Si delay/approval → suspende, programa reanudación/crea PendingApproval
   6. Todos los leaf nodes completados → execution.status = "success"
 """
 from __future__ import annotations
@@ -569,7 +569,7 @@ class NodeEngine:
         return "true" if result else "false"
 
     async def _execute_delay_node(self, node: dict, db: AsyncSession) -> dict:
-        """Programa un resume vía Celery después de delay_seconds."""
+        """Programa un resume tras delay_seconds."""
         data = node.get("data", {})
         delay_seconds = int(data.get("delay_seconds", 10))
         node_id = node["id"]
@@ -585,12 +585,12 @@ class NodeEngine:
             execution.node_states = dict(self.node_states)
             await db.flush()
 
-        # Schedule Celery task to resume after delay
+        # Schedule task to resume after delay
         try:
-            from app.workers.celery_app import resume_node_engine
-            resume_node_engine.apply_async(
-                args=[self.execution_id, node_id],
-                countdown=delay_seconds,
+            from app.services.task_dispatch import dispatch_resume_node_engine
+            await dispatch_resume_node_engine(
+                self.execution_id, node_id,
+                delay_seconds=delay_seconds,
             )
         except Exception as e:
             print(f"[NODE_ENGINE] Error scheduling delay resume: {e}")

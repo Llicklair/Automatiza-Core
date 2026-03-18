@@ -3,16 +3,17 @@ Seed de datos demo para AutomatizaPyme.
 Pobla la cuenta demo@automatizapyme.com con datos realistas de una PYME española.
 
 Uso:
-    docker-compose exec api python scripts/seed_demo.py
-    docker-compose exec api python scripts/seed_demo.py --reset  (borra todo primero)
+    python scripts/seed_demo.py
+    python scripts/seed_demo.py --reset  (borra todo primero)
 """
 import asyncio
+import os
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
 
 # ── Setup path ────────────────────────────────────────────────────────────────
-sys.path.insert(0, "/app")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine

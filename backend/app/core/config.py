@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "http://localhost:3000"  # Acepta múltiples orígenes separados por coma
 
     @model_validator(mode="after")
     def check_secrets(self):
@@ -36,11 +36,6 @@ class Settings(BaseSettings):
 
     # Base de datos
     DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5432/pyme_db"
-
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
     # LLM
     DEFAULT_LLM_PROVIDER: str = "anthropic"  # anthropic | gemini | openai | groq | openrouter

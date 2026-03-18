@@ -22,7 +22,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("%s v%s arrancando", settings.APP_NAME, settings.APP_VERSION)
+    # Arrancar scheduler
+    from app.services.scheduler import start_scheduler, stop_scheduler
+    await start_scheduler()
     yield
+    # Parar scheduler y tareas en vuelo
+    await stop_scheduler()
+    from app.services.task_runner import task_runner
+    await task_runner.shutdown()
     logger.info("Cerrando aplicación")
 
 
@@ -38,10 +45,11 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — solo acepta peticiones del frontend configurado en FRONTEND_URL
+# CORS — acepta peticiones de los orígenes configurados en FRONTEND_URL (separados por coma)
+_cors_origins = [u.strip() for u in settings.FRONTEND_URL.split(",") if u.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
@@ -82,8 +90,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health", tags=["system"])
 async def health_check():
-    """Health check extendido: verifica PostgreSQL y Redis."""
+    """Health check: verifica PostgreSQL y servicios en memoria."""
     import time
+    from app.services.task_runner import task_runner
 
     health = {
         "status": "ok",
@@ -105,21 +114,11 @@ async def health_check():
         health["checks"]["postgres"] = {"status": "down", "error": str(e)[:200]}
         health["status"] = "degraded"
 
-    # ── Redis ─────────────────────────────────────────────────────────────
-    try:
-        import redis.asyncio as aioredis
-
-        t0 = time.perf_counter()
-        r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-        try:
-            await r.ping()
-            latency_ms = round((time.perf_counter() - t0) * 1000, 1)
-            health["checks"]["redis"] = {"status": "up", "latency_ms": latency_ms}
-        finally:
-            await r.aclose()
-    except Exception as e:
-        health["checks"]["redis"] = {"status": "down", "error": str(e)[:200]}
-        health["status"] = "degraded"
+    # ── Task Runner ───────────────────────────────────────────────────────
+    health["checks"]["task_runner"] = {
+        "status": "up",
+        "active_tasks": task_runner.active_count,
+    }
 
     status_code = 200 if health["status"] == "ok" else 503
     return JSONResponse(health, status_code=status_code)

@@ -19,8 +19,7 @@ alembic = "^1.14.0"
 python-jose = { extras = ["cryptography"], version = "^3.3.0" }
 passlib = { extras = ["bcrypt"], version = "^1.7.4" }
 python-multipart = "^0.0.12"
-redis = { extras = ["hiredis"], version = "^5.2.0" }
-celery = { extras = ["redis"], version = "^5.4.0" }
+apscheduler = "^3.10.0"
 httpx = "^0.28.0"
 langgraph = "^0.2.0"
 langchain-core = "^0.3.0"

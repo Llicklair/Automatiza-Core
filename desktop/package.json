@@ -1,0 +1,74 @@
+{
+  "name": "automatizapyme-desktop",
+  "version": "1.0.0",
+  "description": "AutomatizaPyme - ERP de escritorio para PYMEs",
+  "main": "main.js",
+  "scripts": {
+    "start": "node launch.js",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "com.automatizapyme.desktop",
+    "productName": "AutomatizaPyme",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "forceCodeSigning": false,
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AutomatizaPyme"
+    },
+    "files": [
+      "main.js",
+      "launch.js",
+      "preload.js",
+      "service-manager.js",
+      "postgres-manager.js",
+      "python-manager.js",
+      "network-utils.js",
+      "tray-manager.js",
+      "splash.html",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "project/backend",
+        "filter": [
+          "**/*",
+          "!__pycache__/**",
+          "!.venv/**",
+          "!*.pyc",
+          "!.env"
+        ]
+      },
+      {
+        "from": "../frontend",
+        "to": "project/frontend",
+        "filter": [
+          "**/*",
+          "!node_modules/**",
+          "!.next/**"
+        ]
+      }
+    ]
+  }
+}

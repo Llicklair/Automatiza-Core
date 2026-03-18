@@ -1,49 +1,57 @@
 """
-Caché de respuestas LLM en Redis.
+Caché de respuestas LLM en memoria.
 
 Estrategia:
     - Clave = hash SHA-256 de (tenant_id + intent + provider)
     - TTL configurable (default 1h para respuestas operativas)
     - Solo cachea respuestas exitosas (no errores)
-    - Invalidación automática por TTL
-
-Uso:
-    cache = LLMCache()
-    cached = await cache.get(tenant_id, intent)
-    if cached:
-        return cached
-    response = await llm.ainvoke(...)
-    await cache.set(tenant_id, intent, response)
+    - Máximo 1000 entradas (evita memory leak)
 """
 
 import hashlib
 import json
 import logging
+import time
+import threading
 from typing import Optional
-
-import redis.asyncio as aioredis
-
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 _PREFIX = "llm_cache"
 _DEFAULT_TTL = 3600  # 1 hora
+_MAX_ENTRIES = 1000
+
+_cache: dict[str, tuple[str, float]] = {}  # key -> (payload_json, expiry)
+_lock = threading.Lock()
 
 
 def _make_key(tenant_id: str, intent: str, provider: str = "") -> str:
-    """Genera clave Redis como hash SHA-256 de tenant+intent+provider."""
     raw = f"{tenant_id}:{intent.strip().lower()}:{provider}"
     digest = hashlib.sha256(raw.encode()).hexdigest()
     return f"{_PREFIX}:{digest}"
 
 
-async def _get_redis() -> aioredis.Redis:
-    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+def _evict_expired() -> None:
+    now = time.time()
+    with _lock:
+        expired = [k for k, (_, exp) in _cache.items() if exp < now]
+        for k in expired:
+            del _cache[k]
+
+
+def _evict_oldest() -> None:
+    """Elimina las entradas más antiguas si se supera el límite."""
+    with _lock:
+        if len(_cache) <= _MAX_ENTRIES:
+            return
+        sorted_keys = sorted(_cache, key=lambda k: _cache[k][1])
+        to_remove = len(_cache) - _MAX_ENTRIES
+        for k in sorted_keys[:to_remove]:
+            del _cache[k]
 
 
 class LLMCache:
-    """Caché asíncrono de respuestas LLM en Redis."""
+    """Caché asíncrono de respuestas LLM en memoria."""
 
     def __init__(self, ttl: int = _DEFAULT_TTL):
         self.ttl = ttl
@@ -54,22 +62,15 @@ class LLMCache:
         intent: str,
         provider: str = "",
     ) -> Optional[str]:
-        """Devuelve la respuesta cacheada o None."""
-        try:
-            r = await _get_redis()
-            try:
-                key = _make_key(tenant_id, intent, provider)
-                value = await r.get(key)
-                if value:
-                    logger.debug("LLM cache HIT: %s", key[:32])
-                    data = json.loads(value)
-                    return data.get("response")
-                return None
-            finally:
-                await r.aclose()
-        except Exception as e:
-            logger.warning("LLM cache GET error (degradando sin caché): %s", e)
-            return None
+        _evict_expired()
+        key = _make_key(tenant_id, intent, provider)
+        with _lock:
+            entry = _cache.get(key)
+            if entry:
+                logger.debug("LLM cache HIT: %s", key[:32])
+                data = json.loads(entry[0])
+                return data.get("response")
+        return None
 
     async def set(
         self,
@@ -80,24 +81,18 @@ class LLMCache:
         metadata: Optional[dict] = None,
         ttl_override: Optional[int] = None,
     ) -> None:
-        """Almacena respuesta en caché con TTL."""
-        try:
-            r = await _get_redis()
-            try:
-                key = _make_key(tenant_id, intent, provider)
-                ttl = ttl_override or self.ttl
-                payload = json.dumps({
-                    "response": response,
-                    "provider": provider,
-                    "tenant_id": tenant_id,
-                    "metadata": metadata or {},
-                })
-                await r.setex(key, ttl, payload)
-                logger.debug("LLM cache SET: %s (TTL=%ds)", key[:32], self.ttl)
-            finally:
-                await r.aclose()
-        except Exception as e:
-            logger.warning("LLM cache SET error (continuando sin caché): %s", e)
+        key = _make_key(tenant_id, intent, provider)
+        ttl = ttl_override or self.ttl
+        payload = json.dumps({
+            "response": response,
+            "provider": provider,
+            "tenant_id": tenant_id,
+            "metadata": metadata or {},
+        })
+        with _lock:
+            _cache[key] = (payload, time.time() + ttl)
+        _evict_oldest()
+        logger.debug("LLM cache SET: %s (TTL=%ds)", key[:32], ttl)
 
     async def invalidate(
         self,
@@ -105,40 +100,26 @@ class LLMCache:
         intent: str,
         provider: str = "",
     ) -> None:
-        """Elimina una entrada de caché manualmente."""
-        try:
-            r = await _get_redis()
-            try:
-                key = _make_key(tenant_id, intent, provider)
-                await r.delete(key)
-            finally:
-                await r.aclose()
-        except Exception as e:
-            logger.warning("LLM cache INVALIDATE error: %s", e)
+        key = _make_key(tenant_id, intent, provider)
+        with _lock:
+            _cache.pop(key, None)
 
     async def flush_tenant(self, tenant_id: str) -> int:
-        """Elimina TODAS las entradas de caché de un tenant (usa SCAN)."""
         count = 0
-        try:
-            r = await _get_redis()
-            try:
-                async for key in r.scan_iter(f"{_PREFIX}:*"):
-                    # Comprobamos leyendo el payload (no podemos deducir tenant del hash)
-                    raw = await r.get(key)
-                    if raw:
-                        try:
-                            data = json.loads(raw)
-                            if data.get("tenant_id") == tenant_id:
-                                await r.delete(key)
-                                count += 1
-                        except json.JSONDecodeError:
-                            pass
-                return count
-            finally:
-                await r.aclose()
-        except Exception as e:
-            logger.warning("LLM cache FLUSH error: %s", e)
-            return count
+        _evict_expired()
+        with _lock:
+            keys_to_delete = []
+            for key, (payload_json, _) in _cache.items():
+                try:
+                    data = json.loads(payload_json)
+                    if data.get("tenant_id") == tenant_id:
+                        keys_to_delete.append(key)
+                except json.JSONDecodeError:
+                    pass
+            for k in keys_to_delete:
+                del _cache[k]
+                count += 1
+        return count
 
 
 # Singleton para uso global
