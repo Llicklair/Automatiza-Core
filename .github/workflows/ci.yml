@@ -71,10 +71,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
-
     steps:
       - uses: actions/checkout@v4
 
@@ -94,7 +90,6 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
-          REDIS_URL: redis://localhost:6379/0
           OPENAI_API_KEY: sk-test-fake-key
         run: poetry run alembic upgrade head
 
@@ -103,7 +98,6 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
-          REDIS_URL: redis://localhost:6379/0
           OPENAI_API_KEY: sk-test-fake-key
         run: poetry run pytest tests/ -v --tb=short --cov=app --cov-report=xml
 
@@ -148,40 +142,3 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8000
         run: npm run build
 
-  # ─── Docker ────────────────────────────────────────────────────────────────
-  docker-build:
-    name: Docker — Build Image
-    runs-on: ubuntu-latest
-    needs: [backend-test, frontend-build]
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & push backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to:   type=gha,mode=max
-
-      - name: Build & push frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to:   type=gha,mode=max

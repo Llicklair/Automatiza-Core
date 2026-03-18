@@ -31,7 +31,7 @@ async def create_task(
     await db.commit()
     await db.refresh(task)
 
-    # Encolar ejecución en Celery (asíncrona) pasando el task_id
+    # Encolar ejecución asíncrona pasando el task_id
     background_tasks.add_task(_enqueue_task, str(task.id))
 
     return task
@@ -64,7 +64,7 @@ async def cleanup_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Elimina TODAS las tareas del tenant. Las activas se cancelan primero (Celery revoke)."""
+    """Elimina TODAS las tareas del tenant. Las activas se cancelan primero."""
     from sqlalchemy import delete as sql_delete, update as sql_update
 
     # Obtener TODAS las tareas del tenant
@@ -78,15 +78,15 @@ async def cleanup_tasks(
     task_ids = [row[0] for row in rows]
     active_ids = [row[0] for row in rows if row[1] in ("pending", "planning", "executing", "awaiting_approval")]
 
-    # Cancelar tareas activas en Celery
+    # Cancelar tareas activas
     cancelled = 0
     if active_ids:
         try:
-            from app.workers.celery_app import celery_app
+            from app.services.task_dispatch import cancel_task as cancel_task_dispatch
             for tid in active_ids:
-                celery_app.control.revoke(str(tid), terminate=True, signal="SIGKILL")
+                await cancel_task_dispatch(str(tid))
         except Exception as e:
-            print(f"Error al revocar tareas en Celery: {e}")
+            print(f"Error al revocar tareas: {e}")
         # Marcar como canceladas antes de borrar (para WorkflowExecutions asociadas)
         await db.execute(
             sql_update(Task)
@@ -152,12 +152,12 @@ async def cancel_task(
     task.status = "cancelled"
     await db.commit()
 
-    # Cancelar la tarea en Celery si está en ejecución
+    # Cancelar la tarea si está en ejecución
     try:
-        from app.workers.celery_app import celery_app
-        celery_app.control.revoke(str(task_id), terminate=True, signal='SIGKILL')
+        from app.services.task_dispatch import cancel_task as cancel_task_dispatch
+        await cancel_task_dispatch(str(task_id))
     except Exception as e:
-        print(f"Error al revocar la tarea en Celery: {e}")
+        print(f"Error al revocar la tarea: {e}")
 
 
 @router.get("/{task_id}/audit", response_model=list[AuditLogOut])
@@ -191,10 +191,9 @@ async def get_task_audit(
 
 
 async def _enqueue_task(task_id: str):
-    """Encola la tarea en Celery forzando que el ID de la BD sea el ID de Celery."""
+    """Encola la tarea en el task runner."""
     try:
-        from app.workers.celery_app import run_orchestrator
-        # Usar apply_async para asginar manualmente el task_id de Celery
-        run_orchestrator.apply_async(args=[task_id], task_id=task_id)
+        from app.services.task_dispatch import dispatch_orchestrator
+        await dispatch_orchestrator(task_id)
     except Exception as e:
         print(f"Error encolando tarea: {e}")

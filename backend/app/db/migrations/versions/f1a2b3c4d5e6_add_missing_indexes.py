@@ -14,14 +14,14 @@ depends_on = None
 
 def upgrade():
     # InvoiceLine.product_id — frecuente en JOINs de líneas de factura
-    op.create_index("ix_invoice_lines_product_id", "invoice_lines", ["product_id"])
+    op.create_index("ix_invoice_lines_product_id", "invoice_lines", ["product_id"], if_not_exists=True)
     # Activity — búsquedas por client_id y opportunity_id
-    op.create_index("ix_activities_client_id", "activities", ["client_id"])
-    op.create_index("ix_activities_opportunity_id", "activities", ["opportunity_id"])
+    op.create_index("ix_activities_client_id", "activities", ["client_id"], if_not_exists=True)
+    op.create_index("ix_activities_opportunity_id", "activities", ["opportunity_id"], if_not_exists=True)
     # Índice compuesto tenant_id + created_at para filtros comunes en invoices
-    op.create_index("ix_invoices_tenant_created", "invoices", ["tenant_id", "created_at"])
+    op.create_index("ix_invoices_tenant_created", "invoices", ["tenant_id", "created_at"], if_not_exists=True)
     # Índice compuesto tenant_id + created_at para tasks
-    op.create_index("ix_tasks_tenant_created", "tasks", ["tenant_id", "created_at"])
+    op.create_index("ix_tasks_tenant_created", "tasks", ["tenant_id", "created_at"], if_not_exists=True)
 
 
 def downgrade():

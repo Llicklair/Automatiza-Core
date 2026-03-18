@@ -113,13 +113,13 @@ async def cleanup_approvals(
                 .where(Task.id.in_(pending_task_ids), Task.status.notin_(["done", "failed", "cancelled"]))
                 .values(status="cancelled")
             )
-            # Revocar en Celery
+            # Revocar tareas activas
             try:
-                from app.workers.celery_app import celery_app
+                from app.services.task_dispatch import cancel_task
                 for tid in pending_task_ids:
-                    celery_app.control.revoke(str(tid), terminate=True, signal="SIGKILL")
+                    await cancel_task(str(tid))
             except Exception as e:
-                logger.warning("Error al revocar tareas Celery pendientes durante cancelación masiva: %s", e)
+                logger.warning("Error al revocar tareas pendientes durante cancelación masiva: %s", e)
 
         # Cancelar workflow executions asociadas
         pending_exec_ids = [a.execution_id for a in pending if a.execution_id]
@@ -149,12 +149,12 @@ async def _resume_after_approval(approval: PendingApproval, db: AsyncSession):
             payload = approval.action_payload or {}
             node_id = payload.get("node_id")
             if node_id:
-                from app.workers.celery_app import resume_node_engine
-                resume_node_engine.delay(str(approval.execution_id), node_id)
+                from app.services.task_dispatch import dispatch_resume_node_engine
+                await dispatch_resume_node_engine(str(approval.execution_id), node_id)
                 return
 
         # Fallback: orquestador clásico
-        from app.workers.celery_app import resume_orchestrator
-        resume_orchestrator.delay(str(approval.task_id))
+        from app.services.task_dispatch import dispatch_resume_orchestrator
+        await dispatch_resume_orchestrator(str(approval.task_id))
     except Exception as e:
         logger.warning("Error al reanudar flujo tras aprobación (task_id=%s): %s", approval.task_id, e)

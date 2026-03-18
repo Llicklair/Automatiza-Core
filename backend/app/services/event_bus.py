@@ -108,15 +108,15 @@ async def emit_event(
         db.add(execution)
         await db.flush()
 
-        # 6. Disparar Celery de forma asíncrona
+        # 6. Disparar tarea de forma asíncrona
         try:
-            from app.workers.celery_app import run_orchestrator
-            run_orchestrator.delay(str(task.id))
+            from app.services.task_dispatch import dispatch_orchestrator
+            await dispatch_orchestrator(str(task.id))
             triggered_ids.append(str(wf.id))
             print(f"[EVENT_BUS] Evento '{event_name}' → workflow '{wf.name}' iniciado (Task {task.id})")
         except Exception as e:
             execution.status = "failed"
-            execution.result_log = f"Error Celery: {str(e)}"
+            execution.result_log = f"Error dispatch: {str(e)}"
 
     # Confirmamos cambios (DomainEvent + Task + Execution)
     await db.commit()

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Read(//c/Users/Marcos/Desktop/atomatizacion de empresas/desktop/$LOCALAPPDATA/Programs/**)",
+      "Read(//c/Users/Marcos/Desktop/atomatizacion de empresas/desktop/$LOCALAPPDATA/**)",
+      "Read(//c/Users/Marcos/Desktop/atomatizacion de empresas/desktop/**)",
+      "Read(//c/Users/Marcos/**)",
+      "Bash(taskkill:*)",
+      "Read(//c/Users/Marcos/Desktop/atomatizacion de empresas/desktop/$APPDATA/AutomatizaPyme/**)",
+      "Bash(tasklist)",
+      "Bash(powershell:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_execute_file",
+      "Bash(npx asar:*)",
+      "Bash(\"/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/app.log\":*)",
+      "Bash(npx:*)",
+      "Bash(\"/c/Program Files/AutomatizaPyme/Uninstall AutomatizaPyme.exe\":*)",
+      "Bash(rm:*)",
+      "Bash(\"/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/pg_ctl.exe\" stop:*)"
+    ]
+  }
+}

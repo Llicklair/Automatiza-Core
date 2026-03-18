@@ -5,7 +5,7 @@ Crea tres workflows de demostración:
   3. [PARALELO]       Análisis mensual paralelo    — billing + crm + hr en paralelo → email (join)
 
 Uso:
-    docker-compose exec api python scripts/create_demo_workflows.py
+    python scripts/create_demo_workflows.py
 """
 
 import asyncio

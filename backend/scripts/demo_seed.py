@@ -53,7 +53,7 @@ async def run_demo():
             else:
                 print(f"--- Error al crear tarea: {res.text} ---")
                 
-        print("\n--- Esperando 15 segundos para que los agentes (Celery/LangGraph) terminen de procesar... ---")
+        print("\n--- Esperando 15 segundos para que los agentes (TaskRunner/LangGraph) terminen de procesar... ---")
         for i in range(15):
             sys.stdout.write(".")
             sys.stdout.flush()

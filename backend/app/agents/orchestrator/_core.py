@@ -87,8 +87,8 @@ async def plan_node(state: OrchestratorState) -> dict:
                         execution_id = (state.get("additional_metadata") or {}).get("execution_id")
                         if execution_id:
                             try:
-                                from app.workers.celery_app import run_node_engine
-                                run_node_engine.delay(execution_id)
+                                from app.services.task_dispatch import dispatch_node_engine
+                                await dispatch_node_engine(execution_id)
                             except Exception as ce:
                                 logger.error(f"[PLAN] Error lanzando NodeEngine: {ce}")
                         return {

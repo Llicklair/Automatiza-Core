@@ -23,7 +23,7 @@ Este documento resume el progreso de sesiones anteriores y el estado actual del 
 - Prompt del coordinador reescrito con contexto legal español (PGC, AEAT, IVA, SS, ET)
 - Validación de tipos de IVA legales (0/4/10/21%) en `create_invoice`
 - Validaciones post-cálculo (importe negativo, factura en cero)
-- Caché LLM Redis ya integrada en `classify_node` y `plan_node`
+- Caché LLM en memoria ya integrada en `classify_node` y `plan_node`
 - `llm_factory.py` — bug `fallback` undefined corregido en todos los providers
 - Fallback chain Groq → OpenAI → Ollama → Mock
 
@@ -31,7 +31,7 @@ Este documento resume el progreso de sesiones anteriores y el estado actual del 
 - `InvoiceSeries`: numeración correlativa automática `F2026-0001` con `SELECT FOR UPDATE`
 - Nóminas: `_calc_payroll()` con tasas SS 2025 reales; endpoints `/payrolls/auto` y `/employees/{id}/payroll/preview`
 - Libro de registro AEAT exportable en CSV (`GET /api/v1/reports/libro-registro`)
-- Health check `/health` con ping activo a PostgreSQL y Redis
+- Health check `/health` con ping activo a PostgreSQL
 
 ### Sprint 4 — UX
 - `/primeros-pasos`: 8 pasos guiados, progreso localStorage, prerequisitos, carousel IA

@@ -10,16 +10,16 @@ Plataforma de automatización administrativa para PYMEs españolas. El usuario g
 
 ### Visión central
 
-AutomatizaPyme es un **ERP inteligente local-first**. Cada cliente instala la aplicación en su propia máquina con Docker. Los datos nunca salen de su entorno local. La app requiere conexión a internet únicamente para validar la licencia activa contra un servidor central (VPS) y para llamar a las APIs de LLM configuradas.
+AutomatizaPyme es un **ERP inteligente local-first**. Cada cliente instala la aplicación en su propia máquina como app de escritorio (Electron). Los datos nunca salen de su entorno local. La app requiere conexión a internet únicamente para validar la licencia activa contra un servidor central (VPS) y para llamar a las APIs de LLM configuradas.
 
 ```
-┌─────────────────────────────────────┐        ┌─────────────────────────┐
-│         CLIENTE (local)             │        │    VPS LICENCIAS        │
-│                                     │        │                         │
-│  Docker (API + DB + Redis + Worker) │◄──────►│  Servidor de licencias  │
-│  Next.js Frontend                   │  HTTPS │  - Valida clave mensual │
-│  PostgreSQL (datos del cliente)     │        │  - Gestiona pagos       │
-└─────────────────────────────────────┘        └─────────────────────────┘
+┌──────────────────────────────────────────┐        ┌─────────────────────────┐
+│           CLIENTE (local)                │        │    VPS LICENCIAS        │
+│                                          │        │                         │
+│  Electron (PostgreSQL portable + Python) │◄──────►│  Servidor de licencias  │
+│  Next.js Frontend                        │  HTTPS │  - Valida clave mensual │
+│  FastAPI (uvicorn directo)               │        │  - Gestiona pagos       │
+└──────────────────────────────────────────┘        └─────────────────────────┘
 ```
 
 ---
@@ -30,12 +30,12 @@ AutomatizaPyme es un **ERP inteligente local-first**. Cada cliente instala la ap
 |------|-----------|---------|
 | Backend API | FastAPI (Python) | 3.11 / 0.115 |
 | Agentes IA | LangGraph | 0.2+ |
-| Cola de tareas | Celery + Redis | 5.4 / 7 |
+| Tareas async | TaskRunner (asyncio) + APScheduler | — |
 | Base de datos | PostgreSQL + pgvector | 15 |
 | Frontend | Next.js + React + TypeScript | 14 / 18 |
 | Estado UI | Zustand | 4 |
 | Estilos | Tailwind CSS | 3 |
-| Contenedores | Docker Compose | Windows |
+| Escritorio | Electron | — |
 
 ---
 
@@ -84,7 +84,7 @@ OPENROUTER_MODEL=anthropic/claude-opus-4-6
 
 El sistema tiene fallback automático: si el proveedor principal falla (timeout, rate limit, 429), reintenta con backoff exponencial (30s → 60s → 120s) y puede caer a un proveedor secundario configurado. Ver `backend/app/core/llm_factory.py`.
 
-> **Ollama ha sido eliminado.** Ya no se usa ni se soporta ningún modelo local mediante Ollama. El perfil `--profile llm` del docker-compose está obsoleto.
+> **Ollama ha sido eliminado.** Ya no se usa ni se soporta ningún modelo local mediante Ollama.
 
 ---
 
@@ -101,7 +101,7 @@ EMBEDDINGS_PROVIDER=local
 EMBEDDINGS_LOCAL_MODEL=BAAI/bge-m3
 ```
 
-El modelo `BAAI/bge-m3` de HuggingFace se descarga automáticamente la primera vez. Es multilingüe (español nativo), estado del arte para búsqueda semántica, y funciona completamente offline sin coste por llamada. Se ejecuta dentro del contenedor Docker del worker.
+El modelo `BAAI/bge-m3` de HuggingFace se descarga automáticamente la primera vez. Es multilingüe (español nativo), estado del arte para búsqueda semántica, y funciona completamente offline sin coste por llamada.
 
 ### Alternativa: Gemini Embeddings
 
@@ -170,10 +170,10 @@ Las automatizaciones tienen dos modos:
 - **Razonamiento**: el LLM crea el plan dinámicamente según la instrucción
 
 Cada automatización puede dispararse por:
-- **Tiempo** (cron): `*/2 * * * *` — evaluado por `check_scheduled_workflows` cada minuto via Celery Beat
+- **Tiempo** (cron): `*/2 * * * *` — evaluado por `check_scheduled_workflows` cada minuto via APScheduler
 - **Evento**: `invoice_created`, `invoice_paid`, `client_added`, etc.
 
-**Prevención de duplicados**: si ya hay una ejecución `running` o `pending` para un workflow, el sistema bloquea nuevas ejecuciones (HTTP 409 en API manual, skip silencioso en Beat).
+**Prevención de duplicados**: si ya hay una ejecución `running` o `pending` para un workflow, el sistema bloquea nuevas ejecuciones (HTTP 409 en API manual, skip silencioso en scheduler).
 
 ---
 
@@ -205,13 +205,13 @@ embeddings  → document_embeddings (pgvector)
 
 ```bash
 # Crear nueva migración
-docker-compose exec api alembic revision --autogenerate -m "descripcion"
+alembic revision --autogenerate -m "descripcion"
 
 # Aplicar
-docker-compose exec api alembic upgrade head
+alembic upgrade head
 
 # Ver historial
-docker-compose exec api alembic history
+alembic history
 ```
 
 > **REGLA**: Siempre crear migración Alembic al añadir o modificar campos en modelos. Nunca modificar tablas directamente en producción.
@@ -246,7 +246,7 @@ Frontend → abre popup → backend /oauth/{provider}/start → redirect a Googl
 → tokens cifrados con PBKDF2+Fernet en TenantIntegration
 ```
 
-El estado OAuth usa Redis con TTL de 10 minutos (no dict en memoria).
+El estado OAuth usa un dict en memoria con TTL de 10 minutos.
 
 ---
 
@@ -273,7 +273,7 @@ TENANT_ENCRYPTION_KEY=...
 - **Prompt injection**: `prompt_sanitizer.py` aplicado en agentes LLM
 - **Security headers**: X-Content-Type-Options, X-Frame-Options, HSTS, CSP
 - **DB indexes**: índices compuestos en `tenant_id + created_at` para queries frecuentes
-- **Docker**: usuario non-root en contenedores; healthchecks en api y worker
+- **Electron**: ejecución nativa sin contenedores
 - **Cifrado de credenciales**: PBKDF2 (100k iteraciones) para tokens OAuth de tenants
 
 ---
@@ -299,8 +299,16 @@ atomatizacion-de-empresas/
 │   │   │   ├── models/           # SQLAlchemy models (un archivo por dominio)
 │   │   │   └── migrations/       # Alembic migrations
 │   │   ├── services/             # Lógica de negocio reutilizable
+│   │   │   ├── task_runner.py    # TaskRunner (asyncio, reemplaza Celery)
+│   │   │   ├── task_dispatch.py  # dispatch_task() (reemplaza .delay())
+│   │   │   ├── scheduler.py     # APScheduler (reemplaza Celery Beat)
+│   │   │   ├── idempotency.py   # Idempotencia en memoria con TTL
+│   │   │   ├── llm_cache.py     # Cache LLM en memoria (max 1000)
+│   │   │   └── exec_log_store.py # Logs de ejecución en memoria
 │   │   └── workers/
-│   │       └── celery_app.py     # Tareas Celery + Beat scheduler
+│   │       ├── tasks_orchestrator.py  # Tareas async del orquestador
+│   │       ├── tasks_node_engine.py   # Tareas async del node engine
+│   │       └── tasks_scheduler.py     # Tareas async del scheduler
 │   ├── tests/                    # pytest — 7 archivos de test
 │   └── pyproject.toml
 ├── frontend/
@@ -312,9 +320,9 @@ atomatizacion-de-empresas/
 │       │   ├── api.ts            # Cliente HTTP centralizado — SIEMPRE usar esto
 │       │   └── logger.ts         # logError() — nunca console.error directo
 │       └── stores/               # Zustand stores
-├── docker-compose.yml
-├── levantar.bat                  # Script único: arrancar, parar, reconstruir, logs
-└── .env                          # Variables de entorno (raíz, para Docker)
+├── desktop/                      # App Electron (PostgreSQL portable + Python embebido)
+├── levantar.bat                  # Script de arranque para desarrollo
+└── .env                          # Variables de entorno
 ```
 
 ---
@@ -323,8 +331,9 @@ atomatizacion-de-empresas/
 
 ### Requisitos
 
-- Docker Desktop (Windows) con WSL2 activado
-- Node.js 18+ (para el frontend fuera de Docker)
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL 15 (o usar el portable incluido en `desktop/`)
 - Git
 
 ### Variables de entorno mínimas
@@ -338,18 +347,15 @@ DEFAULT_LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-### Arrancar
+### Arrancar (desarrollo)
 
 ```bat
 levantar.bat
 ```
 
-El script muestra un menú con opciones:
-- **[1] Arrancar** — `docker-compose up -d` + inicia Next.js
-- **[2] Parar** — para todos los servicios
-- **[3] Reconstruir** — rebuild completo de imágenes Docker
-- **[4] Ver logs** — logs en tiempo real del backend
-- **[5] Restaurar BD** — aplica migraciones Alembic
+### Arrancar (producción — Electron)
+
+Ejecutar la app Electron desde `desktop/`. Arranca automáticamente PostgreSQL portable, el backend (uvicorn) y el frontend.
 
 Accesos:
 - **Frontend**: http://localhost:3000
@@ -359,8 +365,8 @@ Accesos:
 ### Datos de demo
 
 ```bash
-docker-compose exec api python smoke_demo.py              # Crea datos de demostración
-docker-compose exec api python smoke_tasks_workflows.py   # Lanza tareas IA de ejemplo
+python smoke_demo.py              # Crea datos de demostración
+python smoke_tasks_workflows.py   # Lanza tareas IA de ejemplo
 ```
 
 ---
@@ -374,7 +380,7 @@ docker-compose exec api python smoke_tasks_workflows.py   # Lanza tareas IA de e
 - **LLM**: llamar siempre via `get_llm()` en `llm_factory.py`. Nunca instanciar `ChatOpenAI` etc. directamente
 - **Embeddings**: llamar siempre via `get_embedder()`. Nunca instanciar `HuggingFaceEmbeddings` directamente
 - **Agentes**: devuelven siempre un dict con `{"success": bool, "output": ..., "summary": str, "error": str|None}`
-- **Tareas Celery**: siempre con `time_limit=600, soft_time_limit=540`
+- **Tareas async**: despachar via `task_dispatch.dispatch_task()`, nunca llamar directamente
 
 ### Frontend
 
@@ -387,7 +393,7 @@ docker-compose exec api python smoke_tasks_workflows.py   # Lanza tareas IA de e
 
 - Multi-tenancy: todos los queries de BD filtran por `tenant_id`
 - Nunca hardcodear IDs, URLs de backend, ni claves API en código fuente
-- El orquestador (`orchestrator/_core.py`) es el único punto de entrada para agentes desde Celery
+- El orquestador (`orchestrator/_core.py`) es el único punto de entrada para agentes desde el task runner
 - Las automatizaciones no pueden tener dos ejecuciones simultáneas (HTTP 409)
 
 ---
@@ -396,13 +402,13 @@ docker-compose exec api python smoke_tasks_workflows.py   # Lanza tareas IA de e
 
 ```bash
 # Ejecutar suite completa
-docker-compose exec api pytest tests/ -v
+pytest tests/ -v
 
 # Test específico
-docker-compose exec api pytest tests/test_api_auth.py -v
+pytest tests/test_api_auth.py -v
 
 # Con cobertura
-docker-compose exec api pytest tests/ --cov=app --cov-report=term-missing
+pytest tests/ --cov=app --cov-report=term-missing
 ```
 
 Archivos de test: `test_api_auth`, `test_api_health`, `test_api_tasks_agents`, `test_api_tenant`, `test_encryption`, `test_prompt_sanitizer`, `test_security`.
@@ -433,7 +439,8 @@ Archivos de test: `test_api_auth`, `test_api_health`, `test_api_tasks_agents`, `
 ## Problemas conocidos y limitaciones
 
 - El modelo BAAI/bge-m3 tarda ~30s en cargar la primera vez que se sube un documento (descarga ~600MB)
-- Las automatizaciones con trigger `*/2 * * * *` o más frecuentes pueden saturar el worker si la tarea es larga — usar con precaución
+- Las automatizaciones con trigger `*/2 * * * *` o más frecuentes pueden saturar el proceso si la tarea es larga — usar con precaución
 - El proveedor Groq tiene límite de rate agresivo en el tier gratuito — en producción usar Anthropic o Gemini
 - Las integraciones OAuth (Gmail, Outlook) requieren configurar redirect URIs en Google Cloud Console / Azure AD respectivamente
-- `croniter` debe estar instalado en el contenedor worker para que funcionen los triggers de tiempo — incluido en `pyproject.toml`
+- Los servicios en memoria (cache LLM, idempotencia, exec logs) se pierden al reiniciar la aplicación — esto es aceptable para un ERP local single-user
+- `croniter` debe estar instalado para que funcionen los triggers de tiempo — incluido en `pyproject.toml`

@@ -1,32 +1,36 @@
 """
-Tareas Celery del orquestador LangGraph.
+Tareas del orquestador LangGraph.
+Coroutines puras ejecutadas por TaskRunner.
 """
+import asyncio
+import logging
 import uuid
 from datetime import UTC
 
-from app.workers.celery_app import celery_app, run_async
+from app.services.idempotency import IdempotencyGuard
+from app.services.exec_log_store import push as log_push
+
+logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="run_orchestrator", bind=True, max_retries=3, time_limit=600, soft_time_limit=540)
-def run_orchestrator(self, task_id: str):
+async def execute_orchestrator(task_id: str):
     """Ejecuta el orquestador LangGraph para una tarea dada."""
-    from app.services.idempotency import SyncIdempotencyGuard
-    guard = SyncIdempotencyGuard()
+    guard = IdempotencyGuard()
 
-    # ── Idempotencia: si ya se ejecutó esta tarea, skip ──
-    if guard.already_executed("run_orchestrator", task_id):
-        print(f"[IDEMPOTENCY] run_orchestrator:{task_id} ya ejecutado. Skip.")
+    # -- Idempotencia: si ya se ejecuto esta tarea, skip --
+    if await guard.already_executed("run_orchestrator", task_id):
+        logger.info("[IDEMPOTENCY] run_orchestrator:%s ya ejecutado. Skip.", task_id)
         return {"skipped": True, "reason": "already_executed"}
 
     try:
-        result = run_async(_execute_orchestrator(task_id))
-        guard.mark_executed("run_orchestrator", task_id, {"status": "done"})
+        result = await _execute_orchestrator(task_id)
+        await guard.mark_executed("run_orchestrator", task_id, {"status": "done"})
         return result
     except Exception as exc:
         import traceback
         traceback.print_exc()
         err_str = str(exc).lower()
-        # Reintentar en errores transitorios: red, Redis, timeout LLM, rate limit
+        # Reintentar en errores transitorios: red, timeout LLM, rate limit
         is_transient = (
             isinstance(exc, (ConnectionError, OSError, TimeoutError))
             or "429" in err_str
@@ -36,36 +40,52 @@ def run_orchestrator(self, task_id: str):
             or "overloaded" in err_str
             or "connection" in err_str
         )
-        retry_num = self.request.retries
-        if is_transient and retry_num < 3:
-            guard.release("run_orchestrator", task_id)
-            # Backoff exponencial: 30s, 60s, 120s
-            countdown = 30 * (2 ** retry_num)
-            print(f"[RETRY] run_orchestrator:{task_id} reintento {retry_num + 1}/3 en {countdown}s — {exc}")
-            raise self.retry(exc=exc, countdown=countdown)
-        # Error de lógica o reintentos agotados → marcar fallida
-        run_async(_mark_task_failed(task_id, str(exc)))
+        if is_transient:
+            await guard.release("run_orchestrator", task_id)
+            for attempt in range(3):
+                countdown = 30 * (2 ** attempt)
+                logger.warning(
+                    "[RETRY] run_orchestrator:%s reintento %d/3 en %ds -- %s",
+                    task_id, attempt + 1, countdown, exc,
+                )
+                await asyncio.sleep(countdown)
+                try:
+                    result = await _execute_orchestrator(task_id)
+                    await guard.mark_executed("run_orchestrator", task_id, {"status": "done"})
+                    return result
+                except Exception as retry_exc:
+                    exc = retry_exc
+                    continue
+        # Error de logica o reintentos agotados -> marcar fallida
+        await _mark_task_failed(task_id, str(exc))
         raise exc
 
 
-@celery_app.task(name="resume_orchestrator", bind=True, max_retries=3, time_limit=600, soft_time_limit=540)
-def resume_orchestrator(self, task_id: str):
-    """Reanuda el orquestador tras una aprobación humana."""
-    from app.services.idempotency import SyncIdempotencyGuard
-    guard = SyncIdempotencyGuard()
+async def resume_orchestrator(task_id: str):
+    """Reanuda el orquestador tras una aprobacion humana."""
+    guard = IdempotencyGuard()
 
-    # ── Idempotencia: evitar crear la factura dos veces tras doble aprobación ──
-    if guard.already_executed("resume_orchestrator", task_id):
-        print(f"[IDEMPOTENCY] resume_orchestrator:{task_id} ya ejecutado. Skip.")
+    # -- Idempotencia: evitar crear la factura dos veces tras doble aprobacion --
+    if await guard.already_executed("resume_orchestrator", task_id):
+        logger.info("[IDEMPOTENCY] resume_orchestrator:%s ya ejecutado. Skip.", task_id)
         return {"skipped": True, "reason": "already_executed"}
 
     try:
-        result = run_async(_resume_orchestrator(task_id))
-        guard.mark_executed("resume_orchestrator", task_id, {"status": "done"})
+        result = await _resume_orchestrator(task_id)
+        await guard.mark_executed("resume_orchestrator", task_id, {"status": "done"})
         return result
     except Exception as exc:
-        guard.release("resume_orchestrator", task_id)
-        raise self.retry(exc=exc, countdown=10)
+        await guard.release("resume_orchestrator", task_id)
+        # Reintento simple con backoff
+        for attempt in range(3):
+            await asyncio.sleep(10 * (attempt + 1))
+            try:
+                result = await _resume_orchestrator(task_id)
+                await guard.mark_executed("resume_orchestrator", task_id, {"status": "done"})
+                return result
+            except Exception:
+                continue
+        raise exc
 
 
 async def _mark_task_failed(task_id: str, error_msg: str):
@@ -92,7 +112,7 @@ async def _mark_task_failed(task_id: str, error_msg: str):
 def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
     """
     Convierte el plan del orquestador (lista de SubTask) en nodos y aristas ReactFlow.
-    Genera un grafo DAG con layout automático de capas.
+    Genera un grafo DAG con layout automatico de capas.
     """
     AGENT_TYPES = {
         "billing": "skill", "hr": "skill", "crm": "skill",
@@ -102,15 +122,15 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
         "orchestrator": "action", "skill": "skill",
     }
     AGENT_LABELS = {
-        "billing": "Facturación", "hr": "RRHH", "crm": "CRM",
-        "advisory": "Asesoría Fiscal", "banking": "Banca",
+        "billing": "Facturacion", "hr": "RRHH", "crm": "CRM",
+        "advisory": "Asesoria Fiscal", "banking": "Banca",
         "documents": "Documentos", "compliance": "Cumplimiento",
-        "rag": "Búsqueda RAG", "excel": "Excel", "email": "Email",
+        "rag": "Busqueda RAG", "excel": "Excel", "email": "Email",
         "coordinator": "Coordinador", "orchestrator": "Orquestador",
         "workflow": "Workflow",
     }
     TRIGGER_LABELS = {
-        "event_based": "Evento ERP", "schedule_based": "Programación", "manual": "Inicio Manual",
+        "event_based": "Evento ERP", "schedule_based": "Programacion", "manual": "Inicio Manual",
     }
 
     nodes = []
@@ -124,14 +144,14 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
         "data": {"label": TRIGGER_LABELS.get(trigger_type, "Trigger"), "trigger_type": trigger_type},
     })
 
-    # 2. Construir índice id → position en el plan
+    # 2. Construir indice id -> position en el plan
     step_id_to_index: dict[str, int] = {}
     for i, step in enumerate(plan):
         step_id = step.get("id", f"step_{i}")
         step_id_to_index[step_id] = i
 
     # 3. Calcular capas (topological layers para layout)
-    layers: dict[str, int] = {}  # step_id → layer
+    layers: dict[str, int] = {}  # step_id -> layer
     for i, step in enumerate(plan):
         step_id = step.get("id", f"step_{i}")
         deps = step.get("depends_on", [])
@@ -181,7 +201,7 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
                         "target": step_id,
                     })
             else:
-                # Sin dependencia explícita → conectar desde trigger
+                # Sin dependencia explicita -> conectar desde trigger
                 edges.append({
                     "id": f"e-trigger-{step_id}",
                     "source": "trigger",
@@ -202,7 +222,7 @@ async def _build_tenant_context(tenant_id: str, db) -> str:
     from app.db.models.models import Client
     import uuid as _uuid
 
-    lines = [f"Fecha actual: {date.today().strftime('%d/%m/%Y')}. Moneda: EUR (€). País: España."]
+    lines = [f"Fecha actual: {date.today().strftime('%d/%m/%Y')}. Moneda: EUR. Pais: Espana."]
 
     try:
         tenant_res = await db.execute(select(Tenant).where(Tenant.id == _uuid.UUID(tenant_id)))
@@ -245,14 +265,14 @@ async def _execute_orchestrator(task_id: str):
             return
 
         if task.status == "cancelled":
-            print(f"[CELERY] Tarea {task_id} fue cancelada antes de iniciar. Abortando.")
+            logger.info("Tarea %s fue cancelada antes de iniciar. Abortando.", task_id)
             return
 
         task.status = "executing"
         task.started_at = datetime.now(UTC)
         await db.commit()
 
-        # ── Enrichment: inyectar contexto del tenant en el intent ─────────
+        # -- Enrichment: inyectar contexto del tenant en el intent --
         base_intent = task.user_intent or ""
         is_automation = bool((task.additional_metadata or {}).get("workflow_id"))
         if is_automation:
@@ -282,29 +302,11 @@ async def _execute_orchestrator(task_id: str):
             "additional_metadata": task.additional_metadata or {},
         }
 
-        # ── Streaming con logs en Redis ───────────────────────────────────
-        import redis.asyncio as _aioredis
-        from app.core.config import settings as _settings
-
-        redis_key = f"exec_logs:{task_id}"
-        try:
-            _redis = await _aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
-            await _redis.delete(redis_key)  # limpiar logs anteriores
-        except Exception:
-            _redis = None
-
-        async def _push_log(line: str):
-            if _redis:
-                try:
-                    await _redis.rpush(redis_key, line)
-                    await _redis.expire(redis_key, 7200)  # 2h TTL
-                except Exception:
-                    pass
+        # -- Streaming con logs en exec_log_store --
+        log_push(task_id, "Iniciando automatizacion...")
 
         final_state = None
         seen_results: set = set()
-
-        await _push_log("🚀 Iniciando automatización…")
 
         async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
             for node_name, state_update in chunk.items():
@@ -321,30 +323,28 @@ async def _execute_orchestrator(task_id: str):
                         summary = r.get("summary") or r.get("output", "")
                         if isinstance(summary, dict):
                             summary = summary.get("action") or str(summary)[:120]
-                        ok = "✅" if r.get("success") else "❌"
-                        await _push_log(f"{ok} [{agent}] {str(summary)[:200]}")
+                        ok = "OK" if r.get("success") else "FAIL"
+                        log_push(task_id, f"[{ok}] [{agent}] {str(summary)[:200]}")
 
                 err = state_update.get("error_message")
                 if err and err not in seen_results:
                     seen_results.add(err)
-                    await _push_log(f"⚠️ {err[:200]}")
+                    log_push(task_id, f"[WARN] {err[:200]}")
 
                 if state_update.get("status") in ("done", "failed", "awaiting_approval"):
                     final_state = state_update
 
-        # Si astream no devolvió __end__, usar el último estado
+        # Si astream no devolvio __end__, usar el ultimo estado
         if final_state is None:
             final_state = initial_state
 
-        if _redis:
-            status_val = final_state.get("status")
-            if hasattr(status_val, "value"):
-                status_val = status_val.value
-            icon = "✅" if status_val == "done" else "❌"
-            await _push_log(f"{icon} Ejecución finalizada ({status_val})")
-            await _redis.aclose()
+        status_val = final_state.get("status")
+        if hasattr(status_val, "value"):
+            status_val = status_val.value
+        icon = "OK" if status_val == "done" else "FAIL"
+        log_push(task_id, f"[{icon}] Ejecucion finalizada ({status_val})")
 
-        print("FINAL STATE RETURNED BY LANGGRAPH:", final_state)
+        logger.info("FINAL STATE RETURNED BY LANGGRAPH: %s", final_state)
 
         task.status = final_state["status"].value if hasattr(final_state["status"], "value") else final_state["status"]
         task.plan = final_state.get("plan")
@@ -357,7 +357,7 @@ async def _execute_orchestrator(task_id: str):
         if task.status in ("done", "failed"):
             task.completed_at = datetime.now(UTC)
 
-        # ── Auto-guardar topología visual del plan en el Workflow ───────────
+        # -- Auto-guardar topologia visual del plan en el Workflow --
         wf_id = (task.additional_metadata or {}).get("workflow_id")
         plan_list = final_state.get("plan")
         if wf_id and plan_list:
@@ -369,7 +369,7 @@ async def _execute_orchestrator(task_id: str):
                 wf_record.ui_nodes = ui_nodes
                 wf_record.ui_edges = ui_edges
 
-        # ── Actualizar el WorkflowExecution vinculado (si hay) ──────────────
+        # -- Actualizar el WorkflowExecution vinculado (si hay) --
         wf_exec_id = (task.additional_metadata or {}).get("execution_id")
         if wf_exec_id:
             from app.db.models.models import WorkflowExecution as WFExec
@@ -392,7 +392,7 @@ async def _execute_orchestrator(task_id: str):
                     or wf_exec.result_log
                 )
 
-        # ── Actualizar el documento vinculado (si hay) ──────────────────────
+        # -- Actualizar el documento vinculado (si hay) --
         from app.db.models.models import TenantDocument
         doc_result = await db.execute(
             select(TenantDocument).where(TenantDocument.task_id == task.id)
@@ -427,7 +427,7 @@ async def _execute_orchestrator(task_id: str):
 
 async def _resume_orchestrator(task_id: str):
     """
-    Reanuda la ejecución después de una aprobación humana.
+    Reanuda la ejecucion despues de una aprobacion humana.
     Coge el payload guardado en PendingApproval y crea la factura en BD local y Holded.
     """
     import calendar
@@ -445,15 +445,15 @@ async def _resume_orchestrator(task_id: str):
     async with AsyncSessionLocal() as db:
         try:
             # 1. Cargar la tarea
-            print(f"[RESUME] Cargando tarea {task_id}")
+            logger.info("[RESUME] Cargando tarea %s", task_id)
             task_res = await db.execute(select(Task).where(Task.id == task_id))
             task = task_res.scalar_one_or_none()
             if not task:
-                print(f"[RESUME] Error: Tarea {task_id} no encontrada")
+                logger.error("[RESUME] Error: Tarea %s no encontrada", task_id)
                 return
 
             # 2. Buscar la PendingApproval aprobada para esta tarea
-            print(f"[RESUME] Buscando approval aprobado para {task_id}")
+            logger.info("[RESUME] Buscando approval aprobado para %s", task_id)
             approval_res = await db.execute(
                 select(PendingApproval).where(
                     PendingApproval.task_id == uuid.UUID(task_id),
@@ -463,14 +463,14 @@ async def _resume_orchestrator(task_id: str):
             approval = approval_res.scalars().first()
 
             if not approval or not approval.action_payload:
-                print("[RESUME] Error: Approval no encontrado o sin payload")
+                logger.error("[RESUME] Error: Approval no encontrado o sin payload")
                 task.status = "failed"
-                task.error_message = "No se encontró la aprobación asociada para continuar o el payload está vacío."
+                task.error_message = "No se encontro la aprobacion asociada para continuar o el payload esta vacio."
                 await db.commit()
                 return
 
             payload_data = approval.action_payload  # dict
-            print(f"[RESUME] Payload cargado: keys={list(payload_data.keys())}")
+            logger.info("[RESUME] Payload cargado: keys=%s", list(payload_data.keys()))
 
             # 3. Intentar obtener API key de Holded
             int_res = await db.execute(
@@ -487,9 +487,9 @@ async def _resume_orchestrator(task_id: str):
                     creds = decrypt_credentials(integration.encrypted_credentials)
                     holded_api_key = creds.get("api_key")
                 except Exception as e:
-                    print(f"[RESUME] Error descifrando holded key: {e}")
+                    logger.warning("[RESUME] Error descifrando holded key: %s", e)
         except Exception as _e:
-            print(f"[RESUME] Critical error early: {_e}")
+            logger.error("[RESUME] Critical error early: %s", _e)
             import traceback; traceback.print_exc()
             return
 
@@ -497,14 +497,14 @@ async def _resume_orchestrator(task_id: str):
         client_nif = payload_data.get("client_nif")
         amount_base = Decimal(str(payload_data.get("amount_base", "0")).replace(",", "."))
         vat_rate = Decimal(str(payload_data.get("vat_rate", 21)))
-        concept = payload_data.get("concept", "Concepto por aprobación manual")
+        concept = payload_data.get("concept", "Concepto por aprobacion manual")
         invoice_date_str = payload_data.get("invoice_date", datetime.now(UTC).strftime("%Y-%m-%d"))
 
         from datetime import date
         inv_date = date.fromisoformat(invoice_date_str)
 
         cliente_local = None
-        # Si venía el ID ya pre-guardado de la fase anterior
+        # Si venia el ID ya pre-guardado de la fase anterior
         if "contact_id_local" in payload_data:
             client_res = await db.execute(select(Client).where(Client.id == uuid.UUID(payload_data["contact_id_local"])))
             cliente_local = client_res.scalars().first()
@@ -513,9 +513,9 @@ async def _resume_orchestrator(task_id: str):
             client_res = await db.execute(select(Client).where(Client.tenant_id == task.tenant_id, Client.nif == client_nif))
             cliente_local = client_res.scalars().first()
 
-        # FALLBACK: Si todavía no existe (por rollbacks asincrónos en el origen), crearlo aquí.
+        # FALLBACK: Si todavia no existe (por rollbacks asincronos en el origen), crearlo aqui.
         if not cliente_local and client_nif:
-            print(f"[RESUME] Cliente {client_nif} no estaba en DB. Re-creándolo como fallback.")
+            logger.info("[RESUME] Cliente %s no estaba en DB. Re-creandolo como fallback.", client_nif)
             cliente_local = Client(
                 tenant_id=task.tenant_id,
                 nif=client_nif,
@@ -527,7 +527,7 @@ async def _resume_orchestrator(task_id: str):
 
         if not cliente_local:
             task.status = "failed"
-            task.error_message = "No se encontró ni se pudo crear el cliente local vinculado durante la reanudación."
+            task.error_message = "No se encontro ni se pudo crear el cliente local vinculado durante la reanudacion."
             await db.commit()
             return
 
@@ -555,7 +555,7 @@ async def _resume_orchestrator(task_id: str):
         tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
         total_amount = amount_base + tax_amount
 
-        # Generar número de factura secuencial
+        # Generar numero de factura secuencial
         from sqlalchemy import func
         count_res = await db.execute(
             select(func.count(Invoice.id)).where(Invoice.tenant_id == task.tenant_id)
@@ -578,7 +578,7 @@ async def _resume_orchestrator(task_id: str):
         db.add(new_invoice)
         await db.flush()
 
-        # 6b. Crear la línea de detalle de la factura
+        # 6b. Crear la linea de detalle de la factura
         from app.db.models.models import InvoiceLine
         invoice_line = InvoiceLine(
             invoice_id=new_invoice.id,
@@ -600,7 +600,7 @@ async def _resume_orchestrator(task_id: str):
                 "action": "draft_created",
                 "holded_invoice_id": holded_id or "local_only",
                 "local_invoice_id": str(new_invoice.id),
-                "note": "Factura creada tras aprobación manual.",
+                "note": "Factura creada tras aprobacion manual.",
             },
         })
         task.agent_results = existing_results

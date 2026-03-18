@@ -54,10 +54,10 @@ async def run():
         # 3. Simulate an Event Trigger to test DeepSeek R1 
         print("\nFiring workflow manually to test DeepSeek graph execution...")
         
-        # We simulate the exact logic from the workflows router to fire the orchestrator via celery
+        # We simulate the exact logic from the workflows router to fire the orchestrator
         from app.db.models.models import Task
-        from app.workers.celery_app import run_orchestrator
-        
+        from app.services.task_dispatch import dispatch_orchestrator
+
         task = Task(
             tenant_id=tenant.id,
             domain="workflows",
@@ -67,7 +67,7 @@ async def run():
         )
         db.add(task)
         await db.flush()
-        
+
         execution = WorkflowExecution(
             workflow_id=wf.id,
             tenant_id=tenant.id,
@@ -79,9 +79,9 @@ async def run():
         await db.commit()
         await db.refresh(task)
         print(f"Created Task ID: {task.id} for the workflow")
-        
-        run_orchestrator.delay(str(task.id))
-        print("Celery task dispatched! Please wait for DeepSeek R1 to crunch through the workflow...")
+
+        await dispatch_orchestrator(str(task.id))
+        print("Task dispatched! Please wait for the LLM to process the workflow...")
         print(f"Check execution with Task ID: {task.id}")
 
 if __name__ == "__main__":
