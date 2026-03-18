@@ -3,7 +3,7 @@ Agente de RRHH — calcula y genera nóminas (draft) para empleados.
 Puede generar la nómina de un empleado individual (por NIF) o para TODOS
 los empleados activos del tenant en un mes dado.
 
-Usa Ollama local (llama3.2) como LLM, igual que el resto de agentes.
+Usa el LLM configurado en llm_factory (Gemini/Anthropic/OpenAI/Groq).
 Las nóminas se crean en modo DRAFT y requieren aprobación humana.
 Tras aprobación, se genera el PDF y se guarda como TenantDocument.
 """
