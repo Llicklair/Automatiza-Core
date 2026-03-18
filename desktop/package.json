@@ -56,9 +56,12 @@
           "**/*",
           "!__pycache__/**",
           "!.venv/**",
-          "!*.pyc",
-          "!.env"
+          "!*.pyc"
         ]
+      },
+      {
+        "from": "../.env",
+        "to": "project/.env"
       },
       {
         "from": "../frontend",

@@ -38,13 +38,13 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5432/pyme_db"
 
     # LLM
-    DEFAULT_LLM_PROVIDER: str = "anthropic"  # anthropic | gemini | openai | groq | openrouter
+    DEFAULT_LLM_PROVIDER: str = "gemini"  # anthropic | gemini | openai | groq | openrouter
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"   # claude-sonnet-4-6 | claude-opus-4-6
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash-preview-04-17"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     OPENROUTER_API_KEY: str = ""
