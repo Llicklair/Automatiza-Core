@@ -52,7 +52,7 @@ class ExtractedInvoiceData(BaseModel):
 
 def anonymize_for_llm(text: str) -> tuple[str, dict[str, str]]:
     """
-    DESACTIVADO: Ollama corre localmente, no hay riesgo de privacidad.
+    DESACTIVADO: el LLM se llama via API, la anonimización no es necesaria.
     Se mantiene la firma por compatibilidad pero no transforma el texto.
     """
     return text, {}
@@ -151,7 +151,7 @@ async def run_billing_agent(
             response = await llm.ainvoke(messages)
             raw_json = response.content.strip()
 
-            # Ollama a veces envuelve el JSON en bloques de codigo markdown
+            # Algunos LLMs envuelven el JSON en bloques de codigo markdown
             if raw_json.startswith("```"):
                 raw_json = re.sub(r"^```(?:json)?\n?", "", raw_json)
                 raw_json = re.sub(r"\n?```$", "", raw_json.strip())

@@ -226,23 +226,17 @@ async def plan_node(state: OrchestratorState) -> dict:
                 except Exception as _e:
                     last_exc = _e
                     err_str = str(_e)
-                    # Si es error de cuota de Gemini → fallback a Groq, luego Ollama
+                    # Si es error de cuota o servidor → fallback a Groq, luego OpenAI
                     if "ResourceExhausted" in type(_e).__name__ or "429" in err_str or "quota" in err_str.lower() or "500" in err_str:
                         if _attempt == 0 and settings.GROQ_API_KEY:
                             logger.warning(f"[PLAN] Gemini caído (HTTP {err_str[:50]}), intentando Groq...")
                             try:
-                                from langchain_groq import ChatGroq
-                                _fallback_llm = ChatGroq(
-                                    model=settings.GROQ_MODEL or "llama-3.3-70b-versatile",
-                                    api_key=settings.GROQ_API_KEY,
-                                    temperature=0, max_tokens=20000, timeout=30,
-                                )
+                                _fallback_llm = get_llm(temperature=0, provider="groq")
                                 structured_llm = _fallback_llm.with_structured_output(MultiAgentPlan, method="json_mode")
                                 continue
                             except Exception:
                                 pass
                         logger.warning("[PLAN] Fallback final al proveedor secundario.")
-                        from app.core.llm_factory import get_llm
                         _fallback_llm = get_llm(temperature=0, provider="openai") if settings.OPENAI_API_KEY else get_llm(temperature=0)
                         structured_llm = _fallback_llm.with_structured_output(MultiAgentPlan, method="json_mode")
                         continue

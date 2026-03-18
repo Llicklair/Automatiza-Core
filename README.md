@@ -71,7 +71,7 @@ ANTHROPIC_MODEL=claude-sonnet-4-6        # claude-sonnet-4-6 | claude-opus-4-6
 ```env
 DEFAULT_LLM_PROVIDER=gemini
 GEMINI_API_KEY=AIza...
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
 Gemini 2.5 Flash es la mejor alternativa — muy rápido, coste muy bajo, buen soporte de JSON structured output. Recomendado si se quiere optimizar costes.
@@ -333,7 +333,7 @@ Frontend → abre popup → backend /oauth/{provider}/start → redirect a Googl
 → tokens cifrados con PBKDF2+Fernet en TenantIntegration
 ```
 
-El estado OAuth usa un dict en memoria con TTL de 10 minutos.
+El estado OAuth usa un dict en memoria con TTL de 10 minutos (limpieza automática de estados expirados).
 
 ---
 
