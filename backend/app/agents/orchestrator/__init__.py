@@ -6,9 +6,13 @@ Ahora:  misma sintaxis, funciona igual.
 
 Estructura:
   orchestrator/
-    state.py    — Tipos: TaskStatus, SubTask, AgentResult, OrchestratorState
-    _core.py    — Lógica del grafo: nodos, dispatchers, build_orchestrator
-    __init__.py — Re-exporta todo (este archivo)
+    state.py        — Tipos: TaskStatus, SubTask, AgentResult, OrchestratorState
+    classifier.py   — Clasificación de intenciones (LLM + keywords)
+    utils.py        — _format_summary, _extract_month_year
+    helpers.py      — _lock/unlock_document, _save_ai_result_as_document/csv
+    dispatchers/    — Un módulo por agente (billing, hr, crm, etc.)
+    _core.py        — Nodos del grafo LangGraph + build_orchestrator
+    __init__.py     — Re-exporta todo (este archivo)
 """
 from app.agents.orchestrator.state import (
     AgentResult,
@@ -22,14 +26,18 @@ from app.agents.orchestrator.state import (
 from app.agents.orchestrator._core import (
     orchestrator,
     build_orchestrator,
-    classify_node,
     plan_node,
     validate_node,
     dispatch_node,
     load_knowledge_node,
     route_after_validate,
     route_after_dispatch,
-    # Dispatchers individuales (usados por node_engine)
+)
+
+from app.agents.orchestrator.classifier import classify_node
+
+from app.agents.orchestrator.dispatchers import (
+    DISPATCHER_MAP,
     _dispatch_billing,
     _dispatch_documents,
     _dispatch_compliance,
@@ -49,7 +57,7 @@ __all__ = [
     "AgentResult", "MAX_ITERATIONS", "OrchestratorState", "SubTask",
     "TaskStatus", "VALID_DOMAINS",
     # Graph
-    "orchestrator", "build_orchestrator",
+    "orchestrator", "build_orchestrator", "DISPATCHER_MAP",
     # Nodes
     "classify_node", "plan_node", "validate_node", "dispatch_node",
     "load_knowledge_node", "route_after_validate", "route_after_dispatch",
