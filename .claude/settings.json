@@ -73,11 +73,15 @@
       "Bash(/dev/null taskkill:*)",
       "Bash(/dev/null $APPDATA/AutomatizaPyme/pgsql/bin/pg_ctl.exe stop -D $APPDATA/AutomatizaPyme/pgdata -m fast 2)",
       "Bash(/dev/null sleep:*)",
-      "Bash(\"$APPDATA/AutomatizaPyme/pgsql/bin/pg_ctl.exe\" stop:*)"
+      "Bash(\"$APPDATA/AutomatizaPyme/pgsql/bin/pg_ctl.exe\" stop:*)",
+      "Bash(findstr /I \"node python next electron uvicorn celery postgres redis\")",
+      "Bash(findstr /I \"LISTENING\")",
+      "Bash(findstr \"3000 8080 5432 8000\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Marcos\\AppData\\Local\\electron-builder\\Cache\\winCodeSign",
-      "C:\\Users\\Marcos\\Desktop"
+      "C:\\Users\\Marcos\\Desktop",
+      "c:\\Users\\Marcos\\Desktop\\atomatizacion de empresas\\frontend\\.next"
     ]
   }
 }

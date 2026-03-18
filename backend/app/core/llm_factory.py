@@ -304,7 +304,7 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 anthropic_fallbacks.insert(0, ChatGoogleGenerativeAI(
-                    model=settings.GEMINI_MODEL or "gemini-2.5-flash-preview-04-17",
+                    model=settings.GEMINI_MODEL or "gemini-2.5-flash",
                     google_api_key=settings.GEMINI_API_KEY,
                     temperature=temperature,
                     max_output_tokens=4096,
@@ -375,7 +375,7 @@ def _build_openrouter(temperature, format_output, max_tokens, base_fallbacks):
                 "temperature": temperature,
                 "api_key": settings.OPENROUTER_API_KEY,
                 "base_url": "https://openrouter.ai/api/v1",
-                "max_tokens": 8000,
+                "max_tokens": max_tokens or 2000,
                 "max_retries": 0,
             }
             if format_output == "json":

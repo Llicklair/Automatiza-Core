@@ -20,6 +20,21 @@ AutomatizaPyme es un **ERP inteligente local-first**. Cada cliente instala la ap
 │  Next.js Frontend                        │  HTTPS │  - Valida clave mensual │
 │  FastAPI (uvicorn directo)               │        │  - Gestiona pagos       │
 └──────────────────────────────────────────┘        └─────────────────────────┘
+
+### Por qué este modelo
+
+| Ventaja | Explicación |
+|---|---|
+| **Privacidad de datos** | La BD del cliente está en su máquina. Cero exposición de datos contables, nóminas o clientes a terceros. Argumento de venta muy fuerte frente a SaaS cloud. |
+| **Sin riesgo de brecha masiva** | Un ataque al VPS no compromete datos de ningún cliente — el servidor solo sabe si la licencia es válida, pero no tiene acceso a los datos del ERP. |
+| **Las claves API son del propio cliente** | Cada usuario configura sus propias API keys (Gemini, Anthropic, OpenAI) en su entorno local. AutomatizaPyme no centraliza ni tiene acceso a esas claves. Si una key se filtra, es problema del entorno de ese cliente. |
+
+### Modelo de responsabilidad y Seguridad
+
+La **única amenaza real** que compete al código de la aplicación en este modelo es que **software malicioso en la máquina del cliente** pueda interceptar la app. Por eso el enfoque de seguridad se centra en:
+1. **Integridad del código distribuido**: El empaquetado final está ofuscado para proteger el mecanismo de validación de licencias del pago mensual.
+2. **Comunicaciones cifradas**: Todas las llamadas al VPS de licencias viajan pre-cifradas por HTTPS.
+3. **Punto único de fallo mitigable**: Si el servidor de licencias (VPS) cae, existe un periodo de gracia local para que las PYMEs no detengan su operativa diaria al intentar revalidar.
 ```
 
 ---
@@ -56,7 +71,7 @@ ANTHROPIC_MODEL=claude-sonnet-4-6        # claude-sonnet-4-6 | claude-opus-4-6
 ```env
 DEFAULT_LLM_PROVIDER=gemini
 GEMINI_API_KEY=AIza...
-GEMINI_MODEL=gemini-2.5-flash-preview-04-17
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
 Gemini 2.5 Flash es la mejor alternativa — muy rápido, coste muy bajo, buen soporte de JSON structured output. Recomendado si se quiere optimizar costes.
@@ -123,29 +138,67 @@ El agente RAG (`rag_agent.py`) combina el modelo de embeddings pequeño (BAAI/bg
 
 ---
 
-## Arquitectura de agentes (3 capas)
+## Arquitectura de tres capas
 
-```
-Usuario (lenguaje natural)
-        │
-        ▼
-┌───────────────────┐
-│   ORQUESTADOR     │  LangGraph — clasifica dominio, crea plan, coordina agentes
-│   _core.py        │  Entrada: user_intent + tenant_context
-└────────┬──────────┘
-         │
-    ┌────▼─────┐
-    │  PLAN    │  Lista de subtareas → agentes especializados
-    └────┬─────┘
-         │
-┌────────▼──────────────────────────────────┐
-│  AGENTES ESPECIALIZADOS                   │
-│  billing · hr · crm · banking             │
-│  documents · compliance · excel           │
-│  email · rag · workflow                   │
-└───────────────────────────────────────────┘
-         │
-    Escritura directa en PostgreSQL
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                      ORQUESTADOR (capa superior)                     │
+│                                                                      │
+│  El usuario configura reglas en lenguaje natural → el sistema las    │
+│  convierte en Workflows persistentes. Una vez configurado, se ejecuta│
+│  automáticamente. El usuario puede reconfigurar en cualquier momento.│
+│                                                                      │
+│  Funciones:                                                          │
+│  • Configurar reglas en lenguaje natural ("hazme la nómina de este   │
+│    cliente en Excel todos los días a las 14:00")                     │
+│  • Reconfigurar workflows: añadir pasos, eliminar tareas, cambiar    │
+│    horarios sin recrear el flujo desde cero                          │
+│  • Trigger por TIEMPO: diario, semanal, mensual, cada X horas...     │
+│  • Trigger por EVENTO: "cada vez que entre un archivo en la BD,      │
+│    rellena automáticamente cliente, proyectos y facturas"            │
+│  • Trigger CONTINUO/PERMANENTE: regla siempre activa sin evento ni   │
+│    horario. Ej: "todos los Excels se rellenan siempre de esta forma" │
+│    → el sistema aplica la norma de forma ininterrumpida              │
+│  • Ejecutar múltiples workflows en paralelo por tenant               │
+│  • Reintentar ejecuciones fallidas con parámetros ajustados          │
+│  • Pausar y esperar aprobación humana en operaciones de riesgo       │
+│                                                                      │
+│  Modelo BD: Workflow + WorkflowExecution                             │
+│  Motor: APScheduler + TaskRunner + LangGraph                         │
+└───────────────────────────┬──────────────────────────────────────────┘
+                            │ puede generar
+                            ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    COORDINADOR GENERAL (capa media)                  │
+│                                                                      │
+│  El usuario lanza UNA instrucción compleja puntual → recibe UN       │
+│  resultado final. Se ejecuta una sola vez. No crea reglas.           │
+│                                                                      │
+│  Funciones:                                                          │
+│  • Descomponer la tarea compleja en subtareas secuenciales           │
+│  • Asignar cada subtarea al agente especializado correcto            │
+│  • Pasar el contexto y resultado de cada paso al siguiente           │
+│  • Consolidar el output final (informe, PDF, email enviado...)       │
+│                                                                      │
+│  Ejemplo puntual: «Rellena las nóminas con estos modelos para        │
+│  presentar el IRPF» → se ejecuta una vez y finaliza                  │
+│                                                                      │
+│  Modelo BD: Task (domain = 'coordinator')                            │
+│  Motor: LangGraph (Classify → Plan → Validate → Dispatch)            │
+└───────────────────────────┬──────────────────────────────────────────┘
+                            │ delega en
+                            ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                  AGENTES ESPECIALIZADOS (capa base)                  │
+│                                                                      │
+│  Cada agente es experto en un único dominio.                         │
+│  Reciben una instrucción concreta y devuelven un resultado tipado.   │
+│                                                                      │
+│  billing  │ documents │ compliance │ hr │ banking                    │
+│  crm      │ excel     │ email      │ rag                             │
+│                                                                      │
+│  Motor: LangGraph por agente + LLM (Gemini / Anthropic / OpenAI)     │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Agentes disponibles
@@ -163,7 +216,7 @@ Usuario (lenguaje natural)
 | `rag_agent.py` | rag | Preguntas sobre documentos propios del tenant |
 | `workflow_agent.py` | workflow | Gestión de automatizaciones |
 
-### Ejecución de automatizaciones
+### Ejecución de automatizaciones (Orquestador)
 
 Las automatizaciones tienen dos modos:
 - **Determinista**: sigue un grafo de nodos fijo definido visualmente en el editor
@@ -174,6 +227,40 @@ Cada automatización puede dispararse por:
 - **Evento**: `invoice_created`, `invoice_paid`, `client_added`, etc.
 
 **Prevención de duplicados**: si ya hay una ejecución `running` o `pending` para un workflow, el sistema bloquea nuevas ejecuciones (HTTP 409 en API manual, skip silencioso en scheduler).
+
+---
+
+## ⚡ Los dos tipos de input — Distinción fundamental
+
+El sistema tiene **dos mecanismos de entrada completamente distintos**. Cualquier cambio en el sistema debe respetar y preservar esta separación:
+
+#### 🔵 TAREAS — Acción puntual y manual (`/tareas`)
+Una tarea es una **instrucción única que el usuario lanza en el momento** para que un agente haga algo concreto ahora.
+- Se ejecuta **una sola vez**.
+- El usuario puede ver el resultado, aprobarlo o cancelarlo.
+- Se persiste en la tabla `Task`. El resultado se guarda en `task.agent_results` y genera un log inmutable en `AuditLog`.
+
+#### 🟢 AUTOMATIZACIONES — Acción repetitiva preestablecida (`/automatizaciones`)
+Una automatización es una **regla persistente que el usuario define una sola vez** y que el sistema ejecuta automáticamente cada vez que se cumple una condición.
+- Tipos de trigger:
+  - **Basado en tiempo**: *"cada lunes"*, *"cada trimestre"*
+  - **Basado en evento**: *"cuando se cree una factura > 5.000€"*
+- Se persiste en `Workflow`. Cada ejecución crea un registro en `WorkflowExecution` y **puede generar `Task`s hijas** delegadas.
+
+> **Regla de oro**: Una automatización puede generar tareas. Una tarea jamás crea automatizaciones.
+
+---
+
+## 🛡️ Principios fundamentales — NO negociables
+
+1. **Los agentes pueden crear y modificar datos reales**: Tienen **acceso completo de escritura**. Pueden crear facturas, generar archivos físicos (PDFs) en disco y actualizar clientes. Nunca deben ser "solo de lectura" por defecto.
+2. **Las automatizaciones se definen en lenguaje natural**: Las reglas de los workflows se almacenan como configuración JSON y se interpretan dinámicamente (modo reasoning) o pre-compiladas (modo deterministic). No son código Python hard-coded.
+3. **Los workflows deben ser adaptativos**: Si un paso de razonamiento falla, el orquestador repite o replanifica pudiendo encadenar agentes inteligentemente (ej: *billing* genera factura → delega a *documents* guardar archivo → delega a *email* para enviarlo).
+4. **ERP local independiente**: Los datos siempre se persisten localmente en la base de datos propia (`Invoices`, `Clients`, `Payroll`). Las integraciones de terceros (Holded, APIs de Bancos) son espejos opcionales u orígenes reactivos, nunca la fuente de verdad principal del ERP.
+5. **Integridad Transaccional y Robustez (DDD)**: 
+   - **Transacciones Atómicas**: Si una operación compleja falla a medias (ej. falla al generar el PDF de la factura), el motor hace *rollback* completo de los insert(s) en BD para evitar filas huérfanas.
+   - **Máquinas de Estado Estrictas**: Entidades críticas bloquean transiciones ilegítimas.
+   - **ExecutionContext Compartido**: Los agentes de un mismo workflow comparten una "memoria temporal" para que el paso 2 no le vuelva a preguntar al usuario por datos que el paso 1 ya resolvió en background.
 
 ---
 

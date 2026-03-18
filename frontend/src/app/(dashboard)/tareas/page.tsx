@@ -246,11 +246,17 @@ export default function TareasPage() {
             .catch(() => { });
     };
 
+    // Polling adaptativo: 2s si hay tareas activas, 10s si no
+    const hasActive = tasks.some(t => !["done", "failed", "cancelled"].includes(t.status));
+
     useEffect(() => {
         load();
-        const interval = setInterval(loadSilent, 3000);
-        return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        const interval = setInterval(loadSilent, hasActive ? 2000 : 10000);
+        return () => clearInterval(interval);
+    }, [hasActive]);
 
     async function createTask(e: React.FormEvent) {
         e.preventDefault();
@@ -258,10 +264,15 @@ export default function TareasPage() {
         setCreating(true);
         setError("");
         try {
-            await api.tasks.create(domain, intent);
+            const newTask = await api.tasks.create(domain, intent);
             setShowNew(false);
             setIntent("");
-            load();
+            // Actualización optimista: añadir la tarea al instante sin esperar polling
+            if (newTask && typeof newTask === "object" && "id" in newTask) {
+                setTasks(prev => [newTask as Task, ...prev]);
+            } else {
+                loadSilent();
+            }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Error al crear la tarea");
         } finally {

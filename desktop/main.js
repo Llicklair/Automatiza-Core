@@ -1,7 +1,7 @@
 const { app, BrowserWindow, dialog } = require("electron");
 const path = require("path");
 
-const { startAll, stopAll } = require("./service-manager");
+const { startAll, stopAll, killOrphanProcesses } = require("./service-manager");
 const { getLanIP, getAccessURLs } = require("./network-utils");
 const { createTray, destroyTray } = require("./tray-manager");
 
@@ -152,7 +152,30 @@ if (!gotLock) {
     destroyTray();
   });
 
+  app.on("will-quit", () => {
+    // Segunda red de seguridad: matar lo que quede
+    try { stopAll(); } catch {}
+  });
+
   app.on("window-all-closed", () => {
     // No cerrar — se queda en tray
+  });
+
+  // Última red de seguridad: si el proceso Node muere por cualquier razón
+  process.on("exit", () => {
+    try { killOrphanProcesses(); } catch {}
+  });
+
+  process.on("SIGTERM", () => {
+    isQuitting = true;
+    stopAll();
+    destroyTray();
+    app.quit();
+  });
+
+  process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+    try { stopAll(); } catch {}
+    app.quit();
   });
 }
