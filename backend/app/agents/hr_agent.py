@@ -39,7 +39,7 @@ def _get_llm():
 # ─── Herramientas ─────────────────────────────────────────────────────────────
 
 @tool
-def calculate_and_create_payroll(tenant_id: str, nif: str, month: int, year: int, deductions: float = 0.0) -> str:
+async def calculate_and_create_payroll(tenant_id: str, nif: str, month: int, year: int, deductions: float = 0.0) -> str:
     """
     Calcula la nómina de UN empleado específico (por NIF), creándola en estado DRAFT.
     Args:
@@ -49,10 +49,7 @@ def calculate_and_create_payroll(tenant_id: str, nif: str, month: int, year: int
         year: Año (ej. 2025)
         deductions: Deducciones extra (ausencias, adelantos...)
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _create_payroll_async(tenant_id, nif, month, year, deductions)
-    )
+    return await _create_payroll_async(tenant_id, nif, month, year, deductions)
 
 
 async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int, deductions: float) -> str:
@@ -70,7 +67,7 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
             employee = result.scalars().first()
 
             if not employee:
-                return f"Error: Empleado con NIF {nif} no encontrado en RRHH."
+                return f"Error: Empleado con NIF {nif} no encontrado. Usa `create_employee` para darlo de alta primero."
 
             base_salary = float(employee.base_salary) if employee.base_salary else 0
             irpf_rate = float(employee.irpf_rate) if employee.irpf_rate is not None else 15.0
@@ -210,7 +207,7 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
 
 
 @tool
-def generate_all_payrolls(tenant_id: str, month: int, year: int) -> str:
+async def generate_all_payrolls(tenant_id: str, month: int, year: int) -> str:
     """
     Genera las nóminas en borrador (DRAFT) para TODOS los empleados activos del tenant
     en un mes y año determinados. NO requiere NIF individual.
@@ -219,10 +216,7 @@ def generate_all_payrolls(tenant_id: str, month: int, year: int) -> str:
         month: Mes (1-12)
         year: Año (ej. 2025)
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _generate_all_payrolls_async(tenant_id, month, year)
-    )
+    return await _generate_all_payrolls_async(tenant_id, month, year)
 
 
 async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) -> str:
@@ -237,7 +231,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
             employees = result.scalars().all()
 
             if not employees:
-                return "No se encontraron empleados activos en el tenant para generar nóminas."
+                return "No hay empleados registrados. Usa `create_employee` primero para dar de alta empleados antes de generar nóminas."
 
             last_day = monthrange(year, month)[1]
             start_date = datetime(year, month, 1, tzinfo=UTC)
@@ -362,15 +356,14 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
 
 
 @tool
-def list_employees(tenant_id: str) -> str:
+async def list_employees(tenant_id: str) -> str:
     """
     Lista todos los empleados del tenant con su salario base y cargo.
     Útil antes de generar nóminas o para consultas de RRHH.
     Args:
         tenant_id: ID del tenant
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(_list_employees_async(tenant_id))
+    return await _list_employees_async(tenant_id)
 
 
 async def _list_employees_async(tenant_id: str) -> str:
@@ -398,10 +391,355 @@ async def _list_employees_async(tenant_id: str) -> str:
         return f"Error listando empleados: {str(e)}"
 
 
+@tool
+async def create_employee(
+    tenant_id: str,
+    name: str,
+    nif: str,
+    base_salary: float = 0.0,
+    role: str = "",
+    department: str = "",
+    email: str = "",
+    irpf_rate: float = 15.0,
+) -> str:
+    """
+    Crea un nuevo empleado en el sistema de RRHH.
+
+    Args:
+        tenant_id: ID del tenant
+        name: Nombre completo del empleado
+        nif: NIF/DNI del empleado (9 caracteres)
+        base_salary: Salario bruto mensual en euros (por defecto 0)
+        role: Cargo o puesto (ej: 'Desarrollador', 'Comercial')
+        department: Departamento (ej: 'Tecnología', 'Ventas')
+        email: Email del empleado (opcional)
+        irpf_rate: Tipo de retención IRPF en % (por defecto 15)
+    """
+    return await _create_employee_async(tenant_id, name, nif, base_salary, role, department, email, irpf_rate)
+
+
+async def _create_employee_async(
+    tenant_id: str, name: str, nif: str, base_salary: float,
+    role: str, department: str, email: str, irpf_rate: float,
+) -> str:
+    from sqlalchemy import select
+    from app.db.base import AsyncSessionLocal
+
+    if not name.strip():
+        return "Error: El nombre del empleado es obligatorio."
+    if not nif.strip():
+        return "Error: El NIF/DNI del empleado es obligatorio."
+
+    try:
+        async with AsyncSessionLocal() as db:
+            # Verificar que no exista ya
+            result = await db.execute(
+                select(Employee).where(
+                    Employee.tenant_id == UUID(tenant_id),
+                    Employee.nif == nif.strip(),
+                )
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                return f"Error: Ya existe un empleado con NIF {nif}: {existing.name} (ID: {existing.id})."
+
+            emp = Employee(
+                tenant_id=UUID(tenant_id),
+                name=name.strip(),
+                nif=nif.strip().upper(),
+                email=email.strip() or None,
+                base_salary=base_salary,
+                role=role or None,
+                department=department or None,
+                irpf_rate=irpf_rate,
+            )
+            db.add(emp)
+            await db.commit()
+            await db.refresh(emp)
+
+            # Emitir evento
+            try:
+                from app.services.event_bus import emit_event
+                async with AsyncSessionLocal() as db_ev:
+                    await emit_event(
+                        db=db_ev,
+                        tenant_id=UUID(tenant_id),
+                        user_id=None,
+                        event_name="employee_created",
+                        context={
+                            "employee_id": str(emp.id),
+                            "name": emp.name,
+                            "nif": emp.nif,
+                        },
+                    )
+            except Exception:
+                pass
+
+            return (
+                f"Empleado creado correctamente.\n"
+                f"Nombre: {emp.name}\n"
+                f"NIF: {emp.nif}\n"
+                f"Salario base: {base_salary:.2f}€/mes\n"
+                f"Cargo: {role or 'No especificado'}\n"
+                f"Departamento: {department or 'No especificado'}\n"
+                f"IRPF: {irpf_rate}%\n"
+                f"ID: {emp.id}"
+            )
+    except Exception as e:
+        return f"Error creando empleado: {e}"
+
+
+@tool
+async def update_payroll(
+    tenant_id: str, payroll_id: str,
+    base_salary: str = "", deductions: str = "", notes: str = "",
+) -> str:
+    """
+    Modifica una nómina en estado DRAFT (borrador). Recalcula SS, IRPF y neto automáticamente.
+    Solo nóminas en borrador pueden editarse.
+
+    Args:
+        tenant_id: ID del tenant
+        payroll_id: ID (UUID) de la nómina a modificar
+        base_salary: Nuevo salario bruto mensual en euros (vacío = no cambiar)
+        deductions: Nuevas deducciones extra en euros (vacío = no cambiar)
+        notes: Notas internas (vacío = no cambiar)
+    """
+    return await _update_payroll_async(tenant_id, payroll_id, base_salary, deductions, notes)
+
+
+async def _update_payroll_async(
+    tenant_id: str, payroll_id: str,
+    base_salary_str: str, deductions_str: str, notes: str,
+) -> str:
+    from sqlalchemy import select
+    from app.db.base import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Payroll).where(
+                    Payroll.tenant_id == UUID(tenant_id),
+                    Payroll.id == UUID(payroll_id),
+                )
+            )
+            payroll = result.scalar_one_or_none()
+            if not payroll:
+                return f"Error: Nómina con ID {payroll_id} no encontrada."
+
+            if payroll.status != "draft":
+                return f"Error: Solo se pueden editar nóminas en borrador. Estado actual: {payroll.status}."
+
+            changes = []
+
+            # Actualizar salario base
+            base = float(payroll.base_salary)
+            if base_salary_str.strip():
+                try:
+                    base = float(base_salary_str.strip().replace(",", "."))
+                    payroll.base_salary = base
+                    changes.append(f"bruto={base:.2f}€")
+                except ValueError:
+                    return f"Error: Salario base no válido: '{base_salary_str}'."
+
+            # Actualizar deducciones extra
+            extra_ded = float(payroll.other_deductions or 0)
+            if deductions_str.strip():
+                try:
+                    extra_ded = float(deductions_str.strip().replace(",", "."))
+                    payroll.other_deductions = extra_ded
+                    changes.append(f"deducciones_extra={extra_ded:.2f}€")
+                except ValueError:
+                    return f"Error: Deducciones no válidas: '{deductions_str}'."
+
+            # Recalcular todo
+            irpf_rate = float(payroll.irpf / payroll.base_salary * 100) if payroll.base_salary and float(payroll.base_salary) > 0 else 15.0
+            ss_cc = round(base * 0.0470, 2)
+            ss_des = round(base * 0.0155, 2)
+            ss_fp = round(base * 0.0010, 2)
+            ss_mei = round(base * 0.0013, 2)
+            irpf = round(base * irpf_rate / 100, 2)
+            total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf + extra_ded
+            net = max(0.0, base - total_ded)
+
+            payroll.ss_contingencias_comunes = ss_cc
+            payroll.ss_desempleo = ss_des
+            payroll.ss_formacion_profesional = ss_fp
+            payroll.ss_mei = ss_mei
+            payroll.irpf = irpf
+            payroll.deductions = total_ded
+            payroll.net_salary = net
+
+            if not changes:
+                return "No se especificaron cambios. Indica qué quieres modificar (base_salary o deductions)."
+
+            await db.commit()
+            return (
+                f"Nómina {payroll_id[:8]}... actualizada: {', '.join(changes)}.\n"
+                f"Recalculado: Bruto {base:.2f}€ | SS {ss_cc + ss_des + ss_fp + ss_mei:.2f}€ | "
+                f"IRPF {irpf:.2f}€ | Neto {net:.2f}€."
+            )
+    except Exception as e:
+        return f"Error modificando nómina: {e}"
+
+
+@tool
+async def approve_payroll(tenant_id: str, payroll_id: str = "", approve_all: bool = False, month: int = 0, year: int = 0) -> str:
+    """
+    Aprueba nóminas en estado DRAFT, pasándolas a 'approved'.
+    Puede aprobar una nómina individual por ID o todas las del mes.
+
+    Args:
+        tenant_id: ID del tenant
+        payroll_id: ID (UUID) de una nómina específica (vacío si approve_all=True)
+        approve_all: Si True, aprueba todas las nóminas DRAFT del mes/año indicado
+        month: Mes (1-12), requerido si approve_all=True
+        year: Año, requerido si approve_all=True
+    """
+    return await _approve_payroll_async(tenant_id, payroll_id, approve_all, month, year)
+
+
+async def _approve_payroll_async(
+    tenant_id: str, payroll_id: str, approve_all: bool, month: int, year: int,
+) -> str:
+    from sqlalchemy import select, and_
+    from app.db.base import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            if approve_all:
+                if not month or not year:
+                    return "Error: Para aprobar todas las nóminas, indica mes y año."
+                start_date = datetime(year, month, 1, tzinfo=UTC)
+                last_day = monthrange(year, month)[1]
+                end_date = datetime(year, month, last_day, 23, 59, 59, tzinfo=UTC)
+
+                result = await db.execute(
+                    select(Payroll).where(and_(
+                        Payroll.tenant_id == UUID(tenant_id),
+                        Payroll.status == "draft",
+                        Payroll.period_start >= start_date,
+                        Payroll.period_end <= end_date,
+                    ))
+                )
+                payrolls = result.scalars().all()
+                if not payrolls:
+                    return f"No hay nóminas en borrador para {month}/{year}."
+
+                for p in payrolls:
+                    p.status = "approved"
+                await db.commit()
+
+                # Emitir evento
+                try:
+                    from app.services.event_bus import emit_event
+                    async with AsyncSessionLocal() as db_ev:
+                        await emit_event(
+                            db=db_ev,
+                            tenant_id=UUID(tenant_id),
+                            user_id=None,
+                            event_name="payrolls_approved",
+                            context={"count": len(payrolls), "month": month, "year": year},
+                        )
+                except Exception:
+                    pass
+
+                return f"{len(payrolls)} nóminas de {month}/{year} aprobadas correctamente."
+            else:
+                if not payroll_id:
+                    return "Error: Indica payroll_id o usa approve_all=True con mes y año."
+                result = await db.execute(
+                    select(Payroll).where(
+                        Payroll.tenant_id == UUID(tenant_id),
+                        Payroll.id == UUID(payroll_id),
+                    )
+                )
+                payroll = result.scalar_one_or_none()
+                if not payroll:
+                    return f"Error: Nómina {payroll_id} no encontrada."
+                if payroll.status != "draft":
+                    return f"Error: La nómina ya está en estado '{payroll.status}', no se puede aprobar."
+
+                payroll.status = "approved"
+                await db.commit()
+                return f"Nómina {payroll_id[:8]}... aprobada. Neto: {float(payroll.net_salary):.2f}€."
+    except Exception as e:
+        return f"Error aprobando nómina: {e}"
+
+
+@tool
+async def list_payrolls(tenant_id: str, month: int = 0, year: int = 0, status_filter: str = "all") -> str:
+    """
+    Lista las nóminas del tenant, opcionalmente filtradas por mes/año y estado.
+    Útil para consultar nóminas generadas, ver estados, o preparar aprobaciones.
+
+    Args:
+        tenant_id: ID del tenant
+        month: Mes (1-12), 0 = todos los meses
+        year: Año, 0 = todos los años
+        status_filter: Filtrar por estado ('draft', 'approved', 'all')
+    """
+    return await _list_payrolls_async(tenant_id, month, year, status_filter)
+
+
+async def _list_payrolls_async(tenant_id: str, month: int, year: int, status_filter: str) -> str:
+    from sqlalchemy import select
+    from app.db.base import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            query = (
+                select(Payroll, Employee)
+                .join(Employee, Payroll.employee_id == Employee.id)
+                .where(Payroll.tenant_id == UUID(tenant_id))
+            )
+
+            if month and year:
+                start_date = datetime(year, month, 1, tzinfo=UTC)
+                last_day = monthrange(year, month)[1]
+                end_date = datetime(year, month, last_day, 23, 59, 59, tzinfo=UTC)
+                query = query.where(
+                    Payroll.period_start >= start_date,
+                    Payroll.period_end <= end_date,
+                )
+
+            if status_filter != "all":
+                query = query.where(Payroll.status == status_filter)
+
+            query = query.order_by(Payroll.period_start.desc()).limit(30)
+            result = await db.execute(query)
+            rows = result.all()
+
+            if not rows:
+                return "No se encontraron nóminas con los filtros indicados."
+
+            lines = []
+            total_net = 0
+            for payroll, emp in rows:
+                total_net += float(payroll.net_salary)
+                period = payroll.period_start.strftime("%m/%Y") if payroll.period_start else "?"
+                lines.append(
+                    f"- {emp.name} | {period} | Bruto: {float(payroll.base_salary):.2f}€ | "
+                    f"Neto: {float(payroll.net_salary):.2f}€ | Estado: {payroll.status} | "
+                    f"ID: {payroll.id}"
+                )
+
+            return (
+                f"Nóminas ({len(rows)}):\n" + "\n".join(lines) +
+                f"\n\nTotal neto: {total_net:.2f}€"
+            )
+    except Exception as e:
+        return f"Error listando nóminas: {e}"
+
+
 tools = [
+    create_employee,
     calculate_and_create_payroll,
     generate_all_payrolls,
     list_employees,
+    list_payrolls,
+    update_payroll,
+    approve_payroll,
     create_document,
     list_tenant_documents,
     update_existing_document,
@@ -413,30 +751,33 @@ tools = [
 
 # ─── Nodos del grafo ──────────────────────────────────────────────────────────
 
-def hr_agent_node(state: AgentState):
+async def hr_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
         sys_msg = SystemMessage(
             content=(
                 "Eres el Agente de RRHH (Recursos Humanos) de la empresa automatizada. "
                 "Tus capacidades:\n"
-                "1. Generar nóminas individuales con `calculate_and_create_payroll` (requiere NIF, mes, año).\n"
-                "2. Generar TODAS las nóminas del mes con `generate_all_payrolls` (solo mes y año).\n"
-                "3. Consultar empleados con `list_employees`.\n"
-                "4. Crear nuevos documentos (informes, extractos de datos en CSV, txt) con `create_document`.\n"
-                "5. Listar documentos del tenant con `list_tenant_documents`.\n"
-                "6. Leer el contenido de un documento con `get_document_content`.\n"
-                "7. Modificar documentos con `update_existing_document`.\n"
-                "8. Consultar la memoria a largo plazo con `get_tenant_knowledge`.\n"
-                "9. Guardar hechos nuevos en la memoria con `upsert_tenant_knowledge`.\n"
+                "1. Crear empleados con `create_employee` (nombre, NIF, salario, cargo, departamento).\n"
+                "2. Generar nóminas individuales con `calculate_and_create_payroll` (requiere NIF, mes, año).\n"
+                "3. Generar TODAS las nóminas del mes con `generate_all_payrolls` (solo mes y año).\n"
+                "4. Consultar empleados con `list_employees`.\n"
+                "5. Consultar nóminas con `list_payrolls` — filtrar por mes/año y estado.\n"
+                "6. Editar nómina con `update_payroll` — modificar salario base o deducciones (solo borradores).\n"
+                "7. Aprobar nóminas con `approve_payroll` — individual por ID o masiva por mes/año.\n"
+                "7. Crear documentos con `create_document`, leer con `get_document_content`.\n"
+                "8. Memoria del tenant con `get_tenant_knowledge` y `upsert_tenant_knowledge`.\n"
                 f"ID del Tenant actual: {state.get('tenant_id')}.\n"
                 "Reglas:\n"
-                "- Si se te pide exportar datos, listados de nóminas o empleados a CSV o texto, hazlo usando la herramienta `create_document`, especificando category='RRHH'.\n"
-                "- Siempre genera nóminas en estado DRAFT. Las nóminas requieren aprobación humana.\n"
+                "- Si el usuario pide crear un empleado que no existe, usa `create_employee` primero.\n"
+                "- Si te piden nómina de alguien que no existe, CREA al empleado primero y luego genera la nómina.\n"
+                "- Las nóminas se generan en estado DRAFT y requieren aprobación humana.\n"
+                "- Para EDITAR una nómina, primero usa `list_payrolls` para obtener el ID.\n"
+                "- Para APROBAR nóminas, usa `approve_payroll`. Puedes aprobar una o todas las del mes.\n"
                 "- Si el usuario no especifica mes/año, usa el mes y año actuales.\n"
                 "- Para generar todas las nóminas, usa `generate_all_payrolls` directamente sin pedir NIF.\n"
                 "- Si el usuario pide nómina de un empleado específico, primero usa `list_employees` para "
                 "obtener el NIF si no lo conoces.\n"
-                "- Siempre confirma qué nóminas se generaron y recuerda que deben aprobarse desde la UI."
+                "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'."
             )
         )
         user_msg = HumanMessage(content=state["user_intent"])
@@ -446,7 +787,7 @@ def hr_agent_node(state: AgentState):
         extra_init_messages = []
 
     llm_with_tools = _get_llm().bind_tools(tools)
-    response = llm_with_tools.invoke(state["messages"])
+    response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
         step_id=f"hr_step_{datetime.now().timestamp()}",

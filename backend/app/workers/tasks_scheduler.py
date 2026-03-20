@@ -71,20 +71,8 @@ async def _check_scheduled_workflows():
                     continue
 
                 logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
-                # Construir instruccion
-                action_config = wf.action_config or {}
-                instruction = (
-                    action_config.get("instruction")
-                    or config.get("instruction")
-                    or wf.description
-                    or wf.name
-                )
 
-                # Inferir dominio
-                text = f"{wf.name} {wf.description or ''} {instruction}".lower()
-                domain = action_config.get("domain") or _infer_domain_from_text(text)
-
-                # Crear ejecucion primero para obtener su ID
+                # Crear ejecucion
                 execution = WorkflowExecution(
                     workflow_id=wf.id,
                     tenant_id=wf.tenant_id,
@@ -94,33 +82,87 @@ async def _check_scheduled_workflows():
                 db.add(execution)
                 await db.flush()
 
-                # Crear Task hija con execution_id en metadata
-                task = Task(
-                    tenant_id=wf.tenant_id,
-                    created_by=None,
-                    domain=domain,
-                    user_intent=f"[Automatizacion programada] {instruction}",
-                    status="pending",
-                    additional_metadata={
-                        "workflow_id": str(wf.id),
-                        "execution_id": str(execution.id),
-                        "trigger_type": "schedule_based",
-                        "scheduled_at": now.isoformat(),
-                    },
-                )
-                db.add(task)
-                await db.flush()
+                # ── Ruta DETERMINISTA: pasos híbridos sin orquestador LLM ──
+                if wf.execution_mode == "deterministic" and wf.compiled_steps:
+                    task = Task(
+                        tenant_id=wf.tenant_id,
+                        created_by=None,
+                        domain="deterministic",
+                        user_intent=f"[Determinista] {wf.name}",
+                        status="running",
+                        additional_metadata={
+                            "workflow_id": str(wf.id),
+                            "execution_id": str(execution.id),
+                            "trigger_type": "schedule_based",
+                        },
+                    )
+                    db.add(task)
+                    await db.flush()
+                    execution.task_id = task.id
+                    await db.flush()
 
-                execution.task_id = task.id
-                await db.flush()
+                    try:
+                        from app.api.v1.routes.workflows import _execute_deterministic_steps
+                        results = await _execute_deterministic_steps(
+                            steps=wf.compiled_steps,
+                            tenant_id=str(wf.tenant_id),
+                            user_id=str(wf.created_by) if wf.created_by else "",
+                            task_id=str(task.id),
+                        )
+                        execution.status = "success"
+                        execution.result_log = (
+                            f"Ejecución determinista: {len(results)} paso(s). "
+                            + " | ".join(
+                                f"[{r.get('agent','?')}:{r.get('type','?')}] "
+                                f"{'OK' if r.get('success') else 'ERROR: ' + str(r.get('error',''))[:60]}"
+                                for r in results
+                            )
+                        )
+                        task.status = "done"
+                        await guard.mark_executed("workflow_beat", idempotency_key)
+                    except Exception as e:
+                        execution.status = "failed"
+                        execution.result_log = f"Error determinista: {e}"
+                        task.status = "failed"
+                        await guard.release("workflow_beat", idempotency_key)
 
-                try:
-                    await dispatch_orchestrator(str(task.id))
-                    await guard.mark_executed("workflow_beat", idempotency_key)
-                except Exception as e:
-                    execution.status = "failed"
-                    execution.result_log = f"Error al lanzar orchestrator: {e}"
-                    await guard.release("workflow_beat", idempotency_key)
+                # ── Ruta REASONING: orquestador clásico con LLM ──
+                else:
+                    action_config = wf.action_config or {}
+                    instruction = (
+                        action_config.get("instruction")
+                        or config.get("instruction")
+                        or wf.description
+                        or wf.name
+                    )
+                    text = f"{wf.name} {wf.description or ''} {instruction}".lower()
+                    domain = action_config.get("domain") or _infer_domain_from_text(text)
+
+                    task = Task(
+                        tenant_id=wf.tenant_id,
+                        created_by=None,
+                        domain=domain,
+                        user_intent=f"[Automatizacion programada] {instruction}",
+                        status="pending",
+                        additional_metadata={
+                            "workflow_id": str(wf.id),
+                            "execution_id": str(execution.id),
+                            "trigger_type": "schedule_based",
+                            "scheduled_at": now.isoformat(),
+                        },
+                    )
+                    db.add(task)
+                    await db.flush()
+                    execution.task_id = task.id
+                    await db.flush()
+
+                    try:
+                        await dispatch_orchestrator(str(task.id))
+                        await guard.mark_executed("workflow_beat", idempotency_key)
+                    except Exception as e:
+                        execution.status = "failed"
+                        execution.result_log = f"Error al lanzar orchestrator: {e}"
+                        await guard.release("workflow_beat", idempotency_key)
 
         await db.commit()
 

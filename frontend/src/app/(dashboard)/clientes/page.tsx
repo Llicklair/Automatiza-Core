@@ -93,8 +93,8 @@ export default function ClientesPage() {
         setEditingClient(client);
         setNewClient({
             name: client.name, nif: client.nif, client_type: client.client_type,
-            email: client.email, address: client.address, city: client.city,
-            postal_code: client.postal_code,
+            email: client.email, phone: client.phone, address: client.address,
+            city: client.city, postal_code: client.postal_code,
         });
         setIsCreating(true);
         closeDrawer();
@@ -135,7 +135,8 @@ export default function ClientesPage() {
     const filtered = clients.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.nif && c.nif.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (c.phone && c.phone.includes(searchTerm))
     );
 
     const totalFacturado = clientInvoices.reduce((s, i) => s + Number(i.amount_total), 0);
@@ -185,7 +186,7 @@ export default function ClientesPage() {
                     <div className="col-span-2">NIF / CIF</div>
                     <div className="col-span-2">Tipo</div>
                     <div className="col-span-2">Email</div>
-                    <div className="col-span-1">Ciudad</div>
+                    <div className="col-span-1">Teléfono</div>
                     <div className="col-span-1 text-right">Alta</div>
                 </div>
 
@@ -304,9 +305,9 @@ export default function ClientesPage() {
                                         {client.email || <span className="text-zinc-600 italic">—</span>}
                                     </div>
 
-                                    {/* Ciudad */}
-                                    <div className="col-span-1 text-xs text-zinc-500 truncate">
-                                        {client.city || "—"}
+                                    {/* Teléfono */}
+                                    <div className="col-span-1 text-xs text-zinc-400 truncate">
+                                        {client.phone || <span className="text-zinc-600">—</span>}
                                     </div>
 
                                     {/* Fecha */}
@@ -360,10 +361,15 @@ export default function ClientesPage() {
                                         <option value="lead">Lead</option>
                                     </select>
                                 </div>
-                                <div className="space-y-1.5 col-span-2">
+                                <div className="space-y-1.5">
                                     <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</label>
                                     <input type="email" value={newClient.email || ""} onChange={e => setNewClient({ ...newClient, email: e.target.value })}
                                         className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="contacto@empresa.com" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Teléfono</label>
+                                    <input type="tel" value={newClient.phone || ""} onChange={e => setNewClient({ ...newClient, phone: e.target.value })}
+                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="+34 612 345 678" />
                                 </div>
                                 <div className="space-y-1.5 col-span-2">
                                     <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Dirección</label>
@@ -442,6 +448,12 @@ export default function ClientesPage() {
                                             <span className="text-sm text-zinc-300">{selectedClient.email}</span>
                                         </div>
                                     )}
+                                    {selectedClient.phone && (
+                                        <div className="flex items-center gap-3">
+                                            <Phone className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+                                            <span className="text-sm text-zinc-300">{selectedClient.phone}</span>
+                                        </div>
+                                    )}
                                     {selectedClient.address && (
                                         <div className="flex items-start gap-3">
                                             <MapPin className="w-4 h-4 text-zinc-600 flex-shrink-0 mt-0.5" />
@@ -455,7 +467,7 @@ export default function ClientesPage() {
                                             </span>
                                         </div>
                                     )}
-                                    {!selectedClient.email && !selectedClient.address && !selectedClient.city && (
+                                    {!selectedClient.email && !selectedClient.phone && !selectedClient.address && !selectedClient.city && (
                                         <p className="text-sm text-zinc-600 italic">Sin datos de contacto</p>
                                     )}
                                 </dl>

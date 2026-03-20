@@ -1,6 +1,6 @@
 """
 Dispatchers misceláneos: RAG, Excel, Email, Workflow, Skill.
-Agrupados por ser relativamente pequeños.
+Todos invocan agentes autónomos via LangGraph graph.ainvoke.
 """
 import logging
 
@@ -11,89 +11,102 @@ from app.agents.orchestrator.helpers import _save_ai_result_as_document
 logger = logging.getLogger(__name__)
 
 
-async def _dispatch_rag(state: OrchestratorState, subtask: dict) -> AgentResult:
-    """Invoca el agente de RAG para consulta de documentos."""
-    from app.agents.rag_agent import run_rag_agent
+def _extract_final_text(result_state: dict) -> str:
+    """Extrae el texto final del último mensaje del agente."""
+    messages = result_state.get("messages", [])
+    for msg in reversed(messages):
+        if hasattr(msg, "content") and isinstance(msg.content, str) and msg.content.strip():
+            return msg.content
+    return ""
 
+
+async def _run_graph_agent(graph, state: OrchestratorState, subtask: dict, agent_name: str, category: str) -> AgentResult:
+    """Patrón genérico para ejecutar un agente LangGraph y devolver AgentResult."""
     tenant_id = state["tenant_id"]
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
 
-    agent_result = await run_rag_agent(
-        user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
-        tenant_id=tenant_id,
-        top_k=5
-    )
+    try:
+        result_state = await graph.ainvoke({
+            "tenant_id": tenant_id,
+            "task_id": state.get("task_id"),
+            "user_id": state.get("user_id"),
+            "user_intent": intent,
+            "current_intent": intent,
+            "messages": [],
+            "agent_results": [],
+            "status": "running",
+        })
 
-    # Guardar respuesta RAG como documento en el Escáner
-    if agent_result.success:
-        sources = agent_result.sources_used
-        if isinstance(sources, (list, tuple, set)):
-            sources_str = ', '.join(str(s) for s in sources)
-        else:
-            sources_str = str(sources) if sources else 'N/A'
+        final_text = _extract_final_text(result_state)
+        is_error = final_text.lower().startswith("error")
+        success = not is_error
 
-        await _save_ai_result_as_document(
-            tenant_id=tenant_id,
-            task_id=state["task_id"],
-            category="informes",
-            title=f"Consulta Documental — {state['user_intent'][:60]}",
-            content=f"Pregunta: {subtask.get('params', {}).get('intent')}\n\nRespuesta:\n{agent_result.answer}\n\nFuentes: {sources_str}"
-        )
+        output = {"action": "completed" if success else "failed", "response": final_text}
 
-    _rag_output = {
-        "answer": agent_result.answer,
-        "sources_used": agent_result.sources_used,
-    }
-    return {
-        "subtask_id": subtask["id"],
-        "agent": "rag",
-        "success": agent_result.success,
-        "output": _rag_output,
-        "summary": _format_summary("rag", _rag_output, agent_result.success, agent_result.error),
-        "error": agent_result.error,
-    }
+        if success and final_text:
+            await _save_ai_result_as_document(
+                tenant_id=tenant_id,
+                task_id=state["task_id"],
+                category=category,
+                title=f"{agent_name.capitalize()} — {state['user_intent'][:60]}",
+                content=final_text,
+            )
+
+        return {
+            "subtask_id": subtask["id"],
+            "agent": agent_name,
+            "success": success,
+            "output": output,
+            "summary": _format_summary(agent_name, output, success, None if success else final_text),
+            "error": None if success else final_text,
+        }
+
+    except Exception as e:
+        logger.exception("Error en %s agent graph", agent_name)
+        return {
+            "subtask_id": subtask["id"],
+            "agent": agent_name,
+            "success": False,
+            "output": {"action": "failed", "error": str(e)},
+            "summary": f"Error en agente {agent_name}: {e}",
+            "error": str(e),
+        }
+
+
+async def _dispatch_rag(state: OrchestratorState, subtask: dict) -> AgentResult:
+    """Invoca el agente RAG autónomo."""
+    from app.agents.rag_agent import graph
+    return await _run_graph_agent(graph, state, subtask, "rag", "informes")
 
 
 async def _dispatch_excel(state: OrchestratorState, subtask: dict) -> AgentResult:
-    from app.agents.excel_agent import run_excel_agent
-
-    agent_result = await run_excel_agent(
-        user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
-        tenant_id=state["tenant_id"],
-        task_id=state["task_id"]
-    )
-
-    return {
-        "subtask_id": subtask["id"],
-        "agent": "excel",
-        "success": agent_result.success,
-        "output": {"message": agent_result.output_message},
-        "error": agent_result.error,
-    }
+    """Invoca el agente de Excel autónomo."""
+    from app.agents.excel_agent import graph
+    return await _run_graph_agent(graph, state, subtask, "excel", "informes")
 
 
 async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResult:
-    """Invoca el agente de email y guarda su resultado como documento."""
+    """Invoca el agente de email autónomo."""
     from app.agents.email_agent import run_email_agent
 
     agent_result = await run_email_agent(
         user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
         tenant_id=state["tenant_id"],
-        task_id=state["task_id"]
+        task_id=state["task_id"],
     )
 
     action = agent_result.action or "Operación de email completada."
 
-    # Guardar siempre el resultado en el Scanner bajo la categoría correos
     try:
         await _save_ai_result_as_document(
             tenant_id=state["tenant_id"],
             task_id=state["task_id"],
             category="correos",
             title=f"Email: {state['user_intent'][:50]}...",
-            content=action
+            content=action,
         )
     except Exception as e:
-        logger.warning(f"Error al archivar log de email: {e}")
+        logger.warning("Error al archivar log de email: %s", e)
 
     _email_output = {"action": action}
     return {
@@ -117,14 +130,13 @@ async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentRe
         task_id=state.get("task_id"),
     )
 
-    # Guardar configuración de automatización como documento
     if agent_result.success:
         await _save_ai_result_as_document(
             tenant_id=state["tenant_id"],
             task_id=state["task_id"],
             category="automatizaciones",
             title=f"Nueva Regla: {agent_result.workflow_name}",
-            content=f"Acción: {agent_result.action}\nID: {agent_result.workflow_id}\n\nDetalle del plan:\n{agent_result.data}"
+            content=f"Acción: {agent_result.action}\nID: {agent_result.workflow_id}\n\nDetalle del plan:\n{agent_result.data}",
         )
 
     return {
@@ -150,7 +162,6 @@ async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResul
     if skill_name.startswith("skill:"):
         skill_name = skill_name[6:]
 
-    # Intentar obtener de params si el agente es genérico 'skill'
     if skill_name == "skill":
         skill_name = subtask.get("params", {}).get("skill_name")
 
@@ -165,7 +176,6 @@ async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResul
 
     skill = SkillRegistry.get_skill(skill_name)
     if not skill:
-        # Fallback: intentar cargar builtins si por algún motivo no están
         SkillRegistry.load_builtins()
         skill = SkillRegistry.get_skill(skill_name)
 
@@ -179,11 +189,9 @@ async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResul
         }
 
     try:
-        # Ejecutar la skill
         payload = subtask.get("params", {})
         tenant_id = state.get("tenant_id")
 
-        # Si la skill es asíncrona
         import inspect
         if inspect.iscoroutinefunction(skill.run):
             result_data = await skill.run(payload, tenant_id=tenant_id)

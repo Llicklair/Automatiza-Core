@@ -5,6 +5,7 @@ export interface Client {
     nif: string | null;
     name: string;
     email: string | null;
+    phone: string | null;
     address: string | null;
     city: string | null;
     postal_code: string | null;

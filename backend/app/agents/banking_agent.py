@@ -1,332 +1,480 @@
 """
-Agente bancario — Fase 3.
+Agente Bancario — Autónomo con LangGraph.
 
-Funciones:
-  1. Obtener saldo actual de las cuentas vinculadas
-  2. Listar y clasificar transacciones del período (LLM)
-  3. Detectar pagos pendientes de facturas (conciliación)
-  4. Alertar sobre movimientos inusuales (determinista por umbrales)
-  5. Generar resumen financiero del mes
+El LLM decide qué herramientas usar según la intención del usuario:
+  - Consultar saldos → check_balances
+  - Ver transacciones → list_transactions
+  - Resumen financiero → financial_summary
 """
 import json
+import logging
+from collections import defaultdict
 from datetime import date, timedelta
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from langchain_core.tools import tool
+from langgraph.graph import StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
 
+from app.agents.agent_tools.documents import (
+    create_document,
+    get_document_content,
+    list_tenant_documents,
+)
+from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+from app.agents.base import AgentState
+from app.agents.types import StepResult
 from app.core.config import settings
 from app.core.llm_factory import get_llm
 
-# ─── Umbrales deterministas (sin LLM) ────────────────────────────────────────
+logger = logging.getLogger(__name__)
 
 ALERT_THRESHOLDS = {
-    "cargo_inusual_eur": 5_000,    # Cargo > 5000€ → alerta
-    "saldo_minimo_eur":  1_000,    # Saldo < 1000€ → alerta
-    "multiple_cargos":       5,    # Más de 5 cargos en 1 día → revisión
+    "cargo_inusual_eur": 5_000,
+    "saldo_minimo_eur": 1_000,
 }
 
-
-# ─── Prompt para clasificación de transacciones ───────────────────────────────
-
-CATEGORIZATION_PROMPT = """Eres un contable experto en PYMEs españolas.
-
-Clasifica cada transacción bancaria en UNA de estas categorías:
-- proveedor_material: Compras a proveedores de materiales/productos
-- proveedor_servicio: Compras de servicios (software, marketing, consultoría)
-- nominas: Pagos de nóminas a empleados
-- impuestos: Pagos a AEAT, SS, tributos
-- alquiler: Alquiler oficinas/almacenes
-- suministros: Luz, agua, gas, telefonía, internet
-- financiero: Cuotas préstamos, intereses, comisiones bancarias
-- cliente_cobro: Cobros de clientes
-- transferencia_interna: Entre tus propias cuentas
-- otros: No clasificable
-
-REGLAS:
-1. Clasifica SOLO según el concepto y los nombres proporcionados. NO inventes.
-2. Si el concepto está vacío, clasifica como "otros".
-3. Devuelve ÚNICAMENTE JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""
+# Datos demo cuando PSD2 no está configurado
+_DEMO_SALDOS = [
+    {"account_id": "demo_001", "iban": "ES91 2100 0418 4502 0005 1332", "nombre": "Cuenta Corriente (Demo)", "saldo": 18450.72, "moneda": "EUR"},
+    {"account_id": "demo_002", "iban": "ES80 2310 0001 1800 0001 2345", "nombre": "Cuenta Ahorro (Demo)", "saldo": 5200.00, "moneda": "EUR"},
+]
+_DEMO_TXS = [
+    {"id": "1", "fecha": "2026-03-15", "concepto": "TRANSFERENCIA RECIBIDA ACME SL", "importe": 4500, "tipo": "abono", "categoria": "cliente_cobro"},
+    {"id": "2", "fecha": "2026-03-14", "concepto": "AMAZON WEB SERVICES", "importe": -350, "tipo": "cargo", "categoria": "proveedor_servicio"},
+    {"id": "3", "fecha": "2026-03-13", "concepto": "NOMINAS MARZO 2026", "importe": -12000, "tipo": "cargo", "categoria": "nominas"},
+    {"id": "4", "fecha": "2026-03-12", "concepto": "ENGIE ENERGIA FACTURA", "importe": -280.50, "tipo": "cargo", "categoria": "suministros"},
+    {"id": "5", "fecha": "2026-03-11", "concepto": "COBRO FACTURA #2026-041", "importe": 7200, "tipo": "abono", "categoria": "cliente_cobro"},
+    {"id": "6", "fecha": "2026-03-10", "concepto": "CUOTA PRESTAMO BANCO", "importe": -1100, "tipo": "cargo", "categoria": "financiero"},
+]
 
 
 def _get_llm():
+    return get_llm(temperature=0)
+
+
+def _get_llm_json():
     return get_llm(temperature=0, format_output="json")
 
 
-# ─── Resultado del agente ─────────────────────────────────────────────────────
+# ─── Herramientas del agente ──────────────────────────────────────────────────
 
-class BankingAgentResult(BaseModel):
-    success: bool
-    action: str  # "saldos" | "transacciones" | "resumen" | "alertas"
-    saldos: list[dict] = Field(default_factory=list)
-    transacciones: list[dict] = Field(default_factory=list)
-    alertas: list[str] = Field(default_factory=list)
-    resumen_financiero: str | None = None
-    error: str | None = None
+@tool
+async def check_balances(tenant_id: str) -> str:
+    """
+    Consulta los saldos actuales de las cuentas bancarias vinculadas.
+    Si el banco no está conectado (PSD2), muestra datos de demo.
+
+    Args:
+        tenant_id: ID del tenant
+    """
+    return await _check_balances_async(tenant_id)
 
 
-# ─── Función principal ────────────────────────────────────────────────────────
+async def _check_balances_async(tenant_id: str) -> str:
+    creds = await _get_psd2_credentials(tenant_id)
 
-async def run_banking_agent(
-    user_intent: str,
-    tenant_id: str | None = None,
-    nordigen_secret_id: str | None = None,
-    nordigen_secret_key: str | None = None,
-    account_ids: list[str] | None = None,
-    days_back: int = 30,
-) -> BankingAgentResult:
-    """Ejecuta el agente bancario según la intención del usuario."""
-
-    if not nordigen_secret_id or not nordigen_secret_key:
-        # Sin PSD2 configurado → devolver datos de demo realistas
-        intent_lower = user_intent.lower()
-        
-        demo_txs = [
-            {"id": "1", "fecha": "2026-02-22", "concepto": "TRANSFERENCIA RECIBIDA ACME SL", "importe": 4500, "tipo": "abono", "categoria": "cliente_cobro"},
-            {"id": "2", "fecha": "2026-02-21", "concepto": "AMAZON WEB SERVICES", "importe": -350, "tipo": "cargo", "categoria": "proveedor_servicio"},
-            {"id": "3", "fecha": "2026-02-20", "concepto": "NOMINAS FEBRERO 2026", "importe": -12000, "tipo": "cargo", "categoria": "nominas"},
-            {"id": "4", "fecha": "2026-02-19", "concepto": "ENGIE ENERGIA FACTURA", "importe": -280.50, "tipo": "cargo", "categoria": "suministros"},
-            {"id": "5", "fecha": "2026-02-18", "concepto": "HOLDED PLAN PRO MENSUAL", "importe": -99, "tipo": "cargo", "categoria": "proveedor_servicio"},
-            {"id": "6", "fecha": "2026-02-17", "concepto": "COBRO FACTURA #2026-041", "importe": 7200, "tipo": "abono", "categoria": "cliente_cobro"},
-            {"id": "7", "fecha": "2026-02-15", "concepto": "CUOTA PRESTAMO BANCO", "importe": -1100, "tipo": "cargo", "categoria": "financiero"},
-        ]
-
-        if any(kw in intent_lower for kw in ["resumen", "informe", "análisis", "mes"]):
-            return BankingAgentResult(
-                success=True,
-                action="resumen",
-                saldos=[
-                    {"account_id": "demo_001", "iban": "ES91 2100 0418 4502 0005 1332", "nombre": "Cuenta Corriente (Demo)", "saldo": 18450.72, "moneda": "EUR"},
-                    {"account_id": "demo_002", "iban": "ES80 2310 0001 1800 0001 2345", "nombre": "Cuenta Ahr Reservas (Demo)", "saldo": 5200.00, "moneda": "EUR"},
-                ],
-                transacciones=demo_txs,
-                resumen_financiero=(
-                    "📅 Resumen de los últimos 30 días (datos de demo):\n\n"
-                    "• Ingresos totales: +18.500€ (cobros de clientes y ventas)\n"
-                    "• Gastos estructurados: -12.730€ (nóminas, proveedores, suministros)\n"
-                    "• Resultado neto del mes: +5.770€\n\n"
-                    "Recomendación: El mes cierra en positivo. El principal gasto son las nóminas "
-                    "(55% del total de gastos). Considera revisar los contratos con proveedores de servicios "
-                    "para optimizar el margen.\n\n"
-                    "⚠️ Conecta tu banco real desde la sección de Integraciones para ver datos reales."
-                ),
-                alertas=["🟡 Banco no conectado: mostrando datos de demo. Ve a Integraciones → Conectar banco."],
-            )
-        else:
-            action_type = "transacciones" if any(kw in intent_lower for kw in ["transacción", "movimiento", "cobro", "pago", "cargo"]) else "saldos"
-            return BankingAgentResult(
-                success=True,
-                action=action_type,
-                saldos=[
-                    {"account_id": "demo_001", "iban": "ES91 2100 0418 4502 0005 1332", "nombre": "Cuenta Corriente (Demo)", "saldo": 18450.72, "moneda": "EUR"},
-                    {"account_id": "demo_002", "iban": "ES80 2310 0001 1800 0001 2345", "nombre": "Cuenta Ahr Reservas (Demo)", "saldo": 5200.00, "moneda": "EUR"},
-                ],
-                transacciones=demo_txs if action_type == "transacciones" else [],
-                alertas=["🟡 Banco no conectado: mostrando datos de demo. Ve a Integraciones → Conectar banco."],
-            )
-
-    intent_lower = user_intent.lower()
-
-    if any(kw in intent_lower for kw in ["saldo", "balance", "cuánto tengo", "disponible"]):
-        return await _accion_saldos(nordigen_secret_id, nordigen_secret_key, account_ids or [])
-
-    elif any(kw in intent_lower for kw in ["transacción", "movimiento", "cobro", "pago", "cargo"]):
-        return await _accion_transacciones(
-            nordigen_secret_id, nordigen_secret_key, account_ids or [], days_back
+    if not creds:
+        lines = [f"- {s['nombre']}: {s['saldo']:.2f}€ ({s['iban']})" for s in _DEMO_SALDOS]
+        return (
+            "⚠️ Banco no conectado — mostrando datos de demo.\n\n"
+            "Saldos:\n" + "\n".join(lines) +
+            "\n\nConecta tu banco desde Integraciones → PSD2 para ver datos reales."
         )
 
-    elif any(kw in intent_lower for kw in ["resumen", "informe", "análisis", "mes"]):
-        return await _accion_resumen(
-            nordigen_secret_id, nordigen_secret_key, account_ids or [], days_back
-        )
-
-    else:
-        return await _accion_saldos(nordigen_secret_id, nordigen_secret_key, account_ids or [])
-
-
-async def _accion_saldos(secret_id: str, secret_key: str, account_ids: list[str]) -> BankingAgentResult:
-    """Obtiene saldos de todas las cuentas vinculadas."""
     from app.integrations.psd2 import NordigenClient
-    client = NordigenClient(secret_id=secret_id, secret_key=secret_key)
+    client = NordigenClient(secret_id=creds["secret_id"], secret_key=creds["secret_key"])
     saldos = []
     alertas = []
 
     try:
         await client._get_access_token()
-        for acc_id in account_ids:
+        for acc_id in creds.get("account_ids", []):
             try:
-                details  = await client.get_account_details(acc_id)
+                details = await client.get_account_details(acc_id)
                 balances = await client.get_account_balances(acc_id)
-                saldo_disponible = next(
-                    (b for b in balances if b.get("balanceType") == "interimAvailable"),
-                    balances[0] if balances else {}
-                )
-                importe = float(saldo_disponible.get("balanceAmount", {}).get("amount", 0))
-                saldos.append({
-                    "account_id": acc_id,
-                    "iban":       details.get("iban", ""),
-                    "nombre":     details.get("name", "Cuenta"),
-                    "saldo":      importe,
-                    "moneda":     saldo_disponible.get("balanceAmount", {}).get("currency", "EUR"),
-                })
-                # Alerta si saldo bajo
+                saldo_disp = next((b for b in balances if b.get("balanceType") == "interimAvailable"), balances[0] if balances else {})
+                importe = float(saldo_disp.get("balanceAmount", {}).get("amount", 0))
+                saldos.append(f"- {details.get('name', 'Cuenta')} ({details.get('iban', '')}): {importe:.2f}€")
                 if importe < ALERT_THRESHOLDS["saldo_minimo_eur"]:
-                    alertas.append(
-                        f"⚠️ Saldo bajo en cuenta {details.get('iban', acc_id)}: {importe:.2f}€"
-                    )
+                    alertas.append(f"⚠️ Saldo bajo: {importe:.2f}€ en {details.get('iban', acc_id)}")
             except Exception as e:
-                saldos.append({"account_id": acc_id, "error": str(e)})
+                saldos.append(f"- Cuenta {acc_id}: Error ({e})")
     finally:
         await client.close()
 
-    return BankingAgentResult(success=True, action="saldos", saldos=saldos, alertas=alertas)
+    result = "Saldos bancarios:\n" + "\n".join(saldos)
+    if alertas:
+        result += "\n\nAlertas:\n" + "\n".join(alertas)
+    return result
 
 
-async def _accion_transacciones(
-    secret_id: str, secret_key: str, account_ids: list[str], days_back: int
-) -> BankingAgentResult:
-    """Obtiene y categoriza transacciones del período."""
+@tool
+async def list_transactions(tenant_id: str, days_back: int = 30) -> str:
+    """
+    Lista las transacciones bancarias del período indicado con categorización automática.
+    Si el banco no está conectado, muestra datos de demo.
+
+    Args:
+        tenant_id: ID del tenant
+        days_back: Días hacia atrás para buscar transacciones (por defecto 30)
+    """
+    return await _list_transactions_async(tenant_id, days_back)
+
+
+async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
+    creds = await _get_psd2_credentials(tenant_id)
+
+    if not creds:
+        lines = [f"- {t['fecha']}: {t['concepto']} | {t['importe']:+.2f}€ [{t['categoria']}]" for t in _DEMO_TXS]
+        return (
+            "⚠️ Banco no conectado — datos de demo.\n\n"
+            f"Transacciones (últimos {days_back} días):\n" + "\n".join(lines)
+        )
+
     from app.integrations.psd2 import NordigenClient
-    client = NordigenClient(secret_id=secret_id, secret_key=secret_key)
+    client = NordigenClient(secret_id=creds["secret_id"], secret_key=creds["secret_key"])
     todas_tx = []
-    alertas  = []
+    alertas = []
 
     try:
         await client._get_access_token()
         date_from = date.today() - timedelta(days=days_back)
 
-        for acc_id in account_ids:
+        for acc_id in creds.get("account_ids", []):
             try:
                 raw = await client.get_transactions(acc_id, date_from=date_from)
                 normalized = NordigenClient.normalize_transactions(raw)
                 todas_tx.extend(normalized)
 
-                # Alertas deterministas por umbrales
                 for tx in normalized:
                     if tx["tipo"] == "cargo" and abs(tx["importe"]) > ALERT_THRESHOLDS["cargo_inusual_eur"]:
-                        alertas.append(
-                            f"🔴 Cargo inusual: {abs(tx['importe']):.2f}€ en {tx['fecha']} — {tx['concepto']}"
-                        )
+                        alertas.append(f"🔴 Cargo inusual: {abs(tx['importe']):.2f}€ — {tx['concepto']}")
             except Exception as e:
-                todas_tx.append({"error": str(e), "account_id": acc_id})
+                todas_tx.append({"concepto": f"Error en cuenta {acc_id}: {e}", "importe": 0})
     finally:
         await client.close()
 
-    if not todas_tx or todas_tx[0].get("error"):
-        return BankingAgentResult(
-            success=True, action="transacciones",
-            transacciones=todas_tx, alertas=alertas
-        )
+    if not todas_tx:
+        return f"No hay transacciones en los últimos {days_back} días."
 
-    if secret_id == "DEMO_PSD2_ID":
-        categorias_raw = [
-            {"id": "tx_1", "categoria": "alquiler", "confianza": 0.99},
-            {"id": "tx_2", "categoria": "cliente_cobro", "confianza": 0.99},
-            {"id": "tx_3", "categoria": "suministros", "confianza": 0.99}
-        ]
-        cat_map = {c["id"]: c for c in categorias_raw}
+    # Categorizar con LLM
+    llm = _get_llm_json()
+    sample = todas_tx[:50]
+    try:
+        response = await llm.ainvoke([
+            SystemMessage(content="""Clasifica cada transacción en una categoría:
+proveedor_material, proveedor_servicio, nominas, impuestos, alquiler,
+suministros, financiero, cliente_cobro, transferencia_interna, otros.
+Devuelve JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""),
+            HumanMessage(content=f"Transacciones:\n{json.dumps([{'id': t['id'], 'concepto': t['concepto'], 'importe': t['importe']} for t in sample], ensure_ascii=False)}"),
+        ])
+        cats = json.loads(response.content)
+        cats = cats if isinstance(cats, list) else cats.get("categorias", [])
+        cat_map = {c["id"]: c.get("categoria", "otros") for c in cats}
         for tx in todas_tx:
-            cat_info = cat_map.get(tx["id"], {})
-            tx["categoria"]  = cat_info.get("categoria", "otros")
-            tx["confianza"]  = cat_info.get("confianza", 0.5)
-    else:
-        # Categorización con LLM (máx 50 transacciones para no saturar contexto)
-        llm = _get_llm()
-        sample = todas_tx[:50]
-        tx_for_llm = [{"id": tx["id"], "concepto": tx["concepto"],
-                       "acreedor": tx["acreedor"], "deudor": tx["deudor"],
-                       "importe": tx["importe"]} for tx in sample]
-    
-        try:
-            response = await llm.ainvoke([
-                SystemMessage(content=CATEGORIZATION_PROMPT),
-                HumanMessage(content=f"Transacciones:\n{json.dumps(tx_for_llm, ensure_ascii=False)}"),
-            ])
-            categorias_raw = json.loads(response.content)
-            # Puede devolver {"categorias": [...]} o directamente [...]
-            categorias = categorias_raw if isinstance(categorias_raw, list) else categorias_raw.get("categorias", [])
-            cat_map = {c["id"]: c for c in categorias}
-    
-            for tx in todas_tx:
-                cat_info = cat_map.get(tx["id"], {})
-                tx["categoria"]  = cat_info.get("categoria", "otros")
-                tx["confianza"]  = cat_info.get("confianza", 0.5)
-        except Exception:
-            for tx in todas_tx:
-                tx["categoria"] = "otros"
-                tx["confianza"] = 0.0
+            tx["categoria"] = cat_map.get(tx["id"], "otros")
+    except Exception:
+        for tx in todas_tx:
+            tx["categoria"] = "otros"
 
-    return BankingAgentResult(
-        success=True, action="transacciones",
-        transacciones=todas_tx, alertas=alertas
-    )
+    lines = [f"- {t.get('fecha', 'N/A')}: {t['concepto']} | {t['importe']:+.2f}€ [{t.get('categoria', 'otros')}]" for t in todas_tx[:30]]
+    result = f"Transacciones (últimos {days_back} días, {len(todas_tx)} total):\n" + "\n".join(lines)
+    if alertas:
+        result += "\n\nAlertas:\n" + "\n".join(alertas)
+    return result
 
 
-async def _accion_resumen(
-    secret_id: str, secret_key: str, account_ids: list[str], days_back: int
-) -> BankingAgentResult:
-    """Genera un resumen financiero del período con LLM."""
-    # Primero obtener transacciones categorizadas
-    tx_result = await _accion_transacciones(secret_id, secret_key, account_ids, days_back)
-    saldo_result = await _accion_saldos(secret_id, secret_key, account_ids)
+@tool
+async def financial_summary(tenant_id: str, days_back: int = 30) -> str:
+    """
+    Genera un resumen financiero del período: ingresos, gastos por categoría,
+    resultado neto y recomendaciones. Combina saldos + transacciones.
 
-    txs = tx_result.transacciones
-    if not txs:
-        return BankingAgentResult(
-            success=True, action="resumen",
-            resumen_financiero="No hay transacciones en el período seleccionado.",
-            saldos=saldo_result.saldos,
+    Args:
+        tenant_id: ID del tenant
+        days_back: Días del período a analizar (por defecto 30)
+    """
+    return await _financial_summary_async(tenant_id, days_back)
+
+
+async def _financial_summary_async(tenant_id: str, days_back: int) -> str:
+    creds = await _get_psd2_credentials(tenant_id)
+
+    if not creds:
+        # Resumen con datos demo
+        ingresos = sum(t["importe"] for t in _DEMO_TXS if t["importe"] > 0)
+        gastos = sum(abs(t["importe"]) for t in _DEMO_TXS if t["importe"] < 0)
+        return (
+            f"⚠️ Banco no conectado — resumen con datos de demo.\n\n"
+            f"Período: últimos {days_back} días\n"
+            f"Ingresos: +{ingresos:.2f}€\n"
+            f"Gastos: -{gastos:.2f}€\n"
+            f"Resultado neto: {ingresos - gastos:+.2f}€\n\n"
+            "Conecta tu banco desde Integraciones → PSD2 para análisis real."
         )
 
-    # Agregar por categoría (determinista)
-    from collections import defaultdict
-    by_cat: dict = defaultdict(lambda: {"total": 0.0, "count": 0})
-    for tx in txs:
-        cat = tx.get("categoria", "otros")
-        by_cat[cat]["total"] += tx["importe"]
-        by_cat[cat]["count"] += 1
+    # Con PSD2 real: obtener transacciones categorizadas
+    tx_text = await _list_transactions_async(tenant_id, days_back)
+    balance_text = await _check_balances_async(tenant_id)
 
-    ingresos = sum(v["total"] for v in by_cat.values() if v["total"] > 0)
-    gastos   = sum(abs(v["total"]) for v in by_cat.values() if v["total"] < 0)
+    llm = _get_llm()
+    try:
+        response = await llm.ainvoke([
+            SystemMessage(content="""Eres un contable experto en PYMEs españolas.
+Analiza los datos financieros y redacta un resumen claro para el empresario.
+Incluye: ingresos/gastos principales, tendencias, y recomendación concreta.
+Máximo 200 palabras. NO inventes datos."""),
+            HumanMessage(content=f"Saldos:\n{balance_text}\n\nTransacciones:\n{tx_text}"),
+        ])
+        return response.content
+    except Exception:
+        return f"Datos disponibles:\n\n{balance_text}\n\n{tx_text}"
 
-    resumen_datos = {
-        "periodo_dias": days_back,
-        "total_transacciones": len(txs),
-        "ingresos_eur": round(ingresos, 2),
-        "gastos_eur": round(gastos, 2),
-        "resultado_neto": round(ingresos - gastos, 2),
-        "por_categoria": {cat: {"total": round(v["total"], 2), "operaciones": v["count"]}
-                          for cat, v in by_cat.items()},
-    }
 
-    if secret_id == "DEMO_PSD2_ID":
-        resumen_texto = (
-            f"El período analizado de los últimos {days_back} días muestra unos ingresos de {ingresos:.2f}€ "
-            f"y unos gastos estructurados de {abs(gastos):.2f}€. El resultado neto es positivo en {(ingresos - gastos):.2f}€. "
-            "Se observa un buen control en gastos fijos como el alquiler de la oficina y cobros importantes realizados con éxito."
-        )
-    else:
-        # Redactar resumen con LLM
-        llm = _get_llm()
-        try:
-            response = await llm.ainvoke([
-                SystemMessage(content="""Eres un contable experto en PYMEs españolas.
-    Analiza los datos financieros proporcionados y redacta un resumen claro y útil para el empresario.
-    Incluye: ingresos/gastos principales, tendencias destacables, y recomendación concreta.
-    Máximo 200 palabras. NO inventes datos que no estén en el JSON."""),
-                HumanMessage(content=f"Datos financieros:\n{json.dumps(resumen_datos, ensure_ascii=False)}"),
-            ])
-            resumen_texto = response.content
-        except Exception:
-            resumen_texto = (
-                f"Período: últimos {days_back} días.\n"
-                f"Ingresos: {ingresos:.2f}€ | Gastos: {gastos:.2f}€ | "
-                f"Resultado neto: {(ingresos - gastos):.2f}€"
+async def _get_psd2_credentials(tenant_id: str) -> dict | None:
+    """Obtiene credenciales PSD2 del tenant si están configuradas."""
+    import uuid
+    from sqlalchemy import select
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.models import TenantIntegration
+    from app.services.encryption import decrypt_credentials
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(TenantIntegration).where(
+                    TenantIntegration.tenant_id == uuid.UUID(tenant_id),
+                    TenantIntegration.integration_type == "psd2",
+                    TenantIntegration.is_active.is_(True),
+                )
             )
+            integration = result.scalars().first()
+            if not integration:
+                return None
+            creds = decrypt_credentials(integration.encrypted_credentials)
+            if not creds.get("secret_id") or not creds.get("secret_key"):
+                return None
+            return creds
+    except Exception:
+        return None
 
-    return BankingAgentResult(
-        success=True, action="resumen",
-        transacciones=txs,
-        saldos=saldo_result.saldos,
-        alertas=tx_result.alertas + saldo_result.alertas,
-        resumen_financiero=resumen_texto,
+
+# ─── Conciliación bancaria ────────────────────────────────────────────────────
+
+@tool
+async def reconcile_transactions(tenant_id: str, tolerance_days: int = 3, tolerance_amount: float = 0.01) -> str:
+    """
+    Concilia automáticamente transacciones bancarias con facturas pendientes/pagadas.
+    Cruza movimientos de ingreso con facturas pending/paid por importe y fecha (±tolerancia).
+    Marca como conciliadas las coincidencias encontradas.
+
+    Args:
+        tenant_id: ID del tenant
+        tolerance_days: Días de tolerancia entre fecha de transacción y fecha de factura (por defecto 3)
+        tolerance_amount: Tolerancia en euros para considerar coincidencia de importe (por defecto 0.01)
+    """
+    return await _reconcile_transactions_async(tenant_id, tolerance_days, tolerance_amount)
+
+
+async def _reconcile_transactions_async(
+    tenant_id: str, tolerance_days: int, tolerance_amount: float,
+) -> str:
+    from sqlalchemy import select, and_, or_
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.models import Invoice, Client
+
+    try:
+        # 1. Obtener transacciones (PSD2 o demo)
+        creds = await _get_psd2_credentials(tenant_id)
+        if creds:
+            from app.integrations.psd2 import PSD2Client
+            psd2 = PSD2Client(creds["secret_id"], creds["secret_key"])
+            accounts = psd2.get_accounts()
+            transactions = []
+            for acc in accounts:
+                transactions.extend(psd2.get_transactions(acc["id"], days=90))
+        else:
+            # Datos demo de transacciones (ingresos)
+            today = date.today()
+            transactions = [
+                {"amount": 2420.00, "date": (today - timedelta(days=5)).isoformat(), "description": "Transferencia recibida - Acme Corp", "type": "credit"},
+                {"amount": 1815.00, "date": (today - timedelta(days=12)).isoformat(), "description": "Transferencia recibida - López SL", "type": "credit"},
+                {"amount": 3630.00, "date": (today - timedelta(days=20)).isoformat(), "description": "Transferencia recibida", "type": "credit"},
+                {"amount": 605.00, "date": (today - timedelta(days=2)).isoformat(), "description": "Bizum recibido", "type": "credit"},
+                {"amount": -850.00, "date": (today - timedelta(days=8)).isoformat(), "description": "Pago proveedor", "type": "debit"},
+                {"amount": -1200.00, "date": (today - timedelta(days=15)).isoformat(), "description": "Alquiler oficina", "type": "debit"},
+            ]
+
+        # Filtrar solo ingresos
+        ingresos = [t for t in transactions if float(t.get("amount", 0)) > 0]
+
+        if not ingresos:
+            return "No se encontraron transacciones de ingreso para conciliar."
+
+        # 2. Obtener facturas pendientes y pagadas no conciliadas
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Invoice, Client).join(Client).where(
+                    Invoice.tenant_id == UUID(tenant_id),
+                    or_(Invoice.status == "pending", Invoice.status == "paid"),
+                )
+            )
+            invoices = result.all()
+
+            if not invoices:
+                return "No hay facturas pendientes o pagadas para conciliar."
+
+            # 3. Cruzar por importe (±tolerancia) y fecha (±días)
+            matched = []
+            unmatched_txns = []
+
+            for txn in ingresos:
+                txn_amount = float(txn["amount"])
+                txn_date = date.fromisoformat(txn["date"][:10]) if txn.get("date") else date.today()
+                found = False
+
+                for inv, cli in invoices:
+                    inv_total = float(inv.amount_total)
+                    inv_date = inv.date.date() if hasattr(inv.date, 'date') else inv.date
+
+                    amount_match = abs(txn_amount - inv_total) <= tolerance_amount
+                    date_match = abs((txn_date - inv_date).days) <= tolerance_days
+
+                    if amount_match and date_match:
+                        # Conciliado
+                        if inv.status == "pending":
+                            inv.status = "paid"
+                        matched.append({
+                            "invoice": inv.invoice_number,
+                            "client": cli.name,
+                            "amount": txn_amount,
+                            "txn_desc": txn.get("description", ""),
+                        })
+                        found = True
+                        break
+
+                if not found:
+                    unmatched_txns.append({
+                        "amount": txn_amount,
+                        "date": txn.get("date", "?")[:10],
+                        "description": txn.get("description", ""),
+                    })
+
+            await db.commit()
+
+        # 4. Generar informe
+        lines = []
+        if matched:
+            lines.append(f"CONCILIADOS ({len(matched)}):")
+            for m in matched:
+                lines.append(
+                    f"  - {m['invoice']} ({m['client']}): {m['amount']:.2f}€ ← {m['txn_desc']}"
+                )
+
+        if unmatched_txns:
+            lines.append(f"\nSIN CONCILIAR ({len(unmatched_txns)}):")
+            for u in unmatched_txns:
+                lines.append(
+                    f"  - {u['date']}: +{u['amount']:.2f}€ — {u['description']}"
+                )
+
+        total_conciliado = sum(m["amount"] for m in matched)
+        total_pendiente = sum(u["amount"] for u in unmatched_txns)
+
+        lines.append(f"\nResumen: {len(matched)} conciliados ({total_conciliado:.2f}€), "
+                     f"{len(unmatched_txns)} sin conciliar ({total_pendiente:.2f}€).")
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error en conciliación: {e}"
+
+
+# ─── Lista de herramientas ────────────────────────────────────────────────────
+
+tools = [
+    check_balances,
+    list_transactions,
+    financial_summary,
+    reconcile_transactions,
+    create_document,
+    list_tenant_documents,
+    get_document_content,
+    get_tenant_knowledge,
+    upsert_tenant_knowledge,
+]
+
+
+# ─── Nodos del grafo LangGraph ───────────────────────────────────────────────
+
+BANKING_SYSTEM_PROMPT = """Eres el Agente Bancario de un ERP para PYMEs españolas. Tus capacidades:
+
+1. **Consultar saldos** con `check_balances` — saldos actuales de cuentas vinculadas.
+2. **Ver transacciones** con `list_transactions` — movimientos del período con categorización.
+3. **Resumen financiero** con `financial_summary` — análisis completo con recomendaciones.
+4. **Conciliar** con `reconcile_transactions` — cruza ingresos bancarios con facturas por importe y fecha. Marca como pagadas las coincidencias.
+5. **Crear documentos** con `create_document` — para exportar informes.
+6. **Memoria del tenant** con `get_tenant_knowledge` y `upsert_tenant_knowledge`.
+
+REGLAS:
+- Si el usuario pregunta por saldos, usa `check_balances`.
+- Si pregunta por movimientos o transacciones, usa `list_transactions`.
+- Si pide un resumen o análisis, usa `financial_summary`.
+- Si pide conciliar o cuadrar movimientos con facturas, usa `reconcile_transactions`.
+- Si el banco no está conectado, las herramientas devuelven datos de demo automáticamente.
+- Responde siempre en español.
+
+ID del Tenant actual: {tenant_id}"""
+
+
+async def banking_agent_node(state: AgentState):
+    from datetime import datetime as dt
+    if "messages" not in state or not state["messages"]:
+        sys_msg = SystemMessage(
+            content=BANKING_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
+        )
+        user_msg = HumanMessage(content=state["user_intent"])
+        extra_init_messages = [sys_msg, user_msg]
+        state["messages"] = extra_init_messages
+    else:
+        extra_init_messages = []
+
+    llm_with_tools = _get_llm().bind_tools(tools)
+    response = await llm_with_tools.ainvoke(state["messages"])
+
+    result_log = StepResult(
+        step_id=f"banking_step_{dt.now().timestamp()}",
+        description="Procesando solicitud bancaria...",
+        status="completed",
+        action_taken="Invocando herramientas bancarias" if response.tool_calls else "Asistencia bancaria completada.",
     )
+
+    if "agent_results" not in state:
+        state["agent_results"] = []
+    state["agent_results"].append(result_log.model_dump())
+    return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
+
+
+def banking_finalize_node(state: AgentState):
+    last_msg = state["messages"][-1]
+    final_result = StepResult(
+        step_id="banking_final",
+        description="Agente Bancario ha finalizado.",
+        status="completed",
+        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operación bancaria completada.",
+    )
+    return {"status": "done", "agent_results": [final_result.model_dump()]}
+
+
+# ─── Compilar grafo ───────────────────────────────────────────────────────────
+
+workflow = StateGraph(AgentState)
+workflow.add_node("banking_agent", banking_agent_node)
+workflow.add_node("tools", ToolNode(tools))
+workflow.add_node("finalize", banking_finalize_node)
+
+workflow.set_entry_point("banking_agent")
+workflow.add_conditional_edges("banking_agent", tools_condition)
+workflow.add_edge("tools", "banking_agent")
+
+graph = workflow.compile()

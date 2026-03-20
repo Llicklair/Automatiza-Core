@@ -13,6 +13,7 @@ class Employee(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey('tenants.id'), nullable=False, index=True)
     nif = Column(String(50), index=True)
     name = Column(String(255), nullable=False)
+    email = Column(String(255))
     department = Column(String(100))
     role = Column(String(100))
     base_salary = Column(Numeric(10, 2))

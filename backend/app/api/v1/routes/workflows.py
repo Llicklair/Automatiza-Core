@@ -576,9 +576,6 @@ async def fire_workflow_event(
         if event_name not in wf_events and "any" not in wf_events:
             continue
 
-        context_str = ", ".join(f"{k}={v}" for k, v in context.items())
-        ai_instruction = f"{_build_ai_instruction(wf)} [Contexto: {event_name} - {context_str}]"
-
         execution = models.WorkflowExecution(
             workflow_id=wf.id,
             tenant_id=current_user.tenant_id,
@@ -588,28 +585,71 @@ async def fire_workflow_event(
         db.add(execution)
         await db.flush()
 
-        task = models.Task(
-            tenant_id=current_user.tenant_id,
-            created_by=current_user.id,
-            domain=_infer_domain(wf),
-            user_intent=ai_instruction,
-            status="pending",
-            additional_metadata={"workflow_id": str(wf.id), "execution_id": str(execution.id), "event": event_name},
-        )
-        db.add(task)
-        await db.flush()
-        execution.task_id = task.id
-        await db.commit()
-        await db.refresh(task)
+        # ── Ruta DETERMINISTA: pasos híbridos sin LLM ──
+        if wf.execution_mode == "deterministic" and wf.compiled_steps:
+            det_task = models.Task(
+                tenant_id=current_user.tenant_id,
+                created_by=current_user.id,
+                domain="deterministic",
+                user_intent=f"[Determinista] {wf.name} ({event_name})",
+                status="running",
+                additional_metadata={"workflow_id": str(wf.id), "execution_id": str(execution.id), "event": event_name},
+            )
+            db.add(det_task)
+            await db.flush()
+            execution.task_id = det_task.id
 
-        try:
-            from app.services.task_dispatch import dispatch_orchestrator
-            await dispatch_orchestrator(str(task.id))
-            triggered.append(str(wf.id))
-        except Exception as e:
-            execution.status = "failed"
-            execution.result_log = str(e)
+            try:
+                results = await _execute_deterministic_steps(
+                    steps=wf.compiled_steps,
+                    tenant_id=str(current_user.tenant_id),
+                    user_id=str(current_user.id),
+                    task_id=str(det_task.id),
+                )
+                execution.status = "success"
+                execution.result_log = (
+                    f"Evento {event_name} → {len(results)} paso(s) deterministas. "
+                    + " | ".join(
+                        f"[{r.get('agent','?')}:{r.get('type','?')}] "
+                        f"{'OK' if r.get('success') else 'ERR'}"
+                        for r in results
+                    )
+                )
+                det_task.status = "done"
+                triggered.append(str(wf.id))
+            except Exception as e:
+                execution.status = "failed"
+                execution.result_log = str(e)
+                det_task.status = "failed"
             await db.commit()
+
+        # ── Ruta REASONING: orquestador clásico ──
+        else:
+            context_str = ", ".join(f"{k}={v}" for k, v in context.items())
+            ai_instruction = f"{_build_ai_instruction(wf)} [Contexto: {event_name} - {context_str}]"
+
+            task = models.Task(
+                tenant_id=current_user.tenant_id,
+                created_by=current_user.id,
+                domain=_infer_domain(wf),
+                user_intent=ai_instruction,
+                status="pending",
+                additional_metadata={"workflow_id": str(wf.id), "execution_id": str(execution.id), "event": event_name},
+            )
+            db.add(task)
+            await db.flush()
+            execution.task_id = task.id
+            await db.commit()
+            await db.refresh(task)
+
+            try:
+                from app.services.task_dispatch import dispatch_orchestrator
+                await dispatch_orchestrator(str(task.id))
+                triggered.append(str(wf.id))
+            except Exception as e:
+                execution.status = "failed"
+                execution.result_log = str(e)
+                await db.commit()
 
     return {"triggered_workflows": triggered, "event": event_name, "count": len(triggered)}
 
@@ -705,9 +745,14 @@ async def _execute_deterministic_steps(
     task_id: str | None = None,
 ) -> list[dict]:
     """
-    Ejecuta los pasos precompilados de un workflow determinista llamando directamente
-    a las funciones _dispatch_* del orquestador con un estado mínimo.
-    Devuelve una lista de resultados por paso.
+    Ejecuta los pasos precompilados de un workflow híbrido.
+
+    Cada paso tiene un campo 'type':
+      - "deterministic" → llama directamente a la @tool function (0 tokens LLM)
+      - "reasoning"     → pasa por el dispatcher + LangGraph (usa LLM)
+
+    Si el paso no tiene 'type', se infiere: si tiene 'tool' → deterministic, sino → reasoning.
+    Los resultados de pasos anteriores se inyectan como $prev en el siguiente paso.
     """
     _DISPATCH_MAP = {
         "billing": _dispatch_billing,
@@ -722,7 +767,8 @@ async def _execute_deterministic_steps(
     }
 
     import uuid as _uuid
-    # Estado mínimo compatible con OrchestratorState
+    from app.agents.tool_registry import call_tool
+
     base_state: dict[str, Any] = {
         "task_id": task_id or str(_uuid.uuid4()),
         "tenant_id": tenant_id,
@@ -738,37 +784,79 @@ async def _execute_deterministic_steps(
     }
 
     results = []
-    for step in steps:
+    prev_output = ""  # resultado del paso anterior, inyectable como $prev
+
+    for idx, step in enumerate(steps):
         agent_name = step.get("agent", "")
-        intent = step.get("params", {}).get("intent", "")
-        subtask = {
-            "id": f"det_{agent_name}",
-            "subtask_id": f"det_{agent_name}",
-            "agent": agent_name,
-            "action": step.get("action", ""),
-            "params": {"intent": intent},
-            "depends_on": [],
-            "status": "pending",
-        }
-        base_state["user_intent"] = intent
-        base_state["current_intent"] = intent
+        step_type = step.get("type", "deterministic" if step.get("tool") else "reasoning")
 
-        dispatch_fn = _DISPATCH_MAP.get(agent_name)
-        if dispatch_fn is None:
-            results.append({"agent": agent_name, "success": False, "error": f"Agente '{agent_name}' no reconocido"})
-            continue
+        # ── Paso DETERMINISTA: llamada directa a @tool, sin LLM ──
+        if step_type == "deterministic":
+            tool_name = step.get("tool", "")
+            if not tool_name:
+                results.append({"agent": agent_name, "step": idx, "type": "deterministic",
+                                "success": False, "error": "Paso determinista sin campo 'tool'"})
+                continue
 
-        try:
-            result = await dispatch_fn(base_state, subtask)  # type: ignore[arg-type]
-            results.append({
+            # Construir params, inyectando tenant_id y $prev
+            tool_params = dict(step.get("params", {}))
+            tool_params.setdefault("tenant_id", tenant_id)
+
+            # Sustituir $prev en valores string
+            for k, v in tool_params.items():
+                if isinstance(v, str) and "$prev" in v:
+                    tool_params[k] = v.replace("$prev", prev_output)
+
+            try:
+                output = call_tool(tool_name, tool_params)
+                prev_output = output
+                results.append({
+                    "agent": agent_name, "step": idx, "type": "deterministic",
+                    "tool": tool_name, "success": True, "output": output, "error": None,
+                })
+            except Exception as exc:
+                results.append({"agent": agent_name, "step": idx, "type": "deterministic",
+                                "tool": tool_name, "success": False, "error": str(exc)})
+
+        # ── Paso REASONING: dispatcher + LangGraph + LLM ──
+        else:
+            intent = step.get("params", {}).get("intent", "")
+            # Inyectar resultado anterior si hay $prev en el intent
+            if "$prev" in intent:
+                intent = intent.replace("$prev", prev_output)
+
+            subtask = {
+                "id": f"hybrid_{idx}_{agent_name}",
+                "subtask_id": f"hybrid_{idx}_{agent_name}",
                 "agent": agent_name,
                 "action": step.get("action", ""),
-                "success": result.get("success", False),
-                "output": result.get("output"),
-                "error": result.get("error"),
-            })
-        except Exception as exc:
-            results.append({"agent": agent_name, "success": False, "error": str(exc)})
+                "params": {"intent": intent},
+                "depends_on": [],
+                "status": "pending",
+            }
+            base_state["user_intent"] = intent
+            base_state["current_intent"] = intent
+
+            dispatch_fn = _DISPATCH_MAP.get(agent_name)
+            if dispatch_fn is None:
+                results.append({"agent": agent_name, "step": idx, "type": "reasoning",
+                                "success": False, "error": f"Agente '{agent_name}' no reconocido"})
+                continue
+
+            try:
+                result = await dispatch_fn(base_state, subtask)  # type: ignore[arg-type]
+                output_data = result.get("output", {})
+                prev_output = output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)
+                results.append({
+                    "agent": agent_name, "step": idx, "type": "reasoning",
+                    "action": step.get("action", ""),
+                    "success": result.get("success", False),
+                    "output": output_data,
+                    "error": result.get("error"),
+                })
+            except Exception as exc:
+                results.append({"agent": agent_name, "step": idx, "type": "reasoning",
+                                "success": False, "error": str(exc)})
 
     return results
 

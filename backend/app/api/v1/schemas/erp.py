@@ -8,6 +8,7 @@ class ClientCreate(BaseModel):
     nif: str | None = None
     name: str
     email: str | None = None
+    phone: str | None = None
     address: str | None = None
     city: str | None = None
     postal_code: str | None = None
@@ -19,6 +20,7 @@ class ClientResponse(BaseModel):
     nif: str | None = None
     name: str
     email: str | None = None
+    phone: str | None = None
     address: str | None = None
     city: str | None = None
     postal_code: str | None = None
@@ -74,6 +76,7 @@ class ClientUpdate(BaseModel):
     nif: str | None = None
     name: str | None = None
     email: str | None = None
+    phone: str | None = None
     address: str | None = None
     city: str | None = None
     postal_code: str | None = None

@@ -34,31 +34,63 @@ class WorkflowAgentResult:
 # ─── Herramientas para el Agente (Simuladas en modo Prompt) ───────────────────
 
 _COMPILE_STEPS_PROMPT = """\
-Eres un compilador de pasos de workflow para AutomatizaPyme.
-Dado un workflow con su configuración (nombre, descripción, trigger, instrucción de acción),
-genera una lista CONCRETA y ORDENADA de pasos de ejecución deterministas.
+Eres un compilador de pasos de workflow HÍBRIDO para AutomatizaPyme.
+Dado un workflow con su configuración, genera una lista CONCRETA y ORDENADA de pasos.
+
+Cada paso puede ser de dos tipos:
+- **deterministic**: Llama directamente a una función @tool por nombre. NO usa LLM. Coste: 0 tokens.
+- **reasoning**: El LLM analiza, decide o redacta. Coste: tokens LLM.
+
+REGLA DE ORO: Usa "deterministic" siempre que la acción sea concreta y predecible (queries, exports, envíos).
+Usa "reasoning" SOLO cuando se necesite analizar datos, tomar decisiones o generar texto libre.
 
 Devuelve SIEMPRE un JSON válido con este formato:
 {
   "steps": [
     {
-      "agent": "billing|hr|documents|banking|crm|compliance|excel|email|rag",
-      "action": "nombre_de_la_accion",
-      "params": {
-        "intent": "Instrucción concreta en lenguaje natural para este agente"
-      }
+      "type": "deterministic",
+      "agent": "billing",
+      "tool": "list_invoices",
+      "action": "fetch_pending_invoices",
+      "params": {"tenant_id": "$tenant_id", "limit": 20}
+    },
+    {
+      "type": "reasoning",
+      "agent": "billing",
+      "action": "analyze_invoices",
+      "params": {"intent": "Analiza las facturas pendientes: $prev. Genera un resumen ejecutivo con totales y alertas."}
+    },
+    {
+      "type": "deterministic",
+      "agent": "email",
+      "tool": "send_email",
+      "action": "notify_admin",
+      "params": {"tenant_id": "$tenant_id", "to": "admin@empresa.com", "subject": "Informe semanal", "body": "$prev"}
     }
   ]
 }
 
+VARIABLES ESPECIALES:
+- $tenant_id → se reemplaza automáticamente por el tenant_id real.
+- $prev → resultado del paso anterior (encadenamiento).
+
+TOOLS DISPONIBLES (para pasos deterministic):
+billing: create_invoice, list_invoices, search_client, update_invoice_status, update_invoice, send_invoice_by_email
+hr: create_employee, calculate_and_create_payroll, generate_all_payrolls, list_employees, list_payrolls, update_payroll, approve_payroll
+crm: list_opportunities, create_opportunity, update_opportunity_stage, qualify_leads
+banking: check_balances, list_transactions, financial_summary, reconcile_transactions
+compliance: check_fiscal_deadlines, check_boe_news, fiscal_query
+documents: classify_document, search_documents_semantic
+excel: export_erp_data, list_available_datasets, import_excel, modify_excel, read_excel
+email: check_inbox, check_unread, send_email
+rag: search_documents, answer_from_documents
+
 REGLAS:
-1. Cada paso debe poder ejecutarse de forma independiente con la instrucción en "intent".
-2. Infiere el "agent" correcto: billing (facturas), hr (nóminas/empleados), email (correos),
-   documents (archivos/OCR), banking (banca), crm (clientes/oportunidades),
-   compliance (fiscal/AEAT), excel (informes/hojas de cálculo), rag (consultas de documentos).
-3. El "action" es un identificador snake_case descriptivo (ej: generate_invoices, send_email_notification).
-4. Si la instrucción requiere múltiples pasos encadenados, genera un paso por cada agente implicado.
-5. Mantén el orden lógico de ejecución: primero la acción principal, luego las secundarias (emails, notificaciones, etc.).
+1. Cada paso deterministic DEBE tener el campo "tool" con el nombre exacto de la función.
+2. Los parámetros de tools deterministic deben coincidir con la firma de la función.
+3. Si necesitas que el LLM interprete, analice o redacte → usa type "reasoning".
+4. Mantén el orden lógico: primero obtener datos, luego analizar, luego actuar.
+5. Minimiza pasos "reasoning" — son los únicos que cuestan tokens.
 """
 
 _SYSTEM_PROMPT = """\
@@ -128,14 +160,24 @@ async def _compile_deterministic_steps(
             SystemMessage(content=_COMPILE_STEPS_PROMPT),
             HumanMessage(content=context),
         ])
-        parsed = json.loads(response.content)
+        raw = response.content.strip()
+        if raw.startswith("```json"):
+            raw = raw[7:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        parsed = json.loads(raw.strip())
         steps = parsed.get("steps", [])
         if not isinstance(steps, list):
             steps = []
+        # Asegurar que cada paso tiene el campo 'type'
+        for step in steps:
+            if "type" not in step:
+                step["type"] = "deterministic" if step.get("tool") else "reasoning"
         return steps
     except Exception:
-        # Si falla la compilación, devolvemos un paso genérico para no bloquear la creación
-        return [{"agent": "skill", "action": "execute_workflow", "params": {"intent": action_instruction}}]
+        # Fallback: un paso reasoning genérico
+        return [{"type": "reasoning", "agent": "skill", "action": "execute_workflow",
+                 "params": {"intent": action_instruction}}]
 
 
 async def run_workflow_agent(
