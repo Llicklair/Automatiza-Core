@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.db.base import Base
 
@@ -17,8 +17,13 @@ class DocumentEmbedding(Base):
     
     chunk_index = Column(String, nullable=False)  # Para mantener el orden original de los trozos
     text_content = Column(Text, nullable=False)   # El texto extraído
-    
-    # Vector column. Llama 3.2 nomic-embed-text generates 768-dimensional vectors.
+
+    # Metadata de OpenDataLoader (nullable para compatibilidad con datos existentes)
+    page_number = Column(Integer, nullable=True)       # Página de origen en el PDF
+    element_type = Column(String, nullable=True)       # paragraph, table, heading, etc.
+    bounding_box = Column(JSONB, nullable=True)        # [left, bottom, right, top]
+
+    # Vector column — 768-dimensional (BAAI/bge-m3)
     embedding = Column(Vector(768), nullable=False)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
