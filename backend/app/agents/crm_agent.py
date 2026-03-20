@@ -30,17 +30,14 @@ llm = get_llm(temperature=0)
 # ─── Herramientas ────────────────────────────────────────────────────────────
 
 @tool
-def list_opportunities(tenant_id: str, stage: str = "all") -> str:
+async def list_opportunities(tenant_id: str, stage: str = "all") -> str:
     """
     Lista las oportunidades de venta del CRM, opcionalmente filtradas por fase.
     Args:
         tenant_id: ID del tenant
         stage: Fase a filtrar ('new', 'qualified', 'proposal', 'won', 'lost', 'all')
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _list_opportunities_async(tenant_id, stage)
-    )
+    return await _list_opportunities_async(tenant_id, stage)
 
 async def _list_opportunities_async(tenant_id: str, stage: str) -> str:
     try:
@@ -71,7 +68,7 @@ async def _list_opportunities_async(tenant_id: str, stage: str) -> str:
 
 
 @tool
-def create_opportunity(tenant_id: str, client_nif: str, title: str, expected_value: float = 0, stage: str = "new") -> str:
+async def create_opportunity(tenant_id: str, client_nif: str, title: str, expected_value: float = 0, stage: str = "new") -> str:
     """
     Crea una nueva Oportunidad de Venta (Lead) en el CRM para un cliente existente.
     Args:
@@ -81,10 +78,7 @@ def create_opportunity(tenant_id: str, client_nif: str, title: str, expected_val
         expected_value: Valor esperado en euros
         stage: Fase ('new', 'qualified', 'proposal', 'won', 'lost')
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _create_opportunity_async(tenant_id, client_nif, title, expected_value, stage)
-    )
+    return await _create_opportunity_async(tenant_id, client_nif, title, expected_value, stage)
 
 async def _create_opportunity_async(tenant_id: str, client_nif: str, title: str, expected_value: float, stage: str) -> str:
     try:
@@ -114,7 +108,7 @@ async def _create_opportunity_async(tenant_id: str, client_nif: str, title: str,
 
 
 @tool
-def update_opportunity_stage(tenant_id: str, opportunity_id: str, new_stage: str, notes: str = "") -> str:
+async def update_opportunity_stage(tenant_id: str, opportunity_id: str, new_stage: str, notes: str = "") -> str:
     """
     Mueve una Oportunidad de Venta de una fase a otra en el Embudo.
     Args:
@@ -127,10 +121,7 @@ def update_opportunity_stage(tenant_id: str, opportunity_id: str, new_stage: str
     if new_stage not in valid_stages:
         return f"Error: Fase '{new_stage}' invalida. Usa una de: {valid_stages}."
 
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _update_opportunity_stage_async(tenant_id, opportunity_id, new_stage, notes)
-    )
+    return await _update_opportunity_stage_async(tenant_id, opportunity_id, new_stage, notes)
 
 async def _update_opportunity_stage_async(tenant_id: str, opportunity_id: str, new_stage: str, notes: str) -> str:
     try:
@@ -159,17 +150,14 @@ async def _update_opportunity_stage_async(tenant_id: str, opportunity_id: str, n
 
 
 @tool
-def qualify_leads(tenant_id: str) -> str:
+async def qualify_leads(tenant_id: str) -> str:
     """
     Analiza todas las oportunidades en fase 'new' y sugiere cuáles cualificar
     basándose en el valor esperado y el tiempo en pipeline.
     Args:
         tenant_id: ID del tenant
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _qualify_leads_async(tenant_id)
-    )
+    return await _qualify_leads_async(tenant_id)
 
 async def _qualify_leads_async(tenant_id: str) -> str:
     try:
@@ -237,7 +225,7 @@ llm_with_tools = llm.bind_tools(tools)
 
 # ─── Nodos del grafo ─────────────────────────────────────────────────────────
 
-def crm_agent_node(state: AgentState):
+async def crm_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
         sys_msg = SystemMessage(
             content=(
@@ -260,7 +248,7 @@ def crm_agent_node(state: AgentState):
     else:
         extra_init_messages = []
 
-    response = llm_with_tools.invoke(state["messages"])
+    response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
         step_id=f"crm_step_{datetime.now().timestamp()}",

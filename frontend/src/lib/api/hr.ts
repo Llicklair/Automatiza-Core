@@ -5,6 +5,7 @@ export interface Employee {
     tenant_id: string;
     nif: string | null;
     name: string;
+    email: string | null;
     department: string | null;
     role: string | null;
     base_salary: number | null;

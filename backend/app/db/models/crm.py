@@ -14,6 +14,7 @@ class Client(Base):
     nif = Column(String(50), index=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255))
+    phone = Column(String(50))
     address = Column(Text)
     city = Column(String(255))
     postal_code = Column(String(50))

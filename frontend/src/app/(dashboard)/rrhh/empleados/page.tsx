@@ -25,7 +25,7 @@ export default function EmployeesPage() {
 
     // Form state
     const [form, setForm] = useState({
-        name: "", nif: "", department: "", role: "",
+        name: "", nif: "", email: "", department: "", role: "",
         base_salary: "", status: "active",
         join_date: "", contract_end_date: "",
     });
@@ -46,7 +46,7 @@ export default function EmployeesPage() {
 
     const openModal = () => {
         setEditingId(null);
-        setForm({ name: "", nif: "", department: "", role: "", base_salary: "", status: "active", join_date: "", contract_end_date: "" });
+        setForm({ name: "", nif: "", email: "", department: "", role: "", base_salary: "", status: "active", join_date: "", contract_end_date: "" });
         setError("");
         setShowModal(true);
     };
@@ -54,8 +54,9 @@ export default function EmployeesPage() {
     const openEdit = (emp: Employee) => {
         setEditingId(emp.id);
         setForm({
-            name: emp.name, nif: emp.nif || "", department: emp.department || "",
-            role: emp.role || "", base_salary: emp.base_salary ? String(emp.base_salary) : "", status: emp.status,
+            name: emp.name, nif: emp.nif || "", email: emp.email || "",
+            department: emp.department || "", role: emp.role || "",
+            base_salary: emp.base_salary ? String(emp.base_salary) : "", status: emp.status,
             join_date: emp.join_date ? emp.join_date.slice(0, 10) : "",
             contract_end_date: emp.contract_end_date ? emp.contract_end_date.slice(0, 10) : "",
         });
@@ -87,6 +88,7 @@ export default function EmployeesPage() {
             const payload = {
                 name: form.name,
                 nif: form.nif || undefined,
+                email: form.email || undefined,
                 department: form.department || undefined,
                 role: form.role || undefined,
                 base_salary: form.base_salary ? parseFloat(form.base_salary) : undefined,
@@ -179,7 +181,7 @@ export default function EmployeesPage() {
             </div>
 
             {/* Tabla */}
-            <div className="bg-[#111113] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-[#111113] border border-zinc-800 rounded-2xl shadow-2xl">
                 <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#161618]">
                     <div className="relative">
                         <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -223,6 +225,7 @@ export default function EmployeesPage() {
                                         <div>
                                             <div className="font-medium text-white">{emp.name}</div>
                                             <div className="text-xs text-zinc-500">{emp.nif || "S/NIF"}</div>
+                                            {emp.email && <div className="text-xs text-zinc-500">{emp.email}</div>}
                                         </div>
                                     </div>
                                 </td>
@@ -298,6 +301,12 @@ export default function EmployeesPage() {
                                         placeholder="2000"
                                         className="w-full px-3 py-2.5 rounded-lg bg-[#18181b] border border-[#3f3f46] text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="text-sm text-zinc-300 block mb-1.5">Email</label>
+                                <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                                    placeholder="empleado@empresa.com"
+                                    className="w-full px-3 py-2.5 rounded-lg bg-[#18181b] border border-[#3f3f46] text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>

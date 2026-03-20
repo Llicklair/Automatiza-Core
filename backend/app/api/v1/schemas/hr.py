@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class EmployeeBase(BaseModel):
     nif: str | None = None
     name: str
+    email: str | None = None
     department: str | None = None
     role: str | None = None
     base_salary: float | None = None
@@ -21,6 +22,7 @@ class EmployeeCreate(EmployeeBase):
 class EmployeeUpdate(BaseModel):
     nif: str | None = None
     name: str | None = None
+    email: str | None = None
     department: str | None = None
     role: str | None = None
     base_salary: float | None = None

@@ -156,7 +156,7 @@ def _build_graph(tools_list):
     local_llm = get_llm(temperature=0)
     local_llm_with_tools = local_llm.bind_tools(tools_list)
 
-    def agent_node(state: AgentState):
+    async def agent_node(state: AgentState):
         extra_init_messages = []
         if "messages" not in state or not state["messages"]:
             has_real = any("DEMO" not in t.name for t in tools_list if hasattr(t, "name"))
@@ -190,7 +190,7 @@ def _build_graph(tools_list):
             extra_init_messages = [sys_msg, user_msg]
             state["messages"] = extra_init_messages
 
-        response = local_llm_with_tools.invoke(state["messages"])
+        response = await local_llm_with_tools.ainvoke(state["messages"])
 
         result_log = StepResult(
             step_id=f"email_step_{datetime.now().timestamp()}",
@@ -311,7 +311,7 @@ async def run_email_agent(
                 return f"Error al leer correos no leídos: {e}"
 
         @tool
-        def send_email_real(tenant_id: str, to: str, subject: str, body: str, attachment_ids: list[str] | None = None) -> str:
+        async def send_email_real(tenant_id: str, to: str, subject: str, body: str, attachment_ids: list[str] | None = None) -> str:
             """
             Envía un correo electrónico real al destinatario indicado, permitiendo adjuntar documentos.
             Args:
@@ -328,39 +328,20 @@ async def run_email_agent(
 
             attachment_paths = []
             if attachment_ids:
-                import asyncio
-                # Helper sincronizado para resolver paths en herramienta síncrona/thread
-                async def resolve_paths():
-                    paths = []
-                    async with AsyncSessionLocal() as db:
-                        for doc_id in attachment_ids:
-                            try:
-                                res = await db.execute(
-                                    select(TenantDocument.file_path).where(
-                                        TenantDocument.id == uuid.UUID(doc_id),
-                                        TenantDocument.tenant_id == uuid.UUID(tenant_id)
-                                    )
+                async with AsyncSessionLocal() as db:
+                    for doc_id in attachment_ids:
+                        try:
+                            res = await db.execute(
+                                select(TenantDocument.file_path).where(
+                                    TenantDocument.id == uuid.UUID(doc_id),
+                                    TenantDocument.tenant_id == uuid.UUID(tenant_id)
                                 )
-                                path = res.scalar_one_or_none()
-                                if path and os.path.exists(path):
-                                    paths.append(path)
-                            except Exception:
-                                continue
-                    return paths
-                
-                # Ejecutar corrutina: si ya hay un loop activo (FastAPI/LangChain), usamos
-                # get_event_loop().run_until_complete(); si no, asyncio.run().
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        import concurrent.futures
-                        with concurrent.futures.ThreadPoolExecutor() as pool:
-                            future = pool.submit(asyncio.run, resolve_paths())
-                            attachment_paths = future.result()
-                    else:
-                        attachment_paths = loop.run_until_complete(resolve_paths())
-                except RuntimeError:
-                    attachment_paths = asyncio.run(resolve_paths())
+                            )
+                            path = res.scalar_one_or_none()
+                            if path and os.path.exists(path):
+                                attachment_paths.append(path)
+                        except Exception:
+                            continue
 
             result = send_email_smtp(
                 creds_snapshot, 
