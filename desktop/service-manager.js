@@ -44,6 +44,13 @@ const {
   runMigrations,
 } = require("./python-manager");
 
+const {
+  isJREInstalled,
+  downloadJRE,
+  getJavaPath,
+  JRE_DIR,
+} = require("./jre-manager");
+
 const { getLanIP } = require("./network-utils");
 
 let PROJECT_ROOT;
@@ -198,6 +205,10 @@ function getBackendEnv(lanIP) {
     // Embeddings
     EMBEDDINGS_PROVIDER:    envVar("EMBEDDINGS_PROVIDER", "local"),
     EMBEDDINGS_LOCAL_MODEL: envVar("EMBEDDINGS_LOCAL_MODEL", "BAAI/bge-m3"),
+    // Java JRE para OpenDataLoader PDF
+    JAVA_HOME: fs.existsSync(path.join(APPDATA_DIR, "jre", "bin", "java.exe"))
+      ? path.join(APPDATA_DIR, "jre")
+      : (process.env.JAVA_HOME || ""),
   };
 }
 
@@ -387,12 +398,19 @@ async function startAll(onProgress) {
     logBoot("Base de datos de la aplicación verificada.");
     onProgress("Base de datos lista", 35);
 
-  // 2. Python + Backend
+  // 2. Java JRE (para OpenDataLoader PDF)
+  if (!isJREInstalled() && !getJavaPath()) {
+    logBoot("Java JRE no encontrado. Descargando...");
+    await downloadJRE((msg, pct) => onProgress(msg, 35 + pct * 0.05));
+  }
+  logBoot(`Java disponible: ${getJavaPath() || "NO"}`);
+
+  // 3. Python + Backend
   if (!isPythonInstalled()) {
-    await downloadPython((msg, pct) => onProgress(msg, 35 + pct * 0.15));
+    await downloadPython((msg, pct) => onProgress(msg, 40 + pct * 0.12));
   }
   if (!areDepsInstalled()) {
-    await installDeps((msg, pct) => onProgress(msg, 50 + pct * 0.1));
+    await installDeps((msg, pct) => onProgress(msg, 52 + pct * 0.08));
   }
 
   onProgress("Aplicando migraciones...", 60);

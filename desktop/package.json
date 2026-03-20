@@ -43,6 +43,7 @@
       "service-manager.js",
       "postgres-manager.js",
       "python-manager.js",
+      "jre-manager.js",
       "network-utils.js",
       "tray-manager.js",
       "splash.html",

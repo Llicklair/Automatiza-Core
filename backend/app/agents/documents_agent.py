@@ -36,6 +36,9 @@ from app.agents.types import StepResult
 from app.core.config import settings
 from app.core.llm_factory import get_llm, get_embedder
 from app.core.prompt_sanitizer import sanitize_user_input
+from app.services.pdf_parser import parse_pdf
+from app.services.smart_chunker import smart_chunk
+from app.services.document_classifier import classify_by_rules
 
 logger = logging.getLogger(__name__)
 
@@ -131,19 +134,19 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 with open(doc.file_path, "rb") as f:
                     file_bytes = f.read()
 
-            # Extraer texto
+            # Extraer texto con OpenDataLoader (fallback a pypdf)
+            parsed_doc = None
             if file_bytes and doc.file_type and "pdf" in doc.file_type.lower():
                 try:
-                    from pypdf import PdfReader
-                    reader = PdfReader(io.BytesIO(file_bytes))
-                    pages_text = []
-                    for page in reader.pages[:8]:
-                        text = page.extract_text() or ""
-                        if text.strip():
-                            pages_text.append(text)
-                    raw_text = "\n".join(pages_text)[:5000]
+                    parsed_doc = parse_pdf(
+                        file_path=doc.file_path if doc.file_path and os.path.exists(doc.file_path) else None,
+                        file_bytes=file_bytes,
+                    )
+                    raw_text = parsed_doc.markdown
+                    logger.info("PDF parseado con %s: %d páginas, %d elementos",
+                                parsed_doc.parser_used, parsed_doc.total_pages, len(parsed_doc.elements))
                 except Exception as e:
-                    logger.warning("Error pypdf: %s", e)
+                    logger.warning("Error parsing PDF: %s", e)
             elif file_bytes:
                 try:
                     raw_text = file_bytes.decode("utf-8", errors="ignore")[:5000]
@@ -159,17 +162,31 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
     except Exception as e:
         return f"Error leyendo documento: {e}"
 
-    # ── Clasificar con LLM ──
-    llm = _get_llm_json()
-    try:
-        response = await llm.ainvoke([
-            SystemMessage(content=CLASSIFICATION_PROMPT),
-            HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
-        ])
-        data_dict = json.loads(response.content)
-        classified = ClassifiedDocument(**data_dict)
-    except Exception as e:
-        return f"Error clasificando documento: {e}"
+    # ── Clasificar: primero reglas (0 tokens), luego LLM si ambiguo ──
+    rule_result = classify_by_rules(raw_text)
+    logger.info("Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
+                rule_result.document_type, rule_result.confidence * 100, rule_result.needs_llm)
+
+    if not rule_result.needs_llm:
+        # Clasificación mecánica — 0 tokens LLM
+        classified = ClassifiedDocument(
+            document_type=rule_result.document_type,
+            confidence=rule_result.confidence,
+            key_entities=rule_result.key_entities,
+            summary=f"Documento clasificado por reglas como {rule_result.document_type}",
+        )
+    else:
+        # Fallback a LLM para documentos ambiguos
+        llm = _get_llm_json()
+        try:
+            response = await llm.ainvoke([
+                SystemMessage(content=CLASSIFICATION_PROMPT),
+                HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
+            ])
+            data_dict = json.loads(response.content)
+            classified = ClassifiedDocument(**data_dict)
+        except Exception as e:
+            return f"Error clasificando documento: {e}"
 
     # ── Extraer NIFs y crear/vincular cliente ──
     nif_pattern = re.compile(
@@ -207,29 +224,43 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
         except Exception as e:
             client_info = f"\nError vinculando cliente: {e}"
 
-    # ── Generar embeddings para RAG ──
+    # ── Generar embeddings para RAG (chunking inteligente) ──
     embeddings_info = ""
     try:
         embedder = get_embedder()
         if embedder and raw_text.strip():
             from app.db.models.embeddings import DocumentEmbedding
 
-            chunk_size = 1500
-            chunks = [raw_text[i:i + chunk_size] for i in range(0, len(raw_text), chunk_size)]
-            vectors = await embedder.aembed_documents(chunks)
+            # Chunking inteligente si tenemos elementos estructurados
+            if parsed_doc and parsed_doc.elements:
+                doc_chunks = smart_chunk(parsed_doc.elements)
+            else:
+                # Fallback: chunking mecánico para archivos no-PDF
+                chunk_size = 1500
+                doc_chunks = []
+                from app.services.smart_chunker import Chunk
+                for i in range(0, len(raw_text), chunk_size):
+                    doc_chunks.append(Chunk(text=raw_text[i:i + chunk_size]))
+
+            chunk_texts = [c.text for c in doc_chunks]
+            vectors = await embedder.aembed_documents(chunk_texts)
 
             async with AsyncSessionLocal() as db:
-                for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
+                for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
                     emb = DocumentEmbedding(
                         document_id=document_id,
                         tenant_id=UUID(tenant_id),
                         chunk_index=str(i),
-                        text_content=chunk,
+                        text_content=chunk.text,
+                        page_number=chunk.page_number or None,
+                        element_type=chunk.element_type or None,
+                        bounding_box=chunk.bounding_box or None,
                         embedding=vector,
                     )
                     db.add(emb)
                 await db.commit()
-            embeddings_info = f"\nEmbeddings RAG: {len(chunks)} chunks indexados para búsqueda semántica."
+            parser_label = f" ({parsed_doc.parser_used})" if parsed_doc else ""
+            embeddings_info = f"\nEmbeddings RAG{parser_label}: {len(doc_chunks)} chunks indexados para búsqueda semántica."
     except Exception as e:
         embeddings_info = f"\nEmbeddings no generados: {e}"
 

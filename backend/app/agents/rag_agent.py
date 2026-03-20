@@ -94,7 +94,10 @@ async def _search_documents_async(tenant_id: str, query: str, top_k: int) -> str
                     doc_name = doc_name_res.scalar()
                     if doc_name:
                         source_names.add(doc_name)
-                    retrieved_chunks.append(match.text_content)
+                    # Incluir metadata de página y tipo si existe
+                    page_info = f" [Pág. {match.page_number}]" if match.page_number else ""
+                    type_info = f" ({match.element_type})" if match.element_type else ""
+                    retrieved_chunks.append(f"{match.text_content}{page_info}{type_info}")
     except Exception as e:
         return f"Error en búsqueda: {e}"
 
@@ -166,7 +169,12 @@ async def _answer_from_documents_async(tenant_id: str, question: str, top_k: int
                     doc_name = doc_name_res.scalar()
                     if doc_name:
                         source_names.add(doc_name)
-                    retrieved_chunks.append({"doc_id": str(match.document_id), "text": match.text_content})
+                    # Incluir metadata posicional para citas precisas
+                    page_ref = f" [Página {match.page_number}]" if match.page_number else ""
+                    retrieved_chunks.append({
+                        "doc_id": str(match.document_id),
+                        "text": f"{match.text_content}{page_ref}",
+                    })
     except Exception as e:
         return f"Error buscando documentos: {e}"
 
