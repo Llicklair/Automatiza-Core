@@ -256,7 +256,7 @@ Una automatización es una **regla persistente que el usuario define una sola ve
 1. **Los agentes pueden crear y modificar datos reales**: Tienen **acceso completo de escritura**. Pueden crear facturas, generar archivos físicos (PDFs) en disco y actualizar clientes. Nunca deben ser "solo de lectura" por defecto.
 2. **Las automatizaciones se definen en lenguaje natural**: Las reglas de los workflows se almacenan como configuración JSON y se interpretan dinámicamente (modo reasoning) o pre-compiladas (modo deterministic). No son código Python hard-coded.
 3. **Los workflows deben ser adaptativos**: Si un paso de razonamiento falla, el orquestador repite o replanifica pudiendo encadenar agentes inteligentemente (ej: *billing* genera factura → delega a *documents* guardar archivo → delega a *email* para enviarlo).
-4. **ERP local independiente**: Los datos siempre se persisten localmente en la base de datos propia (`Invoices`, `Clients`, `Payroll`). Las integraciones de terceros (Holded, APIs de Bancos) son espejos opcionales u orígenes reactivos, nunca la fuente de verdad principal del ERP.
+4. **ERP local independiente**: Los datos siempre se persisten localmente en la base de datos propia (`Invoices`, `Clients`, `Payroll`). Las integraciones de terceros (APIs de Bancos) son espejos opcionales u orígenes reactivos, nunca la fuente de verdad principal del ERP.
 5. **Integridad Transaccional y Robustez (DDD)**: 
    - **Transacciones Atómicas**: Si una operación compleja falla a medias (ej. falla al generar el PDF de la factura), el motor hace *rollback* completo de los insert(s) en BD para evitar filas huérfanas.
    - **Máquinas de Estado Estrictas**: Entidades críticas bloquean transiciones ilegítimas.
@@ -518,7 +518,7 @@ Archivos de test: `test_api_auth`, `test_api_health`, `test_api_tasks_agents`, `
 | `/documentos` | Repositorio de documentos con búsqueda semántica |
 | `/automatizaciones` | Editor visual de workflows + historial |
 | `/informes` | Informes generados por IA |
-| `/integraciones` | OAuth Google/Microsoft, PSD2, Holded |
+| `/integraciones` | OAuth Google/Microsoft, PSD2 |
 | `/configuracion/api-keys` | Gestión de API keys y proveedor LLM por tenant |
 
 ---

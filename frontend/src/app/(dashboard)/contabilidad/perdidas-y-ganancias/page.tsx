@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type JournalEntry } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import { TrendingUp, TrendingDown, Wallet, BookOpen, Loader2 } from "lucide-react";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
@@ -59,7 +60,7 @@ export default function PyGPage() {
     useEffect(() => {
         api.accounting.journal.list()
             .then(setEntries)
-            .catch(console.error)
+            .catch(err => logError("contabilidad/pyl", err))
             .finally(() => setLoading(false));
     }, []);
 

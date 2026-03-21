@@ -27,8 +27,7 @@ async def execute_orchestrator(task_id: str):
         await guard.mark_executed("run_orchestrator", task_id, {"status": "done"})
         return result
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error en run_orchestrator:%s", task_id)
         err_str = str(exc).lower()
         # Reintentar en errores transitorios: red, timeout LLM, rate limit
         is_transient = (
@@ -106,7 +105,7 @@ async def _mark_task_failed(task_id: str, error_msg: str):
                 task.completed_at = datetime.now(UTC)
                 await db.commit()
     except Exception:
-        pass  # Si falla esto, al menos ya logueamos en stderr
+        logger.debug("No se pudo marcar tarea %s como fallida en BD", task_id, exc_info=True)
 
 
 def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
@@ -230,7 +229,7 @@ async def _build_tenant_context(tenant_id: str, db) -> str:
         if tenant:
             lines.append(f"Empresa emisora: {tenant.name} (NIF: {tenant.nif}).")
     except Exception:
-        pass
+        logger.debug("Error cargando contexto tenant %s", tenant_id, exc_info=True)
 
     try:
         clients_res = await db.execute(
@@ -244,7 +243,7 @@ async def _build_tenant_context(tenant_id: str, db) -> str:
             client_list = ", ".join(f"{c.name} (NIF: {c.nif})" for c in clients)
             lines.append(f"Clientes disponibles: {client_list}.")
     except Exception:
-        pass
+        logger.debug("Error cargando clientes para contexto tenant %s", tenant_id, exc_info=True)
 
     return " ".join(lines)
 
@@ -428,9 +427,8 @@ async def _execute_orchestrator(task_id: str):
 async def _resume_orchestrator(task_id: str):
     """
     Reanuda la ejecucion despues de una aprobacion humana.
-    Coge el payload guardado en PendingApproval y crea la factura en BD local y Holded.
+    Coge el payload guardado en PendingApproval y crea la factura en BD local.
     """
-    import calendar
     import uuid
     from datetime import datetime
     from decimal import Decimal
@@ -438,9 +436,7 @@ async def _resume_orchestrator(task_id: str):
     from sqlalchemy import select
 
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, Invoice, PendingApproval, Task, TenantIntegration
-    from app.integrations.holded import HoldedClient
-    from app.services.encryption import decrypt_credentials
+    from app.db.models.models import Client, Invoice, PendingApproval, Task
 
     async with AsyncSessionLocal() as db:
         try:
@@ -472,22 +468,6 @@ async def _resume_orchestrator(task_id: str):
             payload_data = approval.action_payload  # dict
             logger.info("[RESUME] Payload cargado: keys=%s", list(payload_data.keys()))
 
-            # 3. Intentar obtener API key de Holded
-            int_res = await db.execute(
-                select(TenantIntegration).where(
-                    TenantIntegration.tenant_id == task.tenant_id,
-                    TenantIntegration.integration_type == "holded",
-                    TenantIntegration.is_active.is_(True),
-                )
-            )
-            integration = int_res.scalars().first()
-            holded_api_key = None
-            if integration:
-                try:
-                    creds = decrypt_credentials(integration.encrypted_credentials)
-                    holded_api_key = creds.get("api_key")
-                except Exception as e:
-                    logger.warning("[RESUME] Error descifrando holded key: %s", e)
         except Exception as _e:
             logger.error("[RESUME] Critical error early: %s", _e)
             import traceback; traceback.print_exc()
@@ -531,27 +511,7 @@ async def _resume_orchestrator(task_id: str):
             await db.commit()
             return
 
-        # 5. Crear la factura en Holded (Opcional)
-        holded_id = None
-        if holded_api_key and cliente_local.holded_id and holded_api_key != "DEMO_HOLDED_KEY":
-            date_unix = int(calendar.timegm(inv_date.timetuple()))
-            holded_payload = HoldedClient.build_invoice_payload(
-                contact_id=cliente_local.holded_id,
-                concept=concept,
-                amount_base=float(amount_base),
-                vat_rate=float(vat_rate),
-                date_unix=date_unix,
-                notes=payload_data.get("notes") or "",
-            )
-            try:
-                holded_client = HoldedClient(api_key=holded_api_key)
-                invoice_holded_resp = await holded_client.create_invoice(holded_payload)
-                holded_id = invoice_holded_resp.get("id", "unknown")
-                await holded_client.close()
-            except Exception:
-                holded_id = "failed_sync"
-
-        # 6. Guardar en Base de Datos Local
+        # 5. Guardar en Base de Datos Local
         tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
         total_amount = amount_base + tax_amount
 
@@ -573,7 +533,7 @@ async def _resume_orchestrator(task_id: str):
             amount_total=total_amount,
             status="draft",
             invoice_type="issued",
-            external_id=holded_id
+            external_id=None
         )
         db.add(new_invoice)
         await db.flush()
@@ -598,7 +558,6 @@ async def _resume_orchestrator(task_id: str):
             "success": True,
             "output": {
                 "action": "draft_created",
-                "holded_invoice_id": holded_id or "local_only",
                 "local_invoice_id": str(new_invoice.id),
                 "note": "Factura creada tras aprobacion manual.",
             },

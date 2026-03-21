@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type FixedAsset } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import {
     Monitor, Building2, Car, Package, Loader2, Plus, X,
     Pencil, Trash2, TrendingDown, Wallet, Archive
@@ -77,7 +78,7 @@ export default function ActivosFijosPage() {
     useEffect(() => {
         api.accounting.assets.list()
             .then(setAssets)
-            .catch(console.error)
+            .catch(err => logError("contabilidad/activos", err))
             .finally(() => setLoading(false));
     }, []);
 

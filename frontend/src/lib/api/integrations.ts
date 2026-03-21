@@ -8,12 +8,6 @@ export interface IntegrationStatus {
 
 export const integrations = {
     list: () => request<IntegrationStatus[]>("/api/v1/integrations/"),
-    connectHolded: (apiKey: string) =>
-        request<{ status: string }>("/api/v1/integrations/holded/connect", {
-            method: "POST", body: JSON.stringify({ api_key: apiKey }),
-        }),
-    disconnectHolded: () =>
-        request("/api/v1/integrations/holded/disconnect", { method: "DELETE" }),
     connectPsd2: (secretId: string, secretKey: string) =>
         request<{ status: string }>("/api/v1/integrations/psd2/connect", {
             method: "POST", body: JSON.stringify({ secret_id: secretId, secret_key: secretKey }),

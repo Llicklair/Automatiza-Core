@@ -23,8 +23,7 @@ async def run_node_engine(execution_id: str):
         await guard.mark_executed("run_node_engine", execution_id, {"status": result.get("status", "unknown")})
         return result
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error en run_node_engine:%s", execution_id)
         if isinstance(exc, (ConnectionError, OSError, TimeoutError)):
             await guard.release("run_node_engine", execution_id)
             # Reintento simple con backoff
@@ -53,8 +52,7 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
         await guard.mark_executed("resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")})
         return result
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error en resume_node_engine:%s", idempotency_key)
         if isinstance(exc, (ConnectionError, OSError, TimeoutError)):
             await guard.release("resume_node_engine", idempotency_key)
             for attempt in range(3):

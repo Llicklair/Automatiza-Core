@@ -25,27 +25,7 @@ async def inject_demo_credentials():
 
         tenant_id = user.tenant_id
 
-        # 2. Add Holded Mock
-        encrypted_holded = encrypt_credentials({"api_key": "DEMO_HOLDED_KEY"})
-        
-        # Check if exists
-        result = await db.execute(select(TenantIntegration).where(
-            TenantIntegration.tenant_id == tenant_id,
-            TenantIntegration.integration_type == "holded"
-        ))
-        existing_holded = result.scalar_one_or_none()
-        if existing_holded:
-            existing_holded.encrypted_credentials = encrypted_holded
-            existing_holded.is_active = True
-        else:
-            db.add(TenantIntegration(
-                tenant_id=tenant_id,
-                integration_type="holded",
-                encrypted_credentials=encrypted_holded,
-                is_active=True,
-            ))
-            
-        # 3. Add PSD2 / Nordigen Mock
+        # 2. Add PSD2 / Nordigen Mock
         encrypted_psd2 = encrypt_credentials({"secret_id": "DEMO_PSD2_ID", "secret_key": "dummy"})
         result = await db.execute(select(TenantIntegration).where(
             TenantIntegration.tenant_id == tenant_id,

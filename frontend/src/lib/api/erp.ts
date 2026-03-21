@@ -10,7 +10,6 @@ export interface Client {
     city: string | null;
     postal_code: string | null;
     client_type: string;
-    holded_id: string | null;
     created_at: string;
     updated_at: string | null;
 }

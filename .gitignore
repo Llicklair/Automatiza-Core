@@ -24,18 +24,11 @@ frontend/out/
 frontend/node_modules/
 *.tsbuildinfo
 
-# Docker
-postgres_data/
-redis_data/
-
 # Uploads y archivos generados
 backend/uploads/
 backend/generated/
 backend/app/uploads/
 backend/app/agents/uploads/
-nul
-backend/nul
-frontend/nul
 *.pdf
 *.xlsx
 *.csv
@@ -63,6 +56,9 @@ frontend/_node_modules_tmp/
 backend/_venv_tmp/
 backend/_mypy_cache_tmp/
 backend/_pytest_cache_tmp/
+
+# Electron build artifacts
+desktop/dist/
 
 # Backups
 backups/
