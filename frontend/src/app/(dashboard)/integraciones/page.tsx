@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CheckCircle2, XCircle, Loader2, Plug, PlugZap, Building2, Mail, Cloud, HardDrive } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive } from "lucide-react";
 import { api, IntegrationStatus } from "@/lib/api";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
@@ -79,11 +79,6 @@ export default function IntegracionesPage() {
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-    // Holded
-    const [holdedKey, setHoldedKey] = useState("");
-    const [connectingHolded, setConnectingHolded] = useState(false);
-    const [disconnectingHolded, setDisconnectingHolded] = useState(false);
-
     // PSD2
     const [psd2Id, setPsd2Id] = useState("");
     const [psd2Key, setPsd2Key] = useState("");
@@ -122,37 +117,6 @@ export default function IntegracionesPage() {
     // Statuses
     const getStatus = (type: string) => integrations.find(i => i.integration_type === type);
     const isConnected = (type: string) => getStatus(type)?.is_active ?? false;
-
-    // ─── Holded Handlers ─────────────────────────────────────────────────────
-
-    async function connectHolded(e: React.FormEvent) {
-        e.preventDefault();
-        setConnectingHolded(true); setFeedback(null);
-        try {
-            await api.integrations.connectHolded(holdedKey);
-            setFeedback({ type: "success", msg: "Holded conectado correctamente" });
-            setHoldedKey("");
-            load();
-        } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error desconocido" });
-        } finally {
-            setConnectingHolded(false);
-        }
-    }
-
-    async function disconnectHolded() {
-        if (!await showConfirm({ message: "¿Desconectar Holded?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
-        setDisconnectingHolded(true); setFeedback(null);
-        try {
-            await api.integrations.disconnectHolded();
-            setFeedback({ type: "success", msg: "Holded desconectado" });
-            load();
-        } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
-        } finally {
-            setDisconnectingHolded(false);
-        }
-    }
 
     // ─── PSD2 Handlers ───────────────────────────────────────────────────────
 
@@ -234,36 +198,6 @@ export default function IntegracionesPage() {
                     {feedback.msg}
                 </div>
             )}
-
-            {/* ── Holded ────────────────────────────────────────────────────── */}
-            <IntegrationCard
-                icon={<PlugZap className="w-5 h-5 text-blue-400" />}
-                iconBg="bg-[#1a1aff]/20"
-                title="Holded" subtitle="ERP y facturación"
-                loading={loading} connected={isConnected("holded")}
-                lastSync={getStatus("holded")?.last_sync_at}
-            >
-                {isConnected("holded") ? (
-                    <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">El agente de facturación puede crear y enviar facturas a través de tu cuenta de Holded.</p>
-                        <button onClick={disconnectHolded} disabled={disconnectingHolded}
-                            className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 text-sm transition">
-                            {disconnectingHolded ? "Desconectando…" : "Desconectar Holded"}
-                        </button>
-                    </div>
-                ) : (
-                    <form onSubmit={connectHolded} className="space-y-4">
-                        <p className="text-sm text-zinc-400 mb-3">Introduce tu API key de Holded (ajustes → API).</p>
-                        <input type="password" required value={holdedKey} onChange={e => setHoldedKey(e.target.value)}
-                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            className="w-full px-4 py-2.5 rounded-lg bg-[#18181b] border border-[#3f3f46] text-white text-sm placeholder-zinc-600 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
-                        <button type="submit" disabled={connectingHolded || !holdedKey.trim()}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition">
-                            {connectingHolded ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando…</> : <><Plug className="w-4 h-4" /> Conectar Holded</>}
-                        </button>
-                    </form>
-                )}
-            </IntegrationCard>
 
             {/* ── Banco PSD2 ─────────────────────────────────────────────────── */}
             <IntegrationCard

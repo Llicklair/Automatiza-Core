@@ -39,13 +39,9 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
     if agent == "documents":
         doc_type = output.get("document_type", "documento")
         requires_review = output.get("requires_review", False)
-        holded = output.get("holded_adjunto", False)
-        holded_contact = output.get("holded_contacto", "")
         msg = f"✅ Documento '{doc_type}' procesado."
         if requires_review:
             msg += " ⚠️ Requiere revisión manual."
-        if holded:
-            msg += f" Subido a Holded{f' ({holded_contact})' if holded_contact else ''}."
         return msg
 
     if agent == "compliance":

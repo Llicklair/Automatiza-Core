@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -78,7 +77,7 @@ async def delete_project(
 # --- Project Tasks ---
 @router.get("/tasks", response_model=list[ProjectTaskResponse])
 async def list_tasks(
-    project_id: Optional[UUID] = Query(None),
+    project_id: UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

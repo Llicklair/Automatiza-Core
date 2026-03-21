@@ -44,7 +44,7 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
                     f"Usa classify_document con document_id='{linked_doc.id}' para analizarlo.]"
                 )
     except Exception:
-        pass
+        logger.debug("Error enriqueciendo intent con documento vinculado", exc_info=True)
 
     try:
         result_state = await graph.ainvoke({

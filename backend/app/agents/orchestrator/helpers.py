@@ -120,8 +120,7 @@ async def _save_ai_result_as_document(
                 db.add(doc)
             await db.commit()
     except Exception:
-        import traceback
-        traceback.print_exc()  # Log completo para debugging sin silenciar
+        logger.exception("Error guardando resultado como documento")
 
 
 async def _save_ai_result_as_csv(

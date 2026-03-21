@@ -177,7 +177,7 @@ async def plan_node(state: OrchestratorState) -> dict:
                     if plan:
                         return {"plan": plan, "status": TaskStatus.EXECUTING}
                 except Exception:
-                    pass  # Caché corrupto, continuar con LLM
+                    logger.debug("Caché de plan corrupto, continuando con LLM", exc_info=True)
 
             llm = get_llm(temperature=0)
             structured_llm = llm.with_structured_output(MultiAgentPlan, method="json_mode")
@@ -235,7 +235,7 @@ async def plan_node(state: OrchestratorState) -> dict:
                                 structured_llm = _fallback_llm.with_structured_output(MultiAgentPlan, method="json_mode")
                                 continue
                             except Exception:
-                                pass
+                                logger.debug("Fallback a Groq falló", exc_info=True)
                         logger.warning("[PLAN] Fallback final al proveedor secundario.")
                         _fallback_llm = get_llm(temperature=0, provider="openai") if settings.OPENAI_API_KEY else get_llm(temperature=0)
                         structured_llm = _fallback_llm.with_structured_output(MultiAgentPlan, method="json_mode")
@@ -261,7 +261,7 @@ async def plan_node(state: OrchestratorState) -> dict:
                 ]})
                 await llm_cache.set(_tenant_id, _plan_cache_key, _plan_json, ttl_override=3600)
             except Exception:
-                pass  # No bloquear si el caché falla
+                logger.debug("Error guardando plan en caché", exc_info=True)
 
             plan: list[SubTask] = []
             for idx, step in enumerate(plan_result.steps):
@@ -279,8 +279,8 @@ async def plan_node(state: OrchestratorState) -> dict:
                     "status": "pending",
                 })
         except Exception as e:
-            import traceback
-            err_msg = traceback.format_exc()
+            err_msg = f"{type(e).__name__}: {e}"
+            logger.exception("Error planificando tarea")
             # Fallback seguro
             plan = [{
                 "id": "step_1",

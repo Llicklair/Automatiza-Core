@@ -38,8 +38,6 @@ from app.agents.validators.billing import validate_invoice_data
 from app.core.config import settings
 from app.core.llm_factory import get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
-from app.integrations.holded import HoldedClient
-
 logger = logging.getLogger(__name__)
 
 

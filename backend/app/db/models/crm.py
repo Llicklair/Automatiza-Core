@@ -19,7 +19,6 @@ class Client(Base):
     city = Column(String(255))
     postal_code = Column(String(50))
     client_type = Column(String(50), default="customer")
-    holded_id = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

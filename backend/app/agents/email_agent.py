@@ -383,7 +383,6 @@ async def run_email_agent(
             self.error = error
             self.validation_errors = []
             self.validation_warnings = []
-            self.holded_invoice_id = None
 
     agent_results = result_state.get("agent_results", [])
     final_action = agent_results[-1]["action_taken"] if agent_results else "Sin resultado"

@@ -25,7 +25,6 @@ class ClientResponse(BaseModel):
     city: str | None = None
     postal_code: str | None = None
     client_type: str
-    holded_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

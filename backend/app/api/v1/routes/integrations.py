@@ -1,4 +1,4 @@
-"""Rutas para gestionar integraciones de cada tenant (Holded, Gmail, etc.)."""
+"""Rutas para gestionar integraciones de cada tenant (Gmail, etc.)."""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -34,10 +34,6 @@ def _pop_oauth_state(state: str) -> str | None:
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
 
-class HoldedConnectRequest(BaseModel):
-    api_key: str
-
-
 class IntegrationStatusOut(BaseModel):
     integration_type: str
     is_active: bool
@@ -66,76 +62,6 @@ async def list_integrations(
         )
         for i in integrations
     ]
-
-
-@router.post("/holded/connect", status_code=201)
-async def connect_holded(
-    payload: HoldedConnectRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Conecta la cuenta de Holded del tenant guardando la API key cifrada."""
-    if not payload.api_key.strip():
-        raise HTTPException(status_code=400, detail="La API key no puede estar vacía")
-
-    # Verificar que la API key funciona antes de guardar
-    from app.integrations.holded import HoldedClient
-    client = HoldedClient(api_key=payload.api_key)
-    try:
-        await client.get_contacts(page=1)
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="La API key de Holded no es válida o no tiene permisos. Verifica en tu cuenta de Holded."
-        )
-    finally:
-        await client.close()
-
-    # Cifrar y guardar (upsert)
-    encrypted = encrypt_credentials({"api_key": payload.api_key})
-
-    result = await db.execute(
-        select(TenantIntegration).where(
-            TenantIntegration.tenant_id == current_user.tenant_id,
-            TenantIntegration.integration_type == "holded",
-        )
-    )
-    existing = result.scalar_one_or_none()
-
-    if existing:
-        existing.encrypted_credentials = encrypted
-        existing.is_active = True
-    else:
-        db.add(TenantIntegration(
-            tenant_id=current_user.tenant_id,
-            integration_type="holded",
-            encrypted_credentials=encrypted,
-            is_active=True,
-        ))
-
-    await db.commit()
-    return {"status": "conectado", "integration": "holded"}
-
-
-@router.delete("/holded/disconnect", status_code=200)
-async def disconnect_holded(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Desactiva la integración con Holded (no borra las credenciales)."""
-    result = await db.execute(
-        select(TenantIntegration).where(
-            TenantIntegration.tenant_id == current_user.tenant_id,
-            TenantIntegration.integration_type == "holded",
-        )
-    )
-    integration = result.scalar_one_or_none()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integración con Holded no encontrada")
-
-    integration.is_active = False
-    await db.commit()
-    return {"status": "desconectado"}
 
 
 class Psd2ConnectRequest(BaseModel):

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type JournalEntry } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import { Wallet, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Loader2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -130,7 +131,7 @@ export default function BalanceSituacionPage() {
     useEffect(() => {
         api.accounting.journal.list()
             .then(setEntries)
-            .catch(console.error)
+            .catch(err => logError("contabilidad/balance", err))
             .finally(() => setLoading(false));
     }, []);
 

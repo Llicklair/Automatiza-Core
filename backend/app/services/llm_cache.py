@@ -13,7 +13,7 @@ import json
 import logging
 import time
 import threading
-from typing import Optional
+from __future__ import annotations
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class LLMCache:
         tenant_id: str,
         intent: str,
         provider: str = "",
-    ) -> Optional[str]:
+    ) -> str | None:
         _evict_expired()
         key = _make_key(tenant_id, intent, provider)
         with _lock:
@@ -78,8 +78,8 @@ class LLMCache:
         intent: str,
         response: str,
         provider: str = "",
-        metadata: Optional[dict] = None,
-        ttl_override: Optional[int] = None,
+        metadata: dict | None = None,
+        ttl_override: int | None = None,
     ) -> None:
         key = _make_key(tenant_id, intent, provider)
         ttl = ttl_override or self.ttl

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type Client, type Invoice } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import {
     ArrowLeft, User, Mail, MapPin, Hash, FileText, CheckCircle2,
     Clock, XCircle, Loader2, Plus, ExternalLink
@@ -41,7 +42,7 @@ export default function ClientDetailPage() {
             const found = clients.find(c => c.id === id) || null;
             setClient(found);
             setInvoices(invs);
-        }).catch(console.error)
+        }).catch(err => logError("clientes/detalle", err))
             .finally(() => setLoading(false));
     }, [id]);
 

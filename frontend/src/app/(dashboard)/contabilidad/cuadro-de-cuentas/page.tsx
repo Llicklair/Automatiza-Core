@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type JournalEntry } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import { FolderTree, Search, ChevronRight, ChevronDown, Loader2, BookOpen } from "lucide-react";
 
 // PGC group names
@@ -41,7 +42,7 @@ export default function CuadroCuentasPage() {
     useEffect(() => {
         api.accounting.journal.list()
             .then(setEntries)
-            .catch(console.error)
+            .catch(err => logError("contabilidad/cuadro-cuentas", err))
             .finally(() => setLoading(false));
     }, []);
 

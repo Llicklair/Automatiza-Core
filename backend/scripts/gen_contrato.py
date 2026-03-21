@@ -32,7 +32,7 @@ story = [
     h("ESTIPULACIONES"),
     h("PRIMERA. OBJETO"),
     p("El presente contrato tiene por objeto la prestaci&oacute;n de servicios de automatizaci&oacute;n empresarial mediante inteligencia artificial, incluyendo:"),
-    p("&nbsp;&nbsp;&nbsp;a) Agente de Facturaci&oacute;n (integraci&oacute;n Holded ERP)."),
+    p("&nbsp;&nbsp;&nbsp;a) Agente de Facturaci&oacute;n."),
     p("&nbsp;&nbsp;&nbsp;b) Gesti&oacute;n Documental automatizada (OCR y clasificaci&oacute;n)."),
     p("&nbsp;&nbsp;&nbsp;c) Agente Bancario (PSD2 / GoCardless)."),
     p("&nbsp;&nbsp;&nbsp;d) Cumplimiento Fiscal (modelos AEAT 303, 130, 111)."),

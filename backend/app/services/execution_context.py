@@ -31,7 +31,7 @@ from typing import Any
 
 _EXTRACTABLE_KEYS = [
     # Billing
-    "invoice_id", "invoice_number", "holded_invoice_id",
+    "invoice_id", "invoice_number",
     "amount_base", "amount_total", "vat_rate",
     "client_name", "client_nif",
     # HR
