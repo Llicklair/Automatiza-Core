@@ -6,6 +6,7 @@ import { FileText, Plus, Search, Download, Building2, Calendar, AlertTriangle, C
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
+import { useNotificationStore } from "@/stores/notifications";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
@@ -53,13 +54,15 @@ export default function FacturasPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     useEffect(() => {
         api.erp.invoices.list()
             .then(data => setInvoices(data))
             .catch(err => useToastStore.getState().error(err?.message || "Error al cargar facturas"))
             .finally(() => setLoading(false));
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshKey]);
 
     const filteredInvoices = invoices.filter(inv => {
         const searchLower = searchTerm.toLowerCase();

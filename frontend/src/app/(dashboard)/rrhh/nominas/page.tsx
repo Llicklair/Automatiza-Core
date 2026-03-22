@@ -10,6 +10,7 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { logError } from "@/lib/logger";
+import { useNotificationStore } from "@/stores/notifications";
 
 export default function PayrollsPage() {
     const [payrolls, setPayrolls] = useState<Payroll[]>([]);
@@ -19,8 +20,10 @@ export default function PayrollsPage() {
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
     const [search, setSearch] = useState("");
+    const refreshKey = useNotificationStore((s) => s.refreshKey);
 
-    useEffect(() => { loadData(); }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, [refreshKey]);
 
     const loadData = async () => {
         setIsLoading(true);

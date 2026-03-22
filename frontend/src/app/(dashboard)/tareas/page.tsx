@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type Task } from "@/lib/api";
+import { useNotificationStore } from "@/stores/notifications";
 import { Plus, X, ChevronDown, Bot, Clock, CheckCircle2, AlertCircle, Loader2, RefreshCw, Copy, Check, MessageSquare, Trash2 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -231,6 +232,7 @@ export default function TareasPage() {
     const [intent, setIntent] = useState("");
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState("");
+    const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     const load = () => {
         setLoading(true);
@@ -251,7 +253,8 @@ export default function TareasPage() {
 
     useEffect(() => {
         load();
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshKey]);
 
     useEffect(() => {
         const interval = setInterval(loadSilent, hasActive ? 2000 : 10000);

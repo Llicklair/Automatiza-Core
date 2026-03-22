@@ -191,7 +191,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
                 company_name=company_name,
                 month=month_str,
             )
-            upload_dir = _os.path.join(_os.path.dirname(__file__), "..", "..", "uploads")
+            upload_dir = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
             _os.makedirs(upload_dir, exist_ok=True)
             file_name = f"informe_{month_str}_{_uuid.uuid4().hex[:8]}.pdf"
             file_path = _os.path.join(upload_dir, file_name)

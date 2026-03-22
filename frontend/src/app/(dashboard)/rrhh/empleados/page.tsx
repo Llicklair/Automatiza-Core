@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, Employee } from "@/lib/api";
+import { useNotificationStore } from "@/stores/notifications";
 import {
     Users, Plus, Search, Building2, Wallet,
     MoreHorizontal, GraduationCap, ShieldCheck, X, Loader2, Pencil, Trash2
@@ -30,7 +31,10 @@ export default function EmployeesPage() {
         join_date: "", contract_end_date: "",
     });
 
-    useEffect(() => { loadData(); }, []);
+    const refreshKey = useNotificationStore((s) => s.refreshKey);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, [refreshKey]);
 
     const loadData = async () => {
         setIsLoading(true);

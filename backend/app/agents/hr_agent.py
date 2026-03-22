@@ -149,7 +149,7 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                 # Guardar en disco
                 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
                 if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
-                    upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+                    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
                 os.makedirs(upload_dir, exist_ok=True)
 
                 file_name = f"Nomina_{employee.name.replace(' ', '_')}_{month}_{year}.pdf"
@@ -301,7 +301,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     file_name = f"Nomina_{emp.name.replace(' ', '_')}_{month}_{year}.pdf"
                     upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
                     if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
-                        upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+                        upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
                     os.makedirs(upload_dir, exist_ok=True)
                     file_path = os.path.join(upload_dir, file_name)
                     with open(file_path, "wb") as f: f.write(pdf_bytes)

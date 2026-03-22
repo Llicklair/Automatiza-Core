@@ -13,8 +13,10 @@ import {
     BarChart3, Sparkles, Settings,
 } from "lucide-react";
 import ProfileMenu from "@/components/ProfileMenu";
+import NotificationBell from "@/components/NotificationBell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToastStore, type ToastType } from "@/stores/toast";
+import { useNotificationStore } from "@/stores/notifications";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 
 type NavItem = {
@@ -148,6 +150,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const toasts = useToastStore((s) => s.toasts);
     const dismissToast = useToastStore((s) => s.dismiss);
     const showToast = useToastStore((s) => s.show);
+    const pushNotification = useNotificationStore((s) => s.push);
+    const triggerRefresh = useNotificationStore((s) => s.triggerRefresh);
     const lastCheckRef = useRef<number>(Date.now() / 1000);
 
     const toggleGroup = (label: string) => {
@@ -174,7 +178,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     const agentLabel = agent ? `[${agent}]` : "";
                     const progressLabel = total_steps > 1 ? ` (${step}/${total_steps})` : "";
                     const msg = summary ? `${agentLabel}${progressLabel} ${summary}` : `${agentLabel}${progressLabel} Paso completado.`;
-                    showToast(msg, success ? "info" : "warning");
+                    const toastType = success ? "info" : "warning";
+                    showToast(msg, toastType);
+                    pushNotification(msg, toastType as any);
+                    // On final step, trigger page data refresh
+                    if (step === total_steps) triggerRefresh();
                     return;
                 }
                 if (data.type === "event" && data.event) {
@@ -186,7 +194,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         task_completed: "Tarea IA finalizada con éxito.",
                         approval_approved: `Aprobación procesada.${data.workflow_count ? ` ${data.workflow_count} automatizaciones disparadas.` : ""}`,
                     };
-                    showToast(eventMessages[data.event] || `Nuevo evento: ${data.event.replace(/_/g, " ")}`, "info");
+                    const msg = eventMessages[data.event] || `Nuevo evento: ${data.event.replace(/_/g, " ")}`;
+                    showToast(msg, "info");
+                    pushNotification(msg, "info");
+                    triggerRefresh();
                 }
             } catch { /* ignorar mensajes malformados */ }
         };
@@ -220,11 +231,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 const items = await api.workflows.recentCompletions(since);
                 for (const item of items) {
                     const ok = item.status === "completed" || item.status === "success";
-                    showToast(
-                        `Automatización "${item.workflow_name}" ${ok ? "completada ✓" : "falló ✗"}`,
-                        ok ? "success" : "error"
-                    );
+                    const msg = `Automatización "${item.workflow_name}" ${ok ? "completada" : "falló"}`;
+                    const type = ok ? "success" : "error";
+                    showToast(msg, type);
+                    pushNotification(msg, type);
                 }
+                if (items.length > 0) triggerRefresh();
             } catch {
                 // silencioso — no interrumpir la navegación por errores de polling
             }
@@ -356,7 +368,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             Hola, <span className="text-zinc-300 font-medium">{userName}</span>
                         </span>
                     )}
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-1">
+                        <NotificationBell />
                         <ProfileMenu />
                     </div>
                 </header>

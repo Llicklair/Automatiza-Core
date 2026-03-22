@@ -124,6 +124,20 @@ async def health_check():
     return JSONResponse(health, status_code=status_code)
 
 
+@app.get("/api/v1/system/check-update", tags=["system"])
+async def check_update():
+    """Comprueba si hay actualizaciones disponibles."""
+    current = settings.APP_VERSION
+    # Por ahora devuelve la version actual — en el futuro consultara un servidor de actualizaciones
+    return {
+        "current_version": current,
+        "latest_version": current,
+        "update_available": False,
+        "changelog": None,
+        "download_url": None,
+    }
+
+
 @app.get("/", tags=["system"])
 async def root():
     return {"message": f"{settings.APP_NAME} API", "docs": "/docs"}

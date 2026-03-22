@@ -43,11 +43,47 @@ export interface ReportDoc {
     created_at: string;
 }
 
+export interface FiscalSnapshot {
+    period: string;
+    period_label: string;
+    generated_at: string;
+    iva: {
+        repercutido_21: number;
+        repercutido_10: number;
+        repercutido_4: number;
+        total_repercutido: number;
+        base_repercutido: number;
+        soportado_21: number;
+        soportado_10: number;
+        soportado_4: number;
+        total_soportado: number;
+        base_soportado: number;
+        resultado_iva: number;
+    };
+    irpf: {
+        retenciones_nominas: number;
+        retenciones_facturas: number;
+        total_retenciones: number;
+    };
+    impuesto_sociedades: {
+        ingresos_brutos: number;
+        gastos_deducibles: number;
+        base_imponible: number;
+        tipo_estimado: number;
+        cuota_estimada: number;
+    };
+    resumen_ejecutivo: string;
+}
+
 export const reports = {
     snapshot: (month?: string) =>
         request<CompanySnapshot>(`/api/v1/reports/company-snapshot${month ? `?month=${month}` : ""}`),
     generate: (month?: string) =>
         request<ReportDoc>(`/api/v1/reports/company-snapshot/generate${month ? `?month=${month}` : ""}`, { method: "POST" }),
+    fiscalSnapshot: (period?: string) =>
+        request<FiscalSnapshot>(`/api/v1/reports/fiscal-snapshot${period ? `?period=${period}` : ""}`),
+    generateFiscal: (period?: string) =>
+        request<ReportDoc>(`/api/v1/reports/fiscal-snapshot/generate${period ? `?period=${period}` : ""}`, { method: "POST" }),
     list: () => request<ReportDoc[]>("/api/v1/reports/"),
     download: (id: string, filename: string) => downloadBlob(`/api/v1/reports/${id}/download`, filename),
     libroRegistro: (year: number, type: "emitidas" | "recibidas" = "emitidas") =>

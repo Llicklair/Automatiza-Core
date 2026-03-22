@@ -38,7 +38,7 @@ from app.services.pdf_service import (
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -83,6 +83,44 @@ class CompanySnapshot(BaseModel):
     banca: SnapshotSectionBanking
     rrhh: SnapshotSectionHR
     clientes: SnapshotSectionClients
+    resumen_ejecutivo: str
+
+
+class FiscalIVA(BaseModel):
+    repercutido_21: float = 0.0
+    repercutido_10: float = 0.0
+    repercutido_4: float = 0.0
+    total_repercutido: float = 0.0
+    base_repercutido: float = 0.0
+    soportado_21: float = 0.0
+    soportado_10: float = 0.0
+    soportado_4: float = 0.0
+    total_soportado: float = 0.0
+    base_soportado: float = 0.0
+    resultado_iva: float = 0.0
+
+
+class FiscalIRPF(BaseModel):
+    retenciones_nominas: float = 0.0
+    retenciones_facturas: float = 0.0
+    total_retenciones: float = 0.0
+
+
+class FiscalIS(BaseModel):
+    ingresos_brutos: float = 0.0
+    gastos_deducibles: float = 0.0
+    base_imponible: float = 0.0
+    tipo_estimado: float = 25.0
+    cuota_estimada: float = 0.0
+
+
+class FiscalSnapshot(BaseModel):
+    period: str
+    period_label: str
+    generated_at: datetime
+    iva: FiscalIVA
+    irpf: FiscalIRPF
+    impuesto_sociedades: FiscalIS
     resumen_ejecutivo: str
 
 
@@ -413,6 +451,194 @@ async def _aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: d
     )
 
 
+# ─── Fiscal period helper ─────────────────────────────────────────────────────
+
+def _parse_period(period: str) -> tuple[date, date, str]:
+    """Parsea periodo: 'YYYY-MM' (mensual) o 'YYYY-Q1..Q4' (trimestral).
+    Devuelve (start, end, label)."""
+    try:
+        if "-Q" in period.upper():
+            year, q = period.upper().split("-Q")
+            year, q = int(year), int(q)
+            if q < 1 or q > 4:
+                raise ValueError
+            quarter_months = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
+            m_start, m_end = quarter_months[q]
+            start = date(year, m_start, 1)
+            end = date(year, m_end, monthrange(year, m_end)[1])
+            label = f"T{q} {year}"
+            return start, end, label
+        else:
+            start, end = _parse_month(period)
+            months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                       "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+            label = f"{months[start.month - 1]} {start.year}"
+            return start, end, label
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=400, detail="Formato de periodo inválido. Usa YYYY-MM o YYYY-Q1..Q4.")
+
+
+# ─── Fiscal aggregation ──────────────────────────────────────────────────────
+
+async def _aggregate_fiscal(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date, period: str, label: str) -> FiscalSnapshot:
+    """Agrega datos fiscales: IVA por tipo, IRPF retenciones, IS estimado."""
+    from sqlalchemy.orm import joinedload as jl
+
+    # ── IVA: Repercutido (ventas/emitidas) ──
+    issued_q = await db.execute(
+        select(Invoice).where(and_(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "issued",
+            func.date(Invoice.date) >= start,
+            func.date(Invoice.date) <= end,
+        ))
+    )
+    issued_invoices = issued_q.scalars().all()
+
+    vat_rep: dict[float, float] = {}  # rate -> quota
+    base_rep: dict[float, float] = {}  # rate -> base
+    for inv in issued_invoices:
+        lines_q = await db.execute(select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id))
+        inv_wl = lines_q.unique().scalar_one()
+        for line in (inv_wl.lines or []):
+            rate = float(line.tax_percentage or 21)
+            base = float(line.quantity or 1) * float(line.unit_price or 0)
+            if line.discount_percentage:
+                base -= base * float(line.discount_percentage) / 100
+            vat_rep[rate] = vat_rep.get(rate, 0) + base * rate / 100
+            base_rep[rate] = base_rep.get(rate, 0) + base
+
+    # ── IVA: Soportado (compras/recibidas) ──
+    received_q = await db.execute(
+        select(Invoice).where(and_(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "received",
+            func.date(Invoice.date) >= start,
+            func.date(Invoice.date) <= end,
+        ))
+    )
+    received_invoices = received_q.scalars().all()
+
+    vat_sop: dict[float, float] = {}
+    base_sop: dict[float, float] = {}
+    for inv in received_invoices:
+        lines_q = await db.execute(select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id))
+        inv_wl = lines_q.unique().scalar_one()
+        for line in (inv_wl.lines or []):
+            rate = float(line.tax_percentage or 21)
+            base = float(line.quantity or 1) * float(line.unit_price or 0)
+            if line.discount_percentage:
+                base -= base * float(line.discount_percentage) / 100
+            vat_sop[rate] = vat_sop.get(rate, 0) + base * rate / 100
+            base_sop[rate] = base_sop.get(rate, 0) + base
+
+    total_rep = round(sum(vat_rep.values()), 2)
+    total_sop = round(sum(vat_sop.values()), 2)
+
+    iva_section = FiscalIVA(
+        repercutido_21=round(vat_rep.get(21, 0), 2),
+        repercutido_10=round(vat_rep.get(10, 0), 2),
+        repercutido_4=round(vat_rep.get(4, 0), 2),
+        total_repercutido=total_rep,
+        base_repercutido=round(sum(base_rep.values()), 2),
+        soportado_21=round(vat_sop.get(21, 0), 2),
+        soportado_10=round(vat_sop.get(10, 0), 2),
+        soportado_4=round(vat_sop.get(4, 0), 2),
+        total_soportado=total_sop,
+        base_soportado=round(sum(base_sop.values()), 2),
+        resultado_iva=round(total_rep - total_sop, 2),
+    )
+
+    # ── IRPF: Retenciones en nóminas ──
+    payroll_q = await db.execute(
+        select(Payroll).where(and_(
+            Payroll.tenant_id == tenant_id,
+            func.date(Payroll.period_start) >= start,
+            func.date(Payroll.period_end) <= end,
+        ))
+    )
+    payrolls = payroll_q.scalars().all()
+    irpf_nominas = round(sum(float(p.irpf or 0) for p in payrolls), 2)
+
+    irpf_section = FiscalIRPF(
+        retenciones_nominas=irpf_nominas,
+        retenciones_facturas=0.0,  # futuro: retenciones profesionales
+        total_retenciones=irpf_nominas,
+    )
+
+    # ── IS: Estimación Impuesto de Sociedades ──
+    ingresos_brutos = round(sum(float(i.amount_base or i.amount_total or 0) for i in issued_invoices), 2)
+    gastos_deducibles = round(sum(float(i.amount_base or i.amount_total or 0) for i in received_invoices), 2)
+    coste_nominas = round(sum(float(p.base_salary or 0) for p in payrolls), 2)
+    gastos_total = gastos_deducibles + coste_nominas
+    base_imponible = round(ingresos_brutos - gastos_total, 2)
+    tipo = 25.0
+    cuota = round(max(0, base_imponible) * tipo / 100, 2)
+
+    is_section = FiscalIS(
+        ingresos_brutos=ingresos_brutos,
+        gastos_deducibles=round(gastos_total, 2),
+        base_imponible=base_imponible,
+        tipo_estimado=tipo,
+        cuota_estimada=cuota,
+    )
+
+    # ── Resumen ejecutivo fiscal ──
+    resumen = await _generate_resumen_fiscal(period, label, iva_section, irpf_section, is_section)
+
+    return FiscalSnapshot(
+        period=period,
+        period_label=label,
+        generated_at=datetime.now(UTC),
+        iva=iva_section,
+        irpf=irpf_section,
+        impuesto_sociedades=is_section,
+        resumen_ejecutivo=resumen,
+    )
+
+
+async def _generate_resumen_fiscal(period: str, label: str, iva: FiscalIVA, irpf: FiscalIRPF, is_: FiscalIS) -> str:
+    """Resumen ejecutivo fiscal con IA, fallback determinista."""
+    resultado_iva = iva.resultado_iva
+    estado_iva = "a ingresar" if resultado_iva > 0 else "a compensar/devolver" if resultado_iva < 0 else "neutro"
+
+    deterministic = (
+        f"Periodo {label}: IVA repercutido {iva.total_repercutido:,.2f} € vs soportado {iva.total_soportado:,.2f} €, "
+        f"resultado {estado_iva} de {abs(resultado_iva):,.2f} €. "
+        f"Retenciones IRPF: {irpf.total_retenciones:,.2f} €. "
+        f"Estimación IS: base imponible {is_.base_imponible:,.2f} €, cuota estimada {is_.cuota_estimada:,.2f} € (tipo {is_.tipo_estimado:.0f}%)."
+    )
+
+    try:
+        from app.core.llm_factory import get_llm
+        llm = get_llm(temperature=0.3, max_tokens=600)
+
+        prompt = (
+            "Eres el asesor fiscal de una PYME española. "
+            "Redacta un resumen fiscal de 3-5 frases para el CEO, "
+            "en tono profesional. Incluye obligaciones fiscales próximas, riesgos y recomendaciones. "
+            "No inventes datos, usa SOLO los proporcionados.\n\n"
+            f"PERIODO: {label}\n"
+            f"IVA REPERCUTIDO: {iva.total_repercutido:,.2f} € (base: {iva.base_repercutido:,.2f} €)\n"
+            f"IVA SOPORTADO: {iva.total_soportado:,.2f} € (base: {iva.base_soportado:,.2f} €)\n"
+            f"RESULTADO IVA: {resultado_iva:,.2f} € ({estado_iva})\n"
+            f"IRPF RETENCIONES NÓMINAS: {irpf.retenciones_nominas:,.2f} €\n"
+            f"IS — INGRESOS: {is_.ingresos_brutos:,.2f} €  |  GASTOS DEDUCIBLES: {is_.gastos_deducibles:,.2f} €\n"
+            f"IS — BASE IMPONIBLE: {is_.base_imponible:,.2f} €  |  CUOTA ESTIMADA: {is_.cuota_estimada:,.2f} €\n"
+            "\nResponde SOLO el texto del resumen, sin encabezados ni formato."
+        )
+
+        from langchain_core.messages import HumanMessage
+        response = await llm.ainvoke([HumanMessage(content=prompt)])
+        ai_resumen = response.content.strip()
+        if len(ai_resumen) > 50:
+            return ai_resumen
+    except Exception as e:
+        _report_logger.warning("[REPORTS] IA no disponible para resumen fiscal: %s", e)
+
+    return deterministic
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/company-snapshot", response_model=CompanySnapshot)
@@ -524,14 +750,92 @@ async def download_report(
     doc = q.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Informe no encontrado")
-    if not os.path.exists(doc.file_path):
-        raise HTTPException(status_code=404, detail="Archivo no disponible")
+
+    # Resolver ruta del archivo — fallback si la ruta guardada es obsoleta
+    file_path = doc.file_path
+    if not file_path or not os.path.exists(file_path):
+        # Intentar encontrar por nombre en UPLOAD_DIR
+        fallback = os.path.join(UPLOAD_DIR, doc.file_name) if doc.file_name else None
+        if fallback and os.path.exists(fallback):
+            file_path = fallback
+        else:
+            raise HTTPException(status_code=404, detail=f"Archivo no disponible (ruta: {file_path})")
 
     return FileResponse(
-        path=doc.file_path,
+        path=file_path,
         media_type="application/pdf",
         filename=doc.file_name,
     )
+
+
+# ─── Fiscal snapshot endpoints ────────────────────────────────────────────────
+
+@router.get("/fiscal-snapshot", response_model=FiscalSnapshot)
+async def get_fiscal_snapshot(
+    period: str = Query(default=None, description="Periodo: YYYY-MM (mensual) o YYYY-Q1..Q4 (trimestral)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Devuelve el snapshot fiscal para el periodo indicado."""
+    if not period:
+        today = date.today()
+        period = today.strftime("%Y-%m")
+
+    start, end, label = _parse_period(period)
+    return await _aggregate_fiscal(db, current_user.tenant_id, start, end, period, label)
+
+
+@router.post("/fiscal-snapshot/generate", response_model=ReportOut, status_code=201)
+async def generate_fiscal_snapshot_pdf(
+    period: str = Query(default=None, description="Periodo: YYYY-MM o YYYY-Q1..Q4"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Genera el informe fiscal PDF y lo guarda en documentos del tenant."""
+    if not period:
+        today = date.today()
+        period = today.strftime("%Y-%m")
+
+    start, end, label = _parse_period(period)
+
+    tenant_q = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_q.scalar_one_or_none()
+    company_name = tenant.name if tenant and tenant.name else "Tu empresa"
+
+    snap = await _aggregate_fiscal(db, current_user.tenant_id, start, end, period, label)
+
+    from app.services.pdf_reports import generate_fiscal_report_pdf
+    pdf_bytes = generate_fiscal_report_pdf(
+        snap=snap.model_dump(),
+        company_name=company_name,
+        period=period,
+    )
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    safe_period = period.replace("-", "_")
+    file_name = f"fiscal_{safe_period}_{uuid.uuid4().hex[:8]}.pdf"
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+    with open(file_path, "wb") as fh:
+        fh.write(pdf_bytes)
+
+    doc = TenantDocument(
+        id=uuid.uuid4(),
+        tenant_id=current_user.tenant_id,
+        uploaded_by=current_user.id,
+        file_name=file_name,
+        file_type="application/pdf",
+        file_path=file_path,
+        file_size=len(pdf_bytes),
+        status="processed",
+        parsed_content=snap.resumen_ejecutivo,
+        category="informes",
+        created_at=datetime.now(UTC),
+        processed_at=datetime.now(UTC),
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    return doc
 
 
 # ─── Modelo 303 (Borrador IVA trimestral) ────────────────────────────────────

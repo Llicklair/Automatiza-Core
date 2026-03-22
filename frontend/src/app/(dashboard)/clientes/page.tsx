@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, Client, Invoice } from "@/lib/api";
+import { useNotificationStore } from "@/stores/notifications";
 import {
     Plus, Building2, UserCircle, Search, Mail, MapPin, X,
     FileText, ArrowUpRight, ArrowDownLeft, Hash, Calendar,
@@ -54,6 +55,7 @@ export default function ClientesPage() {
     const [newClient, setNewClient] = useState<Partial<Client>>({ client_type: "customer" });
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     const loadClients = async () => {
         try {
@@ -67,7 +69,8 @@ export default function ClientesPage() {
         }
     };
 
-    useEffect(() => { loadClients(); }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadClients(); }, [refreshKey]);
 
     const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault();

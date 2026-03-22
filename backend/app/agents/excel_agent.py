@@ -41,7 +41,7 @@ from sqlalchemy.future import select
 
 logger = logging.getLogger(__name__)
 
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 
@@ -207,7 +207,7 @@ def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str) -> None:
 # ─── Herramientas del agente ──────────────────────────────────────────────────
 
 @tool
-async def export_erp_data(tenant_id: str, datasets: str = "facturas") -> str:
+async def export_erp_data(tenant_id: str, datasets: str = "todos", user_request: str = "") -> str:
     """
     Exporta datos del ERP a un archivo Excel formateado (.xlsx).
     Genera un archivo con hojas separadas por cada tipo de dato solicitado.
@@ -216,12 +216,13 @@ async def export_erp_data(tenant_id: str, datasets: str = "facturas") -> str:
         tenant_id: ID del tenant
         datasets: Tipos de datos a exportar, separados por coma.
                   Opciones: facturas, clientes, empleados, nominas, productos, banco.
-                  Ejemplo: "facturas,clientes" o "todos" para exportar todo.
+                  Ejemplo: "facturas,nominas" o "todos" para exportar todo.
+        user_request: El mensaje original del usuario (para detectar datasets que falten).
     """
-    return await _export_erp_data_async(tenant_id, datasets)
+    return await _export_erp_data_async(tenant_id, datasets, user_request)
 
 
-async def _export_erp_data_async(tenant_id: str, datasets_str: str) -> str:
+async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request: str = "") -> str:
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output_filename = f"informe_{ts}.xlsx"
@@ -242,6 +243,14 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str) -> str:
                 for dk in detected:
                     if dk not in dataset_keys:
                         dataset_keys.append(dk)
+
+        # Salvaguardia: detectar datasets del prompt original que el LLM haya omitido
+        if user_request:
+            from_intent = _detect_datasets(user_request)
+            for dk in from_intent:
+                if dk not in dataset_keys:
+                    logger.info("Dataset '%s' detectado del prompt original, añadiendo", dk)
+                    dataset_keys.append(dk)
 
     sheets: dict[str, pd.DataFrame] = {}
     for key in dataset_keys:
@@ -300,6 +309,7 @@ async def _list_available_datasets_async(tenant_id: str) -> str:
             df = await fetcher(tenant_id)
             lines.append(f"- {key}: {len(df)} registros")
         except Exception:
+            logger.debug("Error consultando dataset %s", key, exc_info=True)
             lines.append(f"- {key}: error al consultar")
     return "Datasets disponibles para exportar:\n" + "\n".join(lines)
 
@@ -682,10 +692,12 @@ EXCEL_SYSTEM_PROMPT = """Eres el Agente de Excel de un ERP para PYMEs españolas
 7. **Crear documentos** con `create_document` — para informes en texto/CSV.
 
 REGLAS:
-- Para EXPORTAR: usa `export_erp_data`. Pasa TODOS los datasets que el usuario necesita separados por coma.
-  Ejemplos: "facturas,nominas,empleados" o "todos" para exportar todo.
-  IMPORTANTE: Si el usuario pide datos de empleados CON importes, cálculos o nóminas, SIEMPRE incluye "empleados,nominas" juntos.
-  Si el usuario dice "todas las facturas y empleados con importes", usa datasets="facturas,empleados,nominas".
+- Para EXPORTAR: usa `export_erp_data`. Pasa TODOS los datasets que el usuario menciona separados por coma.
+  Ejemplos: "facturas,nominas" o "facturas,empleados,nominas" o "todos" para exportar todo.
+  CRÍTICO: Incluye CADA tipo de dato que el usuario pide. Si dice "facturas y nóminas", usa datasets="facturas,nominas".
+  Si dice "facturas y empleados", usa datasets="facturas,empleados".
+  Si menciona nóminas → incluir "nominas". Si menciona facturas → incluir "facturas". NUNCA omitas un dataset mencionado.
+  SIEMPRE pasa user_request con el mensaje original del usuario para mejorar la detección automática.
   En caso de duda, usa "todos" — es mejor dar más datos que menos.
 - Para IMPORTAR: primero usa `list_tenant_documents` para encontrar el document_id del Excel, luego `import_excel`.
 - Para MODIFICAR un Excel: primero `read_excel` para ver el contenido, luego `modify_excel` con las instrucciones JSON.

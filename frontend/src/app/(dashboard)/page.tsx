@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type Task, type Approval, type Invoice } from "@/lib/api";
+import { useNotificationStore } from "@/stores/notifications";
 import {
     CheckCircle2, AlertCircle, Clock, Zap, Wallet,
     TrendingUp, TrendingDown, ArrowRight, FileText, Activity,
@@ -179,6 +180,7 @@ export default function DashboardPage() {
     const [analytics, setAnalytics] = useState<{ cashflow: any[], insights: any[] }>({ cashflow: [], insights: [] });
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("");
+    const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -201,7 +203,8 @@ export default function DashboardPage() {
                 setAnalytics(an);
             })
             .finally(() => setLoading(false));
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshKey]);
 
     const netoIsPositive = summary.neto >= 0;
 

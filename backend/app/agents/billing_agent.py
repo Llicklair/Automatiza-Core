@@ -293,7 +293,7 @@ async def _create_invoice_async(
 
                 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
                 if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
-                    upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+                    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
                 os.makedirs(upload_dir, exist_ok=True)
 
                 file_name = f"Factura_{new_invoice.invoice_number}.pdf"

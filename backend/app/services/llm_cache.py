@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Caché de respuestas LLM en memoria.
 
@@ -13,7 +14,6 @@ import json
 import logging
 import time
 import threading
-from __future__ import annotations
 
 logger = logging.getLogger(__name__)
 
