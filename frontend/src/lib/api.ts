@@ -27,7 +27,7 @@ export type { Opportunity, Activity, EventItem, Reservation } from "./api/crm";
 export type { Employee, Payroll, PayrollCalculation } from "./api/hr";
 export type { Project, ProjectTask } from "./api/projects";
 export type { JournalEntry, JournalLine, FixedAsset } from "./api/accounting";
-export type { CompanySnapshot, ReportDoc } from "./api/reports";
+export type { CompanySnapshot, ReportDoc, FiscalSnapshot } from "./api/reports";
 export type { Workflow, WorkflowExecution } from "./api/workflows";
 export type {
     LlmProviderEntry,

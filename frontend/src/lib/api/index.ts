@@ -19,6 +19,7 @@ import { workflows } from "./workflows";
 import { tenant } from "./tenant";
 import { admin } from "./admin";
 import { integrations } from "./integrations";
+import { system } from "./system";
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -38,6 +39,7 @@ export const api = {
     tenant,
     admin,
     integrations,
+    system,
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -63,7 +65,7 @@ export type { Opportunity, Activity, EventItem, Reservation } from "./crm";
 export type { Employee, Payroll, PayrollCalculation } from "./hr";
 export type { Project, ProjectTask } from "./projects";
 export type { JournalEntry, JournalLine, FixedAsset } from "./accounting";
-export type { CompanySnapshot, ReportDoc } from "./reports";
+export type { CompanySnapshot, ReportDoc, FiscalSnapshot } from "./reports";
 export type { Workflow, WorkflowExecution } from "./workflows";
 export type {
     LlmProviderEntry,

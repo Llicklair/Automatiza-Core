@@ -73,11 +73,30 @@ export async function request<T>(
 }
 
 export async function downloadBlob(path: string, filename: string): Promise<void> {
-    const token = getToken();
-    const res = await fetch(`${BASE}${path}`, {
+    let token = getToken();
+    let res = await fetch(`${BASE}${path}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) throw new Error("Error al descargar el archivo");
+
+    // Si 401, intentar refresh y reintentar
+    if (res.status === 401) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+            token = getToken();
+            res = await fetch(`${BASE}${path}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+        }
+    }
+
+    if (!res.ok) {
+        let detail = "Error al descargar el archivo";
+        try {
+            const err = await res.json();
+            detail = err.detail || detail;
+        } catch { /* no json body */ }
+        throw new Error(detail);
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

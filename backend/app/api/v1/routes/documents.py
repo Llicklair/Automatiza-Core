@@ -18,7 +18,7 @@ from app.db.models.models import Task, Tenant, TenantDocument, User
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -469,10 +469,15 @@ async def download_document(
     file_path = os.path.normpath(doc.file_path)
 
     if not os.path.exists(file_path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Archivo no disponible en disco: {file_path}"
-        )
+        # Fallback: buscar por nombre en UPLOAD_DIR
+        fallback = os.path.join(UPLOAD_DIR, doc.file_name) if doc.file_name else None
+        if fallback and os.path.exists(fallback):
+            file_path = fallback
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Archivo no disponible en disco: {file_path}"
+            )
 
     # Si es un PDF de factura IA antiguo y no es un PDF real, intentar regenerarlo al vuelo.
     # (Muchos se generaron como texto plano cuando reportlab no estaba instalado en el worker.)

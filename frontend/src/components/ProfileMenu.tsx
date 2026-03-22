@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-    User, Building, Mail, KeyRound, LogOut, ChevronDown,
+    User, Building, Mail, KeyRound, LogOut, ChevronDown, RefreshCw,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -138,6 +138,16 @@ export default function ProfileMenu() {
                             >
                                 <KeyRound className="w-4 h-4 text-zinc-500" />
                                 Claves API
+                            </Link>
+
+                            {/* Actualizaciones */}
+                            <Link
+                                href="/configuracion/actualizaciones"
+                                onClick={() => setOpen(false)}
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                            >
+                                <RefreshCw className="w-4 h-4 text-zinc-500" />
+                                Actualizaciones
                             </Link>
                         </div>
 

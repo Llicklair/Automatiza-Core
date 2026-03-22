@@ -24,7 +24,7 @@ from app.db.models.models import Employee, Payroll, TenantDocument, User
 
 router = APIRouter(prefix="/hr", tags=["hr"])
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
 
 
 # ─── Employees ───────────────────────────────────────────────────────────────
