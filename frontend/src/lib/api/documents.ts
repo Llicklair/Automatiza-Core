@@ -73,6 +73,7 @@ export const documents = {
         }
         return res.json();
     },
+    delete: (id: string) => request(`/api/v1/documents/${id}`, { method: "DELETE" }),
     exportZip: () => downloadBlob("/api/v1/documents/export", "documentos_backup.zip"),
     uploadBulk: async (file: File, category?: string): Promise<Document[]> => {
         const token = getToken();

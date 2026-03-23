@@ -768,6 +768,40 @@ async def download_report(
     )
 
 
+@router.delete("/{report_id}", status_code=200)
+async def delete_report(
+    report_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Elimina un informe: borra archivo de disco y registro de BD."""
+    q = await db.execute(
+        select(TenantDocument).where(
+            and_(
+                TenantDocument.id == report_id,
+                TenantDocument.tenant_id == current_user.tenant_id,
+                TenantDocument.category == "informes",
+            )
+        )
+    )
+    doc = q.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Informe no encontrado")
+
+    # Borrar archivo de disco
+    for path_candidate in [doc.file_path, os.path.join(UPLOAD_DIR, doc.file_name) if doc.file_name else None]:
+        if path_candidate and os.path.exists(path_candidate):
+            try:
+                os.remove(path_candidate)
+            except OSError:
+                pass
+            break
+
+    await db.delete(doc)
+    await db.commit()
+    return {"status": "deleted", "id": str(report_id)}
+
+
 # ─── Fiscal snapshot endpoints ────────────────────────────────────────────────
 
 @router.get("/fiscal-snapshot", response_model=FiscalSnapshot)

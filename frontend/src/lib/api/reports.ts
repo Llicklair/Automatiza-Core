@@ -86,6 +86,7 @@ export const reports = {
         request<ReportDoc>(`/api/v1/reports/fiscal-snapshot/generate${period ? `?period=${period}` : ""}`, { method: "POST" }),
     list: () => request<ReportDoc[]>("/api/v1/reports/"),
     download: (id: string, filename: string) => downloadBlob(`/api/v1/reports/${id}/download`, filename),
+    delete: (id: string) => request(`/api/v1/reports/${id}`, { method: "DELETE" }),
     libroRegistro: (year: number, type: "emitidas" | "recibidas" = "emitidas") =>
         downloadBlob(`/api/v1/reports/libro-registro?year=${year}&type=${type}`, `LibroRegistro_${type}_${year}.csv`),
 };

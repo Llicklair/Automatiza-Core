@@ -424,12 +424,12 @@ async def list_documents(
 
 
 @router.delete("/{document_id}", status_code=200)
-async def cancel_document(
+async def delete_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Cancela o descarta un documento atascado en procesamiento."""
+    """Elimina un documento: borra archivo de disco y registro de BD."""
     result = await db.execute(
         select(TenantDocument).where(
             TenantDocument.id == document_id,
@@ -440,9 +440,24 @@ async def cancel_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
-    doc.status = "failed"
+    # Borrar archivo de disco
+    if doc.file_path and os.path.exists(doc.file_path):
+        try:
+            os.remove(doc.file_path)
+        except OSError:
+            logger.warning("No se pudo eliminar archivo: %s", doc.file_path)
+    # Fallback por nombre
+    elif doc.file_name:
+        fallback = os.path.join(UPLOAD_DIR, doc.file_name)
+        if os.path.exists(fallback):
+            try:
+                os.remove(fallback)
+            except OSError:
+                logger.warning("No se pudo eliminar archivo: %s", fallback)
+
+    await db.delete(doc)
     await db.commit()
-    return {"status": "cancelled", "id": str(document_id)}
+    return {"status": "deleted", "id": str(document_id)}
 
 
 @router.get("/{document_id}/download")

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, Invoice } from "@/lib/api";
-import { FileText, Plus, Search, Download, Building2, Calendar, AlertTriangle, CheckCircle2, Copy } from "lucide-react";
+import { FileText, Plus, Search, Download, Building2, Calendar, AlertTriangle, CheckCircle2, Copy, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
@@ -63,6 +63,17 @@ export default function FacturasPage() {
             .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refreshKey]);
+
+    const handleDeleteInvoice = async (id: string) => {
+        if (!confirm("¿Eliminar esta factura? Esta acción no se puede deshacer.")) return;
+        try {
+            await api.erp.invoices.delete(id);
+            setInvoices(prev => prev.filter(i => i.id !== id));
+            useToastStore.getState().success("Factura eliminada");
+        } catch (err: any) {
+            useToastStore.getState().error(err?.message || "Error al eliminar factura");
+        }
+    };
 
     const filteredInvoices = invoices.filter(inv => {
         const searchLower = searchTerm.toLowerCase();
@@ -202,14 +213,23 @@ export default function FacturasPage() {
                                                 {Number(inv.amount_total).toLocaleString('es-ES', { minimumFractionDigits: 2 })}€
                                             </td>
                                             <td className="py-4 pr-4 text-right">
-                                                <button
-                                                    onClick={() => downloadInvoicePdf(inv.id, inv.invoice_number)}
-                                                    title="Descargar PDF"
-                                                    className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-500/20 hover:border-indigo-400/40 rounded-lg px-2.5 py-1.5 transition-all"
-                                                >
-                                                    <Download className="w-3.5 h-3.5" />
-                                                    PDF
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => downloadInvoicePdf(inv.id, inv.invoice_number)}
+                                                        title="Descargar PDF"
+                                                        className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-500/20 hover:border-indigo-400/40 rounded-lg px-2.5 py-1.5 transition-all"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                        PDF
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteInvoice(inv.id)}
+                                                        title="Eliminar factura"
+                                                        className="inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-400/40 rounded-lg px-2.5 py-1.5 transition-all"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
