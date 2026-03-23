@@ -5,7 +5,7 @@ import { api, type Document as DocType } from "@/lib/api";
 import {
     FileText, Loader2, CheckCircle2, AlertTriangle,
     FileImage, FileArchive, ChevronLeft, X, Send, Bot, User,
-    Mail, Sheet, Upload, Download, Grid2x2, List, Database, Table2, FolderOpen
+    Mail, Sheet, Upload, Download, Grid2x2, List, Database, Table2, FolderOpen, Trash2
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -796,6 +796,18 @@ function DocRow({ doc, onReload }: { doc: DocType; onReload: () => void }) {
         }
     }
 
+    async function handleDelete(e: React.MouseEvent) {
+        e.stopPropagation();
+        if (!await showConfirm({ message: "¿Eliminar este documento? Esta acción no se puede deshacer.", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        try {
+            await api.documents.delete(doc.id);
+            toast.success("Documento eliminado");
+            onReload();
+        } catch (err: any) {
+            toast.error(err?.message || "Error al eliminar documento");
+        }
+    }
+
     return (
         <div className="hover:bg-white/[0.02] transition">
             <div
@@ -845,6 +857,13 @@ function DocRow({ doc, onReload }: { doc: DocType; onReload: () => void }) {
                                 }`}
                         >
                             <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            title="Eliminar documento"
+                            className="p-1 rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         {hasParsed && !isPdf && (
                             <ChevronLeft className={`w-4 h-4 text-zinc-500 transition-transform duration-300 ${open ? "-rotate-90" : "rotate-180"}`} />
@@ -919,6 +938,18 @@ function DocCard({ doc, onReload }: { doc: DocType; onReload: () => void }) {
         }
     }
 
+    async function handleDelete(e: React.MouseEvent) {
+        e.stopPropagation();
+        if (!await showConfirm({ message: "¿Eliminar este documento? Esta acción no se puede deshacer.", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        try {
+            await api.documents.delete(doc.id);
+            toast.success("Documento eliminado");
+            onReload();
+        } catch (err: any) {
+            toast.error(err?.message || "Error al eliminar documento");
+        }
+    }
+
     return (
         <>
             <div
@@ -969,6 +1000,13 @@ function DocCard({ doc, onReload }: { doc: DocType; onReload: () => void }) {
                             className="p-1.5 rounded-md hover:bg-indigo-500/10 text-zinc-400 hover:text-indigo-400 transition"
                         >
                             <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            title="Eliminar documento"
+                            className="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>

@@ -6,7 +6,7 @@ import {
     BarChart3, TrendingUp, TrendingDown, Users, Briefcase,
     Landmark, FileText, Download, RefreshCw, ChevronLeft, ChevronRight,
     Loader2, AlertCircle, CheckCircle2, Clock, PlusCircle,
-    Receipt, Building2, Scale
+    Receipt, Building2, Scale, Trash2
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -243,6 +243,17 @@ export default function InformesPage() {
             const msg = e?.message || "Error desconocido";
             const setErr = tab === "fiscal" ? setFiscalError : setError;
             setErr(`Error descargando: ${msg}`);
+        }
+    }
+
+    async function handleDeleteReport(id: string) {
+        if (!confirm("¿Eliminar este informe? Esta acción no se puede deshacer.")) return;
+        try {
+            await api.reports.delete(id);
+            setReports(prev => prev.filter(r => r.id !== id));
+        } catch (e: any) {
+            const setErr = tab === "fiscal" ? setFiscalError : setError;
+            setErr(`Error eliminando: ${e?.message || "Error desconocido"}`);
         }
     }
 
@@ -573,12 +584,20 @@ export default function InformesPage() {
                                         <p className="text-xs text-zinc-500">{new Date(r.created_at).toLocaleDateString("es-ES")} · {(r.file_size / 1024).toFixed(0)} KB</p>
                                     </div>
                                 </div>
+                                <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => handleDownload(r.id, r.file_name)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-zinc-300 hover:bg-white/5 transition-colors shrink-0"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-zinc-300 hover:bg-white/5 transition-colors"
                                 >
                                     <Download className="w-3.5 h-3.5" /> Descargar
                                 </button>
+                                <button
+                                    onClick={() => handleDeleteReport(r.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/20 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                </div>
                             </div>
                         ))}
                     </div>

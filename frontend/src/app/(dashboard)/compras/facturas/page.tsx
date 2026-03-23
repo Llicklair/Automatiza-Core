@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, Invoice, Client } from "@/lib/api";
 import {
-    ArrowDownToLine, FileText, CheckCircle2, Clock, Search, Plus, X, Loader2, Inbox
+    ArrowDownToLine, FileText, CheckCircle2, Clock, Search, Plus, X, Loader2, Inbox, Trash2
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
 
@@ -106,6 +106,17 @@ export default function FacturasRecibidasPage() {
         }
     };
 
+    const handleDeleteInvoice = async (id: string) => {
+        if (!confirm("¿Eliminar esta factura? Esta acción no se puede deshacer.")) return;
+        try {
+            await api.erp.invoices.delete(id);
+            setInvoices(prev => prev.filter(i => i.id !== id));
+            toast.success("Factura eliminada");
+        } catch (err: any) {
+            toast.error(err?.message || "Error al eliminar factura");
+        }
+    };
+
     const filtered = invoices.filter(i =>
         (i.invoice_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (i.client?.name || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -204,14 +215,23 @@ export default function FacturasRecibidasPage() {
                                     <td className="py-4 text-right text-sm text-zinc-400">{inv.due_date ? new Date(inv.due_date).toLocaleDateString("es-ES") : "—"}</td>
                                     <td className="py-4 pr-6 text-right font-bold text-white">{Number(inv.amount_total).toLocaleString("es-ES", { minimumFractionDigits: 2 })}€</td>
                                     <td className="py-4 pr-6">
-                                        {inv.status === "pending" && (
+                                        <div className="flex items-center justify-end gap-2">
+                                            {inv.status === "pending" && (
+                                                <button
+                                                    onClick={() => handleStatusChange(inv.id, "paid")}
+                                                    className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/20 hover:border-emerald-400/40 rounded-lg px-2.5 py-1.5 transition-all"
+                                                >
+                                                    Marcar pagada
+                                                </button>
+                                            )}
                                             <button
-                                                onClick={() => handleStatusChange(inv.id, "paid")}
-                                                className="text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-500/20 hover:border-emerald-400/40 rounded-lg px-2.5 py-1.5 transition-all"
+                                                onClick={() => handleDeleteInvoice(inv.id)}
+                                                title="Eliminar factura"
+                                                className="inline-flex items-center text-xs text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg p-1.5 transition-all"
                                             >
-                                                Marcar pagada
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </button>
-                                        )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
