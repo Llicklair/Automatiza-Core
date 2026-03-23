@@ -1,10 +1,11 @@
 """Google OAuth 2.0 client for Gmail + Google Drive."""
 
-import os
 import secrets
 from urllib.parse import urlencode
 
 import httpx
+
+from app.core.config import settings
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -20,18 +21,15 @@ SCOPES = [
 
 
 def _client_id() -> str:
-    return os.getenv("GOOGLE_CLIENT_ID", "")
+    return settings.GOOGLE_CLIENT_ID
 
 
 def _client_secret() -> str:
-    return os.getenv("GOOGLE_CLIENT_SECRET", "")
+    return settings.GOOGLE_CLIENT_SECRET
 
 
 def _redirect_uri() -> str:
-    return os.getenv(
-        "GOOGLE_REDIRECT_URI",
-        "http://localhost:8080/api/v1/integrations/google/callback",
-    )
+    return settings.GOOGLE_REDIRECT_URI
 
 
 def generate_auth_url(tenant_id: str) -> tuple[str, str]:

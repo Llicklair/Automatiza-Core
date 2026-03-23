@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow, dialog, shell } = require("electron");
 const path = require("path");
 
 const { startAll, stopAll, killOrphanProcesses } = require("./service-manager");
@@ -53,6 +53,21 @@ function createMainWindow() {
   });
 
   mainWindow.loadURL("http://localhost:3000");
+
+  // Abrir URLs OAuth en el navegador externo del sistema
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (url.includes("accounts.google.com") || url.includes("login.microsoftonline.com")) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.includes("accounts.google.com") || url.includes("login.microsoftonline.com")) {
+      shell.openExternal(url);
+      return { action: "deny" };
+    }
+    return { action: "allow" };
+  });
 
   // Minimizar a tray en vez de cerrar
   mainWindow.on("close", (e) => {

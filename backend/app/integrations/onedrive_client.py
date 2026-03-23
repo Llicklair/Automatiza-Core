@@ -37,10 +37,9 @@ class OneDriveClient:
                 "id": i["id"],
                 "name": i["name"],
                 "size": i.get("size"),
-                "modified": i.get("lastModifiedDateTime"),
-                "web_url": i.get("webUrl"),
-                "is_folder": "folder" in i,
-                "mime_type": i.get("file", {}).get("mimeType"),
+                "lastModifiedDateTime": i.get("lastModifiedDateTime"),
+                "webUrl": i.get("webUrl"),
+                "mimeType": i.get("file", {}).get("mimeType"),
             }
             for i in items
         ]

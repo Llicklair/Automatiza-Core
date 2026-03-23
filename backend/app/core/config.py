@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     EMBEDDINGS_PROVIDER: str = "local"  # local | gemini | openai
     EMBEDDINGS_LOCAL_MODEL: str = "BAAI/bge-m3"  # modelo HuggingFace local
 
+    # OAuth — Google (Gmail + Drive)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8080/api/v1/integrations/google/callback"
+
+    # OAuth — Microsoft (Outlook + OneDrive)
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_REDIRECT_URI: str = "http://localhost:8080/api/v1/integrations/microsoft/callback"
+
     # Cifrado de credenciales de tenants
     TENANT_ENCRYPTION_KEY: str = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"
 

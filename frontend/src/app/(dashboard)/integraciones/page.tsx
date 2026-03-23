@@ -153,14 +153,31 @@ export default function IntegracionesPage() {
 
     async function connectOAuth(provider: "google" | "microsoft") {
         const setConnecting = provider === "google" ? setConnectingGoogle : setConnectingMicrosoft;
+        const statusCheck = provider === "google" ? "gmail" : "outlook";
         setConnecting(true); setFeedback(null);
         try {
             const data = await api.integrations.oauthUrl(provider);
-            openOAuthPopup(data.auth_url, () => {
-                setConnecting(false);
-                setFeedback({ type: "success", msg: `${provider === "google" ? "Google" : "Microsoft"} conectado` });
-                load();
-            });
+            // Abrir en nueva ventana (Electron intercepta y abre en navegador externo)
+            window.open(data.auth_url, "_blank");
+            // Polling: esperar a que el OAuth complete y el status cambie
+            let attempts = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                try {
+                    const list = await api.integrations.list();
+                    const connected = list.some(i => i.integration_type === statusCheck && i.is_active);
+                    if (connected) {
+                        clearInterval(poll);
+                        setConnecting(false);
+                        setFeedback({ type: "success", msg: `${provider === "google" ? "Google" : "Microsoft"} conectado correctamente` });
+                        load();
+                    }
+                } catch {}
+                if (attempts >= 60) { // 2 minutos máximo
+                    clearInterval(poll);
+                    setConnecting(false);
+                }
+            }, 2000);
         } catch (err: unknown) {
             setConnecting(false);
             setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });

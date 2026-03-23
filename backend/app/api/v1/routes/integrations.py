@@ -1,6 +1,9 @@
 """Rutas para gestionar integraciones de cada tenant (Gmail, etc.)."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -333,7 +336,7 @@ async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_
     <html><body>
     <script>
         if (window.opener) { window.opener.postMessage({type:'oauth_success',provider:'google'}, '*'); window.close(); }
-        else { window.location.href = '/integraciones?connected=google'; }
+        else { window.location.href = 'http://localhost:3000/integraciones?connected=google'; }
     </script>
     <p>Conectado con Google. Puedes cerrar esta ventana.</p>
     </body></html>
@@ -394,6 +397,100 @@ async def gmail_status(
     )
     integration = result.scalar_one_or_none()
     return {"connected": bool(integration and integration.is_active)}
+
+
+async def _get_oauth_access_token(
+    db: AsyncSession, tenant_id, integration_type: str = "gmail",
+) -> str | None:
+    """Load and auto-refresh OAuth access token for a tenant (Google or Microsoft)."""
+    integration = (
+        await db.execute(
+            select(TenantIntegration).where(
+                TenantIntegration.tenant_id == tenant_id,
+                TenantIntegration.integration_type == integration_type,
+                TenantIntegration.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not integration:
+        logger.warning("No active integration found for type=%s", integration_type)
+        return None
+
+    creds = decrypt_credentials(integration.encrypted_credentials)
+    access_token = creds.get("access_token")
+    refresh_token = creds.get("refresh_token")
+    if not access_token:
+        logger.warning("No access_token in credentials for type=%s", integration_type)
+        return None
+
+    # Test token validity with the appropriate API
+    is_microsoft = integration_type in ("outlook", "onedrive")
+    test_url = (
+        "https://graph.microsoft.com/v1.0/me" if is_microsoft
+        else "https://gmail.googleapis.com/gmail/v1/users/me/profile"
+    )
+
+    import httpx
+    async with httpx.AsyncClient() as client:
+        test = await client.get(test_url, headers={"Authorization": f"Bearer {access_token}"})
+
+    logger.info("Token test for %s: status=%d", integration_type, test.status_code)
+
+    if test.status_code == 401 and refresh_token:
+        if is_microsoft:
+            from app.integrations.microsoft_oauth import refresh_access_token
+        else:
+            from app.integrations.google_oauth import refresh_access_token
+        new_tokens = await refresh_access_token(refresh_token)
+        access_token = new_tokens["access_token"]
+        creds["access_token"] = access_token
+        if "refresh_token" in new_tokens:
+            creds["refresh_token"] = new_tokens["refresh_token"]
+        integration.encrypted_credentials = encrypt_credentials(creds)
+        await db.commit()
+
+    return access_token
+
+
+@router.get("/gmail/recent")
+async def gmail_recent(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get last 5 Gmail messages for the dashboard widget."""
+    token = await _get_oauth_access_token(db, current_user.tenant_id, "gmail")
+    if not token:
+        return []
+    from app.integrations.gmail_client import GmailClient
+    client = GmailClient(token)
+    try:
+        return await client.list_messages(max_results=5)
+    except Exception:
+        return []
+    finally:
+        await client.close()
+
+
+@router.get("/gdrive/recent")
+async def gdrive_recent(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get last 5 Google Drive files for the dashboard widget."""
+    token = await _get_oauth_access_token(db, current_user.tenant_id, "gdrive")
+    if not token:
+        return []
+    from app.integrations.google_drive_client import GoogleDriveClient
+    client = GoogleDriveClient(token)
+    try:
+        files = await client.list_files(page_size=5)
+        logger.info("gdrive/recent returned %d files", len(files))
+        return files
+    except Exception as e:
+        logger.exception("gdrive/recent error: %s", e)
+        return []
+    finally:
+        await client.close()
 
 
 @router.get("/gdrive/status")
@@ -470,7 +567,7 @@ async def microsoft_callback(code: str, state: str, db: AsyncSession = Depends(g
     <html><body>
     <script>
         if (window.opener) { window.opener.postMessage({type:'oauth_success',provider:'microsoft'}, '*'); window.close(); }
-        else { window.location.href = '/integraciones?connected=microsoft'; }
+        else { window.location.href = 'http://localhost:3000/integraciones?connected=microsoft'; }
     </script>
     <p>Conectado con Microsoft. Puedes cerrar esta ventana.</p>
     </body></html>
@@ -515,6 +612,47 @@ async def disconnect_onedrive(
     integration.is_active = False
     await db.commit()
     return {"status": "desconectado"}
+
+
+@router.get("/outlook/recent")
+async def outlook_recent(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get last 5 Outlook messages for the dashboard widget."""
+    token = await _get_oauth_access_token(db, current_user.tenant_id, "outlook")
+    if not token:
+        return []
+    from app.integrations.outlook_client import OutlookClient
+    client = OutlookClient(token)
+    try:
+        return await client.list_messages(top=5)
+    except Exception:
+        return []
+    finally:
+        await client.close()
+
+
+@router.get("/onedrive/recent")
+async def onedrive_recent(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get last 5 OneDrive files for the dashboard widget."""
+    token = await _get_oauth_access_token(db, current_user.tenant_id, "onedrive")
+    if not token:
+        return []
+    from app.integrations.onedrive_client import OneDriveClient
+    client = OneDriveClient(token)
+    try:
+        files = await client.list_files(top=5)
+        logger.info("onedrive/recent returned %d files", len(files))
+        return files
+    except Exception as e:
+        logger.exception("onedrive/recent error: %s", e)
+        return []
+    finally:
+        await client.close()
 
 
 @router.get("/outlook/status")

@@ -73,4 +73,4 @@ export type {
     LlmProviderConfigUpdate,
     LlmConfigUpdate,
 } from "./tenant";
-export type { IntegrationStatus } from "./integrations";
+export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
