@@ -35,4 +35,4 @@ export type {
     LlmProviderConfigUpdate,
     LlmConfigUpdate,
 } from "./api/tenant";
-export type { IntegrationStatus } from "./api/integrations";
+export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./api/integrations";

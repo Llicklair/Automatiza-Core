@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, type Task, type Approval, type Invoice } from "@/lib/api";
+import { api, type Task, type Approval, type Invoice, type GmailMessage, type DriveFile, type OutlookMessage, type OneDriveFile } from "@/lib/api";
 import { useNotificationStore } from "@/stores/notifications";
 import {
     CheckCircle2, AlertCircle, Clock, Zap, Wallet,
     TrendingUp, TrendingDown, ArrowRight, FileText, Activity,
     BrainCircuit, Sparkles, AlertTriangle, Lightbulb,
-    SendHorizonal, Loader2, Bot,
+    SendHorizonal, Loader2, Bot, Mail, HardDrive, XCircle,
+    FileSpreadsheet, FileImage, File as FileIcon, FolderOpen,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -180,6 +181,15 @@ export default function DashboardPage() {
     const [analytics, setAnalytics] = useState<{ cashflow: any[], insights: any[] }>({ cashflow: [], insights: [] });
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("");
+    const [gmailConnected, setGmailConnected] = useState(false);
+    const [gdriveConnected, setGdriveConnected] = useState(false);
+    const [outlookConnected, setOutlookConnected] = useState(false);
+    const [onedriveConnected, setOnedriveConnected] = useState(false);
+    const [gmailMessages, setGmailMessages] = useState<GmailMessage[]>([]);
+    const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+    const [outlookMessages, setOutlookMessages] = useState<OutlookMessage[]>([]);
+    const [onedriveFiles, setOnedriveFiles] = useState<OneDriveFile[]>([]);
+    const [activeTab, setActiveTab] = useState<"gmail" | "outlook" | "drive" | "onedrive">("gmail");
     const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     useEffect(() => {
@@ -193,14 +203,32 @@ export default function DashboardPage() {
             api.erp.invoices.list({ limit: 5 }).catch(() => []),
             api.tasks.list({ limit: 6 }).catch(() => []),
             api.approvals.list().catch(() => []),
-            api.banking.analytics().catch(() => ({ cashflow: [], insights: [] }))
+            api.banking.analytics().catch(() => ({ cashflow: [], insights: [] })),
+            api.integrations.gmailStatus().catch(() => ({ connected: false })),
+            api.integrations.gdriveStatus().catch(() => ({ connected: false })),
+            api.integrations.outlookStatus().catch(() => ({ connected: false })),
+            api.integrations.onedriveStatus().catch(() => ({ connected: false })),
         ])
-            .then(([sum, inv, t, a, an]) => {
+            .then(([sum, inv, t, a, an, gs, ds, os, ods]) => {
                 setSummary(sum);
                 setInvoices(inv);
                 setTasks(t);
                 setApprovals(a);
                 setAnalytics(an);
+                setGmailConnected(gs.connected);
+                setGdriveConnected(ds.connected);
+                setOutlookConnected(os.connected);
+                setOnedriveConnected(ods.connected);
+                // Auto-select first connected tab
+                if (gs.connected) setActiveTab("gmail");
+                else if (os.connected) setActiveTab("outlook");
+                else if (ds.connected) setActiveTab("drive");
+                else if (ods.connected) setActiveTab("onedrive");
+                // Load recent data only if connected
+                if (gs.connected) api.integrations.gmailRecent().then(setGmailMessages).catch(() => {});
+                if (ds.connected) api.integrations.gdriveRecent().then(setDriveFiles).catch(() => {});
+                if (os.connected) api.integrations.outlookRecent().then(setOutlookMessages).catch(() => {});
+                if (ods.connected) api.integrations.onedriveRecent().then(setOnedriveFiles).catch(() => {});
             })
             .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -496,6 +524,117 @@ export default function DashboardPage() {
                                 Ver todo el historial
                             </Link>
                         </div>
+                    </div>
+
+                    {/* Widget Correo + Almacenamiento */}
+                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
+                        {/* Header + Tabs */}
+                        <div className="px-5 py-4 border-b border-[#27272a] bg-zinc-900/30">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                                    <Mail className="w-4 h-4 text-indigo-400" /> Correo y Archivos
+                                </h2>
+                                <div className="flex items-center gap-2">
+                                    {gmailConnected && <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" />Gmail</span>}
+                                    {outlookConnected && <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" />Outlook</span>}
+                                    {gdriveConnected && <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" />Drive</span>}
+                                    {onedriveConnected && <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" />OneDrive</span>}
+                                </div>
+                            </div>
+                            {(gmailConnected || outlookConnected || gdriveConnected || onedriveConnected) && (
+                                <div className="flex gap-1 mt-3">
+                                    {gmailConnected && (
+                                        <button onClick={() => setActiveTab("gmail")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === "gmail" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+                                            <Mail className="w-3 h-3" /> Gmail
+                                        </button>
+                                    )}
+                                    {outlookConnected && (
+                                        <button onClick={() => setActiveTab("outlook")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === "outlook" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+                                            <Mail className="w-3 h-3" /> Outlook
+                                        </button>
+                                    )}
+                                    {gdriveConnected && (
+                                        <button onClick={() => setActiveTab("drive")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === "drive" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+                                            <HardDrive className="w-3 h-3" /> Drive
+                                        </button>
+                                    )}
+                                    {onedriveConnected && (
+                                        <button onClick={() => setActiveTab("onedrive")} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === "onedrive" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+                                            <HardDrive className="w-3 h-3" /> OneDrive
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Content */}
+                        {!gmailConnected && !outlookConnected && !gdriveConnected && !onedriveConnected ? (
+                            <div className="p-8 text-center flex flex-col items-center gap-2">
+                                <XCircle className="w-8 h-8 text-zinc-700" />
+                                <p className="text-xs text-zinc-500">No hay servicios conectados</p>
+                                <Link href="/integraciones" className="mt-2 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                                    Conectar en Integraciones &rarr;
+                                </Link>
+                            </div>
+                        ) : (activeTab === "gmail" || activeTab === "outlook") ? (
+                            <div className="divide-y divide-[#27272a] max-h-[300px] overflow-y-auto">
+                                {(() => {
+                                    const messages = activeTab === "gmail"
+                                        ? gmailMessages.map(m => ({ id: m.id, from: m.from.replace(/<.*>/, "").trim(), subject: m.subject, snippet: m.snippet, date: m.date }))
+                                        : outlookMessages.map(m => ({ id: m.id, from: m.from_name || m.from, subject: m.subject, snippet: m.snippet, date: m.date }));
+                                    if (messages.length === 0) return <div className="p-6 text-center text-zinc-500 text-xs">Sin correos recientes</div>;
+                                    return messages.map(msg => (
+                                        <div key={msg.id} className="p-4 hover:bg-white/[0.02] transition-colors">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="text-xs font-medium text-zinc-200 truncate max-w-[180px]">{msg.from}</p>
+                                                <span className="text-[10px] text-zinc-600 whitespace-nowrap">
+                                                    {msg.date ? new Date(msg.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : ""}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-zinc-400 font-medium mt-1 truncate">{msg.subject}</p>
+                                            <p className="text-[11px] text-zinc-600 mt-0.5 line-clamp-1">{msg.snippet}</p>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        ) : (activeTab === "drive" || activeTab === "onedrive") ? (
+                            <div className="divide-y divide-[#27272a] max-h-[300px] overflow-y-auto">
+                                {(() => {
+                                    const files = activeTab === "drive"
+                                        ? driveFiles.map(f => ({ id: f.id, name: f.name, mime: f.mimeType || "", date: f.modifiedTime }))
+                                        : onedriveFiles.map(f => ({ id: f.id, name: f.name, mime: f.mimeType || "", date: f.lastModifiedDateTime || "" }));
+                                    if (files.length === 0) return <div className="p-6 text-center text-zinc-500 text-xs">Sin archivos recientes</div>;
+                                    return files.map(file => {
+                                        const icon = file.mime.includes("spreadsheet") ? <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                                            : file.mime.includes("image") ? <FileImage className="w-3.5 h-3.5 text-purple-400" />
+                                            : file.mime.includes("folder") ? <FolderOpen className="w-3.5 h-3.5 text-yellow-400" />
+                                            : file.mime.includes("document") ? <FileText className="w-3.5 h-3.5 text-blue-400" />
+                                            : file.mime.includes("pdf") ? <FileText className="w-3.5 h-3.5 text-red-400" />
+                                            : <FileIcon className="w-3.5 h-3.5 text-zinc-400" />;
+                                        return (
+                                            <div key={file.id} className="p-4 hover:bg-white/[0.02] transition-colors flex items-center gap-3">
+                                                {icon}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs text-zinc-200 truncate">{file.name}</p>
+                                                    <p className="text-[10px] text-zinc-600 mt-0.5">
+                                                        {file.date ? new Date(file.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
+                            </div>
+                        ) : null}
+
+                        {/* Footer */}
+                        {(gmailConnected || outlookConnected || gdriveConnected || onedriveConnected) && (
+                            <div className="p-3 border-t border-[#27272a] bg-black/20 text-center">
+                                <Link href="/integraciones" className="text-[11px] font-medium text-zinc-400 hover:text-white transition-colors">
+                                    Gestionar integraciones
+                                </Link>
+                            </div>
+                        )}
                     </div>
 
                 </div>

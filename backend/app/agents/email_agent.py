@@ -76,6 +76,63 @@ async def _get_email_credentials(tenant_id: str):
         return None
 
 
+async def _get_gmail_oauth_token(tenant_id: str) -> str | None:
+    """
+    Carga el access_token de Gmail OAuth del tenant.
+    Si el token ha expirado, intenta refrescarlo automáticamente.
+    Devuelve el access_token válido o None.
+    """
+    import uuid
+    from sqlalchemy import select
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.models import TenantIntegration
+    from app.services.encryption import decrypt_credentials, encrypt_credentials
+    from app.integrations.google_oauth import refresh_access_token
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(TenantIntegration).where(
+                    TenantIntegration.tenant_id == uuid.UUID(tenant_id),
+                    TenantIntegration.integration_type == "gmail",
+                    TenantIntegration.is_active.is_(True),
+                )
+            )
+            integration = result.scalar_one_or_none()
+
+            if not integration:
+                return None
+
+            creds = decrypt_credentials(integration.encrypted_credentials)
+            access_token = creds.get("access_token")
+            refresh_token = creds.get("refresh_token")
+
+            if not access_token:
+                return None
+
+            # Intentar usar el token actual; si falla, refrescar
+            import httpx
+            async with httpx.AsyncClient() as client:
+                test = await client.get(
+                    "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+
+            if test.status_code == 401 and refresh_token:
+                # Token expirado — refrescar
+                new_tokens = await refresh_access_token(refresh_token)
+                access_token = new_tokens["access_token"]
+                creds["access_token"] = access_token
+                if "refresh_token" in new_tokens:
+                    creds["refresh_token"] = new_tokens["refresh_token"]
+                integration.encrypted_credentials = encrypt_credentials(creds)
+                await db.commit()
+
+            return access_token
+    except Exception:
+        return None
+
+
 # ─── Herramientas del agente ──────────────────────────────────────────────────
 
 # Se definen como closures para poder inyectar las credenciales en tiempo de ejecución.
@@ -243,9 +300,10 @@ async def run_email_agent(
 ) -> object:
     """
     Punto de entrada del email agent.
-    1. Intenta cargar credenciales reales del tenant.
-    2. Si las hay, crea tools con IMAP/SMTP real.
-    3. Si no, usa mock para no bloquear el flujo.
+    1. Intenta cargar tokens OAuth de Gmail del tenant.
+    2. Si los hay, crea tools con Gmail API (OAuth).
+    3. Si no, intenta credenciales IMAP/SMTP.
+    4. Si tampoco, usa mock para no bloquear el flujo.
     """
     from app.services.email_service import (
         EmailCredentials,
@@ -254,9 +312,119 @@ async def run_email_agent(
         send_email_smtp,
     )
 
-    credentials = await _get_email_credentials(tenant_id)
+    # ── Prioridad 1: Gmail OAuth ──────────────────────────────────────────
+    gmail_token = await _get_gmail_oauth_token(tenant_id)
+    if gmail_token:
+        from app.integrations.gmail_client import GmailClient
 
-    if credentials:
+        @tool
+        async def check_inbox_real(tenant_id: str, max_results: int = 10) -> str:
+            """
+            Lee los correos más recientes de la bandeja de entrada real del tenant.
+            Args:
+                tenant_id: ID del tenant
+                max_results: Máximo de correos a recuperar
+            """
+            client = GmailClient(gmail_token)
+            try:
+                msgs = await client.list_messages(max_results=max_results)
+                if not msgs:
+                    return "Bandeja de entrada vacía."
+                lines = []
+                for m in msgs:
+                    lines.append(
+                        f"- [ID: {m['id']}]\n"
+                        f"  De: {m['from']}\n"
+                        f"  Fecha: {m['date']}\n"
+                        f"  Asunto: {m['subject']}\n"
+                        f"  Resumen: {m['snippet']}"
+                    )
+                return f"Correos en Bandeja de Entrada ({len(msgs)} mensajes):\n\n" + "\n\n".join(lines)
+            except Exception as e:
+                return f"Error al leer la bandeja de entrada: {e}"
+            finally:
+                await client.close()
+
+        @tool
+        async def check_unread_real(tenant_id: str, max_results: int = 10) -> str:
+            """
+            Lee solo los correos NO LEÍDOS de la bandeja de entrada real.
+            Args:
+                tenant_id: ID del tenant
+                max_results: Máximo de correos no leídos a recuperar
+            """
+            client = GmailClient(gmail_token)
+            try:
+                msgs = await client.list_messages(query="is:unread", max_results=max_results)
+                if not msgs:
+                    return "No hay correos no leídos."
+                lines = []
+                for m in msgs:
+                    lines.append(
+                        f"- [ID: {m['id']}]\n"
+                        f"  De: {m['from']}\n"
+                        f"  Fecha: {m['date']}\n"
+                        f"  Asunto: {m['subject']}\n"
+                        f"  Resumen: {m['snippet']}"
+                    )
+                return f"Correos NO leídos ({len(msgs)}):\n\n" + "\n\n".join(lines)
+            except Exception as e:
+                return f"Error al leer correos no leídos: {e}"
+            finally:
+                await client.close()
+
+        @tool
+        async def send_email_real(tenant_id: str, to: str, subject: str, body: str, attachment_ids: list[str] | None = None) -> str:
+            """
+            Envía un correo electrónico real al destinatario indicado, permitiendo adjuntar documentos.
+            Args:
+                tenant_id: ID del tenant
+                to: Dirección de correo electrónico del destinatario
+                subject: Asunto del correo
+                body: Cuerpo del correo en texto plano
+                attachment_ids: Opcional. Lista de IDs de documentos (TenantDocument) a adjuntar.
+            """
+            from app.db.base import AsyncSessionLocal
+            from app.db.models.models import TenantDocument
+            import uuid
+            import os
+
+            attachments = []
+            if attachment_ids:
+                async with AsyncSessionLocal() as db:
+                    for doc_id in attachment_ids:
+                        try:
+                            res = await db.execute(
+                                select(TenantDocument.file_path, TenantDocument.title).where(
+                                    TenantDocument.id == uuid.UUID(doc_id),
+                                    TenantDocument.tenant_id == uuid.UUID(tenant_id)
+                                )
+                            )
+                            row = res.one_or_none()
+                            if row and row.file_path and os.path.exists(row.file_path):
+                                with open(row.file_path, "rb") as f:
+                                    attachments.append((row.title or os.path.basename(row.file_path), f.read()))
+                        except Exception:
+                            continue
+
+            client = GmailClient(gmail_token)
+            try:
+                result = await client.send_message(
+                    to=to, subject=subject, body=body,
+                    attachments=attachments if attachments else None,
+                )
+                attach_msg = f" con {len(attachments)} adjuntos" if attachments else ""
+                return f"Correo enviado correctamente{attach_msg}\nAsunto: {subject}\nPara: {to}"
+            except Exception as e:
+                return f"Error al enviar correo: {e}"
+            finally:
+                await client.close()
+
+        tools_list = _build_tools_list(check_inbox_real, check_unread_real, send_email_real)
+        is_mock = False
+
+    # ── Prioridad 2: IMAP/SMTP ───────────────────────────────────────────
+    elif (credentials := await _get_email_credentials(tenant_id)):
         # ── Versión REAL ────────────────────────────────────────────────────
         creds_snapshot = credentials  # Capturar para el closure
 
@@ -358,9 +526,11 @@ async def run_email_agent(
                 return f"❌ {result['message']}"
 
         tools_list = _build_tools_list(check_inbox_real, check_unread_real, send_email_real)
+        is_mock = False
     else:
         # ── Versión MOCK ────────────────────────────────────────────────────
         tools_list = _build_tools_list()
+        is_mock = True
 
     graph = _build_graph(tools_list)
 
@@ -387,7 +557,6 @@ async def run_email_agent(
     agent_results = result_state.get("agent_results", [])
     final_action = agent_results[-1]["action_taken"] if agent_results else "Sin resultado"
 
-    is_mock = credentials is None
     return EmailAgentResult(
         action=final_action,
         success=True,
