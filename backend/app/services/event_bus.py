@@ -18,12 +18,10 @@ Eventos disponibles:
   - payrolls_bulk_created → cuando se genera un lote de nóminas
   - task_completed       → cuando una tarea IA termina con éxito
   - task_failed          → cuando una tarea IA falla
-  - task_completed       → cuando una tarea IA termina con éxito
-  - task_failed          → cuando una tarea IA falla
 """
-
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
@@ -31,6 +29,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import Task, Workflow, WorkflowExecution, DomainEvent
+
+_logger = logging.getLogger(__name__)
 
 
 async def emit_event(
@@ -136,7 +136,7 @@ async def emit_event(
             )
         )
     except Exception:
-        pass
+        _logger.debug("Failed to broadcast event notification via WebSocket", exc_info=True)
 
     return triggered_ids
 

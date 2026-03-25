@@ -107,53 +107,67 @@ async def get_llm_for_tenant(
             provider = cfg.active_llm_provider
             pdata = keys.get(provider, {})
 
-            if pdata.get("enabled") and pdata.get("api_key"):
-                api_key = pdata["api_key"]
-                model = pdata.get("model") or None
-                _log.info("Usando LLM del tenant: provider=%s", provider)
+            if not pdata.get("enabled"):
+                _log.warning("Proveedor LLM '%s' está desactivado para el tenant %s", provider, tenant_id)
+                raise ValueError(
+                    f"El proveedor de IA '{provider}' está desactivado. "
+                    "Actívalo en Configuración → API Keys."
+                )
+            if not pdata.get("api_key"):
+                _log.warning("Proveedor LLM '%s' sin API key para el tenant %s", provider, tenant_id)
+                raise ValueError(
+                    f"El proveedor de IA '{provider}' no tiene API Key configurada. "
+                    "Añádela en Configuración → API Keys."
+                )
 
-                if provider == "anthropic":
-                    from langchain_anthropic import ChatAnthropic
-                    return ChatAnthropic(
-                        model_name=model or settings.ANTHROPIC_MODEL or "claude-sonnet-4-6",
-                        temperature=temperature,
-                        api_key=api_key,
-                        max_tokens=4096,
-                        timeout=30,
-                    )
-                elif provider == "gemini":
-                    from langchain_google_genai import ChatGoogleGenerativeAI
-                    return GeminiSafeWrapper(ChatGoogleGenerativeAI(
-                        model=model or settings.GEMINI_MODEL or "gemini-2.5-flash",
-                        google_api_key=api_key,
-                        temperature=temperature,
-                        max_output_tokens=20000,
-                        timeout=30,
-                    ))
-                elif provider == "openai":
-                    kwargs = {
-                        "model_name": model or settings.OPENAI_MODEL or "gpt-4o-mini",
-                        "temperature": temperature,
-                        "api_key": api_key,
-                        "max_tokens": 20000,
-                        "timeout": 30,
-                    }
-                    if format_output == "json":
-                        kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
-                    return ChatOpenAI(**kwargs)
-                elif provider == "groq":
-                    from langchain_groq import ChatGroq
-                    kwargs = {
-                        "model": model or settings.GROQ_MODEL or "llama-3.3-70b-versatile",
-                        "api_key": api_key,
-                        "temperature": temperature,
-                        "max_tokens": 20000,
-                        "timeout": 30,
-                    }
-                    if format_output == "json":
-                        kwargs["response_format"] = {"type": "json_object"}
-                    return ChatGroq(**kwargs)
+            api_key = pdata["api_key"]
+            model = pdata.get("model") or None
+            _log.info("Usando LLM del tenant: provider=%s", provider)
 
+            if provider == "anthropic":
+                from langchain_anthropic import ChatAnthropic
+                return ChatAnthropic(
+                    model_name=model or settings.ANTHROPIC_MODEL or "claude-sonnet-4-6",
+                    temperature=temperature,
+                    api_key=api_key,
+                    max_tokens=4096,
+                    timeout=30,
+                )
+            elif provider == "gemini":
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                return GeminiSafeWrapper(ChatGoogleGenerativeAI(
+                    model=model or settings.GEMINI_MODEL or "gemini-2.5-flash",
+                    google_api_key=api_key,
+                    temperature=temperature,
+                    max_output_tokens=20000,
+                    timeout=30,
+                ))
+            elif provider == "openai":
+                kwargs = {
+                    "model_name": model or settings.OPENAI_MODEL or "gpt-4o-mini",
+                    "temperature": temperature,
+                    "api_key": api_key,
+                    "max_tokens": 20000,
+                    "timeout": 30,
+                }
+                if format_output == "json":
+                    kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
+                return ChatOpenAI(**kwargs)
+            elif provider == "groq":
+                from langchain_groq import ChatGroq
+                kwargs = {
+                    "model": model or settings.GROQ_MODEL or "llama-3.3-70b-versatile",
+                    "api_key": api_key,
+                    "temperature": temperature,
+                    "max_tokens": 20000,
+                    "timeout": 30,
+                }
+                if format_output == "json":
+                    kwargs["response_format"] = {"type": "json_object"}
+                return ChatGroq(**kwargs)
+
+    except ValueError:
+        raise
     except Exception as e:
         _log.warning("Error leyendo LLM config del tenant (%s), usando config global.", e)
 
@@ -248,7 +262,7 @@ def _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fal
                     openai_kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
                 groq_fallbacks.insert(0, ChatOpenAI(**openai_kwargs))
             except Exception:
-                pass
+                logging.getLogger(__name__).warning("Failed to init OpenAI fallback for Groq", exc_info=True)
         return base_llm.with_fallbacks(groq_fallbacks)
     except Exception as e:
         logging.getLogger(__name__).warning("Error iniciando Groq (%s), usando fallbacks.", e)
@@ -280,7 +294,7 @@ def _build_gemini(temperature, format_output, max_tokens, base_fallbacks, mock_f
                 )
                 fallback_chain.insert(0, groq_fallback)
         except Exception:
-            pass
+            logging.getLogger(__name__).warning("Failed to init Groq fallback for Gemini", exc_info=True)
         return GeminiSafeWrapper(base_llm.with_fallbacks(fallback_chain))
     except Exception as e:
         logging.getLogger(__name__).warning("Error iniciando Gemini (%s), usando fallbacks.", e)
@@ -311,7 +325,7 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
                     timeout=30,
                 ))
             except Exception:
-                pass
+                logging.getLogger(__name__).warning("Failed to init Gemini fallback for Anthropic", exc_info=True)
         if settings.OPENAI_API_KEY:
             try:
                 anthropic_fallbacks.insert(
@@ -325,7 +339,7 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
                     )
                 )
             except Exception:
-                pass
+                logging.getLogger(__name__).warning("Failed to init OpenAI fallback for Anthropic", exc_info=True)
         return base_llm.with_fallbacks(anthropic_fallbacks)
     except Exception as e:
         logging.getLogger(__name__).warning("Error iniciando Anthropic (%s), usando fallbacks.", e)

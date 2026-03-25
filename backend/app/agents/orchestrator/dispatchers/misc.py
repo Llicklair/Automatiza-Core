@@ -87,70 +87,92 @@ async def _dispatch_excel(state: OrchestratorState, subtask: dict) -> AgentResul
 
 async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de email autónomo."""
-    from app.agents.email_agent import run_email_agent
-
-    agent_result = await run_email_agent(
-        user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
-        tenant_id=state["tenant_id"],
-        task_id=state["task_id"],
-    )
-
-    action = agent_result.action or "Operación de email completada."
-
     try:
-        await _save_ai_result_as_document(
+        from app.agents.email_agent import run_email_agent
+
+        agent_result = await run_email_agent(
+            user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
             tenant_id=state["tenant_id"],
             task_id=state["task_id"],
-            category="correos",
-            title=f"Email: {state['user_intent'][:50]}...",
-            content=action,
         )
-    except Exception as e:
-        logger.warning("Error al archivar log de email: %s", e)
 
-    _email_output = {"action": action}
-    return {
-        "subtask_id": subtask["id"],
-        "agent": "email",
-        "success": agent_result.success,
-        "output": _email_output,
-        "summary": _format_summary("email", _email_output, agent_result.success, agent_result.error),
-        "error": agent_result.error,
-    }
+        action = agent_result.action or "Operación de email completada."
+
+        try:
+            await _save_ai_result_as_document(
+                tenant_id=state["tenant_id"],
+                task_id=state["task_id"],
+                category="correos",
+                title=f"Email: {state['user_intent'][:50]}...",
+                content=action,
+            )
+        except Exception as e:
+            logger.warning("Error al archivar log de email: %s", e)
+
+        _email_output = {"action": action}
+        return {
+            "subtask_id": subtask["id"],
+            "agent": "email",
+            "success": agent_result.success,
+            "output": _email_output,
+            "summary": _format_summary("email", _email_output, agent_result.success, agent_result.error),
+            "error": agent_result.error,
+        }
+    except Exception as e:
+        logger.exception("Error en email agent")
+        return {
+            "subtask_id": subtask["id"],
+            "agent": "email",
+            "success": False,
+            "output": {"action": "failed", "error": str(e)},
+            "summary": f"Error en agente de email: {e}",
+            "error": str(e),
+        }
 
 
 async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de gestión de Workflows / Automatizaciones."""
-    from app.agents.workflow_agent import run_workflow_agent
+    try:
+        from app.agents.workflow_agent import run_workflow_agent
 
-    agent_result = await run_workflow_agent(
-        user_intent=state.get("current_intent", state["user_intent"]),
-        tenant_id=state["tenant_id"],
-        user_id=state.get("user_id"),
-        task_id=state.get("task_id"),
-    )
-
-    if agent_result.success:
-        await _save_ai_result_as_document(
+        agent_result = await run_workflow_agent(
+            user_intent=state.get("current_intent", state["user_intent"]),
             tenant_id=state["tenant_id"],
-            task_id=state["task_id"],
-            category="automatizaciones",
-            title=f"Nueva Regla: {agent_result.workflow_name}",
-            content=f"Acción: {agent_result.action}\nID: {agent_result.workflow_id}\n\nDetalle del plan:\n{agent_result.data}",
+            user_id=state.get("user_id"),
+            task_id=state.get("task_id"),
         )
 
-    return {
-        "subtask_id": subtask["id"],
-        "agent": "workflow",
-        "success": agent_result.success,
-        "output": {
-            "action": agent_result.action,
-            "workflow_id": agent_result.workflow_id,
-            "workflow_name": agent_result.workflow_name,
-            "plan": agent_result.data,
-        },
-        "error": agent_result.error,
-    }
+        if agent_result.success:
+            await _save_ai_result_as_document(
+                tenant_id=state["tenant_id"],
+                task_id=state["task_id"],
+                category="automatizaciones",
+                title=f"Nueva Regla: {agent_result.workflow_name}",
+                content=f"Acción: {agent_result.action}\nID: {agent_result.workflow_id}\n\nDetalle del plan:\n{agent_result.data}",
+            )
+
+        return {
+            "subtask_id": subtask["id"],
+            "agent": "workflow",
+            "success": agent_result.success,
+            "output": {
+                "action": agent_result.action,
+                "workflow_id": agent_result.workflow_id,
+                "workflow_name": agent_result.workflow_name,
+                "plan": agent_result.data,
+            },
+            "error": agent_result.error,
+        }
+    except Exception as e:
+        logger.exception("Error en workflow agent")
+        return {
+            "subtask_id": subtask["id"],
+            "agent": "workflow",
+            "success": False,
+            "output": {"action": "failed", "error": str(e)},
+            "summary": f"Error en agente de workflow: {e}",
+            "error": str(e),
+        }
 
 
 async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResult:

@@ -473,7 +473,7 @@ async def _create_employee_async(
                         },
                     )
             except Exception:
-                pass
+                logger.debug("Failed to emit employee_created event for %s", emp.id, exc_info=True)
 
             return (
                 f"Empleado creado correctamente.\n"
@@ -642,7 +642,7 @@ async def _approve_payroll_async(
                             context={"count": len(payrolls), "month": month, "year": year},
                         )
                 except Exception:
-                    pass
+                    logger.debug("Failed to emit payrolls_approved event", exc_info=True)
 
                 return f"{len(payrolls)} nóminas de {month}/{year} aprobadas correctamente."
             else:

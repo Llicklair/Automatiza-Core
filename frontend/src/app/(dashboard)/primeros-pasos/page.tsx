@@ -6,7 +6,7 @@ import {
     Flag, CheckCircle2, Circle, ChevronRight, ChevronDown,
     Users2, FileText, Package, Bot, Zap, Building2,
     ShoppingCart, BookOpen, BarChart3, ArrowRight, Sparkles,
-    Play, Lock
+    Play, Lock, KeyRound
 } from "lucide-react";
 
 // ── Datos de los pasos ────────────────────────────────────────────────────────
@@ -40,6 +40,21 @@ const STEPS: Step[] = [
         ],
     },
     {
+        id: "api_keys",
+        title: "Configura tu clave de IA",
+        description: "Los agentes necesitan una API Key para funcionar. Gemini es gratuito y perfecto para empezar.",
+        detail: "Ve a Configuración → API Keys, activa un proveedor (recomendamos Gemini) y pega tu clave. Hay un enlace directo para crearla en cada proveedor.",
+        icon: KeyRound,
+        color: "violet",
+        href: "/configuracion/api-keys",
+        hrefLabel: "Ir a API Keys",
+        tips: [
+            "Solo necesitas una API Key. Puedes cambiar de proveedor en cualquier momento.",
+            "Gemini ofrece un plan gratuito con límites generosos, ideal para empezar.",
+        ],
+        prerequisite: "empresa",
+    },
+    {
         id: "clientes",
         title: "Da de alta tus primeros clientes",
         description: "Crea el directorio de contactos: clientes, proveedores o leads. La IA los usará al generar facturas.",
@@ -52,7 +67,7 @@ const STEPS: Step[] = [
             "El NIF del cliente se valida automáticamente al emitir una factura.",
             "Filtra por tipo: Cliente, Proveedor, Lead o Empresa.",
         ],
-        prerequisite: "empresa",
+        prerequisite: "api_keys",
     },
     {
         id: "catalogo",
@@ -123,6 +138,7 @@ const STEPS: Step[] = [
         href: "/automatizaciones",
         hrefLabel: "Ir a Automatizaciones",
         tips: [
+            "Una automatización es diferente de una tarea: las tareas son puntuales ('hazme esto ahora'), las automatizaciones se ejecutan solas según reglas.",
             "Puedes pausar o eliminar cualquier automatización en cualquier momento.",
             "Las automatizaciones activas se muestran con un indicador verde en el panel.",
         ],

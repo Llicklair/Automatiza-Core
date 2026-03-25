@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
+
+_logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -457,7 +460,7 @@ async def get_execution_logs(
             if stored_lines:
                 lines = stored_lines
         except Exception:
-            pass
+            _logger.debug("exec_log_store unavailable, using result_log fallback", exc_info=True)
 
     # Fallback: result_log de la ejecución
     if not lines and execution.result_log:

@@ -136,6 +136,66 @@ Consulta usuario → vector query → cosine_distance en BD → top-K chunks →
 
 El agente RAG (`rag_agent.py`) combina el modelo de embeddings pequeño (BAAI/bge-m3) con el LLM principal (Anthropic/Gemini) para responder preguntas sobre documentos del tenant.
 
+### Pipeline de ingesta: OpenDataLoader + clasificación + chunking inteligente
+
+Cuando se sube un documento, el sistema ejecuta un pipeline completo antes de que sea consultable por RAG:
+
+```
+PDF subido
+  ↓
+PDF Parser (OpenDataLoader → fallback pypdf)
+  ↓  ParsedDocument: markdown + elementos estructurados (tablas, párrafos, headings)
+Clasificación mecánica (regex + keywords, 0 tokens LLM en ~90% de documentos)
+  ↓  Tipo: factura_recibida | nómina | extracto_bancario | contrato | otro
+  ↓  Entidades extraídas: NIF, importes, fechas, IBAN
+Smart Chunker (respeta estructura del PDF)
+  ↓  Chunks con metadatos: página, tipo de elemento, bounding box
+Embedder (BAAI/bge-m3, 768 dimensiones)
+  ↓
+DocumentEmbedding (pgvector) → listo para consultas RAG
+```
+
+#### OpenDataLoader — Parser de PDFs estructurado
+
+El parser principal usa **OpenDataLoader** (Java) para extraer markdown + JSON estructurado de PDFs. Captura tipo de elemento (párrafo, tabla, heading), número de página y bounding box. Si Java no está disponible (ej: sin JRE), cae automáticamente a `pypdf`.
+
+- **Código**: `backend/app/services/pdf_parser.py`
+- **JRE portable**: en Electron, se auto-detecta el JRE de AppData; si no existe, se descarga Adoptium JRE 21
+- **Modelo de datos**: `ParsedDocument` (markdown completo + lista de `ParsedElement` con metadatos)
+
+#### Clasificación sin coste de tokens
+
+El clasificador (`backend/app/services/document_classifier.py`) usa reglas regex para detectar patrones españoles (NIF, IBAN, importes). Solo llama al LLM si la confianza es < 0.7 (~10% de documentos). Esto ahorra tokens masivamente en tenants con muchos documentos.
+
+#### Smart Chunker — Chunking consciente de estructura
+
+Cuando OpenDataLoader proporciona elementos estructurados, el chunker (`backend/app/services/smart_chunker.py`) respeta la estructura del PDF:
+- **Tablas**: nunca se parten (chunk atómico)
+- **Headings**: inician un chunk nuevo
+- **Párrafos**: se agrupan hasta 2000 caracteres
+- **Metadatos preservados**: página, tipo de elemento, bounding box por chunk
+
+Esto permite que las respuestas del RAG citen la **página exacta** y el **tipo de contenido** (tabla vs párrafo) de donde viene la información.
+
+#### Almacenamiento vectorial enriquecido
+
+La tabla `document_embeddings` almacena cada chunk con sus metadatos:
+
+```
+document_embeddings:
+  document_id, tenant_id, chunk_index, text_content,
+  page_number, element_type (table|paragraph|heading),
+  bounding_box (JSONB), embedding (pgvector 768-dim)
+```
+
+#### Consulta RAG (rag_agent.py)
+
+El agente RAG ejecuta búsqueda híbrida:
+1. **Keywords en nombre de archivo** (filtrado rápido)
+2. **Búsqueda semántica** vía pgvector (cosine distance)
+3. **Contexto enriquecido** con páginas y tipos de elemento
+4. **LLM sintetiza respuesta** con citas a fuentes específicas
+
 ---
 
 ## Arquitectura de tres capas
@@ -454,6 +514,10 @@ Accesos:
 ```bash
 python smoke_demo.py              # Crea datos de demostración
 python smoke_tasks_workflows.py   # Lanza tareas IA de ejemplo
+
+para aplicar cambios sin reinstalar el exe 
+
+cd desktop; npm run sync
 ```
 
 ---

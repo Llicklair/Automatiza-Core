@@ -2,9 +2,12 @@
 Herramientas compartidas para que los agentes IA lean y modifiquen
 documentos del Escanear (TenantDocument) en la BD local.
 """
+import logging
 import os
 from datetime import datetime
 from uuid import UUID
+
+_logger = logging.getLogger(__name__)
 
 from langchain_core.tools import tool
 
@@ -187,7 +190,7 @@ def get_document_content(tenant_id: str, document_id: str) -> str:
                     content = f.read()
                 return f"Contenido de '{doc.file_name}':\n\n{content[:3000]}{'...(truncado)' if len(content) > 3000 else ''}"
             except Exception:
-                pass
+                _logger.warning("Failed to read file %s from disk, falling back to DB", doc.file_path, exc_info=True)
 
         # Fallback a parsed_content en BD
         if doc.parsed_content:

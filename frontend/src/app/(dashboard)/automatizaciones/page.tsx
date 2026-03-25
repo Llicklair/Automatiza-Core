@@ -7,6 +7,7 @@ import {
     BrainCircuit, Sparkles, Send, CheckCircle2, AlertCircle, X,
 } from "lucide-react";
 import { logError } from "@/lib/logger";
+import InfoBanner from "@/components/InfoBanner";
 import { TEMPLATES } from "./_components/constants";
 import WorkflowCard from "./_components/WorkflowCard";
 import WorkflowFormModal from "./_components/WorkflowFormModal";
@@ -336,6 +337,19 @@ export default function WorkflowsPage() {
                     <Plus className="w-4 h-4" /> Nueva Regla
                 </button>
             </div>
+
+            <InfoBanner id="automatizaciones-intro" title="¿Qué es una automatización?">
+                <p>
+                    Una automatización es una regla persistente: &quot;cada vez que pase X, haz Y&quot;.
+                    Se ejecuta sola, sin que intervengas.
+                    Ejemplo: <span className="text-indigo-300">&quot;Cada día 1 del mes, genera las nóminas de todos los empleados.&quot;</span>
+                </p>
+                <p className="mt-1">
+                    <a href="/tareas" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition">
+                        ¿Solo necesitas algo puntual? Ir a Tareas →
+                    </a>
+                </p>
+            </InfoBanner>
 
             {/* AI Generator Bar */}
             <div className="mb-10 bg-[#111113] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden shadow-lg shadow-indigo-500/5">

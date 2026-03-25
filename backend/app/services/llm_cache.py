@@ -115,7 +115,7 @@ class LLMCache:
                     if data.get("tenant_id") == tenant_id:
                         keys_to_delete.append(key)
                 except json.JSONDecodeError:
-                    pass
+                    logger.warning("Skipping corrupted cache entry (invalid JSON), key=%s", key)
             for k in keys_to_delete:
                 del _cache[k]
                 count += 1

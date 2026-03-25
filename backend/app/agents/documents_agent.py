@@ -276,7 +276,7 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 doc.status = "completed"
                 await db.commit()
     except Exception:
-        pass
+        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
 
     # ── Emitir evento ──
     try:

@@ -221,7 +221,10 @@ async def plan_node(state: OrchestratorState) -> dict:
             last_exc = None
             for _attempt in range(3):
                 try:
-                    plan_result = structured_llm.invoke(prompt)
+                    plan_result = await asyncio.wait_for(
+                        asyncio.to_thread(structured_llm.invoke, prompt),
+                        timeout=60,
+                    )
                     break
                 except Exception as _e:
                     last_exc = _e
@@ -339,8 +342,6 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     Invoca el agente especializado correspondiente al dominio de la subtarea.
     Usa ExecutionContext para enriquecer la intención con los resultados previos.
     """
-    from app.services.execution_context import ExecutionContext
-
     plan = state["plan"]
     current_step = state["current_step"]
 
@@ -351,40 +352,56 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     agent_name = subtask["agent"]
 
     # Construir contexto enriquecido con la instrucción específica del paso y outputs anteriores
-    ctx = ExecutionContext.from_state(state)
-    enriched_intent = ctx.build_enriched_intent(
-        current_instruction=subtask.get("params", {}).get("intent")
-    )
+    try:
+        from app.services.execution_context import ExecutionContext
+        ctx = ExecutionContext.from_state(state)
+        enriched_intent = ctx.build_enriched_intent(
+            current_instruction=subtask.get("params", {}).get("intent")
+        )
+    except Exception as e:
+        logger.warning("Error construyendo ExecutionContext: %s. Usando intent directo.", e)
+        enriched_intent = subtask.get("params", {}).get("intent") or state.get("current_intent") or state["user_intent"]
     enriched_state = {**state, "current_intent": enriched_intent}
 
     result: AgentResult
 
-    # Buscar dispatcher en el registro centralizado
-    dispatcher_fn = DISPATCHER_MAP.get(agent_name)
-    if dispatcher_fn:
-        result = await dispatcher_fn(enriched_state, subtask)
-    elif agent_name == "skill" or (isinstance(agent_name, str) and agent_name.startswith("skill:")):
-        from app.agents.orchestrator.dispatchers import _dispatch_skill
-        result = await _dispatch_skill(enriched_state, subtask)
-    else:
-        if agent_name == "unknown":
-            intent_param = subtask.get("params", {}).get("intent", "")
-            if "Plan fallido:" in intent_param:
-                message = f"Error interno al planificar la tarea compleja: {intent_param}"
-                error_msg = intent_param
-            else:
-                message = "No he podido entender tu solicitud. Por favor, especifica si quieres crear una factura, revisar un documento, etc."
-                error_msg = "Comando no reconocido."
+    try:
+        # Buscar dispatcher en el registro centralizado
+        dispatcher_fn = DISPATCHER_MAP.get(agent_name)
+        if dispatcher_fn:
+            result = await dispatcher_fn(enriched_state, subtask)
+        elif agent_name == "skill" or (isinstance(agent_name, str) and agent_name.startswith("skill:")):
+            from app.agents.orchestrator.dispatchers import _dispatch_skill
+            result = await _dispatch_skill(enriched_state, subtask)
         else:
-            message = f"[PENDIENTE] Agente '{agent_name}' no implementado aún"
-            error_msg = None
+            if agent_name == "unknown":
+                intent_param = subtask.get("params", {}).get("intent", "")
+                if "Plan fallido:" in intent_param:
+                    message = f"Error interno al planificar la tarea compleja: {intent_param}"
+                    error_msg = intent_param
+                else:
+                    message = "No he podido entender tu solicitud. Por favor, especifica si quieres crear una factura, revisar un documento, etc."
+                    error_msg = "Comando no reconocido."
+            else:
+                message = f"[PENDIENTE] Agente '{agent_name}' no implementado aún"
+                error_msg = None
 
+            result = {
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": False if agent_name == "unknown" else True,
+                "output": {"message": message},
+                "error": error_msg,
+            }
+    except Exception as e:
+        logger.exception("Excepción no controlada en dispatcher '%s'", agent_name)
         result = {
             "subtask_id": subtask["id"],
             "agent": agent_name,
-            "success": False if agent_name == "unknown" else True,
-            "output": {"message": message},
-            "error": error_msg,
+            "success": False,
+            "output": {"action": "failed", "error": f"{type(e).__name__}: {e}"},
+            "summary": f"Error inesperado en agente {agent_name}: {e}",
+            "error": str(e),
         }
 
     # --- REGISTRO DE AUDITORÍA INMUTABLE ---
