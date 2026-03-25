@@ -5,8 +5,11 @@ Sin dependencias externas — usa las librerías nativas de Python.
 """
 import email
 import imaplib
+import logging
 import smtplib
 import ssl
+
+_logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field
 from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
@@ -92,7 +95,7 @@ def _extract_body(msg: email.message.Message) -> str:
                     body = part.get_payload(decode=True).decode(charset, errors="replace")
                     break
                 except Exception:
-                    pass
+                    _logger.debug("Failed to decode text/plain part (charset=%s)", charset, exc_info=True)
             elif content_type == "text/html" and not body:
                 try:
                     charset = part.get_content_charset() or "utf-8"
@@ -101,7 +104,7 @@ def _extract_body(msg: email.message.Message) -> str:
                     import re
                     body = re.sub(r"<[^>]+>", " ", raw_html).strip()
                 except Exception:
-                    pass
+                    _logger.debug("Failed to decode text/html part (charset=%s)", charset, exc_info=True)
     else:
         try:
             charset = msg.get_content_charset() or "utf-8"

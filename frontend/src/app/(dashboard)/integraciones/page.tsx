@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive } from "lucide-react";
 import { api, IntegrationStatus } from "@/lib/api";
+import InfoBanner from "@/components/InfoBanner";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
@@ -202,10 +203,18 @@ export default function IntegracionesPage() {
         <div className="p-8 max-w-3xl mx-auto space-y-8">
             <div>
                 <h1 className="text-2xl font-bold text-white">Integraciones</h1>
-                <p className="text-sm text-zinc-400 mt-1">
+                <p className="text-sm text-zinc-400 mt-1 mb-6">
                     Conecta tus herramientas para que los agentes puedan actuar sobre ellas
                 </p>
             </div>
+
+            <InfoBanner id="integraciones-intro" title="Conecta tus servicios">
+                <p>
+                    Vincula tu banco, correo y almacenamiento para que los agentes puedan leer facturas,
+                    enviar emails y sincronizar documentos automáticamente.
+                    Las conexiones usan OAuth — <span className="text-indigo-300">tus credenciales nunca se comparten con nosotros</span>.
+                </p>
+            </InfoBanner>
 
             {feedback && (
                 <div className={`px-4 py-3 rounded-lg border text-sm ${feedback.type === "success"

@@ -19,6 +19,7 @@ Flujo:
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -30,6 +31,8 @@ from app.db.models.models import PendingApproval, Workflow, WorkflowExecution
 from app.services.audit import log_action
 from app.services.condition_evaluator import evaluate_condition
 
+
+_logger = logging.getLogger(__name__)
 
 # Node statuses
 COMPLETED = "completed"
@@ -311,7 +314,7 @@ class NodeEngine:
                 )
                 await db.flush()
             except Exception:
-                pass
+                _logger.warning("Failed to audit node_execution_failed for node %s", node_id, exc_info=True)
 
             return {}
 
@@ -386,7 +389,7 @@ class NodeEngine:
             )
             await db.flush()
         except Exception:
-            pass
+            _logger.warning("Failed to audit skill node execution for node %s", node["id"], exc_info=True)
 
         return result.get("output", {})
 

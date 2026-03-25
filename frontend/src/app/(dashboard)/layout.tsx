@@ -253,9 +253,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <aside className="w-56 flex flex-col border-r border-[#27272a] bg-[#111113] flex-shrink-0">
                 {/* Logo */}
                 <div className="flex items-center gap-2.5 px-4 py-4 border-b border-[#27272a]">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 flex-shrink-0">
-                        <Zap className="w-3.5 h-3.5 text-white" />
-                    </div>
+                    <img src="/logo.svg" alt="AutomatizaPyme" className="w-7 h-7 rounded-lg flex-shrink-0" />
                     <span className="font-semibold text-white text-sm truncate">AutomatizaPyme</span>
                 </div>
 

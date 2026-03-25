@@ -154,7 +154,7 @@ async def _create_invoice_async(
                     resolved_nif = client.nif
                     resolved_name = client.name
         except Exception:
-            pass
+            logger.debug("Client lookup failed for name '%s'", resolved_name, exc_info=True)
 
     if not resolved_nif:
         return (
@@ -505,7 +505,7 @@ async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_stat
                     },
                 )
             except Exception:
-                pass
+                logger.debug("Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True)
 
             return (
                 f"Factura {invoice.invoice_number} actualizada: {old_status} → {new_status}."

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Task } from "@/lib/api";
 import { useNotificationStore } from "@/stores/notifications";
 import { Plus, X, ChevronDown, Bot, Clock, CheckCircle2, AlertCircle, Loader2, RefreshCw, Copy, Check, MessageSquare, Trash2 } from "lucide-react";
+import InfoBanner from "@/components/InfoBanner";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 
@@ -345,6 +346,19 @@ export default function TareasPage() {
                     </button>
                 </div>
             </div>
+
+            <InfoBanner id="tareas-intro" title="¿Qué es una tarea?">
+                <p>
+                    Una tarea es una instrucción puntual que le das a un agente IA: &quot;hazme esto ahora&quot;.
+                    Elige el agente adecuado, describe lo que necesitas, y él se encarga.
+                    Ejemplo: <span className="text-indigo-300">&quot;Genera la factura de enero para ACME S.L.&quot;</span>
+                </p>
+                <p className="mt-1">
+                    <a href="/automatizaciones" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition">
+                        ¿Buscas reglas automáticas? Ir a Automatizaciones →
+                    </a>
+                </p>
+            </InfoBanner>
 
             {/* Modal nueva tarea */}
             {showNew && (

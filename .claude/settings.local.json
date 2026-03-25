@@ -16,7 +16,17 @@
       "Bash(npx:*)",
       "Bash(\"/c/Program Files/AutomatizaPyme/Uninstall AutomatizaPyme.exe\":*)",
       "Bash(rm:*)",
-      "Bash(\"/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/pg_ctl.exe\" stop:*)"
+      "Bash(\"/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/pg_ctl.exe\" stop:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
+      "Bash(\"$PY\":*)",
+      "Bash(\"$APPDATA/AutomatizaPyme/python/python.exe\":*)",
+      "Bash(\"$PYEXE\":*)",
+      "Bash(mkdir:*)",
+      "Bash(pip show:*)",
+      "Bash(pip install:*)",
+      "Bash(py:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)"
     ]
   }
 }

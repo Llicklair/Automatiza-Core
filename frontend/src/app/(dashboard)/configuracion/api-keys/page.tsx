@@ -7,13 +7,15 @@ import {
     ChevronDown, ChevronUp, Cpu, Layers,
 } from "lucide-react";
 import { api, LlmConfigResponse, LlmProviderConfigUpdate } from "@/lib/api";
+import InfoBanner from "@/components/InfoBanner";
+import { ExternalLink } from "lucide-react";
 
 const LLM_PROVIDERS = [
-    { key: "gemini",      label: "Gemini",      placeholder: "AIzaSy...",    defaultModel: "gemini-2.5-flash" },
-    { key: "anthropic",   label: "Anthropic",   placeholder: "sk-ant-...",   defaultModel: "claude-sonnet-4-6" },
-    { key: "groq",        label: "Groq",        placeholder: "gsk_...",      defaultModel: "llama-3.3-70b-versatile" },
-    { key: "openai",      label: "OpenAI",      placeholder: "sk-proj-...",  defaultModel: "gpt-4o-mini" },
-    { key: "openrouter",  label: "OpenRouter",  placeholder: "sk-or-...",    defaultModel: "google/gemini-2.0-flash-exp:free" },
+    { key: "gemini",      label: "Gemini",      placeholder: "AIzaSy...",    defaultModel: "gemini-2.5-flash",                  consoleUrl: "https://aistudio.google.com/apikey",            hint: "Gratuito con límites generosos. Recomendado para empezar." },
+    { key: "anthropic",   label: "Anthropic",   placeholder: "sk-ant-...",   defaultModel: "claude-sonnet-4-6",                 consoleUrl: "https://console.anthropic.com/settings/keys",   hint: "Modelos Claude. Alta calidad, de pago." },
+    { key: "groq",        label: "Groq",        placeholder: "gsk_...",      defaultModel: "llama-3.3-70b-versatile",           consoleUrl: "https://console.groq.com/keys",                 hint: "Inferencia ultra-rápida. Modelos open source gratuitos." },
+    { key: "openai",      label: "OpenAI",      placeholder: "sk-proj-...",  defaultModel: "gpt-4o-mini",                       consoleUrl: "https://platform.openai.com/api-keys",          hint: "GPT-4o y familia. De pago." },
+    { key: "openrouter",  label: "OpenRouter",  placeholder: "sk-or-...",    defaultModel: "google/gemini-2.0-flash-exp:free",  consoleUrl: "https://openrouter.ai/keys",                    hint: "Acceso a múltiples modelos con una sola key." },
 ];
 
 const EMBEDDINGS_OPTIONS = [
@@ -128,6 +130,14 @@ export default function ApiKeysPage() {
                 <ArrowLeft className="w-4 h-4" /> Volver
             </button>
 
+            <InfoBanner id="api-keys-intro" title="¿Qué es una API Key?">
+                <p>
+                    Las API Keys permiten que los agentes IA se conecten a modelos de lenguaje.
+                    Necesitas al menos una para que el sistema funcione.
+                    <span className="text-indigo-300">Gemini es gratuito</span> y viene recomendado por defecto.
+                </p>
+            </InfoBanner>
+
             {/* LLM Providers */}
             <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 mb-4">
                 <h1 className="text-xl font-bold text-white flex items-center gap-2 mb-1">
@@ -201,8 +211,19 @@ export default function ApiKeysPage() {
                                 {/* Expanded: api key + model */}
                                 {s.expanded && (
                                     <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-3">
+                                        <p className="text-[11px] text-zinc-500 mb-1">{p.hint}</p>
                                         <div>
-                                            <label className="text-[11px] text-zinc-500 mb-1 block">API Key</label>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-[11px] text-zinc-500">API Key</label>
+                                                <a
+                                                    href={p.consoleUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
+                                                >
+                                                    Obtener API Key <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                            </div>
                                             <div className="relative">
                                                 <input
                                                     type={s.showKey ? "text" : "password"}

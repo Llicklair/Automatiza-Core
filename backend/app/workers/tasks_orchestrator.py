@@ -288,6 +288,7 @@ async def _execute_orchestrator(task_id: str):
             "tenant_id": str(task.tenant_id),
             "user_id": str(task.created_by) if task.created_by else "",
             "user_intent": enriched_intent,
+            "current_intent": None,
             # Pasar el domain guardado en BD directamente para no reclasificar
             "classified_domain": task.domain if task.domain else None,
             "plan": None,
@@ -298,6 +299,7 @@ async def _execute_orchestrator(task_id: str):
             "approval_id": None,
             "error_message": None,
             "iteration_count": 0,
+            "tenant_knowledge": [],
             "additional_metadata": task.additional_metadata or {},
         }
 
@@ -307,31 +309,44 @@ async def _execute_orchestrator(task_id: str):
         final_state = None
         seen_results: set = set()
 
-        async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
-            for node_name, state_update in chunk.items():
-                if node_name == "__end__":
-                    final_state = state_update
-                    continue
+        async def _run_stream():
+            nonlocal final_state
+            try:
+                async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
+                    for node_name, state_update in chunk.items():
+                        if node_name == "__end__":
+                            final_state = state_update
+                            continue
 
-                results: list = state_update.get("agent_results") or []
-                for r in results:
-                    rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))
-                    if rid not in seen_results:
-                        seen_results.add(rid)
-                        agent = r.get("agent", "?")
-                        summary = r.get("summary") or r.get("output", "")
-                        if isinstance(summary, dict):
-                            summary = summary.get("action") or str(summary)[:120]
-                        ok = "OK" if r.get("success") else "FAIL"
-                        log_push(task_id, f"[{ok}] [{agent}] {str(summary)[:200]}")
+                        results: list = state_update.get("agent_results") or []
+                        for r in results:
+                            rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))
+                            if rid not in seen_results:
+                                seen_results.add(rid)
+                                agent = r.get("agent", "?")
+                                summary = r.get("summary") or r.get("output", "")
+                                if isinstance(summary, dict):
+                                    summary = summary.get("action") or str(summary)[:120]
+                                ok = "OK" if r.get("success") else "FAIL"
+                                log_push(task_id, f"[{ok}] [{agent}] {str(summary)[:200]}")
 
-                err = state_update.get("error_message")
-                if err and err not in seen_results:
-                    seen_results.add(err)
-                    log_push(task_id, f"[WARN] {err[:200]}")
+                        err = state_update.get("error_message")
+                        if err and err not in seen_results:
+                            seen_results.add(err)
+                            log_push(task_id, f"[WARN] {err[:200]}")
 
-                if state_update.get("status") in ("done", "failed", "awaiting_approval"):
-                    final_state = state_update
+                        if state_update.get("status") in ("done", "failed", "awaiting_approval"):
+                            final_state = state_update
+            except Exception as stream_exc:
+                logger.exception("Excepción en orchestrator.astream() para tarea %s", task_id)
+                log_push(task_id, f"[ERROR] {type(stream_exc).__name__}: {stream_exc}")
+                raise
+
+        try:
+            await asyncio.wait_for(_run_stream(), timeout=300)
+        except asyncio.TimeoutError:
+            logger.error("Timeout global (300s) en orquestador para tarea %s", task_id)
+            raise TimeoutError(f"Orquestador excedio el tiempo limite de 300s para tarea {task_id}")
 
         # Si astream no devolvio __end__, usar el ultimo estado
         if final_state is None:

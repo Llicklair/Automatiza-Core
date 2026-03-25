@@ -4,6 +4,9 @@ Usa Fernet (AES-128-CBC + HMAC-SHA256). Nunca se almacenan en texto plano.
 """
 import base64
 import hashlib
+import logging
+
+_logger = logging.getLogger(__name__)
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -20,7 +23,7 @@ def _get_fernet() -> Fernet:
         Fernet(key_str)
         return Fernet(key_str)
     except Exception:
-        pass
+        _logger.debug("Raw key is not valid Fernet format, deriving with PBKDF2")
     # Derivar con PBKDF2 (100k iteraciones) para claves arbitrarias
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),

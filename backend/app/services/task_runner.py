@@ -32,8 +32,14 @@ class TaskRunner:
                 await coro
             except asyncio.CancelledError:
                 logger.info("Tarea %s cancelada", task_id)
-            except Exception:
+            except Exception as exc:
                 logger.exception("Error en tarea %s (%s)", task_id, name)
+                # Safety net: marcar tarea como failed si sigue en executing
+                try:
+                    from app.workers.tasks_orchestrator import _mark_task_failed
+                    await _mark_task_failed(task_id, f"{type(exc).__name__}: {exc}")
+                except Exception:
+                    logger.error("No se pudo marcar tarea %s como failed", task_id)
             finally:
                 self._tasks.pop(task_id, None)
 
