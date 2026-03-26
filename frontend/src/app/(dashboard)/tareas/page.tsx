@@ -36,6 +36,12 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
     cancelled: <X className="w-3 h-3" />,
 };
 
+const CHAT_OPTION = {
+    value: "chat",
+    label: "💬 Chat",
+    desc: "Preguntas, dudas o consultas de estado",
+};
+
 const COORDINATOR_OPTION = {
     value: "coordinator",
     label: "🧠 Coordinador General",
@@ -53,12 +59,41 @@ const DOMAIN_OPTIONS = [
     { value: "email", label: "📧 Correos", desc: "Bandeja de entrada, responde y organiza" },
 ];
 
-const ALL_DOMAIN_OPTIONS = [COORDINATOR_OPTION, ...DOMAIN_OPTIONS];
+const ALL_DOMAIN_OPTIONS = [CHAT_OPTION, COORDINATOR_OPTION, ...DOMAIN_OPTIONS];
+
+function ChatBubble({ text }: { text: string }) {
+    return (
+        <div className="px-6 pb-5 pt-3 border-t border-[#27272a]/50">
+            <div className="flex gap-3 items-start">
+                <div className="p-1.5 rounded-lg bg-indigo-500/20 mt-0.5 flex-shrink-0">
+                    <Bot className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="bg-[#18181b] border border-[#27272a] rounded-2xl rounded-tl-sm px-4 py-3 max-w-[90%]">
+                    <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{text}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function getChatResponse(task: Task): string | null {
+    if (!Array.isArray(task.agent_results)) return null;
+    const results = task.agent_results as any[];
+    // Buscar resumen conversacional o respuesta de chat
+    for (let i = results.length - 1; i >= 0; i--) {
+        const r = results[i];
+        if ((r.agent === "chat" || r.agent === "summary") && r.output?.action === "chat_response" && r.output?.response) {
+            return r.output.response;
+        }
+    }
+    return null;
+}
 
 function TaskRow({ task, cancelTask }: { task: Task; cancelTask: (id: string) => void }) {
-    const [open, setOpen] = useState(false);
+    const chatResponse = getChatResponse(task);
+    const [open, setOpen] = useState(!!chatResponse);
     const [copied, setCopied] = useState(false);
-    const hasDetail = task.plan || task.agent_results;
+    const hasDetail = chatResponse || task.plan || task.agent_results;
     const domain = ALL_DOMAIN_OPTIONS.find(d => d.value === task.domain);
 
     const copyPrompt = (e: React.MouseEvent) => {
@@ -119,6 +154,11 @@ function TaskRow({ task, cancelTask }: { task: Task; cancelTask: (id: string) =>
             {Boolean(hasDetail) && (
                 <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                     <div className="overflow-hidden">
+
+                        {/* ── Vista chat: burbuja conversacional ── */}
+                        {chatResponse ? (
+                            <ChatBubble text={chatResponse} />
+                        ) : (
                         <div className="px-6 pb-6 pt-2 border-t border-[#27272a]/50 space-y-4">
 
                             {/* ── Prompt completo del usuario ── */}
@@ -217,6 +257,7 @@ function TaskRow({ task, cancelTask }: { task: Task; cancelTask: (id: string) =>
                                 )}
                             </div>
                         </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -233,6 +274,9 @@ export default function TareasPage() {
     const [intent, setIntent] = useState("");
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState("");
+    const [chatQuery, setChatQuery] = useState("");
+    const [chatLoading, setChatLoading] = useState(false);
+    const [chatAnswer, setChatAnswer] = useState<string | null>(null);
     const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     const load = () => {
@@ -261,6 +305,47 @@ export default function TareasPage() {
         const interval = setInterval(loadSilent, hasActive ? 2000 : 10000);
         return () => clearInterval(interval);
     }, [hasActive]);
+
+    const _isQuestion = (text: string): boolean => {
+        const t = text.toLowerCase().trim();
+        return [
+            /^\u00bf/, /\?$/, /^(qu[eé]|c[oó]mo|cu[aá]ndo|cu[aá]ntas?|cu[aá]ntos?|d[oó]nde|por qu[eé]|hay|tiene|est[aá]|se ejecut|funcion|termin|fall|result|estado|dime|muestra|lista|resumen)/,
+            /^(hola|buenas|gracias|ayuda|explica|diferencia)/,
+        ].some(p => p.test(t));
+    };
+
+    async function handleChat() {
+        if (!chatQuery.trim() || chatLoading) return;
+        setChatLoading(true);
+        setChatAnswer(null);
+        try {
+            const task = await api.tasks.create("chat", chatQuery);
+            setChatQuery("");
+            for (let i = 0; i < 30; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                const updated = await api.tasks.get(task.id);
+                if (updated.status === "done" || updated.status === "failed") {
+                    const results = updated.agent_results as any[];
+                    if (Array.isArray(results)) {
+                        for (let j = results.length - 1; j >= 0; j--) {
+                            if (results[j]?.output?.response) {
+                                setChatAnswer(results[j].output.response);
+                                break;
+                            }
+                        }
+                    }
+                    if (!chatAnswer && updated.error_message) {
+                        setChatAnswer(`Error: ${updated.error_message}`);
+                    }
+                    break;
+                }
+            }
+        } catch (e: any) {
+            setChatAnswer(`Error: ${e.message || "No se pudo procesar"}`);
+        } finally {
+            setChatLoading(false);
+        }
+    }
 
     async function createTask(e: React.FormEvent) {
         e.preventDefault();
@@ -359,6 +444,39 @@ export default function TareasPage() {
                     </a>
                 </p>
             </InfoBanner>
+
+            {/* Chat rápido con la IA */}
+            <div className="mb-8 bg-[#111113] border border-indigo-500/30 rounded-2xl p-5 relative overflow-hidden shadow-lg shadow-indigo-500/5">
+                <div className="flex gap-3 items-center">
+                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400">
+                        <Bot className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="flex bg-[#09090b] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-indigo-500 transition-colors">
+                            <input type="text" value={chatQuery}
+                                onChange={(e) => { setChatQuery(e.target.value); if (chatAnswer) setChatAnswer(null); }}
+                                onKeyDown={(e) => e.key === "Enter" && handleChat()}
+                                placeholder="Pregunta lo que quieras... ej: ¿Cuántas facturas pendientes tengo?"
+                                className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-zinc-600" />
+                            <button onClick={handleChat} disabled={chatLoading || !chatQuery.trim()}
+                                className="px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
+                                {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                                {chatLoading ? "Pensando..." : "Preguntar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {chatAnswer && (
+                    <div className="mt-4 ml-13 flex gap-3 items-start">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/20 flex-shrink-0">
+                            <Bot className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div className="flex-1 bg-[#09090b] border border-indigo-500/20 rounded-2xl rounded-tl-sm px-5 py-4">
+                            <p className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap">{chatAnswer}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Modal nueva tarea */}
             {showNew && (

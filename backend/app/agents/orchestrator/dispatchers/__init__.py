@@ -8,6 +8,7 @@ from app.agents.orchestrator.dispatchers.hr import _dispatch_hr
 from app.agents.orchestrator.dispatchers.crm import _dispatch_crm
 from app.agents.orchestrator.dispatchers.banking import _dispatch_banking
 from app.agents.orchestrator.dispatchers.reports import _dispatch_report
+from app.agents.orchestrator.dispatchers.chat import _dispatch_chat
 from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_rag,
     _dispatch_excel,
@@ -30,6 +31,7 @@ DISPATCHER_MAP = {
     "workflow": _dispatch_workflow,
     "report": _dispatch_report,
     "skill": _dispatch_skill,
+    "chat": _dispatch_chat,
 }
 
 __all__ = [
@@ -46,4 +48,5 @@ __all__ = [
     "_dispatch_email",
     "_dispatch_workflow",
     "_dispatch_skill",
+    "_dispatch_chat",
 ]

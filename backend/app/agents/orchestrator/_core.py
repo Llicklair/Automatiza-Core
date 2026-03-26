@@ -494,6 +494,77 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     }
 
 
+# ─── Nodo: resumen conversacional ─────────────────────────────────────────
+
+async def summarize_node(state: OrchestratorState) -> dict:
+    """
+    Genera un resumen en lenguaje natural de los resultados de los agentes.
+    Se salta si el dominio es 'chat' (ya devuelve texto conversacional).
+    """
+    # No resumir si es chat directo o si falló
+    if state.get("classified_domain") == "chat":
+        return state
+    if state.get("status") != TaskStatus.DONE:
+        return state
+
+    results = state.get("agent_results", [])
+    if not results:
+        return state
+
+    try:
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from app.core.llm_factory import get_llm
+
+        # Construir resumen de los resultados de cada agente
+        results_text = []
+        for r in results:
+            agent = r.get("agent", "?")
+            output = r.get("output", {})
+            response = output.get("response", "") or output.get("message", "")
+            summary = r.get("summary", "")
+            text = response if response else summary
+            if text:
+                results_text.append(f"[{agent}]: {text[:500]}")
+
+        if not results_text:
+            return state
+
+        prompt = (
+            "Eres el asistente de AutomatizaPyme. El usuario pidió lo siguiente:\n"
+            f"\"{state['user_intent']}\"\n\n"
+            "Los agentes han devuelto estos resultados:\n"
+            + "\n".join(results_text) + "\n\n"
+            "Genera un RESUMEN EJECUTIVO breve y claro en español para el usuario. "
+            "Usa lenguaje natural, no técnico. Si hay acciones urgentes, destácalas. "
+            "Formato: texto directo, usa listas si mejora la legibilidad."
+        )
+
+        llm = get_llm(temperature=0.3)
+        response = await llm.ainvoke([
+            SystemMessage(content="Resumes resultados de agentes ERP para PYMEs españolas. Sé conciso y directo."),
+            HumanMessage(content=prompt),
+        ])
+
+        summary_text = response.content.strip() if response.content else ""
+        if summary_text:
+            summary_result: AgentResult = {
+                "subtask_id": "summary",
+                "agent": "summary",
+                "success": True,
+                "output": {"action": "chat_response", "response": summary_text},
+                "summary": summary_text[:200],
+                "error": None,
+            }
+            return {
+                **state,
+                "agent_results": list(results) + [summary_result],
+            }
+    except Exception as e:
+        logger.warning("Error generando resumen conversacional: %s", e)
+
+    return state
+
+
 # ─── Routing functions ──────────────────────────────────────────────────────
 
 def route_after_validate(state: OrchestratorState) -> str:
@@ -508,7 +579,7 @@ def route_after_dispatch(state: OrchestratorState) -> str:
     if state["status"] == TaskStatus.FAILED:
         return "end"
     if state["status"] == TaskStatus.DONE:
-        return "end"
+        return "summarize"
     if state["status"] == TaskStatus.AWAITING_APPROVAL:
         return "end"  # Pausa: esperar aprobación humana antes de continuar
     if state["iteration_count"] >= MAX_ITERATIONS:
@@ -526,6 +597,7 @@ def build_orchestrator() -> CompiledStateGraph:
     graph.add_node("planner", plan_node)
     graph.add_node("validate", validate_node)
     graph.add_node("dispatch", dispatch_node)
+    graph.add_node("summarize", summarize_node)
 
     graph.set_entry_point("classify")
     graph.add_edge("classify", "load_knowledge")
@@ -545,9 +617,11 @@ def build_orchestrator() -> CompiledStateGraph:
         route_after_dispatch,
         {
             "dispatch": "dispatch",
+            "summarize": "summarize",
             "end": END,
         },
     )
+    graph.add_edge("summarize", END)
 
     return graph.compile()
 

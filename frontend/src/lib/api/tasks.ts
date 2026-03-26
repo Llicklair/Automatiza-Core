@@ -43,10 +43,10 @@ export const tasks = {
         const q = new URLSearchParams(params as Record<string, string>).toString();
         return request<Task[]>(`/api/v1/tasks${q ? "?" + q : ""}`);
     },
-    create: (domain: string, user_intent: string) =>
+    create: (domain: string, user_intent: string, additional_metadata?: Record<string, unknown>) =>
         request<Task>("/api/v1/tasks", {
             method: "POST",
-            body: JSON.stringify({ domain, user_intent }),
+            body: JSON.stringify({ domain, user_intent, ...(additional_metadata ? { additional_metadata } : {}) }),
         }),
     get: (id: string) => request<Task>(`/api/v1/tasks/${id}`),
     cancel: (id: string) =>
