@@ -13,6 +13,7 @@ from app.agents.types import StepResult  # noqa: F401
 class TaskCreate(BaseModel):
     domain: str
     user_intent: str
+    additional_metadata: dict | None = None
 
 
 class TaskOut(BaseModel):

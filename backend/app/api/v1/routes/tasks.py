@@ -26,6 +26,7 @@ async def create_task(
         domain=payload.domain,
         user_intent=payload.user_intent,
         status="pending",
+        additional_metadata=payload.additional_metadata or {},
     )
     db.add(task)
     await db.commit()

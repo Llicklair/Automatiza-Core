@@ -366,11 +366,10 @@ async def run_email_agent(
 
         @tool
         async def check_inbox_real(tenant_id: str, provider: str = default_provider, max_results: int = 10) -> str:
-            f"""
-            Lee los correos más recientes de la bandeja de entrada.
+            """Lee los correos más recientes de la bandeja de entrada.
             Args:
                 tenant_id: ID del tenant
-                provider: Proveedor de correo a usar. Disponibles: {provider_desc}. Por defecto: {default_provider}
+                provider: Proveedor de correo a usar
                 max_results: Máximo de correos a recuperar
             """
             if provider not in providers:
@@ -408,11 +407,10 @@ async def run_email_agent(
 
         @tool
         async def check_unread_real(tenant_id: str, provider: str = default_provider, max_results: int = 10) -> str:
-            f"""
-            Lee solo los correos NO LEÍDOS de la bandeja de entrada.
+            """Lee solo los correos NO LEÍDOS de la bandeja de entrada.
             Args:
                 tenant_id: ID del tenant
-                provider: Proveedor de correo a usar. Disponibles: {provider_desc}. Por defecto: {default_provider}
+                provider: Proveedor de correo a usar
                 max_results: Máximo de correos no leídos a recuperar
             """
             if provider not in providers:
@@ -450,15 +448,14 @@ async def run_email_agent(
 
         @tool
         async def send_email_real(tenant_id: str, to: str, subject: str, body: str, provider: str = default_provider, attachment_ids: list[str] | None = None) -> str:
-            f"""
-            Envía un correo electrónico al destinatario indicado.
+            """Envía un correo electrónico al destinatario indicado.
             Args:
                 tenant_id: ID del tenant
                 to: Dirección de correo electrónico del destinatario
                 subject: Asunto del correo
                 body: Cuerpo del correo en texto plano
-                provider: Proveedor de correo a usar para enviar. Disponibles: {provider_desc}. Por defecto: {default_provider}
-                attachment_ids: Opcional. Lista de IDs de documentos (TenantDocument) a adjuntar.
+                provider: Proveedor de correo a usar
+                attachment_ids: Opcional. Lista de IDs de documentos a adjuntar.
             """
             if provider not in providers:
                 return f"Error: proveedor '{provider}' no disponible. Usa uno de: {provider_desc}"

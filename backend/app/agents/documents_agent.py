@@ -183,10 +183,30 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 SystemMessage(content=CLASSIFICATION_PROMPT),
                 HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
             ])
-            data_dict = json.loads(response.content)
-            classified = ClassifiedDocument(**data_dict)
+            raw_content = (response.content or "").strip()
+            # Strip markdown code fences if present
+            if raw_content.startswith("```"):
+                raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
+                raw_content = re.sub(r"\s*```$", "", raw_content)
+            if not raw_content:
+                logger.warning("LLM returned empty response for document classification, using rule fallback")
+                classified = ClassifiedDocument(
+                    document_type=rule_result.document_type,
+                    confidence=rule_result.confidence,
+                    key_entities=rule_result.key_entities,
+                    summary=f"Clasificado por reglas (LLM sin respuesta): {rule_result.document_type}",
+                )
+            else:
+                data_dict = json.loads(raw_content)
+                classified = ClassifiedDocument(**data_dict)
         except Exception as e:
-            return f"Error clasificando documento: {e}"
+            logger.warning("LLM classification failed (%s), falling back to rules", e)
+            classified = ClassifiedDocument(
+                document_type=rule_result.document_type,
+                confidence=max(rule_result.confidence, 0.5),
+                key_entities=rule_result.key_entities,
+                summary=f"Clasificado por reglas (LLM falló): {rule_result.document_type}",
+            )
 
     # ── Extraer NIFs y crear/vincular cliente ──
     nif_pattern = re.compile(

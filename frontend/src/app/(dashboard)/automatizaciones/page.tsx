@@ -5,6 +5,7 @@ import { api, Workflow, WorkflowExecution } from "@/lib/api";
 import {
     Zap, Plus, RotateCw, Loader2,
     BrainCircuit, Sparkles, Send, CheckCircle2, AlertCircle, X,
+    Bot, MessageSquare,
 } from "lucide-react";
 import { logError } from "@/lib/logger";
 import InfoBanner from "@/components/InfoBanner";
@@ -44,6 +45,10 @@ export default function WorkflowsPage() {
     // Context input per workflow
     const [contextInputId, setContextInputId] = useState<string | null>(null);
     const [contextText, setContextText] = useState("");
+
+    // Chat inline (respuesta a preguntas en el input principal)
+    const [chatLoading, setChatLoading] = useState(false);
+    const [chatResponse, setChatResponse] = useState<string | null>(null);
 
     // Live logs
     const [liveLogs, setLiveLogs] = useState<Record<string, string[]>>({});
@@ -173,23 +178,75 @@ export default function WorkflowsPage() {
         } finally { setIsSubmitting(false); }
     };
 
-    const handleParseAI = async () => {
+    const _isQuestion = (text: string): boolean => {
+        const t = text.trim();
+        // Detectar ¿...? o ...?
+        if (t.startsWith("\u00bf") || t.endsWith("?")) {
+            const actionVerbs = ["crea", "genera", "env\u00eda", "haz", "registra", "sube", "programa"];
+            return !actionVerbs.some(v => t.toLowerCase().includes(v));
+        }
+        const tl = t.toLowerCase();
+        const questionStarts = [
+            "cu\u00e1ntas", "cu\u00e1ntos", "cu\u00e1nto", "cu\u00e1ndo", "d\u00f3nde", "c\u00f3mo",
+            "qu\u00e9 es", "qu\u00e9 son", "hay ", "tiene ", "est\u00e1", "se ejecut",
+            "termin\u00f3", "ha terminado", "funcion\u00f3", "fall\u00f3",
+            "explica", "diferencia", "ayuda", "hola", "buenas", "gracias",
+            "dime", "muestra", "lista", "resumen",
+        ];
+        return questionStarts.some(q => tl.startsWith(q));
+    };
+
+    const handleSmartInput = async () => {
         if (!nlQuery.trim()) return;
-        setIsParsing(true);
-        try {
-            const parsed = await api.workflows.parse(nlQuery);
-            setName(parsed.name || ""); setDescription(parsed.description || "");
-            setTriggerType(parsed.trigger_type || "event_based");
-            setTriggerConfig(parsed.trigger_config || { events: ["any"] });
-            setActionType(parsed.action_type || "ai_task");
-            setActionIntent(parsed.action_config?.instruction || "");
-            setParsedUiNodes(parsed.ui_nodes || null);
-            setParsedUiEdges(parsed.ui_edges || null);
-            setNlQuery(""); setShowModal(true);
-            showToast("Borrador de regla creado por IA. Revisa y confirma.", "ok");
-        } catch (e: any) {
-            showToast("Error al procesar con IA: " + (e.message || "Fallo"), "err");
-        } finally { setIsParsing(false); }
+        if (_isQuestion(nlQuery)) {
+            // Es una pregunta → chat
+            setChatLoading(true);
+            setChatResponse(null);
+            const question = nlQuery;
+            setNlQuery("");
+            try {
+                const task = await api.tasks.create("chat", question, { context: "workflows" });
+                const taskId = task.id;
+                let found = false;
+                for (let i = 0; i < 30; i++) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    const updated = await api.tasks.get(taskId);
+                    if (updated.status === "done" || updated.status === "failed") {
+                        const results = updated.agent_results as any[];
+                        if (Array.isArray(results)) {
+                            for (let j = results.length - 1; j >= 0; j--) {
+                                if (results[j]?.output?.response) {
+                                    setChatResponse(results[j].output.response);
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!found) setChatResponse(updated.error_message || "No se obtuvo respuesta.");
+                        break;
+                    }
+                }
+            } catch (e: any) {
+                setChatResponse(`Error: ${e.message || "No se pudo procesar la pregunta"}`);
+            } finally { setChatLoading(false); }
+        } else {
+            // Es una regla → parsear workflow
+            setIsParsing(true);
+            try {
+                const parsed = await api.workflows.parse(nlQuery);
+                setName(parsed.name || ""); setDescription(parsed.description || "");
+                setTriggerType(parsed.trigger_type || "event_based");
+                setTriggerConfig(parsed.trigger_config || { events: ["any"] });
+                setActionType(parsed.action_type || "ai_task");
+                setActionIntent(parsed.action_config?.instruction || "");
+                setParsedUiNodes(parsed.ui_nodes || null);
+                setParsedUiEdges(parsed.ui_edges || null);
+                setNlQuery(""); setShowModal(true);
+                showToast("Borrador de regla creado por IA. Revisa y confirma.", "ok");
+            } catch (e: any) {
+                showToast("Error al procesar con IA: " + (e.message || "Fallo"), "err");
+            } finally { setIsParsing(false); }
+        }
     };
 
     const handleDelete = async (id: string) => {
@@ -351,7 +408,7 @@ export default function WorkflowsPage() {
                 </p>
             </InfoBanner>
 
-            {/* AI Generator Bar */}
+            {/* AI Input — preguntas o crear reglas */}
             <div className="mb-10 bg-[#111113] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden shadow-lg shadow-indigo-500/5">
                 <div className="absolute top-0 right-0 p-4 opacity-5 blur-xl pointer-events-none">
                     <BrainCircuit className="w-48 h-48 text-indigo-500" />
@@ -361,20 +418,34 @@ export default function WorkflowsPage() {
                         <Sparkles className="w-6 h-6" />
                     </div>
                     <div className="flex-1 w-full">
-                        <h3 className="text-sm font-semibold text-white mb-2">Crear mediante Inteligencia Artificial</h3>
+                        <h3 className="text-sm font-semibold text-white mb-2">Habla con la IA</h3>
+                        <p className="text-xs text-zinc-500 mb-2">Pregunta lo que quieras o describe una regla para crearla.</p>
                         <div className="flex bg-[#09090b] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-indigo-500 transition-colors">
-                            <input type="text" value={nlQuery} onChange={(e) => setNlQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleParseAI()}
-                                placeholder="Ej: Cada día 1 del mes, envíale las nóminas a todos mis empleados."
+                            <input type="text" value={nlQuery} onChange={(e) => { setNlQuery(e.target.value); if (chatResponse) setChatResponse(null); }}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSmartInput()}
+                                placeholder="Ej: ¿Se ejecutó la de nóminas? / Cada lunes envía un resumen de ventas"
                                 className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-zinc-600" />
-                            <button onClick={handleParseAI} disabled={isParsing || !nlQuery.trim()}
+                            <button onClick={handleSmartInput} disabled={(isParsing || chatLoading) || !nlQuery.trim()}
                                 className="px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
-                                {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                {isParsing ? "Analizando..." : "Generar Regla"}
+                                {(isParsing || chatLoading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                {(isParsing || chatLoading) ? "Pensando..." : "Enviar"}
                             </button>
                         </div>
                     </div>
                 </div>
+                {/* Respuesta inline del chat */}
+                {chatResponse && (
+                    <div className="relative z-10 mt-5 ml-16">
+                        <div className="flex gap-3 items-start">
+                            <div className="p-1.5 rounded-lg bg-indigo-500/20 flex-shrink-0">
+                                <Bot className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <div className="flex-1 bg-[#09090b] border border-indigo-500/20 rounded-2xl rounded-tl-sm px-5 py-4">
+                                <p className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap">{chatResponse}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Grid */}

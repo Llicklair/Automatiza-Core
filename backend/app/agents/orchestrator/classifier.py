@@ -29,12 +29,15 @@ _KEYWORD_MAP: dict[str, list[str]] = {
     "workflow": ["automatización", "regla", "cada vez que", "programar", "automático", "workflow", "automatizar", "repetir"],
     "report": ["informe mensual", "snapshot", "resumen del mes", "estado de la empresa", "informe completo", "informe empresarial",
                "análisis mensual", "cierre mensual", "genera el informe", "informe de gestión", "resumen mensual"],
+    "chat": ["qué es", "cómo funciona", "explica", "diferencia entre", "qué significa", "ayuda",
+             "terminó", "ha terminado", "estado de la tarea", "cómo va", "qué tal va",
+             "puedes", "sabes", "entiendes", "gracias", "hola", "buenas"],
 }
 
 _CLASSIFY_SYSTEM = """\
 Eres un clasificador de intenciones para una plataforma de automatización empresarial española.
 Tu única tarea es leer el texto del usuario y responder con UN SOLO valor del siguiente conjunto:
-  billing | documents | compliance | hr | banking | rag | excel | email | workflow | coordinator | report | unknown
+  billing | documents | compliance | hr | banking | rag | excel | email | workflow | coordinator | report | chat | unknown
 
 Definiciones:
 - billing: crear, enviar o consultar facturas, presupuestos, albaranes o cobros a clientes.
@@ -49,14 +52,35 @@ Definiciones:
 - excel: generar un archivo Excel (.xlsx) con datos de la empresa (facturas, clientes, empleados, nóminas, inventario, banco), manipular datos, cruzar archivos csv/excel, exportar listados tabulares.
 - email: revisar bandeja de entrada, leer o responder y procesar correos electrónicos.
 - report: generar informe mensual, resumen del estado de la empresa, análisis mensual completo, cierre mensual, snapshot empresarial.
+- chat: preguntas generales, saludos, consultas de estado ("¿terminó la tarea?"), dudas conceptuales ("¿qué es el modelo 303?"), o cualquier mensaje que NO requiera ejecutar una acción concreta en el ERP.
 - unknown: cualquier otra cosa.
 
 RESPONDE SOLO CON UNA SOLA PALABRA. Sin explicaciones ni puntuación."""
 
 
+def _is_question(text: str) -> bool:
+    """Detecta si el texto es una pregunta general (no una acción)."""
+    t = text.strip()
+    if t.startswith("¿") or t.endswith("?"):
+        # Excluir preguntas que son acciones implícitas: "¿puedes crear...", "¿me generas..."
+        action_verbs = ["crea", "genera", "envía", "enviar", "haz", "hacer", "registra", "sube", "subir"]
+        return not any(v in t.lower() for v in action_verbs)
+    question_starts = [
+        "cuántas", "cuántos", "cuánto", "cuándo", "dónde", "cómo", "qué es", "qué son",
+        "hay ", "tiene ", "están ", "está ", "se ejecutó", "terminó", "ha terminado",
+        "funcionó", "falló", "explica", "diferencia", "ayuda", "hola", "buenas", "gracias",
+    ]
+    return any(t.lower().startswith(q) for q in question_starts)
+
+
 def _keyword_classify(intent_lower: str) -> str:
     """Clasificación determinista por palabras clave — fallback rápido."""
+    # Chat tiene prioridad: preguntas generales no deben ir a agentes
+    if _is_question(intent_lower):
+        return "chat"
     for domain, keywords in _KEYWORD_MAP.items():
+        if domain == "chat":
+            continue  # Ya evaluado arriba
         if any(kw in intent_lower for kw in keywords):
             return domain
     return "unknown"
