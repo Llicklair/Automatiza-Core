@@ -36,6 +36,8 @@ class WorkflowParseResponse(BaseModel):
     action_config: dict[str, Any]
     ui_nodes: list[dict[str, Any]] | None = None
     ui_edges: list[dict[str, Any]] | None = None
+    can_be_deterministic: bool = False
+    determinism_question: str | None = None
 
 class WorkflowUpdate(BaseModel):
     name: str | None = None

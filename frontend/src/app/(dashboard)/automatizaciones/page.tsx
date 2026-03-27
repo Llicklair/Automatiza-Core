@@ -8,6 +8,7 @@ import {
     Bot, MessageSquare,
 } from "lucide-react";
 import { logError } from "@/lib/logger";
+import { useNavigationGuard } from "@/stores/navigationGuard";
 import InfoBanner from "@/components/InfoBanner";
 import { TEMPLATES } from "./_components/constants";
 import WorkflowCard from "./_components/WorkflowCard";
@@ -41,6 +42,8 @@ export default function WorkflowsPage() {
     const [parsedUiNodes, setParsedUiNodes] = useState<any[] | null>(null);
     const [parsedUiEdges, setParsedUiEdges] = useState<any[] | null>(null);
     const [graphKey, setGraphKey] = useState(0);
+    const [canBeDeterministic, setCanBeDeterministic] = useState<boolean | null>(null);
+    const [modeLockedByAI, setModeLockedByAI] = useState(false);
 
     // Context input per workflow
     const [contextInputId, setContextInputId] = useState<string | null>(null);
@@ -49,6 +52,8 @@ export default function WorkflowsPage() {
     // Chat inline (respuesta a preguntas en el input principal)
     const [chatLoading, setChatLoading] = useState(false);
     const [chatResponse, setChatResponse] = useState<string | null>(null);
+
+
 
     // Live logs
     const [liveLogs, setLiveLogs] = useState<Record<string, string[]>>({});
@@ -62,6 +67,15 @@ export default function WorkflowsPage() {
     const defaultEditorEdges = useMemo(() => [
         { id: "e-trigger_default-skill_default", source: "trigger_default", target: "skill_default" },
     ], []);
+
+    // ─── Navigation guard ─────────────────────────────────────────────────────
+
+    const setGuard = useNavigationGuard((s) => s.setGuard);
+    useEffect(() => {
+        const active = showModal || isParsing || chatLoading || isSubmitting || runningId !== null;
+        setGuard(active, "Hay una automatización en curso. Si cambias de sección perderás el progreso.");
+        return () => { if (active) setGuard(false); };
+    }, [showModal, isParsing, chatLoading, isSubmitting, runningId]);
 
     // ─── Data loading ────────────────────────────────────────────────────────
 
@@ -138,6 +152,7 @@ export default function WorkflowsPage() {
         setActionType("ai_task"); setActionIntent(""); setTriggerConfig({ events: ["any"] });
         setParsedUiNodes(null); setParsedUiEdges(null);
         setExecutionMode("reasoning"); setEditingWorkflow(null);
+        setCanBeDeterministic(null); setModeLockedByAI(false);
     };
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -196,6 +211,20 @@ export default function WorkflowsPage() {
         return questionStarts.some(q => tl.startsWith(q));
     };
 
+    const _openModalWithParsed = (parsed: any) => {
+        setName(parsed.name || ""); setDescription(parsed.description || "");
+        setTriggerType(parsed.trigger_type || "event_based");
+        setTriggerConfig(parsed.trigger_config || { events: ["any"] });
+        setActionType(parsed.action_type || "ai_task");
+        setActionIntent(parsed.action_config?.instruction || "");
+        setParsedUiNodes(parsed.ui_nodes || null);
+        setParsedUiEdges(parsed.ui_edges || null);
+        setExecutionMode(parsed.can_be_deterministic ? "deterministic" : "reasoning");
+        setCanBeDeterministic(parsed.can_be_deterministic ?? null);
+        setModeLockedByAI(true);
+        setShowModal(true);
+    };
+
     const handleSmartInput = async () => {
         if (!nlQuery.trim()) return;
         if (_isQuestion(nlQuery)) {
@@ -234,15 +263,8 @@ export default function WorkflowsPage() {
             setIsParsing(true);
             try {
                 const parsed = await api.workflows.parse(nlQuery);
-                setName(parsed.name || ""); setDescription(parsed.description || "");
-                setTriggerType(parsed.trigger_type || "event_based");
-                setTriggerConfig(parsed.trigger_config || { events: ["any"] });
-                setActionType(parsed.action_type || "ai_task");
-                setActionIntent(parsed.action_config?.instruction || "");
-                setParsedUiNodes(parsed.ui_nodes || null);
-                setParsedUiEdges(parsed.ui_edges || null);
-                setNlQuery(""); setShowModal(true);
-                showToast("Borrador de regla creado por IA. Revisa y confirma.", "ok");
+                setNlQuery("");
+                _openModalWithParsed(parsed);
             } catch (e: any) {
                 showToast("Error al procesar con IA: " + (e.message || "Fallo"), "err");
             } finally { setIsParsing(false); }
@@ -409,8 +431,8 @@ export default function WorkflowsPage() {
             </InfoBanner>
 
             {/* AI Input — preguntas o crear reglas */}
-            <div className="mb-10 bg-[#111113] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden shadow-lg shadow-indigo-500/5">
-                <div className="absolute top-0 right-0 p-4 opacity-5 blur-xl pointer-events-none">
+            <div className="mb-10 bg-[#111113] border border-indigo-500/30 rounded-2xl p-6 relative shadow-lg shadow-indigo-500/5">
+                <div className="absolute top-0 right-0 p-4 opacity-5 blur-xl pointer-events-none overflow-hidden rounded-2xl">
                     <BrainCircuit className="w-48 h-48 text-indigo-500" />
                 </div>
                 <div className="relative z-10 flex flex-col md:flex-row gap-4 items-center">
@@ -558,6 +580,8 @@ export default function WorkflowsPage() {
                     actionType={actionType} setActionType={setActionType}
                     actionIntent={actionIntent} setActionIntent={setActionIntent}
                     executionMode={executionMode} setExecutionMode={setExecutionMode}
+                    canBeDeterministic={canBeDeterministic}
+                    modeLockedByAI={modeLockedByAI}
                     parsedUiNodes={parsedUiNodes} setParsedUiNodes={setParsedUiNodes}
                     parsedUiEdges={parsedUiEdges} setParsedUiEdges={setParsedUiEdges}
                     defaultEditorNodes={defaultEditorNodes}

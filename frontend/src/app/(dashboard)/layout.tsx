@@ -17,6 +17,8 @@ import NotificationBell from "@/components/NotificationBell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToastStore, type ToastType } from "@/stores/toast";
 import { useNotificationStore } from "@/stores/notifications";
+import { useNavigationGuard } from "@/stores/navigationGuard";
+import { showConfirm } from "@/stores/confirm";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 
 type NavItem = {
@@ -153,6 +155,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pushNotification = useNotificationStore((s) => s.push);
     const triggerRefresh = useNotificationStore((s) => s.triggerRefresh);
     const lastCheckRef = useRef<number>(Date.now() / 1000);
+    const navBlocked = useNavigationGuard((s) => s.blocked);
+    const navMessage = useNavigationGuard((s) => s.message);
+
+    const handleNavClick = (e: React.MouseEvent, href: string) => {
+        if (!navBlocked) return;
+        e.preventDefault();
+        showConfirm({
+            title: "Hay trabajo en curso",
+            message: navMessage || "Si cambias de sección perderás el progreso actual. ¿Quieres salir igualmente?",
+            confirmLabel: "Salir",
+            cancelLabel: "Quedarse",
+        }).then((confirmed) => { if (confirmed) router.push(href); });
+    };
 
     const toggleGroup = (label: string) => {
         setExpandedGroups(prev => ({ ...prev, [label]: !prev[label] }));
@@ -304,6 +319,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             ) : (
                                                 <Link
                                                     href={item.href!}
+                                                    onClick={(e) => handleNavClick(e, item.href!)}
                                                     className={cn(
                                                         "flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
                                                         isActive
@@ -324,6 +340,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                                             <Link
                                                                 key={sub.label}
                                                                 href={sub.href}
+                                                                onClick={(e) => handleNavClick(e, sub.href)}
                                                                 className={cn(
                                                                     "block px-2.5 py-1 rounded-md text-xs transition-colors",
                                                                     subActive
@@ -349,6 +366,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="px-2 py-3 border-t border-[#27272a]">
                     <Link
                         href="/configuracion/empresa"
+                        onClick={(e) => handleNavClick(e, "/configuracion/empresa")}
                         className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
                     >
                         <Settings className="w-3.5 h-3.5" />

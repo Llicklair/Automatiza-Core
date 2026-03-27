@@ -23,6 +23,8 @@ interface WorkflowFormModalProps {
     setActionIntent: (v: string) => void;
     executionMode: "reasoning" | "deterministic";
     setExecutionMode: (v: "reasoning" | "deterministic") => void;
+    canBeDeterministic: boolean | null;
+    modeLockedByAI: boolean;
     parsedUiNodes: any[] | null;
     setParsedUiNodes: (v: any[] | null) => void;
     parsedUiEdges: any[] | null;
@@ -40,7 +42,7 @@ export default function WorkflowFormModal({
     name, setName, description, setDescription,
     triggerType, setTriggerType, triggerConfig, setTriggerConfig,
     actionType, setActionType, actionIntent, setActionIntent,
-    executionMode, setExecutionMode,
+    executionMode, setExecutionMode, canBeDeterministic, modeLockedByAI,
     parsedUiNodes, setParsedUiNodes, parsedUiEdges, setParsedUiEdges,
     defaultEditorNodes, defaultEditorEdges, graphKey,
     onClose, onSubmit, onAddParallelBranch,
@@ -137,43 +139,85 @@ export default function WorkflowFormModal({
                     {/* Execution mode selector */}
                     <div className="pt-3 border-t border-zinc-800/50">
                         <label className="block text-xs text-zinc-400 mb-2 uppercase tracking-wider">Modo de ejecución</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setExecutionMode("reasoning")}
-                                className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "reasoning"
-                                    ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
-                                    : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <BrainCircuit className="w-4 h-4" />
-                                    <span className="text-xs font-semibold">Con IA</span>
-                                </div>
-                                <p className="text-[10px] leading-snug opacity-70">
-                                    El LLM interpreta la instrucción en tiempo real. Flexible y adaptable, pero consume tokens en cada ejecución.
+                        {canBeDeterministic === true && (
+                            <div className="mb-3 flex items-start gap-2 bg-emerald-500/8 border border-emerald-500/25 rounded-lg px-3 py-2">
+                                <Info className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-[11px] text-emerald-300/90 leading-relaxed">
+                                    La IA ha detectado que esta automatización puede ejecutarse <strong>sin IA en cada disparo</strong>. Se ha preseleccionado el modo determinista, que compila los pasos una vez y los ejecuta directamente. Puedes cambiarlo si prefieres flexibilidad.
                                 </p>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setExecutionMode("deterministic")}
-                                className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "deterministic"
+                            </div>
+                        )}
+                        {canBeDeterministic === false && (
+                            <div className="mb-3 flex items-start gap-2 bg-blue-500/8 border border-blue-500/25 rounded-lg px-3 py-2">
+                                <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-[11px] text-blue-300/90 leading-relaxed">
+                                    La IA ha detectado que esta acción <strong>requiere razonamiento en cada ejecución</strong> (análisis, decisiones o contexto variable). Se ha preseleccionado el modo Con IA. Puedes cambiarlo, pero el resultado podría no adaptarse bien.
+                                </p>
+                            </div>
+                        )}
+                        {modeLockedByAI ? (
+                            // Modo decidido por la IA — solo lectura
+                            <div className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border cursor-default select-none ${
+                                executionMode === "deterministic"
                                     ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                                    : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}
-                            >
+                                    : "border-blue-500/50 bg-blue-500/10 text-blue-300"
+                            }`}>
                                 <div className="flex items-center gap-2">
-                                    <Cpu className="w-4 h-4" />
-                                    <span className="text-xs font-semibold">Determinista</span>
+                                    {executionMode === "deterministic"
+                                        ? <Cpu className="w-4 h-4" />
+                                        : <BrainCircuit className="w-4 h-4" />}
+                                    <span className="text-xs font-semibold">
+                                        {executionMode === "deterministic" ? "Determinista" : "Con IA"} · Decidido por la IA
+                                    </span>
                                 </div>
                                 <p className="text-[10px] leading-snug opacity-70">
-                                    Los pasos se compilan una vez al crear la regla. Ejecución directa sin LLM: coste cero y máxima velocidad.
+                                    {executionMode === "deterministic"
+                                        ? "Los pasos se compilan una vez al crear la regla. Ejecución directa sin LLM: coste cero y máxima velocidad."
+                                        : "El LLM interpreta la instrucción en tiempo real. Flexible y adaptable, pero consume tokens en cada ejecución."}
                                 </p>
-                            </button>
-                        </div>
+                            </div>
+                        ) : (
+                            // Modo elegido por el usuario — interactivo
+                            <div className="grid grid-cols-2 gap-3">
+                                <button type="button" onClick={() => setExecutionMode("reasoning")}
+                                    className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "reasoning"
+                                        ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
+                                        : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}>
+                                    <div className="flex items-center gap-2">
+                                        <BrainCircuit className="w-4 h-4" />
+                                        <span className="text-xs font-semibold">Con IA</span>
+                                    </div>
+                                    <p className="text-[10px] leading-snug opacity-70">
+                                        El LLM interpreta la instrucción en tiempo real. Flexible y adaptable, pero consume tokens en cada ejecución.
+                                    </p>
+                                </button>
+                                <button type="button" onClick={() => setExecutionMode("deterministic")}
+                                    className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "deterministic"
+                                        ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                                        : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}>
+                                    <div className="flex items-center gap-2">
+                                        <Cpu className="w-4 h-4" />
+                                        <span className="text-xs font-semibold">Determinista</span>
+                                    </div>
+                                    <p className="text-[10px] leading-snug opacity-70">
+                                        Los pasos se compilan una vez al crear la regla. Ejecución directa sin LLM: coste cero y máxima velocidad.
+                                    </p>
+                                </button>
+                            </div>
+                        )}
                         {executionMode === "deterministic" && (
                             <div className="mt-2 flex items-start gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-2">
                                 <Info className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-[10px] text-emerald-300/80 leading-relaxed">
                                     Al guardar, se realizará una llamada extra al LLM para precompilar los pasos exactos. A partir de entonces, cada ejecución es instantánea y sin coste de IA.
+                                </p>
+                            </div>
+                        )}
+                        {executionMode === "deterministic" && canBeDeterministic === false && (
+                            <div className="mt-2 flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                                <Info className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-[10px] text-amber-300/90 leading-relaxed">
+                                    <strong>Atención:</strong> La IA ha detectado que esta acción requiere análisis o decisión en cada ejecución. En modo determinista los pasos se fijan al crear la regla, por lo que puede no adaptarse bien a situaciones cambiantes. Se recomienda usar el modo <strong>Con IA</strong> para esta automatización.
                                 </p>
                             </div>
                         )}
