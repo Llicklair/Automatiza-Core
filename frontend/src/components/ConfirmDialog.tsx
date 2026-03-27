@@ -58,7 +58,7 @@ export default function ConfirmDialog() {
                         onClick={_cancel}
                         className="flex-1 py-2 rounded-xl border border-[#3f3f46] text-zinc-400 text-sm hover:text-white hover:bg-white/5 transition-colors"
                     >
-                        Cancelar
+                        {options.cancelLabel ?? "Cancelar"}
                     </button>
                     <button
                         onClick={_confirm}

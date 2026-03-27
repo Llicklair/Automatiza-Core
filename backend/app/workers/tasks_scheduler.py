@@ -198,6 +198,174 @@ def _should_run_now(config: dict, now) -> bool:
         return False
 
 
+async def catchup_missed_workflows():
+    """
+    Al arrancar la app: si un workflow programado debía haberse ejecutado mientras
+    la app estaba cerrada, lo dispara una vez (no por cada ocurrencia perdida).
+    """
+    try:
+        await _catchup_missed_workflows()
+    except Exception as e:
+        logger.error("[CATCHUP] Error en catchup_missed_workflows: %s", e)
+
+
+async def _catchup_missed_workflows():
+    from datetime import datetime, timedelta
+    import zoneinfo
+
+    from croniter import croniter
+    from sqlalchemy import select
+
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.models import Task, Workflow, WorkflowExecution
+    from app.services.task_dispatch import dispatch_orchestrator
+
+    try:
+        madrid = zoneinfo.ZoneInfo("Europe/Madrid")
+    except Exception:
+        madrid = None
+
+    now_utc = datetime.now(UTC)
+    now_local = datetime.now(madrid) if madrid else now_utc
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Workflow).where(
+                Workflow.is_active.is_(True),
+                Workflow.trigger_type == "schedule_based",
+            )
+        )
+        workflows = result.scalars().all()
+
+        for wf in workflows:
+            config = wf.trigger_config or {}
+            cron_expr = config.get("cron")
+            if not cron_expr:
+                continue
+
+            # Última ejecución registrada
+            last_exec_result = await db.execute(
+                select(WorkflowExecution)
+                .where(WorkflowExecution.workflow_id == wf.id)
+                .order_by(WorkflowExecution.started_at.desc())
+                .limit(1)
+            )
+            last_exec = last_exec_result.scalars().first()
+            since = last_exec.started_at if last_exec else wf.created_at
+            # Asegurar timezone-aware
+            if since.tzinfo is None:
+                since = since.replace(tzinfo=UTC)
+
+            # No buscar catch-ups de más de 7 días atrás
+            floor = now_utc - timedelta(days=7)
+            if since < floor:
+                since = floor
+
+            # Convertir 'since' a hora local para croniter
+            since_local = since.astimezone(madrid) if madrid else since
+
+            try:
+                it = croniter(cron_expr, since_local)
+                next_run = it.get_next(datetime)
+            except Exception as e:
+                logger.warning("[CATCHUP] Cron inválido '%s' en wf '%s': %s", cron_expr, wf.name, e)
+                continue
+
+            # Si la próxima ejecución prevista ya pasó → hay catch-up pendiente
+            now_cmp = now_local if madrid else now_utc
+            if next_run > now_cmp:
+                continue  # nada perdido
+
+            logger.info("[CATCHUP] Workflow '%s' perdió ejecución(es) desde %s. Disparando una vez.", wf.name, since_local)
+
+            # Verificar que no hay ejecución activa ya
+            active = await db.execute(
+                select(WorkflowExecution).where(
+                    WorkflowExecution.workflow_id == wf.id,
+                    WorkflowExecution.status.in_(["running", "pending"]),
+                )
+            )
+            if active.scalars().first():
+                logger.info("[CATCHUP] Workflow '%s' ya tiene ejecución activa. Skip.", wf.name)
+                continue
+
+            execution = WorkflowExecution(
+                workflow_id=wf.id,
+                tenant_id=wf.tenant_id,
+                status="running",
+                trigger_payload={"source": "catchup", "since": since.isoformat()},
+            )
+            db.add(execution)
+            await db.flush()
+
+            if wf.execution_mode == "deterministic" and wf.compiled_steps:
+                task = Task(
+                    tenant_id=wf.tenant_id,
+                    created_by=None,
+                    domain="deterministic",
+                    user_intent=f"[Catch-up determinista] {wf.name}",
+                    status="running",
+                    additional_metadata={
+                        "workflow_id": str(wf.id),
+                        "execution_id": str(execution.id),
+                        "trigger_type": "catchup",
+                    },
+                )
+                db.add(task)
+                await db.flush()
+                execution.task_id = task.id
+                await db.flush()
+                try:
+                    from app.api.v1.routes.workflows import _execute_deterministic_steps
+                    results = await _execute_deterministic_steps(
+                        steps=wf.compiled_steps,
+                        tenant_id=str(wf.tenant_id),
+                        user_id=str(wf.created_by) if wf.created_by else "",
+                        task_id=str(task.id),
+                    )
+                    execution.status = "success"
+                    execution.result_log = f"[Catch-up] {len(results)} paso(s) OK"
+                    task.status = "done"
+                except Exception as e:
+                    execution.status = "failed"
+                    execution.result_log = f"[Catch-up] Error: {e}"
+                    task.status = "failed"
+            else:
+                action_config = wf.action_config or {}
+                instruction = (
+                    action_config.get("instruction")
+                    or config.get("instruction")
+                    or wf.description
+                    or wf.name
+                )
+                text = f"{wf.name} {wf.description or ''} {instruction}".lower()
+                domain = action_config.get("domain") or _infer_domain_from_text(text)
+
+                task = Task(
+                    tenant_id=wf.tenant_id,
+                    created_by=None,
+                    domain=domain,
+                    user_intent=f"[Catch-up] {instruction}",
+                    status="pending",
+                    additional_metadata={
+                        "workflow_id": str(wf.id),
+                        "execution_id": str(execution.id),
+                        "trigger_type": "catchup",
+                    },
+                )
+                db.add(task)
+                await db.flush()
+                execution.task_id = task.id
+                await db.flush()
+                try:
+                    await dispatch_orchestrator(str(task.id))
+                except Exception as e:
+                    execution.status = "failed"
+                    execution.result_log = f"[Catch-up] Error lanzando orchestrator: {e}"
+
+        await db.commit()
+
+
 async def process_recurring_invoices():
     """Tarea diaria (8:00) que genera facturas a partir de plantillas recurrentes vencidas."""
     try:

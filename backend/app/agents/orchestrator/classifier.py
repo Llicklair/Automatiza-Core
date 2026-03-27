@@ -75,14 +75,15 @@ def _is_question(text: str) -> bool:
 
 def _keyword_classify(intent_lower: str) -> str:
     """Clasificación determinista por palabras clave — fallback rápido."""
-    # Chat tiene prioridad: preguntas generales no deben ir a agentes
-    if _is_question(intent_lower):
-        return "chat"
+    # Primero: buscar coincidencia con dominios especializados
     for domain, keywords in _KEYWORD_MAP.items():
         if domain == "chat":
-            continue  # Ya evaluado arriba
+            continue
         if any(kw in intent_lower for kw in keywords):
             return domain
+    # Solo si NO hay dominio detectado: preguntas generales van a chat
+    if _is_question(intent_lower):
+        return "chat"
     return "unknown"
 
 
@@ -105,38 +106,33 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
     intent = state["user_intent"]
     intent_lower = intent.lower()
 
-    domain = "unknown"
+    # ── Paso 1: Palabras clave — rápido y sin coste ──────────────────────────
+    domain = _keyword_classify(intent_lower)
 
-    # ── Paso 1: Intentar clasificación semántica con LLM (con caché) ────────
-    tenant_id = state.get("tenant_id", "")
-    try:
-        from langchain_core.messages import HumanMessage, SystemMessage
-        from app.core.llm_factory import get_llm
-        from app.services.llm_cache import llm_cache
-
-        # Consultar caché primero
-        cache_key_intent = f"classify:{intent_lower}"
-        cached = await llm_cache.get(tenant_id, cache_key_intent)
-        if cached and cached in VALID_DOMAINS:
-            domain = cached
-        else:
-            llm = get_llm(temperature=0)
-            response = await llm.ainvoke([
-                SystemMessage(content=_CLASSIFY_SYSTEM),
-                HumanMessage(content=intent),
-            ])
-            raw = response.content.strip().lower().split()[0] if response.content else ""
-            # Solo aceptar si el LLM devuelve un dominio válido
-            if raw in VALID_DOMAINS:
-                domain = raw
-                # Guardar en caché (TTL 2h para clasificaciones)
-                await llm_cache.set(tenant_id, cache_key_intent, domain, ttl_override=7200)
-    except Exception as e:
-        logger.debug("Fallo en clasificación LLM, usando fallback por palabras clave: %s", e)
-
-    # ── Paso 2: Fallback por palabras clave si LLM no resolvió ───────────────
+    # ── Paso 2: LLM semántico solo si keywords no resolvieron ────────────────
     if domain == "unknown":
-        domain = _keyword_classify(intent_lower)
+        tenant_id = state.get("tenant_id", "")
+        try:
+            from langchain_core.messages import HumanMessage, SystemMessage
+            from app.core.llm_factory import get_llm
+            from app.services.llm_cache import llm_cache
+
+            cache_key_intent = f"classify:{intent_lower}"
+            cached = await llm_cache.get(tenant_id, cache_key_intent)
+            if cached and cached in VALID_DOMAINS:
+                domain = cached
+            else:
+                llm = get_llm(temperature=0)
+                response = await llm.ainvoke([
+                    SystemMessage(content=_CLASSIFY_SYSTEM),
+                    HumanMessage(content=intent),
+                ])
+                raw = response.content.strip().lower().split()[0] if response.content else ""
+                if raw in VALID_DOMAINS:
+                    domain = raw
+                    await llm_cache.set(tenant_id, cache_key_intent, domain, ttl_override=7200)
+        except Exception as e:
+            logger.debug("Fallo en clasificación LLM: %s", e)
 
     return {
         **state,

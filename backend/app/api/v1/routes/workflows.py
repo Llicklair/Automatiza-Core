@@ -505,7 +505,8 @@ async def parse_natural_language_workflow(
     from app.core.llm_factory import get_llm
 
     llm = get_llm(temperature=0, format_output="json")
-    
+    llm_plain = get_llm(temperature=0)
+
     sys_msg = SystemMessage(content='''Eres el Orquestador de Automatizaciones.
 Dada una instrucción del usuario, devuelve ÚNICAMENTE un JSON válido con la configuración de la regla.
 Format:
@@ -517,29 +518,38 @@ Format:
   "action_type": "ai_task",
   "action_config": {"instruction": "Instrucción exacta para el agente que se deba ejecutar"}
 }
+Events soportados: invoice_created, invoice_paid, client_created, document_uploaded, any.
+(usa "any" si el usuario no especifica).''')
 
-Events soportados: 
-- invoice_created, invoice_paid, client_created, document_uploaded, any.
-(usa "any" si el usuario no especifica).
-
-Ejemplo 1: "Cuando se cobre una factura envia un email de agradecimiento"
--> trigger_type: event_based, trigger_config: {"events": ["invoice_paid"]}, action_config: {"instruction": "Envia email de agradecimiento al cliente."}
-
-Ejemplo 2: "El dia 1 de cada mes genera el informe de balances"
--> trigger_type: schedule_based, trigger_config: {"cron": "0 0 1 * *"}, action_config: {"instruction": "Genera el informe de balances y guardalo."}
-''')
-    hum_msg = HumanMessage(content=request.text)
-    
     try:
-        response = llm.invoke([sys_msg, hum_msg])
+        response = llm.invoke([sys_msg, HumanMessage(content=request.text)])
         raw = response.content.strip()
         if raw.startswith("```json"):
             raw = raw[7:]
         if raw.endswith("```"):
             raw = raw[:-3]
-        raw = raw.strip()
-        
-        payload = json.loads(raw)
+        payload = json.loads(raw.strip())
+
+        # Segunda llamada enfocada: ¿puede ser determinista?
+        can_det = False
+        try:
+            instruction = payload.get("action_config", {}).get("instruction", request.text)
+            det_response = llm_plain.invoke([
+                SystemMessage(content=(
+                    "Responde ÚNICAMENTE con 'true' o 'false', sin ningún texto adicional.\n"
+                    "Pregunta: ¿Puede esta acción ejecutarse siempre como una secuencia fija de pasos "
+                    "sin necesidad de análisis, decisión o adaptación al contexto en cada ejecución?\n"
+                    "Ejemplos true: enviar email fijo, generar informe estándar, exportar a Excel, crear factura con datos fijos.\n"
+                    "Ejemplos false: analizar y decidir, revisar y responder según contenido, evaluar situación."
+                )),
+                HumanMessage(content=instruction),
+            ])
+            can_det = det_response.content.strip().lower().startswith("true")
+        except Exception as det_err:
+            import logging
+            logging.getLogger(__name__).warning("Fallo detección determinismo: %s", det_err)
+        payload["can_be_deterministic"] = can_det
+
         preview_nodes, preview_edges = _generate_preview_nodes(payload)
         payload["ui_nodes"] = preview_nodes
         payload["ui_edges"] = preview_edges

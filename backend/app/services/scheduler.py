@@ -56,6 +56,9 @@ async def start_scheduler() -> None:
         register_jobs()
         scheduler.start()
         logger.info("Scheduler arrancado")
+        # Catch-up: ejecutar workflows perdidos mientras la app estaba cerrada
+        from app.workers.tasks_scheduler import catchup_missed_workflows
+        await catchup_missed_workflows()
     except Exception as e:
         logger.error("Error arrancando scheduler (no es fatal): %s", e)
 

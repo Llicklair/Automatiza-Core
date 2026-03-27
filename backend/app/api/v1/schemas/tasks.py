@@ -14,6 +14,7 @@ class TaskCreate(BaseModel):
     domain: str
     user_intent: str
     additional_metadata: dict | None = None
+    parent_task_id: str | None = None
 
 
 class TaskOut(BaseModel):

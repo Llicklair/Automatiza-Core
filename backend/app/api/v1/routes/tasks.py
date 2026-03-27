@@ -20,13 +20,23 @@ async def create_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    metadata = payload.additional_metadata or {}
+
+    # Conversación multi-turno: cargar historial del padre
+    if payload.parent_task_id:
+        conversation_history = await _build_conversation_history(
+            db, UUID(payload.parent_task_id), current_user.tenant_id
+        )
+        metadata["parent_task_id"] = payload.parent_task_id
+        metadata["conversation_history"] = conversation_history
+
     task = Task(
         tenant_id=current_user.tenant_id,
         created_by=current_user.id,
         domain=payload.domain,
         user_intent=payload.user_intent,
         status="pending",
-        additional_metadata=payload.additional_metadata or {},
+        additional_metadata=metadata,
     )
     db.add(task)
     await db.commit()
@@ -189,6 +199,44 @@ async def get_task_audit(
             e.llm_response = None
 
     return entries
+
+
+async def _build_conversation_history(
+    db: AsyncSession, parent_task_id: UUID, tenant_id: UUID, max_turns: int = 10
+) -> list[dict]:
+    """Recorre la cadena de tareas padre para construir historial de conversación."""
+    history: list[dict] = []
+    current_id = parent_task_id
+
+    for _ in range(max_turns):
+        result = await db.execute(
+            select(Task).where(Task.id == current_id, Task.tenant_id == tenant_id)
+        )
+        task = result.scalar_one_or_none()
+        if not task:
+            break
+
+        # Extraer respuesta del asistente desde agent_results
+        assistant_msg = ""
+        if task.agent_results:
+            for r in (task.agent_results if isinstance(task.agent_results, list) else []):
+                output = r.get("output", {})
+                if output.get("response"):
+                    assistant_msg = output["response"]
+                    break
+
+        history.insert(0, {"role": "user", "content": task.user_intent or ""})
+        if assistant_msg:
+            history.insert(1, {"role": "assistant", "content": assistant_msg})
+
+        # Subir al padre
+        meta = task.additional_metadata or {}
+        parent = meta.get("parent_task_id")
+        if not parent:
+            break
+        current_id = UUID(parent)
+
+    return history
 
 
 async def _enqueue_task(task_id: str):

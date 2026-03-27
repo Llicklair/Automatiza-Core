@@ -7,6 +7,7 @@ import { Plus, X, ChevronDown, Bot, Clock, CheckCircle2, AlertCircle, Loader2, R
 import InfoBanner from "@/components/InfoBanner";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
+import { useNavigationGuard } from "@/stores/navigationGuard";
 
 const STATUS_COLOR: Record<string, string> = {
     pending: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20",
@@ -276,8 +277,9 @@ export default function TareasPage() {
     const [error, setError] = useState("");
     const [chatQuery, setChatQuery] = useState("");
     const [chatLoading, setChatLoading] = useState(false);
-    const [chatAnswer, setChatAnswer] = useState<string | null>(null);
+    const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
     const refreshKey = useNotificationStore((s) => s.refreshKey);
+    const setGuard = useNavigationGuard((s) => s.setGuard);
 
     const load = () => {
         setLoading(true);
@@ -302,6 +304,13 @@ export default function TareasPage() {
     }, [refreshKey]);
 
     useEffect(() => {
+        const active = showNew || creating || chatLoading || hasActive;
+        setGuard(active, "Hay una tarea IA en ejecución. Si cambias de sección perderás el progreso visible.");
+        return () => { if (active) setGuard(false); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showNew, creating, chatLoading, hasActive]);
+
+    useEffect(() => {
         const interval = setInterval(loadSilent, hasActive ? 2000 : 10000);
         return () => clearInterval(interval);
     }, [hasActive]);
@@ -316,11 +325,13 @@ export default function TareasPage() {
 
     async function handleChat() {
         if (!chatQuery.trim() || chatLoading) return;
+        const userText = chatQuery.trim();
+        setChatQuery("");
         setChatLoading(true);
-        setChatAnswer(null);
+        setChatMessages(prev => [...prev, { role: "user", content: userText }]);
         try {
-            const task = await api.tasks.create("chat", chatQuery);
-            setChatQuery("");
+            const task = await api.tasks.create("chat", userText);
+            let answer = "";
             for (let i = 0; i < 30; i++) {
                 await new Promise(r => setTimeout(r, 1000));
                 const updated = await api.tasks.get(task.id);
@@ -329,19 +340,19 @@ export default function TareasPage() {
                     if (Array.isArray(results)) {
                         for (let j = results.length - 1; j >= 0; j--) {
                             if (results[j]?.output?.response) {
-                                setChatAnswer(results[j].output.response);
+                                answer = results[j].output.response;
                                 break;
                             }
                         }
                     }
-                    if (!chatAnswer && updated.error_message) {
-                        setChatAnswer(`Error: ${updated.error_message}`);
-                    }
+                    if (!answer) answer = updated.error_message ? `Error: ${updated.error_message}` : "No se obtuvo respuesta.";
                     break;
                 }
             }
+            if (!answer) answer = "La IA tardó demasiado. Inténtalo de nuevo.";
+            setChatMessages(prev => [...prev, { role: "assistant", content: answer }]);
         } catch (e: any) {
-            setChatAnswer(`Error: ${e.message || "No se pudo procesar"}`);
+            setChatMessages(prev => [...prev, { role: "assistant", content: `Error: ${e.message || "No se pudo procesar"}` }]);
         } finally {
             setChatLoading(false);
         }
@@ -394,8 +405,8 @@ export default function TareasPage() {
         }
     }
 
-    const activeTasks = tasks.filter(t => !["done", "failed", "cancelled"].includes(t.status));
-    const doneTasks = tasks.filter(t => ["done", "failed", "cancelled"].includes(t.status));
+    const activeTasks = tasks.filter(t => t.domain !== "chat" && !["done", "failed", "cancelled"].includes(t.status));
+    const doneTasks = tasks.filter(t => t.domain !== "chat" && ["done", "failed", "cancelled"].includes(t.status));
 
     return (
         <div className="p-8 max-w-5xl mx-auto">
@@ -421,7 +432,7 @@ export default function TareasPage() {
                         title="Eliminar todas las tareas — las activas se cancelan"
                     >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Limpiar historial{tasks.length > 0 ? ` (${tasks.length})` : ""}
+                        Limpiar historial{(activeTasks.length + doneTasks.length) > 0 ? ` (${activeTasks.length + doneTasks.length})` : ""}
                     </button>
                     <button
                         onClick={() => setShowNew(true)}
@@ -445,37 +456,67 @@ export default function TareasPage() {
                 </p>
             </InfoBanner>
 
-            {/* Chat rápido con la IA */}
-            <div className="mb-8 bg-[#111113] border border-indigo-500/30 rounded-2xl p-5 relative overflow-hidden shadow-lg shadow-indigo-500/5">
-                <div className="flex gap-3 items-center">
-                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400">
-                        <Bot className="w-5 h-5" />
+            {/* Chat con la IA */}
+            <div className="mb-8 bg-[#111113] border border-indigo-500/30 rounded-2xl overflow-hidden shadow-lg shadow-indigo-500/5">
+                {/* Cabecera */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-indigo-500/15">
+                    <div className="flex items-center gap-2 text-indigo-300 text-sm font-medium">
+                        <Bot className="w-4 h-4" /> Asistente IA
                     </div>
-                    <div className="flex-1">
-                        <div className="flex bg-[#09090b] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-indigo-500 transition-colors">
-                            <input type="text" value={chatQuery}
-                                onChange={(e) => { setChatQuery(e.target.value); if (chatAnswer) setChatAnswer(null); }}
-                                onKeyDown={(e) => e.key === "Enter" && handleChat()}
-                                placeholder="Pregunta lo que quieras... ej: ¿Cuántas facturas pendientes tengo?"
-                                className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-zinc-600" />
-                            <button onClick={handleChat} disabled={chatLoading || !chatQuery.trim()}
-                                className="px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
-                                {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                                {chatLoading ? "Pensando..." : "Preguntar"}
-                            </button>
-                        </div>
-                    </div>
+                    {chatMessages.length > 0 && (
+                        <button onClick={() => setChatMessages([])} className="text-xs text-zinc-600 hover:text-zinc-400 transition">
+                            Limpiar conversación
+                        </button>
+                    )}
                 </div>
-                {chatAnswer && (
-                    <div className="mt-4 ml-13 flex gap-3 items-start">
-                        <div className="p-1.5 rounded-lg bg-indigo-500/20 flex-shrink-0">
-                            <Bot className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        <div className="flex-1 bg-[#09090b] border border-indigo-500/20 rounded-2xl rounded-tl-sm px-5 py-4">
-                            <p className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap">{chatAnswer}</p>
-                        </div>
+                {/* Historial de mensajes */}
+                {chatMessages.length > 0 && (
+                    <div className="px-5 py-4 space-y-4 max-h-80 overflow-y-auto">
+                        {chatMessages.map((msg, i) => (
+                            msg.role === "user" ? (
+                                <div key={i} className="flex justify-end">
+                                    <div className="bg-indigo-600/20 border border-indigo-500/20 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[80%]">
+                                        <p className="text-sm text-indigo-100 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div key={i} className="flex gap-2.5 items-start">
+                                    <div className="p-1.5 rounded-lg bg-indigo-500/20 flex-shrink-0 mt-0.5">
+                                        <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                                    </div>
+                                    <div className="bg-[#09090b] border border-zinc-800 rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[85%]">
+                                        <p className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                    </div>
+                                </div>
+                            )
+                        ))}
+                        {chatLoading && (
+                            <div className="flex gap-2.5 items-center">
+                                <div className="p-1.5 rounded-lg bg-indigo-500/20 flex-shrink-0">
+                                    <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                                </div>
+                                <div className="bg-[#09090b] border border-zinc-800 rounded-2xl rounded-tl-sm px-4 py-2.5">
+                                    <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
+                {/* Input */}
+                <div className="px-5 py-4">
+                    <div className="flex bg-[#09090b] border border-zinc-800 rounded-xl overflow-hidden focus-within:border-indigo-500 transition-colors">
+                        <input type="text" value={chatQuery}
+                            onChange={(e) => setChatQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleChat()}
+                            placeholder="Pregunta lo que quieras... ej: ¿Cuántas facturas pendientes tengo?"
+                            className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-zinc-600" />
+                        <button onClick={handleChat} disabled={chatLoading || !chatQuery.trim()}
+                            className="px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4" />
+                            Enviar
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Modal nueva tarea */}
