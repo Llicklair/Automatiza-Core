@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import {
-    RefreshCw, CheckCircle2, AlertCircle, Download,
-    Server, Database, Cpu, Loader2, Shield,
+    RefreshCw, CheckCircle2, AlertCircle,
+    Server, Database, Cpu, Loader2, Terminal,
 } from "lucide-react";
 
 interface HealthData {
@@ -16,12 +16,6 @@ interface HealthData {
 export default function ActualizacionesPage() {
     const [health, setHealth] = useState<HealthData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [checking, setChecking] = useState(false);
-    const [updateResult, setUpdateResult] = useState<{
-        update_available: boolean;
-        latest_version?: string;
-        changelog?: string;
-    } | null>(null);
     const [error, setError] = useState("");
 
     async function loadHealth() {
@@ -37,25 +31,7 @@ export default function ActualizacionesPage() {
         }
     }
 
-    async function checkForUpdates() {
-        setChecking(true);
-        setUpdateResult(null);
-        setError("");
-        try {
-            const result = await api.system.checkUpdate();
-            setUpdateResult(result);
-        } catch {
-            setUpdateResult({
-                update_available: false,
-            });
-        } finally {
-            setChecking(false);
-        }
-    }
-
-    useEffect(() => {
-        loadHealth();
-    }, []);
+    useEffect(() => { loadHealth(); }, []);
 
     const checks = health?.checks || {};
 
@@ -63,9 +39,9 @@ export default function ActualizacionesPage() {
         <div className="p-8 max-w-3xl mx-auto space-y-8">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-white">Actualizaciones</h1>
+                <h1 className="text-2xl font-bold text-white">Sistema</h1>
                 <p className="text-sm text-zinc-500 mt-1">
-                    Estado del sistema y actualizaciones disponibles
+                    Estado de los servicios y guía de actualización
                 </p>
             </div>
 
@@ -76,69 +52,17 @@ export default function ActualizacionesPage() {
                 </div>
             )}
 
-            {/* Version actual */}
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
-                            <Shield className="w-6 h-6 text-indigo-400" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-white">AutomatizaPyme</h2>
-                            <p className="text-sm text-zinc-500">
-                                {loading ? "Cargando..." : `Version ${health?.version || "desconocida"}`}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={checkForUpdates}
-                        disabled={checking}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition"
-                    >
-                        {checking ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <RefreshCw className="w-4 h-4" />
-                        )}
-                        {checking ? "Comprobando..." : "Buscar actualizaciones"}
-                    </button>
-                </div>
-
-                {/* Resultado de busqueda */}
-                {updateResult && (
-                    <div className={`mt-4 flex items-center gap-3 px-4 py-3 rounded-xl border ${
-                        updateResult.update_available
-                            ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
-                            : "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
-                    }`}>
-                        {updateResult.update_available ? (
-                            <>
-                                <Download className="w-4 h-4 flex-shrink-0" />
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium">
-                                        Nueva version disponible: {updateResult.latest_version}
-                                    </p>
-                                    {updateResult.changelog && (
-                                        <p className="text-xs mt-1 opacity-80">{updateResult.changelog}</p>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                                <p className="text-sm">Estas usando la version mas reciente</p>
-                            </>
-                        )}
-                    </div>
-                )}
-            </div>
-
             {/* Estado del sistema */}
             <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-[#27272a] flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                         <Server className="w-4 h-4 text-zinc-400" />
                         Estado del sistema
+                        {health?.version && (
+                            <span className="text-xs text-zinc-500 font-normal ml-1">
+                                v{health.version}
+                            </span>
+                        )}
                     </h2>
                     <button
                         onClick={loadHealth}
@@ -151,15 +75,12 @@ export default function ActualizacionesPage() {
                 </div>
 
                 <div className="divide-y divide-[#27272a]">
-                    {/* Servidor */}
                     <StatusRow
                         icon={<Server className="w-4 h-4" />}
                         label="Servidor API"
                         status={health ? "ok" : loading ? "loading" : "error"}
-                        detail={health ? `Respondiendo correctamente` : "Sin conexion"}
+                        detail={health ? "Respondiendo correctamente" : "Sin conexión"}
                     />
-
-                    {/* PostgreSQL */}
                     <StatusRow
                         icon={<Database className="w-4 h-4" />}
                         label="Base de datos"
@@ -174,8 +95,6 @@ export default function ActualizacionesPage() {
                                 : checks.postgres?.error || "No disponible"
                         }
                     />
-
-                    {/* Task Runner */}
                     <StatusRow
                         icon={<Cpu className="w-4 h-4" />}
                         label="Motor de tareas"
@@ -193,13 +112,42 @@ export default function ActualizacionesPage() {
                 </div>
             </div>
 
-            {/* Info de desarrollo */}
-            <div className="text-xs text-zinc-600 text-center space-y-1">
-                <p>Para aplicar actualizaciones de desarrollo:</p>
-                <code className="block bg-zinc-900 text-zinc-400 px-3 py-2 rounded-lg font-mono">
-                    cd desktop &amp;&amp; npm run sync
-                </code>
-                <p className="mt-2">Luego reinicia la aplicacion desde la bandeja del sistema.</p>
+            {/* Cómo actualizar */}
+            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 space-y-4">
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-zinc-400" />
+                    Cómo aplicar una actualización
+                </h2>
+                <p className="text-sm text-zinc-400">
+                    AutomatizaPyme se actualiza sincronizando el código fuente con la app instalada.
+                    No requiere reinstalar el <code className="text-zinc-300">.exe</code>.
+                </p>
+                <ol className="space-y-3 text-sm text-zinc-400">
+                    <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                        <span>Descarga o actualiza el código fuente del proyecto.</span>
+                    </li>
+                    <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                        <div>
+                            <span>Abre un terminal en la carpeta del proyecto y ejecuta:</span>
+                            <code className="block mt-1.5 bg-zinc-900 text-zinc-300 px-3 py-2 rounded-lg font-mono text-xs">
+                                cd desktop &amp;&amp; npm run sync
+                            </code>
+                            <p className="text-xs text-zinc-500 mt-1">
+                                Si hay cambios en el frontend, usa <code className="text-zinc-400">npm run sync:rebuild</code> en su lugar.
+                            </p>
+                        </div>
+                    </li>
+                    <li className="flex gap-3">
+                        <span className="w-5 h-5 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+                        <span>Reinicia la aplicación desde la bandeja del sistema: clic derecho → <strong className="text-zinc-300">Salir</strong>, luego vuelve a abrirla.</span>
+                    </li>
+                </ol>
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/5 border border-amber-500/15 text-amber-300/80 text-xs">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    Si el sync incluye nuevas dependencias Python o migraciones de base de datos, el reinicio las aplicará automáticamente.
+                </div>
             </div>
         </div>
     );

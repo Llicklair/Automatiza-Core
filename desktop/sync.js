@@ -32,11 +32,19 @@ function log(msg) { console.log(`[sync] ${msg}`); }
 function warn(msg) { console.warn(`[sync] WARN: ${msg}`); }
 function error(msg) { console.error(`[sync] ERROR: ${msg}`); process.exit(1); }
 
+const crypto = require("crypto");
+
 const IGNORE_PATTERNS = [
     "node_modules", ".next", "__pycache__", ".venv", "venv",
     ".pyc", ".pyo", ".git", ".DS_Store", "Thumbs.db",
     "dist", "build", ".pytest_cache", ".mypy_cache", ".ruff_cache",
 ];
+
+function fileHash(filePath) {
+    try {
+        return crypto.createHash("md5").update(fs.readFileSync(filePath)).digest("hex");
+    } catch { return null; }
+}
 
 function shouldIgnore(name) {
     return IGNORE_PATTERNS.some(p => name === p || name.endsWith(p));
@@ -106,7 +114,11 @@ function main() {
         error(`Directorio project/ no encontrado en ${TARGET_PROJECT}`);
     }
 
-    // 1. Sync backend
+    // 1. Sync backend — detectar cambios en requirements.txt
+    const reqSrc = path.join(PROJECT_ROOT, "backend", "requirements.txt");
+    const reqDest = path.join(TARGET_PROJECT, "backend", "requirements.txt");
+    const reqHashBefore = fileHash(reqDest);
+
     log("Sincronizando backend...");
     copied = skipped = created = 0;
     syncDir(
@@ -115,6 +127,18 @@ function main() {
     );
     log(`  Backend: ${copied} copiados, ${skipped} sin cambios, ${created} dirs creados`);
 
+    // Si requirements.txt cambió, invalidar hash de deps para forzar reinstalación
+    const reqHashAfter = fileHash(reqDest);
+    if (reqHashBefore !== reqHashAfter) {
+        const APPDATA_DIR = path.join(
+            process.env.APPDATA || path.join(require("os").homedir(), "AppData", "Roaming"),
+            "AutomatizaPyme"
+        );
+        const depsHashFile = path.join(APPDATA_DIR, "deps_requirements.hash");
+        try { fs.unlinkSync(depsHashFile); } catch {}
+        log("  requirements.txt cambió → las dependencias se reinstalarán al iniciar la app");
+    }
+
     // 2. Sync frontend (solo source, no .next ni node_modules)
     log("Sincronizando frontend...");
     copied = skipped = created = 0;
@@ -122,6 +146,7 @@ function main() {
         path.join(PROJECT_ROOT, "frontend"),
         path.join(TARGET_PROJECT, "frontend")
     );
+    const frontendChanged = copied > 0;
     log(`  Frontend: ${copied} copiados, ${skipped} sin cambios, ${created} dirs creados`);
 
     // 3. Sync .env
@@ -132,17 +157,18 @@ function main() {
         log("  .env copiado");
     }
 
-    // 4. Opcionalmente forzar rebuild del frontend
-    if (REBUILD_FRONTEND) {
+    // 4. Borrar .next si el frontend cambió o se pidió rebuild explícito
+    if (REBUILD_FRONTEND || frontendChanged) {
         const nextDir = path.join(TARGET_PROJECT, "frontend", ".next");
         if (fs.existsSync(nextDir)) {
             fs.rmSync(nextDir, { recursive: true, force: true });
-            log("  .next eliminado — el frontend se rebuildeara al iniciar la app");
+            const reason = frontendChanged ? "archivos de frontend cambiaron" : "--rebuild-frontend";
+            log(`  .next eliminado (${reason}) — el frontend se rebuildeará al iniciar la app`);
         }
     }
 
     log("");
-    log("Sincronizacion completada. Reinicia la app para aplicar los cambios.");
+    log("Sincronización completada. Reinicia la app para aplicar los cambios.");
     log("(Cierra desde el system tray > Salir, luego vuelve a abrir)");
 }
 
