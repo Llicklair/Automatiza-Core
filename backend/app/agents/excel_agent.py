@@ -162,19 +162,39 @@ def _detect_datasets(intent: str) -> list[str]:
     return matched or ["facturas"]
 
 
-def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str) -> None:
+def _hex_to_lighter(hex_color: str, factor: float = 0.4) -> str:
+    """Return a lighter version of a hex color by blending toward white."""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    r = int(r + (255 - r) * factor)
+    g = int(g + (255 - g) * factor)
+    b = int(b + (255 - b) * factor)
+    return f"{r:02X}{g:02X}{b:02X}"
+
+
+def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None) -> None:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
+    _theme = theme or {}
+    accent_hex = _theme.get("accent_color", "#1F4E79").lstrip("#")
+    table_style = _theme.get("table_style", "striped")
+
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     header_font = Font(bold=True, color="FFFFFF", size=10)
-    header_fill = PatternFill(fill_type="solid", fgColor="1F4E79")
+    header_fill = PatternFill(fill_type="solid", fgColor=accent_hex)
     header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
     thin_side = Side(style="thin", color="D9D9D9")
     cell_border = Border(left=thin_side, right=thin_side, bottom=thin_side)
-    alt_fill = PatternFill(fill_type="solid", fgColor="EBF3FB")
+
+    if table_style == "minimal":
+        alt_fill = None
+    elif table_style == "bold":
+        alt_fill = PatternFill(fill_type="solid", fgColor=_hex_to_lighter(accent_hex))
+    else:  # "striped" (default)
+        alt_fill = PatternFill(fill_type="solid", fgColor="EBF3FB")
 
     for sheet_name, df in sheets.items():
         ws = wb.create_sheet(title=sheet_name[:31])
@@ -188,7 +208,7 @@ def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str) -> None:
             cell.alignment = header_align
             cell.border = cell_border
         for row_idx, row in enumerate(df.itertuples(index=False), start=2):
-            fill = alt_fill if row_idx % 2 == 0 else None
+            fill = alt_fill if (alt_fill and row_idx % 2 == 0) else None
             for col_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.border = cell_border
@@ -262,7 +282,17 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
     if not sheets:
         return f"Error: No se reconocieron los datasets '{datasets_str}'. Opciones: {', '.join(_FETCHER_MAP.keys())}"
 
-    _write_excel(sheets, output_path)
+    from uuid import UUID as _UUID
+    from app.api.v1.routes.templates import get_default_theme
+
+    _theme = None
+    try:
+        async with AsyncSessionLocal() as _db:
+            _theme = await get_default_theme(_UUID(tenant_id), "excel", _db)
+    except Exception:
+        pass
+
+    _write_excel(sheets, output_path, theme=_theme)
 
     # Registrar en BD
     async with AsyncSessionLocal() as db:

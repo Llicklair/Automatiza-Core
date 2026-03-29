@@ -6,6 +6,7 @@ from datetime import datetime
 
 from app.services._pdf_base import (
     REPORTLAB_AVAILABLE, _common_styles, _fmt_eur, _make_doc, _table_header_style, _format_date,
+    build_theme, table_style_commands,
 )
 
 if REPORTLAB_AVAILABLE:
@@ -21,212 +22,235 @@ if REPORTLAB_AVAILABLE:
 # Factura estándar
 # ---------------------------------------------------------------------------
 
-def generate_invoice_pdf(invoice_data: dict) -> bytes:
+def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -> bytes:
     """
     Genera un PDF de factura a partir de los datos del invoice.
-
-    invoice_data debe contener:
-    - number: str (número de factura)
-    - date: str (fecha en ISO)
-    - client: dict con name, nif, address, email
-    - lines: list de dict con description, quantity, unit_price, tax_percentage, total
-    - amount_base: float
-    - tax_amount: float
-    - amount_total: float
-    - company: dict con name, nif, address, phone (datos del emisor)
+    theme_config: dict con accent_color, font_family, layout_style, header_style, table_style, logo_position, footer_text
     """
     if not REPORTLAB_AVAILABLE:
         return _generate_simple_text_pdf(invoice_data)
 
-    buffer = io.BytesIO()
+    th = build_theme(theme_config)
+    acc = th["accent_color"]
+    font = th["_font"]
+    bold = th["_font_bold"]
 
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=15*mm,
-        leftMargin=15*mm,
-        topMargin=8*mm,
-        bottomMargin=15*mm,
-    )
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        rightMargin=15*mm, leftMargin=15*mm,
+        topMargin=8*mm if th["header_style"] != "color_band" else 0,
+        bottomMargin=15*mm)
 
     styles = getSampleStyleSheet()
 
-    # Estilos personalizados
-    title_style = ParagraphStyle(
-        'Title', parent=styles['Normal'],
-        fontSize=20, fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#1e293b'),
-    )
-    header_style = ParagraphStyle(
-        'Header', parent=styles['Normal'],
-        fontSize=9, fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#64748b'),
-    )
-    body_style = ParagraphStyle(
-        'Body', parent=styles['Normal'],
-        fontSize=9, fontName='Helvetica',
-        textColor=colors.HexColor('#1e293b'),
-    )
-    right_style = ParagraphStyle(
-        'Right', parent=styles['Normal'],
-        fontSize=9, fontName='Helvetica',
-        textColor=colors.HexColor('#1e293b'),
-        alignment=TA_RIGHT,
-    )
-    total_style = ParagraphStyle(
-        'Total', parent=styles['Normal'],
-        fontSize=14, fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#6366f1'),
-        alignment=TA_RIGHT,
-    )
+    title_sty  = ParagraphStyle('T_title',  parent=styles['Normal'], fontSize=20, fontName=bold,  textColor=colors.HexColor('#1e293b'))
+    header_sty = ParagraphStyle('T_header', parent=styles['Normal'], fontSize=9,  fontName=bold,  textColor=colors.HexColor('#64748b'))
+    body_sty   = ParagraphStyle('T_body',   parent=styles['Normal'], fontSize=9,  fontName=font,  textColor=colors.HexColor('#1e293b'))
+    right_sty  = ParagraphStyle('T_right',  parent=styles['Normal'], fontSize=9,  fontName=font,  textColor=colors.HexColor('#1e293b'), alignment=TA_RIGHT)
+    total_sty  = ParagraphStyle('T_total',  parent=styles['Normal'], fontSize=14, fontName=bold,  textColor=colors.HexColor(acc), alignment=TA_RIGHT)
 
     elements = []
-
-    # ── CABECERA ──
     company = invoice_data.get('company', {})
-    client = invoice_data.get('client', {})
+    client  = invoice_data.get('client', {})
 
-    header_data = [
-        [
-            [
-                Paragraph(company.get('name') or 'Mi Empresa S.L.', title_style),
-                Spacer(1, 15),
-                Paragraph(f"NIF: {company.get('nif', 'B00000000')}", body_style),
-                Paragraph(company.get('address', ''), body_style),
-                Paragraph(company.get('phone', ''), body_style),
-                Paragraph(company.get('email', ''), body_style) if company.get('email') else Spacer(1, 0),
-            ],
-            [
+    # ── CABECERA según header_style ──────────────────────────────────────────
+    h_style = th["header_style"]
+
+    if h_style == "color_band":
+        # Banda de color full-width con datos empresa en blanco
+        band_sty   = ParagraphStyle('T_band',   parent=styles['Normal'], fontSize=18, fontName=bold,  textColor=colors.white)
+        band_sub   = ParagraphStyle('T_bandsub', parent=styles['Normal'], fontSize=8,  fontName=font, textColor=colors.HexColor('#e0e7ff'))
+        band_right = ParagraphStyle('T_bandr',  parent=styles['Normal'], fontSize=20, fontName=bold,  textColor=colors.white, alignment=TA_RIGHT)
+        band_rsub  = ParagraphStyle('T_bandrs', parent=styles['Normal'], fontSize=9,  fontName=font, textColor=colors.HexColor('#e0e7ff'), alignment=TA_RIGHT)
+
+        logo_col = [
+            Paragraph(company.get('name') or 'Mi Empresa S.L.', band_sty),
+            Spacer(1, 4),
+            Paragraph(f"NIF: {company.get('nif', 'B00000000')} · {company.get('address', '')}", band_sub),
+            Paragraph(company.get('phone', '') + (' · ' + company.get('email', '') if company.get('email') else ''), band_sub),
+        ]
+        inv_col = [
+            Paragraph("FACTURA", band_right),
+            Spacer(1, 4),
+            Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", band_rsub),
+            Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", band_rsub),
+        ]
+        band_table = Table([[logo_col, inv_col]], colWidths=[110*mm, 70*mm])
+        band_table.setStyle(TableStyle([
+            ('BACKGROUND',  (0, 0), (-1, -1), colors.HexColor(acc)),
+            ('VALIGN',      (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('RIGHTPADDING',(0, 0), (-1, -1), 12),
+            ('TOPPADDING',  (0, 0), (-1, -1), 14),
+            ('BOTTOMPADDING',(0, 0), (-1, -1), 14),
+        ]))
+        elements.append(band_table)
+        elements.append(Spacer(1, 6*mm))
+
+    elif h_style == "dark_band":
+        dark_sty  = ParagraphStyle('T_dark',  parent=styles['Normal'], fontSize=18, fontName=bold, textColor=colors.white)
+        dark_sub  = ParagraphStyle('T_darks', parent=styles['Normal'], fontSize=8,  fontName=font, textColor=colors.HexColor('#94a3b8'))
+        dark_r    = ParagraphStyle('T_darkr', parent=styles['Normal'], fontSize=20, fontName=bold, textColor=colors.HexColor(acc), alignment=TA_RIGHT)
+        dark_rsub = ParagraphStyle('T_darkrs',parent=styles['Normal'], fontSize=9,  fontName=font, textColor=colors.HexColor('#94a3b8'), alignment=TA_RIGHT)
+        logo_col = [
+            Paragraph(company.get('name') or 'Mi Empresa S.L.', dark_sty),
+            Spacer(1, 4),
+            Paragraph(f"NIF: {company.get('nif', 'B00000000')} · {company.get('address', '')}", dark_sub),
+            Paragraph(company.get('phone', ''), dark_sub),
+        ]
+        inv_col = [
+            Paragraph("FACTURA", dark_r),
+            Spacer(1, 4),
+            Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", dark_rsub),
+            Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", dark_rsub),
+        ]
+        band_table = Table([[logo_col, inv_col]], colWidths=[110*mm, 70*mm])
+        band_table.setStyle(TableStyle([
+            ('BACKGROUND',  (0, 0), (-1, -1), colors.HexColor('#1e293b')),
+            ('VALIGN',      (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('RIGHTPADDING',(0, 0), (-1, -1), 12),
+            ('TOPPADDING',  (0, 0), (-1, -1), 14),
+            ('BOTTOMPADDING',(0, 0), (-1, -1), 14),
+        ]))
+        elements.append(band_table)
+        elements.append(Spacer(1, 6*mm))
+
+    else:
+        # line_only / none — layout clásico/minimal
+        logo_pos = th["logo_position"]
+        company_block = [
+            Paragraph(company.get('name') or 'Mi Empresa S.L.', title_sty),
+            Spacer(1, 8),
+            Paragraph(f"NIF: {company.get('nif', 'B00000000')}", body_sty),
+            Paragraph(company.get('address', ''), body_sty),
+            Paragraph(company.get('phone', ''), body_sty),
+        ]
+        inv_block = [
+            Spacer(1, 4),
+            Paragraph("FACTURA", ParagraphStyle('T_ftitle', parent=styles['Normal'],
+                fontSize=18, fontName=bold, textColor=colors.HexColor(acc), alignment=TA_RIGHT)),
+            Spacer(1, 6),
+            Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", right_sty),
+            Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", right_sty),
+        ]
+        if logo_pos == "right":
+            cols = [inv_block, company_block]
+            widths = [80*mm, 100*mm]
+        elif logo_pos == "center":
+            # empresa centrada, número a la derecha
+            center_sty = ParagraphStyle('T_ccenter', parent=styles['Normal'],
+                fontSize=20, fontName=bold, textColor=colors.HexColor('#1e293b'), alignment=TA_CENTER)
+            center_sub = ParagraphStyle('T_ccsub',   parent=styles['Normal'],
+                fontSize=9, fontName=font, textColor=colors.HexColor('#64748b'), alignment=TA_CENTER)
+            center_block = [
+                Paragraph(company.get('name') or 'Mi Empresa S.L.', center_sty),
                 Spacer(1, 4),
-                Paragraph("FACTURA", ParagraphStyle('FTitle', parent=styles['Normal'],
-                    fontSize=18, fontName='Helvetica-Bold',
-                    textColor=colors.HexColor('#6366f1'), alignment=TA_RIGHT)),
-                Spacer(1, 6),
-                Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", right_style),
-                Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", right_style),
-            ],
-        ]
-    ]
+                Paragraph(f"NIF: {company.get('nif', 'B00000000')}", center_sub),
+                Paragraph(company.get('address', ''), center_sub),
+            ]
+            cols = [center_block, inv_block]
+            widths = [100*mm, 80*mm]
+        else:
+            cols = [company_block, inv_block]
+            widths = [100*mm, 80*mm]
 
-    header_table = Table(header_data, colWidths=[100*mm, 80*mm])
-    header_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-    ]))
-    elements.append(header_table)
-    elements.append(Spacer(1, 6*mm))
-    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
-    elements.append(Spacer(1, 6*mm))
+        ht = Table([cols], colWidths=widths)
+        ht.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(ht)
+        elements.append(Spacer(1, 5*mm))
+        if h_style == "line_only":
+            line_color = colors.HexColor(acc) if th["layout_style"] == "minimal" else colors.HexColor('#e2e8f0')
+            thickness = 1.5 if th["layout_style"] == "minimal" else 1
+            elements.append(HRFlowable(width="100%", thickness=thickness, color=line_color))
+        elements.append(Spacer(1, 5*mm))
 
-    # ── CLIENTE ──
-    elements.append(Paragraph("FACTURAR A:", header_style))
+    # ── CLIENTE ──────────────────────────────────────────────────────────────
+    elements.append(Paragraph("FACTURAR A:", header_sty))
     elements.append(Spacer(1, 2*mm))
-    elements.append(Paragraph(client.get('name', '—'), ParagraphStyle(
-        'ClientName', parent=styles['Normal'],
-        fontSize=11, fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#1e293b'),
-    )))
-    if client.get('nif'):
-        elements.append(Paragraph(f"NIF/CIF: {client['nif']}", body_style))
-    if client.get('email'):
-        elements.append(Paragraph(f"Email: {client['email']}", body_style))
-    if client.get('address'):
-        elements.append(Paragraph(client['address'], body_style))
-
+    elements.append(Paragraph(client.get('name', '—'), ParagraphStyle('T_cname',
+        parent=styles['Normal'], fontSize=11, fontName=bold, textColor=colors.HexColor('#1e293b'))))
+    for field, label in [('nif', 'NIF/CIF'), ('email', 'Email'), ('address', None)]:
+        if client.get(field):
+            txt = f"{label}: {client[field]}" if label else client[field]
+            elements.append(Paragraph(txt, body_sty))
     elements.append(Spacer(1, 6*mm))
 
-    # ── LÍNEAS DE FACTURA ──
+    # ── LÍNEAS ───────────────────────────────────────────────────────────────
     col_widths = [80*mm, 20*mm, 22*mm, 20*mm, 26*mm]
-    table_data = [
-        [
-            Paragraph('Descripción', header_style),
-            Paragraph('Cant.', header_style),
-            Paragraph('Precio unit.', header_style),
-            Paragraph('IVA', header_style),
-            Paragraph('Total', right_style),
-        ]
-    ]
-
-    for line in invoice_data.get('lines', []):
+    invoice_lines = invoice_data.get('lines', [])
+    table_data = [[
+        Paragraph('Descripción', header_sty),
+        Paragraph('Cant.',       header_sty),
+        Paragraph('Precio unit.',header_sty),
+        Paragraph('IVA',         header_sty),
+        Paragraph('Total',       right_sty),
+    ]]
+    for line in invoice_lines:
         table_data.append([
-            Paragraph(str(line.get('description', '')), body_style),
-            Paragraph(str(line.get('quantity', 1)), body_style),
-            Paragraph(f"{float(line.get('unit_price', 0)):.2f} €", body_style),
-            Paragraph(f"{float(line.get('tax_percentage', 21)):.0f}%", body_style),
-            Paragraph(f"{float(line.get('total', 0)):.2f} €", right_style),
+            Paragraph(str(line.get('description', '')),  body_sty),
+            Paragraph(str(line.get('quantity', 1)),       body_sty),
+            Paragraph(f"{float(line.get('unit_price', 0)):.2f} €",       body_sty),
+            Paragraph(f"{float(line.get('tax_percentage', 21)):.0f}%",   body_sty),
+            Paragraph(f"{float(line.get('total', 0)):.2f} €",            right_sty),
         ])
-
     lines_table = Table(table_data, colWidths=col_widths)
-    lines_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8fafc')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#64748b')),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#e2e8f0')),
-        ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.HexColor('#f1f5f9')),
-        ('ALIGN', (-1, 0), (-1, -1), 'RIGHT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
+    lines_table.setStyle(TableStyle(
+        table_style_commands(th, len(invoice_lines)) + [('ALIGN', (-1, 0), (-1, -1), 'RIGHT')]
+    ))
     elements.append(lines_table)
     elements.append(Spacer(1, 6*mm))
 
-    # ── TOTALES ──
-    base = float(invoice_data.get('amount_base', 0))
-    tax = float(invoice_data.get('tax_amount', 0))
+    # ── TOTALES ──────────────────────────────────────────────────────────────
+    base  = float(invoice_data.get('amount_base',  0))
+    tax   = float(invoice_data.get('tax_amount',   0))
     total = float(invoice_data.get('amount_total', 0))
 
+    # Color de fondo del total según preset
+    total_bg = colors.HexColor(acc + '22') if len(acc) == 7 else colors.HexColor('#eef2ff')
     totals_data = [
-        [Paragraph('Base imponible:', right_style), Paragraph(f'{base:.2f} €', right_style)],
-        [Paragraph('IVA:', right_style), Paragraph(f'{tax:.2f} €', right_style)],
-        [Paragraph('TOTAL:', ParagraphStyle('TotalLabel', parent=styles['Normal'],
-            fontSize=12, fontName='Helvetica-Bold',
-            textColor=colors.HexColor('#6366f1'), alignment=TA_RIGHT)),
-         Paragraph(f'{total:.2f} €', total_style)],
+        [Paragraph('Base imponible:', right_sty), Paragraph(f'{base:.2f} €',  right_sty)],
+        [Paragraph('IVA:',            right_sty), Paragraph(f'{tax:.2f} €',   right_sty)],
+        [Paragraph('TOTAL:', ParagraphStyle('T_tlbl', parent=styles['Normal'],
+            fontSize=12, fontName=bold, textColor=colors.HexColor(acc), alignment=TA_RIGHT)),
+         Paragraph(f'{total:.2f} €', total_sty)],
     ]
-
     totals_table = Table(totals_data, colWidths=[130*mm, 40*mm], hAlign='RIGHT')
     totals_table.setStyle(TableStyle([
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LINEABOVE', (0, 2), (-1, 2), 1, colors.HexColor('#e2e8f0')),
-        ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#eef2ff')),
+        ('LINEABOVE',     (0, 2), (-1, 2),  1, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND',    (0, 2), (-1, 2),  total_bg),
     ]))
     elements.append(totals_table)
-    elements.append(Spacer(1, 6*mm))
 
-    # ── NOTAS Y FORMA DE PAGO ──
+    # ── NOTAS Y PAGO ─────────────────────────────────────────────────────────
     payment_terms = invoice_data.get('payment_terms') or ""
-    notes = invoice_data.get('notes') or ""
+    notes         = invoice_data.get('notes') or ""
     if payment_terms or notes:
-        elements.append(Spacer(1, 15*mm))
+        elements.append(Spacer(1, 8*mm))
         if payment_terms:
-            elements.append(Paragraph("FORMA DE PAGO", header_style))
+            elements.append(Paragraph("FORMA DE PAGO", header_sty))
             elements.append(Spacer(1, 1.5*mm))
-            elements.append(Paragraph(str(payment_terms), body_style))
+            elements.append(Paragraph(str(payment_terms), body_sty))
             elements.append(Spacer(1, 4*mm))
         if notes:
-            elements.append(Paragraph("NOTAS", header_style))
+            elements.append(Paragraph("NOTAS", header_sty))
             elements.append(Spacer(1, 1.5*mm))
-            elements.append(Paragraph(str(notes), body_style))
-        elements.append(Spacer(1, 8*mm))
+            elements.append(Paragraph(str(notes), body_sty))
 
-    # ── PIE ──
+    # ── PIE ──────────────────────────────────────────────────────────────────
+    elements.append(Spacer(1, 6*mm))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e2e8f0')))
     elements.append(Spacer(1, 3*mm))
-    elements.append(Paragraph(
-        "Documento generado automáticamente por AutomatizaPyme · Gracias por su confianza.",
-        ParagraphStyle('Footer', parent=styles['Normal'],
-            fontSize=7, fontName='Helvetica',
-            textColor=colors.HexColor('#94a3b8'),
-            alignment=TA_CENTER)
-    ))
+    footer_text = th.get("footer_text") or "Documento generado automáticamente por AutomatizaPyme · Gracias por su confianza."
+    elements.append(Paragraph(footer_text, ParagraphStyle('T_foot',
+        parent=styles['Normal'], fontSize=7, fontName=font,
+        textColor=colors.HexColor('#94a3b8'), alignment=TA_CENTER)))
 
     doc.build(elements)
     return buffer.getvalue()

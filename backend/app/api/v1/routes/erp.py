@@ -12,6 +12,7 @@ All endpoints have been split into dedicated modules:
 
 from fastapi import APIRouter
 
+from app.api.v1.routes.albaranes import router as albaranes_router
 from app.api.v1.routes.clients import router as clients_router
 from app.api.v1.routes.invoices import router as invoices_router
 from app.api.v1.routes.products import router as products_router
@@ -27,3 +28,4 @@ router.include_router(invoices_router)
 router.include_router(sales_orders_router)
 router.include_router(purchase_orders_router)
 router.include_router(recurring_invoices_router)
+router.include_router(albaranes_router)

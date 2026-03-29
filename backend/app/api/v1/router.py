@@ -17,6 +17,7 @@ from app.api.v1.routes import (
     reports,
     skills,
     tasks,
+    templates,
     tenant,
     workflows,
 )
@@ -41,3 +42,4 @@ api_router.include_router(skills.router)
 api_router.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
 api_router.include_router(reports.router)
 api_router.include_router(tenant.router)
+api_router.include_router(templates.router, prefix="/templates", tags=["templates"])

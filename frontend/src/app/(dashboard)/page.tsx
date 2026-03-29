@@ -453,6 +453,43 @@ export default function DashboardPage() {
                 {/* Columna Derecha Estrecha: Panel Operativo de Automatización */}
                 <div className="space-y-6">
 
+                    {/* Actividad IA — primera porque es lo más importante */}
+                    <div className="bg-[#111113] border border-indigo-500/30 rounded-2xl overflow-hidden shadow-lg shadow-indigo-500/10">
+                        <div className="px-5 py-4 border-b border-indigo-500/15 bg-gradient-to-r from-indigo-500/15 to-transparent flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-indigo-300 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-indigo-400" /> Actividad IA
+                            </h2>
+                            <Link href="/tareas" className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors flex items-center gap-1">
+                                Ver todo <ArrowRight className="w-3 h-3" />
+                            </Link>
+                        </div>
+                        <div className="divide-y divide-[#27272a] max-h-[280px] overflow-y-auto">
+                            {loading ? (
+                                <div className="p-6 text-center text-indigo-500/50 text-xs">Cargando actividad...</div>
+                            ) : tasks.length === 0 ? (
+                                <div className="p-8 text-center flex flex-col items-center gap-2">
+                                    <BrainCircuit className="w-8 h-8 text-zinc-700" />
+                                    <p className="text-xs text-zinc-500">Sin actividad reciente.<br />Usa el asistente para empezar.</p>
+                                </div>
+                            ) : (
+                                tasks.map(task => (
+                                    <div key={task.id} className="p-4 flex flex-col gap-2 hover:bg-indigo-500/5 transition-colors">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-xs text-zinc-200 line-clamp-2 leading-relaxed">
+                                                {task.user_intent}
+                                            </p>
+                                            <StatusBadge status={task.status} />
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[10px] text-zinc-600 font-mono">
+                                            <Clock className="w-3 h-3" />
+                                            {new Date(task.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
                     {/* Aprobaciones Pendientes */}
                     <div className="bg-[#111113] border border-amber-500/20 rounded-2xl overflow-hidden shadow-lg shadow-amber-500/5">
                         <div className="px-5 py-4 border-b border-amber-500/10 bg-gradient-to-r from-amber-500/10 to-transparent flex items-center gap-2">
@@ -487,42 +524,6 @@ export default function DashboardPage() {
                                     </div>
                                 ))
                             )}
-                        </div>
-                    </div>
-
-                    {/* Actividad de IAs (Tareas) */}
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
-                        <div className="px-5 py-4 border-b border-[#27272a] flex items-center justify-between bg-zinc-900/30">
-                            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                                <Activity className="w-4 h-4 text-indigo-400" /> Actividad Inteligente
-                            </h2>
-                        </div>
-                        <div className="divide-y divide-[#27272a] max-h-[300px] overflow-y-auto">
-                            {loading ? (
-                                <div className="p-6 text-center text-zinc-500 text-xs">Leyendo logs...</div>
-                            ) : tasks.length === 0 ? (
-                                <div className="p-6 text-center text-zinc-500 text-xs">Sin actividad reciente</div>
-                            ) : (
-                                tasks.map(task => (
-                                    <div key={task.id} className="p-4 flex flex-col gap-2">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <p className="text-xs text-zinc-300 line-clamp-2 max-w-[200px] leading-relaxed">
-                                                {task.user_intent}
-                                            </p>
-                                            <StatusBadge status={task.status} />
-                                        </div>
-                                        <div className="flex items-center gap-2 text-[10px] text-zinc-600 font-mono">
-                                            <Clock className="w-3 h-3" />
-                                            {new Date(task.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <div className="p-3 border-t border-[#27272a] bg-black/20 text-center">
-                            <Link href="/tareas" className="text-[11px] font-medium text-zinc-400 hover:text-white transition-colors">
-                                Ver todo el historial
-                            </Link>
                         </div>
                     </div>
 

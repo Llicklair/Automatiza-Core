@@ -9,6 +9,7 @@ Módulos internos:
   _llm_gemini.py — Sanitizer de mensajes + wrapper para Gemini
 """
 import logging
+from contextvars import ContextVar
 from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -17,6 +18,14 @@ from langchain_openai import ChatOpenAI
 from app.core.config import settings
 from app.core._llm_mock import MockChatModel
 from app.core._llm_gemini import GeminiSafeWrapper
+
+# ContextVar para propagar el LLM del tenant a todos los agentes del mismo request
+_tenant_llm_ctx: ContextVar = ContextVar("_tenant_llm_ctx", default=None)
+
+
+def set_tenant_llm_context(llm) -> None:
+    """Almacena el LLM resuelto del tenant en el contexto async actual."""
+    _tenant_llm_ctx.set(llm)
 
 
 def get_llm(
@@ -30,6 +39,13 @@ def get_llm(
     Soporta: groq, gemini, openai, anthropic, openrouter.
     Fallback final: MockChatModel (solo en testing) o lanza error en producción.
     """
+    # Si hay un LLM de tenant precargado (vía set_tenant_llm_context) y no se fuerza un provider,
+    # usarlo directamente para respetar la configuración del usuario en la UI.
+    if provider is None and format_output != "json":
+        ctx_llm = _tenant_llm_ctx.get()
+        if ctx_llm is not None:
+            return ctx_llm
+
     selected_provider = provider or settings.DEFAULT_LLM_PROVIDER.lower()
     mock_fallback = MockChatModel()
 
@@ -351,7 +367,7 @@ def _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_f
         if not settings.OPENAI_API_KEY:
             return mock_fallback
         kwargs = {
-            "model_name": settings.OPENAI_MODEL or "gpt-4o",
+            "model_name": settings.OPENAI_MODEL or "gpt-4o-mini",
             "temperature": temperature,
             "api_key": settings.OPENAI_API_KEY,
             "max_tokens": max_tokens or 20000,

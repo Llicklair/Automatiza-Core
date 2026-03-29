@@ -285,6 +285,52 @@ export default function PrimerosPassPage() {
                 </div>
             </div>
 
+            {/* Qué puede hacer la IA */}
+            <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-[#111113] border border-emerald-500/20 rounded-2xl p-5">
+                    <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> La IA puede hacer
+                    </h3>
+                    <ul className="space-y-2">
+                        {[
+                            "Crear facturas, albaranes y presupuestos",
+                            "Generar nóminas y calcular IRPF/SS",
+                            "Responder preguntas sobre tus datos",
+                            "Registrar cobros, pagos y asientos contables",
+                            "Buscar clientes, productos y empleados",
+                            "Ejecutar automatizaciones programadas",
+                            "Generar informes y exportaciones Excel",
+                        ].map(item => (
+                            <li key={item} className="flex items-start gap-2 text-xs text-zinc-300">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+                                {item}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div className="bg-[#111113] border border-zinc-700/50 rounded-2xl p-5">
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5" /> Requiere confirmación o datos previos
+                    </h3>
+                    <ul className="space-y-2">
+                        {[
+                            "Eliminar registros (siempre pide confirmación)",
+                            "Enviar emails (necesita integración Gmail/Outlook)",
+                            "Facturas: el cliente debe existir en Contactos",
+                            "Nóminas: los empleados deben estar dados de alta",
+                            "No accede a sistemas externos sin integración",
+                            "No toma decisiones financieras por ti",
+                            "No puede acceder a datos de otros tenants",
+                        ].map(item => (
+                            <li key={item} className="flex items-start gap-2 text-xs text-zinc-400">
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 flex-shrink-0 mt-1.5" />
+                                {item}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+
             {/* Pasos */}
             <div className="space-y-3">
                 {STEPS.map((step, idx) => {

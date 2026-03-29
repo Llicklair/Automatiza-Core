@@ -289,10 +289,17 @@ async def _create_invoice_async(
                     },
                 }
 
-                pdf_bytes = generate_invoice_pdf(inv_pdf_data)
+                try:
+                    from app.api.v1.routes.templates import get_default_theme
+                    theme_config = await get_default_theme(UUID(tenant_id), "invoice", db)
+                except Exception as _tpl_err:
+                    import logging as _log
+                    _log.getLogger(__name__).warning("No se pudo cargar plantilla de factura: %s", _tpl_err)
+                    theme_config = None
+                pdf_bytes = generate_invoice_pdf(inv_pdf_data, theme_config)
 
                 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-                if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
+                if not os.path.exists(upload_dir) and os.name == "nt":
                     upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
                 os.makedirs(upload_dir, exist_ok=True)
 
@@ -352,7 +359,7 @@ async def list_invoices(tenant_id: str, limit: int = 15) -> str:
 async def _list_invoices_async(tenant_id: str, limit: int) -> str:
     from sqlalchemy import select
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, Client
+    from app.db.models.models import Invoice, Client, TenantDocument
 
     try:
         async with AsyncSessionLocal() as db:
@@ -369,21 +376,37 @@ async def _list_invoices_async(tenant_id: str, limit: int) -> str:
             if not rows:
                 return "No hay facturas registradas en el sistema."
 
+            # Cargar document_ids en una sola consulta
+            invoice_numbers = [inv.invoice_number for inv, _ in rows]
+            doc_stmt = select(TenantDocument.id, TenantDocument.file_name).where(
+                TenantDocument.tenant_id == UUID(tenant_id),
+                TenantDocument.file_type == "application/pdf",
+            )
+            doc_result = await db.execute(doc_stmt)
+            doc_map: dict[str, str] = {}
+            for doc_id, file_name in doc_result.all():
+                for inv_num in invoice_numbers:
+                    if inv_num in (file_name or ""):
+                        doc_map[inv_num] = str(doc_id)
+
             total_facturado = 0
             lines = []
             for inv, cli in rows:
                 total_facturado += float(inv.amount_total)
+                doc_id = doc_map.get(inv.invoice_number, "")
+                doc_info = f" | document_id: {doc_id}" if doc_id else ""
                 lines.append(
                     f"- {inv.invoice_number}: {cli.name} | "
                     f"{float(inv.amount_total):.2f}€ | "
                     f"{inv.date.strftime('%Y-%m-%d')} | "
-                    f"Estado: {inv.status}"
+                    f"Estado: {inv.status}{doc_info}"
                 )
 
             return (
                 f"Facturas recientes ({len(rows)}):\n"
                 + "\n".join(lines)
-                + f"\n\nTotal facturado: {total_facturado:.2f}€"
+                + f"\n\nTotal facturado: {total_facturado:.2f}€\n"
+                + "(Usa el document_id con send_invoice_by_email o pásalo al agente de email como attachment_id)"
             )
     except Exception as e:
         return f"Error consultando facturas: {e}"
@@ -700,6 +723,140 @@ async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipien
         return f"Error enviando factura por email: {e}"
 
 
+# ─── Herramientas de albaranes ────────────────────────────────────────────────
+
+@tool
+async def list_albaranes(tenant_id: str, status: str = "") -> str:
+    """
+    Lista los albaranes del tenant. Opcionalmente filtra por status: draft, confirmed, delivered.
+
+    Args:
+        tenant_id: ID del tenant
+        status: Filtro de estado (vacío = todos)
+    """
+    from sqlalchemy import select, desc
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.billing import DeliveryNote
+    try:
+        async with AsyncSessionLocal() as db:
+            q = select(DeliveryNote).where(DeliveryNote.tenant_id == UUID(tenant_id))
+            if status:
+                q = q.where(DeliveryNote.status == status)
+            q = q.order_by(desc(DeliveryNote.created_at)).limit(20)
+            result = await db.execute(q)
+            notes = result.scalars().all()
+            if not notes:
+                return "No hay albaranes registrados."
+            lines = [
+                f"- {n.albaran_number} | {n.date} | {n.status} | {float(n.amount_total):.2f}€"
+                for n in notes
+            ]
+            return "Albaranes:\n" + "\n".join(lines)
+    except Exception as e:
+        return f"Error listando albaranes: {e}"
+
+
+@tool
+async def create_albaran(
+    tenant_id: str,
+    client_name: str,
+    lines_json: str,
+    albaran_date: str = "",
+    notes: str = "",
+) -> str:
+    """
+    Crea un albarán de entrega.
+
+    Args:
+        tenant_id: ID del tenant
+        client_name: Nombre del cliente
+        lines_json: JSON string con lista de líneas, cada una con: description, quantity, unit_price, tax_percentage
+        albaran_date: Fecha del albarán en formato YYYY-MM-DD (opcional, hoy por defecto)
+        notes: Observaciones opcionales
+    """
+    import json
+    from decimal import Decimal
+    from sqlalchemy import select, desc
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.billing import DeliveryNote, DeliveryNoteLine
+    from app.db.models.models import Client
+    try:
+        lines_data = json.loads(lines_json)
+        entry_date = date.fromisoformat(albaran_date) if albaran_date else date.today()
+
+        async with AsyncSessionLocal() as db:
+            # Find client by name
+            client_id = None
+            client_result = await db.execute(
+                select(Client).where(
+                    Client.tenant_id == UUID(tenant_id),
+                    Client.name.ilike(f"%{client_name}%"),
+                ).limit(1)
+            )
+            client = client_result.scalar_one_or_none()
+            if client:
+                client_id = client.id
+
+            # Auto-number
+            last_result = await db.execute(
+                select(DeliveryNote)
+                .where(DeliveryNote.tenant_id == UUID(tenant_id))
+                .order_by(desc(DeliveryNote.created_at))
+                .limit(1)
+            )
+            last = last_result.scalar_one_or_none()
+            num = 1
+            if last and last.albaran_number:
+                try:
+                    num = int(last.albaran_number.split("-")[-1]) + 1
+                except (ValueError, IndexError):
+                    num = 1
+            albaran_number = f"ALB-{num:05d}"
+
+            amount_base = Decimal("0")
+            tax_amount = Decimal("0")
+            for line in lines_data:
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                tax = base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
+                amount_base += base
+                tax_amount += tax
+            amount_total = amount_base + tax_amount
+
+            note = DeliveryNote(
+                tenant_id=UUID(tenant_id),
+                client_id=client_id,
+                albaran_number=albaran_number,
+                date=entry_date,
+                notes=notes or None,
+                amount_base=amount_base,
+                tax_amount=tax_amount,
+                amount_total=amount_total,
+            )
+            db.add(note)
+            await db.flush()
+
+            for line in lines_data:
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                total = base + base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
+                db.add(DeliveryNoteLine(
+                    albaran_id=note.id,
+                    description=line.get("description", ""),
+                    quantity=line.get("quantity", 1),
+                    unit_price=line.get("unit_price", 0),
+                    tax_percentage=line.get("tax_percentage", 21),
+                    total=total,
+                ))
+
+            await db.commit()
+            client_label = client_name if client_name else "sin cliente"
+            return (
+                f"Albarán {albaran_number} creado correctamente para {client_label}. "
+                f"Total: {float(amount_total):.2f}€"
+            )
+    except Exception as e:
+        return f"Error creando albarán: {e}"
+
+
 # ─── Lista de herramientas ────────────────────────────────────────────────────
 
 tools = [
@@ -709,6 +866,8 @@ tools = [
     update_invoice_status,
     update_invoice,
     send_invoice_by_email,
+    list_albaranes,
+    create_albaran,
     create_document,
     list_tenant_documents,
     update_existing_document,
@@ -731,13 +890,15 @@ BILLING_SYSTEM_PROMPT = """Eres el Agente de Facturación de un ERP para PYMEs e
 7. **Crear documentos** con `create_document` — exportar informes, listados CSV, resúmenes.
 8. **Leer documentos** con `get_document_content` y `list_tenant_documents`.
 9. **Memoria del tenant** con `get_tenant_knowledge` y `upsert_tenant_knowledge`.
+10. **Albaranes** con `list_albaranes` y `create_albaran` — gestión de albaranes de entrega.
 
 REGLAS:
 - Si el usuario quiere CREAR una factura, usa `create_invoice`. Extrae los datos de su mensaje.
 - Si el usuario quiere VER/CONSULTAR/LISTAR facturas, usa `list_invoices`.
 - Si necesitas el NIF de un cliente y no lo tienes, usa `search_client` primero.
 - Para MODIFICAR una factura, primero usa `list_invoices` para obtener el ID, luego `update_invoice`.
-- Para ENVIAR una factura por email, usa `send_invoice_by_email`. Si no conoces el ID, busca primero.
+- Para ENVIAR una factura por email, usa `send_invoice_by_email`. Si no conoces el ID, usa `list_invoices` primero para obtener el invoice_number y document_id.
+- Si otro agente necesita adjuntar la factura, devuelve el document_id en tu respuesta final (está en el output de `list_invoices`).
 - Para marcar como PAGADA, usa `update_invoice_status` con new_status='paid'.
 - Si te faltan datos críticos (cliente, concepto, importe), PREGUNTA al usuario antes de crear.
 - Responde siempre en español.

@@ -123,10 +123,14 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
                 domain = cached
             else:
                 llm = get_llm(temperature=0)
-                response = await llm.ainvoke([
-                    SystemMessage(content=_CLASSIFY_SYSTEM),
-                    HumanMessage(content=intent),
-                ])
+                import asyncio as _asyncio
+                response = await _asyncio.wait_for(
+                    llm.ainvoke([
+                        SystemMessage(content=_CLASSIFY_SYSTEM),
+                        HumanMessage(content=intent),
+                    ]),
+                    timeout=30,
+                )
                 raw = response.content.strip().lower().split()[0] if response.content else ""
                 if raw in VALID_DOMAINS:
                     domain = raw

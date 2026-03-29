@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 # ─── Nodo: cargar conocimiento del tenant ────────────────────────────────────
 
 async def load_knowledge_node(state: OrchestratorState) -> dict:
-    """Carga hechos y preferencias del TenantKnowledge para inyectar en el contexto."""
+    """Carga hechos y preferencias del TenantKnowledge para inyectar en el contexto.
+    También valida que el proveedor LLM del tenant esté habilitado."""
     from uuid import UUID
     from sqlalchemy import select
     from app.db.base import AsyncSessionLocal
@@ -43,6 +44,37 @@ async def load_knowledge_node(state: OrchestratorState) -> dict:
 
     try:
         async with AsyncSessionLocal() as db:
+            # Validar config LLM del tenant antes de continuar
+            try:
+                from app.db.models.models import TenantLlmConfig
+                from app.services.encryption import decrypt_credentials
+                cfg_result = await db.execute(
+                    select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == UUID(tenant_id))
+                )
+                cfg = cfg_result.scalar_one_or_none()
+                if cfg and cfg.encrypted_keys:
+                    keys = decrypt_credentials(cfg.encrypted_keys)
+                    provider = cfg.active_llm_provider
+                    pdata = keys.get(provider, {})
+                    if not pdata.get("enabled", True):
+                        return {
+                            "tenant_knowledge": [],
+                            "status": TaskStatus.FAILED,
+                            "error_message": (
+                                f"El proveedor de IA '{provider}' está desactivado. "
+                                "Actívalo en Configuración → API Keys."
+                            ),
+                        }
+                    # Precargar el LLM del tenant en el ContextVar para que todos los agentes lo usen
+                    try:
+                        from app.core.llm_factory import get_llm_for_tenant, set_tenant_llm_context
+                        _tenant_llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
+                        set_tenant_llm_context(_tenant_llm)
+                    except Exception as _ctx_err:
+                        logger.warning("No se pudo precargar LLM del tenant en contexto: %s", _ctx_err)
+            except Exception as llm_check_err:
+                logger.warning("No se pudo validar LLM config del tenant: %s", llm_check_err)
+
             result = await db.execute(
                 select(TenantKnowledge).where(TenantKnowledge.tenant_id == UUID(tenant_id))
             )
@@ -222,7 +254,7 @@ async def plan_node(state: OrchestratorState) -> dict:
             for _attempt in range(3):
                 try:
                     plan_result = await asyncio.wait_for(
-                        asyncio.to_thread(structured_llm.invoke, prompt),
+                        structured_llm.ainvoke(prompt),
                         timeout=60,
                     )
                     break
@@ -540,10 +572,13 @@ async def summarize_node(state: OrchestratorState) -> dict:
         )
 
         llm = get_llm(temperature=0.3)
-        response = await llm.ainvoke([
-            SystemMessage(content="Resumes resultados de agentes ERP para PYMEs españolas. Sé conciso y directo."),
-            HumanMessage(content=prompt),
-        ])
+        response = await asyncio.wait_for(
+            llm.ainvoke([
+                SystemMessage(content="Resumes resultados de agentes ERP para PYMEs españolas. Sé conciso y directo."),
+                HumanMessage(content=prompt),
+            ]),
+            timeout=30,
+        )
 
         summary_text = response.content.strip() if response.content else ""
         if summary_text:
@@ -589,6 +624,12 @@ def route_after_dispatch(state: OrchestratorState) -> str:
 
 # ─── Construcción del grafo ───────────────────────────────────────────────────
 
+def _route_after_load_knowledge(state: OrchestratorState) -> str:
+    if state.get("status") == TaskStatus.FAILED:
+        return "end"
+    return "planner"
+
+
 def build_orchestrator() -> CompiledStateGraph:
     graph = StateGraph(OrchestratorState)
 
@@ -601,7 +642,11 @@ def build_orchestrator() -> CompiledStateGraph:
 
     graph.set_entry_point("classify")
     graph.add_edge("classify", "load_knowledge")
-    graph.add_edge("load_knowledge", "planner")
+    graph.add_conditional_edges(
+        "load_knowledge",
+        _route_after_load_knowledge,
+        {"planner": "planner", "end": END},
+    )
     graph.add_edge("planner", "validate")
     graph.add_conditional_edges(
         "validate",

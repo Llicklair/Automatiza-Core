@@ -133,4 +133,71 @@ class RecurringInvoice(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     tenant = relationship('Tenant')
-    client = relationship('Client')
+
+
+class DocumentTemplate(Base):
+    """Plantillas visuales para facturas, nóminas y excels por tenant."""
+    __tablename__ = 'document_templates'
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id   = Column(UUID(as_uuid=True), ForeignKey('tenants.id'), nullable=False, index=True)
+
+    # Identificación
+    name             = Column(String(100), nullable=False)
+    template_type    = Column(String(20), nullable=False)   # invoice | payroll | excel
+    is_default       = Column(Boolean, nullable=False, default=False)
+
+    # Preset de layout (define disposición global)
+    layout_style     = Column(String(20), nullable=False, default='modern')
+    # modern | classic | minimal | bold
+
+    # Color y tipografía
+    accent_color     = Column(String(7), nullable=False, default='#6366f1')  # hex
+    font_family      = Column(String(20), nullable=False, default='helvetica')
+    # helvetica | times | courier
+
+    # Opciones de layout
+    logo_position    = Column(String(10), nullable=False, default='left')    # left|center|right
+    header_style     = Column(String(20), nullable=False, default='color_band')
+    # color_band | line_only | none
+    table_style      = Column(String(20), nullable=False, default='striped')
+    # striped | clean | bordered
+
+    # Datos del pie y notas
+    footer_text      = Column(Text, nullable=True)
+
+    created_at  = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at  = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    tenant = relationship('Tenant')
+
+
+class DeliveryNote(Base):
+    __tablename__ = "delivery_notes"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True)
+    albaran_number = Column(String(50), nullable=False)
+    date = Column(Date, nullable=False, default=lambda: __import__('datetime').date.today())
+    status = Column(String(20), nullable=False, default="draft")  # draft, confirmed, delivered
+    notes = Column(Text, nullable=True)
+    amount_base = Column(Numeric(10, 2), nullable=False, default=0)
+    tax_amount = Column(Numeric(10, 2), nullable=False, default=0)
+    amount_total = Column(Numeric(10, 2), nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    lines = relationship("DeliveryNoteLine", back_populates="delivery_note", cascade="all, delete-orphan")
+    client = relationship("Client", foreign_keys=[client_id])
+
+
+class DeliveryNoteLine(Base):
+    __tablename__ = "delivery_note_lines"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    albaran_id = Column(UUID(as_uuid=True), ForeignKey("delivery_notes.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True)
+    description = Column(String(500), nullable=False)
+    quantity = Column(Numeric(10, 3), nullable=False, default=1)
+    unit_price = Column(Numeric(10, 2), nullable=False, default=0)
+    tax_percentage = Column(Numeric(5, 2), nullable=False, default=21)
+    total = Column(Numeric(10, 2), nullable=False, default=0)
+    delivery_note = relationship("DeliveryNote", back_populates="lines")

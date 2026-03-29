@@ -11,11 +11,41 @@ import InfoBanner from "@/components/InfoBanner";
 import { ExternalLink } from "lucide-react";
 
 const LLM_PROVIDERS = [
-    { key: "gemini",      label: "Gemini",      placeholder: "AIzaSy...",    defaultModel: "gemini-2.5-flash",                  consoleUrl: "https://aistudio.google.com/apikey",            hint: "Gratuito con límites generosos. Recomendado para empezar." },
-    { key: "anthropic",   label: "Anthropic",   placeholder: "sk-ant-...",   defaultModel: "claude-sonnet-4-6",                 consoleUrl: "https://console.anthropic.com/settings/keys",   hint: "Modelos Claude. Alta calidad, de pago." },
-    { key: "groq",        label: "Groq",        placeholder: "gsk_...",      defaultModel: "llama-3.3-70b-versatile",           consoleUrl: "https://console.groq.com/keys",                 hint: "Inferencia ultra-rápida. Modelos open source gratuitos." },
-    { key: "openai",      label: "OpenAI",      placeholder: "sk-proj-...",  defaultModel: "gpt-4o-mini",                       consoleUrl: "https://platform.openai.com/api-keys",          hint: "GPT-4o y familia. De pago." },
-    { key: "openrouter",  label: "OpenRouter",  placeholder: "sk-or-...",    defaultModel: "google/gemini-2.0-flash-exp:free",  consoleUrl: "https://openrouter.ai/keys",                    hint: "Acceso a múltiples modelos con una sola key." },
+    {
+        key: "gemini", label: "Gemini", placeholder: "AIzaSy...",
+        defaultModel: "gemini-2.5-flash",
+        models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
+        consoleUrl: "https://aistudio.google.com/apikey",
+        hint: "Gratuito con límites generosos. Recomendado para empezar.",
+    },
+    {
+        key: "anthropic", label: "Anthropic", placeholder: "sk-ant-...",
+        defaultModel: "claude-sonnet-4-6",
+        models: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
+        consoleUrl: "https://console.anthropic.com/settings/keys",
+        hint: "Modelos Claude. Alta calidad, de pago.",
+    },
+    {
+        key: "groq", label: "Groq", placeholder: "gsk_...",
+        defaultModel: "llama-3.3-70b-versatile",
+        models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"],
+        consoleUrl: "https://console.groq.com/keys",
+        hint: "Inferencia ultra-rápida. Modelos open source gratuitos.",
+    },
+    {
+        key: "openai", label: "OpenAI", placeholder: "sk-proj-...",
+        defaultModel: "gpt-4o-mini",
+        models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "o1-mini"],
+        consoleUrl: "https://platform.openai.com/api-keys",
+        hint: "GPT-4o y familia. De pago.",
+    },
+    {
+        key: "openrouter", label: "OpenRouter", placeholder: "sk-or-...",
+        defaultModel: "google/gemini-2.0-flash-exp:free",
+        models: ["google/gemini-2.0-flash-exp:free", "google/gemma-3-27b-it:free", "mistralai/mistral-small-3.1-24b-instruct:free", "qwen/qwen3-235b-a22b-thinking-2507"],
+        consoleUrl: "https://openrouter.ai/keys",
+        hint: "Acceso a múltiples modelos con una sola key.",
+    },
 ];
 
 const EMBEDDINGS_OPTIONS = [
@@ -243,13 +273,20 @@ export default function ApiKeysPage() {
                                         </div>
                                         <div>
                                             <label className="text-[11px] text-zinc-500 mb-1 block">Modelo</label>
-                                            <input
-                                                type="text"
-                                                value={s.model}
-                                                onChange={e => updateProvider(p.key, { model: e.target.value })}
-                                                placeholder={p.defaultModel}
-                                                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition"
-                                            />
+                                            <select
+                                                value={p.models.includes(s.model) ? s.model : "__custom__"}
+                                                onChange={e => {
+                                                    if (e.target.value !== "__custom__") updateProvider(p.key, { model: e.target.value });
+                                                }}
+                                                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white focus:outline-none focus:border-indigo-500/50 transition mb-1"
+                                            >
+                                                {p.models.map(m => (
+                                                    <option key={m} value={m} className="bg-[#18181b]">{m}</option>
+                                                ))}
+                                                {!p.models.includes(s.model) && (
+                                                    <option value="__custom__" className="bg-[#18181b]">{s.model} (personalizado)</option>
+                                                )}
+                                            </select>
                                         </div>
                                     </div>
                                 )}

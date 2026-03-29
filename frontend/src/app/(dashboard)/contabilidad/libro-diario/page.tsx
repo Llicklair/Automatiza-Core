@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type JournalEntry, type JournalLine } from "@/lib/api";
-import { FileDown, Plus, BookOpen, AlertCircle, PlusCircle, Trash2 } from "lucide-react";
+import { FileDown, Plus, PlusCircle, AlertCircle, BookOpen, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
@@ -91,6 +91,14 @@ export default function LibroDiarioPage() {
     const totalCredit = newEntry.lines.reduce((acc, curr) => acc + (Number(curr.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
+    const deleteEntry = async (id: string) => {
+        if (!confirm("¿Eliminar este asiento contable? Esta acción no se puede deshacer.")) return;
+        try {
+            await api.accounting.journal.delete(id);
+            loadData();
+        } catch (err: any) { toast.error("Error eliminando el asiento: " + err.message); }
+    };
+
     const createEntry = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isBalanced) { toast.warning("El asiento está descuadrado. El Debe debe ser igual al Haber."); return; }
@@ -149,6 +157,7 @@ export default function LibroDiarioPage() {
                                     <th className="px-6 py-4 font-medium w-64">Nombre</th>
                                     <th className="px-6 py-4 font-medium text-right w-32">Debe</th>
                                     <th className="px-6 py-4 font-medium text-right w-32">Haber</th>
+                                    <th className="px-6 py-4 font-medium w-12"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#27272a]/50">
@@ -180,6 +189,15 @@ export default function LibroDiarioPage() {
                                                     ))}
                                                 </tbody>
                                             </table>
+                                        </td>
+                                        <td className="px-2 py-4 align-top">
+                                            <button
+                                                onClick={() => deleteEntry(entry.id)}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                title="Eliminar asiento"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

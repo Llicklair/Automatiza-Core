@@ -11,72 +11,34 @@
 
 ## Workflow Orchestration
 
-### 1. Plan Mode Default
-- For non-trivial tasks: if the request is vague or ambiguous, ask clarifying questions BEFORE planning
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately — don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
-
-### 2. Subagent Strategy
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One task per subagent for focused execution
-
-### 3. Self-Improvement Loop
-- After ANY correction from the user: update `tasks/lessons.md` with the pattern
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
-
-### 4. Verification Before Done
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests when possible and convenient, check logs, demonstrate correctness
-
-### 5. Demand Elegance (Balanced)
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes — don't over-engineer
-- Challenge your own work before presenting it
-
-### 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests — then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
-
-### 7. Clarification Before Commitment
-- For non-trivial tasks: if the request is vague, ambiguous, or could go multiple directions — ask 1-3 targeted clarifying questions BEFORE planning
-- Surface assumptions, edge cases, and design choices early so the plan is right the first time
-- For clear, well-defined tasks: skip this and just execute
-- Never ask more than 3 questions at once — batch them, respect the user's time
-- This saves tokens by avoiding wrong-direction plans that need replanning
-
-### 8. Critical Evaluation
-- Never blindly accept review feedback, linter suggestions, or AI-generated fixes — evaluate whether they actually improve the code
-- If a suggested change adds complexity without clear benefit, push back with reasoning
-- When receiving corrections: understand the WHY before applying. Update lessons.md with the pattern, not just the fix
+- **Plan first**: Enter plan mode for non-trivial tasks (3+ steps). If vague, ask 1-3 clarifying questions BEFORE planning. If something goes sideways, STOP and re-plan.
+- **Subagents**: Use liberally to keep main context clean. One task per subagent.
+- **Self-improvement**: After ANY correction → update `tasks/lessons.md` with the pattern and prevention rule.
+- **Verify before done**: Prove it works — run tests, check logs, diff behavior. "Would a staff engineer approve this?"
+- **Elegance (balanced)**: For non-trivial changes, pause and consider a more elegant way. Skip for simple fixes.
+- **Autonomous bugs**: Just fix them. Don't ask for hand-holding. Zero context switching from user.
+- **Critical evaluation**: Don't blindly accept suggestions. Understand the WHY before applying corrections.
 
 ---
 
 ## Task Management
 
-1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `tasks/todo.md`
-6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+Plan → `tasks/todo.md` | Lessons → `tasks/lessons.md` | Track progress as you go.
 
 ---
+
+## GitNexus — Code Intelligence
+
+Full reference: see [GITNEXUS.md](GITNEXUS.md). Key rules:
+- **MUST** run `gitnexus_impact` before editing any symbol. Warn on HIGH/CRITICAL risk.
+- **MUST** run `gitnexus_detect_changes()` before committing.
+- Use `gitnexus_query` for code exploration, `gitnexus_rename` for renames (never find-replace).
+- CLI: `npx gitnexus analyze` (re-index) | `npx gitnexus status` (freshness)
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **atomatizacion de empresas** (2464 symbols, 6270 relationships, 193 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **atomatizacion de empresas** (2587 symbols, 6695 relationships, 203 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
