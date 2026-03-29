@@ -213,11 +213,41 @@ function getBackendEnv(lanIP) {
 }
 
 /**
+ * Ejecuta un comando con spawn (async) drenando stdout/stderr para evitar
+ * bloqueos por buffer lleno. Devuelve una Promise que resuelve o rechaza.
+ */
+function runSpawn(cmd, args, opts, label) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      cwd: opts.cwd,
+      env: opts.env || process.env,
+      stdio: "pipe",
+      windowsHide: true,
+    });
+    child.stdout.on("data", (d) => logBoot(`[${label} STDOUT] ${d.toString().trim()}`));
+    child.stderr.on("data", (d) => logBoot(`[${label} STDERR] ${d.toString().trim()}`));
+    const timer = opts.timeout ? setTimeout(() => {
+      try { execSync(`taskkill /PID ${child.pid} /T /F`, { stdio: "ignore" }); } catch {}
+      reject(new Error(`${label} timeout after ${opts.timeout}ms`));
+    }, opts.timeout) : null;
+    child.on("close", (code) => {
+      if (timer) clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(`${label} exited with code ${code}`));
+    });
+    child.on("error", (err) => {
+      if (timer) clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+/**
  * Arranca Next.js (frontend).
- * Si .next no existe o la API URL cambió, hacer build primero (síncrono).
+ * Si .next no existe o la API URL cambió, hacer build primero.
  * Usa npx next para evitar problemas de PATH con el binario next.
  */
-function startFrontend(lanIP) {
+async function startFrontend(lanIP) {
   const isWin = process.platform === "win32";
   const npmCmd = isWin ? "npm.cmd" : "npm";
   const apiUrl = `http://${lanIP}:8080`;
@@ -236,17 +266,8 @@ function startFrontend(lanIP) {
 
   if (!depsInstalled) {
     logBoot("Frontend: instalando dependencias (npm install)...");
-    try {
-      execSync(`${npmCmd} install`, {
-        cwd: FRONTEND_DIR,
-        stdio: "pipe",
-        timeout: 600000, // 10 min
-      });
-      logBoot("Frontend: dependencias instaladas.");
-    } catch (err) {
-      logBoot(`[FRONTEND INSTALL ERROR] ${err.message}`);
-      if (err.stderr) logBoot(`[FRONTEND INSTALL STDERR] ${err.stderr.toString().trim()}`);
-    }
+    await runSpawn(npmCmd, ["install"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND INSTALL");
+    logBoot("Frontend: dependencias instaladas.");
   }
 
   // Decidir si necesitamos rebuild
@@ -262,22 +283,16 @@ function startFrontend(lanIP) {
 
   logBoot(`Frontend: needsBuild=${needsBuild}`);
 
-  // ── FASE 1: Build síncrono si es necesario ───────────────────────────────
+  // ── FASE 1: Build si es necesario (spawn async para no bloquear por buffer) ─
   if (needsBuild) {
     logBoot("Frontend: ejecutando 'npm run build'...");
     try {
-      execSync(`${npmCmd} run build`, {
-        cwd: FRONTEND_DIR,
-        env: frontendEnv,
-        stdio: "pipe",   // capturar stderr para no bloquear
-        timeout: 600000,  // 10 min máximo
-      });
+      await runSpawn(npmCmd, ["run", "build"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND BUILD");
       logBoot("Frontend: build completado.");
       // Guardar marcador de URL para no reconstruir la próxima vez
       try { fs.writeFileSync(urlMarker, apiUrl); } catch {}
     } catch (buildErr) {
       logBoot(`[FRONTEND BUILD ERROR] ${buildErr.message}`);
-      if (buildErr.stderr) logBoot(`[FRONTEND BUILD STDERR] ${buildErr.stderr.toString().trim()}`);
       // No lanzamos error fatal: intentamos arrancar igualmente por si hay build previo
     }
   }
@@ -426,7 +441,7 @@ async function startAll(onProgress) {
   // 3. Frontend (el build síncrono ocurre dentro de startFrontend si es necesario)
   logBoot("Iniciando frontend...");
   onProgress("Construyendo frontend...", 78);
-  const fp = startFrontend(lanIP);
+  const fp = await startFrontend(lanIP);
 
   fp.stdout.on("data", (data) => {
     const line = data.toString();
