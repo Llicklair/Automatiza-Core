@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    env: {
-        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
-    },
+    // NEXT_PUBLIC_API_URL is resolved at runtime in client.ts via window.location
+    // so we do NOT bake it at build time — avoids unnecessary rebuilds on IP change.
     async headers() {
         return [
             {

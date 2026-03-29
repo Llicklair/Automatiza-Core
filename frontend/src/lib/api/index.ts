@@ -20,6 +20,8 @@ import { tenant } from "./tenant";
 import { admin } from "./admin";
 import { integrations } from "./integrations";
 import { system } from "./system";
+import { templatesApi } from "./templates";
+import { albaranes } from "./albaranes";
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -40,6 +42,8 @@ export const api = {
     admin,
     integrations,
     system,
+    templates: templatesApi,
+    albaranes,
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -74,3 +78,4 @@ export type {
     LlmConfigUpdate,
 } from "./tenant";
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
+export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";

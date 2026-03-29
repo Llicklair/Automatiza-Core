@@ -24,7 +24,8 @@ from app.db.models.models import Client, Opportunity
 from app.core.config import settings
 from app.core.llm_factory import get_llm
 
-llm = get_llm(temperature=0)
+def _get_llm():
+    return get_llm(temperature=0)
 
 
 # ─── Herramientas ────────────────────────────────────────────────────────────
@@ -138,7 +139,6 @@ async def _update_opportunity_stage_async(tenant_id: str, opportunity_id: str, n
             old_stage = opp.stage
             opp.stage = new_stage
             
-            # TODO: add notes to generic entity actions/logs if available later
             await db.commit()
 
             msg = f"Oportunidad '{opp.title}' movida de '{old_stage}' a '{new_stage}'."
@@ -220,7 +220,8 @@ tools = [
     update_existing_document,
     get_document_content,
 ]
-llm_with_tools = llm.bind_tools(tools)
+def _get_llm_with_tools():
+    return _get_llm().bind_tools(tools)
 
 
 # ─── Nodos del grafo ─────────────────────────────────────────────────────────
@@ -248,7 +249,7 @@ async def crm_agent_node(state: AgentState):
     else:
         extra_init_messages = []
 
-    response = await llm_with_tools.ainvoke(state["messages"])
+    response = await _get_llm_with_tools().ainvoke(state["messages"])
 
     result_log = StepResult(
         step_id=f"crm_step_{datetime.now().timestamp()}",

@@ -89,6 +89,96 @@ def _table_header_style():
     ]
 
 
+_FONT_MAP = {
+    "helvetica": ("Helvetica", "Helvetica-Bold"),
+    "times":     ("Times-Roman", "Times-Bold"),
+    "courier":   ("Courier", "Courier-Bold"),
+}
+
+DEFAULT_THEME: dict = {
+    "accent_color":  "#6366f1",
+    "font_family":   "helvetica",
+    "layout_style":  "modern",
+    "logo_position": "left",
+    "header_style":  "color_band",
+    "table_style":   "striped",
+    "footer_text":   None,
+}
+
+# Paleta de presets — sustituye colores y fuentes a la vez
+_PRESET_OVERRIDES: dict[str, dict] = {
+    "modern":  {},
+    "classic": {"font_family": "times",  "header_style": "line_only",   "table_style": "bordered", "logo_position": "center"},
+    "minimal": {"font_family": "helvetica", "header_style": "line_only", "table_style": "clean",    "logo_position": "right"},
+    "bold":    {"font_family": "helvetica", "header_style": "dark_band", "table_style": "accent_header", "logo_position": "left"},
+}
+
+
+def build_theme(config: dict | None = None) -> dict:
+    """Fusiona config de plantilla con defaults. Devuelve tema completo listo para usar."""
+    t = dict(DEFAULT_THEME)
+    if config:
+        t.update({k: v for k, v in config.items() if v is not None and v != ""})
+    # Aplicar overrides del preset seleccionado (si no se han sobreescrito manualmente)
+    preset = _PRESET_OVERRIDES.get(t.get("layout_style", "modern"), {})
+    for k, v in preset.items():
+        if config is None or k not in config:
+            t[k] = v
+    # Resolver nombres de fuentes ReportLab
+    font_regular, font_bold = _FONT_MAP.get(t["font_family"], ("Helvetica", "Helvetica-Bold"))
+    t["_font"]      = font_regular
+    t["_font_bold"] = font_bold
+    return t
+
+
+def table_style_commands(theme: dict, num_data_rows: int = 1) -> list:
+    """Devuelve lista de comandos TableStyle según el estilo de tabla del tema."""
+    if not REPORTLAB_AVAILABLE:
+        return []
+    acc = theme.get("accent_color", "#6366f1")
+    style = theme.get("table_style", "striped")
+    font  = theme.get("_font", "Helvetica")
+    bold  = theme.get("_font_bold", "Helvetica-Bold")
+
+    base = [
+        ('FONTNAME',   (0, 0), (-1,  0), bold),
+        ('FONTSIZE',   (0, 0), (-1,  0), 8),
+        ('FONTNAME',   (0, 1), (-1, -1), font),
+        ('FONTSIZE',   (0, 1), (-1, -1), 9),
+        ('TOPPADDING',    (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
+    ]
+    if style == "striped":
+        base += [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8fafc')),
+            ('TEXTCOLOR',  (0, 0), (-1, 0), colors.HexColor('#64748b')),
+            ('LINEBELOW',  (0, 0), (-1, 0), 1, colors.HexColor('#e2e8f0')),
+            ('LINEBELOW',  (0, 1), (-1, -1), 0.5, colors.HexColor('#f1f5f9')),
+        ]
+        for i in range(2, num_data_rows + 1, 2):
+            base.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#fafafa')))
+    elif style == "bordered":
+        base += [
+            ('BACKGROUND',  (0, 0), (-1, 0), colors.HexColor('#374151')),
+            ('TEXTCOLOR',   (0, 0), (-1, 0), colors.white),
+            ('GRID',        (0, 0), (-1, -1), 0.5, colors.HexColor('#d1d5db')),
+        ]
+    elif style == "clean":
+        base += [
+            ('TEXTCOLOR',  (0, 0), (-1, 0), colors.HexColor('#64748b')),
+            ('LINEBELOW',  (0, 0), (-1, 0), 1.5, colors.HexColor('#1e293b')),
+            ('LINEBELOW',  (0, 1), (-1, -1), 0.3, colors.HexColor('#e2e8f0')),
+        ]
+    elif style == "accent_header":
+        base += [
+            ('BACKGROUND',  (0, 0), (-1, 0), colors.HexColor(acc)),
+            ('TEXTCOLOR',   (0, 0), (-1, 0), colors.white),
+            ('LINEBELOW',   (0, 1), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ]
+    return base
+
+
 def _format_date(date_str: str) -> str:
     if not date_str:
         return datetime.now().strftime('%d/%m/%Y')

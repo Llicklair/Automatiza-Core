@@ -195,18 +195,25 @@ export default function WorkflowsPage() {
 
     const _isQuestion = (text: string): boolean => {
         const t = text.trim();
+        const tl = t.toLowerCase();
+        // Si contiene palabras de scheduling/trigger, es una regla aunque empiece como pregunta
+        const workflowKeywords = [
+            "cada ", "cada\n", "cuando ", "al ", "si ", "diariamente", "semanalmente",
+            "mensualmente", "todos los", "todas las", "cada vez", "automáticamente",
+            "en cuanto", "tras ", "después de", "antes de", "a las ", "a partir",
+        ];
+        if (workflowKeywords.some(k => tl.includes(k))) return false;
+
         // Detectar ¿...? o ...?
         if (t.startsWith("\u00bf") || t.endsWith("?")) {
             const actionVerbs = ["crea", "genera", "env\u00eda", "haz", "registra", "sube", "programa"];
-            return !actionVerbs.some(v => t.toLowerCase().includes(v));
+            return !actionVerbs.some(v => tl.includes(v));
         }
-        const tl = t.toLowerCase();
         const questionStarts = [
             "cu\u00e1ntas", "cu\u00e1ntos", "cu\u00e1nto", "cu\u00e1ndo", "d\u00f3nde", "c\u00f3mo",
             "qu\u00e9 es", "qu\u00e9 son", "hay ", "tiene ", "est\u00e1", "se ejecut",
             "termin\u00f3", "ha terminado", "funcion\u00f3", "fall\u00f3",
             "explica", "diferencia", "ayuda", "hola", "buenas", "gracias",
-            "dime", "muestra", "lista", "resumen",
         ];
         return questionStarts.some(q => tl.startsWith(q));
     };

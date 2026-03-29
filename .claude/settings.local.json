@@ -26,7 +26,14 @@
       "Bash(pip install:*)",
       "Bash(py:*)",
       "Bash(cp:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(claude install:*)",
+      "Bash(claude --version)",
+      "Bash(code --list-extensions)",
+      "Bash(code:*)",
+      "Bash(claude auth:*)",
+      "Bash(node:*)",
+      "Bash(mv:*)"
     ]
   }
 }

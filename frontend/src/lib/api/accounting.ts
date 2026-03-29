@@ -42,6 +42,7 @@ export const accounting = {
     journal: {
         list: () => request<JournalEntry[]>("/api/v1/accounting/journal"),
         create: (data: Partial<JournalEntry>) => request<JournalEntry>("/api/v1/accounting/journal", { method: "POST", body: JSON.stringify(data) }),
+        delete: (id: string) => request(`/api/v1/accounting/journal/${id}`, { method: "DELETE" }),
     },
     assets: {
         list: () => request<FixedAsset[]>("/api/v1/accounting/assets"),

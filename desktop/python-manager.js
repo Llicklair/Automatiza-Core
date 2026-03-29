@@ -38,11 +38,26 @@ function isPythonInstalled() {
   return fs.existsSync(PYTHON_EXE);
 }
 
+const DEPS_HASH_FILE = path.join(APPDATA_DIR, "deps_requirements.hash");
+
 /**
- * Verifica si las dependencias del backend están instaladas.
+ * Verifica si las dependencias del backend están instaladas Y están actualizadas
+ * respecto al requirements.txt actual (compara hash del archivo).
  */
 function areDepsInstalled() {
-  return fs.existsSync(path.join(SITE_PACKAGES, "fastapi"));
+  if (!fs.existsSync(path.join(SITE_PACKAGES, "fastapi"))) return false;
+  // Si no existe el archivo de hash, forzar reinstalación
+  if (!fs.existsSync(DEPS_HASH_FILE)) return false;
+  try {
+    const requirementsPath = path.join(BACKEND_DIR, "requirements.txt");
+    if (!fs.existsSync(requirementsPath)) return true; // sin requirements, no reinstalar
+    const crypto = require("crypto");
+    const currentHash = crypto.createHash("md5").update(fs.readFileSync(requirementsPath)).digest("hex");
+    const savedHash = fs.readFileSync(DEPS_HASH_FILE, "utf8").trim();
+    return currentHash === savedHash;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -143,6 +158,12 @@ async function installDeps(onProgress) {
       }
     );
     logPython("Dependencias instaladas correctamente.");
+    // Guardar hash de requirements.txt para detectar cambios futuros
+    try {
+      const crypto = require("crypto");
+      const currentHash = crypto.createHash("md5").update(fs.readFileSync(requirementsPath)).digest("hex");
+      fs.writeFileSync(DEPS_HASH_FILE, currentHash);
+    } catch {}
   } catch (err) {
     const output = (err.stdout || "").toString() + "\n" + (err.stderr || "").toString();
     logPython(`ERROR instalando dependencias:\n${output}`);

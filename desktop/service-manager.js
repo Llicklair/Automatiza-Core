@@ -247,17 +247,14 @@ function runSpawn(cmd, args, opts, label) {
  * Si .next no existe o la API URL cambió, hacer build primero.
  * Usa npx next para evitar problemas de PATH con el binario next.
  */
-async function startFrontend(lanIP) {
+async function startFrontend() {
   const isWin = process.platform === "win32";
   const npmCmd = isWin ? "npm.cmd" : "npm";
-  const apiUrl = `http://${lanIP}:8080`;
   const nextDir = path.join(FRONTEND_DIR, ".next");
-  const urlMarker = path.join(FRONTEND_DIR, ".next", ".api_url");
 
-  // Entorno común para build y start
+  // Entorno común para build y start (API URL is resolved at runtime via window.location)
   const frontendEnv = {
     ...process.env,
-    NEXT_PUBLIC_API_URL: apiUrl,
     PORT: "3000",
   };
 
@@ -270,31 +267,25 @@ async function startFrontend(lanIP) {
     logBoot("Frontend: dependencias instaladas.");
   }
 
-  // Decidir si necesitamos rebuild
-  let needsBuild = !fs.existsSync(nextDir);
-  if (!needsBuild) {
-    try {
-      const savedUrl = fs.readFileSync(urlMarker, "utf8").trim();
-      needsBuild = savedUrl !== apiUrl;
-    } catch {
-      needsBuild = true; // sin marcador → rebuild
-    }
-  }
+  // Solo rebuild si .next no existe (API URL se resuelve en runtime vía window.location)
+  const needsBuild = !fs.existsSync(nextDir);
 
   logBoot(`Frontend: needsBuild=${needsBuild}`);
 
-  // ── FASE 1: Build si es necesario (spawn async para no bloquear por buffer) ─
+  // ── FASE 1: Build solo si no existe .next ──────────────────────────────────
   if (needsBuild) {
     logBoot("Frontend: ejecutando 'npm run build'...");
     try {
       await runSpawn(npmCmd, ["run", "build"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND BUILD");
       logBoot("Frontend: build completado.");
-      // Guardar marcador de URL para no reconstruir la próxima vez
-      try { fs.writeFileSync(urlMarker, apiUrl); } catch {}
     } catch (buildErr) {
       logBoot(`[FRONTEND BUILD ERROR] ${buildErr.message}`);
-      // No lanzamos error fatal: intentamos arrancar igualmente por si hay build previo
     }
+  }
+
+  // Guard: si no hay .next, no intentar arrancar (evita espera de 10 min)
+  if (!fs.existsSync(nextDir)) {
+    throw new Error("Frontend build falló: no existe .next — revisa errores de compilación en el log.");
   }
 
   // ── FASE 2: Arrancar el servidor Next.js ─────────────────────────────────
@@ -441,7 +432,7 @@ async function startAll(onProgress) {
   // 3. Frontend (el build síncrono ocurre dentro de startFrontend si es necesario)
   logBoot("Iniciando frontend...");
   onProgress("Construyendo frontend...", 78);
-  const fp = await startFrontend(lanIP);
+  const fp = await startFrontend();
 
   fp.stdout.on("data", (data) => {
     const line = data.toString();

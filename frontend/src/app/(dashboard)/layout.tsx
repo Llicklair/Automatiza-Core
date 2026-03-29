@@ -10,7 +10,7 @@ import {
     Landmark, FileText, Users, Upload, Package, ChevronDown, ChevronRight,
     Home, Flag, UserCircle, ShoppingCart, Briefcase, Building2, Calendar,
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
-    BarChart3, Sparkles, Settings,
+    BarChart3, Sparkles, Settings, Layers, Download,
 } from "lucide-react";
 import ProfileMenu from "@/components/ProfileMenu";
 import NotificationBell from "@/components/NotificationBell";
@@ -36,6 +36,7 @@ type NavSection = {
 const NAV_SECTIONS: NavSection[] = [
     {
         items: [
+            { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
             { label: "Inicio", icon: Home, href: "/" },
             { label: "Tareas IA", icon: Sparkles, href: "/tareas" },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones" },
@@ -49,6 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
             {
                 label: "Ventas", icon: ShoppingCart, subItems: [
                     { label: "Facturas", href: "/ventas/facturas" },
+                    { label: "Albaranes", href: "/albaranes" },
                     { label: "Presupuestos", href: "/ventas/presupuestos" },
                     { label: "Pedidos", href: "/ventas/pedidos" },
                     { label: "Recurrentes", href: "/ventas/recurrentes" },
@@ -126,10 +128,10 @@ const NAV_SECTIONS: NavSection[] = [
     {
         title: "Herramientas",
         items: [
+            { label: "Plantillas", icon: Layers, href: "/plantillas" },
             { label: "Escáner", icon: ScanLine, href: "/escaner" },
             { label: "Documentos", icon: FileText, href: "/documentos" },
             { label: "Integraciones", icon: Plug, href: "/integraciones" },
-            { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
         ],
     },
 ];
@@ -363,7 +365,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </nav>
 
                 {/* Footer del sidebar */}
-                <div className="px-2 py-3 border-t border-[#27272a]">
+                <div className="px-2 py-3 border-t border-[#27272a] space-y-0.5">
+                    <Link
+                        href="/configuracion/actualizaciones"
+                        onClick={(e) => handleNavClick(e, "/configuracion/actualizaciones")}
+                        className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                        Actualizaciones
+                    </Link>
                     <Link
                         href="/configuracion/empresa"
                         onClick={(e) => handleNavClick(e, "/configuracion/empresa")}

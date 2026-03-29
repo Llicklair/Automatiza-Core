@@ -117,7 +117,12 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                 async with AsyncSessionLocal() as db_pdf:
                     res_t = await db_pdf.execute(select(Tenant).where(Tenant.id == UUID(tenant_id)))
                     tenant_obj = res_t.scalar_one_or_none()
-                    
+                    try:
+                        from app.api.v1.routes.templates import get_default_theme
+                        payroll_theme = await get_default_theme(UUID(tenant_id), "payroll", db_pdf)
+                    except Exception:
+                        payroll_theme = None
+
                 payroll_pdf_data = {
                     "employee": {
                         "name": employee.name,
@@ -144,11 +149,11 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                     "net_salary": net_salary,
                 }
 
-                pdf_bytes = generate_payroll_pdf(payroll_pdf_data)
+                pdf_bytes = generate_payroll_pdf(payroll_pdf_data, payroll_theme)
 
                 # Guardar en disco
                 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-                if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
+                if not os.path.exists(upload_dir) and os.name == "nt":
                     upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
                 os.makedirs(upload_dir, exist_ok=True)
 
@@ -296,11 +301,16 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                         "other_deductions": 0.0,
                         "net_salary": net_salary,
                     }
-                    pdf_bytes = generate_payroll_pdf(payroll_pdf_data)
-                    
+                    try:
+                        from app.api.v1.routes.templates import get_default_theme
+                        _bulk_theme = await get_default_theme(UUID(tenant_id), "payroll", db)
+                    except Exception:
+                        _bulk_theme = None
+                    pdf_bytes = generate_payroll_pdf(payroll_pdf_data, _bulk_theme)
+
                     file_name = f"Nomina_{emp.name.replace(' ', '_')}_{month}_{year}.pdf"
                     upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-                    if not os.path.exists(upload_dir) and "WIN" in os.name.upper():
+                    if not os.path.exists(upload_dir) and os.name == "nt":
                         upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
                     os.makedirs(upload_dir, exist_ok=True)
                     file_path = os.path.join(upload_dir, file_name)
