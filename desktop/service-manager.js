@@ -117,7 +117,7 @@ let frontendProcess = null;
  * Busca por puerto (8080=backend, 3000=frontend) y mata el árbol completo.
  */
 function killOrphanProcesses() {
-  const portsToClean = [8080, 3000];
+  const portsToClean = [8080, 3000, 5433];
   for (const port of portsToClean) {
     try {
       const output = execSync(
