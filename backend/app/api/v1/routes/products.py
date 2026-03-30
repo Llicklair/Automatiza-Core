@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.api.v1.schemas.erp import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Product, StockMovement, User
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.get("/products", response_model=list[ProductResponse], tags=["erp"])
+@limiter.limit("30/minute")
 async def list_products(
+    request: Request,
     skip: int = 0,
     limit: int = Query(default=50, le=100),
     db: AsyncSession = Depends(get_db),
@@ -40,7 +43,9 @@ async def list_products(
 
 
 @router.patch("/products/{product_id}", response_model=ProductResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def update_product(
+    request: Request,
     product_id: UUID,
     payload: ProductUpdate,
     db: AsyncSession = Depends(get_db),
@@ -60,7 +65,9 @@ async def update_product(
 
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
+@limiter.limit("30/minute")
 async def delete_product(
+    request: Request,
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -76,7 +83,9 @@ async def delete_product(
 
 
 @router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@limiter.limit("30/minute")
 async def create_product(
+    request: Request,
     payload: ProductCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -95,7 +104,9 @@ async def create_product(
 
 
 @router.get("/products/{product_id}/stock-movements", response_model=list[StockMovementResponse], tags=["inventory"])
+@limiter.limit("30/minute")
 async def list_stock_movements(
+    request: Request,
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -110,7 +121,9 @@ async def list_stock_movements(
 
 
 @router.post("/products/{product_id}/stock-movements", response_model=StockMovementResponse, status_code=status.HTTP_201_CREATED, tags=["inventory"])
+@limiter.limit("30/minute")
 async def create_stock_movement(
+    request: Request,
     product_id: UUID,
     payload: StockMovementCreate,
     db: AsyncSession = Depends(get_db),

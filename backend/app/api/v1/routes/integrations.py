@@ -2,6 +2,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 from pydantic import BaseModel
@@ -45,8 +46,10 @@ class IntegrationStatusOut(BaseModel):
 
 # ─── Rutas ───────────────────────────────────────────────────────────────────
 
+@limiter.limit("10/minute")
 @router.get("/", response_model=list[IntegrationStatusOut])
 async def list_integrations(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -71,8 +74,10 @@ class Psd2ConnectRequest(BaseModel):
     secret_id: str
     secret_key: str
 
+@limiter.limit("10/minute")
 @router.post("/psd2/connect", status_code=201)
 async def connect_psd2(
+    request: Request,
     payload: Psd2ConnectRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -120,8 +125,10 @@ async def connect_psd2(
     return {"status": "conectado", "integration": "psd2"}
 
 
+@limiter.limit("10/minute")
 @router.delete("/psd2/disconnect", status_code=200)
 async def disconnect_psd2(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -153,8 +160,10 @@ class EmailConnectRequest(BaseModel):
     smtp_port: int | None = None
 
 
+@limiter.limit("10/minute")
 @router.post("/email/connect", status_code=201)
 async def connect_email(
+    request: Request,
     payload: EmailConnectRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -226,8 +235,10 @@ async def connect_email(
     return {"status": "conectado", "integration": "email", "provider": payload.provider, "email": payload.email_address}
 
 
+@limiter.limit("10/minute")
 @router.delete("/email/disconnect", status_code=200)
 async def disconnect_email(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -247,8 +258,10 @@ async def disconnect_email(
     return {"status": "desconectado"}
 
 
+@limiter.limit("10/minute")
 @router.get("/email/status")
 async def email_status(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -279,8 +292,9 @@ async def email_status(
 
 # ─── Google OAuth (Gmail + Google Drive) ──────────────────────────────────────
 
+@limiter.limit("10/minute")
 @router.get("/google/auth-url")
-async def google_auth_url(current_user: User = Depends(get_current_user)):
+async def google_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     """Generate Google OAuth consent URL."""
     from app.integrations.google_oauth import generate_auth_url
     url, state = generate_auth_url(str(current_user.tenant_id))
@@ -288,8 +302,10 @@ async def google_auth_url(current_user: User = Depends(get_current_user)):
     return {"auth_url": url, "state": state}
 
 
+@limiter.limit("10/minute")
 @router.get("/google/callback", response_class=HTMLResponse)
-async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_db)):
+async def google_callback(request: Request,
+                          code: str, state: str, db: AsyncSession = Depends(get_db)):
     """Handle Google OAuth callback — exchanges code for tokens and stores them."""
     from app.integrations.google_oauth import exchange_code
 
@@ -343,8 +359,10 @@ async def google_callback(code: str, state: str, db: AsyncSession = Depends(get_
     """)
 
 
+@limiter.limit("10/minute")
 @router.delete("/gmail/disconnect", status_code=200)
 async def disconnect_gmail(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -363,8 +381,10 @@ async def disconnect_gmail(
     return {"status": "desconectado"}
 
 
+@limiter.limit("10/minute")
 @router.delete("/gdrive/disconnect", status_code=200)
 async def disconnect_gdrive(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -383,8 +403,10 @@ async def disconnect_gdrive(
     return {"status": "desconectado"}
 
 
+@limiter.limit("10/minute")
 @router.get("/gmail/status")
 async def gmail_status(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -452,8 +474,10 @@ async def _get_oauth_access_token(
     return access_token
 
 
+@limiter.limit("10/minute")
 @router.get("/gmail/recent")
 async def gmail_recent(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -471,8 +495,10 @@ async def gmail_recent(
         await client.close()
 
 
+@limiter.limit("10/minute")
 @router.get("/gdrive/recent")
 async def gdrive_recent(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -493,8 +519,10 @@ async def gdrive_recent(
         await client.close()
 
 
+@limiter.limit("10/minute")
 @router.get("/gdrive/status")
 async def gdrive_status(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -511,8 +539,9 @@ async def gdrive_status(
 
 # ─── Microsoft OAuth (Outlook + OneDrive) ────────────────────────────────────
 
+@limiter.limit("10/minute")
 @router.get("/microsoft/auth-url")
-async def microsoft_auth_url(current_user: User = Depends(get_current_user)):
+async def microsoft_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     """Generate Microsoft OAuth consent URL."""
     from app.integrations.microsoft_oauth import generate_auth_url
     url, state = generate_auth_url(str(current_user.tenant_id))
@@ -520,8 +549,10 @@ async def microsoft_auth_url(current_user: User = Depends(get_current_user)):
     return {"auth_url": url, "state": state}
 
 
+@limiter.limit("10/minute")
 @router.get("/microsoft/callback", response_class=HTMLResponse)
-async def microsoft_callback(code: str, state: str, db: AsyncSession = Depends(get_db)):
+async def microsoft_callback(request: Request,
+                             code: str, state: str, db: AsyncSession = Depends(get_db)):
     """Handle Microsoft OAuth callback — exchanges code for tokens and stores them."""
     from app.integrations.microsoft_oauth import exchange_code
 
@@ -574,8 +605,10 @@ async def microsoft_callback(code: str, state: str, db: AsyncSession = Depends(g
     """)
 
 
+@limiter.limit("10/minute")
 @router.delete("/outlook/disconnect", status_code=200)
 async def disconnect_outlook(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -594,8 +627,10 @@ async def disconnect_outlook(
     return {"status": "desconectado"}
 
 
+@limiter.limit("10/minute")
 @router.delete("/onedrive/disconnect", status_code=200)
 async def disconnect_onedrive(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -614,8 +649,10 @@ async def disconnect_onedrive(
     return {"status": "desconectado"}
 
 
+@limiter.limit("10/minute")
 @router.get("/outlook/recent")
 async def outlook_recent(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -633,8 +670,10 @@ async def outlook_recent(
         await client.close()
 
 
+@limiter.limit("10/minute")
 @router.get("/onedrive/recent")
 async def onedrive_recent(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -655,8 +694,10 @@ async def onedrive_recent(
         await client.close()
 
 
+@limiter.limit("10/minute")
 @router.get("/outlook/status")
 async def outlook_status(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -671,8 +712,10 @@ async def outlook_status(
     return {"connected": bool(integration and integration.is_active)}
 
 
+@limiter.limit("10/minute")
 @router.get("/onedrive/status")
 async def onedrive_status(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

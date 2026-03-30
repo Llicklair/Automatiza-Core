@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -15,6 +15,7 @@ from app.api.v1.schemas.erp import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import SalesOrder, SalesOrderLine, User
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.get("/orders", response_model=list[SalesOrderResponse], tags=["erp"])
+@limiter.limit("30/minute")
 async def list_sales_orders(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -39,7 +42,9 @@ async def list_sales_orders(
 
 
 @router.post("/orders", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@limiter.limit("30/minute")
 async def create_sales_order(
+    request: Request,
     payload: SalesOrderCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -95,7 +100,9 @@ async def create_sales_order(
 
 
 @router.patch("/orders/{order_id}", response_model=SalesOrderResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def update_sales_order(
+    request: Request,
     order_id: UUID,
     payload: SalesOrderUpdate,
     db: AsyncSession = Depends(get_db),
@@ -119,7 +126,9 @@ async def update_sales_order(
 
 
 @router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
+@limiter.limit("30/minute")
 async def delete_sales_order(
+    request: Request,
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

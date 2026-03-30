@@ -145,7 +145,8 @@ def call_tool(tool_name: str, params: dict[str, Any]) -> str:
     # Usar .invoke() es el método oficial de LangChain tools
     try:
         result = fn.invoke(params)
-    except Exception:
+    except Exception as _e:
+        logger.warning("fn.invoke() falló para '%s', usando llamada directa: %s", fn, _e)
         # Fallback: llamada directa
         result = fn(**params)
 

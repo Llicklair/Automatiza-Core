@@ -4,8 +4,9 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import Response
+from app.middleware.rate_limit import limiter
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,9 @@ UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..",
 # ─── Employees ───────────────────────────────────────────────────────────────
 
 @router.get("/employees", response_model=list[EmployeeResponse])
+@limiter.limit("30/minute")
 async def list_employees(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -40,7 +43,9 @@ async def list_employees(
 
 
 @router.post("/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_employee(
+    request: Request,
     payload: EmployeeCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -67,7 +72,9 @@ async def create_employee(
 
 
 @router.patch("/employees/{employee_id}", response_model=EmployeeResponse)
+@limiter.limit("30/minute")
 async def update_employee(
+    request: Request,
     employee_id: UUID,
     payload: EmployeeUpdate,
     db: AsyncSession = Depends(get_db),
@@ -92,7 +99,9 @@ async def update_employee(
 
 
 @router.delete("/employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_employee(
+    request: Request,
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -144,7 +153,9 @@ def _calc_payroll(base_salary: float, irpf_rate: float) -> dict:
 
 
 @router.get("/employees/{employee_id}/payroll/preview", response_model=PayrollCalculateResponse)
+@limiter.limit("30/minute")
 async def preview_payroll(
+    request: Request,
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -172,7 +183,9 @@ async def preview_payroll(
 
 
 @router.post("/payrolls/auto", response_model=PayrollResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def generate_payroll_auto(
+    request: Request,
     payload: PayrollSimpleCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -226,7 +239,9 @@ async def generate_payroll_auto(
 
 
 @router.get("/payrolls", response_model=list[PayrollResponse])
+@limiter.limit("30/minute")
 async def list_payrolls(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -241,7 +256,9 @@ async def list_payrolls(
 
 
 @router.post("/payrolls", response_model=PayrollResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def generate_payroll(
+    request: Request,
     payload: PayrollCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -269,7 +286,9 @@ async def generate_payroll(
 
 
 @router.post("/payrolls/{payroll_id}/approve", response_model=PayrollResponse)
+@limiter.limit("30/minute")
 async def approve_payroll(
+    request: Request,
     payroll_id: UUID,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
@@ -313,7 +332,9 @@ async def approve_payroll(
 
 
 @router.patch("/payrolls/{payroll_id}", response_model=PayrollResponse)
+@limiter.limit("30/minute")
 async def update_payroll(
+    request: Request,
     payroll_id: UUID,
     payload: PayrollUpdate,
     db: AsyncSession = Depends(get_db),
@@ -377,7 +398,9 @@ async def update_payroll(
 
 
 @router.delete("/payrolls/{payroll_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_payroll(
+    request: Request,
     payroll_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -401,7 +424,9 @@ async def delete_payroll(
 
 
 @router.get("/payrolls/{payroll_id}/pdf")
+@limiter.limit("30/minute")
 async def download_payroll_pdf(
+    request: Request,
     payroll_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

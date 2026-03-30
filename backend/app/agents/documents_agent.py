@@ -150,8 +150,8 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
             elif file_bytes:
                 try:
                     raw_text = file_bytes.decode("utf-8", errors="ignore")[:5000]
-                except Exception:
-                    pass
+                except Exception as _e:
+                    logger.warning("Error decodificando bytes de documento: %s", _e)
 
             if doc.parsed_content and not raw_text:
                 raw_text = doc.parsed_content[:5000]

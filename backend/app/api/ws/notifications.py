@@ -1,8 +1,12 @@
 
+import logging
+
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -32,7 +36,8 @@ class ConnectionManager:
             for connection in connections:
                 try:
                     await connection.send_json(message)
-                except Exception:
+                except Exception as _e:
+                    logger.warning("WebSocket roto para tenant %s, desconectando: %s", tenant_id, _e)
                     # Clean up broken connections
                     self.disconnect(connection, tenant_id)
 

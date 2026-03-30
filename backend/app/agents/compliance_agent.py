@@ -56,7 +56,8 @@ async def check_fiscal_deadlines(days_ahead: int = 90) -> str:
 async def _check_fiscal_deadlines_async(days_ahead: int) -> str:
     try:
         vencimientos = get_proximos_vencimientos(days_ahead=days_ahead)
-    except Exception:
+    except Exception as _e:
+        logger.warning("Error obteniendo vencimientos fiscales, usando fallback: %s", _e)
         vencimientos = [
             {"nombre": "Modelo 303 (IVA Trimestral)", "fecha_limite": "2026-04-20", "dias_restantes": 32},
             {"nombre": "Modelo 111 (Retenciones)", "fecha_limite": "2026-04-20", "dias_restantes": 32},
@@ -78,7 +79,8 @@ Devuelve JSON: {"alertas": ["...", "..."]}"""),
         ])
         data = json.loads(response.content)
         alertas = data.get("alertas", [])
-    except Exception:
+    except Exception as _e:
+        logger.warning("Error generando alertas fiscales con LLM, usando fallback: %s", _e)
         alertas = [
             f"⚠️ {v['nombre']}: vence el {v['fecha_limite']} ({v['dias_restantes']} días)"
             for v in vencimientos
@@ -124,7 +126,8 @@ Devuelve JSON: {"resumen": "...", "novedades_relevantes": [...], "acciones_recom
         ])
         data = json.loads(response.content)
         resumen = data.get("resumen", str(data))
-    except Exception:
+    except Exception as _e:
+        logger.warning("Error procesando novedades BOE con LLM, usando fallback: %s", _e)
         resumen = f"Se han detectado {len(novedades_relevantes)} novedades relevantes para PYMEs."
 
     return f"Novedades BOE:\n\n{resumen}"
@@ -199,7 +202,8 @@ INSTRUCCIONES:
             HumanMessage(content=f"Consulta fiscal: {sanitize_user_input(question)}"),
         ])
         return response.content
-    except Exception:
+    except Exception as _e:
+        logger.warning("Error procesando consulta fiscal con LLM: %s", _e)
         return "No he podido procesar tu consulta. Consulta directamente con tu asesor fiscal."
 
 

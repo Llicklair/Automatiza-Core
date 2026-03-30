@@ -5,9 +5,10 @@ from uuid import UUID
 
 _logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from app.middleware.rate_limit import limiter
 
 from app.agents.orchestrator import (
     _dispatch_banking,
@@ -29,7 +30,9 @@ from app.services.node_engine import has_advanced_nodes
 router = APIRouter(prefix="/workflows", tags=["Workflows & Automations"])
 
 @router.get("/", response_model=list[schemas.WorkflowResponse])
+@limiter.limit("30/minute")
 async def list_workflows(
+    request: Request,
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -41,7 +44,9 @@ async def list_workflows(
 
 
 @router.get("/recent-completions")
+@limiter.limit("30/minute")
 async def recent_completions(
+    request: Request,
     since: float = Query(default=0.0, description="Unix timestamp; return executions completed after this time"),
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -82,7 +87,9 @@ async def recent_completions(
 
 
 @router.post("/", response_model=schemas.WorkflowResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_workflow(
+    request: Request,
     workflow_in: schemas.WorkflowCreate,
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -110,7 +117,9 @@ async def create_workflow(
 
 
 @router.get("/{workflow_id}", response_model=schemas.WorkflowResponse)
+@limiter.limit("30/minute")
 async def get_workflow(
+    request: Request,
     workflow_id: UUID,
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -129,7 +138,9 @@ async def get_workflow(
 
 
 @router.patch("/{workflow_id}", response_model=schemas.WorkflowResponse)
+@limiter.limit("30/minute")
 async def update_workflow(
+    request: Request,
     workflow_id: UUID,
     workflow_in: schemas.WorkflowUpdate,
     current_user: models.User = Depends(get_current_user),
@@ -156,7 +167,9 @@ async def update_workflow(
 
 
 @router.delete("/{workflow_id}")
+@limiter.limit("30/minute")
 async def delete_workflow(
+    request: Request,
     workflow_id: UUID,
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -178,7 +191,9 @@ async def delete_workflow(
 
 
 @router.post("/{workflow_id}/run", response_model=schemas.WorkflowExecutionResponse)
+@limiter.limit("30/minute")
 async def run_workflow_manually(
+    request: Request,
     workflow_id: UUID,
     background_tasks: BackgroundTasks,
     current_user: models.User = Depends(get_current_user),
@@ -304,7 +319,9 @@ async def run_workflow_manually(
 
 
 @router.post("/{workflow_id}/executions/{execution_id}/cancel", response_model=schemas.WorkflowExecutionResponse)
+@limiter.limit("30/minute")
 async def cancel_execution(
+    request: Request,
     workflow_id: UUID,
     execution_id: UUID,
     current_user: models.User = Depends(get_current_user),
@@ -334,7 +351,9 @@ async def cancel_execution(
 
 
 @router.post("/{workflow_id}/run-with-context", response_model=schemas.WorkflowExecutionResponse)
+@limiter.limit("30/minute")
 async def run_workflow_with_context(
+    request: Request,
     workflow_id: UUID,
     body: dict,
     background_tasks: BackgroundTasks,
@@ -397,7 +416,9 @@ async def run_workflow_with_context(
 
 
 @router.post("/{workflow_id}/executions/{execution_id}/resume", response_model=schemas.WorkflowExecutionResponse)
+@limiter.limit("30/minute")
 async def resume_execution(
+    request: Request,
     workflow_id: UUID,
     execution_id: UUID,
     current_user: models.User = Depends(get_current_user),
@@ -432,7 +453,9 @@ async def resume_execution(
 
 
 @router.get("/{workflow_id}/executions/{execution_id}/logs")
+@limiter.limit("30/minute")
 async def get_execution_logs(
+    request: Request,
     workflow_id: UUID,
     execution_id: UUID,
     current_user: models.User = Depends(get_current_user),
@@ -470,7 +493,9 @@ async def get_execution_logs(
 
 
 @router.get("/{workflow_id}/executions", response_model=list[schemas.WorkflowExecutionResponse])
+@limiter.limit("30/minute")
 async def get_workflow_executions(
+    request: Request,
     workflow_id: UUID,
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -490,8 +515,10 @@ async def get_workflow_executions(
 
 
 @router.post("/parse-nl", response_model=schemas.WorkflowParseResponse)
+@limiter.limit("30/minute")
 async def parse_natural_language_workflow(
-    request: schemas.WorkflowParseRequest,
+    request: Request,
+    body: schemas.WorkflowParseRequest,
     current_user: models.User = Depends(get_current_user),
 ):
     """
@@ -522,7 +549,7 @@ Events soportados: invoice_created, invoice_paid, client_created, document_uploa
 (usa "any" si el usuario no especifica).''')
 
     try:
-        response = llm.invoke([sys_msg, HumanMessage(content=request.text)])
+        response = llm.invoke([sys_msg, HumanMessage(content=body.text)])
         raw = response.content.strip()
         if raw.startswith("```json"):
             raw = raw[7:]
@@ -533,7 +560,7 @@ Events soportados: invoice_created, invoice_paid, client_created, document_uploa
         # Segunda llamada enfocada: ¿puede ser determinista?
         can_det = False
         try:
-            instruction = payload.get("action_config", {}).get("instruction", request.text)
+            instruction = payload.get("action_config", {}).get("instruction", body.text)
             det_response = llm_plain.invoke([
                 SystemMessage(content=(
                     "Responde ÚNICAMENTE con 'true' o 'false', sin ningún texto adicional.\n"
@@ -561,7 +588,9 @@ Events soportados: invoice_created, invoice_paid, client_created, document_uploa
 # ─── Endpoint para disparar desde eventos ERP ────────────────────────────────
 
 @router.post("/fire-event")
+@limiter.limit("30/minute")
 async def fire_workflow_event(
+    request: Request,
     body: dict[str, Any],
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

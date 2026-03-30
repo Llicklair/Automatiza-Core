@@ -174,7 +174,8 @@ Devuelve JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""),
         cat_map = {c["id"]: c.get("categoria", "otros") for c in cats}
         for tx in todas_tx:
             tx["categoria"] = cat_map.get(tx["id"], "otros")
-    except Exception:
+    except Exception as e:
+        logger.warning("Error clasificando transacciones con LLM: %s. Usando categoría 'otros'.", e)
         for tx in todas_tx:
             tx["categoria"] = "otros"
 
@@ -228,7 +229,8 @@ Máximo 200 palabras. NO inventes datos."""),
             HumanMessage(content=f"Saldos:\n{balance_text}\n\nTransacciones:\n{tx_text}"),
         ])
         return response.content
-    except Exception:
+    except Exception as e:
+        logger.warning("Error generando resumen financiero con LLM: %s. Devolviendo datos sin procesar.", e)
         return f"Datos disponibles:\n\n{balance_text}\n\n{tx_text}"
 
 
@@ -256,7 +258,8 @@ async def _get_psd2_credentials(tenant_id: str) -> dict | None:
             if not creds.get("secret_id") or not creds.get("secret_key"):
                 return None
             return creds
-    except Exception:
+    except Exception as e:
+        logger.error("Error obteniendo credenciales PSD2 para tenant %s: %s", tenant_id, e)
         return None
 
 

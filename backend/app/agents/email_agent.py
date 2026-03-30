@@ -23,6 +23,9 @@ from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 
+import logging
+logger = logging.getLogger(__name__)
+
 # ─── Mock fallback (cuando no hay credenciales configuradas) ──────────────────
 
 MOCK_EMAILS = [
@@ -72,7 +75,8 @@ async def _get_email_credentials(tenant_id: str):
 
         creds_dict = decrypt_credentials(integration.encrypted_credentials)
         return credentials_from_dict(creds_dict)
-    except Exception:
+    except Exception as e:
+        logger.error("Error cargando credenciales de email para tenant %s: %s", tenant_id, e)
         return None
 
 
@@ -133,7 +137,8 @@ async def _get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
                 await db.commit()
 
             return access_token
-    except Exception:
+    except Exception as e:
+        logger.error("Error obteniendo token OAuth (%s) para tenant %s: %s", integration_type, tenant_id, e)
         return None
 
 
@@ -318,7 +323,8 @@ async def _load_attachments(tenant_id: str, attachment_ids: list[str] | None) ->
                 if row and row.file_path and os.path.exists(row.file_path):
                     with open(row.file_path, "rb") as f:
                         attachments.append((row.title or os.path.basename(row.file_path), f.read()))
-            except Exception:
+            except Exception as _e:
+                logger.warning("Error leyendo adjunto para email: %s", _e)
                 continue
     return attachments
 
@@ -357,6 +363,9 @@ async def run_email_agent(
     is_mock = len(providers) == 0
     default_provider = next(iter(providers), None)
     available_names = list(providers.keys())
+
+    if is_mock:
+        logger.warning("[EMAIL] Tenant %s sin credenciales de email — usando datos DEMO. Las operaciones NO son reales.", tenant_id)
 
     if not is_mock:
         from app.integrations.gmail_client import GmailClient
@@ -494,7 +503,8 @@ async def run_email_agent(
                                     path = res.scalar_one_or_none()
                                     if path and os.path.exists(path):
                                         attachment_paths.append(path)
-                                except Exception:
+                                except Exception as _e:
+                                    logger.warning("Error resolviendo ruta de adjunto doc_id=%s: %s", doc_id, _e)
                                     continue
                     result = send_email_smtp(imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths)
                     if result["success"]:

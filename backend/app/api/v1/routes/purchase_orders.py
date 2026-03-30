@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -15,6 +15,7 @@ from app.api.v1.schemas.erp import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import PurchaseOrder, PurchaseOrderLine, User
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,9 @@ router = APIRouter()
 
 
 @router.get("/purchase-orders", response_model=list[PurchaseOrderResponse], tags=["erp"])
+@limiter.limit("30/minute")
 async def list_purchase_orders(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -36,7 +39,9 @@ async def list_purchase_orders(
 
 
 @router.post("/purchase-orders", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@limiter.limit("30/minute")
 async def create_purchase_order(
+    request: Request,
     payload: PurchaseOrderCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -89,7 +94,9 @@ async def create_purchase_order(
 
 
 @router.patch("/purchase-orders/{order_id}", response_model=PurchaseOrderResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def update_purchase_order(
+    request: Request,
     order_id: UUID,
     payload: PurchaseOrderUpdate,
     db: AsyncSession = Depends(get_db),
@@ -113,7 +120,9 @@ async def update_purchase_order(
 
 
 @router.delete("/purchase-orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
+@limiter.limit("30/minute")
 async def delete_purchase_order(
+    request: Request,
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -5,7 +5,7 @@ GET/POST/PUT/DELETE + POST /preview
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.billing import DocumentTemplate
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -77,7 +78,9 @@ class PreviewRequest(BaseModel):
 # ── CRUD ─────────────────────────────────────────────────────────────────────
 
 @router.get("", response_model=list[TemplateResponse])
+@limiter.limit("30/minute")
 async def list_templates(
+    request: Request,
     template_type: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -90,7 +93,9 @@ async def list_templates(
 
 
 @router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_template(
+    request: Request,
     payload: TemplateCreate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -110,7 +115,9 @@ async def create_template(
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
+@limiter.limit("30/minute")
 async def update_template(
+    request: Request,
     template_id: UUID,
     payload: TemplateUpdate,
     db: AsyncSession = Depends(get_db),
@@ -131,7 +138,9 @@ async def update_template(
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_template(
+    request: Request,
     template_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -142,7 +151,9 @@ async def delete_template(
 
 
 @router.post("/{template_id}/set-default", response_model=TemplateResponse)
+@limiter.limit("30/minute")
 async def set_default(
+    request: Request,
     template_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -166,7 +177,9 @@ _PRESET_TEMPLATES = [
 
 
 @router.post("/seed-defaults", response_model=list[TemplateResponse])
+@limiter.limit("30/minute")
 async def seed_defaults(
+    request: Request,
     template_type: str = "invoice",
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -201,7 +214,9 @@ async def seed_defaults(
 # ── Preview ──────────────────────────────────────────────────────────────────
 
 @router.post("/preview")
+@limiter.limit("30/minute")
 async def preview_template(
+    request: Request,
     payload: PreviewRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

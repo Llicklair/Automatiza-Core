@@ -4,7 +4,7 @@ from uuid import UUID
 from typing import Optional, List
 from pydantic import BaseModel
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import Response
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.billing import DeliveryNote, DeliveryNoteLine
 from app.db.models.models import Client, Tenant, User
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/albaranes", tags=["albaranes"])
 
@@ -83,7 +84,9 @@ async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @router.get("", response_model=List[DeliveryNoteResponse])
+@limiter.limit("30/minute")
 async def list_albaranes(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -97,7 +100,9 @@ async def list_albaranes(
 
 
 @router.post("", response_model=DeliveryNoteResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_albaran(
+    request: Request,
     payload: DeliveryNoteCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -149,7 +154,9 @@ async def create_albaran(
 
 
 @router.get("/{albaran_id}", response_model=DeliveryNoteResponse)
+@limiter.limit("30/minute")
 async def get_albaran(
+    request: Request,
     albaran_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -166,7 +173,9 @@ async def get_albaran(
 
 
 @router.patch("/{albaran_id}/status", response_model=DeliveryNoteResponse)
+@limiter.limit("30/minute")
 async def update_albaran_status(
+    request: Request,
     albaran_id: UUID,
     payload: DeliveryNoteStatusUpdate,
     db: AsyncSession = Depends(get_db),
@@ -189,7 +198,9 @@ async def update_albaran_status(
 
 
 @router.delete("/{albaran_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_albaran(
+    request: Request,
     albaran_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -206,7 +217,9 @@ async def delete_albaran(
 
 
 @router.get("/{albaran_id}/pdf")
+@limiter.limit("30/minute")
 async def get_albaran_pdf(
+    request: Request,
     albaran_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

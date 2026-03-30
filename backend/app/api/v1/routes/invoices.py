@@ -4,7 +4,7 @@ import uuid as uuid_mod
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,7 @@ from app.db.base import get_db
 from app.db.models.models import Client, Invoice, InvoiceLine, InvoiceSeries, Product, Tenant, TenantDocument, User
 from app.services.event_bus import emit_event
 from app.services.pdf_service import generate_invoice_pdf, generate_rectificative_invoice_pdf, generate_retention_invoice_pdf
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,9 @@ UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..",
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])
+@limiter.limit("30/minute")
 async def list_invoices(
+    request: Request,
     skip: int = 0,
     limit: int = Query(default=50, le=100),
     db: AsyncSession = Depends(get_db),
@@ -51,7 +54,9 @@ async def list_invoices(
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def get_invoice(
+    request: Request,
     invoice_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -69,7 +74,9 @@ async def get_invoice(
 
 
 @router.patch("/invoices/{invoice_id}/status", response_model=InvoiceResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def update_invoice_status(
+    request: Request,
     invoice_id: UUID,
     payload: InvoiceStatusUpdate,
     db: AsyncSession = Depends(get_db),
@@ -99,7 +106,9 @@ async def update_invoice_status(
 
 
 @router.delete("/invoices/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
+@limiter.limit("30/minute")
 async def delete_invoice(
+    request: Request,
     invoice_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -115,7 +124,9 @@ async def delete_invoice(
 
 
 @router.post("/clients/{client_id}/invoices", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@limiter.limit("30/minute")
 async def create_invoice(
+    request: Request,
     client_id: UUID,
     payload: InvoiceCreate,
     background_tasks: BackgroundTasks,
@@ -346,7 +357,9 @@ async def _generate_and_save_invoice_pdf(invoice, tenant_id, user_id):
 
 
 @router.get("/invoices/{invoice_id}/pdf", tags=["erp"])
+@limiter.limit("30/minute")
 async def download_invoice_pdf(
+    request: Request,
     invoice_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -409,7 +422,9 @@ async def download_invoice_pdf(
 
 
 @router.get("/invoices/{invoice_id}/rectificative-pdf", tags=["erp"])
+@limiter.limit("30/minute")
 async def download_rectificative_invoice_pdf(
+    request: Request,
     invoice_id: UUID,
     reason: str = Query(default="Corrección de importes", description="Motivo de rectificación"),
     db: AsyncSession = Depends(get_db),
@@ -477,7 +492,9 @@ async def download_rectificative_invoice_pdf(
 
 
 @router.get("/invoices/{invoice_id}/retention-pdf", tags=["erp"])
+@limiter.limit("30/minute")
 async def download_retention_invoice_pdf(
+    request: Request,
     invoice_id: UUID,
     retention_pct: float = Query(default=15.0, description="Porcentaje de retención IRPF"),
     db: AsyncSession = Depends(get_db),

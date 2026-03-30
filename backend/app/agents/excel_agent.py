@@ -289,8 +289,8 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
     try:
         async with AsyncSessionLocal() as _db:
             _theme = await get_default_theme(_UUID(tenant_id), "excel", _db)
-    except Exception:
-        pass
+    except Exception as _e:
+        logger.warning("Error cargando tema Excel para tenant %s: %s", tenant_id, _e)
 
     _write_excel(sheets, output_path, theme=_theme)
 
