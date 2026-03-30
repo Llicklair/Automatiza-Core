@@ -5,8 +5,9 @@ import re
 import urllib.parse
 from datetime import datetime, UTC
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
+from app.middleware.rate_limit import limiter
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user
@@ -34,7 +35,8 @@ def _parse_db_url(url: str) -> dict:
 # ── Backup ─────────────────────────────────────────────────────────────────────
 
 @router.get("/backup")
-async def download_backup(current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def download_backup(request: Request, current_user: User = Depends(get_current_user)):
     """Genera un pg_dump y lo devuelve como descarga .sql."""
     db_info = _parse_db_url(settings.DATABASE_URL)
 
@@ -80,7 +82,9 @@ async def download_backup(current_user: User = Depends(get_current_user)):
 # ── Restore ────────────────────────────────────────────────────────────────────
 
 @router.post("/restore")
+@limiter.limit("10/minute")
 async def restore_backup(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):

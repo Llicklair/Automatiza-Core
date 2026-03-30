@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from app.middleware.rate_limit import limiter
 from typing import Any
 from uuid import UUID
 from sqlalchemy import select
@@ -36,7 +37,9 @@ router = APIRouter(prefix="/tenant", tags=["tenant"])
 
 
 @router.get("/me", response_model=TenantMeResponse)
+@limiter.limit("20/minute")
 async def get_tenant_me(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -50,7 +53,9 @@ async def get_tenant_me(
 
 
 @router.patch("/me", response_model=TenantMeResponse)
+@limiter.limit("20/minute")
 async def update_tenant_me(
+    request: Request,
     payload: TenantMeUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -113,7 +118,9 @@ class LlmConfigResponse(BaseModel):
 
 
 @router.get("/llm-config", response_model=LlmConfigResponse)
+@limiter.limit("20/minute")
 async def get_llm_config(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -147,7 +154,9 @@ async def get_llm_config(
 
 
 @router.put("/llm-config", response_model=LlmConfigResponse)
+@limiter.limit("20/minute")
 async def update_llm_config(
+    request: Request,
     payload: LlmConfigUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

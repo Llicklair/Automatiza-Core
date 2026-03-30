@@ -5,6 +5,7 @@ import { api, type Task } from "@/lib/api";
 import { useNotificationStore } from "@/stores/notifications";
 import { Plus, X, ChevronDown, Bot, Clock, CheckCircle2, AlertCircle, Loader2, RefreshCw, Copy, Check, MessageSquare, Trash2 } from "lucide-react";
 import InfoBanner from "@/components/InfoBanner";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { useNavigationGuard } from "@/stores/navigationGuard";
@@ -409,6 +410,7 @@ export default function TareasPage() {
     const doneTasks = tasks.filter(t => t.domain !== "chat" && ["done", "failed", "cancelled"].includes(t.status));
 
     return (
+        <ErrorBoundary section="tareas">
         <div className="p-8 max-w-5xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                 <div>
@@ -667,5 +669,6 @@ export default function TareasPage() {
                 </div>
             </div>
         </div>
+        </ErrorBoundary>
     );
 }

@@ -13,6 +13,7 @@ import {
     BarChart3, Sparkles, Settings, Layers, Download,
 } from "lucide-react";
 import ProfileMenu from "@/components/ProfileMenu";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import NotificationBell from "@/components/NotificationBell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToastStore, type ToastType } from "@/stores/toast";
@@ -400,7 +401,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </header>
                 <main className="flex-1 overflow-y-auto relative" style={{ zIndex: 1 }}>
-                    {children}
+                    <ErrorBoundary section="aplicación">
+                        {children}
+                    </ErrorBoundary>
                 </main>
             </div>
 

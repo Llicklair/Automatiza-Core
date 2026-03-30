@@ -81,6 +81,31 @@ async def create_invoice(
         issuer_address: Dirección de la empresa emisora
         issuer_email: Email de la empresa emisora
     """
+    # Validate inputs
+    try:
+        _amount = float(amount_base) if isinstance(amount_base, str) else amount_base
+        if _amount <= 0:
+            return f"Error: el importe debe ser mayor que 0 (recibido: {amount_base})"
+        amount_base = str(_amount)
+    except (ValueError, TypeError):
+        return f"Error: importe inválido '{amount_base}'. Debe ser un número positivo."
+
+    try:
+        _vat = float(vat_rate) if isinstance(vat_rate, str) else vat_rate
+        if not (0 <= _vat <= 100):
+            return f"Error: el tipo de IVA debe estar entre 0 y 100 (recibido: {vat_rate})"
+        vat_rate = _vat
+    except (ValueError, TypeError):
+        return f"Error: tipo de IVA inválido '{vat_rate}'."
+
+    if invoice_date:
+        try:
+            from datetime import date as _date
+            if isinstance(invoice_date, str):
+                _date.fromisoformat(invoice_date)
+        except ValueError:
+            return f"Error: fecha de factura inválida '{invoice_date}'. Usa formato YYYY-MM-DD."
+
     return await _create_invoice_async(
             tenant_id, client_name, concept, amount_base, vat_rate,
             invoice_date, client_nif, notes,

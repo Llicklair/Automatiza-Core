@@ -2,7 +2,7 @@ import datetime as dt_module
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -16,6 +16,7 @@ from app.api.v1.schemas.erp import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice, User
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ router = APIRouter()
 
 
 @router.get("/recurring-invoices", response_model=list[RecurringInvoiceResponse], tags=["erp"])
+@limiter.limit("30/minute")
 async def list_recurring_invoices(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -37,7 +40,9 @@ async def list_recurring_invoices(
 
 
 @router.post("/recurring-invoices", response_model=RecurringInvoiceResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@limiter.limit("30/minute")
 async def create_recurring_invoice(
+    request: Request,
     payload: RecurringInvoiceCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -63,7 +68,9 @@ async def create_recurring_invoice(
 
 
 @router.patch("/recurring-invoices/{rec_id}", response_model=RecurringInvoiceResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def update_recurring_invoice(
+    request: Request,
     rec_id: UUID,
     payload: RecurringInvoiceUpdate,
     db: AsyncSession = Depends(get_db),
@@ -90,7 +97,9 @@ async def update_recurring_invoice(
 
 
 @router.delete("/recurring-invoices/{rec_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
+@limiter.limit("30/minute")
 async def delete_recurring_invoice(
+    request: Request,
     rec_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -106,7 +115,9 @@ async def delete_recurring_invoice(
 
 
 @router.post("/recurring-invoices/{rec_id}/run", response_model=InvoiceResponse, tags=["erp"])
+@limiter.limit("30/minute")
 async def run_recurring_invoice(
+    request: Request,
     rec_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

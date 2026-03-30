@@ -7,8 +7,11 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
+import logging
 from datetime import UTC, datetime
 from typing import Any, Literal
+
+logger = logging.getLogger(__name__)
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import select
@@ -174,7 +177,8 @@ async def _compile_deterministic_steps(
             if "type" not in step:
                 step["type"] = "deterministic" if step.get("tool") else "reasoning"
         return steps
-    except Exception:
+    except Exception as _e:
+        logger.warning("Error parseando pasos de workflow del LLM, usando fallback genérico: %s", _e)
         # Fallback: un paso reasoning genérico
         return [{"type": "reasoning", "agent": "skill", "action": "execute_workflow",
                  "params": {"intent": action_instruction}}]
@@ -220,7 +224,8 @@ async def run_workflow_agent(
 
         try:
             plan = json.loads(response.content)
-        except Exception:
+        except Exception as _e:
+            logger.warning("Error parseando respuesta JSON del LLM en workflow_agent: %s", _e)
             return WorkflowAgentResult(success=False, action="parse", error="No se pudo parsear el plan del LLM.")
 
         action = plan.get("action", "create")

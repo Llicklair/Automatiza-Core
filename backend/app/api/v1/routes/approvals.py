@@ -5,7 +5,7 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,12 +14,15 @@ from app.db.base import get_db
 from app.db.models.models import PendingApproval, Task, User, WorkflowExecution
 from app.api.v1.schemas.tasks import ApprovalDecision, PendingApprovalOut
 from app.services.audit import log_action
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
 
 @router.get("", response_model=list[PendingApprovalOut])
+@limiter.limit("30/minute")
 async def list_pending_approvals(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -36,7 +39,9 @@ async def list_pending_approvals(
 
 
 @router.post("/{approval_id}/decide", response_model=PendingApprovalOut)
+@limiter.limit("30/minute")
 async def decide_approval(
+    request: Request,
     approval_id: UUID,
     decision: ApprovalDecision,
     db: AsyncSession = Depends(get_db),
@@ -88,7 +93,9 @@ async def decide_approval(
 
 
 @router.delete("/cleanup", status_code=200)
+@limiter.limit("30/minute")
 async def cleanup_approvals(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

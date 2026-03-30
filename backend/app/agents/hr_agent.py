@@ -49,6 +49,16 @@ async def calculate_and_create_payroll(tenant_id: str, nif: str, month: int, yea
         year: Año (ej. 2025)
         deductions: Deducciones extra (ausencias, adelantos...)
     """
+    # Validate inputs
+    if not (1 <= int(month) <= 12):
+        return f"Error: mes inválido {month}. Debe estar entre 1 y 12."
+    from datetime import date as _date
+    current_year = _date.today().year
+    if not (2000 <= int(year) <= current_year + 1):
+        return f"Error: año inválido {year}. Debe estar entre 2000 y {current_year + 1}."
+    if deductions < 0:
+        return f"Error: las deducciones no pueden ser negativas (recibido: {deductions})."
+
     return await _create_payroll_async(tenant_id, nif, month, year, deductions)
 
 
@@ -120,7 +130,8 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
                     try:
                         from app.api.v1.routes.templates import get_default_theme
                         payroll_theme = await get_default_theme(UUID(tenant_id), "payroll", db_pdf)
-                    except Exception:
+                    except Exception as _e:
+                        logger.warning("Error cargando tema nómina para tenant %s: %s", tenant_id, _e)
                         payroll_theme = None
 
                 payroll_pdf_data = {
@@ -304,7 +315,8 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     try:
                         from app.api.v1.routes.templates import get_default_theme
                         _bulk_theme = await get_default_theme(UUID(tenant_id), "payroll", db)
-                    except Exception:
+                    except Exception as _e:
+                        logger.warning("Error cargando tema nómina masiva para tenant %s: %s", tenant_id, _e)
                         _bulk_theme = None
                     pdf_bytes = generate_payroll_pdf(payroll_pdf_data, _bulk_theme)
 

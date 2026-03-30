@@ -52,10 +52,27 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
                 break
 
         # Detectar si fue una creación exitosa, consulta, o error
-        is_creation = any(kw in final_text.lower() for kw in ["factura creada", "draft", "borrador"])
-        is_approval = "aprobación requerida" in final_text.lower()
-        is_error = final_text.lower().startswith("error")
-        is_query = any(kw in final_text.lower() for kw in ["facturas recientes", "total facturado", "no hay facturas"])
+        _lower = final_text.lower()
+        is_creation = any(kw in _lower for kw in ["factura creada", "draft", "borrador"])
+        is_approval = "aprobación requerida" in _lower
+        is_query = any(kw in _lower for kw in ["facturas recientes", "total facturado", "no hay facturas"])
+
+        # Detección robusta de error: no solo prefix "error", también frases de fallo comunes
+        _error_signals = [
+            _lower.startswith("error"),
+            "no se pudo" in _lower,
+            "no fue posible" in _lower,
+            "falló" in _lower,
+            "fallo al" in _lower,
+            "imposible" in _lower,
+            "no existe" in _lower and not is_query,
+        ]
+        is_error = any(_error_signals) and not is_creation and not is_approval
+
+        # Si el grafo del agente reportó status de error, respetar eso
+        agent_status = result_state.get("status", "")
+        if agent_status in ("failed", "error"):
+            is_error = True
 
         success = not is_error
 

@@ -1,7 +1,8 @@
 """Rutas CRUD de tareas del orquestador."""
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,12 +10,17 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import AuditLog, PendingApproval, Task, TenantDocument, User, WorkflowExecution
 from app.api.v1.schemas.tasks import AuditLogOut, TaskCreate, TaskOut
+from app.middleware.rate_limit import limiter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 async def create_task(
+    request: Request,
     payload: TaskCreate,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
@@ -49,7 +55,9 @@ async def create_task(
 
 
 @router.get("", response_model=list[TaskOut])
+@limiter.limit("60/minute")
 async def list_tasks(
+    request: Request,
     skip: int = 0,
     limit: int = Query(default=50, le=100),
     status_filter: str | None = None,
@@ -71,7 +79,9 @@ async def list_tasks(
 
 
 @router.delete("/cleanup", status_code=status.HTTP_200_OK)
+@limiter.limit("60/minute")
 async def cleanup_tasks(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -131,7 +141,9 @@ async def cleanup_tasks(
 
 
 @router.get("/{task_id}", response_model=TaskOut)
+@limiter.limit("60/minute")
 async def get_task(
+    request: Request,
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -146,7 +158,9 @@ async def get_task(
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("60/minute")
 async def cancel_task(
+    request: Request,
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -172,7 +186,9 @@ async def cancel_task(
 
 
 @router.get("/{task_id}/audit", response_model=list[AuditLogOut])
+@limiter.limit("60/minute")
 async def get_task_audit(
+    request: Request,
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

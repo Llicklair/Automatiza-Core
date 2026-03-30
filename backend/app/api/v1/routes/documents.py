@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import desc, select
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 from app.core.dependencies import get_current_user
+from app.middleware.rate_limit import limiter
 from app.db.base import get_db
 from app.db.models.models import Task, Tenant, TenantDocument, User
 
@@ -39,8 +40,10 @@ class DocumentOut(BaseModel):
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+@limiter.limit("30/minute")
 @router.post("/upload", response_model=DocumentOut)
-async def upload_document(
+async def upload_document(request: Request,
+                          
     file: UploadFile = File(...),
     category: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
@@ -156,8 +159,10 @@ class ScanResultOut(BaseModel):
     message: str
 
 
+@limiter.limit("30/minute")
 @router.post("/scan", response_model=list[ScanResultOut])
-async def scan_documents(
+async def scan_documents(request: Request,
+                         
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -264,8 +269,10 @@ async def scan_documents(
     return results
 
 
+@limiter.limit("30/minute")
 @router.post("/bulk", response_model=list[DocumentOut])
-async def upload_bulk_documents(
+async def upload_bulk_documents(request: Request,
+                                
     file: UploadFile = File(...),
     category: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
@@ -353,8 +360,10 @@ async def upload_bulk_documents(
     return docs_created
 
 
+@limiter.limit("30/minute")
 @router.get("/export")
-async def export_documents(
+async def export_documents(request: Request,
+                           
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -402,8 +411,10 @@ async def export_documents(
     )
 
 
+@limiter.limit("30/minute")
 @router.get("", response_model=list[DocumentOut])
-async def list_documents(
+async def list_documents(request: Request,
+                         
     category: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -423,8 +434,10 @@ async def list_documents(
     return result.scalars().all()
 
 
+@limiter.limit("30/minute")
 @router.delete("/{document_id}", status_code=200)
-async def delete_document(
+async def delete_document(request: Request,
+                          
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -460,8 +473,10 @@ async def delete_document(
     return {"status": "deleted", "id": str(document_id)}
 
 
+@limiter.limit("30/minute")
 @router.get("/{document_id}/download")
-async def download_document(
+async def download_document(request: Request,
+                            
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -621,8 +636,10 @@ async def download_document(
     )
 
 
+@limiter.limit("30/minute")
 @router.patch("/{document_id}/content", response_model=DocumentOut)
-async def update_document_content(
+async def update_document_content(request: Request,
+                                  
     document_id: uuid.UUID,
     body: dict,
     db: AsyncSession = Depends(get_db),
@@ -694,8 +711,10 @@ async def update_document_content(
     return doc
 
 
+@limiter.limit("30/minute")
 @router.get("/by-category/{category}", response_model=list[DocumentOut])
-async def list_documents_by_category(
+async def list_documents_by_category(request: Request,
+                                     
     category: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -782,8 +801,10 @@ def _parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list
         return [], [], "unknown"
 
 
+@limiter.limit("30/minute")
 @router.post("/import-db", response_model=list[ImportDBOut])
-async def import_database(
+async def import_database(request: Request,
+                          
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

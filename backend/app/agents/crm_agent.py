@@ -79,6 +79,19 @@ async def create_opportunity(tenant_id: str, client_nif: str, title: str, expect
         expected_value: Valor esperado en euros
         stage: Fase ('new', 'qualified', 'proposal', 'won', 'lost')
     """
+    # Validate inputs
+    try:
+        _val = float(expected_value) if isinstance(expected_value, str) else expected_value
+        if _val < 0:
+            return f"Error: el valor esperado no puede ser negativo (recibido: {expected_value})."
+        expected_value = _val
+    except (ValueError, TypeError):
+        return f"Error: valor esperado inválido '{expected_value}'. Debe ser un número."
+
+    VALID_STAGES = {"new", "qualified", "proposal", "negotiation", "won", "lost"}
+    if stage not in VALID_STAGES:
+        return f"Error: etapa inválida '{stage}'. Opciones válidas: {', '.join(sorted(VALID_STAGES))}."
+
     return await _create_opportunity_async(tenant_id, client_nif, title, expected_value, stage)
 
 async def _create_opportunity_async(tenant_id: str, client_nif: str, title: str, expected_value: float, stage: str) -> str:

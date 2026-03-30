@@ -1,15 +1,18 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Invoice, User
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(tags=["banking"])
 
 @router.get("/summary")
+@limiter.limit("20/minute")
 async def get_banking_summary(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -73,7 +76,9 @@ class BankTransactionResponse(BaseModel):
 
 # --- Routes ---
 @router.get("/transactions", response_model=list[BankTransactionResponse])
+@limiter.limit("20/minute")
 async def list_transactions(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -82,7 +87,9 @@ async def list_transactions(
     return result.scalars().all()
 
 @router.post("/transactions/sync")
+@limiter.limit("20/minute")
 async def sync_bank_transactions(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -110,7 +117,9 @@ async def sync_bank_transactions(
     return {"message": "Sincronizado correctamente", "status": "ok"}
 
 @router.post("/transactions/{tx_id}/reconcile")
+@limiter.limit("20/minute")
 async def reconcile_transaction(
+    request: Request,
     tx_id: uuid.UUID,
     payload: TransactionReconcile,
     db: AsyncSession = Depends(get_db),
@@ -149,7 +158,9 @@ async def reconcile_transaction(
     return {"message": "Conciliado correctamente", "status": "ok"}
 
 @router.get("/analytics")
+@limiter.limit("20/minute")
 async def get_banking_analytics(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

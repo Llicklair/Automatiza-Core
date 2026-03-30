@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 const SUGGESTIONS = [
     "¿Cuánto he facturado este mes?",
@@ -237,6 +238,7 @@ export default function DashboardPage() {
     const netoIsPositive = summary.neto >= 0;
 
     return (
+        <ErrorBoundary section="inicio">
         <div className="p-8 max-w-[1400px] mx-auto space-y-8 relative z-0">
             {/* Ambient glow — subtle, only visible en dark backgrounds */}
             <div className="pointer-events-none fixed top-0 left-64 w-[600px] h-[400px] opacity-30" style={{ zIndex: -1 }}>
@@ -641,5 +643,6 @@ export default function DashboardPage() {
                 </div>
             </div>
         </div>
+        </ErrorBoundary>
     );
 }

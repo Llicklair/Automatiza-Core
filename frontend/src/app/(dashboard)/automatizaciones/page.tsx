@@ -10,6 +10,7 @@ import {
 import { logError } from "@/lib/logger";
 import { useNavigationGuard } from "@/stores/navigationGuard";
 import InfoBanner from "@/components/InfoBanner";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { TEMPLATES } from "./_components/constants";
 import WorkflowCard from "./_components/WorkflowCard";
 import WorkflowFormModal from "./_components/WorkflowFormModal";
@@ -403,6 +404,7 @@ export default function WorkflowsPage() {
     // ─── Render ──────────────────────────────────────────────────────────────
 
     return (
+        <ErrorBoundary section="automatizaciones">
         <div className="min-h-screen bg-[#09090b] text-white p-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
@@ -600,5 +602,6 @@ export default function WorkflowsPage() {
                 />
             )}
         </div>
+        </ErrorBoundary>
     );
 }

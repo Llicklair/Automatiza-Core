@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from app.middleware.rate_limit import limiter
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +13,9 @@ from app.db.models.models import Activity, Event, Opportunity, Reservation, User
 router = APIRouter(prefix="/crm", tags=["crm"])
 
 @router.get("/opportunities", response_model=list[schemas.OpportunityResponse])
+@limiter.limit("30/minute")
 async def list_opportunities(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -25,7 +28,9 @@ async def list_opportunities(
     return result.scalars().all()
 
 @router.post("/opportunities", response_model=schemas.OpportunityResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_opportunity(
+    request: Request,
     payload: schemas.OpportunityCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -40,7 +45,9 @@ async def create_opportunity(
     return new_opp
 
 @router.patch("/opportunities/{opp_id}", response_model=schemas.OpportunityResponse)
+@limiter.limit("30/minute")
 async def update_opportunity(
+    request: Request,
     opp_id: UUID,
     payload: schemas.OpportunityUpdate,
     db: AsyncSession = Depends(get_db),
@@ -67,7 +74,9 @@ async def update_opportunity(
 # --- Activities ---
 
 @router.get("/activities", response_model=list[schemas.ActivityResponse])
+@limiter.limit("30/minute")
 async def list_activities(
+    request: Request,
     client_id: UUID = None,
     opportunity_id: UUID = None,
     db: AsyncSession = Depends(get_db),
@@ -84,7 +93,9 @@ async def list_activities(
     return result.scalars().all()
 
 @router.post("/activities", response_model=schemas.ActivityResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_activity(
+    request: Request,
     payload: schemas.ActivityCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -96,7 +107,9 @@ async def create_activity(
     return new_act
 
 @router.delete("/activities/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_activity(
+    request: Request,
     activity_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -113,7 +126,9 @@ async def delete_activity(
 # --- Events / Calendar ---
 
 @router.get("/events", response_model=list[schemas.EventResponse])
+@limiter.limit("30/minute")
 async def list_events(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -122,7 +137,9 @@ async def list_events(
     return result.scalars().all()
 
 @router.post("/events", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_event(
+    request: Request,
     payload: schemas.EventCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -136,7 +153,9 @@ async def create_event(
 # --- Reservations ---
 
 @router.get("/reservations", response_model=list[schemas.ReservationResponse])
+@limiter.limit("30/minute")
 async def list_reservations(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -145,7 +164,9 @@ async def list_reservations(
     return result.scalars().all()
 
 @router.post("/reservations", response_model=schemas.ReservationResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_reservation(
+    request: Request,
     payload: schemas.ReservationCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -157,7 +178,9 @@ async def create_reservation(
     return new_res
 
 @router.patch("/reservations/{res_id}", response_model=schemas.ReservationResponse)
+@limiter.limit("30/minute")
 async def update_reservation(
+    request: Request,
     res_id: UUID,
     payload: schemas.ReservationUpdate,
     db: AsyncSession = Depends(get_db),
@@ -179,7 +202,9 @@ async def update_reservation(
     return res
 
 @router.delete("/reservations/{res_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_reservation(
+    request: Request,
     res_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -199,7 +224,9 @@ async def delete_reservation(
 # --- Events PATCH / DELETE ---
 
 @router.patch("/events/{event_id}", response_model=schemas.EventResponse)
+@limiter.limit("30/minute")
 async def update_event(
+    request: Request,
     event_id: UUID,
     payload: schemas.EventUpdate,
     db: AsyncSession = Depends(get_db),
@@ -221,7 +248,9 @@ async def update_event(
     return evt
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_event(
+    request: Request,
     event_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -241,7 +270,9 @@ async def delete_event(
 # --- Opportunities DELETE ---
 
 @router.delete("/opportunities/{opp_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_opportunity(
+    request: Request,
     opp_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
