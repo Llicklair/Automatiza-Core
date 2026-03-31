@@ -18,6 +18,7 @@ from langchain_openai import ChatOpenAI
 from app.core.config import settings
 from app.core._llm_mock import MockChatModel
 from app.core._llm_gemini import GeminiSafeWrapper
+from app.core._llm_claude_code import ClaudeCodeChatModel
 
 # ContextVar para propagar el LLM del tenant a todos los agentes del mismo request
 _tenant_llm_ctx: ContextVar = ContextVar("_tenant_llm_ctx", default=None)
@@ -41,7 +42,7 @@ def get_llm(
     """
     # Si hay un LLM de tenant precargado (vía set_tenant_llm_context) y no se fuerza un provider,
     # usarlo directamente para respetar la configuración del usuario en la UI.
-    if provider is None and format_output != "json":
+    if provider is None:
         ctx_llm = _tenant_llm_ctx.get()
         if ctx_llm is not None:
             return ctx_llm
@@ -77,6 +78,9 @@ def get_llm(
 
     elif selected_provider == "openrouter":
         return _build_openrouter(temperature, format_output, max_tokens, base_fallbacks)
+
+    elif selected_provider == "claude_code":
+        return ClaudeCodeChatModel()
 
     elif selected_provider == "mock":
         return MockChatModel()
@@ -129,6 +133,12 @@ async def get_llm_for_tenant(
                     f"El proveedor de IA '{provider}' está desactivado. "
                     "Actívalo en Configuración → API Keys."
                 )
+
+            # claude_code no necesita API key — usa la sesión del CLI local
+            if provider == "claude_code":
+                _log.info("Usando Claude Code CLI para tenant %s", tenant_id)
+                return ClaudeCodeChatModel(pool_key=str(tenant_id))
+
             if not pdata.get("api_key"):
                 _log.warning("Proveedor LLM '%s' sin API key para el tenant %s", provider, tenant_id)
                 raise ValueError(

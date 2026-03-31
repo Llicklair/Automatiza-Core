@@ -16,7 +16,7 @@ const LLM_PROVIDERS = [
         defaultModel: "gemini-2.5-flash",
         models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
         consoleUrl: "https://aistudio.google.com/apikey",
-        hint: "Gratuito con límites generosos. Recomendado para empezar.",
+        hint: "Recomendado. Requiere facturación activa en Google AI Studio.",
     },
     {
         key: "anthropic", label: "Anthropic", placeholder: "sk-ant-...",
@@ -45,6 +45,12 @@ const LLM_PROVIDERS = [
         models: ["google/gemini-2.0-flash-exp:free", "google/gemma-3-27b-it:free", "mistralai/mistral-small-3.1-24b-instruct:free", "qwen/qwen3-235b-a22b-thinking-2507"],
         consoleUrl: "https://openrouter.ai/keys",
         hint: "Acceso a múltiples modelos con una sola key.",
+    },
+    {
+        key: "claude_code", label: "Claude Code (VSCode)", placeholder: "",
+        defaultModel: "claude-code-cli", models: ["claude-code-cli"],
+        consoleUrl: "",
+        hint: "",
     },
 ];
 
@@ -164,7 +170,7 @@ export default function ApiKeysPage() {
                 <p>
                     Las API Keys permiten que los agentes IA se conecten a modelos de lenguaje.
                     Necesitas al menos una para que el sistema funcione.
-                    <span className="text-indigo-300">Gemini es gratuito</span> y viene recomendado por defecto.
+                    <span className="text-indigo-300">Gemini</span> es el proveedor recomendado por defecto.
                 </p>
             </InfoBanner>
 
@@ -238,56 +244,124 @@ export default function ApiKeysPage() {
                                     </button>
                                 </div>
 
-                                {/* Expanded: api key + model */}
+                                {/* Expanded: api key + model (or setup guide for claude_code) */}
                                 {s.expanded && (
                                     <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-3">
-                                        <p className="text-[11px] text-zinc-500 mb-1">{p.hint}</p>
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <label className="text-[11px] text-zinc-500">API Key</label>
-                                                <a
-                                                    href={p.consoleUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
-                                                >
-                                                    Obtener API Key <ExternalLink className="w-3 h-3" />
-                                                </a>
+                                        {p.key === "claude_code" ? (
+                                            /* ── Claude Code setup guide ── */
+                                            <div className="space-y-3">
+                                                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3">
+                                                    <p className="text-xs text-indigo-300 font-medium mb-2">
+                                                        Usa tu suscripci&oacute;n de Claude (Pro/Team) directamente. Sin API Key, sin coste extra.
+                                                    </p>
+                                                    <p className="text-[11px] text-zinc-400">
+                                                        Los agentes usar&aacute;n el CLI de Claude Code instalado en tu equipo para ejecutar acciones reales
+                                                        (crear facturas, gestionar clientes, etc.).
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <p className="text-[11px] text-zinc-400 font-medium uppercase tracking-wider">Configuraci&oacute;n inicial (solo una vez)</p>
+
+                                                    <div className="flex gap-2.5 items-start">
+                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
+                                                        <div>
+                                                            <p className="text-xs text-zinc-300">Instala <a href="https://code.visualstudio.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Visual Studio Code</a> si a&uacute;n no lo tienes.</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex gap-2.5 items-start">
+                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
+                                                        <div>
+                                                            <p className="text-xs text-zinc-300">Instala la extensi&oacute;n <a href="https://marketplace.visualstudio.com/items?itemName=anthropics.claude-code" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Claude Code</a> desde el marketplace de VSCode.</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex gap-2.5 items-start">
+                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
+                                                        <div>
+                                                            <p className="text-xs text-zinc-300">Inicia sesi&oacute;n en Claude dentro de VSCode con tu cuenta Claude Pro o Team.</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex gap-2.5 items-start">
+                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>
+                                                        <div>
+                                                            <p className="text-xs text-zinc-300">Verifica que funciona: abre un terminal y escribe:</p>
+                                                            <code className="block mt-1 px-2 py-1 bg-black/40 border border-[#3f3f46] rounded text-[11px] text-emerald-400 font-mono">claude --version</code>
+                                                            <p className="text-[10px] text-zinc-500 mt-1">Si muestra un n&uacute;mero de versi&oacute;n, est&aacute; listo.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5">
+                                                    <p className="text-[11px] text-amber-400/90">
+                                                        <span className="font-medium">Nota:</span> VSCode debe estar abierto con la sesi&oacute;n de Claude activa mientras uses la app.
+                                                        Cada usuario utiliza su propia suscripci&oacute;n — no se comparten datos entre cuentas.
+                                                    </p>
+                                                </div>
+
+                                                <div className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-2.5">
+                                                    <p className="text-[11px] text-rose-400/90">
+                                                        <span className="font-medium">Fiabilidad reducida:</span> Esta opci&oacute;n usa un m&eacute;todo indirecto para ejecutar acciones (el CLI no soporta llamadas a herramientas nativas).
+                                                        Puede fallar ocasionalmente en tareas complejas. Para m&aacute;xima fiabilidad, usa un proveedor con API Key como <span className="text-rose-300">Gemini</span> o <span className="text-rose-300">Anthropic</span>.
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="relative">
-                                                <input
-                                                    type={s.showKey ? "text" : "password"}
-                                                    value={s.api_key}
-                                                    onChange={e => updateProvider(p.key, { api_key: e.target.value })}
-                                                    placeholder={s.has_key ? "••••••••  (dejar vacío para no cambiar)" : p.placeholder}
-                                                    className="w-full pr-9 px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateProvider(p.key, { showKey: !s.showKey })}
-                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-                                                >
-                                                    {s.showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[11px] text-zinc-500 mb-1 block">Modelo</label>
-                                            <select
-                                                value={p.models.includes(s.model) ? s.model : "__custom__"}
-                                                onChange={e => {
-                                                    if (e.target.value !== "__custom__") updateProvider(p.key, { model: e.target.value });
-                                                }}
-                                                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white focus:outline-none focus:border-indigo-500/50 transition mb-1"
-                                            >
-                                                {p.models.map(m => (
-                                                    <option key={m} value={m} className="bg-[#18181b]">{m}</option>
-                                                ))}
-                                                {!p.models.includes(s.model) && (
-                                                    <option value="__custom__" className="bg-[#18181b]">{s.model} (personalizado)</option>
-                                                )}
-                                            </select>
-                                        </div>
+                                        ) : (
+                                            /* ── Standard provider: API Key + Model ── */
+                                            <>
+                                                {p.hint && <p className="text-[11px] text-zinc-500 mb-1">{p.hint}</p>}
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="text-[11px] text-zinc-500">API Key</label>
+                                                        {p.consoleUrl && (
+                                                            <a
+                                                                href={p.consoleUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
+                                                            >
+                                                                Obtener API Key <ExternalLink className="w-3 h-3" />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                    <div className="relative">
+                                                        <input
+                                                            type={s.showKey ? "text" : "password"}
+                                                            value={s.api_key}
+                                                            onChange={e => updateProvider(p.key, { api_key: e.target.value })}
+                                                            placeholder={s.has_key ? "••••••••  (dejar vacío para no cambiar)" : p.placeholder}
+                                                            className="w-full pr-9 px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateProvider(p.key, { showKey: !s.showKey })}
+                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                                                        >
+                                                            {s.showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[11px] text-zinc-500 mb-1 block">Modelo</label>
+                                                    <select
+                                                        value={p.models.includes(s.model) ? s.model : "__custom__"}
+                                                        onChange={e => {
+                                                            if (e.target.value !== "__custom__") updateProvider(p.key, { model: e.target.value });
+                                                        }}
+                                                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white focus:outline-none focus:border-indigo-500/50 transition mb-1"
+                                                    >
+                                                        {p.models.map(m => (
+                                                            <option key={m} value={m} className="bg-[#18181b]">{m}</option>
+                                                        ))}
+                                                        {!p.models.includes(s.model) && (
+                                                            <option value="__custom__" className="bg-[#18181b]">{s.model} (personalizado)</option>
+                                                        )}
+                                                    </select>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>

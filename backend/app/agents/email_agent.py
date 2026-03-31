@@ -329,6 +329,74 @@ async def _load_attachments(tenant_id: str, attachment_ids: list[str] | None) ->
     return attachments
 
 
+async def send_email_direct(
+    tenant_id: str,
+    to: str,
+    subject: str,
+    body: str,
+    attachment_ids: list[str] | None = None,
+) -> str:
+    """
+    Envía un email real usando las credenciales del tenant (gmail > outlook > smtp).
+    Usable desde otros agentes sin pasar por el grafo LangGraph.
+    """
+    from app.services.email_service import send_email_smtp
+
+    gmail_token = await _get_oauth_token(tenant_id, "gmail")
+    outlook_token = await _get_oauth_token(tenant_id, "outlook")
+    imap_creds = await _get_email_credentials(tenant_id)
+
+    attachments = await _load_attachments(tenant_id, attachment_ids)
+    attach_msg = f" con {len(attachments)} adjuntos" if attachments else ""
+
+    try:
+        if gmail_token:
+            from app.integrations.gmail_client import GmailClient
+            client = GmailClient(gmail_token)
+            try:
+                await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
+                return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
+            finally:
+                await client.close()
+        elif outlook_token:
+            from app.integrations.outlook_client import OutlookClient
+            client = OutlookClient(outlook_token)
+            try:
+                await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
+                return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
+            finally:
+                await client.close()
+        elif imap_creds:
+            import os
+            import uuid as _uuid
+            attachment_paths = []
+            if attachment_ids:
+                from app.db.base import AsyncSessionLocal
+                from app.db.models.models import TenantDocument
+                from sqlalchemy import select as sa_select
+                async with AsyncSessionLocal() as db:
+                    for doc_id in attachment_ids:
+                        try:
+                            res = await db.execute(sa_select(TenantDocument.file_path).where(
+                                TenantDocument.id == _uuid.UUID(doc_id),
+                                TenantDocument.tenant_id == _uuid.UUID(tenant_id),
+                            ))
+                            path = res.scalar_one_or_none()
+                            if path and os.path.exists(path):
+                                attachment_paths.append(path)
+                        except Exception as _e:
+                            logger.warning("Error resolviendo adjunto smtp doc_id=%s: %s", doc_id, _e)
+            result = send_email_smtp(imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths)
+            if result["success"]:
+                return f"Correo enviado via SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
+            else:
+                return f"Error SMTP: {result['message']}"
+        else:
+            return "[SIN CREDENCIALES] No hay proveedor de email configurado para este tenant."
+    except Exception as e:
+        return f"Error al enviar correo: {e}"
+
+
 async def run_email_agent(
     user_intent: str,
     tenant_id: str,

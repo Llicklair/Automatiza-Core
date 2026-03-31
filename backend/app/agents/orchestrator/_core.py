@@ -28,11 +28,60 @@ from app.agents.orchestrator.dispatchers import DISPATCHER_MAP
 logger = logging.getLogger(__name__)
 
 
+# ─── Nodo: inicializar LLM del tenant (entry point) ─────────────────────────
+
+async def init_tenant_node(state: OrchestratorState) -> dict:
+    """Carga el LLM del tenant en el ContextVar ANTES de cualquier nodo que use LLM.
+    Valida que el proveedor esté habilitado y tenga credenciales."""
+    from uuid import UUID
+    from sqlalchemy import select
+    from app.db.base import AsyncSessionLocal
+
+    tenant_id = state.get("tenant_id")
+    if not tenant_id:
+        return {
+            "status": TaskStatus.FAILED,
+            "error_message": "Falta tenant_id — no se puede ejecutar sin contexto de empresa",
+        }
+
+    try:
+        async with AsyncSessionLocal() as db:
+            from app.db.models.models import TenantLlmConfig
+            from app.services.encryption import decrypt_credentials
+            cfg_result = await db.execute(
+                select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == UUID(tenant_id))
+            )
+            cfg = cfg_result.scalar_one_or_none()
+            if cfg and cfg.encrypted_keys:
+                keys = decrypt_credentials(cfg.encrypted_keys)
+                provider = cfg.active_llm_provider
+                pdata = keys.get(provider, {})
+                if not pdata.get("enabled", True):
+                    return {
+                        "status": TaskStatus.FAILED,
+                        "error_message": (
+                            f"El proveedor de IA '{provider}' está desactivado. "
+                            "Actívalo en Configuración → API Keys."
+                        ),
+                    }
+                from app.core.llm_factory import get_llm_for_tenant, set_tenant_llm_context
+                _tenant_llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
+                set_tenant_llm_context(_tenant_llm)
+                logger.info("[INIT] LLM del tenant cargado: provider=%s", provider)
+            else:
+                logger.info("[INIT] Sin config LLM para tenant %s, usando global", tenant_id)
+    except ValueError:
+        raise
+    except Exception as e:
+        logger.warning("No se pudo precargar LLM del tenant: %s", e)
+
+    return {}
+
+
 # ─── Nodo: cargar conocimiento del tenant ────────────────────────────────────
 
 async def load_knowledge_node(state: OrchestratorState) -> dict:
-    """Carga hechos y preferencias del TenantKnowledge para inyectar en el contexto.
-    También valida que el proveedor LLM del tenant esté habilitado."""
+    """Carga hechos y preferencias del TenantKnowledge para inyectar en el contexto."""
     from uuid import UUID
     from sqlalchemy import select
     from app.db.base import AsyncSessionLocal
@@ -40,45 +89,10 @@ async def load_knowledge_node(state: OrchestratorState) -> dict:
 
     tenant_id = state.get("tenant_id")
     if not tenant_id:
-        return {
-            "tenant_knowledge": [],
-            "status": TaskStatus.FAILED,
-            "error_message": "Falta tenant_id — no se puede ejecutar sin contexto de empresa",
-        }
+        return {"tenant_knowledge": []}
 
     try:
         async with AsyncSessionLocal() as db:
-            # Validar config LLM del tenant antes de continuar
-            try:
-                from app.db.models.models import TenantLlmConfig
-                from app.services.encryption import decrypt_credentials
-                cfg_result = await db.execute(
-                    select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == UUID(tenant_id))
-                )
-                cfg = cfg_result.scalar_one_or_none()
-                if cfg and cfg.encrypted_keys:
-                    keys = decrypt_credentials(cfg.encrypted_keys)
-                    provider = cfg.active_llm_provider
-                    pdata = keys.get(provider, {})
-                    if not pdata.get("enabled", True):
-                        return {
-                            "tenant_knowledge": [],
-                            "status": TaskStatus.FAILED,
-                            "error_message": (
-                                f"El proveedor de IA '{provider}' está desactivado. "
-                                "Actívalo en Configuración → API Keys."
-                            ),
-                        }
-                    # Precargar el LLM del tenant en el ContextVar para que todos los agentes lo usen
-                    try:
-                        from app.core.llm_factory import get_llm_for_tenant, set_tenant_llm_context
-                        _tenant_llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
-                        set_tenant_llm_context(_tenant_llm)
-                    except Exception as _ctx_err:
-                        logger.warning("No se pudo precargar LLM del tenant en contexto: %s", _ctx_err)
-            except Exception as llm_check_err:
-                logger.warning("No se pudo validar LLM config del tenant: %s", llm_check_err)
-
             result = await db.execute(
                 select(TenantKnowledge).where(TenantKnowledge.tenant_id == UUID(tenant_id))
             )
@@ -824,6 +838,7 @@ def _route_after_load_knowledge(state: OrchestratorState) -> str:
 def build_orchestrator() -> CompiledStateGraph:
     graph = StateGraph(OrchestratorState)
 
+    graph.add_node("init_tenant", init_tenant_node)
     graph.add_node("classify", classify_node)
     graph.add_node("load_knowledge", load_knowledge_node)
     graph.add_node("planner", plan_node)
@@ -831,7 +846,12 @@ def build_orchestrator() -> CompiledStateGraph:
     graph.add_node("dispatch", dispatch_node)
     graph.add_node("summarize", summarize_node)
 
-    graph.set_entry_point("classify")
+    graph.set_entry_point("init_tenant")
+    graph.add_conditional_edges(
+        "init_tenant",
+        lambda s: "end" if s.get("status") == TaskStatus.FAILED else "classify",
+        {"classify": "classify", "end": END},
+    )
     graph.add_edge("classify", "load_knowledge")
     graph.add_conditional_edges(
         "load_knowledge",

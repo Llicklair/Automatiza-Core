@@ -178,7 +178,7 @@ function getBackendEnv(lanIP) {
     SECRET_KEY: secrets.SECRET_KEY,
     TENANT_ENCRYPTION_KEY: secrets.TENANT_ENCRYPTION_KEY,
     // LLM
-    DEFAULT_LLM_PROVIDER:  envVar("DEFAULT_LLM_PROVIDER", "gemini"),
+    DEFAULT_LLM_PROVIDER:  envVar("DEFAULT_LLM_PROVIDER", "claude_code"),
     GEMINI_API_KEY:        envVar("GEMINI_API_KEY"),
     GEMINI_MODEL:          envVar("GEMINI_MODEL", "gemini-2.5-flash"),
     OPENROUTER_API_KEY:    envVar("OPENROUTER_API_KEY"),
