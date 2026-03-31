@@ -318,6 +318,9 @@ async def _execute_orchestrator(task_id: str):
                             final_state = state_update
                             continue
 
+                        if state_update is None:
+                            continue
+
                         results: list = state_update.get("agent_results") or []
                         for r in results:
                             rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))

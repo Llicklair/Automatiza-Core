@@ -93,7 +93,7 @@ async def update_tenant_me(
 
 # ── LLM Config ────────────────────────────────────────────────────────────────
 
-ALLOWED_LLM_PROVIDERS = {"gemini", "anthropic", "groq", "openai", "openrouter"}
+ALLOWED_LLM_PROVIDERS = {"gemini", "anthropic", "groq", "openai", "openrouter", "claude_code"}
 ALLOWED_EMBEDDINGS_PROVIDERS = {"local", "gemini", "openai"}
 
 _MASKED = "••••••••"

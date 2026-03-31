@@ -62,7 +62,11 @@ async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult
                 messages.append(AIMessage(content=msg["content"]))
         messages.append(HumanMessage(content=intent))
 
-        llm = get_llm(temperature=0.3)
+        # Usar LLM del tenant (respeta config de API Keys del dashboard)
+        from app.db.base import AsyncSessionLocal
+        from app.core.llm_factory import get_llm_for_tenant
+        async with AsyncSessionLocal() as db:
+            llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
         response = await llm.ainvoke(messages)
 
         response_text = response.content.strip() if response.content else "No he podido generar una respuesta."

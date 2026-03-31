@@ -223,11 +223,64 @@ async def _qualify_leads_async(tenant_id: str) -> str:
         return f"Error analizando leads: {str(e)}"
 
 
+@tool
+async def create_client(
+    tenant_id: str,
+    name: str,
+    nif: str = "",
+    email: str = "",
+    phone: str = "",
+    address: str = "",
+    city: str = "",
+    postal_code: str = "",
+    client_type: str = "customer",
+) -> str:
+    """
+    Crea un nuevo cliente en el sistema.
+    Args:
+        tenant_id: ID del tenant
+        name: Nombre o razón social del cliente (obligatorio)
+        nif: NIF/CIF del cliente
+        email: Email de contacto
+        phone: Teléfono
+        address: Dirección
+        city: Ciudad
+        postal_code: Código postal
+        client_type: Tipo de cliente ('customer' o 'supplier')
+    """
+    from sqlalchemy.exc import IntegrityError
+    try:
+        async with AsyncSessionLocal() as db:
+            from app.db.models.models import Client as ClientModel
+            new_client = ClientModel(
+                tenant_id=UUID(tenant_id),
+                name=name,
+                nif=nif or None,
+                email=email or None,
+                phone=phone or None,
+                address=address or None,
+                city=city or None,
+                postal_code=postal_code or None,
+                client_type=client_type,
+            )
+            db.add(new_client)
+            try:
+                await db.commit()
+                await db.refresh(new_client)
+            except IntegrityError:
+                await db.rollback()
+                return f"Error: Ya existe un cliente con NIF '{nif}' o email '{email}'."
+            return f"Cliente '{name}' creado correctamente. ID: {new_client.id}. NIF: {nif or 'no especificado'}."
+    except Exception as e:
+        return f"Error creando cliente: {str(e)}"
+
+
 tools = [
     list_opportunities,
     create_opportunity,
     update_opportunity_stage,
     qualify_leads,
+    create_client,
     create_document,
     list_tenant_documents,
     update_existing_document,
@@ -249,9 +302,10 @@ async def crm_agent_node(state: AgentState):
                 "1. list_opportunities: para ver embudos y prospectos.\n"
                 "2. qualify_leads: para analizar leads nuevos y rankear a quién contactar.\n"
                 "3. update_opportunity_stage: para avanzar deals (won/lost/qualified).\n"
-                "4. create_opportunity: si descubres una nueva vía de negocio en un cliente.\n"
-                "5. create_document: para generar informes en texto o csv y guardarlos en el Gestor Documental.\n"
-                "6. Herramientas documentales (list_tenant_documents, get_document_content) "
+                "4. create_client: para dar de alta un nuevo cliente en el sistema (nombre obligatorio, NIF/email opcionales).\n"
+                "5. create_opportunity: si descubres una nueva vía de negocio en un cliente existente.\n"
+                "6. create_document: para generar informes en texto o csv y guardarlos en el Gestor Documental.\n"
+                "7. Herramientas documentales (list_tenant_documents, get_document_content) "
                 "por si necesitas leer emails escaneados, contratos, que contengan información clave.\n"
                 f"Tú respondes y decides a partir del ID de Tenant actual: {state.get('tenant_id')}."
             )

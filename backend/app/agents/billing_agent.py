@@ -156,35 +156,59 @@ async def _create_invoice_async(
     resolved_name = client_name.strip()
 
     if not resolved_nif:
+        if not resolved_name:
+            return "Error: Debes indicar el nombre del cliente o su NIF."
         try:
             async with AsyncSessionLocal() as db:
-                if resolved_name:
+                # 1. Match exacto
+                res = await db.execute(
+                    select(Client).where(
+                        Client.tenant_id == UUID(tenant_id),
+                        func.lower(Client.name) == resolved_name.lower(),
+                    )
+                )
+                exact_clients = res.scalars().all()
+
+                if len(exact_clients) == 1:
+                    resolved_nif = exact_clients[0].nif
+                    resolved_name = exact_clients[0].name
+                elif len(exact_clients) == 0:
+                    # 2. Match parcial — sólo válido si el resultado es único
                     res = await db.execute(
                         select(Client).where(
                             Client.tenant_id == UUID(tenant_id),
-                            or_(
-                                func.lower(Client.name) == resolved_name.lower(),
-                                func.lower(Client.name).contains(resolved_name.lower()),
-                            )
-                        ).limit(1)
+                            func.lower(Client.name).contains(resolved_name.lower()),
+                        ).order_by(Client.name).limit(5)
                     )
+                    partial_clients = res.scalars().all()
+
+                    if len(partial_clients) == 1:
+                        resolved_nif = partial_clients[0].nif
+                        resolved_name = partial_clients[0].name
+                    elif len(partial_clients) > 1:
+                        options = ", ".join(
+                            f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in partial_clients
+                        )
+                        return (
+                            f"Error: '{client_name}' coincide con {len(partial_clients)} clientes: {options}. "
+                            "Especifica el NIF del cliente para evitar facturar al equivocado."
+                        )
                 else:
-                    res = await db.execute(
-                        select(Client).where(
-                            Client.tenant_id == UUID(tenant_id)
-                        ).order_by(Client.created_at.asc()).limit(1)
+                    # Múltiples exactos (nombres duplicados)
+                    options = ", ".join(
+                        f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in exact_clients
                     )
-                client = res.scalar_one_or_none()
-                if client:
-                    resolved_nif = client.nif
-                    resolved_name = client.name
+                    return (
+                        f"Error: Hay {len(exact_clients)} clientes con el nombre '{client_name}': {options}. "
+                        "Especifica el NIF del cliente."
+                    )
         except Exception:
             logger.debug("Client lookup failed for name '%s'", resolved_name, exc_info=True)
 
     if not resolved_nif:
         return (
-            f"Error: No se encontró el NIF del cliente '{resolved_name}'. "
-            "Proporciona el NIF directamente o crea el cliente primero."
+            f"Error: No se encontró el cliente '{resolved_name}'. "
+            "Comprueba el nombre o proporciona el NIF directamente."
         )
 
     # ── Validación determinista ──
@@ -726,13 +750,13 @@ async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipien
             pdf_doc = doc_result.scalar_one_or_none()
             doc_id = str(pdf_doc.id) if pdf_doc else None
 
-        # Enviar usando el email agent tools
-        from app.agents.email_agent import send_email
-        result_text = send_email.invoke({
-            "tenant_id": tenant_id,
-            "to": email_to,
-            "subject": f"Factura {invoice.invoice_number} - {float(invoice.amount_total):.2f}€",
-            "body": (
+        # Enviar usando el servicio real de email
+        from app.agents.email_agent import send_email_direct
+        result_text = await send_email_direct(
+            tenant_id=tenant_id,
+            to=email_to,
+            subject=f"Factura {invoice.invoice_number} - {float(invoice.amount_total):.2f}€",
+            body=(
                 f"Estimado/a {client.name},\n\n"
                 f"Adjunto encontrará la factura {invoice.invoice_number} "
                 f"por importe de {float(invoice.amount_total):.2f}€.\n\n"
@@ -740,8 +764,8 @@ async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipien
                 f"Fecha: {invoice.date.strftime('%d/%m/%Y')}\n\n"
                 f"Un cordial saludo."
             ),
-            "attachment_ids": [doc_id] if doc_id else None,
-        })
+            attachment_ids=[doc_id] if doc_id else None,
+        )
 
         return f"Factura {invoice.invoice_number} enviada a {email_to}.\n{result_text}"
     except Exception as e:
