@@ -441,7 +441,10 @@ async def download_payroll_pdf(
     if not payroll:
         raise HTTPException(status_code=404, detail="Nómina no encontrada")
 
-    pdf_bytes = _build_payroll_pdf(payroll)
+    from app.api.v1.routes.templates import get_default_theme
+    theme_config = await get_default_theme(current_user.tenant_id, "payroll", db)
+
+    pdf_bytes = _build_payroll_pdf(payroll, theme_config)
     emp_name = payroll.employee.name.replace(" ", "_") if payroll.employee else "empleado"
     period = payroll.period_start.strftime("%Y-%m") if payroll.period_start else "periodo"
     filename = f"Nomina_{emp_name}_{period}.pdf"
@@ -455,7 +458,7 @@ async def download_payroll_pdf(
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _build_payroll_pdf(payroll: Payroll) -> bytes:
+def _build_payroll_pdf(payroll: Payroll, theme_config: dict | None = None) -> bytes:
     """Construye los datos y llama al generador de PDF de nómina."""
     from app.services.pdf_service import generate_payroll_pdf
 
@@ -495,7 +498,7 @@ def _build_payroll_pdf(payroll: Payroll) -> bytes:
         "other_deductions":         other,
         "net_salary":               net,
     }
-    return generate_payroll_pdf(payroll_data)
+    return generate_payroll_pdf(payroll_data, theme_config)
 
 
 async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id: str):
@@ -512,7 +515,10 @@ async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_i
             if not payroll:
                 return
 
-            pdf_bytes = _build_payroll_pdf(payroll)
+            from app.api.v1.routes.templates import get_default_theme
+            theme_config = await get_default_theme(uuid_mod.UUID(tenant_id), "payroll", db)
+
+            pdf_bytes = _build_payroll_pdf(payroll, theme_config)
 
             emp_name = payroll.employee.name.replace(" ", "_") if payroll.employee else "empleado"
             period = payroll.period_start.strftime("%Y-%m") if payroll.period_start else "periodo"

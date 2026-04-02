@@ -117,13 +117,13 @@ _PRESET_OVERRIDES: dict[str, dict] = {
 def build_theme(config: dict | None = None) -> dict:
     """Fusiona config de plantilla con defaults. Devuelve tema completo listo para usar."""
     t = dict(DEFAULT_THEME)
+    # 1. Aplicar preset del layout_style elegido (por encima de defaults)
+    layout = (config or {}).get("layout_style", DEFAULT_THEME["layout_style"])
+    preset = _PRESET_OVERRIDES.get(layout, {})
+    t.update(preset)
+    # 2. Aplicar valores explícitos del config (accent_color, font_family, etc.)
     if config:
         t.update({k: v for k, v in config.items() if v is not None and v != ""})
-    # Aplicar overrides del preset seleccionado (si no se han sobreescrito manualmente)
-    preset = _PRESET_OVERRIDES.get(t.get("layout_style", "modern"), {})
-    for k, v in preset.items():
-        if config is None or k not in config:
-            t[k] = v
     # Resolver nombres de fuentes ReportLab
     font_regular, font_bold = _FONT_MAP.get(t["font_family"], ("Helvetica", "Helvetica-Bold"))
     t["_font"]      = font_regular

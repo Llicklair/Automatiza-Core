@@ -192,6 +192,9 @@ def send_email(tenant_id: str, to: str, subject: str, body: str, attachment_ids:
         body: Cuerpo del correo en texto plano
         attachment_ids: Opcional. Lista de IDs de documentos del Escanear (TenantDocument) a adjuntar.
     """
+    # Coerción: el LLM a veces pasa attachment_ids como string en lugar de lista
+    if isinstance(attachment_ids, str):
+        attachment_ids = [attachment_ids] if attachment_ids else None
     # Fallback mock — se reemplaza por versión real en run_email_agent
     attachments_str = f" con {len(attachment_ids)} adjuntos" if attachment_ids else ""
     return (
@@ -536,6 +539,10 @@ async def run_email_agent(
             """
             if provider not in providers:
                 return f"Error: proveedor '{provider}' no disponible. Usa uno de: {provider_desc}"
+
+            # Coerción: el LLM a veces pasa attachment_ids como string en lugar de lista
+            if isinstance(attachment_ids, str):
+                attachment_ids = [attachment_ids] if attachment_ids else None
 
             attachments = await _load_attachments(tenant_id, attachment_ids)
             attach_msg = f" con {len(attachments)} adjuntos" if attachments else ""

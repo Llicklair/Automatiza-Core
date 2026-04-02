@@ -355,9 +355,9 @@ def _generate_albaran_sample(theme_config: dict) -> bytes:
 
 
 def _generate_excel_sample(theme_config: dict) -> bytes:
-    """Excel templates reuse the invoice PDF layout for preview purposes."""
     from app.services.pdf_invoices import generate_invoice_pdf
     return generate_invoice_pdf({
+        "doc_title": "EXPORTACIÓN EXCEL",
         "number": "EXP-2026-0008",
         "date": "2026-03-27T00:00:00",
         "company": {

@@ -20,6 +20,7 @@ from app.db.base import get_db
 from app.db.models.models import Client, Invoice, InvoiceLine, InvoiceSeries, Product, Tenant, TenantDocument, User
 from app.services.event_bus import emit_event
 from app.services.pdf_service import generate_invoice_pdf, generate_rectificative_invoice_pdf, generate_retention_invoice_pdf
+from app.api.v1.routes.templates import get_default_theme
 from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -292,6 +293,7 @@ async def _generate_and_save_invoice_pdf(invoice, tenant_id, user_id):
     try:
         async with AsyncSessionLocal() as session:
             tenant_obj = await session.get(Tenant, tenant_id)
+            theme_config = await get_default_theme(tenant_id, "invoice", session)
 
         company_name = tenant_obj.name if tenant_obj else "Mi Empresa S.L."
         company_nif = tenant_obj.nif if tenant_obj else "B00000000"
@@ -328,7 +330,7 @@ async def _generate_and_save_invoice_pdf(invoice, tenant_id, user_id):
             "payment_terms": invoice.terms or "",
         }
 
-        pdf_bytes = generate_invoice_pdf(invoice_data)
+        pdf_bytes = generate_invoice_pdf(invoice_data, theme_config)
         file_name = f"Factura_{invoice_data['number']}.pdf"
 
         # Guardar en disco
@@ -379,6 +381,7 @@ async def download_invoice_pdf(
     tenant_obj = tenant_result.scalar_one_or_none()
     company_name = tenant_obj.name if tenant_obj else "Mi Empresa S.L."
     company_nif = tenant_obj.nif if tenant_obj else "B00000000"
+    theme_config = await get_default_theme(current_user.tenant_id, "invoice", db)
     invoice_data = {
         "number": invoice.invoice_number or f"F-{str(invoice.id)[:8].upper()}",
         "date": invoice.date.isoformat() if invoice.date else "",
@@ -411,7 +414,7 @@ async def download_invoice_pdf(
         "payment_terms": invoice.terms or "",
     }
 
-    pdf_bytes = generate_invoice_pdf(invoice_data)
+    pdf_bytes = generate_invoice_pdf(invoice_data, theme_config)
     file_name = f"Factura_{invoice_data['number']}.pdf"
 
     return Response(
@@ -444,6 +447,7 @@ async def download_rectificative_invoice_pdf(
     tenant_obj = tenant_result.scalar_one_or_none()
     company_name = tenant_obj.name if tenant_obj else "Mi Empresa S.L."
     company_nif = tenant_obj.nif if tenant_obj else "B00000000"
+    theme_config = await get_default_theme(current_user.tenant_id, "invoice", db)
 
     # Build rectificative data — by default zeroes out the original (full credit note)
     orig_base = float(invoice.amount_base or 0)
@@ -482,7 +486,7 @@ async def download_rectificative_invoice_pdf(
         },
     }
 
-    pdf_bytes = generate_rectificative_invoice_pdf(data)
+    pdf_bytes = generate_rectificative_invoice_pdf(data, theme_config)
     file_name = f"Rectificativa_{data['number']}.pdf"
     return Response(
         content=pdf_bytes,
@@ -514,6 +518,7 @@ async def download_retention_invoice_pdf(
     tenant_obj = tenant_result.scalar_one_or_none()
     company_name = tenant_obj.name if tenant_obj else "Mi Empresa S.L."
     company_nif = tenant_obj.nif if tenant_obj else "B00000000"
+    theme_config = await get_default_theme(current_user.tenant_id, "invoice", db)
 
     base = float(invoice.amount_base or 0)
     tax = float(invoice.tax_amount or 0)
@@ -548,7 +553,7 @@ async def download_retention_invoice_pdf(
         "payment_terms": invoice.terms or "",
     }
 
-    pdf_bytes = generate_retention_invoice_pdf(data)
+    pdf_bytes = generate_retention_invoice_pdf(data, theme_config)
     file_name = f"Factura_Retencion_{data['number']}.pdf"
     return Response(
         content=pdf_bytes,

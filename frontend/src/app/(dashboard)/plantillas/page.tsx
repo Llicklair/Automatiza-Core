@@ -158,10 +158,12 @@ export default function PlantillasPage() {
         try {
             if (editingId) {
                 await templatesApi.update(editingId, form);
-                showToast("Plantilla actualizada", "success");
+                await templatesApi.setDefault(editingId);
+                showToast("Plantilla guardada y establecida como predeterminada", "success");
             } else {
-                await templatesApi.create(form);
-                showToast("Plantilla creada", "success");
+                const created = await templatesApi.create(form);
+                await templatesApi.setDefault(created.id);
+                showToast("Plantilla creada y establecida como predeterminada", "success");
             }
             setShowForm(false);
             await load();

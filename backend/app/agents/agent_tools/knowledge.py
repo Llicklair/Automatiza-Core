@@ -37,6 +37,32 @@ def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
         db.close()
 
 @tool
+def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
+    """
+    Elimina un hecho o preferencia de la memoria del tenant.
+    Args:
+        tenant_id: ID del tenant
+        key: Nombre corto del hecho a eliminar (ej: 'default_client', 'cliente_principal')
+    """
+    try:
+        db = SessionLocal()
+        result = db.execute(
+            delete(TenantKnowledge).where(
+                TenantKnowledge.tenant_id == UUID(tenant_id),
+                TenantKnowledge.key == key,
+            )
+        )
+        db.commit()
+        if result.rowcount > 0:
+            return f"Hecho '{key}' eliminado de la memoria del tenant."
+        return f"No se encontró ningún hecho con la clave '{key}'."
+    except Exception as e:
+        return f"Error eliminando memoria: {e}"
+    finally:
+        db.close()
+
+
+@tool
 def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str = "general") -> str:
     """
     Guarda o actualiza un hecho o preferencia en la memoria del tenant.

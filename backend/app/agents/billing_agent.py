@@ -31,7 +31,7 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
     update_existing_document,
 )
-from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge, delete_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.agents.validators.billing import validate_invoice_data
@@ -154,6 +154,7 @@ async def _create_invoice_async(
     # ── Resolución de cliente ──
     resolved_nif = client_nif.strip() if client_nif else ""
     resolved_name = client_name.strip()
+    resolved_client_id = None  # ID exacto del cliente encontrado, evita ambigüedad por NIF duplicado
 
     if not resolved_nif:
         if not resolved_name:
@@ -172,6 +173,7 @@ async def _create_invoice_async(
                 if len(exact_clients) == 1:
                     resolved_nif = exact_clients[0].nif
                     resolved_name = exact_clients[0].name
+                    resolved_client_id = exact_clients[0].id
                 elif len(exact_clients) == 0:
                     # 2. Match parcial — sólo válido si el resultado es único
                     res = await db.execute(
@@ -185,6 +187,7 @@ async def _create_invoice_async(
                     if len(partial_clients) == 1:
                         resolved_nif = partial_clients[0].nif
                         resolved_name = partial_clients[0].name
+                        resolved_client_id = partial_clients[0].id
                     elif len(partial_clients) > 1:
                         options = ", ".join(
                             f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in partial_clients
@@ -243,14 +246,30 @@ async def _create_invoice_async(
 
     async with AsyncSessionLocal() as db:
         try:
-            # Upsert cliente
-            result = await db.execute(
-                select(Client).where(
-                    Client.tenant_id == UUID(tenant_id),
-                    Client.nif == resolved_nif,
+            # Upsert cliente — usar ID exacto si lo tenemos (evita ambigüedad por NIF compartido)
+            if resolved_client_id:
+                result = await db.execute(
+                    select(Client).where(Client.id == resolved_client_id)
                 )
-            )
-            local_client = result.scalars().first()
+                local_client = result.scalars().first()
+            else:
+                result = await db.execute(
+                    select(Client).where(
+                        Client.tenant_id == UUID(tenant_id),
+                        Client.nif == resolved_nif,
+                        func.lower(Client.name) == resolved_name.lower(),
+                    )
+                )
+                local_client = result.scalars().first()
+                if not local_client:
+                    # Fallback: solo por NIF (cliente nuevo que llega por NIF directo)
+                    result = await db.execute(
+                        select(Client).where(
+                            Client.tenant_id == UUID(tenant_id),
+                            Client.nif == resolved_nif,
+                        )
+                    )
+                    local_client = result.scalars().first()
             if not local_client:
                 local_client = Client(
                     tenant_id=UUID(tenant_id),
@@ -312,6 +331,7 @@ async def _create_invoice_async(
 
             # ── Generar PDF ──
             document_id = None
+            _template_name = None
             try:
                 from app.services.pdf_service import generate_invoice_pdf
 
@@ -339,11 +359,31 @@ async def _create_invoice_async(
                 }
 
                 try:
-                    from app.api.v1.routes.templates import get_default_theme
-                    theme_config = await get_default_theme(UUID(tenant_id), "invoice", db)
+                    from app.db.models.billing import DocumentTemplate as _DocTpl
+                    from sqlalchemy import select as _sel
+                    async with AsyncSessionLocal() as db_tpl:
+                        _r = await db_tpl.execute(
+                            _sel(_DocTpl).where(
+                                _DocTpl.tenant_id == UUID(tenant_id),
+                                _DocTpl.template_type == "invoice",
+                            ).order_by(_DocTpl.is_default.desc(), _DocTpl.created_at)
+                        )
+                        _tpl = _r.scalars().first()
+                    if _tpl:
+                        _template_name = _tpl.name
+                        theme_config = {
+                            "accent_color": _tpl.accent_color,
+                            "font_family":  _tpl.font_family,
+                            "layout_style": _tpl.layout_style,
+                            "logo_position": _tpl.logo_position,
+                            "header_style": _tpl.header_style,
+                            "table_style":  _tpl.table_style,
+                            "footer_text":  _tpl.footer_text,
+                        }
+                    else:
+                        theme_config = None
                 except Exception as _tpl_err:
-                    import logging as _log
-                    _log.getLogger(__name__).warning("No se pudo cargar plantilla de factura: %s", _tpl_err)
+                    logger.error("No se pudo cargar plantilla de factura: %s", _tpl_err)
                     theme_config = None
                 pdf_bytes = generate_invoice_pdf(inv_pdf_data, theme_config)
 
@@ -387,7 +427,8 @@ async def _create_invoice_async(
         f"Base: {float(amount):.2f}€ + IVA {vat_rate}% = {float(total_amount):.2f}€\n"
         f"Estado: DRAFT (borrador)\n"
         f"ID factura: {new_invoice.id}\n"
-        f"Documento PDF: {document_id or 'No generado'}"
+        f"Documento PDF: {document_id or 'No generado'}\n"
+        f"Plantilla visual: {_template_name or 'predeterminada del sistema'}"
         f"{warn_text}"
     )
 
@@ -834,17 +875,39 @@ async def create_albaran(
         entry_date = date.fromisoformat(albaran_date) if albaran_date else date.today()
 
         async with AsyncSessionLocal() as db:
-            # Find client by name
+            # Resolución de cliente: exacto → parcial único → error
             client_id = None
-            client_result = await db.execute(
+            if not client_name or not client_name.strip():
+                return "Error: Debes indicar el nombre del cliente."
+
+            res = await db.execute(
                 select(Client).where(
                     Client.tenant_id == UUID(tenant_id),
-                    Client.name.ilike(f"%{client_name}%"),
-                ).limit(1)
+                    func.lower(Client.name) == client_name.strip().lower(),
+                )
             )
-            client = client_result.scalar_one_or_none()
-            if client:
-                client_id = client.id
+            exact_clients = res.scalars().all()
+
+            if len(exact_clients) == 1:
+                client_id = exact_clients[0].id
+            elif len(exact_clients) == 0:
+                res = await db.execute(
+                    select(Client).where(
+                        Client.tenant_id == UUID(tenant_id),
+                        func.lower(Client.name).contains(client_name.strip().lower()),
+                    ).order_by(Client.name).limit(5)
+                )
+                partial_clients = res.scalars().all()
+                if len(partial_clients) == 1:
+                    client_id = partial_clients[0].id
+                elif len(partial_clients) > 1:
+                    options = ", ".join(f"'{c.name}'" for c in partial_clients)
+                    return f"Error: '{client_name}' coincide con varios clientes: {options}. Especifica el nombre exacto."
+                else:
+                    return f"Error: No se encontró ningún cliente con el nombre '{client_name}'."
+            else:
+                options = ", ".join(f"'{c.name}'" for c in exact_clients)
+                return f"Error: Hay varios clientes con ese nombre: {options}. Especifica el nombre exacto."
 
             # Auto-number
             last_result = await db.execute(
@@ -923,6 +986,7 @@ tools = [
     get_document_content,
     get_tenant_knowledge,
     upsert_tenant_knowledge,
+    delete_tenant_knowledge,
 ]
 
 

@@ -127,17 +127,17 @@ async def get_llm_for_tenant(
             provider = cfg.active_llm_provider
             pdata = keys.get(provider, {})
 
+            # claude_code no necesita API key ni enabled — usa la sesión del CLI local
+            if provider == "claude_code":
+                _log.info("Usando Claude Code CLI para tenant %s", tenant_id)
+                return ClaudeCodeChatModel(pool_key=str(tenant_id))
+
             if not pdata.get("enabled"):
                 _log.warning("Proveedor LLM '%s' está desactivado para el tenant %s", provider, tenant_id)
                 raise ValueError(
                     f"El proveedor de IA '{provider}' está desactivado. "
                     "Actívalo en Configuración → API Keys."
                 )
-
-            # claude_code no necesita API key — usa la sesión del CLI local
-            if provider == "claude_code":
-                _log.info("Usando Claude Code CLI para tenant %s", tenant_id)
-                return ClaudeCodeChatModel(pool_key=str(tenant_id))
 
             if not pdata.get("api_key"):
                 _log.warning("Proveedor LLM '%s' sin API key para el tenant %s", provider, tenant_id)
