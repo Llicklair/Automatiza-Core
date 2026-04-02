@@ -873,6 +873,54 @@ async def list_contract_templates(
     return result.scalars().all()
 
 
+class ContractPreviewHtmlOut(BaseModel):
+    html: str
+    variables_detected: list[str]
+    warnings: list[str]
+
+
+@limiter.limit("60/minute")
+@router.get("/contract-templates/{document_id}/preview-html", response_model=ContractPreviewHtmlOut)
+async def preview_contract_template_html(
+    request: Request,
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Vista previa HTML (mammoth) + variables `{{...}}` detectadas en el texto."""
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == document_id,
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == "contract_template",
+        )
+    )
+    tpl_doc = result.scalar_one_or_none()
+    if not tpl_doc:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+    if not tpl_doc.file_path or not os.path.exists(tpl_doc.file_path):
+        raise HTTPException(status_code=404, detail="Archivo de plantilla no disponible en disco")
+
+    try:
+        from app.services.docx_preview import docx_to_preview_html
+
+        data = docx_to_preview_html(tpl_doc.file_path)
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="mammoth no instalado. Ejecuta: pip install mammoth",
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Archivo de plantilla no encontrado")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error("preview_contract_template_html: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error generando vista previa: {e}")
+
+    return ContractPreviewHtmlOut(**data)
+
+
 @limiter.limit("10/minute")
 @router.post("/contract-templates/{document_id}/generate")
 async def generate_contract(

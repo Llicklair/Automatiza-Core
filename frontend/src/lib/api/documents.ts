@@ -21,6 +21,13 @@ export interface ContractTemplate {
     created_at: string;
 }
 
+/** Respuesta de GET .../contract-templates/:id/preview-html (mammoth) */
+export interface ContractPreviewHtml {
+    html: string;
+    variables_detected: string[];
+    warnings: string[];
+}
+
 export const documents = {
     list: (params?: { category?: string; skip?: number; limit?: number }) => {
         const q = new URLSearchParams(params as Record<string, string>).toString();
@@ -105,6 +112,10 @@ export const documents = {
         },
         delete: (id: string) =>
             request(`/api/v1/documents/contract-templates/${id}`, { method: "DELETE" }),
+        previewHtml: (templateId: string): Promise<ContractPreviewHtml> =>
+            request<ContractPreviewHtml>(
+                `/api/v1/documents/contract-templates/${templateId}/preview-html`
+            ),
         generate: async (templateId: string, entityType: "client" | "employee", entityId: string): Promise<Blob> => {
             const token = getToken();
             const headers: Record<string, string> = {};

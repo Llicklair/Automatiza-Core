@@ -38,6 +38,7 @@ slowapi = "^0.1.9"
 croniter = "^2.0.0"
 docxtpl = "^0.16.0"
 opendataloader-pdf = "^0.1.0"
+mammoth = "^1.6.0"
 
 
 [tool.poetry.group.dev.dependencies]

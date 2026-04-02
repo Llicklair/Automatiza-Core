@@ -6,8 +6,9 @@ import {
     Palette, Type, Layout, AlignLeft, Table2, Check, FileCode2,
     Upload, ExternalLink, Copy,
 } from "lucide-react";
+import { sanitizeHTML } from "@/components/GenerativeUI";
 import { templatesApi, DocumentTemplate, PreviewRequest } from "@/lib/api/templates";
-import { documents, ContractTemplate } from "@/lib/api/documents";
+import { documents, ContractPreviewHtml, ContractTemplate } from "@/lib/api/documents";
 import { erp } from "@/lib/api/erp";
 import { hr } from "@/lib/api/hr";
 import { useToastStore } from "@/stores/toast";
@@ -40,6 +41,9 @@ function ContratosTab() {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [panel, setPanel] = useState<GeneratePanel | null>(null);
+    const [previewFor, setPreviewFor] = useState<string | null>(null);
+    const [previewData, setPreviewData] = useState<ContractPreviewHtml | null>(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const load = async () => {
@@ -55,6 +59,27 @@ function ContratosTab() {
     };
 
     useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const togglePreview = async (tplId: string) => {
+        if (previewFor === tplId) {
+            setPreviewFor(null);
+            setPreviewData(null);
+            return;
+        }
+        setPreviewFor(tplId);
+        setPreviewLoading(true);
+        setPreviewData(null);
+        try {
+            const data = await documents.contractTemplates.previewHtml(tplId);
+            setPreviewData(data);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Error en vista previa";
+            showToast(msg, "error");
+            setPreviewFor(null);
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -195,6 +220,20 @@ function ContratosTab() {
                                             Generar borrador
                                         </button>
                                         <button
+                                            type="button"
+                                            onClick={() => void togglePreview(tpl.id)}
+                                            disabled={previewLoading && previewFor === tpl.id}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-xs rounded-lg transition-colors disabled:opacity-50"
+                                            title="Vista previa HTML (solo .docx)"
+                                        >
+                                            {previewLoading && previewFor === tpl.id ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                <Eye className="w-3.5 h-3.5" />
+                                            )}
+                                            Previsualizar
+                                        </button>
+                                        <button
                                             onClick={() => handleOpen(tpl)}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 border border-zinc-700 text-zinc-400 hover:text-white text-xs rounded-lg transition-colors"
                                         >
@@ -208,6 +247,56 @@ function ContratosTab() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Vista previa mammoth (V1) */}
+                                {previewFor === tpl.id && (
+                                    <div className="border-t border-[#27272a] p-3 bg-[#09090b] space-y-3">
+                                        <p className="text-xs text-zinc-500">
+                                            Vista previa de solo lectura (HTML). Las variables{" "}
+                                            <code className="text-amber-400/90">{`{{nombre}}`}</code> se resaltan si existen en el texto.
+                                        </p>
+                                        {previewLoading ? (
+                                            <div className="flex items-center gap-2 text-zinc-500 text-sm py-8 justify-center">
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Convirtiendo documento…
+                                            </div>
+                                        ) : previewData ? (
+                                            <div className="flex flex-col lg:flex-row gap-4">
+                                                <div
+                                                    className="flex-1 min-h-[180px] max-h-[min(480px,55vh)] overflow-y-auto rounded-lg border border-[#27272a] bg-[#18181b] p-4 text-sm text-zinc-200 [&_.apx-docx-var]:ring-1 [&_.apx-docx-var]:ring-amber-500/30"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: sanitizeHTML(previewData.html),
+                                                    }}
+                                                />
+                                                <div className="w-full lg:w-52 shrink-0 space-y-2">
+                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-wide font-medium">
+                                                        Variables en el documento
+                                                    </p>
+                                                    {previewData.warnings.length > 0 && (
+                                                        <div className="text-[10px] text-amber-400/90 bg-amber-500/10 rounded-lg p-2 space-y-1">
+                                                            {previewData.warnings.slice(0, 6).map((w, i) => (
+                                                                <p key={i} className="leading-snug">{w}</p>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <ul className="text-xs space-y-1.5 max-h-48 overflow-y-auto">
+                                                        {previewData.variables_detected.length === 0 ? (
+                                                            <li className="text-zinc-600">
+                                                                No se detectaron <code>{`{{ }}`}</code> en el texto convertido.
+                                                            </li>
+                                                        ) : (
+                                                            previewData.variables_detected.map(v => (
+                                                                <li key={v}>
+                                                                    <code className="text-amber-400 font-mono text-[11px]">{`{{${v}}}`}</code>
+                                                                </li>
+                                                            ))
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                )}
 
                                 {/* Panel de generación inline */}
                                 {panel?.tplId === tpl.id && (
