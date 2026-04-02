@@ -25,6 +25,7 @@ import { albaranes } from "./albaranes";
 import { aiEmployees } from "./ai_employees";
 import { recruitment } from "./recruitment";
 import { scanner } from "./scanner";
+import { messaging } from "./messaging";
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -50,6 +51,7 @@ export const api = {
     aiEmployees,
     recruitment,
     scanner,
+    messaging,
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -89,3 +91,4 @@ export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albar
 export type { AIEmployee, ActivityEntry } from "./ai_employees";
 export type { RecruitmentPosition, Candidate } from "./recruitment";
 export type { ScannerToken, ScannedProduct, StockMovementResult } from "./scanner";
+export type { TelegramConnectResponse, TelegramStatus } from "./messaging";

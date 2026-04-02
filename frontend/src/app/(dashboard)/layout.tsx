@@ -136,7 +136,12 @@ const NAV_SECTIONS: NavSection[] = [
             { label: "Plantillas", icon: Layers, href: "/plantillas" },
             { label: "Escáner", icon: ScanLine, href: "/escaner" },
             { label: "Documentos", icon: FileText, href: "/documentos" },
-            { label: "Integraciones", icon: Plug, href: "/integraciones" },
+            {
+                label: "Integraciones", icon: Plug, subItems: [
+                    { label: "Conexiones", href: "/integraciones" },
+                    { label: "Mensajería", href: "/configuracion/integraciones" },
+                ],
+            },
         ],
     },
 ];
