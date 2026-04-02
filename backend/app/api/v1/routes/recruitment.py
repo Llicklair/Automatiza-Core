@@ -8,7 +8,7 @@ import shutil
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,8 +47,7 @@ class PositionResponse(BaseModel):
     status: str
     candidate_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CandidateResponse(BaseModel):
@@ -67,8 +66,7 @@ class CandidateResponse(BaseModel):
     status: str
     cv_file_path: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StatusUpdate(BaseModel):

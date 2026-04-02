@@ -22,6 +22,7 @@ import shutil
 import uuid
 from typing import Any, List, Optional
 
+from pydantic import ConfigDict
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
@@ -327,8 +328,7 @@ class ClaudeCodeChatModel(BaseChatModel):
     pool_key: str = "default"
     _bound_tools: list = []
 
-    class Config:
-        underscore_attrs_are_private = True
+    model_config = ConfigDict(underscore_attrs_are_private=True)
 
     def __init__(self, **kwargs):
         bound = kwargs.pop("_bound_tools", [])

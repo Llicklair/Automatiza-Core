@@ -13,7 +13,7 @@ import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,8 +38,7 @@ class AIEmployeeOut(BaseModel):
     is_builtin: bool
     budget_limit_usd: float | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AIEmployeeCreate(BaseModel):
@@ -59,8 +58,7 @@ class ActivityEntryOut(BaseModel):
     metadata: dict | None
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActivityEntryCreate(BaseModel):

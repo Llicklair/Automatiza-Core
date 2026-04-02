@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.middleware.rate_limit import limiter
 from typing import Any
 from uuid import UUID
@@ -21,8 +21,7 @@ class TenantMeResponse(BaseModel):
     phone: str | None = None
     contact_email: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TenantMeUpdate(BaseModel):
