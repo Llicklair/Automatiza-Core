@@ -18,6 +18,8 @@ class Tenant(Base):
     contact_email = Column(String(255), nullable=True)
     plan = Column(String(50), nullable=False, default="starter")
     is_active = Column(Boolean, default=True, nullable=False)
+    ui_locale = Column(String(10), nullable=False, default="es-ES")      # Consumido por next-intl en frontend
+    jurisdiction = Column(String(20), nullable=False, default="ES_TAX")  # Consumido por RAG retriever filter
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
