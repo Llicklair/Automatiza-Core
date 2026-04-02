@@ -160,6 +160,82 @@ async def test_libro_registro_respects_year_window(auth_client: AsyncClient, see
 
 
 @pytest.mark.asyncio
+async def test_libro_registro_excludes_following_calendar_year(
+    auth_client: AsyncClient, seed_tenant_and_user, db: AsyncSession
+):
+    tenant, _u, _t = seed_tenant_and_user
+    cid = uuid4()
+    db.add(Client(id=cid, tenant_id=tenant.id, nif="B33333333", name="Futuro"))
+    db.add(
+        Invoice(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            client_id=cid,
+            invoice_number="Y2027-01",
+            date=datetime(2027, 1, 1, 10, 0, tzinfo=UTC),
+            amount_base=Decimal("100.00"),
+            tax_amount=Decimal("21.00"),
+            amount_total=Decimal("121.00"),
+            status="paid",
+            invoice_type="issued",
+        )
+    )
+    await db.commit()
+
+    r = await auth_client.get("/api/v1/reports/libro-registro", params={"year": 2026, "type": "emitidas"})
+    assert r.status_code == 200
+    assert "Y2027-01" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_libro_registro_only_current_tenant(auth_client: AsyncClient, seed_tenant_and_user, db: AsyncSession):
+    """Otro tenant puede tener facturas en el mismo año; no deben mezclarse."""
+    tenant_a, _ua, _ta = seed_tenant_and_user
+    tenant_b = Tenant(id=uuid4(), name="Empresa Ajena SL", nif="X88888888", plan="starter")
+    db.add(tenant_b)
+    await db.flush()
+    c_b = uuid4()
+    db.add(Client(id=c_b, tenant_id=tenant_b.id, nif="X11111111", name="Cliente otro tenant"))
+    db.add(
+        Invoice(
+            id=uuid4(),
+            tenant_id=tenant_b.id,
+            client_id=c_b,
+            invoice_number="OTRO-TENANT-1",
+            date=datetime(2026, 8, 1, 12, 0, tzinfo=UTC),
+            amount_base=Decimal("500.00"),
+            tax_amount=Decimal("105.00"),
+            amount_total=Decimal("605.00"),
+            status="paid",
+            invoice_type="issued",
+        )
+    )
+    c_a = uuid4()
+    db.add(Client(id=c_a, tenant_id=tenant_a.id, nif="A00000001", name="Mi cliente"))
+    db.add(
+        Invoice(
+            id=uuid4(),
+            tenant_id=tenant_a.id,
+            client_id=c_a,
+            invoice_number="MI-F-001",
+            date=datetime(2026, 8, 15, 12, 0, tzinfo=UTC),
+            amount_base=Decimal("10.00"),
+            tax_amount=Decimal("2.10"),
+            amount_total=Decimal("12.10"),
+            status="paid",
+            invoice_type="issued",
+        )
+    )
+    await db.commit()
+
+    r = await auth_client.get("/api/v1/reports/libro-registro", params={"year": 2026, "type": "emitidas"})
+    assert r.status_code == 200
+    assert "MI-F-001" in r.text
+    assert "OTRO-TENANT-1" not in r.text
+    assert "X11111111" not in r.text
+
+
+@pytest.mark.asyncio
 async def test_libro_registro_empty_year_has_header(auth_client: AsyncClient, seed_tenant_and_user):
     r = await auth_client.get("/api/v1/reports/libro-registro", params={"year": 2026, "type": "emitidas"})
     assert r.status_code == 200
