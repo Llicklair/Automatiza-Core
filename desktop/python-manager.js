@@ -195,11 +195,15 @@ function startBackend(extraEnv = {}) {
 
   // Embedded Python ignora PYTHONPATH (lo controla el fichero ._pth).
   // Inyectamos el backend dir en sys.path via -c para que encuentre 'app'.
+  // _BACKEND_HOST permite toggle solo-local vs LAN vía IPC (Electron).
+  const backendHost = extraEnv._BACKEND_HOST || "0.0.0.0";
+  delete env._BACKEND_HOST;
+
   const launcherCode = [
     "import sys, os",
     "sys.path.insert(0, os.getcwd())",
     "import uvicorn",
-    "uvicorn.run('app.main:app', host='0.0.0.0', port=8080, log_level='info')",
+    `uvicorn.run('app.main:app', host='${backendHost}', port=8080, log_level='info')`,
   ].join("; ");
 
   backendProcess = spawn(
