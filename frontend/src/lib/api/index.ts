@@ -76,6 +76,7 @@ export type {
     LlmConfigResponse,
     LlmProviderConfigUpdate,
     LlmConfigUpdate,
+    ClaudeCodeSetupResponse,
 } from "./tenant";
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";

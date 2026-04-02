@@ -87,13 +87,13 @@ export default function AsesoriasPage() {
                 current = await api.tasks.get(task.id);
             }
 
-            if (current.status === "done" && current.agent_results) {
-                const cmpResult = current.agent_results.find((r: any) => r.agent === "compliance");
-                if (cmpResult?.success && cmpResult.output?.respuesta_consulta) {
-                    setChatMessages(prev => [...prev, { role: "ai", content: cmpResult.output.respuesta_consulta }]);
-                } else {
-                    setChatMessages(prev => [...prev, { role: "ai", content: "No encontré una respuesta clara." }]);
-                }
+            if (current.status === "done" && current.agent_results?.length) {
+                const results: any[] = current.agent_results;
+                // El compliance agent guarda la respuesta en action_taken del último paso
+                const answer = results.slice().reverse().find(
+                    (r: any) => r.action_taken && r.action_taken !== "Invocando herramientas de compliance" && r.action_taken !== "Operación compliance completada."
+                )?.action_taken;
+                setChatMessages(prev => [...prev, { role: "ai", content: answer || "No pude obtener una respuesta. Inténtalo de nuevo." }]);
             } else {
                 setChatMessages(prev => [...prev, { role: "ai", content: current.error_message || "La tarea falló." }]);
             }
@@ -152,60 +152,10 @@ export default function AsesoriasPage() {
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* Left Column: Calendario Fiscal + Chat IA */}
+                    {/* Left Column: Chat IA + Calendario Fiscal */}
                     <div className="col-span-1 space-y-4">
-                        <div className="flex items-center gap-2">
-                            <CalendarDays className="w-5 h-5 text-zinc-400" />
-                            <h2 className="text-xl font-semibold text-white">Próximos Vencimientos</h2>
-                        </div>
-
-                        <div className="bg-[#18181b] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/20">
-                            {events.length === 0 ? (
-                                <div className="p-8 text-center text-zinc-500 text-sm">
-                                    {filter === "mercantil"
-                                        ? "Las obligaciones mercantiles tienen plazos anuales. Consulta la guía normativa."
-                                        : "No hay vencimientos próximos en los próximos meses."}
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-[#27272a]">
-                                    {events.map((evt, i) => {
-                                        const isUrgent = evt.dias_restantes <= evt.urgente_dias;
-                                        return (
-                                            <div key={i} className="p-5 hover:bg-white/5 transition-colors">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#27272a] text-zinc-300">
-                                                            Mod. {evt.modelo}
-                                                        </span>
-                                                        {isUrgent && (
-                                                            <span className="flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full ring-1 ring-red-500/20">
-                                                                <AlertCircle className="w-3 h-3" />
-                                                                Urgente
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className={cn(
-                                                        "text-xs font-medium px-2 py-0.5 rounded-full bg-white/5",
-                                                        isUrgent ? "text-red-400 border border-red-500/20" : "text-emerald-400 border border-emerald-500/20"
-                                                    )}>
-                                                        Faltan {evt.dias_restantes} días
-                                                    </span>
-                                                </div>
-                                                <h3 className="text-zinc-100 font-medium">{evt.nombre}</h3>
-                                                <p className="text-zinc-500 text-sm mt-1">{evt.descripcion}</p>
-                                                <div className="mt-3 text-xs text-zinc-400 flex items-center gap-2">
-                                                    <CalendarDays className="w-3.5 h-3.5 opacity-70" />
-                                                    Fecha límite: <span className="text-white font-medium">{new Date(evt.fecha_limite).toLocaleDateString()}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-
                         {/* AI Advisory Chat */}
-                        <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/20 mt-6 flex flex-col h-[400px]">
+                        <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/20 flex flex-col h-[400px]">
                             <div className="px-5 py-4 border-b border-[#27272a] flex items-center justify-between bg-[#18181b]">
                                 <div className="flex items-center gap-2">
                                     <Bot className="w-5 h-5 text-indigo-400" />
@@ -263,6 +213,57 @@ export default function AsesoriasPage() {
                                 </form>
                             </div>
                         </div>
+
+                        <div className="flex items-center gap-2">
+                            <CalendarDays className="w-5 h-5 text-zinc-400" />
+                            <h2 className="text-xl font-semibold text-white">Próximos Vencimientos</h2>
+                        </div>
+
+                        <div className="bg-[#18181b] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/20">
+                            {events.length === 0 ? (
+                                <div className="p-8 text-center text-zinc-500 text-sm">
+                                    {filter === "mercantil"
+                                        ? "Las obligaciones mercantiles tienen plazos anuales. Consulta la guía normativa."
+                                        : "No hay vencimientos próximos en los próximos meses."}
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-[#27272a]">
+                                    {events.map((evt, i) => {
+                                        const isUrgent = evt.dias_restantes <= evt.urgente_dias;
+                                        return (
+                                            <div key={i} className="p-5 hover:bg-white/5 transition-colors">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#27272a] text-zinc-300">
+                                                            Mod. {evt.modelo}
+                                                        </span>
+                                                        {isUrgent && (
+                                                            <span className="flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full ring-1 ring-red-500/20">
+                                                                <AlertCircle className="w-3 h-3" />
+                                                                Urgente
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className={cn(
+                                                        "text-xs font-medium px-2 py-0.5 rounded-full bg-white/5",
+                                                        isUrgent ? "text-red-400 border border-red-500/20" : "text-emerald-400 border border-emerald-500/20"
+                                                    )}>
+                                                        Faltan {evt.dias_restantes} días
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-zinc-100 font-medium">{evt.nombre}</h3>
+                                                <p className="text-zinc-500 text-sm mt-1">{evt.descripcion}</p>
+                                                <div className="mt-3 text-xs text-zinc-400 flex items-center gap-2">
+                                                    <CalendarDays className="w-3.5 h-3.5 opacity-70" />
+                                                    Fecha límite: <span className="text-white font-medium">{new Date(evt.fecha_limite).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
                     </div>
 
                     {/* Right Column: Guías + BOE Feed */}

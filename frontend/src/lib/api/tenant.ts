@@ -24,6 +24,12 @@ export interface LlmConfigUpdate {
     providers?: Record<string, LlmProviderConfigUpdate>;
 }
 
+export interface ClaudeCodeSetupResponse {
+    status: "ready" | "needs_auth" | "installed" | "error";
+    version?: string;
+    message: string;
+}
+
 export const tenant = {
     me: () => request<{ id: string; name: string; nif: string; address: string | null; phone: string | null; contact_email: string | null }>("/api/v1/tenant/me"),
     updateMe: (data: { name?: string; nif?: string; address?: string | null; phone?: string | null; contact_email?: string | null }) =>
@@ -36,5 +42,17 @@ export const tenant = {
         request<LlmConfigResponse>("/api/v1/tenant/llm-config", {
             method: "PUT",
             body: JSON.stringify(data),
+        }),
+    setupClaudeCode: () =>
+        request<ClaudeCodeSetupResponse>("/api/v1/tenant/claude-code-setup", {
+            method: "POST",
+        }),
+    loginClaudeCode: () =>
+        request<ClaudeCodeSetupResponse>("/api/v1/tenant/claude-code-login", {
+            method: "POST",
+        }),
+    logoutClaudeCode: () =>
+        request<ClaudeCodeSetupResponse>("/api/v1/tenant/claude-code-logout", {
+            method: "POST",
         }),
 };

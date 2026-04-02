@@ -223,3 +223,199 @@ async def update_llm_config(
         providers=providers_out,
     )
 
+
+# ---------------------------------------------------------------------------
+# Claude Code CLI — setup automático
+# ---------------------------------------------------------------------------
+
+class ClaudeCodeSetupResponse(BaseModel):
+    status: str  # "ready" | "needs_auth" | "installed" | "error"
+    version: str | None = None
+    message: str = ""
+
+
+def _run_cmd(args: list[str], timeout: int = 120) -> tuple[int, str, str]:
+    """Ejecuta un comando y devuelve (returncode, stdout, stderr)."""
+    import subprocess, shutil, os
+    # Resolver binario
+    bin_path = shutil.which(args[0])
+    if not bin_path:
+        # Windows: probar con .cmd
+        bin_path = shutil.which(args[0] + ".cmd")
+    if bin_path:
+        args = [bin_path] + args[1:]
+    try:
+        r = subprocess.run(
+            args, capture_output=True, text=True, timeout=timeout,
+            encoding="utf-8", errors="replace",
+            env={**os.environ, "NO_COLOR": "1"},
+        )
+        return r.returncode, r.stdout.strip(), r.stderr.strip()
+    except FileNotFoundError:
+        return -1, "", f"Comando no encontrado: {args[0]}"
+    except subprocess.TimeoutExpired:
+        return -2, "", f"Timeout ejecutando: {' '.join(args)}"
+    except Exception as e:
+        return -3, "", str(e)
+
+
+@router.post("/claude-code-setup", response_model=ClaudeCodeSetupResponse)
+@limiter.limit("5/minute")
+async def claude_code_setup(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Verifica/instala Claude Code CLI y comprueba autenticación."""
+    import asyncio, shutil
+
+    loop = asyncio.get_event_loop()
+
+    # Step 1: ¿Está claude instalado?
+    claude_bin = shutil.which("claude") or shutil.which("claude.cmd")
+
+    if not claude_bin:
+        # Step 2: Intentar instalar
+        npm_bin = shutil.which("npm") or shutil.which("npm.cmd")
+        if not npm_bin:
+            return ClaudeCodeSetupResponse(
+                status="error",
+                message="Node.js no está instalado. Descárgalo desde https://nodejs.org/",
+            )
+
+        code, out, err = await loop.run_in_executor(
+            None, _run_cmd, ["npm", "install", "-g", "@anthropic-ai/claude-code"]
+        )
+        if code != 0:
+            return ClaudeCodeSetupResponse(
+                status="error",
+                message=f"Error instalando Claude Code: {err or out}",
+            )
+
+        # Verificar que se instaló
+        claude_bin = shutil.which("claude") or shutil.which("claude.cmd")
+        if not claude_bin:
+            return ClaudeCodeSetupResponse(
+                status="error",
+                message="Se instaló pero no se encuentra en el PATH. Reinicia la aplicación.",
+            )
+
+    # Step 3: Obtener versión
+    code, version, err = await loop.run_in_executor(
+        None, _run_cmd, ["claude", "--version"]
+    )
+    if code != 0:
+        version = "desconocida"
+
+    # Step 4: Comprobar autenticación
+    code, auth_out, auth_err = await loop.run_in_executor(
+        None, _run_cmd, ["claude", "auth", "status"]
+    )
+
+    # claude auth status devuelve JSON: {"loggedIn": true, ...}
+    is_authenticated = False
+    if code == 0 and auth_out:
+        try:
+            import json as _json
+            auth_data = _json.loads(auth_out)
+            is_authenticated = auth_data.get("loggedIn", False) is True
+        except (ValueError, KeyError):
+            # Fallback: buscar texto
+            full_output = f"{auth_out} {auth_err}".lower()
+            is_authenticated = "logged in" in full_output or "authenticated" in full_output or "active" in full_output
+
+    if is_authenticated:
+        return ClaudeCodeSetupResponse(
+            status="ready",
+            version=version,
+            message="Claude Code instalado y autenticado.",
+        )
+
+    return ClaudeCodeSetupResponse(
+        status="needs_auth",
+        version=version,
+        message="Abre un terminal y ejecuta: claude",
+    )
+
+
+@router.post("/claude-code-login", response_model=ClaudeCodeSetupResponse)
+@limiter.limit("5/minute")
+async def claude_code_login(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Lanza claude auth login (abre navegador para OAuth)."""
+    import asyncio, shutil, subprocess, os
+
+    loop = asyncio.get_event_loop()
+
+    # Verificar que claude está instalado
+    claude_bin = shutil.which("claude") or shutil.which("claude.cmd")
+    if not claude_bin:
+        # Intentar instalar primero
+        npm_bin = shutil.which("npm") or shutil.which("npm.cmd")
+        if not npm_bin:
+            return ClaudeCodeSetupResponse(
+                status="error",
+                message="Node.js no está instalado. Descárgalo desde https://nodejs.org/",
+            )
+        code, out, err = await loop.run_in_executor(
+            None, _run_cmd, ["npm", "install", "-g", "@anthropic-ai/claude-code"]
+        )
+        if code != 0:
+            return ClaudeCodeSetupResponse(
+                status="error",
+                message=f"Error instalando Claude Code: {err or out}",
+            )
+        claude_bin = shutil.which("claude") or shutil.which("claude.cmd")
+        if not claude_bin:
+            return ClaudeCodeSetupResponse(
+                status="error",
+                message="Se instaló pero no se encuentra en el PATH. Reinicia la aplicación.",
+            )
+
+    # Lanzar login en background (abre navegador, no bloqueamos)
+    try:
+        subprocess.Popen(
+            [claude_bin, "auth", "login"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            env={**os.environ, "NO_COLOR": "1"},
+        )
+    except Exception as e:
+        return ClaudeCodeSetupResponse(
+            status="error",
+            message=f"Error lanzando login: {e}",
+        )
+
+    return ClaudeCodeSetupResponse(
+        status="needs_auth",
+        message="Se ha abierto el navegador para iniciar sesión. Completa el login y pulsa 'Verificar conexión'.",
+    )
+
+
+@router.post("/claude-code-logout", response_model=ClaudeCodeSetupResponse)
+@limiter.limit("5/minute")
+async def claude_code_logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Cierra la sesión de Claude Code CLI."""
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    code, out, err = await loop.run_in_executor(
+        None, _run_cmd, ["claude", "auth", "logout"]
+    )
+
+    if code == 0:
+        return ClaudeCodeSetupResponse(
+            status="needs_auth",
+            message="Sesión de Claude Code cerrada correctamente.",
+        )
+
+    return ClaudeCodeSetupResponse(
+        status="error",
+        message=f"Error al cerrar sesión: {err or out}",
+    )
+

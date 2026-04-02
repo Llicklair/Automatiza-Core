@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     KeyRound, ArrowLeft, Save, Loader2, Eye, EyeOff, CheckCircle2,
-    ChevronDown, ChevronUp, Cpu, Layers,
+    ChevronDown, ChevronUp, Cpu, Layers, Terminal,
 } from "lucide-react";
 import { api, LlmConfigResponse, LlmProviderConfigUpdate } from "@/lib/api";
 import InfoBanner from "@/components/InfoBanner";
@@ -46,12 +46,6 @@ const LLM_PROVIDERS = [
         consoleUrl: "https://openrouter.ai/keys",
         hint: "Acceso a múltiples modelos con una sola key.",
     },
-    {
-        key: "claude_code", label: "Claude Code (VSCode)", placeholder: "",
-        defaultModel: "claude-code-cli", models: ["claude-code-cli"],
-        consoleUrl: "",
-        hint: "",
-    },
 ];
 
 const EMBEDDINGS_OPTIONS = [
@@ -77,6 +71,11 @@ export default function ApiKeysPage() {
     const [activeLlm, setActiveLlm] = useState("gemini");
     const [activeEmbeddings, setActiveEmbeddings] = useState("local");
     const [providers, setProviders] = useState<Record<string, ProviderState>>({});
+    const [claudeSetup, setClaudeSetup] = useState<{
+        phase: "idle" | "checking" | "ready" | "needs_auth" | "error";
+        version?: string;
+        message?: string;
+    }>({ phase: "idle" });
 
     useEffect(() => {
         api.tenant.getLlmConfig()
@@ -106,6 +105,15 @@ export default function ApiKeysPage() {
                 setProviders(init);
             })
             .finally(() => setLoading(false));
+
+        // Auto-check Claude Code status
+        api.tenant.setupClaudeCode()
+            .then(res => {
+                if (res.status === "ready") setClaudeSetup({ phase: "ready", version: res.version, message: res.message });
+                else if (res.status === "needs_auth") setClaudeSetup({ phase: "needs_auth", version: res.version, message: res.message });
+                // else keep idle (not installed)
+            })
+            .catch(() => {}); // silently ignore
     }, []);
 
     function updateProvider(key: string, patch: Partial<ProviderState>) {
@@ -244,73 +252,9 @@ export default function ApiKeysPage() {
                                     </button>
                                 </div>
 
-                                {/* Expanded: api key + model (or setup guide for claude_code) */}
+                                {/* Expanded: api key + model */}
                                 {s.expanded && (
                                     <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-3">
-                                        {p.key === "claude_code" ? (
-                                            /* ── Claude Code setup guide ── */
-                                            <div className="space-y-3">
-                                                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3">
-                                                    <p className="text-xs text-indigo-300 font-medium mb-2">
-                                                        Usa tu suscripci&oacute;n de Claude (Pro/Team) directamente. Sin API Key, sin coste extra.
-                                                    </p>
-                                                    <p className="text-[11px] text-zinc-400">
-                                                        Los agentes usar&aacute;n el CLI de Claude Code instalado en tu equipo para ejecutar acciones reales
-                                                        (crear facturas, gestionar clientes, etc.).
-                                                    </p>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <p className="text-[11px] text-zinc-400 font-medium uppercase tracking-wider">Configuraci&oacute;n inicial (solo una vez)</p>
-
-                                                    <div className="flex gap-2.5 items-start">
-                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-                                                        <div>
-                                                            <p className="text-xs text-zinc-300">Instala <a href="https://code.visualstudio.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Visual Studio Code</a> si a&uacute;n no lo tienes.</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex gap-2.5 items-start">
-                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
-                                                        <div>
-                                                            <p className="text-xs text-zinc-300">Instala la extensi&oacute;n <a href="https://marketplace.visualstudio.com/items?itemName=anthropics.claude-code" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Claude Code</a> desde el marketplace de VSCode.</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex gap-2.5 items-start">
-                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
-                                                        <div>
-                                                            <p className="text-xs text-zinc-300">Inicia sesi&oacute;n en Claude dentro de VSCode con tu cuenta Claude Pro o Team.</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex gap-2.5 items-start">
-                                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center mt-0.5">4</span>
-                                                        <div>
-                                                            <p className="text-xs text-zinc-300">Verifica que funciona: abre un terminal y escribe:</p>
-                                                            <code className="block mt-1 px-2 py-1 bg-black/40 border border-[#3f3f46] rounded text-[11px] text-emerald-400 font-mono">claude --version</code>
-                                                            <p className="text-[10px] text-zinc-500 mt-1">Si muestra un n&uacute;mero de versi&oacute;n, est&aacute; listo.</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5">
-                                                    <p className="text-[11px] text-amber-400/90">
-                                                        <span className="font-medium">Nota:</span> VSCode debe estar abierto con la sesi&oacute;n de Claude activa mientras uses la app.
-                                                        Cada usuario utiliza su propia suscripci&oacute;n — no se comparten datos entre cuentas.
-                                                    </p>
-                                                </div>
-
-                                                <div className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-2.5">
-                                                    <p className="text-[11px] text-rose-400/90">
-                                                        <span className="font-medium">Fiabilidad reducida:</span> Esta opci&oacute;n usa un m&eacute;todo indirecto para ejecutar acciones (el CLI no soporta llamadas a herramientas nativas).
-                                                        Puede fallar ocasionalmente en tareas complejas. Para m&aacute;xima fiabilidad, usa un proveedor con API Key como <span className="text-rose-300">Gemini</span> o <span className="text-rose-300">Anthropic</span>.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            /* ── Standard provider: API Key + Model ── */
-                                            <>
                                                 {p.hint && <p className="text-[11px] text-zinc-500 mb-1">{p.hint}</p>}
                                                 <div>
                                                     <div className="flex items-center justify-between mb-1">
@@ -360,8 +304,6 @@ export default function ApiKeysPage() {
                                                         )}
                                                     </select>
                                                 </div>
-                                            </>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -401,6 +343,181 @@ export default function ApiKeysPage() {
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* Claude Code — Conexión */}
+            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 mb-4">
+                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-1">
+                    <Terminal className="w-4 h-4 text-indigo-400" /> Claude Code — Conexi&oacute;n
+                </h2>
+                <p className="text-xs text-zinc-500 mb-4">
+                    Conecta tu suscripci&oacute;n de Claude (Pro/Team) para usar los agentes sin API Key.
+                </p>
+
+                {/* Checking */}
+                {claudeSetup.phase === "checking" && (
+                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                        Verificando...
+                    </div>
+                )}
+
+                {/* Ready — connected */}
+                {claudeSetup.phase === "ready" && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                <span className="text-sm font-medium text-emerald-300">Conectado</span>
+                                {claudeSetup.version && (
+                                    <span className="text-[10px] text-emerald-500 font-mono">v{claudeSetup.version}</span>
+                                )}
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    setClaudeSetup({ phase: "checking" });
+                                    try {
+                                        const res = await api.tenant.logoutClaudeCode();
+                                        setClaudeSetup({ phase: res.status === "error" ? "error" : "idle", message: res.message });
+                                    } catch (e: any) {
+                                        setClaudeSetup({ phase: "error", message: e?.message || "Error" });
+                                    }
+                                }}
+                                className="text-[11px] px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition"
+                            >
+                                Cerrar sesi&oacute;n
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Needs auth — installed but not logged in */}
+                {claudeSetup.phase === "needs_auth" && (
+                    <div className="space-y-3">
+                        <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/5">
+                            <div className="flex items-center gap-2">
+                                <Terminal className="w-4 h-4 text-amber-400" />
+                                <span className="text-sm font-medium text-amber-300">
+                                    CLI instalado{claudeSetup.version ? ` (v${claudeSetup.version})` : ""} — sesión no iniciada
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={async () => {
+                                    setClaudeSetup(s => ({ ...s, phase: "checking" }));
+                                    try {
+                                        const res = await api.tenant.loginClaudeCode();
+                                        setClaudeSetup({ phase: "needs_auth", version: claudeSetup.version, message: res.message });
+                                    } catch (e: any) {
+                                        setClaudeSetup({ phase: "error", message: e?.message || "Error" });
+                                    }
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition"
+                            >
+                                <Terminal className="w-3.5 h-3.5" />
+                                Iniciar sesión
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setClaudeSetup(s => ({ ...s, phase: "checking" }));
+                                    try {
+                                        const res = await api.tenant.setupClaudeCode();
+                                        if (res.status === "ready") {
+                                            setClaudeSetup({ phase: "ready", version: res.version, message: res.message });
+                                            updateProvider("claude_code", { enabled: true });
+                                        } else if (res.status === "needs_auth") {
+                                            setClaudeSetup({ phase: "needs_auth", version: res.version, message: res.message });
+                                        } else {
+                                            setClaudeSetup({ phase: "error", message: res.message });
+                                        }
+                                    } catch (e: any) {
+                                        setClaudeSetup({ phase: "error", message: e?.message || "Error" });
+                                    }
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 text-xs font-medium transition"
+                            >
+                                Verificar conexión
+                            </button>
+                        </div>
+                        {claudeSetup.message && (
+                            <p className="text-[11px] text-zinc-500">{claudeSetup.message}</p>
+                        )}
+                    </div>
+                )}
+
+                {/* Idle — not installed or not checked */}
+                {claudeSetup.phase === "idle" && (
+                    <div className="space-y-3">
+                        <p className="text-[11px] text-zinc-500">
+                            Instala y conecta Claude Code CLI automáticamente. Requiere <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Node.js</a> instalado.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={async () => {
+                                    setClaudeSetup({ phase: "checking" });
+                                    try {
+                                        // First install if needed, then open login
+                                        const setupRes = await api.tenant.setupClaudeCode();
+                                        if (setupRes.status === "ready") {
+                                            setClaudeSetup({ phase: "ready", version: setupRes.version, message: setupRes.message });
+                                            updateProvider("claude_code", { enabled: true });
+                                            return;
+                                        }
+                                        // Installed but needs auth — trigger login
+                                        const loginRes = await api.tenant.loginClaudeCode();
+                                        setClaudeSetup({ phase: "needs_auth", version: setupRes.version, message: loginRes.message });
+                                    } catch (e: any) {
+                                        setClaudeSetup({ phase: "error", message: e?.message || "Error" });
+                                    }
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition"
+                            >
+                                <Terminal className="w-3.5 h-3.5" />
+                                Iniciar sesión
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setClaudeSetup({ phase: "checking" });
+                                    try {
+                                        const res = await api.tenant.setupClaudeCode();
+                                        if (res.status === "ready") {
+                                            setClaudeSetup({ phase: "ready", version: res.version, message: res.message });
+                                            updateProvider("claude_code", { enabled: true });
+                                        } else if (res.status === "needs_auth") {
+                                            setClaudeSetup({ phase: "needs_auth", version: res.version, message: res.message });
+                                        } else {
+                                            setClaudeSetup({ phase: "error", message: res.message });
+                                        }
+                                    } catch (e: any) {
+                                        setClaudeSetup({ phase: "error", message: e?.message || "Error" });
+                                    }
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 text-xs font-medium transition"
+                            >
+                                Verificar conexión
+                            </button>
+                        </div>
+                        {claudeSetup.message && (
+                            <p className="text-[11px] text-zinc-500">{claudeSetup.message}</p>
+                        )}
+                    </div>
+                )}
+
+                {/* Error */}
+                {claudeSetup.phase === "error" && (
+                    <div className="space-y-2">
+                        <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/5">
+                            <p className="text-xs text-rose-400">{claudeSetup.message}</p>
+                        </div>
+                        <button
+                            onClick={() => setClaudeSetup({ phase: "idle" })}
+                            className="text-[11px] text-indigo-400 hover:text-indigo-300 underline transition"
+                        >
+                            Reintentar
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Footer */}

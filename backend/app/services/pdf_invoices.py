@@ -70,7 +70,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             Paragraph(company.get('phone', '') + (' · ' + company.get('email', '') if company.get('email') else ''), band_sub),
         ]
         inv_col = [
-            Paragraph("FACTURA", band_right),
+            Paragraph(invoice_data.get("doc_title", "FACTURA"), band_right),
             Spacer(1, 4),
             Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", band_rsub),
             Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", band_rsub),
@@ -99,7 +99,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             Paragraph(company.get('phone', ''), dark_sub),
         ]
         inv_col = [
-            Paragraph("FACTURA", dark_r),
+            Paragraph(invoice_data.get("doc_title", "FACTURA"), dark_r),
             Spacer(1, 4),
             Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", dark_rsub),
             Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", dark_rsub),
@@ -128,7 +128,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
         ]
         inv_block = [
             Spacer(1, 4),
-            Paragraph("FACTURA", ParagraphStyle('T_ftitle', parent=styles['Normal'],
+            Paragraph(invoice_data.get("doc_title", "FACTURA"), ParagraphStyle('T_ftitle', parent=styles['Normal'],
                 fontSize=18, fontName=bold, textColor=colors.HexColor(acc), alignment=TA_RIGHT)),
             Spacer(1, 6),
             Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", right_sty),
@@ -270,7 +270,7 @@ Total: {invoice_data.get('amount_total', 0):.2f} EUR
 # Factura rectificativa
 # ---------------------------------------------------------------------------
 
-def generate_rectificative_invoice_pdf(data: dict) -> bytes:
+def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = None) -> bytes:
     """
     Genera PDF de factura rectificativa (Art. 15 RD 1619/2012).
 
@@ -291,6 +291,7 @@ def generate_rectificative_invoice_pdf(data: dict) -> bytes:
 
     s = _common_styles()
     C = s['C']
+    _accent = (theme_config or {}).get("accent_color") or C['RED']
     buffer = io.BytesIO()
     doc = _make_doc(buffer, topMargin=8*mm)
     elements = []
@@ -302,7 +303,7 @@ def generate_rectificative_invoice_pdf(data: dict) -> bytes:
     # ── CABECERA ──
     red_title = ParagraphStyle('RectTitle', parent=s['styles']['Normal'],
         fontSize=18, fontName='Helvetica-Bold',
-        textColor=colors.HexColor(C['RED']), alignment=TA_RIGHT)
+        textColor=colors.HexColor(_accent), alignment=TA_RIGHT)
 
     header_data = [[
         [
@@ -446,7 +447,7 @@ def generate_rectificative_invoice_pdf(data: dict) -> bytes:
 # Factura con retención
 # ---------------------------------------------------------------------------
 
-def generate_retention_invoice_pdf(data: dict) -> bytes:
+def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None) -> bytes:
     """
     Genera PDF de factura con retención de IRPF.
 
@@ -460,6 +461,7 @@ def generate_retention_invoice_pdf(data: dict) -> bytes:
 
     s = _common_styles()
     C = s['C']
+    _accent = (theme_config or {}).get("accent_color") or C['INDIGO']
     buffer = io.BytesIO()
     doc = _make_doc(buffer, topMargin=8*mm)
     elements = []
@@ -480,7 +482,7 @@ def generate_retention_invoice_pdf(data: dict) -> bytes:
             Spacer(1, 4),
             Paragraph("FACTURA", ParagraphStyle('RetFTitle', parent=s['styles']['Normal'],
                 fontSize=18, fontName='Helvetica-Bold',
-                textColor=colors.HexColor(C['INDIGO']), alignment=TA_RIGHT)),
+                textColor=colors.HexColor(_accent), alignment=TA_RIGHT)),
             Spacer(1, 6),
             Paragraph(f"Nº {data.get('number', 'F-0001')}", s['right']),
             Paragraph(f"Fecha: {_format_date(data.get('date', ''))}", s['right']),

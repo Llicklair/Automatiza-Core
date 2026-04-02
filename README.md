@@ -66,6 +66,57 @@ ANTHROPIC_MODEL=claude-sonnet-4-6        # claude-sonnet-4-6 | claude-opus-4-6
 
 **Recomendación**: Anthropic Claude Sonnet 4.6 es el modelo principal. Es el más equilibrado en precio/calidad para tareas de ERP. Claude Opus 4.6 para tareas que requieren máxima precisión.
 
+### Proveedor especial: Claude CLI (sin facturación por API)
+
+```env
+DEFAULT_LLM_PROVIDER=claude_cli
+# No requiere ANTHROPIC_API_KEY — usa la sesión activa de Claude Code CLI
+```
+
+Este proveedor enruta todas las llamadas LLM a través del proceso **Claude Code CLI** (`claude`) en lugar de la API REST de Anthropic. Es útil para desarrollo y pruebas porque consume el plan de suscripción de Claude (Pro/Max) en lugar de generar créditos de API.
+
+**Requisitos:**
+- Tener instalado Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
+- Haber iniciado sesión: `claude` (primera vez abre el navegador para autenticarse)
+- El binario `claude` debe ser accesible desde el PATH o configurarse explícitamente:
+
+```env
+CLAUDE_CLI_PATH=C:\Users\Marcos\AppData\Roaming\npm\claude.cmd   # Windows
+# CLAUDE_CLI_PATH=/usr/local/bin/claude                           # Linux/macOS
+```
+
+**Cómo funciona internamente:**
+
+```
+LLM request → llm_factory.get_llm() → ClaudeCliProvider
+  → spawns: claude --print --output-format json "<prompt>"
+  → parsea stdout JSON → devuelve respuesta al agente
+```
+
+El provider mantiene una **sesión warm** precalentada (cold-start ~2s, llamadas posteriores ~200ms). La sesión se reutiliza entre llamadas para minimizar la latencia.
+
+**Limitaciones:**
+- No soporta streaming (output completo de una vez)
+- No soporta function calling nativo (los agentes utilizan JSON en el prompt)
+- El contexto de conversación no se mantiene entre llamadas independientes
+- Requiere que `claude` esté activo y autenticado — si caduca la sesión, el sistema cae al proveedor de fallback
+
+**Diagnóstico si no funciona:**
+
+```bash
+# Comprobar que el CLI responde correctamente
+claude --print "Di hola"
+
+# Ver qué path se está usando
+where claude          # Windows
+which claude          # Linux/macOS
+
+# Forzar re-autenticación
+claude --logout && claude
+```
+
+> **Nota**: Este proveedor está pensado para **desarrollo local**. En producción (clientes) usar `anthropic` con su propia API key.
+
 ### Proveedor alternativo recomendado: Gemini
 
 ```env

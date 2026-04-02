@@ -33,7 +33,13 @@
       "Bash(code:*)",
       "Bash(claude auth:*)",
       "Bash(node:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(python:*)",
+      "Bash(/c/Users/Marcos/AppData/Local/Programs/Python/Python314/python.exe:*)",
+      "Bash(claude:*)",
+      "Bash(CLAUDECODE= CLAUDE_CODE_SESSION= echo responde solo: OK:*)",
+      "Bash(env:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
