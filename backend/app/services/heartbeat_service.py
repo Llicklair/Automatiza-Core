@@ -1,23 +1,26 @@
 """Heartbeat Service — Ciclo vital de los AIEmployee.
 
 Cada empleado activo tiene un cron job que:
-1. Revisa su bandeja de entrada (tareas pendientes en su dominio)
-2. Actualiza su estado visualmente (idle → working → idle)
-3. Escribe una entrada en activity_feed
+1. Comprueba presupuesto mensual (budget_guard); si se agota, pausa y cancela heartbeat.
+2. Revisa tareas `pending` del mismo dominio y tenant.
+3. Reclama cada tarea con UPDATE atómico (pending → executing) y despacha al orquestador.
+4. Actualiza estado visual (idle → working → idle) y escribe activity_feed.
 
-IMPORTANTE: Este servicio NO ejecuta tareas — eso sigue siendo
-responsabilidad del orquestador existente. El heartbeat solo
-añade presencia visual y logging de actividad.
+El despacho usa el mismo `dispatch_orchestrator` que POST /tasks; TaskRunner evita
+duplicados si la tarea ya está en vuelo. La reclamación en BD evita dos empleados
+del mismo dominio ejecutando la misma tarea.
 
 Registro dinámico: los jobs se crean/cancelan cuando el usuario
 crea o pausa empleados en tiempo de ejecución.
 """
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy import func, select, update
 
+from app.agents.budget_guard import check_agent_budget
 from app.db.base import AsyncSessionLocal
 from app.db.models.ai_employees import AIEmployee, ActivityEntry
 from app.db.models.tasks import Task
@@ -25,6 +28,7 @@ from app.db.models.tasks import Task
 logger = logging.getLogger(__name__)
 
 HEARTBEAT_INTERVAL_SECONDS = 300  # 5 minutos
+HEARTBEAT_MAX_DISPATCH_PER_CYCLE = 5  # evita inundar el TaskRunner en un solo tick
 
 
 def get_scheduler():
@@ -75,13 +79,17 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
     Usa su propia sesión DB (corre fuera del contexto de request).
     Falla silenciosamente — nunca debe romper el scheduler.
     """
+    tenant_uuid = UUID(tenant_id)
+    emp_uuid = UUID(employee_id)
+    domain: str | None = None
+    employee_name = ""
+
     try:
         async with AsyncSessionLocal() as db:
-            # 1. Verificar que el empleado sigue activo
             result = await db.execute(
                 select(AIEmployee).where(
-                    AIEmployee.id == employee_id,
-                    AIEmployee.tenant_id == tenant_id,
+                    AIEmployee.id == emp_uuid,
+                    AIEmployee.tenant_id == tenant_uuid,
                 )
             )
             employee = result.scalar_one_or_none()
@@ -89,65 +97,136 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
                 unregister_employee_heartbeat(employee_id)
                 return
 
-            # 2. Contar tareas pendientes en su dominio
+            if not await check_agent_budget(employee_id, db):
+                unregister_employee_heartbeat(employee_id)
+                logger.info("Heartbeat cancelado: presupuesto agotado para %s", employee_id)
+                return
+
+            domain = employee.domain
+            employee_name = employee.name
+
             pending_count_result = await db.execute(
                 select(func.count()).where(
-                    Task.tenant_id == tenant_id,
-                    Task.domain == employee.domain,
+                    Task.tenant_id == tenant_uuid,
+                    Task.domain == domain,
                     Task.status == "pending",
                 )
             )
-            pending_count = pending_count_result.scalar() or 0
+            pending_before = int(pending_count_result.scalar() or 0)
 
-            # 3. Marcar como "working" durante la revisión
             await db.execute(
                 update(AIEmployee)
-                .where(AIEmployee.id == employee_id)
+                .where(AIEmployee.id == emp_uuid)
                 .values(status="working")
             )
             await db.commit()
 
-            # 4. Escribir entrada de actividad
-            if pending_count > 0:
+        from app.services.task_dispatch import dispatch_orchestrator
+
+        dispatched = 0
+        for _ in range(HEARTBEAT_MAX_DISPATCH_PER_CYCLE):
+            async with AsyncSessionLocal() as db:
+                one = await db.execute(
+                    select(Task.id)
+                    .where(
+                        Task.tenant_id == tenant_uuid,
+                        Task.domain == domain,
+                        Task.status == "pending",
+                    )
+                    .order_by(Task.created_at.asc())
+                    .limit(1)
+                )
+                row = one.first()
+                if not row:
+                    break
+                tid = row[0]
+                upd = await db.execute(
+                    update(Task)
+                    .where(
+                        Task.id == tid,
+                        Task.tenant_id == tenant_uuid,
+                        Task.domain == domain,
+                        Task.status == "pending",
+                    )
+                    .values(status="executing", started_at=datetime.now(UTC))
+                    .returning(Task.id)
+                )
+                claimed = upd.fetchone()
+                if not claimed:
+                    await db.rollback()
+                    continue
+                await db.commit()
+
+            try:
+                await dispatch_orchestrator(str(tid))
+                dispatched += 1
+            except Exception as exc:
+                logger.exception(
+                    "Heartbeat: error despachando tarea %s: %s", tid, exc
+                )
+                try:
+                    async with AsyncSessionLocal() as dbx:
+                        await dbx.execute(
+                            update(Task)
+                            .where(Task.id == tid)
+                            .values(status="pending", started_at=None)
+                        )
+                        await dbx.commit()
+                except Exception:
+                    logger.error("No se pudo revertir tarea %s a pending", tid)
+
+        async with AsyncSessionLocal() as db:
+            if dispatched > 0:
                 message = (
-                    f"He revisado mi bandeja de entrada. "
-                    f"Tengo {pending_count} tarea{'s' if pending_count != 1 else ''} pendiente{'s' if pending_count != 1 else ''} "
-                    f"en el área de {employee.domain}."
+                    f"He puesto en marcha {dispatched} tarea{'s' if dispatched != 1 else ''} "
+                    f"pendiente{'s' if dispatched != 1 else ''} en {domain}."
+                )
+                icon = "🚀"
+            elif pending_before > 0:
+                message = (
+                    f"He revisado mi bandeja: {pending_before} tarea(s) pendiente(s) en {domain} "
+                    f"(otras instancias las están procesando o están en cola)."
                 )
                 icon = "🔍"
             else:
-                message = f"He revisado mi bandeja de entrada. Todo al día en {employee.domain}."
+                message = f"He revisado mi bandeja de entrada. Todo al día en {domain}."
                 icon = "✅"
 
             entry = ActivityEntry(
                 id=uuid.uuid4(),
                 tenant_id=tenant_id,
                 employee_id=employee_id,
-                category=employee.domain,
+                category=domain or "system",
                 icon=icon,
                 message=message,
-                metadata_json={"pending_tasks": pending_count, "heartbeat": True},
+                metadata_json={
+                    "pending_tasks_seen": pending_before,
+                    "dispatched": dispatched,
+                    "heartbeat": True,
+                },
             )
             db.add(entry)
 
-            # 5. Volver a "idle"
             await db.execute(
                 update(AIEmployee)
-                .where(AIEmployee.id == employee_id)
+                .where(AIEmployee.id == emp_uuid)
                 .values(status="idle")
             )
             await db.commit()
-            logger.debug("Heartbeat completado para %s (%s)", employee.name, employee_id)
+            logger.debug(
+                "Heartbeat completado para %s (%s), dispatched=%d",
+                employee_name,
+                employee_id,
+                dispatched,
+            )
 
     except Exception as e:
-        # Fallo silencioso — nunca debe romper el scheduler ni otros jobs
         logger.error("Heartbeat falló para empleado %s: %s", employee_id, e)
-        # Intentar restaurar status a idle en caso de error
         try:
             async with AsyncSessionLocal() as db:
                 await db.execute(
                     update(AIEmployee)
-                    .where(AIEmployee.id == employee_id)
+                    .where(AIEmployee.id == emp_uuid)
                     .values(status="idle")
                 )
                 await db.commit()
