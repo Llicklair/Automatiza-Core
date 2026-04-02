@@ -873,6 +873,96 @@ async def list_contract_templates(
     return result.scalars().all()
 
 
+@limiter.limit("10/minute")
+@router.post("/contract-templates/{document_id}/generate")
+async def generate_contract(
+    request: Request,
+    document_id: uuid.UUID,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rellena una plantilla .docx con datos del cliente o empleado y devuelve el borrador."""
+    from fastapi.responses import Response as FastResponse
+    from sqlalchemy import select as sa_select
+
+    # Cargar plantilla
+    tpl_result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == document_id,
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == "contract_template",
+        )
+    )
+    tpl_doc = tpl_result.scalar_one_or_none()
+    if not tpl_doc:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+    if not tpl_doc.file_path or not os.path.exists(tpl_doc.file_path):
+        raise HTTPException(status_code=404, detail="Archivo de plantilla no disponible en disco")
+
+    # Cargar tenant
+    from app.db.models.auth import Tenant
+    tenant_result = await db.execute(
+        sa_select(Tenant).where(Tenant.id == current_user.tenant_id)
+    )
+    tenant = tenant_result.scalar_one_or_none()
+
+    # Construir contexto según tipo de entidad
+    from app.services.contract_generator import (
+        build_context_for_client, build_context_for_employee, generate_contract,
+    )
+
+    entity = None
+    if entity_type == "client":
+        from app.db.models.crm import Client
+        r = await db.execute(
+            sa_select(Client).where(
+                Client.id == entity_id, Client.tenant_id == current_user.tenant_id
+            )
+        )
+        entity = r.scalar_one_or_none()
+        if not entity:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        context = build_context_for_client(entity, tenant)
+    elif entity_type == "employee":
+        from app.db.models.hr import Employee
+        r = await db.execute(
+            sa_select(Employee).where(
+                Employee.id == entity_id, Employee.tenant_id == current_user.tenant_id
+            )
+        )
+        entity = r.scalar_one_or_none()
+        if not entity:
+            raise HTTPException(status_code=404, detail="Empleado no encontrado")
+        context = build_context_for_employee(entity, tenant)
+    else:
+        raise HTTPException(status_code=400, detail="entity_type debe ser 'client' o 'employee'")
+
+    try:
+        docx_bytes = generate_contract(tpl_doc.file_path, context)
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="docxtpl no instalado. Ejecuta: pip install docxtpl",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando contrato: {e}")
+
+    base_name = os.path.splitext(tpl_doc.file_name)[0]
+    entity_slug = (entity.name or "contrato").replace(" ", "_")
+    filename = f"{base_name}_{entity_slug}_BORRADOR.docx"
+
+    return FastResponse(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
 @limiter.limit("30/minute")
 @router.delete("/contract-templates/{document_id}", status_code=200)
 async def delete_contract_template(
