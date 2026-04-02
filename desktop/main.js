@@ -1,13 +1,16 @@
 const { app, BrowserWindow, dialog, shell, ipcMain } = require("electron");
 const path = require("path");
 
-const { startAll, stopAll, killOrphanProcesses } = require("./service-manager");
+const { startAll, stopAll, killOrphanProcesses, getBackendEnv, waitForHTTP } = require("./service-manager");
+const { stopBackend, startBackend } = require("./python-manager");
 const { getLanIP, getAccessURLs } = require("./network-utils");
 const { createTray, destroyTray } = require("./tray-manager");
 
 let mainWindow = null;
 let splashWindow = null;
 let isQuitting = false;
+/** true = backend en 0.0.0.0 (LAN); false = solo 127.0.0.1 */
+let localNetworkEnabled = true;
 
 // ── Splash Screen ──────────────────────────────────────────────────────────
 
@@ -148,6 +151,28 @@ async function startup() {
 
 ipcMain.handle("open-template-native", async (_event, filePath) => {
   await shell.openPath(filePath);
+});
+
+ipcMain.handle("toggle-local-network", async (_event, enabled) => {
+  const newHost = enabled ? "0.0.0.0" : "127.0.0.1";
+  const lanIP = getLanIP();
+  try {
+    stopBackend();
+    const env = getBackendEnv(lanIP);
+    env._BACKEND_HOST = newHost;
+    startBackend(env);
+    await waitForHTTP(8080, 120000);
+    localNetworkEnabled = enabled;
+    return { ok: true, host: newHost, lanIP, localNetworkEnabled };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle("get-network-status", async () => {
+  const lanIP = getLanIP();
+  const urls = getAccessURLs(lanIP);
+  return { localNetworkEnabled, lanIP, urls };
 });
 
 // ── Single instance lock (debe ir ANTES de whenReady) ──────────────────────

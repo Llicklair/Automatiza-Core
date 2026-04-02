@@ -3,9 +3,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { api } from "@/lib/api";
 import {
-    ScanLine, Upload, Loader2, CheckCircle2, AlertTriangle,
-    FileText, FileImage, Sheet, Mail, X, FolderOpen,
+    ScanLine, Loader2, CheckCircle2, AlertTriangle,
+    FileText, FileImage, Sheet, Mail, X, FolderOpen, Wifi, WifiOff,
 } from "lucide-react";
+
+type ElectronNetworkStatus = {
+    localNetworkEnabled: boolean;
+    lanIP: string;
+    urls?: { local?: string; lan?: string };
+};
 
 type ScanResult = {
     document: { id: string; file_name: string; file_type: string | null; file_size: number; status: string; category: string | null };
@@ -33,6 +39,14 @@ function formatSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getElectronAPI() {
+    if (typeof window === "undefined") return null;
+    return (window as unknown as { electronAPI?: {
+        toggleLocalNetwork?: (enabled: boolean) => Promise<{ ok?: boolean; error?: string }>;
+        getNetworkStatus?: () => Promise<ElectronNetworkStatus>;
+    } }).electronAPI ?? null;
+}
+
 export default function EscanerPage() {
     const [scanning, setScanning] = useState(false);
     const [results, setResults] = useState<ScanResult[]>([]);
@@ -41,6 +55,30 @@ export default function EscanerPage() {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [docStatuses, setDocStatuses] = useState<Record<string, { status: string; category: string | null }>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [netStatus, setNetStatus] = useState<ElectronNetworkStatus | null>(null);
+    const [netToggling, setNetToggling] = useState(false);
+
+    useEffect(() => {
+        const api = getElectronAPI();
+        if (!api?.getNetworkStatus) return;
+        void api.getNetworkStatus().then(setNetStatus).catch(() => {});
+    }, []);
+
+    async function handleLanToggle(next: boolean) {
+        const api = getElectronAPI();
+        if (!api?.toggleLocalNetwork) return;
+        setNetToggling(true);
+        try {
+            const res = await api.toggleLocalNetwork(next);
+            if (res?.ok !== false && api.getNetworkStatus) {
+                const s = await api.getNetworkStatus();
+                setNetStatus(s);
+            }
+        } finally {
+            setNetToggling(false);
+        }
+    }
 
     // Polling: actualizar estado de documentos que están procesando
     useEffect(() => {
@@ -115,6 +153,47 @@ export default function EscanerPage() {
                     Sube cualquier archivo y la IA lo clasificará automáticamente en la carpeta correcta.
                 </p>
             </div>
+
+            {getElectronAPI()?.getNetworkStatus && netStatus && (
+                <div className="rounded-xl border border-[#27272a] bg-[#111113] px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                        {netStatus.localNetworkEnabled ? (
+                            <Wifi className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                        ) : (
+                            <WifiOff className="w-5 h-5 text-zinc-500 mt-0.5 flex-shrink-0" />
+                        )}
+                        <div>
+                            <p className="text-sm font-medium text-white">Red local (escáner móvil)</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                                {netStatus.localNetworkEnabled
+                                    ? `Otros dispositivos en tu Wi‑Fi pueden usar la API en ${netStatus.lanIP || "—"}:8080. Desactívalo si solo usas este PC.`
+                                    : "El backend solo escucha en este equipo (127.0.0.1). Los móviles en la red no podrán conectar."}
+                            </p>
+                        </div>
+                    </div>
+                    <label className="flex items-center gap-3 cursor-pointer select-none self-end sm:self-center">
+                        <span className="text-xs text-zinc-500">
+                            {netToggling ? "Reiniciando…" : netStatus.localNetworkEnabled ? "LAN activa" : "Solo local"}
+                        </span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={netStatus.localNetworkEnabled}
+                            disabled={netToggling}
+                            onClick={() => void handleLanToggle(!netStatus.localNetworkEnabled)}
+                            className={`relative w-11 h-6 rounded-full transition-colors ${
+                                netStatus.localNetworkEnabled ? "bg-emerald-600" : "bg-zinc-700"
+                            } ${netToggling ? "opacity-60" : ""}`}
+                        >
+                            <span
+                                className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                                    netStatus.localNetworkEnabled ? "translate-x-5" : ""
+                                }`}
+                            />
+                        </button>
+                    </label>
+                </div>
+            )}
 
             {/* Drop Zone */}
             <div
