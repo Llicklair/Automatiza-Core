@@ -801,6 +801,109 @@ def _parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list
         return [], [], "unknown"
 
 
+# ── Plantillas de Contrato (.docx) ───────────────────────────────────────────
+
+class ContractTemplateOut(BaseModel):
+    model_config = {"from_attributes": True}
+    id: uuid.UUID
+    file_name: str
+    file_size: int
+    file_path: str
+    created_at: datetime
+
+
+@limiter.limit("30/minute")
+@router.post("/contract-templates/upload", response_model=ContractTemplateOut, status_code=201)
+async def upload_contract_template(
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Sube una plantilla .docx de contrato para edición nativa en Word."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Archivo sin nombre")
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in {".docx", ".doc", ".odt"}:
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos .docx, .doc u .odt")
+
+    contents = await file.read()
+    if len(contents) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Archivo demasiado grande (máx. 20MB)")
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    doc = TenantDocument(
+        tenant_id=current_user.tenant_id,
+        uploaded_by=current_user.id,
+        file_name=file.filename,
+        file_type=file.content_type,
+        file_path=file_path,
+        file_size=len(contents),
+        category="contract_template",
+        status="uploaded",
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    return doc
+
+
+@limiter.limit("30/minute")
+@router.get("/contract-templates", response_model=list[ContractTemplateOut])
+async def list_contract_templates(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista las plantillas .docx de contrato (incluye file_path para Electron shell.openPath)."""
+    result = await db.execute(
+        select(TenantDocument)
+        .where(
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == "contract_template",
+        )
+        .order_by(desc(TenantDocument.created_at))
+        .limit(50)
+    )
+    return result.scalars().all()
+
+
+@limiter.limit("30/minute")
+@router.delete("/contract-templates/{document_id}", status_code=200)
+async def delete_contract_template(
+    request: Request,
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Elimina una plantilla de contrato del tenant."""
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == document_id,
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == "contract_template",
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+
+    if doc.file_path and os.path.exists(doc.file_path):
+        try:
+            os.remove(doc.file_path)
+        except OSError:
+            logger.warning("No se pudo eliminar archivo: %s", doc.file_path)
+
+    await db.delete(doc)
+    await db.commit()
+    return {"status": "deleted", "id": str(document_id)}
+
+
 @limiter.limit("30/minute")
 @router.post("/import-db", response_model=list[ImportDBOut])
 async def import_database(request: Request,

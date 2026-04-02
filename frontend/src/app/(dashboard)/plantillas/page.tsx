@@ -3,20 +3,197 @@
 import { useEffect, useRef, useState } from "react";
 import {
     FileText, Users, BarChart3, Plus, Trash2, Star, Eye, Loader2,
-    Palette, Type, Layout, AlignLeft, Table2, Check,
+    Palette, Type, Layout, AlignLeft, Table2, Check, FileCode2,
+    Upload, ExternalLink, Copy,
 } from "lucide-react";
 import { templatesApi, DocumentTemplate, PreviewRequest } from "@/lib/api/templates";
+import { documents, ContractTemplate } from "@/lib/api/documents";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { cn } from "@/lib/utils";
 
+// ── Variables de plantilla .docx ─────────────────────────────────────────────
+
+const CONTRACT_VARIABLES = [
+    { key: "{{nombre_cliente}}", desc: "Nombre completo del cliente" },
+    { key: "{{nif_cliente}}", desc: "NIF/CIF del cliente" },
+    { key: "{{direccion_cliente}}", desc: "Dirección del cliente" },
+    { key: "{{nombre_empresa}}", desc: "Nombre de tu empresa" },
+    { key: "{{nif_empresa}}", desc: "NIF/CIF de tu empresa" },
+    { key: "{{fecha}}", desc: "Fecha actual (dd/mm/aaaa)" },
+    { key: "{{fecha_inicio}}", desc: "Fecha de inicio del contrato" },
+    { key: "{{fecha_fin}}", desc: "Fecha de fin del contrato" },
+    { key: "{{importe}}", desc: "Importe total" },
+    { key: "{{numero_contrato}}", desc: "Número de contrato" },
+];
+
+// ── Tab de Contratos Word ─────────────────────────────────────────────────────
+
+function ContratosTab() {
+    const { show: showToast } = useToastStore();
+    const [templates, setTemplates] = useState<ContractTemplate[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const data = await documents.contractTemplates.list();
+            setTemplates(data);
+        } catch {
+            showToast("Error cargando plantillas de contrato", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+            await documents.contractTemplates.upload(file);
+            showToast("Plantilla subida correctamente", "success");
+            await load();
+        } catch (err: any) {
+            showToast(err?.message ?? "Error al subir plantilla", "error");
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleOpen = (tpl: ContractTemplate) => {
+        if (typeof window !== "undefined" && (window as any).electronAPI?.openTemplateNative) {
+            (window as any).electronAPI.openTemplateNative(tpl.file_path);
+        } else {
+            showToast("Esta función solo está disponible en la app de escritorio", "warning");
+        }
+    };
+
+    const handleDelete = async (tpl: ContractTemplate) => {
+        const confirmed = await showConfirm({
+            title: "Eliminar plantilla",
+            message: `¿Eliminar "${tpl.file_name}"?`,
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        });
+        if (!confirmed) return;
+        try {
+            await documents.contractTemplates.delete(tpl.id);
+            showToast("Plantilla eliminada", "success");
+            await load();
+        } catch {
+            showToast("Error eliminando plantilla", "error");
+        }
+    };
+
+    const copyVariable = (key: string) => {
+        navigator.clipboard.writeText(key).catch(() => {});
+        showToast(`Copiado: ${key}`, "success");
+    };
+
+    return (
+        <div className="flex gap-6">
+            {/* Lista de plantillas */}
+            <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-zinc-500">
+                        Sube plantillas .docx con variables como <code className="text-indigo-400">{`{{nombre_cliente}}`}</code>. La IA las rellenará al generar contratos.
+                    </p>
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        Subir .docx
+                    </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".docx,.doc,.odt"
+                        className="hidden"
+                        onChange={handleUpload}
+                    />
+                </div>
+
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+                    </div>
+                ) : templates.length === 0 ? (
+                    <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-[#27272a] rounded-xl cursor-pointer hover:border-zinc-600 transition-colors"
+                    >
+                        <FileCode2 className="w-10 h-10 text-zinc-600 mb-3" />
+                        <p className="text-zinc-500 text-sm font-medium">Sin plantillas aún</p>
+                        <p className="text-zinc-600 text-xs mt-1">Haz clic para subir tu primer .docx</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {templates.map(tpl => (
+                            <div key={tpl.id} className="flex items-center gap-3 p-3 bg-[#18181b] border border-[#27272a] rounded-xl group">
+                                <FileCode2 className="w-8 h-8 text-indigo-400 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white font-medium truncate">{tpl.file_name}</p>
+                                    <p className="text-xs text-zinc-500">{(tpl.file_size / 1024).toFixed(1)} KB</p>
+                                </div>
+                                <button
+                                    onClick={() => handleOpen(tpl)}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 border border-indigo-500/40 text-indigo-400 hover:bg-indigo-600/10 text-xs rounded-lg transition-colors"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    Abrir en Word
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(tpl)}
+                                    className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-500/10"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Catálogo de variables */}
+            <div className="w-64 flex-shrink-0">
+                <p className="text-xs text-zinc-400 font-medium mb-3 uppercase tracking-wider">Variables disponibles</p>
+                <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-3 space-y-1">
+                    {CONTRACT_VARIABLES.map(v => (
+                        <button
+                            key={v.key}
+                            onClick={() => copyVariable(v.key)}
+                            className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-[#27272a] transition-colors text-left group"
+                            title="Clic para copiar"
+                        >
+                            <Copy className="w-3 h-3 text-zinc-600 group-hover:text-indigo-400 mt-0.5 flex-shrink-0 transition-colors" />
+                            <div>
+                                <code className="text-xs text-indigo-400 font-mono">{v.key}</code>
+                                <p className="text-[10px] text-zinc-500 mt-0.5">{v.desc}</p>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Constantes de opciones ──────────────────────────────────────────────────
 
 const TEMPLATE_TYPES = [
-    { value: "invoice", label: "Facturas",             icon: FileText },
-    { value: "payroll", label: "Nóminas",              icon: Users    },
-    { value: "excel",   label: "Excel / Exportaciones", icon: BarChart3 },
-    { value: "albaran", label: "Albaranes",            icon: Table2   },
+    { value: "invoice",  label: "Facturas",             icon: FileText  },
+    { value: "payroll",  label: "Nóminas",              icon: Users     },
+    { value: "excel",    label: "Excel / Exportaciones", icon: BarChart3 },
+    { value: "albaran",  label: "Albaranes",            icon: Table2    },
+    { value: "contract", label: "Contratos Word",       icon: FileCode2 },
 ] as const;
 
 const LAYOUT_PRESETS = [
@@ -102,7 +279,7 @@ const EMPTY_FORM: Omit<DocumentTemplate, "id"> = {
 
 export default function PlantillasPage() {
     const { show: showToast } = useToastStore();
-    const [activeType, setActiveType]   = useState<"invoice" | "payroll" | "excel" | "albaran">("invoice");
+    const [activeType, setActiveType]   = useState<"invoice" | "payroll" | "excel" | "albaran" | "contract">("invoice");
     const [templates, setTemplates]     = useState<DocumentTemplate[]>([]);
     const [loading, setLoading]         = useState(true);
     const [showForm, setShowForm]       = useState(false);
@@ -113,7 +290,7 @@ export default function PlantillasPage() {
     const [previewing, setPreviewing]   = useState(false);
     const previewDebounce               = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    useEffect(() => { load(); }, [activeType]);
+    useEffect(() => { if (activeType !== "contract") load(); }, [activeType]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Auto-refresh preview when form changes (only if preview was already opened)
     useEffect(() => {
@@ -255,6 +432,9 @@ export default function PlantillasPage() {
                 ))}
             </div>
 
+            {activeType === "contract" ? (
+                <ContratosTab />
+            ) : (
             <div className="flex gap-6">
                 {/* Lista de plantillas */}
                 <div className="w-72 flex-shrink-0 space-y-2">
@@ -593,6 +773,7 @@ export default function PlantillasPage() {
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 }
