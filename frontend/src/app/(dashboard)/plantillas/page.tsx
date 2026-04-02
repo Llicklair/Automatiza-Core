@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { templatesApi, DocumentTemplate, PreviewRequest } from "@/lib/api/templates";
 import { documents, ContractTemplate } from "@/lib/api/documents";
+import { erp } from "@/lib/api/erp";
+import { hr } from "@/lib/api/hr";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { cn } from "@/lib/utils";
@@ -29,11 +31,15 @@ const CONTRACT_VARIABLES = [
 
 // ── Tab de Contratos Word ─────────────────────────────────────────────────────
 
+type EntityOption = { id: string; name: string };
+type GeneratePanel = { tplId: string; entityType: "client" | "employee"; entityId: string; entities: EntityOption[]; loadingEntities: boolean; generating: boolean };
+
 function ContratosTab() {
     const { show: showToast } = useToastStore();
     const [templates, setTemplates] = useState<ContractTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [panel, setPanel] = useState<GeneratePanel | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const load = async () => {
@@ -91,6 +97,46 @@ function ContratosTab() {
         }
     };
 
+    const openGeneratePanel = async (tplId: string, entityType: "client" | "employee") => {
+        setPanel({ tplId, entityType, entityId: "", entities: [], loadingEntities: true, generating: false });
+        try {
+            let entities: EntityOption[];
+            if (entityType === "client") {
+                const data = await erp.clients.list({ limit: 100 });
+                entities = data.map((c: any) => ({ id: c.id, name: c.name }));
+            } else {
+                const data = await hr.employees.list();
+                entities = data.map((e: any) => ({ id: e.id, name: e.name }));
+            }
+            setPanel(p => p ? { ...p, entities, loadingEntities: false } : null);
+        } catch {
+            showToast("Error cargando entidades", "error");
+            setPanel(p => p ? { ...p, loadingEntities: false } : null);
+        }
+    };
+
+    const handleGenerate = async () => {
+        if (!panel || !panel.entityId) return;
+        setPanel(p => p ? { ...p, generating: true } : null);
+        try {
+            const blob = await documents.contractTemplates.generate(panel.tplId, panel.entityType, panel.entityId);
+            const tpl = templates.find(t => t.id === panel.tplId);
+            const baseName = tpl?.file_name.replace(/\.[^.]+$/, "") ?? "contrato";
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${baseName}_BORRADOR.docx`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Borrador generado y descargado", "success");
+            setPanel(null);
+        } catch (err: any) {
+            showToast(err?.message ?? "Error generando contrato", "error");
+        } finally {
+            setPanel(p => p ? { ...p, generating: false } : null);
+        }
+    };
+
     const copyVariable = (key: string) => {
         navigator.clipboard.writeText(key).catch(() => {});
         showToast(`Copiado: ${key}`, "success");
@@ -102,7 +148,7 @@ function ContratosTab() {
             <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between mb-2">
                     <p className="text-xs text-zinc-500">
-                        Sube plantillas .docx con variables como <code className="text-indigo-400">{`{{nombre_cliente}}`}</code>. La IA las rellenará al generar contratos.
+                        Sube plantillas .docx con variables como <code className="text-indigo-400">{`{{nombre_cliente}}`}</code>. El sistema las rellenará con datos reales al generar contratos.
                     </p>
                     <button
                         onClick={() => fileInputRef.current?.click()}
@@ -112,13 +158,7 @@ function ContratosTab() {
                         {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                         Subir .docx
                     </button>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".docx,.doc,.odt"
-                        className="hidden"
-                        onChange={handleUpload}
-                    />
+                    <input ref={fileInputRef} type="file" accept=".docx,.doc,.odt" className="hidden" onChange={handleUpload} />
                 </div>
 
                 {loading ? (
@@ -137,25 +177,97 @@ function ContratosTab() {
                 ) : (
                     <div className="space-y-2">
                         {templates.map(tpl => (
-                            <div key={tpl.id} className="flex items-center gap-3 p-3 bg-[#18181b] border border-[#27272a] rounded-xl group">
-                                <FileCode2 className="w-8 h-8 text-indigo-400 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm text-white font-medium truncate">{tpl.file_name}</p>
-                                    <p className="text-xs text-zinc-500">{(tpl.file_size / 1024).toFixed(1)} KB</p>
+                            <div key={tpl.id} className="bg-[#18181b] border border-[#27272a] rounded-xl overflow-hidden">
+                                {/* Fila principal */}
+                                <div className="flex items-center gap-3 p-3 group">
+                                    <FileCode2 className="w-8 h-8 text-indigo-400 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-white font-medium truncate">{tpl.file_name}</p>
+                                        <p className="text-xs text-zinc-500">{(tpl.file_size / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                    {/* Generar borrador */}
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => panel?.tplId === tpl.id ? setPanel(null) : openGeneratePanel(tpl.id, "client")}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30 text-xs rounded-lg transition-colors"
+                                        >
+                                            <FileText className="w-3.5 h-3.5" />
+                                            Generar borrador
+                                        </button>
+                                        <button
+                                            onClick={() => handleOpen(tpl)}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-zinc-700 text-zinc-400 hover:text-white text-xs rounded-lg transition-colors"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(tpl)}
+                                            className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-500/10"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={() => handleOpen(tpl)}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 border border-indigo-500/40 text-indigo-400 hover:bg-indigo-600/10 text-xs rounded-lg transition-colors"
-                                >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    Abrir en Word
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(tpl)}
-                                    className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-500/10"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+
+                                {/* Panel de generación inline */}
+                                {panel?.tplId === tpl.id && (
+                                    <div className="border-t border-[#27272a] p-3 bg-[#09090b] space-y-3">
+                                        <p className="text-xs text-zinc-400 font-medium">Generar borrador para:</p>
+                                        {/* Selector de tipo */}
+                                        <div className="flex gap-2">
+                                            {(["client", "employee"] as const).map(type => (
+                                                <button
+                                                    key={type}
+                                                    onClick={() => openGeneratePanel(tpl.id, type)}
+                                                    className={cn(
+                                                        "flex-1 py-1.5 text-xs rounded-lg border transition-colors",
+                                                        panel.entityType === type
+                                                            ? "border-indigo-500 bg-indigo-600/10 text-indigo-300"
+                                                            : "border-[#27272a] text-zinc-500 hover:border-zinc-600"
+                                                    )}
+                                                >
+                                                    {type === "client" ? "Cliente" : "Empleado"}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {/* Selector de entidad */}
+                                        {panel.loadingEntities ? (
+                                            <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={panel.entityId}
+                                                onChange={e => setPanel(p => p ? { ...p, entityId: e.target.value } : null)}
+                                                className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                                            >
+                                                <option value="">-- Seleccionar {panel.entityType === "client" ? "cliente" : "empleado"} --</option>
+                                                {panel.entities.map(e => (
+                                                    <option key={e.id} value={e.id}>{e.name}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        {/* Acciones */}
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleGenerate}
+                                                disabled={!panel.entityId || panel.generating}
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                                            >
+                                                {panel.generating
+                                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
+                                                    : <><FileText className="w-3.5 h-3.5" /> Descargar borrador</>
+                                                }
+                                            </button>
+                                            <button
+                                                onClick={() => setPanel(null)}
+                                                className="px-3 py-1.5 border border-[#27272a] text-zinc-500 text-xs rounded-lg hover:text-white transition-colors"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

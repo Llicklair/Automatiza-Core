@@ -105,6 +105,21 @@ export const documents = {
         },
         delete: (id: string) =>
             request(`/api/v1/documents/contract-templates/${id}`, { method: "DELETE" }),
+        generate: async (templateId: string, entityType: "client" | "employee", entityId: string): Promise<Blob> => {
+            const token = getToken();
+            const headers: Record<string, string> = {};
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+            const params = new URLSearchParams({ entity_type: entityType, entity_id: entityId });
+            const res = await fetch(
+                `${BASE}/api/v1/documents/contract-templates/${templateId}/generate?${params}`,
+                { method: "POST", headers }
+            );
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: res.statusText }));
+                throw new Error(err.detail ?? "Error generando contrato");
+            }
+            return res.blob();
+        },
     },
     uploadBulk: async (file: File, category?: string): Promise<Document[]> => {
         const token = getToken();
