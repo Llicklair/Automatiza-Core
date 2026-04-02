@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import type { TelegramStatus } from "@/lib/api";
+import type { TelegramStatus } from "@/lib/api/messaging";
 import { useToastStore } from "@/stores/toast";
 
 export default function IntegracionesPage() {

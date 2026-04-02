@@ -38,7 +38,8 @@ def docx_to_preview_html(file_path: str) -> dict:
     """Convierte .docx a HTML y extrae variables.
 
     Returns:
-        dict con keys: html (str), variables_detected (list[str]), warnings (list[str])
+        dict con keys: html (resaltado), html_editable (mammoth sin resaltar),
+        variables_detected, warnings
 
     Raises:
         ImportError: si mammoth no está instalado
@@ -69,6 +70,7 @@ def docx_to_preview_html(file_path: str) -> dict:
 
     return {
         "html": html_highlighted,
+        "html_editable": html,
         "variables_detected": variables,
         "warnings": warnings,
     }

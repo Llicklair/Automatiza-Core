@@ -45,7 +45,8 @@ const ERP_ACTIONS: Record<string, (payload: Record<string, unknown>) => Promise<
     "create-task": async (payload) => {
         const intent = String(payload.intent || "");
         if (!intent) throw new Error("Falta intent para crear tarea");
-        const task = await api.tasks.create({ intent, domain: String(payload.domain || "") });
+        const domain = String(payload.domain || "").trim() || "general";
+        const task = await api.tasks.create(domain, intent);
         return `Tarea creada: ${task.id}`;
     },
     "view-invoice": async (payload) => {

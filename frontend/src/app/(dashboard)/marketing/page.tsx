@@ -38,7 +38,7 @@ export default function MarketingPage() {
         setPlan(null);
         try {
             const intent = prompt.trim() || "Genera un plan de contenidos para redes sociales este mes";
-            const res = await api.tasks.create({ intent, domain: "marketing" });
+            const res = await api.tasks.create("marketing", intent);
             // Poll task until done
             const taskId = res.id;
             let attempts = 0;
@@ -47,7 +47,10 @@ export default function MarketingPage() {
                 const task = await api.tasks.get(taskId);
                 if (task.status === "done" || task.status === "completed") {
                     // Extract marketing plan from agent_results
-                    const result = task.result || task.agent_results?.[0]?.output?.response || task.agent_results?.[0]?.result;
+                    const result =
+                        task.output_data ??
+                        task.agent_results?.[0]?.output?.response ??
+                        task.agent_results?.[0]?.result;
                     if (result) {
                         try {
                             const parsed = typeof result === "string" ? JSON.parse(result) : result;
@@ -193,7 +196,7 @@ export default function MarketingPage() {
                         <Megaphone className="w-8 h-8 text-pink-500/40" />
                     </div>
                     <p className="text-sm text-zinc-500 mb-1">Sin planes de marketing generados</p>
-                    <p className="text-xs text-zinc-600">Pulsa "Generar plan" para que la IA analice tu catálogo y cree contenidos</p>
+                    <p className="text-xs text-zinc-600">Pulsa «Generar plan» para que la IA analice tu catálogo y cree contenidos</p>
                 </div>
             )}
         </div>

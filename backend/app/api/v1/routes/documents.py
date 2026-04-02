@@ -875,8 +875,13 @@ async def list_contract_templates(
 
 class ContractPreviewHtmlOut(BaseModel):
     html: str
+    html_editable: str
     variables_detected: list[str]
     warnings: list[str]
+
+
+class ContractBodyHtmlIn(BaseModel):
+    html: str
 
 
 @limiter.limit("60/minute")
@@ -919,6 +924,56 @@ async def preview_contract_template_html(
         raise HTTPException(status_code=500, detail=f"Error generando vista previa: {e}")
 
     return ContractPreviewHtmlOut(**data)
+
+
+@limiter.limit("20/minute")
+@router.put("/contract-templates/{document_id}/body-html")
+async def save_contract_template_body_html(
+    request: Request,
+    document_id: uuid.UUID,
+    body: ContractBodyHtmlIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Guarda el HTML editado en el navegador como .docx (htmldocx). Solo .docx."""
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == document_id,
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == "contract_template",
+        )
+    )
+    tpl_doc = result.scalar_one_or_none()
+    if not tpl_doc:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+    if not tpl_doc.file_path or not os.path.exists(tpl_doc.file_path):
+        raise HTTPException(status_code=404, detail="Archivo de plantilla no disponible en disco")
+
+    try:
+        from app.services.docx_html_save import save_html_as_docx
+
+        save_html_as_docx(body.html, tpl_doc.file_path)
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="htmldocx no instalado. Ejecuta: pip install htmldocx",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except OSError as e:
+        logger.error("save_contract_template_body_html: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar el archivo: {e}")
+
+    try:
+        new_size = os.path.getsize(tpl_doc.file_path)
+    except OSError:
+        new_size = tpl_doc.file_size
+
+    tpl_doc.file_size = new_size
+    await db.commit()
+    await db.refresh(tpl_doc)
+
+    return {"status": "saved", "file_size": new_size}
 
 
 @limiter.limit("10/minute")

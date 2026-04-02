@@ -8,6 +8,8 @@ export interface Task {
     user_intent: string;
     plan: any[];
     agent_results?: any[];
+    /** Salida final agregada (backend Task.output_data) */
+    output_data?: unknown;
     current_step: number;
     requires_human_approval: boolean;
     error_message: string | null;

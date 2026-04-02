@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { api, AIEmployee, ActivityEntry } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { AIEmployee, ActivityEntry } from "@/lib/api/ai_employees";
 import { Bot, Zap, Moon, AlertCircle, RefreshCw, Plus, Users2 } from "lucide-react";
 
 const STATUS_CONFIG = {
