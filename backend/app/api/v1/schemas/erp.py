@@ -28,8 +28,7 @@ class ClientResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Nuevos Modelos de Facturación Avanzada ---
@@ -50,8 +49,7 @@ class ProductResponse(ProductCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class InvoiceLineCreate(BaseModel):
     product_id: UUID | None = None
@@ -67,9 +65,8 @@ class InvoiceLineResponse(InvoiceLineCreate):
     id: UUID
     invoice_id: UUID
     total: float
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 class ClientUpdate(BaseModel):
     nif: str | None = None
@@ -129,8 +126,7 @@ class InvoiceResponse(BaseModel):
     client: ClientResponse | None = None
     lines: list[InvoiceLineResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Stock / Inventario ---
