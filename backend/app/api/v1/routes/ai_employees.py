@@ -150,6 +150,19 @@ async def update_employee_status(
     employee.status = new_status
     await db.commit()
     await db.refresh(employee)
+
+    # Registrar o cancelar heartbeat según el nuevo estado
+    try:
+        from app.services.heartbeat_service import (
+            register_employee_heartbeat,
+            unregister_employee_heartbeat,
+        )
+        if new_status == "idle":
+            register_employee_heartbeat(str(employee.id), str(employee.tenant_id))
+        else:
+            unregister_employee_heartbeat(str(employee.id))
+    except Exception:
+        pass  # El heartbeat es opcional — no bloquea la respuesta
     return AIEmployeeOut(
         id=str(employee.id),
         name=employee.name,

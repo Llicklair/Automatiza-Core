@@ -62,6 +62,13 @@ async def start_scheduler() -> None:
     except Exception as e:
         logger.error("Error arrancando scheduler (no es fatal): %s", e)
 
+    # Bootstrap heartbeats para AIEmployees activos (falla silenciosamente)
+    try:
+        from app.services.heartbeat_service import bootstrap_employee_heartbeats
+        await bootstrap_employee_heartbeats()
+    except Exception as e:
+        logger.error("Bootstrap heartbeats falló (no es fatal): %s", e)
+
 
 async def stop_scheduler() -> None:
     scheduler.shutdown(wait=False)
