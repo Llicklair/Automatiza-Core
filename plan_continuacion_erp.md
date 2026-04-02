@@ -36,18 +36,23 @@ Este documento resume el progreso de sesiones anteriores y el estado actual del 
 ### Sprint 4 — UX
 - `/primeros-pasos`: 8 pasos guiados, progreso localStorage, prerequisitos, carousel IA
 
+### Sprint 5 — Fiscal / RRHH (UI + tests de regresión)
+- **Impuestos**: export CSV del libro registro (`api.reports.libroRegistro`) — año + emitidas/recibidas (`/impuestos`, pestaña Calendario).
+- **RRHH Nóminas**: botón «Calcular automática» — lista empleados, `GET .../payroll/preview`, desglose SS (CC, desempleo, FP, MEI), `POST /hr/payrolls/auto` mes en curso en borrador.
+- **Tests backend** (`pytest`):
+  - `tests/test_api_fiscal_payroll.py` — libro registro (tipos, año, canceladas, multi-tenant), preview y `/payrolls/auto`.
+  - `tests/test_api_invoice_series.py` — numeración `F{ año }-NNNN`, IVA legal, número manual sin consumir contador.
+
 ### Arquitectura
 - `models.py` modularizado en dominios: `billing.py`, `hr.py`, `crm.py`, `auth.py`, etc.
 - `orchestrator.py` → paquete `orchestrator/` con `_core.py`, `state.py`, `__init__.py`
-- 67 tests de integración en `backend/tests/`
+- Suite de tests en `backend/tests/` (conftest SQLite en memoria; ejecutar con `poetry run pytest`).
 
 ---
 
 ## 🚀 Próximos pasos posibles
 
-### 🟡 Pendiente
-- **10. Actualizar dependencias Frontend** — React/Next.js. Evaluación de riesgo necesaria antes de hacer.
+### 🟡 Pendiente / opcional
+- **Actualizar dependencias Frontend** — React/Next.js: evaluación de riesgo y changelog antes de subir major.
 - **Validación de licencias** — pospuesta hasta VPS disponible.
-- **Tests nuevos** — cubrir los endpoints añadidos (series, nómina auto, libro registro).
-- **Página de nóminas mejorada** — integrar el botón "Calcular automáticamente" usando `api.hr.payrolls.generateAuto()` y el modal preview con tasas SS desglosadas.
-- **Exportar libro de registro desde el frontend** — añadir botón en `/impuestos` o `/contabilidad`.
+- **Ampliar cobertura de tests** — otros dominios (ERP completo, tareas, etc.) según prioridad.
