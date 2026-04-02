@@ -109,6 +109,27 @@ def _build_registry() -> dict[str, Callable]:
     return registry
 
 
+def get_tool_for_employee(tool_module: str) -> Callable:
+    """Resuelve una clave namespaced 'domain.tool_name' usada por AgentSkill.
+
+    Soporta dos formatos:
+      - "billing.create_invoice"  → busca "create_invoice" en el registry
+      - "create_invoice"          → busca directamente
+
+    Raises KeyError si la tool no existe (fallo ruidoso intencionado —
+    un AgentSkill mal configurado nunca debe pasar silenciosamente).
+    """
+    registry = get_registry()
+    # Formato namespaced: tomar la parte después del último punto
+    key = tool_module.split(".")[-1] if "." in tool_module else tool_module
+    if key not in registry:
+        raise KeyError(
+            f"Tool '{tool_module}' (clave '{key}') no encontrada en el registry. "
+            f"AIEmployee mal configurado. Tools disponibles: {list_tools()}"
+        )
+    return registry[key]
+
+
 def get_registry() -> dict[str, Callable]:
     """Devuelve el registro, construyéndolo lazy en el primer acceso."""
     global _REGISTRY
