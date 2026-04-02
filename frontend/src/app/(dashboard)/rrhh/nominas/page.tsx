@@ -400,17 +400,28 @@ export default function PayrollsPage() {
                                                 <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
                                             </div>
                                         ) : autoPreview ? (
-                                            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                            <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                                                 <dt className="text-zinc-500">Bruto</dt>
                                                 <dd className="text-right text-zinc-200">{fmt(autoPreview.base_salary)}</dd>
+                                                <dt className="text-zinc-600 text-[11px] col-span-2 pt-1 border-t border-zinc-800/80">
+                                                    Cotizaciones SS (empleado, régimen general)
+                                                </dt>
+                                                <dt className="text-zinc-500 pl-2 text-xs">Contingencias comunes</dt>
+                                                <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_contingencias_comunes)}</dd>
+                                                <dt className="text-zinc-500 pl-2 text-xs">Desempleo</dt>
+                                                <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_desempleo)}</dd>
+                                                <dt className="text-zinc-500 pl-2 text-xs">Formación profesional</dt>
+                                                <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_formacion_profesional)}</dd>
+                                                <dt className="text-zinc-500 pl-2 text-xs">MEI</dt>
+                                                <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_mei)}</dd>
                                                 <dt className="text-zinc-500">SS total</dt>
                                                 <dd className="text-right text-red-400/90">−{fmt(autoPreview.total_ss)}</dd>
                                                 <dt className="text-zinc-500">IRPF ({autoPreview.irpf_rate_applied}%)</dt>
                                                 <dd className="text-right text-red-400/90">−{fmt(autoPreview.irpf)}</dd>
-                                                <dt className="text-zinc-500">Deducciones</dt>
+                                                <dt className="text-zinc-500">Deducciones totales</dt>
                                                 <dd className="text-right text-zinc-400">−{fmt(autoPreview.deductions)}</dd>
-                                                <dt className="text-zinc-500 font-medium">Neto estimado</dt>
-                                                <dd className="text-right font-semibold text-emerald-400">{fmt(autoPreview.net_salary)}</dd>
+                                                <dt className="text-zinc-500 font-medium pt-1 border-t border-zinc-800/80">Neto estimado</dt>
+                                                <dd className="text-right font-semibold text-emerald-400 pt-1 border-t border-zinc-800/80">{fmt(autoPreview.net_salary)}</dd>
                                             </dl>
                                         ) : (
                                             <p className="text-xs text-zinc-500 py-2">Selecciona un empleado con salario base.</p>
