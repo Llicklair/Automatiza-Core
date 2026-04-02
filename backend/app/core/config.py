@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     SCANNER_TOKEN_EXPIRE_MINUTES: int = 2  # QR tokens de corta vida
     SCANNER_ALLOWED_SCOPES: str = "inventory:read,inventory:write,albaranes:read,albaranes:write"
 
+    # Telegram Bot
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_WEBHOOK_SECRET: str = ""
+    TELEGRAM_WEBHOOK_URL: str = ""  # e.g. https://tudominio.com/api/v1/messaging/telegram/webhook
+
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 
