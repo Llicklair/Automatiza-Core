@@ -43,3 +43,6 @@ from .calendar import Event, Reservation  # noqa: F401
 
 # --- Workflows ---
 from .workflows import Workflow, WorkflowExecution, DomainEvent  # noqa: F401
+
+# --- AI Employees ---
+from .ai_employees import AIEmployee, AgentSkill, TokenLedger, ActivityEntry  # noqa: F401
