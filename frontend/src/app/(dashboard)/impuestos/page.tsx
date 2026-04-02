@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useToastStore } from "@/stores/toast";
 import {
     CalendarClock, AlertTriangle, CheckCircle2, FileText,
-    Loader2, ChevronRight, Clock, ReceiptText, MessageSquare, Send
+    Loader2, ChevronRight, Clock, ReceiptText, MessageSquare, Send, Download,
 } from "lucide-react";
 
 interface FiscalEvent {
@@ -205,6 +206,73 @@ function ConsultaRapida() {
 }
 
 
+function LibroRegistroExport() {
+    const show = useToastStore((s) => s.show);
+    const yearNow = new Date().getFullYear();
+    const [year, setYear] = useState(yearNow);
+    const [busy, setBusy] = useState<"emitidas" | "recibidas" | null>(null);
+
+    const download = async (type: "emitidas" | "recibidas") => {
+        setBusy(type);
+        try {
+            await api.reports.libroRegistro(year, type);
+            show(`Libro ${type} ${year} descargado`, "success");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "No se pudo descargar el CSV";
+            show(msg, "error");
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    return (
+        <div className="rounded-2xl border border-[#27272a] bg-[#111113] p-5 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-emerald-400" />
+                        Libro registro de facturas (AEAT)
+                    </h2>
+                    <p className="text-xs text-zinc-500 mt-1 max-w-xl">
+                        Exporta CSV con facturas emitidas o recibidas del ejercicio para contabilidad o revisión.
+                    </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-xs text-zinc-500 flex items-center gap-2">
+                        Año
+                        <input
+                            type="number"
+                            min={2020}
+                            max={yearNow + 1}
+                            value={year}
+                            onChange={(e) => setYear(Number(e.target.value) || yearNow)}
+                            className="w-20 bg-[#18181b] border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-white"
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => void download("emitidas")}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-50"
+                    >
+                        {busy === "emitidas" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        Emitidas
+                    </button>
+                    <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => void download("recibidas")}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 disabled:opacity-50"
+                    >
+                        {busy === "recibidas" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        Recibidas
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function ImpuestosPage() {
     const [events, setEvents] = useState<FiscalEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -304,6 +372,7 @@ export default function ImpuestosPage() {
                         </div>
                     ) : (
                         <div className="space-y-8">
+                            <LibroRegistroExport />
                             {/* Urgentes */}
                             {urgentes.length > 0 && (
                                 <div>
