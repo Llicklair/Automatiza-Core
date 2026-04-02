@@ -1,6 +1,14 @@
 """Aplicación principal FastAPI."""
+import asyncio
+import inspect
 import logging
+import sys
 from contextlib import asynccontextmanager
+
+# Python 3.14+ depreca asyncio.iscoroutinefunction; slowapi 0.1.x aún la usa.
+# Debe ir antes de cualquier import de slowapi.
+if sys.version_info >= (3, 14):
+    asyncio.iscoroutinefunction = inspect.iscoroutinefunction  # type: ignore[misc]
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
