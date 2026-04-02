@@ -13,6 +13,14 @@ export interface Document {
     task_id: string | null;
 }
 
+export interface ContractTemplate {
+    id: string;
+    file_name: string;
+    file_size: number;
+    file_path: string;
+    created_at: string;
+}
+
 export const documents = {
     list: (params?: { category?: string; skip?: number; limit?: number }) => {
         const q = new URLSearchParams(params as Record<string, string>).toString();
@@ -75,6 +83,29 @@ export const documents = {
     },
     delete: (id: string) => request(`/api/v1/documents/${id}`, { method: "DELETE" }),
     exportZip: () => downloadBlob("/api/v1/documents/export", "documentos_backup.zip"),
+    contractTemplates: {
+        list: (): Promise<ContractTemplate[]> =>
+            request<ContractTemplate[]>("/api/v1/documents/contract-templates"),
+        upload: async (file: File): Promise<ContractTemplate> => {
+            const token = getToken();
+            const form = new FormData();
+            form.append("file", file);
+            const headers: Record<string, string> = {};
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+            const res = await fetch(`${BASE}/api/v1/documents/contract-templates/upload`, {
+                method: "POST",
+                headers,
+                body: form,
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: res.statusText }));
+                throw new Error(err.detail ?? "Error al subir plantilla");
+            }
+            return res.json();
+        },
+        delete: (id: string) =>
+            request(`/api/v1/documents/contract-templates/${id}`, { method: "DELETE" }),
+    },
     uploadBulk: async (file: File, category?: string): Promise<Document[]> => {
         const token = getToken();
         const form = new FormData();

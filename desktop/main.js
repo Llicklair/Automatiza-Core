@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { app, BrowserWindow, dialog, shell, ipcMain } = require("electron");
 const path = require("path");
 
 const { startAll, stopAll, killOrphanProcesses } = require("./service-manager");
@@ -49,6 +49,7 @@ function createMainWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
@@ -142,6 +143,12 @@ async function startup() {
     app.quit();
   }
 }
+
+// ── IPC Handlers ──────────────────────────────────────────────────────────
+
+ipcMain.handle("open-template-native", async (_event, filePath) => {
+  await shell.openPath(filePath);
+});
 
 // ── Single instance lock (debe ir ANTES de whenReady) ──────────────────────
 
