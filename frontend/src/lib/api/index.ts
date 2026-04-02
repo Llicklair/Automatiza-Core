@@ -22,6 +22,7 @@ import { integrations } from "./integrations";
 import { system } from "./system";
 import { templatesApi } from "./templates";
 import { albaranes } from "./albaranes";
+import { aiEmployees } from "./ai_employees";
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -44,6 +45,7 @@ export const api = {
     system,
     templates: templatesApi,
     albaranes,
+    aiEmployees,
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -80,3 +82,4 @@ export type {
 } from "./tenant";
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";
+export type { AIEmployee, ActivityEntry } from "./ai_employees";

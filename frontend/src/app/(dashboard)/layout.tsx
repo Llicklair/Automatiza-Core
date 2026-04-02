@@ -39,6 +39,7 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
             { label: "Inicio", icon: Home, href: "/" },
+            { label: "Mi Equipo IA", icon: Bot, href: "/mi-equipo" },
             { label: "Tareas IA", icon: Sparkles, href: "/tareas" },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones" },
             { label: "Aprobaciones", icon: UserCircle, href: "/aprobaciones" },
