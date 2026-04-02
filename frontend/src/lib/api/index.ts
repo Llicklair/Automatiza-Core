@@ -23,6 +23,8 @@ import { system } from "./system";
 import { templatesApi } from "./templates";
 import { albaranes } from "./albaranes";
 import { aiEmployees } from "./ai_employees";
+import { recruitment } from "./recruitment";
+import { scanner } from "./scanner";
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -46,6 +48,8 @@ export const api = {
     templates: templatesApi,
     albaranes,
     aiEmployees,
+    recruitment,
+    scanner,
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -83,3 +87,5 @@ export type {
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";
 export type { AIEmployee, ActivityEntry } from "./ai_employees";
+export type { RecruitmentPosition, Candidate } from "./recruitment";
+export type { ScannerToken, ScannedProduct, StockMovementResult } from "./scanner";

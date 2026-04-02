@@ -120,7 +120,7 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     if allowed_tools:
         graph.add_node("tools", ToolNode(allowed_tools))
         graph.set_entry_point("agent")
-        graph.add_conditional_edges("agent", tools_condition)
+        graph.add_conditional_edges("agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
         graph.add_edge("tools", "agent")
     else:
         # Sin tools: el agente solo razona (modo chat)

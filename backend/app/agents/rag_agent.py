@@ -76,12 +76,17 @@ async def _search_documents_async(tenant_id: str, query: str, top_k: int) -> str
                     f"📄 {fd.file_name} [{fd.category}]: {fd.parsed_content[:500] if fd.parsed_content else 'Sin contenido extraído'}"
                 )
 
-            # Búsqueda semántica con pgvector
+            # Búsqueda semántica con pgvector (filtrada por jurisdicción)
             embedder = get_embedder()
             if embedder:
+                from app.db.models.auth import Tenant
+                j_res = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
+                jurisdiction = j_res.scalar() or "ES_TAX"
+
                 query_vector = await embedder.aembed_query(query)
                 stmt_vector = sa.select(DocumentEmbedding).where(
-                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id)
+                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
+                    sa.or_(DocumentEmbedding.jurisdiction == jurisdiction, DocumentEmbedding.jurisdiction.is_(None)),
                 ).order_by(
                     DocumentEmbedding.embedding.cosine_distance(query_vector)
                 ).limit(top_k)
@@ -151,12 +156,17 @@ async def _answer_from_documents_async(tenant_id: str, question: str, top_k: int
                     "text": f"Documento: {fd.file_name}. Categoría: {fd.category}. Contenido: {fd.parsed_content[:500] if fd.parsed_content else 'N/A'}"
                 })
 
-            # Búsqueda semántica
+            # Búsqueda semántica (filtrada por jurisdicción)
             embedder = get_embedder()
             if embedder:
+                from app.db.models.auth import Tenant
+                j_res = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
+                jurisdiction = j_res.scalar() or "ES_TAX"
+
                 query_vector = await embedder.aembed_query(question)
                 stmt_vector = sa.select(DocumentEmbedding).where(
-                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id)
+                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
+                    sa.or_(DocumentEmbedding.jurisdiction == jurisdiction, DocumentEmbedding.jurisdiction.is_(None)),
                 ).order_by(
                     DocumentEmbedding.embedding.cosine_distance(query_vector)
                 ).limit(top_k)

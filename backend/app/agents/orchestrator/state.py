@@ -69,5 +69,5 @@ MAX_ITERATIONS = 20  # Límite duro
 VALID_DOMAINS = {
     "billing", "documents", "compliance", "hr", "banking",
     "rag", "crm", "excel", "email", "coordinator", "workflow", "skill",
-    "chat",
+    "marketing", "recruitment", "chat",
 }

@@ -10,7 +10,7 @@ import {
     Landmark, FileText, Users, Upload, Package, ChevronDown, ChevronRight,
     Home, Flag, UserCircle, ShoppingCart, Briefcase, Building2, Calendar,
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
-    BarChart3, Sparkles, Settings, Layers, Download,
+    BarChart3, Sparkles, Settings, Layers, Download, Megaphone,
 } from "lucide-react";
 import ProfileMenu from "@/components/ProfileMenu";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -79,12 +79,14 @@ const NAV_SECTIONS: NavSection[] = [
                 label: "RRHH", icon: Briefcase, subItems: [
                     { label: "Empleados", href: "/rrhh/empleados" },
                     { label: "Nóminas", href: "/rrhh/nominas" },
+                    { label: "Reclutamiento", href: "/rrhh/reclutamiento" },
                 ],
             },
             {
                 label: "Inventario", icon: Building2, subItems: [
                     { label: "Productos", href: "/catalogo" },
                     { label: "Stock", href: "/inventario/stock" },
+                    { label: "Escáner almacén", href: "/inventario/scanner" },
                 ],
             },
             {
@@ -124,6 +126,7 @@ const NAV_SECTIONS: NavSection[] = [
         items: [
             { label: "Analítica", icon: PieChart, href: "/analitica" },
             { label: "Informes IA", icon: BarChart3, href: "/informes" },
+            { label: "Marketing", icon: Megaphone, href: "/marketing" },
             { label: "Auditoría", icon: ScrollText, href: "/auditoria" },
         ],
     },

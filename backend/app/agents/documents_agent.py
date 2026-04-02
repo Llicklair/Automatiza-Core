@@ -266,6 +266,12 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
             vectors = await embedder.aembed_documents(chunk_texts)
 
             async with AsyncSessionLocal() as db:
+                # Obtener jurisdicción del tenant para stamping
+                from app.db.models.auth import Tenant
+                import sqlalchemy as _sa
+                _j_res = await db.execute(_sa.select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id)))
+                _jurisdiction = _j_res.scalar() or "ES_TAX"
+
                 for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
                     emb = DocumentEmbedding(
                         document_id=document_id,
@@ -275,6 +281,7 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                         page_number=chunk.page_number or None,
                         element_type=chunk.element_type or None,
                         bounding_box=chunk.bounding_box or None,
+                        jurisdiction=_jurisdiction,
                         embedding=vector,
                     )
                     db.add(emb)

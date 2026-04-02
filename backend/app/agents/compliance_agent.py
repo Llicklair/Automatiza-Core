@@ -172,8 +172,19 @@ async def _fiscal_query_async(tenant_id: str, question: str) -> str:
             if embedder:
                 query_vector = await embedder.aembed_query(question)
                 async with AsyncSessionLocal() as db:
+                    # Obtener jurisdicción del tenant para filtro cross-border
+                    from app.db.models.auth import Tenant
+                    tenant_result = await db.execute(
+                        sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
+                    )
+                    jurisdiction = tenant_result.scalar() or "ES_TAX"
+
                     stmt = sa.select(DocumentEmbedding).where(
-                        DocumentEmbedding.tenant_id == uuid.UUID(tenant_id)
+                        DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
+                        sa.or_(
+                            DocumentEmbedding.jurisdiction == jurisdiction,
+                            DocumentEmbedding.jurisdiction.is_(None),
+                        ),
                     ).order_by(
                         DocumentEmbedding.embedding.cosine_distance(query_vector)
                     ).limit(3)

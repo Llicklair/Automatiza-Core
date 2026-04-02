@@ -30,7 +30,7 @@ from .inventory import Product, StockMovement  # noqa: F401
 from .orders import SalesOrder, SalesOrderLine, PurchaseOrder, PurchaseOrderLine  # noqa: F401
 
 # --- HR ---
-from .hr import Employee, Payroll  # noqa: F401
+from .hr import Employee, Payroll, RecruitmentPosition, Candidate  # noqa: F401
 
 # --- Accounting ---
 from .accounting import JournalEntry, JournalLine, BankTransaction, FixedAsset  # noqa: F401
