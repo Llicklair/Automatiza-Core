@@ -46,7 +46,7 @@ Este documento resume el progreso de sesiones anteriores y el estado actual del 
 ### Arquitectura
 - `models.py` modularizado en dominios: `billing.py`, `hr.py`, `crm.py`, `auth.py`, etc.
 - `orchestrator.py` → paquete `orchestrator/` con `_core.py`, `state.py`, `__init__.py`
-- Suite de tests en `backend/tests/` (conftest SQLite en memoria; ejecutar con `poetry run pytest`).
+- Suite de tests en `backend/tests/` (conftest SQLite en memoria). Última verificación: **84 tests** OK con `pytest tests` desde `backend/`.
 
 ---
 
