@@ -88,6 +88,78 @@ async def test_libro_registro_recibidas_filters_type(
 
 
 @pytest.mark.asyncio
+async def test_libro_registro_excludes_cancelled_invoices(
+    auth_client: AsyncClient, seed_tenant_and_user, db: AsyncSession
+):
+    tenant, _u, _t = seed_tenant_and_user
+    c1, c2 = uuid4(), uuid4()
+    db.add(Client(id=c1, tenant_id=tenant.id, nif="A11111111", name="Activo SL"))
+    db.add(Client(id=c2, tenant_id=tenant.id, nif="A22222222", name="Cancel SL"))
+    inv_ok = uuid4()
+    inv_bad = uuid4()
+    db.add(
+        Invoice(
+            id=inv_ok,
+            tenant_id=tenant.id,
+            client_id=c1,
+            invoice_number="OK-1",
+            date=datetime(2026, 4, 1, 12, 0, tzinfo=UTC),
+            amount_base=Decimal("50.00"),
+            tax_amount=Decimal("10.50"),
+            amount_total=Decimal("60.50"),
+            status="paid",
+            invoice_type="issued",
+        )
+    )
+    db.add(
+        Invoice(
+            id=inv_bad,
+            tenant_id=tenant.id,
+            client_id=c2,
+            invoice_number="BAD-CANCEL",
+            date=datetime(2026, 4, 2, 12, 0, tzinfo=UTC),
+            amount_base=Decimal("999.00"),
+            tax_amount=Decimal("0.00"),
+            amount_total=Decimal("999.00"),
+            status="cancelled",
+            invoice_type="issued",
+        )
+    )
+    await db.commit()
+
+    r = await auth_client.get("/api/v1/reports/libro-registro", params={"year": 2026, "type": "emitidas"})
+    assert r.status_code == 200
+    assert "OK-1" in r.text
+    assert "BAD-CANCEL" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_libro_registro_respects_year_window(auth_client: AsyncClient, seed_tenant_and_user, db: AsyncSession):
+    tenant, _u, _t = seed_tenant_and_user
+    cid = uuid4()
+    db.add(Client(id=cid, tenant_id=tenant.id, nif="B00000000", name="Otro año"))
+    db.add(
+        Invoice(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            client_id=cid,
+            invoice_number="Y2025",
+            date=datetime(2025, 12, 31, 12, 0, tzinfo=UTC),
+            amount_base=Decimal("10.00"),
+            tax_amount=Decimal("2.10"),
+            amount_total=Decimal("12.10"),
+            status="paid",
+            invoice_type="issued",
+        )
+    )
+    await db.commit()
+
+    r = await auth_client.get("/api/v1/reports/libro-registro", params={"year": 2026, "type": "emitidas"})
+    assert r.status_code == 200
+    assert "Y2025" not in r.text
+
+
+@pytest.mark.asyncio
 async def test_libro_registro_empty_year_has_header(auth_client: AsyncClient, seed_tenant_and_user):
     r = await auth_client.get("/api/v1/reports/libro-registro", params={"year": 2026, "type": "emitidas"})
     assert r.status_code == 200
