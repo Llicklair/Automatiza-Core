@@ -175,6 +175,18 @@ async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentRe
         }
 
 
+async def _dispatch_recruitment(state: OrchestratorState, subtask: dict) -> AgentResult:
+    """Invoca el agente de reclutamiento autónomo."""
+    from app.agents.recruitment_agent import graph
+    return await _run_graph_agent(graph, state, subtask, "recruitment", "reclutamiento")
+
+
+async def _dispatch_marketing(state: OrchestratorState, subtask: dict) -> AgentResult:
+    """Invoca el agente de marketing autónomo."""
+    from app.agents.marketing_agent import graph
+    return await _run_graph_agent(graph, state, subtask, "marketing", "marketing")
+
+
 async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca una Habilidad Modular (Skill) del registro dinámico."""
     from app.skills.registry import SkillRegistry

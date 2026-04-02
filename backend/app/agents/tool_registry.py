@@ -92,6 +92,20 @@ def _build_registry() -> dict[str, Callable]:
     registry["search_documents"] = search_documents
     registry["answer_from_documents"] = answer_from_documents
 
+    # — marketing —
+    from app.agents.marketing_agent import get_product_catalog
+    registry["get_product_catalog"] = get_product_catalog
+
+    # — recruitment —
+    from app.agents.recruitment_agent import (
+        create_position, list_positions, process_cv, list_candidates, update_candidate_status,
+    )
+    registry["create_position"] = create_position
+    registry["list_positions"] = list_positions
+    registry["process_cv"] = process_cv
+    registry["list_candidates"] = list_candidates
+    registry["update_candidate_status"] = update_candidate_status
+
     # — shared agent_tools —
     from app.agents.agent_tools.documents import (
         create_document, list_tenant_documents, update_existing_document, get_document_content,

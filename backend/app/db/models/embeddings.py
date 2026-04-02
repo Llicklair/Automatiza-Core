@@ -23,6 +23,9 @@ class DocumentEmbedding(Base):
     element_type = Column(String, nullable=True)       # paragraph, table, heading, etc.
     bounding_box = Column(JSONB, nullable=True)        # [left, bottom, right, top]
 
+    # Jurisdicción del tenant al momento de indexar (para filtro cross-border)
+    jurisdiction = Column(String(20), nullable=True, index=True)
+
     # Vector column — 768-dimensional (BAAI/bge-m3)
     embedding = Column(Vector(768), nullable=False)
 

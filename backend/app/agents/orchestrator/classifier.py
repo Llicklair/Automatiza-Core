@@ -27,6 +27,10 @@ _KEYWORD_MAP: dict[str, list[str]] = {
     "email":      ["correo", "email", "bandeja de entrada", "buzón", "inbox", "enviar mensaje", "responder correo"],
     "coordinator": ["coordinar", "complejo", "varios agentes", "múltiple", "todos los agentes", "combina", "cruza"],
     "workflow": ["automatización", "regla", "cada vez que", "programar", "automático", "workflow", "automatizar", "repetir"],
+    "recruitment": ["reclutamiento", "candidato", "cv", "currículum", "curriculum", "puesto abierto",
+                    "selección de personal", "contratar", "vacante", "entrevista", "recruiting", "shortlist"],
+    "marketing": ["marketing", "contenido", "redes sociales", "instagram", "facebook", "linkedin", "publicación",
+                   "post", "hashtag", "plan de contenidos", "campaña", "social media", "community manager"],
     "report": ["informe mensual", "snapshot", "resumen del mes", "estado de la empresa", "informe completo", "informe empresarial",
                "análisis mensual", "cierre mensual", "genera el informe", "informe de gestión", "resumen mensual"],
     "chat": ["qué es", "cómo funciona", "explica", "diferencia entre", "qué significa", "ayuda",
@@ -37,7 +41,7 @@ _KEYWORD_MAP: dict[str, list[str]] = {
 _CLASSIFY_SYSTEM = """\
 Eres un clasificador de intenciones para una plataforma de automatización empresarial española.
 Tu única tarea es leer el texto del usuario y responder con UN SOLO valor del siguiente conjunto:
-  billing | documents | compliance | hr | banking | rag | excel | email | workflow | coordinator | report | chat | unknown
+  billing | documents | compliance | hr | banking | rag | excel | email | workflow | coordinator | report | marketing | recruitment | chat | unknown
 
 Definiciones:
 - billing: crear, enviar o consultar facturas, presupuestos, albaranes o cobros a clientes.
@@ -52,6 +56,8 @@ Definiciones:
 - excel: generar un archivo Excel (.xlsx) con datos de la empresa (facturas, clientes, empleados, nóminas, inventario, banco), manipular datos, cruzar archivos csv/excel, exportar listados tabulares.
 - email: revisar bandeja de entrada, leer o responder y procesar correos electrónicos.
 - report: generar informe mensual, resumen del estado de la empresa, análisis mensual completo, cierre mensual, snapshot empresarial.
+- recruitment: procesos de selección, parsear CVs, candidatos, puestos vacantes, shortlisting, scoring de candidatos.
+- marketing: planificación de contenidos para redes sociales (Instagram, Facebook, LinkedIn), campañas, posts, hashtags, community management.
 - chat: preguntas generales, saludos, consultas de estado ("¿terminó la tarea?"), dudas conceptuales ("¿qué es el modelo 303?"), o cualquier mensaje que NO requiera ejecutar una acción concreta en el ERP.
 - unknown: cualquier otra cosa.
 

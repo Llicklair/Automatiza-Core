@@ -1,0 +1,261 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+    ScanLine, Package, ArrowDown, ArrowUp, Truck, Loader2,
+    CheckCircle2, XCircle, AlertTriangle,
+} from "lucide-react";
+
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+type ProductInfo = {
+    id: string; sku: string; name: string; description: string | null;
+    price: number | null; stock_quantity: number; stock_min_alert: number | null; low_stock: boolean;
+};
+
+type ActionResult = { success: boolean; message: string; data?: any };
+
+function scannerFetch<T>(path: string, token: string, opts: RequestInit = {}): Promise<T> {
+    return fetch(`${BASE}/api/v1/scanner${path}`, {
+        ...opts,
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(opts.headers || {}),
+        },
+    }).then(async (res) => {
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
+        }
+        return res.json();
+    });
+}
+
+export default function MobileScannerPage() {
+    const params = useSearchParams();
+    const token = params.get("token") || "";
+    const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+    const [deviceInfo, setDeviceInfo] = useState<{ tenant_id: string; device: string } | null>(null);
+
+    const [sku, setSku] = useState("");
+    const [product, setProduct] = useState<ProductInfo | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [quantity, setQuantity] = useState(1);
+    const [result, setResult] = useState<ActionResult | null>(null);
+    const [albaranNum, setAlbaranNum] = useState("");
+
+    // Verify token on mount
+    useEffect(() => {
+        if (!token) { setAuthenticated(false); return; }
+        scannerFetch<any>("/whoami", token)
+            .then((data) => { setAuthenticated(true); setDeviceInfo(data); })
+            .catch(() => setAuthenticated(false));
+    }, [token]);
+
+    const scanProduct = async () => {
+        if (!sku.trim()) return;
+        setLoading(true); setProduct(null); setResult(null);
+        try {
+            const data = await scannerFetch<ProductInfo>("/scan-product", token, {
+                method: "POST", body: JSON.stringify({ sku: sku.trim() }),
+            });
+            setProduct(data);
+        } catch (e: any) {
+            setResult({ success: false, message: e.message });
+        }
+        setLoading(false);
+    };
+
+    const stockEntry = async () => {
+        if (!product) return;
+        setLoading(true); setResult(null);
+        try {
+            const data = await scannerFetch<any>("/stock-entry", token, {
+                method: "POST", body: JSON.stringify({ sku: product.sku, quantity }),
+            });
+            setResult({ success: true, message: `+${quantity} → Stock: ${data.stock_after}`, data });
+            setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
+        } catch (e: any) { setResult({ success: false, message: e.message }); }
+        setLoading(false);
+    };
+
+    const stockExit = async () => {
+        if (!product) return;
+        setLoading(true); setResult(null);
+        try {
+            const data = await scannerFetch<any>("/stock-exit", token, {
+                method: "POST", body: JSON.stringify({ sku: product.sku, quantity }),
+            });
+            setResult({ success: true, message: `-${quantity} → Stock: ${data.stock_after}`, data });
+            setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
+        } catch (e: any) { setResult({ success: false, message: e.message }); }
+        setLoading(false);
+    };
+
+    const confirmDelivery = async () => {
+        if (!albaranNum.trim()) return;
+        setLoading(true); setResult(null);
+        try {
+            const data = await scannerFetch<any>("/confirm-delivery", token, {
+                method: "POST", body: JSON.stringify({ albaran_number: albaranNum.trim() }),
+            });
+            setResult({ success: true, message: `Albarán ${data.albaran_number}: ${data.status}` });
+            setAlbaranNum("");
+        } catch (e: any) { setResult({ success: false, message: e.message }); }
+        setLoading(false);
+    };
+
+    // -- Not authenticated --
+    if (authenticated === false) {
+        return (
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+                <div className="text-center space-y-3">
+                    <XCircle className="w-12 h-12 text-red-400 mx-auto" />
+                    <h1 className="text-lg font-bold text-white">Token expirado o inválido</h1>
+                    <p className="text-sm text-zinc-500">Genera un nuevo código QR desde el escritorio</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (authenticated === null) {
+        return (
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-zinc-950 p-4 max-w-md mx-auto space-y-4">
+            {/* Header */}
+            <div className="flex items-center gap-2 py-2">
+                <ScanLine className="w-5 h-5 text-cyan-400" />
+                <h1 className="text-base font-bold text-white">Escáner Almacén</h1>
+                <span className="ml-auto text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Conectado</span>
+            </div>
+
+            {/* Product scan */}
+            <div className="bg-zinc-900 rounded-xl p-4 space-y-3">
+                <label className="text-xs font-medium text-zinc-400">Buscar producto por SKU</label>
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={sku}
+                        onChange={(e) => setSku(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && scanProduct()}
+                        placeholder="Escanea o escribe SKU..."
+                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                        autoFocus
+                    />
+                    <button
+                        onClick={scanProduct}
+                        disabled={loading || !sku.trim()}
+                        className="px-3 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Product info */}
+            {product && (
+                <div className="bg-zinc-900 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h3 className="text-sm font-semibold text-white">{product.name}</h3>
+                            <p className="text-[10px] text-zinc-500">SKU: {product.sku}</p>
+                        </div>
+                        <Package className="w-5 h-5 text-zinc-600" />
+                    </div>
+                    {product.description && <p className="text-xs text-zinc-400">{product.description}</p>}
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <span className="text-xs text-zinc-500">Stock:</span>
+                            <span className={`ml-1 text-sm font-bold ${product.low_stock ? "text-red-400" : "text-white"}`}>
+                                {product.stock_quantity}
+                            </span>
+                        </div>
+                        {product.price != null && (
+                            <div>
+                                <span className="text-xs text-zinc-500">Precio:</span>
+                                <span className="ml-1 text-sm text-white">{product.price.toFixed(2)}€</span>
+                            </div>
+                        )}
+                        {product.low_stock && (
+                            <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                                <AlertTriangle className="w-3 h-3" /> Stock bajo
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Quantity + actions */}
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-zinc-500">Cantidad:</label>
+                        <input
+                            type="number"
+                            min={1}
+                            value={quantity}
+                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-20 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={stockEntry}
+                            disabled={loading}
+                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                        >
+                            <ArrowDown className="w-4 h-4" /> Entrada
+                        </button>
+                        <button
+                            onClick={stockExit}
+                            disabled={loading}
+                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                        >
+                            <ArrowUp className="w-4 h-4" /> Salida
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Delivery confirmation */}
+            <div className="bg-zinc-900 rounded-xl p-4 space-y-3">
+                <label className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5" /> Confirmar albarán
+                </label>
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={albaranNum}
+                        onChange={(e) => setAlbaranNum(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && confirmDelivery()}
+                        placeholder="Nº albarán (ej: ALB-2026-0015)"
+                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                    />
+                    <button
+                        onClick={confirmDelivery}
+                        disabled={loading || !albaranNum.trim()}
+                        className="px-3 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white"
+                    >
+                        <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Result */}
+            {result && (
+                <div className={`rounded-xl p-3 text-sm flex items-center gap-2 ${
+                    result.success
+                        ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                        : "bg-red-500/10 border border-red-500/20 text-red-300"
+                }`}>
+                    {result.success ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+                    {result.message}
+                </div>
+            )}
+        </div>
+    );
+}

@@ -6,6 +6,8 @@ from app.api.v1.routes import (
     advisory,
     ai_employees,
     approvals,
+    recruitment,
+    scanner,
     auth,
     banking,
     crm,
@@ -45,3 +47,5 @@ api_router.include_router(reports.router)
 api_router.include_router(tenant.router)
 api_router.include_router(templates.router, prefix="/templates", tags=["templates"])
 api_router.include_router(ai_employees.router)
+api_router.include_router(recruitment.router, prefix="/recruitment", tags=["recruitment"])
+api_router.include_router(scanner.router, prefix="/scanner", tags=["scanner"])

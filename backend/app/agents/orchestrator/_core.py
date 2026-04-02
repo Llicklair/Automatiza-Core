@@ -508,18 +508,33 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     _TRANSIENT_ERRORS = (asyncio.TimeoutError, ConnectionError, OSError)
 
     async def _invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: str) -> AgentResult:
-        """Invoca el dispatcher con la lógica de routing (DISPATCHER_MAP / skill / fallback)."""
+        """Invoca el dispatcher con routing: DISPATCHER_MAP → AIEmployee dinámico → skill → fallback."""
+        # 1. Dispatcher estático (agentes built-in)
         dispatcher_fn = DISPATCHER_MAP.get(agent_name)
         if dispatcher_fn:
             return await asyncio.wait_for(
                 dispatcher_fn(enriched_state, subtask),
                 timeout=120,
             )
+
+        # 2. Skill routing
         if agent_name == "skill" or (isinstance(agent_name, str) and agent_name.startswith("skill:")):
             from app.agents.orchestrator.dispatchers import _dispatch_skill
             return await _dispatch_skill(enriched_state, subtask)
 
-        # Agente en VALID_DOMAINS pero sin dispatcher implementado aún
+        # 3. AIEmployee dinámico — busca un empleado IA activo para este dominio/tenant
+        tenant_id = enriched_state.get("tenant_id")
+        if tenant_id:
+            try:
+                result = await _invoke_dynamic_employee(
+                    enriched_state, subtask, agent_name, tenant_id,
+                )
+                if result is not None:
+                    return result
+            except Exception as e:
+                logger.warning("Error en dynamic employee routing para '%s': %s", agent_name, e)
+
+        # 4. Fallback — dominio sin dispatcher ni AIEmployee
         return {
             "subtask_id": subtask["id"],
             "agent": agent_name,
@@ -527,6 +542,111 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
             "output": {"message": f"[PENDIENTE] Agente '{agent_name}' no implementado aún"},
             "error": None,
         }
+
+    async def _invoke_dynamic_employee(
+        enriched_state: dict, subtask: dict, agent_name: str, tenant_id: str,
+    ) -> AgentResult | None:
+        """Busca un AIEmployee activo para el dominio y lo ejecuta vía compile_dynamic_agent.
+
+        Returns None si no hay employee disponible (para que el caller use el fallback).
+        """
+        from uuid import UUID
+        from sqlalchemy import select
+        from app.db.base import AsyncSessionLocal
+        from app.db.models.ai_employees import AIEmployee
+        from app.agents.custom_worker_agent import compile_dynamic_agent
+        from app.agents.budget_guard import check_agent_budget
+        from app.services.activity_service import log_activity
+
+        async with AsyncSessionLocal() as db:
+            emp_result = await db.execute(
+                select(AIEmployee).where(
+                    AIEmployee.tenant_id == UUID(tenant_id),
+                    AIEmployee.domain == agent_name,
+                    AIEmployee.status.in_(["idle", "working"]),
+                ).limit(1)
+            )
+            employee = emp_result.scalar_one_or_none()
+            if not employee:
+                return None
+
+            # Budget check
+            has_budget = await check_agent_budget(str(employee.id), db)
+            if not has_budget:
+                return {
+                    "subtask_id": subtask["id"],
+                    "agent": agent_name,
+                    "success": False,
+                    "output": {"action": "budget_exceeded"},
+                    "error": f"Empleado IA '{employee.name}' pausado por presupuesto agotado.",
+                }
+
+            # Mark as working
+            employee.status = "working"
+            await db.commit()
+
+            try:
+                graph = await compile_dynamic_agent(str(employee.id), db)
+                intent = subtask.get("params", {}).get("intent") or enriched_state.get("current_intent") or enriched_state.get("user_intent", "")
+
+                result_state = await asyncio.wait_for(
+                    graph.ainvoke({
+                        "tenant_id": tenant_id,
+                        "task_id": enriched_state.get("task_id"),
+                        "user_id": enriched_state.get("user_id"),
+                        "user_intent": intent,
+                        "current_intent": intent,
+                        "messages": [],
+                        "agent_results": [],
+                        "status": "running",
+                    }),
+                    timeout=120,
+                )
+
+                # Extract final text
+                messages = result_state.get("messages", [])
+                final_text = ""
+                for msg in reversed(messages):
+                    if hasattr(msg, "content") and isinstance(msg.content, str) and msg.content.strip():
+                        final_text = msg.content
+                        break
+
+                success = not final_text.lower().startswith("error")
+
+                # Log activity
+                try:
+                    await log_activity(
+                        db=db,
+                        tenant_id=tenant_id,
+                        employee_id=str(employee.id),
+                        category=agent_name,
+                        message=f"Ejecutó tarea: {final_text[:200]}",
+                    )
+                except Exception:
+                    pass
+
+                employee.status = "idle"
+                await db.commit()
+
+                return {
+                    "subtask_id": subtask["id"],
+                    "agent": agent_name,
+                    "success": success,
+                    "output": {"action": "completed" if success else "failed", "response": final_text},
+                    "error": None if success else final_text,
+                }
+
+            except Exception as e:
+                employee.status = "idle"
+                await db.commit()
+                logger.exception("Error en dynamic employee '%s'", employee.name)
+                return {
+                    "subtask_id": subtask["id"],
+                    "agent": agent_name,
+                    "success": False,
+                    "output": {"action": "failed", "error": str(e)},
+                    "error": str(e),
+                }
 
     async def _execute_one(idx: int, subtask: dict) -> tuple[int, dict, AgentResult]:
         """Ejecuta un paso individual con retry para errores transitorios."""

@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     # Cifrado de credenciales de tenants
     TENANT_ENCRYPTION_KEY: str = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"
 
+    # Scanner / Gatekeeper
+    SCANNER_TOKEN_EXPIRE_MINUTES: int = 2  # QR tokens de corta vida
+    SCANNER_ALLOWED_SCOPES: str = "inventory:read,inventory:write,albaranes:read,albaranes:write"
+
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 
