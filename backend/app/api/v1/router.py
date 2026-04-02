@@ -4,6 +4,7 @@ from app.api.v1.routes import (
     accounting,
     admin,
     advisory,
+    ai_employees,
     approvals,
     auth,
     banking,
@@ -43,3 +44,4 @@ api_router.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
 api_router.include_router(reports.router)
 api_router.include_router(tenant.router)
 api_router.include_router(templates.router, prefix="/templates", tags=["templates"])
+api_router.include_router(ai_employees.router)
