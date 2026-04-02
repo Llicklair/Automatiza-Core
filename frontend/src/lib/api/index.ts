@@ -56,7 +56,7 @@ export const api = {
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
 export type { Task, AuditEntry, Approval } from "./tasks";
-export type { Document } from "./documents";
+export type { ContractPreviewHtml, Document } from "./documents";
 export type {
     Client,
     Invoice,
