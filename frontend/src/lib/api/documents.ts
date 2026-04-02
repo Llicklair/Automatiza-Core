@@ -24,6 +24,8 @@ export interface ContractTemplate {
 /** Respuesta de GET .../contract-templates/:id/preview-html (mammoth) */
 export interface ContractPreviewHtml {
     html: string;
+    /** HTML mammoth sin resaltado — para TipTap */
+    html_editable: string;
     variables_detected: string[];
     warnings: string[];
 }
@@ -116,6 +118,11 @@ export const documents = {
             request<ContractPreviewHtml>(
                 `/api/v1/documents/contract-templates/${templateId}/preview-html`
             ),
+        saveBodyHtml: (templateId: string, html: string): Promise<{ status: string; file_size: number }> =>
+            request(`/api/v1/documents/contract-templates/${templateId}/body-html`, {
+                method: "PUT",
+                body: JSON.stringify({ html }),
+            }),
         generate: async (templateId: string, entityType: "client" | "employee", entityId: string): Promise<Blob> => {
             const token = getToken();
             const headers: Record<string, string> = {};

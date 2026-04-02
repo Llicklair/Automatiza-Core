@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
     ScanLine, Package, ArrowDown, ArrowUp, Truck, Loader2,
@@ -33,7 +33,7 @@ function scannerFetch<T>(path: string, token: string, opts: RequestInit = {}): P
     });
 }
 
-export default function MobileScannerPage() {
+function MobileScannerInner() {
     const params = useSearchParams();
     const token = params.get("token") || "";
     const [authenticated, setAuthenticated] = useState<boolean | null>(null);
@@ -257,5 +257,19 @@ export default function MobileScannerPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function MobileScannerPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                </div>
+            }
+        >
+            <MobileScannerInner />
+        </Suspense>
     );
 }

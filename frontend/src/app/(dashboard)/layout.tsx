@@ -10,7 +10,7 @@ import {
     Landmark, FileText, Users, Upload, Package, ChevronDown, ChevronRight,
     Home, Flag, UserCircle, ShoppingCart, Briefcase, Building2, Calendar,
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
-    BarChart3, Sparkles, Settings, Layers, Download, Megaphone,
+    BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
 } from "lucide-react";
 import ProfileMenu from "@/components/ProfileMenu";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";

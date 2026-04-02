@@ -1,11 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import {
     FileText, Users, BarChart3, Plus, Trash2, Star, Eye, Loader2,
     Palette, Type, Layout, AlignLeft, Table2, Check, FileCode2,
-    Upload, ExternalLink, Copy,
+    Upload, ExternalLink, Copy, PenLine,
 } from "lucide-react";
+
+const ContractTemplateEditor = dynamic(
+    () => import("@/components/ContractTemplateEditor"),
+    { ssr: false }
+);
 import { sanitizeHTML } from "@/components/GenerativeUI";
 import { templatesApi, DocumentTemplate, PreviewRequest } from "@/lib/api/templates";
 import { documents, ContractPreviewHtml, ContractTemplate } from "@/lib/api/documents";
@@ -44,6 +50,8 @@ function ContratosTab() {
     const [previewFor, setPreviewFor] = useState<string | null>(null);
     const [previewData, setPreviewData] = useState<ContractPreviewHtml | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [editorModal, setEditorModal] = useState<{ id: string; fileName: string; html: string } | null>(null);
+    const [openingEditorId, setOpeningEditorId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const load = async () => {
@@ -59,6 +67,23 @@ function ContratosTab() {
     };
 
     useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const openEditor = async (tpl: ContractTemplate) => {
+        if (!tpl.file_name.toLowerCase().endsWith(".docx")) {
+            showToast("La edición en el navegador solo está disponible para archivos .docx", "warning");
+            return;
+        }
+        setOpeningEditorId(tpl.id);
+        try {
+            const data = await documents.contractTemplates.previewHtml(tpl.id);
+            setEditorModal({ id: tpl.id, fileName: tpl.file_name, html: data.html_editable });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "No se pudo cargar la plantilla";
+            showToast(msg, "error");
+        } finally {
+            setOpeningEditorId(null);
+        }
+    };
 
     const togglePreview = async (tplId: string) => {
         if (previewFor === tplId) {
@@ -169,6 +194,15 @@ function ContratosTab() {
 
     return (
         <div className="flex gap-6">
+            {editorModal && (
+                <ContractTemplateEditor
+                    templateId={editorModal.id}
+                    fileName={editorModal.fileName}
+                    initialHtml={editorModal.html}
+                    onClose={() => setEditorModal(null)}
+                    onSaved={() => void load()}
+                />
+            )}
             {/* Lista de plantillas */}
             <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between mb-2">
@@ -218,6 +252,20 @@ function ContratosTab() {
                                         >
                                             <FileText className="w-3.5 h-3.5" />
                                             Generar borrador
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => void openEditor(tpl)}
+                                            disabled={!!openingEditorId}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-emerald-600/50 text-emerald-300/90 hover:bg-emerald-950/40 text-xs rounded-lg transition-colors disabled:opacity-50"
+                                            title="Editar en el navegador (solo .docx)"
+                                        >
+                                            {openingEditorId === tpl.id ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                <PenLine className="w-3.5 h-3.5" />
+                                            )}
+                                            Editar
                                         </button>
                                         <button
                                             type="button"
@@ -515,7 +563,8 @@ export default function PlantillasPage() {
 
     const openNew = () => {
         setEditingId(null);
-        setForm({ ...EMPTY_FORM, template_type: activeType });
+        const t = activeType === "contract" ? "invoice" : activeType;
+        setForm({ ...EMPTY_FORM, template_type: t });
         setPreviewUrl(null);
         setShowForm(true);
     };

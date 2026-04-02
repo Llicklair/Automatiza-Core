@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { RecruitmentPosition, Candidate } from "@/lib/api";
+import type { RecruitmentPosition, Candidate } from "@/lib/api/recruitment";
 import {
     Briefcase, Plus, Upload, Loader2, Users, Star, ChevronRight,
     X, CheckCircle2, XCircle, ArrowUpDown,
