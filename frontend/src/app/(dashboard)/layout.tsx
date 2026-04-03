@@ -11,6 +11,7 @@ import {
     Home, Flag, UserCircle, ShoppingCart, Briefcase, Building2, Calendar,
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
     BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
+    Activity, Wand2, FileSearch,
 } from "lucide-react";
 import ProfileMenu from "@/components/ProfileMenu";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -40,6 +41,8 @@ const NAV_SECTIONS: NavSection[] = [
             { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
             { label: "Inicio", icon: Home, href: "/" },
             { label: "Mi Equipo IA", icon: Bot, href: "/mi-equipo" },
+            { label: "Bandeja de Agentes", icon: Activity, href: "/actividades" },
+            { label: "Sandbox IA", icon: Wand2, href: "/sandbox" },
             { label: "Tareas IA", icon: Sparkles, href: "/tareas" },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones" },
             { label: "Aprobaciones", icon: UserCircle, href: "/aprobaciones" },
@@ -80,6 +83,8 @@ const NAV_SECTIONS: NavSection[] = [
                     { label: "Empleados", href: "/rrhh/empleados" },
                     { label: "Nóminas", href: "/rrhh/nominas" },
                     { label: "Reclutamiento", href: "/rrhh/reclutamiento" },
+                    { label: "Análisis de CV", href: "/rrhh/analisis-cv" },
+                    { label: "Gestoría Documental", href: "/rrhh/documentos" },
                 ],
             },
             {

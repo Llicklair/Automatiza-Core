@@ -1,12 +1,14 @@
 """Rutas para el sistema de Empleados IA.
 
 Endpoints:
-  GET    /ai-employees              — Lista empleados del tenant
-  POST   /ai-employees              — Crea empleado personalizado
-  PATCH  /ai-employees/{id}/status  — Pausa/activa un empleado
-  POST   /ai-employees/seed         — Siembra empleados built-in si no existen
-  GET    /activity-feed             — Timeline de actividad del tenant
-  POST   /activity-feed             — Registra entrada manual (uso interno/tests)
+  GET    /ai-employees                    — Lista empleados del tenant
+  POST   /ai-employees                    — Crea empleado personalizado (con skills)
+  PATCH  /ai-employees/{id}/status        — Pausa/activa un empleado
+  POST   /ai-employees/{id}/instruct      — Envía instrucción directa a un agente
+  GET    /ai-employees/available-skills   — Lista tool_modules disponibles
+  POST   /ai-employees/seed               — Siembra empleados built-in si no existen
+  GET    /activity-feed                   — Timeline de actividad del tenant
+  POST   /activity-feed                   — Registra entrada manual (uso interno/tests)
 """
 import uuid
 import logging
@@ -21,6 +23,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.ai_employees import AIEmployee, AgentSkill, ActivityEntry
 from app.db.models.auth import User
+from app.db.models.tasks import Task
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,11 @@ class AIEmployeeCreate(BaseModel):
     domain: str
     system_prompt: str
     budget_limit_usd: float = 10.0
+    skills: list[str] = []  # lista de tool_module a autorizar
+
+
+class InstructPayload(BaseModel):
+    message: str
 
 
 class ActivityEntryOut(BaseModel):
@@ -115,6 +123,11 @@ async def create_ai_employee(
         is_builtin=False,
     )
     db.add(employee)
+    await db.flush()  # obtener ID antes de crear skills
+
+    for tool_module in payload.skills:
+        db.add(AgentSkill(employee_id=employee.id, tool_module=tool_module))
+
     await db.commit()
     await db.refresh(employee)
     return AIEmployeeOut(
@@ -126,6 +139,84 @@ async def create_ai_employee(
         is_builtin=employee.is_builtin,
         budget_limit_usd=float(employee.budget_limit_usd) if employee.budget_limit_usd else None,
     )
+
+
+@router.get("/ai-employees/available-skills")
+async def list_available_skills(
+    current_user: User = Depends(get_current_user),
+):
+    """Devuelve los tool_modules disponibles para asignar a empleados IA."""
+    skills = [
+        {"module": "billing.create_invoice", "label": "Crear facturas"},
+        {"module": "billing.list_invoices", "label": "Ver facturas"},
+        {"module": "billing.send_reminder", "label": "Enviar recordatorios de cobro"},
+        {"module": "hr.list_employees", "label": "Ver empleados"},
+        {"module": "hr.generate_payroll", "label": "Generar nóminas"},
+        {"module": "hr.generate_document", "label": "Generar documentos laborales"},
+        {"module": "crm.list_clients", "label": "Ver clientes"},
+        {"module": "crm.create_activity", "label": "Registrar actividad CRM"},
+        {"module": "email.send", "label": "Enviar emails"},
+        {"module": "email.read_inbox", "label": "Leer bandeja de entrada"},
+        {"module": "documents.search_rag", "label": "Buscar en documentos (RAG)"},
+        {"module": "documents.upload", "label": "Subir documentos"},
+        {"module": "banking.list_transactions", "label": "Ver transacciones bancarias"},
+        {"module": "compliance.check", "label": "Verificar compliance"},
+        {"module": "excel.export", "label": "Exportar a Excel"},
+    ]
+    return skills
+
+
+@router.post("/ai-employees/{employee_id}/instruct")
+async def instruct_employee(
+    employee_id: str,
+    payload: InstructPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Envía una instrucción directa a un agente IA, creando una tarea en su dominio."""
+    result = await db.execute(
+        select(AIEmployee).where(
+            AIEmployee.id == employee_id,
+            AIEmployee.tenant_id == current_user.tenant_id,
+        )
+    )
+    employee = result.scalar_one_or_none()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    if employee.status == "paused":
+        raise HTTPException(status_code=409, detail="El empleado está pausado")
+
+    # Las instrucciones siempre pasan por el coordinador.
+    # El hint employee_id orienta el routing, pero el coordinador decide.
+    task = Task(
+        id=uuid.uuid4(),
+        tenant_id=current_user.tenant_id,
+        created_by=current_user.id,
+        domain="coordinator",
+        user_intent=payload.message,
+        status="pending",
+        additional_metadata={
+            "source": "direct_instruction",
+            "addressed_employee_id": str(employee.id),
+            "addressed_employee_domain": employee.domain,
+        },
+    )
+    db.add(task)
+    await db.flush()
+
+    from app.services.activity_service import log_activity
+    await log_activity(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        category="system",
+        message=f"Instrucción enviada a {employee.name}: {payload.message[:80]}{'…' if len(payload.message) > 80 else ''}",
+        employee_id=str(employee.id),
+        task_id=str(task.id),
+        icon="💬",
+    )
+
+    await db.commit()
+    return {"task_id": str(task.id), "status": "queued", "employee": employee.name}
 
 
 @router.patch("/ai-employees/{employee_id}/status", response_model=AIEmployeeOut)

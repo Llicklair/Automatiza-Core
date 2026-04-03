@@ -6,6 +6,8 @@ from app.api.v1.routes import (
     advisory,
     ai_employees,
     approvals,
+    generative_ui,
+    hr_documents,
     messaging,
     recruitment,
     scanner,
@@ -51,3 +53,5 @@ api_router.include_router(ai_employees.router)
 api_router.include_router(recruitment.router, prefix="/recruitment", tags=["recruitment"])
 api_router.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
 api_router.include_router(messaging.router)
+api_router.include_router(hr_documents.router)
+api_router.include_router(generative_ui.router)
