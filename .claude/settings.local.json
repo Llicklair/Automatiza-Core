@@ -39,7 +39,9 @@
       "Bash(claude:*)",
       "Bash(CLAUDECODE= CLAUDE_CODE_SESSION= echo responde solo: OK:*)",
       "Bash(env:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(PGPASSWORD=pyme_password \"c:/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/psql.exe\":*)",
+      "mcp__plugin_context-mode_context-mode__ctx_index"
     ]
   }
 }

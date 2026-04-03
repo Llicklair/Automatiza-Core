@@ -258,3 +258,40 @@ async def update_candidate_status(
     await db.commit()
     await db.refresh(c)
     return c
+
+
+@router.post("/analyze-cv")
+@limiter.limit("10/minute")
+async def analyze_cv_standalone(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+):
+    """Analiza un CV sin asociarlo a ningún puesto. Devuelve datos extraídos por IA."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF")
+
+    tmp_path = f"/tmp/cv_standalone_{uuid4().hex}.pdf"
+    try:
+        with open(tmp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        from app.services.cv_parser import parse_cv_file, extract_cv_data
+        cv_text = await parse_cv_file(tmp_path)
+        if not cv_text.strip():
+            raise HTTPException(status_code=422, detail="No se pudo extraer texto del PDF")
+
+        cv_data = await extract_cv_data(cv_text)
+        return {
+            "name": cv_data.get("name"),
+            "email": cv_data.get("email"),
+            "phone": cv_data.get("phone"),
+            "skills": cv_data.get("skills", []),
+            "experience_years": cv_data.get("experience_years"),
+            "education": cv_data.get("education"),
+            "languages": cv_data.get("languages", []),
+            "summary": cv_data.get("summary"),
+        }
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
