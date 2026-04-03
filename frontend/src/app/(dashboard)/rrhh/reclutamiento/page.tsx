@@ -199,12 +199,16 @@ export default function RecruitmentPage() {
                                                         {STATUS_LABELS[c.status] || c.status}
                                                     </span>
                                                 </div>
-                                                {c.score != null && (
+                                                {c.score != null ? (
                                                     <div className="flex items-center gap-1">
                                                         <Star className="w-3.5 h-3.5 text-amber-400" />
                                                         <span className="text-sm font-bold text-amber-400">{c.score}</span>
                                                         <span className="text-[10px] text-zinc-600">/100</span>
                                                     </div>
+                                                ) : (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700">
+                                                        Pendiente de análisis
+                                                    </span>
                                                 )}
                                             </div>
 
@@ -217,6 +221,33 @@ export default function RecruitmentPage() {
                                                 )}
                                                 {c.education && <div className="text-zinc-500 col-span-2">Formación: <span className="text-zinc-300">{c.education}</span></div>}
                                             </div>
+
+                                            {/* Score bar */}
+                                            {c.score != null && (
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between text-[10px] text-zinc-500">
+                                                        <span>Puntuación IA</span>
+                                                        <span>{c.score}/100</span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all ${c.score >= 70 ? "bg-emerald-500" : c.score >= 50 ? "bg-amber-500" : "bg-red-500"}`}
+                                                            style={{ width: `${c.score}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Languages */}
+                                            {c.languages?.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {c.languages.map((l, i) => (
+                                                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                            🌐 {typeof l === "string" ? l : `${l.lang}${l.level ? ` (${l.level})` : ""}`}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {/* Skills */}
                                             {c.skills?.length > 0 && (
