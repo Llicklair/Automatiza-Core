@@ -20,15 +20,29 @@ export interface ActivityEntry {
     created_at: string;
 }
 
+export interface AvailableSkill {
+    module: string;
+    label: string;
+}
+
 export const aiEmployees = {
     list: () =>
         request<AIEmployee[]>("/api/v1/ai-employees"),
 
-    create: (data: { name: string; role: string; domain: string; system_prompt: string; budget_limit_usd?: number }) =>
+    create: (data: { name: string; role: string; domain: string; system_prompt: string; budget_limit_usd?: number; skills?: string[] }) =>
         request<AIEmployee>("/api/v1/ai-employees", { method: "POST", body: JSON.stringify(data) }),
 
     updateStatus: (id: string, status: "idle" | "paused") =>
         request<AIEmployee>(`/api/v1/ai-employees/${id}/status?new_status=${status}`, { method: "PATCH" }),
+
+    instruct: (id: string, message: string) =>
+        request<{ task_id: string; status: string; employee: string }>(
+            `/api/v1/ai-employees/${id}/instruct`,
+            { method: "POST", body: JSON.stringify({ message }) }
+        ),
+
+    availableSkills: () =>
+        request<AvailableSkill[]>("/api/v1/ai-employees/available-skills"),
 
     seed: () =>
         request<{ created: string[]; message: string }>("/api/v1/ai-employees/seed", { method: "POST" }),
