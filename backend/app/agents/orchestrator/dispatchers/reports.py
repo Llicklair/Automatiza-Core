@@ -22,7 +22,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
 
         # Llamada interna al endpoint de generación de informes
         from app.core.config import settings as _s
-        base_url = f"http://localhost:{getattr(_s, 'PORT', 8080)}"
+        base_url = f"http://localhost:{_s.PORT}"
 
         # Obtener token del estado para autenticar la petición interna
         # Si no hay token en estado, usamos la BD directamente

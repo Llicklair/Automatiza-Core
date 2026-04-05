@@ -327,6 +327,57 @@ El agente RAG ejecuta búsqueda híbrida:
 | `rag_agent.py` | rag | Preguntas sobre documentos propios del tenant |
 | `workflow_agent.py` | workflow | Gestión de automatizaciones |
 
+### Empleados IA personalizables (`/mi-equipo`)
+
+El sistema permite crear **agentes IA personalizados** que actúan como empleados virtuales de la empresa. Cada empleado IA tiene nombre, rol, dominio, system prompt y un conjunto de skills asignados.
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /ai-employees` | Listar todos los empleados IA del tenant |
+| `POST /ai-employees` | Crear nuevo empleado IA (manual o vía LLM desde descripción) |
+| `POST /ai-employees/{id}/instruct` | Dar instrucción en lenguaje natural → pasa por el coordinador |
+| `PATCH /ai-employees/{id}/status` | Cambiar estado (idle, paused) |
+| `POST /ai-employees/seed` | Generar equipo inicial predefinido |
+| `GET /activity-feed` | Feed de actividad de todos los empleados IA |
+
+**Dominios disponibles**: billing, hr, email, crm, banking, compliance, excel, documents, marketing, recruitment.
+
+**Flujo de instrucciones**: El usuario envía un mensaje en lenguaje natural al empleado → el coordinador analiza la instrucción → la descompone en subtareas → las despacha al agente especializado correspondiente → el resultado se registra en el activity feed.
+
+### Sandbox Generativo (`/sandbox`)
+
+Permite generar **interfaces UI completas desde lenguaje natural**. El usuario describe qué necesita ("un dashboard de ventas con gráfico de barras") y el LLM genera HTML/CSS renderizable al instante.
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `POST /generative-ui/generate` | Generar interfaz desde prompt |
+| `GET /generative-ui/history` | Historial de interfaces generadas |
+| `PATCH /generative-ui/{id}` | Editar título/descripción |
+| `DELETE /generative-ui/{id}` | Eliminar interfaz |
+
+### Documentos RRHH generados por IA (`/rrhh/documentos`)
+
+Genera documentos laborales (contratos, cartas, certificados) con IA a partir de los datos del empleado.
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `POST /hr-documents/generate` | Generar documento RRHH con IA |
+| `GET /hr-documents` | Listar documentos generados |
+| `POST /hr-documents/{id}/approve` | Aprobar documento para firma |
+| `DELETE /hr-documents/{id}` | Eliminar documento |
+
+### Reclutamiento con análisis IA de CVs (`/rrhh/reclutamiento`)
+
+Módulo completo de reclutamiento: crear posiciones, subir CVs de candidatos, y análisis automático con IA que puntúa compatibilidad.
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /recruitment/positions` | Listar posiciones abiertas |
+| `POST /recruitment/positions` | Crear nueva posición |
+| `POST /recruitment/positions/{id}/upload-cv` | Subir CV de candidato (PDF) |
+| `PATCH /recruitment/candidates/{id}/status` | Cambiar estado del candidato |
+| `POST /recruitment/analyze-cv` | Análisis IA del CV vs requisitos del puesto |
+
 ### Ejecución de automatizaciones (Orquestador)
 
 Las automatizaciones tienen dos modos:
@@ -569,6 +620,7 @@ python smoke_tasks_workflows.py   # Lanza tareas IA de ejemplo
 para aplicar cambios sin reinstalar el exe 
 
 cd desktop; npm run sync
+
 ```
 
 ---
@@ -624,13 +676,23 @@ Archivos de test: `test_api_auth`, `test_api_health`, `test_api_tasks_agents`, `
 | `/` | Dashboard principal con KPIs |
 | `/ventas/facturas` | Facturación — CRUD + cambio de estado + PDF |
 | `/ventas/presupuestos` | Presupuestos y conversión a factura |
+| `/ventas/pedidos` | Pedidos de venta |
+| `/ventas/recurrentes` | Facturas recurrentes |
 | `/clientes` | CRM básico de clientes |
 | `/crm/*` | Pipeline de ventas, calendario, reservas, reuniones |
 | `/rrhh/empleados` | Gestión de empleados |
 | `/rrhh/nominas` | Nóminas con desglose SS e IRPF |
-| `/contabilidad/*` | Libro diario, P&G, activos fijos |
+| `/rrhh/documentos` | Documentos laborales generados por IA (contratos, cartas) |
+| `/rrhh/reclutamiento` | Posiciones abiertas, subida de CVs, análisis IA |
+| `/rrhh/analisis-cv` | Análisis detallado de CVs con scoring |
+| `/contabilidad/*` | Libro diario, P&G, activos fijos, balance |
 | `/banca` | Movimientos bancarios y conciliación |
 | `/documentos` | Repositorio de documentos con búsqueda semántica |
+| `/albaranes` | Albaranes de entrega — CRUD + PDF |
+| `/compras/*` | Facturas de compra, pedidos, proveedores |
+| `/tesoreria/*` | Cashflow, pagos y cobros, remesas |
+| `/mi-equipo` | Empleados IA personalizables — crear, instruir, monitorizar |
+| `/sandbox` | Generador de interfaces UI desde lenguaje natural |
 | `/automatizaciones` | Editor visual de workflows + historial |
 | `/informes` | Informes generados por IA |
 | `/integraciones` | OAuth Google/Microsoft, PSD2 |

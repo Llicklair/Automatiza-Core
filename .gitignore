@@ -63,3 +63,4 @@ desktop/dist/
 # Backups
 backups/
 .gitnexus
+.claude/worktrees/
