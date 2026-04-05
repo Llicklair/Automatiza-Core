@@ -3,7 +3,7 @@ import asyncio
 import logging
 import re
 import urllib.parse
-from datetime import datetime, UTC
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse

@@ -6,7 +6,7 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import select, delete
 from app.db.models.models import TenantKnowledge
-from app.db.session import SessionLocal
+from app.agents.agent_tools import get_sync_db
 
 @tool
 def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
@@ -18,23 +18,21 @@ def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
         category: Categoria a filtrar ('all', 'billing', 'hr', 'crm', 'general')
     """
     try:
-        db = SessionLocal()
-        query = db.query(TenantKnowledge).filter(
-            TenantKnowledge.tenant_id == UUID(tenant_id)
-        )
-        if category != "all":
-            query = query.filter(TenantKnowledge.category == category)
-            
-        facts = query.all()
-        if not facts:
-            return f"No hay conocimientos registrados para la categoria '{category}'."
-            
-        lines = [f"- {f.key}: {f.value} [{f.category}]" for f in facts]
-        return f"Memoria del Tenant ({len(facts)} hechos):\n" + "\n".join(lines)
+        with get_sync_db() as db:
+            query = db.query(TenantKnowledge).filter(
+                TenantKnowledge.tenant_id == UUID(tenant_id)
+            )
+            if category != "all":
+                query = query.filter(TenantKnowledge.category == category)
+
+            facts = query.all()
+            if not facts:
+                return f"No hay conocimientos registrados para la categoria '{category}'."
+
+            lines = [f"- {f.key}: {f.value} [{f.category}]" for f in facts]
+            return f"Memoria del Tenant ({len(facts)} hechos):\n" + "\n".join(lines)
     except Exception as e:
         return f"Error consultando memoria: {e}"
-    finally:
-        db.close()
 
 @tool
 def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
@@ -45,21 +43,19 @@ def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
         key: Nombre corto del hecho a eliminar (ej: 'default_client', 'cliente_principal')
     """
     try:
-        db = SessionLocal()
-        result = db.execute(
-            delete(TenantKnowledge).where(
-                TenantKnowledge.tenant_id == UUID(tenant_id),
-                TenantKnowledge.key == key,
+        with get_sync_db() as db:
+            result = db.execute(
+                delete(TenantKnowledge).where(
+                    TenantKnowledge.tenant_id == UUID(tenant_id),
+                    TenantKnowledge.key == key,
+                )
             )
-        )
-        db.commit()
-        if result.rowcount > 0:
-            return f"Hecho '{key}' eliminado de la memoria del tenant."
-        return f"No se encontró ningún hecho con la clave '{key}'."
+            db.commit()
+            if result.rowcount > 0:
+                return f"Hecho '{key}' eliminado de la memoria del tenant."
+            return f"No se encontró ningún hecho con la clave '{key}'."
     except Exception as e:
         return f"Error eliminando memoria: {e}"
-    finally:
-        db.close()
 
 
 @tool
@@ -73,29 +69,27 @@ def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str 
         category: Categoria (billing, hr, crm, legal, general)
     """
     try:
-        db = SessionLocal()
-        # Buscar si ya existe la llave
-        existing = db.query(TenantKnowledge).filter(
-            TenantKnowledge.tenant_id == UUID(tenant_id),
-            TenantKnowledge.key == key
-        ).first()
-        
-        if existing:
-            existing.value = value
-            existing.category = category
-            db.commit()
-            return f"Hecho '{key}' actualizado en la memoria del tenant."
-        else:
-            new_fact = TenantKnowledge(
-                tenant_id=UUID(tenant_id),
-                key=key,
-                value=value,
-                category=category
-            )
-            db.add(new_fact)
-            db.commit()
-            return f"Hecho '{key}' guardado en la memoria del tenant."
+        with get_sync_db() as db:
+            # Buscar si ya existe la llave
+            existing = db.query(TenantKnowledge).filter(
+                TenantKnowledge.tenant_id == UUID(tenant_id),
+                TenantKnowledge.key == key
+            ).first()
+
+            if existing:
+                existing.value = value
+                existing.category = category
+                db.commit()
+                return f"Hecho '{key}' actualizado en la memoria del tenant."
+            else:
+                new_fact = TenantKnowledge(
+                    tenant_id=UUID(tenant_id),
+                    key=key,
+                    value=value,
+                    category=category
+                )
+                db.add(new_fact)
+                db.commit()
+                return f"Hecho '{key}' guardado en la memoria del tenant."
     except Exception as e:
         return f"Error guardando memoria: {e}"
-    finally:
-        db.close()
