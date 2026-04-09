@@ -66,7 +66,7 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
     ];
 
     const sel = "border-blue-500/50 bg-blue-500/10 text-blue-300";
-    const unsel = "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700";
+    const unsel = "border-border bg-background text-muted-foreground hover:border-border";
 
     return (
         <div className="space-y-3">
@@ -78,17 +78,17 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                     onChange={e => { setNlText(e.target.value); setNlError(""); }}
                     onKeyDown={e => e.key === "Enter" && handleNlParse()}
                     placeholder="Ej: cada lunes a las 9, cada día a medianoche, cada 5 minutos…"
-                    className="flex-1 bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition placeholder:text-zinc-600"
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-foreground text-xs focus:outline-none focus:border-blue-500 transition placeholder:text-muted-foreground/60"
                 />
                 <button type="button" onClick={handleNlParse} disabled={nlParsing || !nlText.trim()}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition disabled:opacity-40 flex items-center gap-1">
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-foreground rounded-lg text-xs font-medium transition disabled:opacity-40 flex items-center gap-1">
                     {nlParsing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                     {nlParsing ? "..." : "Aplicar"}
                 </button>
             </div>
             {nlError && <p className="text-[10px] text-red-400">{nlError}</p>}
 
-            <label className="block text-xs text-zinc-400 uppercase tracking-wider">O configura manualmente</label>
+            <label className="block text-xs text-muted-foreground uppercase tracking-wider">O configura manualmente</label>
             <div className="flex flex-wrap gap-2">
                 {FREQS.map(f => (
                     <button key={f.key} type="button" onClick={() => setF(f.key)}
@@ -101,18 +101,18 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
             <div className="flex flex-wrap gap-3 items-end">
                 {freq === "minutes" && (
                     <div>
-                        <label className="block text-[10px] text-zinc-500 mb-1">Cada</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">Cada</label>
                         <select value={minute} onChange={e => setM(Number(e.target.value))}
-                            className="bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                             {[1,2,5,10,15,20,30].map(v => <option key={v} value={v}>{v} minutos</option>)}
                         </select>
                     </div>
                 )}
                 {freq === "hourly" && (
                     <div>
-                        <label className="block text-[10px] text-zinc-500 mb-1">Al minuto</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">Al minuto</label>
                         <select value={minute} onChange={e => setM(Number(e.target.value))}
-                            className="bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                             {MINUTES_OPTIONS.map(v => <option key={v} value={v}>{String(v).padStart(2,"0")}</option>)}
                         </select>
                     </div>
@@ -120,16 +120,16 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 {(freq === "daily" || freq === "weekly" || freq === "monthly") && (
                     <>
                         <div>
-                            <label className="block text-[10px] text-zinc-500 mb-1">Hora</label>
+                            <label className="block text-[10px] text-muted-foreground mb-1">Hora</label>
                             <select value={hour} onChange={e => setH(Number(e.target.value))}
-                                className="bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                                className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                                 {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-[10px] text-zinc-500 mb-1">Minuto</label>
+                            <label className="block text-[10px] text-muted-foreground mb-1">Minuto</label>
                             <select value={minute} onChange={e => setM(Number(e.target.value))}
-                                className="bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                                className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                                 {MINUTES_OPTIONS.map(v => <option key={v} value={v}>{String(v).padStart(2,"0")}</option>)}
                             </select>
                         </div>
@@ -137,7 +137,7 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 )}
                 {freq === "weekly" && (
                     <div>
-                        <label className="block text-[10px] text-zinc-500 mb-1">Día</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">Día</label>
                         <div className="flex gap-1">
                             {DAYS.map((d, i) => (
                                 <button key={i} type="button" onClick={() => setWd(i)}
@@ -150,9 +150,9 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 )}
                 {freq === "monthly" && (
                     <div>
-                        <label className="block text-[10px] text-zinc-500 mb-1">Día del mes</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">Día del mes</label>
                         <select value={day} onChange={e => setD(Number(e.target.value))}
-                            className="bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                             {MONTHS_DAYS.map(d => <option key={d} value={d}>Día {d}</option>)}
                         </select>
                     </div>

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
+      "Bash(where poetry)",
+      "Read(//c/Users/Marcos/Desktop/atomatizacion de empresas/desktop/$APPDATA/pypoetry/venv/Scripts/**)",
+      "Read(//c/Users/Marcos/Desktop/atomatizacion de empresas/desktop/$LOCALAPPDATA/Programs/Python/*/**)",
+      "Bash('/c/Users/Marcos/AppData/Local/Programs/Python/Python314/python.exe':*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

@@ -28,7 +28,7 @@ export default function InfoBanner({ id, title, children }: InfoBannerProps) {
         <div className="mb-6 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 relative">
             <button
                 onClick={dismiss}
-                className="absolute top-3 right-3 text-zinc-500 hover:text-white transition"
+                className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition"
                 aria-label="Cerrar"
             >
                 <X className="w-4 h-4" />
@@ -39,7 +39,7 @@ export default function InfoBanner({ id, title, children }: InfoBannerProps) {
                 </div>
                 <div className="pr-6">
                     <h3 className="text-sm font-semibold text-indigo-300 mb-1">{title}</h3>
-                    <div className="text-sm text-zinc-400 leading-relaxed space-y-1">
+                    <div className="text-sm text-muted-foreground leading-relaxed space-y-1">
                         {children}
                     </div>
                 </div>

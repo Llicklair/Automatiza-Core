@@ -109,16 +109,16 @@ export default function AsesoriasPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                        <Scale className="w-8 h-8 text-indigo-500" />
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                        <Scale className="w-8 h-8 text-primary" />
                         Asesoría Jurídica y Fiscal
                     </h1>
-                    <p className="text-zinc-400 mt-2">
+                    <p className="text-muted-foreground mt-2">
                         Mantente al día de tus obligaciones con la AEAT y las últimas normativas del BOE para tu negocio.
                     </p>
                 </div>
 
-                <div className="flex bg-[#18181b] p-1 rounded-xl border border-[#27272a]">
+                <div className="flex bg-card p-1 rounded-xl border border-border">
                     {[
                         { id: "fiscal", label: "Fiscal / AEAT", icon: Briefcase },
                         { id: "laboral", label: "Laboral", icon: Users },
@@ -133,8 +133,8 @@ export default function AsesoriasPage() {
                                 className={cn(
                                     "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-lg",
                                     isActive
-                                        ? "bg-indigo-600/20 text-indigo-400 shadow-sm"
-                                        : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                        ? "bg-primary/20 text-primary shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                                 )}
                             >
                                 <Icon className="w-4 h-4" />
@@ -147,7 +147,7 @@ export default function AsesoriasPage() {
 
             {loading ? (
                 <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -155,45 +155,45 @@ export default function AsesoriasPage() {
                     {/* Left Column: Chat IA + Calendario Fiscal */}
                     <div className="col-span-1 space-y-4">
                         {/* AI Advisory Chat */}
-                        <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/20 flex flex-col h-[400px]">
-                            <div className="px-5 py-4 border-b border-[#27272a] flex items-center justify-between bg-[#18181b]">
+                        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg shadow-black/20 flex flex-col h-[400px]">
+                            <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-card">
                                 <div className="flex items-center gap-2">
-                                    <Bot className="w-5 h-5 text-indigo-400" />
-                                    <h2 className="text-sm font-semibold text-white">Consulta al Asesor IA</h2>
+                                    <Bot className="w-5 h-5 text-primary" />
+                                    <h2 className="text-sm font-semibold text-foreground">Consulta al Asesor IA</h2>
                                 </div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
                                 {chatMessages.length === 0 ? (
                                     <div className="text-center py-10 flex flex-col items-center justify-center h-full">
-                                        <div className="w-12 h-12 bg-indigo-500/10 rounded-full flex items-center justify-center mb-3">
-                                            <Scale className="w-6 h-6 text-indigo-400" />
+                                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+                                            <Scale className="w-6 h-6 text-primary" />
                                         </div>
-                                        <p className="text-sm text-zinc-400">¿Tienes dudas fiscales?</p>
-                                        <p className="text-xs text-zinc-500 mt-1 max-w-[200px] leading-relaxed">Pregunta sobre impuestos, deducciones o vencimientos de tu cuenta.</p>
+                                        <p className="text-sm text-muted-foreground">¿Tienes dudas fiscales?</p>
+                                        <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">Pregunta sobre impuestos, deducciones o vencimientos de tu cuenta.</p>
                                     </div>
                                 ) : (
                                     chatMessages.map((msg, idx) => (
                                         <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            {msg.role === 'ai' && <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-indigo-400" /></div>}
-                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-[#1f1f22] text-zinc-300 rounded-bl-none border border-[#27272a]'}`}>
+                                            {msg.role === 'ai' && <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-primary" /></div>}
+                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm ${msg.role === 'user' ? 'bg-primary text-foreground rounded-br-none' : 'bg-muted text-foreground rounded-bl-none border border-border'}`}>
                                                 <div className="whitespace-pre-wrap">{msg.content}</div>
                                             </div>
-                                            {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0"><User className="w-4 h-4 text-zinc-400" /></div>}
+                                            {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0"><User className="w-4 h-4 text-muted-foreground" /></div>}
                                         </div>
                                     ))
                                 )}
                                 {chatLoading && (
                                     <div className="flex gap-3 justify-start">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-indigo-400" /></div>
-                                        <div className="px-4 py-3 rounded-2xl bg-[#1f1f22] text-zinc-400 rounded-bl-none text-sm flex items-center gap-2 border border-[#27272a]">
+                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-primary" /></div>
+                                        <div className="px-4 py-3 rounded-2xl bg-muted text-muted-foreground rounded-bl-none text-sm flex items-center gap-2 border border-border">
                                             <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" /> Analizando contexto legal...
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="p-3 border-t border-[#27272a] bg-[#18181b]">
+                            <div className="p-3 border-t border-border bg-card">
                                 <form onSubmit={handleChat} className="flex gap-2">
                                     <input
                                         type="text"
@@ -201,12 +201,12 @@ export default function AsesoriasPage() {
                                         onChange={(e) => setChatInput(e.target.value)}
                                         disabled={chatLoading}
                                         placeholder="Ej. ¿Cuándo presento el IVA?"
-                                        className="flex-1 bg-[#0d0d0f] border border-[#27272a] text-sm text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition disabled:opacity-50"
+                                        className="flex-1 bg-background border border-border text-sm text-foreground rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition disabled:opacity-50"
                                     />
                                     <button
                                         type="submit"
                                         disabled={chatLoading || !chatInput.trim()}
-                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-xl transition flex items-center justify-center disabled:opacity-50"
+                                        className="bg-primary hover:bg-primary text-foreground px-4 py-3 rounded-xl transition flex items-center justify-center disabled:opacity-50"
                                     >
                                         <Send className="w-4 h-4" />
                                     </button>
@@ -215,26 +215,26 @@ export default function AsesoriasPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <CalendarDays className="w-5 h-5 text-zinc-400" />
-                            <h2 className="text-xl font-semibold text-white">Próximos Vencimientos</h2>
+                            <CalendarDays className="w-5 h-5 text-muted-foreground" />
+                            <h2 className="text-xl font-semibold text-foreground">Próximos Vencimientos</h2>
                         </div>
 
-                        <div className="bg-[#18181b] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/20">
+                        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg shadow-black/20">
                             {events.length === 0 ? (
-                                <div className="p-8 text-center text-zinc-500 text-sm">
+                                <div className="p-8 text-center text-muted-foreground text-sm">
                                     {filter === "mercantil"
                                         ? "Las obligaciones mercantiles tienen plazos anuales. Consulta la guía normativa."
                                         : "No hay vencimientos próximos en los próximos meses."}
                                 </div>
                             ) : (
-                                <div className="divide-y divide-[#27272a]">
+                                <div className="divide-y divide-border">
                                     {events.map((evt, i) => {
                                         const isUrgent = evt.dias_restantes <= evt.urgente_dias;
                                         return (
-                                            <div key={i} className="p-5 hover:bg-white/5 transition-colors">
+                                            <div key={i} className="p-5 hover:bg-accent/50 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#27272a] text-zinc-300">
+                                                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-border text-foreground">
                                                             Mod. {evt.modelo}
                                                         </span>
                                                         {isUrgent && (
@@ -245,17 +245,17 @@ export default function AsesoriasPage() {
                                                         )}
                                                     </div>
                                                     <span className={cn(
-                                                        "text-xs font-medium px-2 py-0.5 rounded-full bg-white/5",
+                                                        "text-xs font-medium px-2 py-0.5 rounded-full bg-accent/50",
                                                         isUrgent ? "text-red-400 border border-red-500/20" : "text-emerald-400 border border-emerald-500/20"
                                                     )}>
                                                         Faltan {evt.dias_restantes} días
                                                     </span>
                                                 </div>
-                                                <h3 className="text-zinc-100 font-medium">{evt.nombre}</h3>
-                                                <p className="text-zinc-500 text-sm mt-1">{evt.descripcion}</p>
-                                                <div className="mt-3 text-xs text-zinc-400 flex items-center gap-2">
+                                                <h3 className="text-foreground font-medium">{evt.nombre}</h3>
+                                                <p className="text-muted-foreground text-sm mt-1">{evt.descripcion}</p>
+                                                <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2">
                                                     <CalendarDays className="w-3.5 h-3.5 opacity-70" />
-                                                    Fecha límite: <span className="text-white font-medium">{new Date(evt.fecha_limite).toLocaleDateString()}</span>
+                                                    Fecha límite: <span className="text-foreground font-medium">{new Date(evt.fecha_limite).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         );
@@ -272,8 +272,8 @@ export default function AsesoriasPage() {
                         {/* Guías Normativas */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
-                                <BookOpen className="w-5 h-5 text-zinc-400" />
-                                <h2 className="text-xl font-semibold text-white">
+                                <BookOpen className="w-5 h-5 text-muted-foreground" />
+                                <h2 className="text-xl font-semibold text-foreground">
                                     Guía Normativa — {filter === "fiscal" ? "Fiscal / AEAT" : filter === "laboral" ? "Laboral" : "Mercantil"}
                                 </h2>
                             </div>
@@ -284,43 +284,43 @@ export default function AsesoriasPage() {
                                     return (
                                         <div
                                             key={i}
-                                            className="bg-[#18181b] border border-[#27272a] rounded-2xl overflow-hidden shadow-lg shadow-black/10 transition-all"
+                                            className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg shadow-black/10 transition-all"
                                         >
                                             <button
                                                 onClick={() => setExpandedGuide(isExpanded ? null : i)}
-                                                className="w-full p-5 flex items-start gap-4 text-left hover:bg-white/5 transition-colors"
+                                                className="w-full p-5 flex items-start gap-4 text-left hover:bg-accent/50 transition-colors"
                                             >
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                    <Gavel className="w-5 h-5 text-indigo-400" />
+                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    <Gavel className="w-5 h-5 text-primary" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h3 className="text-zinc-100 font-medium leading-snug">{guide.titulo}</h3>
-                                                    <p className="text-zinc-500 text-sm mt-1 line-clamp-2">{guide.resumen}</p>
+                                                    <h3 className="text-foreground font-medium leading-snug">{guide.titulo}</h3>
+                                                    <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{guide.resumen}</p>
                                                 </div>
                                                 <div className="flex-shrink-0 mt-1">
                                                     {isExpanded
-                                                        ? <ChevronUp className="w-5 h-5 text-zinc-500" />
-                                                        : <ChevronDown className="w-5 h-5 text-zinc-500" />
+                                                        ? <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                                                        : <ChevronDown className="w-5 h-5 text-muted-foreground" />
                                                     }
                                                 </div>
                                             </button>
 
                                             {isExpanded && (
-                                                <div className="px-5 pb-5 pt-0 space-y-4 border-t border-[#27272a] animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <div className="px-5 pb-5 pt-0 space-y-4 border-t border-border animate-in fade-in slide-in-from-top-2 duration-200">
                                                     <div className="pt-4">
-                                                        <p className="text-zinc-300 text-sm leading-relaxed">{guide.resumen}</p>
+                                                        <p className="text-foreground text-sm leading-relaxed">{guide.resumen}</p>
                                                     </div>
 
-                                                    <div className="flex items-start gap-3 bg-[#111113] rounded-xl p-4 border border-[#27272a]">
+                                                    <div className="flex items-start gap-3 bg-card rounded-xl p-4 border border-border">
                                                         <Lightbulb className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                                                         <div>
                                                             <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">Consejo para tu PYME</p>
-                                                            <p className="text-zinc-300 text-sm leading-relaxed">{guide.consejo_pyme}</p>
+                                                            <p className="text-foreground text-sm leading-relaxed">{guide.consejo_pyme}</p>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-xs">
-                                                        <span className="text-zinc-500 bg-[#111113] px-3 py-1.5 rounded-lg border border-[#27272a] font-mono">
+                                                        <span className="text-muted-foreground bg-card px-3 py-1.5 rounded-lg border border-border font-mono">
                                                             {guide.referencia_legal}
                                                         </span>
                                                         {guide.url_boe && (
@@ -328,7 +328,7 @@ export default function AsesoriasPage() {
                                                                 href={guide.url_boe}
                                                                 target="_blank"
                                                                 rel="noreferrer"
-                                                                className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors"
+                                                                className="flex items-center gap-1.5 text-primary hover:text-primary transition-colors"
                                                             >
                                                                 <ExternalLink className="w-3.5 h-3.5" />
                                                                 Ver en el BOE
@@ -347,17 +347,17 @@ export default function AsesoriasPage() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <Newspaper className="w-5 h-5 text-zinc-400" />
-                                    <h2 className="text-xl font-semibold text-white">Novedades Normativas (BOE)</h2>
+                                    <Newspaper className="w-5 h-5 text-muted-foreground" />
+                                    <h2 className="text-xl font-semibold text-foreground">Novedades Normativas (BOE)</h2>
                                 </div>
                                 <div className="relative hidden sm:block">
-                                    <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                                     <input
                                         type="text"
                                         placeholder="Buscar decretos..."
                                         value={newsSearch}
                                         onChange={e => setNewsSearch(e.target.value)}
-                                        className="bg-[#111113] border border-[#27272a] rounded-lg py-1.5 pl-9 pr-3 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-64 transition-all"
+                                        className="bg-card border border-border rounded-lg py-1.5 pl-9 pr-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64 transition-all"
                                     />
                                 </div>
                             </div>
@@ -371,7 +371,7 @@ export default function AsesoriasPage() {
                                         (item.identificador || "").toLowerCase().includes(q)
                                     ) : news;
                                     if (filtered.length === 0) return (
-                                        <div className="bg-[#18181b] border border-[#27272a] rounded-2xl p-8 text-center text-zinc-500">
+                                        <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
                                             {news.length === 0
                                                 ? "No se encontraron novedades recientes del BOE para esta categoría. Consulta la guía normativa de arriba para conocer tus obligaciones vigentes."
                                                 : `Sin resultados para "${newsSearch}"`}
@@ -383,11 +383,11 @@ export default function AsesoriasPage() {
                                             href={item.url}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="group bg-[#18181b] border border-[#27272a] hover:border-indigo-500/50 rounded-2xl p-5 hover:bg-[#1f1f22] transition-all flex flex-col sm:flex-row gap-5 shadow-lg shadow-black/10"
+                                            className="group bg-card border border-border hover:border-primary/20 rounded-2xl p-5 hover:bg-muted transition-all flex flex-col sm:flex-row gap-5 shadow-lg shadow-black/10"
                                         >
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <span className="text-xs text-zinc-500 font-medium bg-[#111113] px-2 py-1 rounded-md border border-[#27272a]">
+                                                    <span className="text-xs text-muted-foreground font-medium bg-card px-2 py-1 rounded-md border border-border">
                                                         {new Date(item.fecha).toLocaleDateString()}
                                                     </span>
                                                     {item.relevante_pyme && (
@@ -396,21 +396,21 @@ export default function AsesoriasPage() {
                                                         </span>
                                                     )}
                                                     {item.identificador && (
-                                                        <span className="text-[10px] font-mono text-zinc-600">
+                                                        <span className="text-[10px] font-mono text-muted-foreground">
                                                             {item.identificador}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <h3 className="text-zinc-100 font-medium leading-snug group-hover:text-indigo-400 transition-colors">
+                                                <h3 className="text-foreground font-medium leading-snug group-hover:text-primary transition-colors">
                                                     {item.titulo}
                                                 </h3>
-                                                <p className="text-zinc-400 text-sm mt-2 line-clamp-2 md:line-clamp-3 leading-relaxed">
+                                                <p className="text-muted-foreground text-sm mt-2 line-clamp-2 md:line-clamp-3 leading-relaxed">
                                                     {item.descripcion}
                                                 </p>
                                             </div>
                                             <div className="flex sm:flex-col justify-end items-center sm:items-center gap-2 shrink-0">
-                                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-indigo-500 transition-colors group-hover:shadow-lg group-hover:shadow-indigo-500/25">
-                                                    <ExternalLink className="w-4 h-4 text-zinc-400 group-hover:text-white" />
+                                                <div className="w-10 h-10 rounded-full bg-accent/50 flex items-center justify-center group-hover:bg-primary transition-colors group-hover:shadow-lg group-hover:shadow-primary/20">
+                                                    <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
                                                 </div>
                                             </div>
                                         </a>

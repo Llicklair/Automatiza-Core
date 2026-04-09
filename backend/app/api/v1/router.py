@@ -11,6 +11,7 @@ from app.api.v1.routes import (
     messaging,
     recruitment,
     scanner,
+    system,
     auth,
     banking,
     crm,
@@ -55,3 +56,4 @@ api_router.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
 api_router.include_router(messaging.router)
 api_router.include_router(hr_documents.router)
 api_router.include_router(generative_ui.router)
+api_router.include_router(system.router)

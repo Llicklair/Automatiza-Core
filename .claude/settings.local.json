@@ -41,7 +41,11 @@
       "Bash(env:*)",
       "Bash(npx tsc:*)",
       "Bash(PGPASSWORD=pyme_password \"c:/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/psql.exe\":*)",
-      "mcp__plugin_context-mode_context-mode__ctx_index"
+      "mcp__plugin_context-mode_context-mode__ctx_index",
+      "Bash(echo exit: $?:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_stats",
+      "Bash(start:*)",
+      "Bash([ -f \"$HOME/Desktop/AutomatizaPyme_BOOT_LOG.txt\" ])"
     ]
   }
 }

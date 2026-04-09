@@ -1,3 +1,6 @@
+const createNextIntlPlugin = require("next-intl/plugin");
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // NEXT_PUBLIC_API_URL is resolved at runtime in client.ts via window.location
@@ -21,4 +24,4 @@ const nextConfig = {
     },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

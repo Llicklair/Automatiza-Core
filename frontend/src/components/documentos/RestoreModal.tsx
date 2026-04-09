@@ -17,18 +17,18 @@ export default function RestoreModal({ onClose }: RestoreModalProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}>
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl">
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
                         <div className="bg-red-500/10 w-10 h-10 rounded-xl flex items-center justify-center border border-red-500/20">
                             <Upload className="w-5 h-5 text-red-400" />
                         </div>
                         <div>
-                            <h2 className="text-base font-semibold text-white">Restaurar Base de Datos</h2>
-                            <p className="text-xs text-zinc-500">Sobreescribira todos los datos actuales</p>
+                            <h2 className="text-base font-semibold text-foreground">Restaurar Base de Datos</h2>
+                            <p className="text-xs text-muted-foreground">Sobreescribira todos los datos actuales</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -47,18 +47,18 @@ export default function RestoreModal({ onClose }: RestoreModalProps) {
                 />
                 <button
                     onClick={() => restoreFileRef.current?.click()}
-                    className="w-full border-2 border-dashed border-[#27272a] hover:border-zinc-600 rounded-xl py-6 flex flex-col items-center gap-2 transition mb-4"
+                    className="w-full border-2 border-dashed border-border hover:border-border rounded-xl py-6 flex flex-col items-center gap-2 transition mb-4"
                 >
                     {restoreFile ? (
                         <>
                             <CheckCircle2 className="w-7 h-7 text-emerald-400" />
-                            <span className="text-sm text-white font-medium">{restoreFile.name}</span>
-                            <span className="text-xs text-zinc-500">{(restoreFile.size / 1024).toFixed(0)} KB</span>
+                            <span className="text-sm text-foreground font-medium">{restoreFile.name}</span>
+                            <span className="text-xs text-muted-foreground">{(restoreFile.size / 1024).toFixed(0)} KB</span>
                         </>
                     ) : (
                         <>
-                            <Database className="w-7 h-7 text-zinc-500" />
-                            <span className="text-sm text-zinc-400">Seleccionar archivo .sql</span>
+                            <Database className="w-7 h-7 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Seleccionar archivo .sql</span>
                         </>
                     )}
                 </button>
@@ -66,7 +66,7 @@ export default function RestoreModal({ onClose }: RestoreModalProps) {
                 <div className="flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 rounded-xl border border-[#27272a] text-zinc-400 hover:text-white hover:border-zinc-600 transition text-sm"
+                        className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:border-border transition text-sm"
                     >
                         Cancelar
                     </button>
@@ -85,7 +85,7 @@ export default function RestoreModal({ onClose }: RestoreModalProps) {
                                 setRestoring(false);
                             }
                         }}
-                        className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium flex items-center justify-center gap-2 transition"
+                        className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-foreground text-sm font-medium flex items-center justify-center gap-2 transition"
                     >
                         {restoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                         Restaurar ahora

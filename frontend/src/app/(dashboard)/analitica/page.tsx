@@ -25,14 +25,14 @@ function KpiCard({
     trend?: { dir: "up" | "down"; pct: number }; color?: "indigo" | "emerald" | "red" | "amber";
 }) {
     const colors = {
-        indigo: "border-indigo-500/20 from-indigo-900/20 text-indigo-400 bg-indigo-500/10",
+        indigo: "border-primary/20 from-indigo-900/20 text-primary bg-primary/10",
         emerald: "border-emerald-500/20 from-emerald-900/20 text-emerald-400 bg-emerald-500/10",
         red: "border-red-500/20 from-red-900/20 text-red-400 bg-red-500/10",
         amber: "border-amber-500/20 from-amber-900/20 text-amber-400 bg-amber-500/10",
     };
     const c = colors[color];
     return (
-        <div className={`rounded-2xl border ${c.split(" ")[0]} bg-gradient-to-br from-[#111113] ${c.split(" ")[1]} p-6 relative overflow-hidden group`}>
+        <div className={`rounded-2xl border ${c.split(" ")[0]} bg-gradient-to-br from-card ${c.split(" ")[1]} p-6 relative overflow-hidden group`}>
             <div className={`absolute -right-4 -top-4 w-24 h-24 ${c.split(" ")[3]}/30 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-700`} />
             <div className="flex items-start justify-between mb-4 relative">
                 <div className={`w-10 h-10 rounded-xl ${c.split(" ")[3]} border ${c.split(" ")[0]} flex items-center justify-center`}>
@@ -48,9 +48,9 @@ function KpiCard({
                     </span>
                 )}
             </div>
-            <p className="text-xs text-zinc-500 mb-1 font-medium uppercase tracking-wide">{label}</p>
-            <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-            {sub && <p className="text-xs text-zinc-500 mt-1">{sub}</p>}
+            <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">{label}</p>
+            <p className="text-3xl font-bold text-foreground tracking-tight">{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
         </div>
     );
 }
@@ -60,8 +60,8 @@ function KpiCard({
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
         return (
-            <div className="bg-[#18181b] border border-[#3f3f46] rounded-xl p-3 text-xs shadow-xl">
-                <p className="text-zinc-400 mb-2 font-medium">{label}</p>
+            <div className="bg-card border border-border rounded-xl p-3 text-xs shadow-xl">
+                <p className="text-muted-foreground mb-2 font-medium">{label}</p>
                 {payload.map((p: any) => (
                     <p key={p.name} style={{ color: p.color }} className="font-semibold">
                         {p.name}: {fmt(p.value)}€
@@ -139,13 +139,13 @@ export default function AnaliticaPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Analítica</h1>
-                    <p className="mt-1 text-sm text-zinc-400">
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Analítica</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Métricas financieras y operativas en tiempo real
                         {isDemo && <span className="ml-2 text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Sin datos — registra facturas para ver métricas reales</span>}
                     </p>
                 </div>
-                <div className="text-xs text-zinc-600 font-mono bg-[#111113] border border-[#27272a] px-3 py-1.5 rounded-lg">
+                <div className="text-xs text-muted-foreground/60 font-mono bg-card border border-border px-3 py-1.5 rounded-lg">
                     {new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                 </div>
             </div>
@@ -185,14 +185,14 @@ export default function AnaliticaPage() {
             {/* Gráficos principales */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Cashflow evolution */}
-                <div className="lg:col-span-2 bg-[#111113] border border-[#27272a] rounded-2xl p-6 shadow-lg shadow-black/20">
-                    <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-indigo-400" /> Evolución del Cashflow
+                <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
+                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-primary" /> Evolución del Cashflow
                     </h2>
-                    <p className="text-xs text-zinc-500 mb-6">Ingresos vs Gastos — Últimos 6 meses</p>
+                    <p className="text-xs text-muted-foreground mb-6">Ingresos vs Gastos — Últimos 6 meses</p>
                     <div className="h-[240px]">
                         {cashflow.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-sm text-zinc-500">
+                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                                 {isDemo ? "Conecta tu banco o registra facturas para ver el cashflow" : "Sin datos de cashflow"}
                             </div>
                         ) : (
@@ -221,13 +221,13 @@ export default function AnaliticaPage() {
                 </div>
 
                 {/* Distribución por estado */}
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 shadow-lg shadow-black/20">
-                    <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-indigo-400" /> Estado de Facturas
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
+                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-primary" /> Estado de Facturas
                     </h2>
-                    <p className="text-xs text-zinc-500 mb-4">Distribución por importe</p>
+                    <p className="text-xs text-muted-foreground mb-4">Distribución por importe</p>
                     {pieData.length === 0 ? (
-                        <div className="h-[180px] flex items-center justify-center text-sm text-zinc-500">
+                        <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
                             Sin facturas emitidas
                         </div>
                     ) : (
@@ -249,9 +249,9 @@ export default function AnaliticaPage() {
                             <div key={d.name} className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS_PIE[i] }} />
-                                    <span className="text-zinc-400">{d.name}</span>
+                                    <span className="text-muted-foreground">{d.name}</span>
                                 </div>
-                                <span className="text-white font-medium">{fmt(d.value)}€</span>
+                                <span className="text-foreground font-medium">{fmt(d.value)}€</span>
                             </div>
                         ))}
                     </div>
@@ -264,13 +264,13 @@ export default function AnaliticaPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Top Clientes */}
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                        <Users className="w-4 h-4 text-indigo-400" /> Top Clientes
+                <div className="bg-card border border-border rounded-2xl p-6">
+                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" /> Top Clientes
                     </h2>
-                    <p className="text-xs text-zinc-500 mb-5">Por volumen de facturación</p>
+                    <p className="text-xs text-muted-foreground mb-5">Por volumen de facturación</p>
                     {topClientes.length === 0 ? (
-                        <div className="h-[160px] flex items-center justify-center text-sm text-zinc-500">
+                        <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
                             Sin clientes facturados
                         </div>
                     ) : (
@@ -281,10 +281,10 @@ export default function AnaliticaPage() {
                             return (
                                 <div key={c.name}>
                                     <div className="flex items-center justify-between mb-1.5 text-xs">
-                                        <span className="text-zinc-300 font-medium truncate max-w-[160px]">{c.name}</span>
-                                        <span className="text-white font-semibold ml-2 shrink-0">{fmt(c.total)}€</span>
+                                        <span className="text-foreground font-medium truncate max-w-[160px]">{c.name}</span>
+                                        <span className="text-foreground font-semibold ml-2 shrink-0">{fmt(c.total)}€</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-[#27272a] rounded-full overflow-hidden">
+                                    <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
                                         <div
                                             className="h-full rounded-full transition-all duration-700"
                                             style={{
@@ -301,14 +301,14 @@ export default function AnaliticaPage() {
                 </div>
 
                 {/* Facturación mensual por tipo */}
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-indigo-400" /> Facturación por Mes
+                <div className="bg-card border border-border rounded-2xl p-6">
+                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-primary" /> Facturación por Mes
                     </h2>
-                    <p className="text-xs text-zinc-500 mb-5">Emitidas vs Recibidas</p>
+                    <p className="text-xs text-muted-foreground mb-5">Emitidas vs Recibidas</p>
                     <div className="h-[200px]">
                         {cashflow.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-sm text-zinc-500">Sin datos mensuales</div>
+                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sin datos mensuales</div>
                         ) : (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={cashflow} margin={{ top: 5, right: 5, left: -25, bottom: 0 }} barGap={4}>
@@ -324,47 +324,47 @@ export default function AnaliticaPage() {
                 </div>
 
                 {/* Métricas de IA */}
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                        <BrainCircuit className="w-4 h-4 text-indigo-400" /> Rendimiento IA
+                <div className="bg-card border border-border rounded-2xl p-6">
+                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                        <BrainCircuit className="w-4 h-4 text-primary" /> Rendimiento IA
                     </h2>
-                    <p className="text-xs text-zinc-500 mb-5">Estadísticas de agentes</p>
+                    <p className="text-xs text-muted-foreground mb-5">Estadísticas de agentes</p>
 
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between py-3 border-b border-[#27272a]">
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <div className="flex items-center justify-between py-3 border-b border-border">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Completadas
                             </div>
                             <span className="text-emerald-400 font-bold text-sm">{tasksDone}</span>
                         </div>
-                        <div className="flex items-center justify-between py-3 border-b border-[#27272a]">
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <div className="flex items-center justify-between py-3 border-b border-border">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <XCircle className="w-4 h-4 text-red-400" /> Fallidas
                             </div>
                             <span className="text-red-400 font-bold text-sm">{tasksFailed}</span>
                         </div>
-                        <div className="flex items-center justify-between py-3 border-b border-[#27272a]">
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <div className="flex items-center justify-between py-3 border-b border-border">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock className="w-4 h-4 text-amber-400" /> Pendientes
                             </div>
                             <span className="text-amber-400 font-bold text-sm">
                                 {tasks.filter(t => t.status === "pending" || t.status === "executing").length}
                             </span>
                         </div>
-                        <div className="flex items-center justify-between py-3 border-b border-[#27272a]">
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
-                                <Zap className="w-4 h-4 text-indigo-400" /> Tasa de éxito
+                        <div className="flex items-center justify-between py-3 border-b border-border">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Zap className="w-4 h-4 text-primary" /> Tasa de éxito
                             </div>
-                            <span className="text-indigo-400 font-bold text-sm">{tasksSuccessRate}%</span>
+                            <span className="text-primary font-bold text-sm">{tasksSuccessRate}%</span>
                         </div>
 
                         {/* Barra de progreso */}
                         <div className="pt-2">
-                            <div className="flex justify-between text-xs text-zinc-500 mb-2">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-2">
                                 <span>Fiabilidad global</span>
-                                <span className="text-white font-medium">{tasksSuccessRate}%</span>
+                                <span className="text-foreground font-medium">{tasksSuccessRate}%</span>
                             </div>
-                            <div className="w-full h-2 bg-[#27272a] rounded-full overflow-hidden">
+                            <div className="w-full h-2 bg-border rounded-full overflow-hidden">
                                 <div
                                     className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-1000"
                                     style={{ width: `${tasksSuccessRate}%` }}
@@ -381,10 +381,10 @@ export default function AnaliticaPage() {
                     {[
                         { label: "Facturas Cobradas", count: factPagadas, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
                         { label: "Facturas Pendientes", count: factPendientes, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/20" },
-                        { label: "Borradores", count: factBorrador, color: "text-zinc-400", bg: "bg-zinc-500/5 border-zinc-500/20" },
+                        { label: "Borradores", count: factBorrador, color: "text-muted-foreground", bg: "bg-muted border-border" },
                     ].map(item => (
                         <div key={item.label} className={`rounded-2xl border ${item.bg} p-5 flex items-center justify-between`}>
-                            <span className="text-sm text-zinc-400">{item.label}</span>
+                            <span className="text-sm text-muted-foreground">{item.label}</span>
                             <span className={`text-2xl font-bold ${item.color}`}>{item.count}</span>
                         </div>
                     ))}

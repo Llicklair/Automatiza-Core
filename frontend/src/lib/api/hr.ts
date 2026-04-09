@@ -1,4 +1,12 @@
-import { request, downloadBlob } from "./client";
+import { request, downloadBlob, BASE, getToken } from "./client";
+
+export interface EmployeeDocument {
+    id: string;
+    file_name: string;
+    file_type: string | null;
+    file_size: number;
+    created_at: string | null;
+}
 
 export interface Employee {
     id: string;
@@ -58,6 +66,26 @@ export const hr = {
         create: (data: Partial<Employee>) => request<Employee>("/api/v1/hr/employees", { method: "POST", body: JSON.stringify(data) }),
         update: (id: string, data: Partial<Employee>) => request<Employee>(`/api/v1/hr/employees/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
         delete: (id: string) => request(`/api/v1/hr/employees/${id}`, { method: "DELETE" }),
+        documents: {
+            list: (employeeId: string) =>
+                request<EmployeeDocument[]>(`/api/v1/hr/employees/${employeeId}/documents`),
+            upload: async (employeeId: string, file: File): Promise<EmployeeDocument> => {
+                const formData = new FormData();
+                formData.append("file", file);
+                const token = getToken();
+                const res = await fetch(`${BASE}/api/v1/hr/employees/${employeeId}/documents/upload`, {
+                    method: "POST",
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    body: formData,
+                });
+                if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail ?? "Error al subir"); }
+                return res.json();
+            },
+            download: (employeeId: string, docId: string, fileName: string) =>
+                downloadBlob(`/api/v1/hr/employees/${employeeId}/documents/${docId}/download`, fileName),
+            delete: (employeeId: string, docId: string) =>
+                request<void>(`/api/v1/hr/employees/${employeeId}/documents/${docId}`, { method: "DELETE" }),
+        },
     },
     payrolls: {
         list: () => request<Payroll[]>("/api/v1/hr/payrolls"),

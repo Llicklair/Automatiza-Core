@@ -7,6 +7,13 @@ import {
     CalendarClock, AlertTriangle, CheckCircle2, FileText,
     Loader2, ChevronRight, Clock, ReceiptText, MessageSquare, Send, Download,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { KpiCard } from "@/components/shared/KpiCard";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 
 interface FiscalEvent {
     modelo: string;
@@ -20,7 +27,7 @@ interface FiscalEvent {
 
 // Colores por modelo fiscal
 const MODELO_COLORS: Record<string, string> = {
-    "303": "bg-indigo-600/30 text-indigo-300 border-indigo-500/30",
+    "303": "bg-primary/20 text-primary border-primary/20",
     "130": "bg-emerald-600/30 text-emerald-300 border-emerald-500/30",
     "111": "bg-amber-600/30 text-amber-300 border-amber-500/30",
     "115": "bg-purple-600/30 text-purple-300 border-purple-500/30",
@@ -30,7 +37,7 @@ const MODELO_COLORS: Record<string, string> = {
 };
 
 function ModeloBadge({ modelo }: { modelo: string }) {
-    const color = MODELO_COLORS[modelo] || "bg-zinc-700/30 text-zinc-400 border-zinc-500/30";
+    const color = MODELO_COLORS[modelo] || "bg-accent text-muted-foreground border-border";
     return (
         <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg border ${color}`}>
             Mod. {modelo}
@@ -42,10 +49,10 @@ function UrgencyBar({ dias, urgente }: { dias: number; urgente: number }) {
     const pct = Math.max(0, Math.min(100, Math.round((dias / 90) * 100)));
     const isUrgent = dias <= urgente;
     const isClose = dias <= 30;
-    const color = isUrgent ? "bg-red-500" : isClose ? "bg-amber-500" : "bg-indigo-500";
+    const color = isUrgent ? "bg-red-500" : isClose ? "bg-amber-500" : "bg-primary";
 
     return (
-        <div className="w-full h-1 bg-[#27272a] rounded-full overflow-hidden mt-2">
+        <div className="w-full h-1 bg-border rounded-full overflow-hidden mt-2">
             <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${100 - pct}%` }} />
         </div>
     );
@@ -57,41 +64,44 @@ function EventCard({ ev }: { ev: FiscalEvent }) {
     const dateStr = new Date(ev.fecha_limite).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
     return (
-        <div className={`rounded-xl border p-5 transition-all hover:scale-[1.01] cursor-default ${isUrgent
-            ? "border-red-500/30 bg-gradient-to-br from-red-950/20 to-[#111113]"
-            : isClose
-                ? "border-amber-500/30 bg-gradient-to-br from-amber-950/20 to-[#111113]"
-                : "border-[#27272a] bg-[#111113]"
-            }`}>
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <ModeloBadge modelo={ev.modelo} />
-                        <span className="font-semibold text-white text-sm truncate">{ev.nombre}</span>
+        <Card className={
+            isUrgent
+                ? "border-red-500/30 bg-gradient-to-br from-red-950/20 to-card"
+                : isClose
+                    ? "border-amber-500/30 bg-gradient-to-br from-amber-950/20 to-card"
+                    : ""
+        }>
+            <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <ModeloBadge modelo={ev.modelo} />
+                            <span className="font-semibold text-foreground text-sm truncate">{ev.nombre}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{ev.descripcion}</p>
+                        <UrgencyBar dias={ev.dias_restantes} urgente={ev.urgente_dias} />
                     </div>
-                    <p className="text-xs text-zinc-400 leading-relaxed">{ev.descripcion}</p>
-                    <UrgencyBar dias={ev.dias_restantes} urgente={ev.urgente_dias} />
+                    <div className="text-right flex-shrink-0 ml-4">
+                        <p className="text-sm font-bold text-foreground">{dateStr}</p>
+                        <p className={`text-xs font-medium mt-1 ${isUrgent ? "text-red-400" : isClose ? "text-amber-400" : "text-muted-foreground"}`}>
+                            {isUrgent
+                                ? `\u26A0 ${ev.dias_restantes}d`
+                                : `${ev.dias_restantes} d\u00edas`
+                            }
+                        </p>
+                        {isUrgent && (
+                            <span className="inline-block text-[10px] uppercase font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full mt-1">
+                                Urgente
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <div className="text-right flex-shrink-0 ml-4">
-                    <p className="text-sm font-bold text-white">{dateStr}</p>
-                    <p className={`text-xs font-medium mt-1 ${isUrgent ? "text-red-400" : isClose ? "text-amber-400" : "text-zinc-500"}`}>
-                        {isUrgent
-                            ? `⚠ ${ev.dias_restantes}d`
-                            : `${ev.dias_restantes} días`
-                        }
-                    </p>
-                    {isUrgent && (
-                        <span className="inline-block text-[10px] uppercase font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full mt-1">
-                            Urgente
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }
 
-// ─── Consulta fiscal rápida ────────────────────────────────────────────────────
+// --- Consulta fiscal rapida ---
 
 function ConsultaRapida() {
     const [question, setQuestion] = useState("");
@@ -100,10 +110,10 @@ function ConsultaRapida() {
     const [error, setError] = useState<string | null>(null);
 
     const SUGGESTIONS = [
-        "¿Cuándo debo presentar el modelo 303?",
-        "¿Qué es el modelo 130 y para qué sirve?",
-        "¿Tengo que presentar el modelo 347 si facturo más de 3.005€?",
-        "¿Cuál es el plazo para el IRPF como autónomo?",
+        "\u00bfCu\u00e1ndo debo presentar el modelo 303?",
+        "\u00bfQu\u00e9 es el modelo 130 y para qu\u00e9 sirve?",
+        "\u00bfTengo que presentar el modelo 347 si facturo m\u00e1s de 3.005\u20ac?",
+        "\u00bfCu\u00e1l es el plazo para el IRPF como aut\u00f3nomo?",
     ];
 
     async function submit(q: string) {
@@ -142,69 +152,74 @@ function ConsultaRapida() {
         <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map(s => (
-                    <button
+                    <Button
                         key={s}
+                        variant="outline"
+                        size="sm"
                         onClick={() => submit(s)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/20 transition-colors"
+                        className="text-xs text-primary border-primary/20 bg-primary/10 hover:bg-primary/20"
                     >
                         {s}
-                    </button>
+                    </Button>
                 ))}
             </div>
 
             <div className="flex gap-3">
-                <input
+                <Input
                     type="text"
                     value={question}
                     onChange={e => setQuestion(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && submit(question)}
                     placeholder="Escribe tu consulta fiscal..."
-                    className="flex-1 bg-[#18181b] border border-[#3f3f46] rounded-xl px-4 py-2.5 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition"
+                    className="flex-1"
                 />
-                <button
+                <Button
                     onClick={() => submit(question)}
                     disabled={loading || !question.trim()}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition"
+                    size="icon"
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </button>
+                </Button>
             </div>
 
             {loading && (
-                <div className="flex items-center gap-3 text-xs text-zinc-400 py-4">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500 shrink-0" />
-                    El agente fiscal está analizando tu consulta...
+                <div className="flex items-center gap-3 text-xs text-muted-foreground py-4">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    El agente fiscal est\u00e1 analizando tu consulta...
                 </div>
             )}
 
             {error && (
-                <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20 text-red-400 text-sm flex gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{error}</span>
-                </div>
+                <Card className="border-red-500/20 bg-red-500/5">
+                    <CardContent className="p-4 text-red-400 text-sm flex gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{error}</span>
+                    </CardContent>
+                </Card>
             )}
 
             {answer && (
-                <div className="p-5 rounded-xl bg-indigo-500/5 border border-indigo-500/20 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
-                        <MessageSquare className="w-24 h-24 text-indigo-400" />
-                    </div>
-                    <div className="flex items-center gap-2 mb-3 text-xs font-semibold text-indigo-400">
-                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                            <MessageSquare className="w-3 h-3" />
+                <Card className="bg-primary/5 border-primary/20 relative overflow-hidden">
+                    <CardContent className="p-5">
+                        <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+                            <MessageSquare className="w-24 h-24 text-primary" />
                         </div>
-                        Asesor Fiscal IA
-                    </div>
-                    <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">{answer}</p>
-                    <p className="text-xs text-zinc-600 mt-4 pt-3 border-t border-indigo-500/10">
-                        ⚠ Información orientativa generada por IA. Consulta siempre con tu asesor fiscal.
-                    </p>
-                </div>
+                        <div className="flex items-center gap-2 mb-3 text-xs font-semibold text-primary">
+                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                                <MessageSquare className="w-3 h-3" />
+                            </div>
+                            Asesor Fiscal IA
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{answer}</p>
+                        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t border-primary/20">
+                            Informaci\u00f3n orientativa generada por IA. Consulta siempre con tu asesor fiscal.
+                        </p>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );
 }
-
 
 function LibroRegistroExport() {
     const show = useToastStore((s) => s.show);
@@ -226,50 +241,54 @@ function LibroRegistroExport() {
     };
 
     return (
-        <div className="rounded-2xl border border-[#27272a] bg-[#111113] p-5 mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-emerald-400" />
-                        Libro registro de facturas (AEAT)
-                    </h2>
-                    <p className="text-xs text-zinc-500 mt-1 max-w-xl">
-                        Exporta CSV con facturas emitidas o recibidas del ejercicio para contabilidad o revisión.
-                    </p>
+        <Card>
+            <CardContent className="p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-emerald-400" />
+                            Libro registro de facturas (AEAT)
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-xl">
+                            Exporta CSV con facturas emitidas o recibidas del ejercicio para contabilidad o revisi\u00f3n.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className="text-xs text-muted-foreground flex items-center gap-2">
+                            A\u00f1o
+                            <Input
+                                type="number"
+                                min={2020}
+                                max={yearNow + 1}
+                                value={year}
+                                onChange={(e) => setYear(Number(e.target.value) || yearNow)}
+                                className="w-20 h-8"
+                            />
+                        </label>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy !== null}
+                            onClick={() => void download("emitidas")}
+                            className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/20"
+                        >
+                            {busy === "emitidas" ? <Loader2 className="mr-1.5 w-3.5 h-3.5 animate-spin" /> : <Download className="mr-1.5 w-3.5 h-3.5" />}
+                            Emitidas
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy !== null}
+                            onClick={() => void download("recibidas")}
+                            className="text-primary border-primary/20 hover:bg-primary/20"
+                        >
+                            {busy === "recibidas" ? <Loader2 className="mr-1.5 w-3.5 h-3.5 animate-spin" /> : <Download className="mr-1.5 w-3.5 h-3.5" />}
+                            Recibidas
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <label className="text-xs text-zinc-500 flex items-center gap-2">
-                        Año
-                        <input
-                            type="number"
-                            min={2020}
-                            max={yearNow + 1}
-                            value={year}
-                            onChange={(e) => setYear(Number(e.target.value) || yearNow)}
-                            className="w-20 bg-[#18181b] border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-white"
-                        />
-                    </label>
-                    <button
-                        type="button"
-                        disabled={busy !== null}
-                        onClick={() => void download("emitidas")}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-50"
-                    >
-                        {busy === "emitidas" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        Emitidas
-                    </button>
-                    <button
-                        type="button"
-                        disabled={busy !== null}
-                        onClick={() => void download("recibidas")}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 disabled:opacity-50"
-                    >
-                        {busy === "recibidas" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        Recibidas
-                    </button>
-                </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -277,12 +296,10 @@ export default function ImpuestosPage() {
     const [events, setEvents] = useState<FiscalEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [tab, setTab] = useState<"calendario" | "consulta">("calendario");
 
     useEffect(() => {
         api.advisory.calendar(90)
             .then((data: any[]) => {
-                // El endpoint devuelve objetos con estructura del calendario
                 setEvents(data as FiscalEvent[]);
             })
             .catch(err => setError(err.message))
@@ -293,86 +310,79 @@ export default function ImpuestosPage() {
     const proximos = events.filter(ev => ev.dias_restantes > (ev.urgente_dias ?? 15));
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white tracking-tight">Impuestos & Fiscal</h1>
-                <p className="text-sm text-zinc-400 mt-1">
-                    Calendario AEAT, vencimientos fiscales y consultas a tu asesor IA
-                </p>
-            </div>
+        <div className="p-6 space-y-6">
+            <PageHeader
+                title="Impuestos & Fiscal"
+                description="Calendario AEAT, vencimientos fiscales y consultas a tu asesor IA"
+                icon={CalendarClock}
+            />
 
-            {/* Tabs */}
-            <div className="flex gap-1 mb-8 p-1 rounded-xl bg-[#18181b] border border-[#27272a] w-fit">
-                {([
-                    { id: "calendario", label: "Calendario AEAT", icon: CalendarClock },
-                    { id: "consulta", label: "Consultar Asesor IA", icon: MessageSquare },
-                ] as { id: typeof tab, label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
-                    <button
-                        key={id}
-                        onClick={() => setTab(id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${tab === id
-                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                            : "text-zinc-400 hover:text-white"
-                            }`}
-                    >
-                        <Icon className="w-4 h-4" />
-                        {label}
-                    </button>
-                ))}
-            </div>
+            <Tabs defaultValue="calendario">
+                <TabsList>
+                    <TabsTrigger value="calendario" className="gap-2">
+                        <CalendarClock className="w-4 h-4" />
+                        Calendario AEAT
+                    </TabsTrigger>
+                    <TabsTrigger value="consulta" className="gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        Consultar Asesor IA
+                    </TabsTrigger>
+                </TabsList>
 
-            {tab === "consulta" ? (
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 shadow-lg shadow-black/20">
-                    <h2 className="text-sm font-semibold text-white mb-1">Consulta Fiscal</h2>
-                    <p className="text-xs text-zinc-500 mb-5">
-                        El agente responde sobre normativa española vigente basándose en el Modelo de IA configurado
-                    </p>
-                    <ConsultaRapida />
-                </div>
-            ) : (
-                <>
-                    {/* KPIs rápidos */}
-                    <div className="grid grid-cols-3 gap-4 mb-8">
-                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 flex items-center gap-3">
-                            <AlertTriangle className="w-8 h-8 text-red-400 shrink-0" />
-                            <div>
-                                <p className="text-2xl font-bold text-red-400">{loading ? "—" : urgentes.length}</p>
-                                <p className="text-xs text-zinc-500">Vencimientos urgentes</p>
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-center gap-3">
-                            <Clock className="w-8 h-8 text-amber-400 shrink-0" />
-                            <div>
-                                <p className="text-2xl font-bold text-amber-400">{loading ? "—" : proximos.length}</p>
-                                <p className="text-xs text-zinc-500">Próximos 90 días</p>
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
-                            <ReceiptText className="w-8 h-8 text-emerald-400 shrink-0" />
-                            <div>
-                                <p className="text-2xl font-bold text-emerald-400">{loading ? "—" : events.length}</p>
-                                <p className="text-xs text-zinc-500">Modelos en calendario</p>
-                            </div>
-                        </div>
+                <TabsContent value="consulta">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm">Consulta Fiscal</CardTitle>
+                            <CardDescription>
+                                El agente responde sobre normativa espa\u00f1ola vigente bas\u00e1ndose en el Modelo de IA configurado
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ConsultaRapida />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="calendario" className="space-y-6">
+                    {/* KPIs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <KpiCard
+                            title="Vencimientos urgentes"
+                            value={loading ? "\u2014" : urgentes.length}
+                            icon={AlertTriangle}
+                            className={urgentes.length > 0 ? "border-red-500/20" : ""}
+                        />
+                        <KpiCard
+                            title="Pr\u00f3ximos 90 d\u00edas"
+                            value={loading ? "\u2014" : proximos.length}
+                            icon={Clock}
+                        />
+                        <KpiCard
+                            title="Modelos en calendario"
+                            value={loading ? "\u2014" : events.length}
+                            icon={ReceiptText}
+                        />
                     </div>
 
                     {loading ? (
-                        <div className="flex items-center justify-center py-20 text-zinc-400 gap-3">
-                            <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                        <div className="flex items-center justify-center py-20 text-muted-foreground gap-3">
+                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
                             <span className="text-sm">Cargando calendario fiscal AEAT...</span>
                         </div>
                     ) : error ? (
-                        <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20 text-red-400 text-sm flex gap-3">
-                            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div>
-                                <p className="font-medium">Error al cargar el calendario fiscal</p>
-                                <p className="text-red-400/70 text-xs mt-1">{error}</p>
-                            </div>
-                        </div>
+                        <Card className="border-red-500/20 bg-red-500/5">
+                            <CardContent className="p-6 text-red-400 text-sm flex gap-3">
+                                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-medium">Error al cargar el calendario fiscal</p>
+                                    <p className="text-red-400/70 text-xs mt-1">{error}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     ) : (
                         <div className="space-y-8">
                             <LibroRegistroExport />
+
                             {/* Urgentes */}
                             {urgentes.length > 0 && (
                                 <div>
@@ -389,13 +399,13 @@ export default function ImpuestosPage() {
                                 </div>
                             )}
 
-                            {/* Próximos */}
+                            {/* Proximos */}
                             {proximos.length > 0 && (
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
-                                        <CalendarClock className="w-4 h-4 text-zinc-400" />
-                                        <h2 className="text-sm font-semibold text-zinc-400">Próximos Vencimientos</h2>
-                                        <ChevronRight className="w-4 h-4 text-zinc-600 ml-auto" />
+                                        <CalendarClock className="w-4 h-4 text-muted-foreground" />
+                                        <h2 className="text-sm font-semibold text-muted-foreground">Pr\u00f3ximos Vencimientos</h2>
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
                                     </div>
                                     <div className="space-y-3">
                                         {proximos.map((ev, i) => <EventCard key={i} ev={ev} />)}
@@ -404,20 +414,20 @@ export default function ImpuestosPage() {
                             )}
 
                             {events.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
-                                    <CheckCircle2 className="w-12 h-12 text-zinc-700 mb-4" />
-                                    <p className="text-white font-medium">Sin vencimientos próximos</p>
-                                    <p className="text-sm text-zinc-500 mt-1">No hay obligaciones fiscales en los próximos 90 días.</p>
-                                </div>
+                                <EmptyState
+                                    icon={CheckCircle2}
+                                    title="Sin vencimientos pr\u00f3ximos"
+                                    description="No hay obligaciones fiscales en los pr\u00f3ximos 90 d\u00edas."
+                                />
                             )}
 
-                            <p className="text-xs text-zinc-700 text-center pt-4 border-t border-[#27272a]">
-                                Calendario basado en normativa AEAT vigente · Datos orientativos
+                            <p className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
+                                Calendario basado en normativa AEAT vigente &middot; Datos orientativos
                             </p>
                         </div>
                     )}
-                </>
-            )}
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

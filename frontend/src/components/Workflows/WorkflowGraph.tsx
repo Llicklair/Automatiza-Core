@@ -217,12 +217,12 @@ function WorkflowGraphInner({
 
     if (!nodes || nodes.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-start h-full w-full bg-zinc-900/50 rounded-xl border border-dashed border-zinc-800 p-4 gap-4">
+            <div className="flex flex-col items-center justify-start h-full w-full bg-card rounded-xl border border-dashed border-border p-4 gap-4">
                 {editable && (
                     <WorkflowToolbar onAddNode={handleAddNode} onAddParallelBranch={handleAddParallelBranch} />
                 )}
                 <div className="flex-1 flex items-center justify-center">
-                    <p className="text-zinc-500 text-sm">
+                    <p className="text-muted-foreground text-sm">
                         {editable ? "Añade nodos con la barra de herramientas." : "Este workflow no tiene vista de plano generada."}
                     </p>
                 </div>
@@ -231,7 +231,7 @@ function WorkflowGraphInner({
     }
 
     return (
-        <div className="w-full h-full rounded-xl overflow-hidden border border-zinc-800 relative bg-[#09090b]">
+        <div className="w-full h-full rounded-xl overflow-hidden border border-border relative bg-background">
             {editable && (
                 <div className="absolute top-3 left-3 z-50 pointer-events-auto">
                     <WorkflowToolbar onAddNode={handleAddNode} onAddParallelBranch={handleAddParallelBranch} />
@@ -254,7 +254,7 @@ function WorkflowGraphInner({
                 onPaneClick={() => setSelectedNodeId(null)}
             >
                 <Background gap={16} size={1} color="#27272a" />
-                <Controls showInteractive={false} className="bg-zinc-900 border-zinc-800 fill-zinc-400" />
+                <Controls showInteractive={false} className="bg-card border-border fill-zinc-400" />
             </ReactFlow>
             {editable && selectedNode && (
                 <div className="absolute top-3 right-3 z-50 pointer-events-auto">

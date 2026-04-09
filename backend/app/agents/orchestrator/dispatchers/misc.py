@@ -187,6 +187,41 @@ async def _dispatch_marketing(state: OrchestratorState, subtask: dict) -> AgentR
     return await _run_graph_agent(graph, state, subtask, "marketing", "marketing")
 
 
+async def _dispatch_team(state: OrchestratorState, subtask: dict) -> AgentResult:
+    """Crea un empleado IA a partir de la descripción en lenguaje natural."""
+    from app.agents.tool_registry import get_registry
+
+    tenant_id = state["tenant_id"]
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+
+    try:
+        registry = get_registry()
+        tool_fn = registry["create_ai_employee_from_description"]
+        result_text = tool_fn.invoke({"tenant_id": tenant_id, "description": intent})
+
+        success = "Error" not in result_text
+        output = {"action": "completed" if success else "failed", "response": result_text}
+
+        return {
+            "subtask_id": subtask["id"],
+            "agent": "team",
+            "success": success,
+            "output": output,
+            "summary": _format_summary("team", output, success, None if success else result_text),
+            "error": None if success else result_text,
+        }
+    except Exception as e:
+        logger.exception("Error en _dispatch_team")
+        return {
+            "subtask_id": subtask["id"],
+            "agent": "team",
+            "success": False,
+            "output": {"action": "failed", "error": str(e)},
+            "summary": f"Error creando empleado IA: {e}",
+            "error": str(e),
+        }
+
+
 async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca una Habilidad Modular (Skill) del registro dinámico."""
     from app.skills.registry import SkillRegistry

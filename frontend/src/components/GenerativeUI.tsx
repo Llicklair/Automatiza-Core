@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import { api } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
@@ -32,46 +32,76 @@ function sanitizeHTML(dirty: string): string {
     return DOMPurify.sanitize(dirty, {
         ALLOWED_TAGS,
         ALLOWED_ATTR: ALLOWED_ATTRS,
-        ALLOW_DATA_ATTR: false,  // Solo permitir data-erp-action/data-payload/data-confirm
-        ADD_ATTR: ["data-erp-action", "data-payload", "data-confirm"],
+        ALLOW_DATA_ATTR: true,
     });
 }
 
 /**
- * Map de acciones ERP permitidas → handlers.
- * Cada acción debe validar su payload antes de ejecutar.
+ * Resolve domain + intent from an ERP action + payload.
  */
-const ERP_ACTIONS: Record<string, (payload: Record<string, unknown>) => Promise<string>> = {
-    "create-task": async (payload) => {
-        const intent = String(payload.intent || "");
-        if (!intent) throw new Error("Falta intent para crear tarea");
-        const domain = String(payload.domain || "").trim() || "general";
-        const task = await api.tasks.create(domain, intent);
-        return `Tarea creada: ${task.id}`;
-    },
-    "view-invoice": async (payload) => {
-        const id = String(payload.id || "");
-        if (!id) throw new Error("Falta ID de factura");
-        window.location.href = `/ventas/facturas/${id}`;
-        return "Navegando a factura...";
-    },
-    "view-employee": async (payload) => {
-        const id = String(payload.id || "");
-        if (!id) throw new Error("Falta ID de empleado");
-        window.location.href = `/rrhh/empleados/${id}`;
-        return "Navegando a empleado...";
-    },
-    "navigate": async (payload) => {
-        const href = String(payload.href || "");
-        if (!href.startsWith("/")) throw new Error("Ruta inválida");
-        window.location.href = href;
-        return `Navegando a ${href}...`;
-    },
-};
+function resolveAction(action: string, payload: Record<string, unknown>): { domain: string; intent: string } | { navigate: string } {
+    switch (action) {
+        case "create-task":
+            return {
+                domain: String(payload.domain || "general").trim(),
+                intent: String(payload.intent || ""),
+            };
+        case "view-invoice":
+            return {
+                domain: "billing",
+                intent: payload.id ? `Mostrar detalle de la factura ${payload.id}` : "Listar facturas recientes",
+            };
+        case "view-employee":
+            return {
+                domain: "hr",
+                intent: payload.id ? `Mostrar detalle del empleado ${payload.id}` : "Listar empleados",
+            };
+        case "navigate": {
+            const href = String(payload.href || "");
+            if (href.startsWith("/")) return { navigate: href };
+            return { domain: "general", intent: `Navegar a ${href}` };
+        }
+        default:
+            // Generic: send action description as task
+            return {
+                domain: String(payload.domain || "general"),
+                intent: payload.intent ? String(payload.intent) : `${action}: ${JSON.stringify(payload)}`,
+            };
+    }
+}
+
+/** Poll a task until it completes or fails. */
+async function pollTask(taskId: string, maxAttempts = 30): Promise<string> {
+    for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const task = await api.tasks.get(taskId);
+        if (task.status === "done" || task.status === "completed") {
+            if (task.output_data) {
+                return typeof task.output_data === "string"
+                    ? task.output_data
+                    : JSON.stringify(task.output_data, null, 2);
+            }
+            // Fallback: check last agent result
+            const lastResult = task.agent_results?.at(-1);
+            if (lastResult?.output_data) {
+                return typeof lastResult.output_data === "string"
+                    ? lastResult.output_data
+                    : JSON.stringify(lastResult.output_data, null, 2);
+            }
+            return "Tarea completada.";
+        }
+        if (task.status === "error" || task.status === "failed") {
+            throw new Error(task.error_message || "La tarea falló.");
+        }
+    }
+    throw new Error("Timeout: la tarea tardó demasiado.");
+}
 
 type GenerativeUIProps = {
     html: string;
     className?: string;
+    /** Called with a follow-up prompt to regenerate the UI with fresh data. */
+    onRefresh?: (prompt: string) => Promise<void>;
 };
 
 /**
@@ -82,12 +112,12 @@ type GenerativeUIProps = {
  * - Valida payload JSON antes de ejecutar
  * - Muestra confirmación si data-confirm está presente
  */
-export default function GenerativeUI({ html, className = "" }: GenerativeUIProps) {
+export default function GenerativeUI({ html, className = "", onRefresh }: GenerativeUIProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const showToast = useToastStore((s) => s.show);
+    const [loading, setLoading] = useState(false);
 
     const handleAction = useCallback(async (action: string, payloadStr: string, confirmMsg?: string) => {
-        // Parse payload
         let payload: Record<string, unknown> = {};
         if (payloadStr) {
             try {
@@ -98,26 +128,42 @@ export default function GenerativeUI({ html, className = "" }: GenerativeUIProps
             }
         }
 
-        // Confirmation dialog
-        if (confirmMsg) {
-            const confirmed = window.confirm(confirmMsg);
-            if (!confirmed) return;
-        }
+        if (confirmMsg && !window.confirm(confirmMsg)) return;
 
-        // Find and execute handler
-        const handler = ERP_ACTIONS[action];
-        if (!handler) {
-            showToast(`Acción ERP desconocida: ${action}`, "error");
+        const normalized = action.replace(/_/g, "-");
+        const resolved = resolveAction(normalized, payload);
+
+        // Navigate actions go directly
+        if ("navigate" in resolved) {
+            window.location.href = resolved.navigate;
             return;
         }
 
+        if (!resolved.intent) {
+            showToast("Falta descripción para la acción", "error");
+            return;
+        }
+
+        setLoading(true);
         try {
-            const result = await handler(payload);
-            showToast(result, "success");
+            // Create task and wait for result
+            const task = await api.tasks.create(resolved.domain, resolved.intent);
+            const result = await pollTask(task.id);
+
+            // If we have an onRefresh callback, regenerate the UI with the new data
+            if (onRefresh) {
+                await onRefresh(
+                    `Actualiza el panel con estos datos reales obtenidos del ERP:\n\n${result}`
+                );
+            } else {
+                showToast("Datos obtenidos correctamente", "success");
+            }
         } catch (e: any) {
             showToast(e.message || "Error ejecutando acción", "error");
+        } finally {
+            setLoading(false);
         }
-    }, [showToast]);
+    }, [showToast, onRefresh]);
 
     // Attach click interceptor
     useEffect(() => {
@@ -145,12 +191,22 @@ export default function GenerativeUI({ html, className = "" }: GenerativeUIProps
     const sanitized = sanitizeHTML(html);
 
     return (
-        <div
-            ref={containerRef}
-            className={`generative-ui prose prose-invert prose-sm max-w-none ${className}`}
-            dangerouslySetInnerHTML={{ __html: sanitized }}
-        />
+        <div className={`generative-ui ${className} relative`}>
+            {loading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="inline-block w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                        Actualizando panel con datos reales…
+                    </div>
+                </div>
+            )}
+            <div
+                ref={containerRef}
+                className="prose prose-invert prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: sanitized }}
+            />
+        </div>
     );
 }
 
-export { sanitizeHTML, ERP_ACTIONS };
+export { sanitizeHTML };

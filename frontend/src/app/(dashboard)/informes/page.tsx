@@ -69,7 +69,7 @@ function KpiCard({ label, value, sub, icon: Icon, color = "indigo" }: {
     color?: "indigo" | "emerald" | "red" | "amber" | "blue" | "purple";
 }) {
     const cls: Record<string, string> = {
-        indigo: "border-indigo-500/20 bg-indigo-500/10 text-indigo-400",
+        indigo: "border-primary/20 bg-primary/10 text-primary",
         emerald: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
         red: "border-red-500/20 bg-red-500/10 text-red-400",
         amber: "border-amber-500/20 bg-amber-500/10 text-amber-400",
@@ -78,16 +78,16 @@ function KpiCard({ label, value, sub, icon: Icon, color = "indigo" }: {
     };
     const c = cls[color];
     return (
-        <div className="rounded-2xl border border-white/5 bg-[#111113] p-5 flex flex-col gap-3">
+        <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
             <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-xl border ${c} flex items-center justify-center shrink-0`}>
                     <Icon className={`w-4 h-4 ${c.split(" ")[2]}`} />
                 </div>
-                <span className="text-xs text-zinc-400 font-medium">{label}</span>
+                <span className="text-xs text-muted-foreground font-medium">{label}</span>
             </div>
             <div>
-                <p className="text-xl font-bold text-white">{value}</p>
-                {sub && <p className="text-xs text-zinc-500 mt-0.5">{sub}</p>}
+                <p className="text-xl font-bold text-foreground">{value}</p>
+                {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
             </div>
         </div>
     );
@@ -97,10 +97,10 @@ function KpiCard({ label, value, sub, icon: Icon, color = "indigo" }: {
 
 function Section({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
     return (
-        <div className="rounded-2xl border border-white/5 bg-[#111113] overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5">
-                <Icon className="w-4 h-4 text-zinc-400" />
-                <span className="text-sm font-semibold text-zinc-200">{title}</span>
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+                <Icon className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">{title}</span>
             </div>
             <div className="p-5">{children}</div>
         </div>
@@ -109,9 +109,9 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
 
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
     return (
-        <div className={`flex justify-between py-2 border-b border-white/5 last:border-0 ${highlight ? "text-white" : "text-zinc-400"}`}>
+        <div className={`flex justify-between py-2 border-b border-border last:border-0 ${highlight ? "text-foreground" : "text-muted-foreground"}`}>
             <span className="text-sm">{label}</span>
-            <span className={`text-sm font-semibold ${highlight ? "text-white" : "text-zinc-200"}`}>{value}</span>
+            <span className={`text-sm font-semibold ${highlight ? "text-foreground" : "text-foreground"}`}>{value}</span>
         </div>
     );
 }
@@ -126,8 +126,8 @@ function TabBtn({ active, label, icon: Icon, onClick }: {
             onClick={onClick}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
                 active
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
             }`}
         >
             <Icon className="w-4 h-4" />
@@ -272,14 +272,14 @@ export default function InformesPage() {
             {/* Header + Tabs */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <BarChart3 className="w-6 h-6 text-indigo-400" />
+                    <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                        <BarChart3 className="w-6 h-6 text-primary" />
                         Informes IA
                     </h1>
-                    <p className="text-sm text-zinc-400 mt-0.5">Informes generados automáticamente por IA</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">Informes generados automáticamente por IA</p>
                 </div>
 
-                <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#111113] p-1">
+                <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
                     <TabBtn active={tab === "gestion"} label="Gestión" icon={BarChart3} onClick={() => setTab("gestion")} />
                     <TabBtn active={tab === "fiscal"} label="Fiscal" icon={Receipt} onClick={() => setTab("fiscal")} />
                 </div>
@@ -292,27 +292,27 @@ export default function InformesPage() {
                 <>
                     {/* Controls */}
                     <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#111113] px-2 py-1">
-                            <button onClick={() => setMonth(prevMonth(month))} className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400">
+                        <div className="flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-1">
+                            <button onClick={() => setMonth(prevMonth(month))} className="p-1.5 rounded-lg hover:bg-accent/50 text-muted-foreground">
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
-                            <span className="text-sm font-semibold text-white w-36 text-center">{fmtMonth(month)}</span>
+                            <span className="text-sm font-semibold text-foreground w-36 text-center">{fmtMonth(month)}</span>
                             <button
                                 onClick={() => setMonth(nextMonth(month))}
                                 disabled={month >= currentMonthStr()}
-                                className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400 disabled:opacity-30"
+                                className="p-1.5 rounded-lg hover:bg-accent/50 text-muted-foreground disabled:opacity-30"
                             >
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
 
                         <button onClick={loadSnapshot} disabled={loading}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 text-sm text-zinc-300 hover:bg-white/5 transition-colors">
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-sm text-foreground hover:bg-accent/50 transition-colors">
                             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
                         </button>
 
                         <button onClick={handleGenerate} disabled={generating || !isCurrentOrPast}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white transition-colors disabled:opacity-40">
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary text-sm font-semibold text-foreground transition-colors disabled:opacity-40">
                             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
                             Generar PDF
                         </button>
@@ -331,7 +331,7 @@ export default function InformesPage() {
                     )}
 
                     {loading && (
-                        <div className="flex items-center justify-center py-20 text-zinc-500">
+                        <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="w-6 h-6 animate-spin mr-2" /> Cargando datos del período…
                         </div>
                     )}
@@ -339,9 +339,9 @@ export default function InformesPage() {
                     {snap && !loading && (
                         <>
                             {/* Resumen ejecutivo */}
-                            <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-900/20 to-[#111113] p-5">
-                                <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">Resumen ejecutivo · {fmtMonth(snap.month)}</p>
-                                <p className="text-sm text-zinc-300 leading-relaxed">{snap.resumen_ejecutivo}</p>
+                            <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-indigo-900/20 to-card p-5">
+                                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Resumen ejecutivo · {fmtMonth(snap.month)}</p>
+                                <p className="text-sm text-foreground leading-relaxed">{snap.resumen_ejecutivo}</p>
                             </div>
 
                             {/* KPIs */}
@@ -390,9 +390,9 @@ export default function InformesPage() {
                     )}
 
                     {!loading && !snap && !error && (
-                        <div className="text-center py-20 text-zinc-500">
+                        <div className="text-center py-20 text-muted-foreground">
                             <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                            <p className="text-lg font-semibold text-zinc-400">Sin datos para {fmtMonth(month)}</p>
+                            <p className="text-lg font-semibold text-muted-foreground">Sin datos para {fmtMonth(month)}</p>
                             <p className="text-sm mt-1">Prueba con otro mes o registra actividad primero</p>
                         </div>
                     )}
@@ -407,51 +407,51 @@ export default function InformesPage() {
                     {/* Controls */}
                     <div className="flex items-center gap-3 flex-wrap">
                         {/* Mode toggle */}
-                        <div className="flex items-center gap-0 rounded-xl border border-white/10 bg-[#111113] p-0.5">
+                        <div className="flex items-center gap-0 rounded-xl border border-border bg-card p-0.5">
                             <button onClick={() => setFiscalMode("mensual")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${fiscalMode === "mensual" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${fiscalMode === "mensual" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                                 Mensual
                             </button>
                             <button onClick={() => setFiscalMode("trimestral")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${fiscalMode === "trimestral" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${fiscalMode === "trimestral" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                                 Trimestral
                             </button>
                         </div>
 
                         {/* Period selector */}
                         {fiscalMode === "mensual" ? (
-                            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#111113] px-2 py-1">
-                                <button onClick={() => setFiscalMonth(prevMonth(fiscalMonth))} className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400">
+                            <div className="flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-1">
+                                <button onClick={() => setFiscalMonth(prevMonth(fiscalMonth))} className="p-1.5 rounded-lg hover:bg-accent/50 text-muted-foreground">
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
-                                <span className="text-sm font-semibold text-white w-36 text-center">{fmtMonth(fiscalMonth)}</span>
+                                <span className="text-sm font-semibold text-foreground w-36 text-center">{fmtMonth(fiscalMonth)}</span>
                                 <button onClick={() => setFiscalMonth(nextMonth(fiscalMonth))}
                                     disabled={fiscalMonth >= currentMonthStr()}
-                                    className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400 disabled:opacity-30">
+                                    className="p-1.5 rounded-lg hover:bg-accent/50 text-muted-foreground disabled:opacity-30">
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#111113] px-2 py-1">
-                                <button onClick={() => setFiscalQuarter(prevQuarter(fiscalQuarter))} className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400">
+                            <div className="flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-1">
+                                <button onClick={() => setFiscalQuarter(prevQuarter(fiscalQuarter))} className="p-1.5 rounded-lg hover:bg-accent/50 text-muted-foreground">
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
-                                <span className="text-sm font-semibold text-white w-36 text-center">{fmtQuarter(fiscalQuarter)}</span>
+                                <span className="text-sm font-semibold text-foreground w-36 text-center">{fmtQuarter(fiscalQuarter)}</span>
                                 <button onClick={() => setFiscalQuarter(nextQuarter(fiscalQuarter))}
                                     disabled={fiscalQuarter >= currentQuarterStr()}
-                                    className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400 disabled:opacity-30">
+                                    className="p-1.5 rounded-lg hover:bg-accent/50 text-muted-foreground disabled:opacity-30">
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
                         )}
 
                         <button onClick={loadFiscalSnapshot} disabled={fiscalLoading}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 text-sm text-zinc-300 hover:bg-white/5 transition-colors">
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-sm text-foreground hover:bg-accent/50 transition-colors">
                             <RefreshCw className={`w-4 h-4 ${fiscalLoading ? "animate-spin" : ""}`} /> Actualizar
                         </button>
 
                         <button onClick={handleGenerateFiscal} disabled={fiscalGenerating}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-semibold text-white transition-colors disabled:opacity-40">
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-semibold text-foreground transition-colors disabled:opacity-40">
                             {fiscalGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
                             Generar PDF Fiscal
                         </button>
@@ -470,7 +470,7 @@ export default function InformesPage() {
                     )}
 
                     {fiscalLoading && (
-                        <div className="flex items-center justify-center py-20 text-zinc-500">
+                        <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="w-6 h-6 animate-spin mr-2" /> Cargando datos fiscales…
                         </div>
                     )}
@@ -478,11 +478,11 @@ export default function InformesPage() {
                     {fiscalSnap && !fiscalLoading && (
                         <>
                             {/* Resumen ejecutivo */}
-                            <div className="rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-900/20 to-[#111113] p-5">
+                            <div className="rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-900/20 to-card p-5">
                                 <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">
                                     Resumen fiscal · {fiscalSnap.period_label}
                                 </p>
-                                <p className="text-sm text-zinc-300 leading-relaxed">{fiscalSnap.resumen_ejecutivo}</p>
+                                <p className="text-sm text-foreground leading-relaxed">{fiscalSnap.resumen_ejecutivo}</p>
                             </div>
 
                             {/* KPIs */}
@@ -525,12 +525,12 @@ export default function InformesPage() {
                                     <Row label="IVA Repercutido (10%)" value={`${fmt(fiscalSnap.iva.repercutido_10)} €`} />
                                     <Row label="IVA Repercutido (4%)" value={`${fmt(fiscalSnap.iva.repercutido_4)} €`} />
                                     <Row label="Total repercutido" value={`${fmt(fiscalSnap.iva.total_repercutido)} €`} highlight />
-                                    <div className="border-t border-white/5 mt-1 pt-1" />
+                                    <div className="border-t border-border mt-1 pt-1" />
                                     <Row label="IVA Soportado (21%)" value={`${fmt(fiscalSnap.iva.soportado_21)} €`} />
                                     <Row label="IVA Soportado (10%)" value={`${fmt(fiscalSnap.iva.soportado_10)} €`} />
                                     <Row label="IVA Soportado (4%)" value={`${fmt(fiscalSnap.iva.soportado_4)} €`} />
                                     <Row label="Total soportado" value={`${fmt(fiscalSnap.iva.total_soportado)} €`} highlight />
-                                    <div className="border-t border-white/10 mt-1 pt-1" />
+                                    <div className="border-t border-border mt-1 pt-1" />
                                     <Row label="Resultado IVA" value={`${fmt(fiscalSnap.iva.resultado_iva)} €`} highlight />
                                 </Section>
 
@@ -560,9 +560,9 @@ export default function InformesPage() {
                     )}
 
                     {!fiscalLoading && !fiscalSnap && !fiscalError && (
-                        <div className="text-center py-20 text-zinc-500">
+                        <div className="text-center py-20 text-muted-foreground">
                             <Receipt className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                            <p className="text-lg font-semibold text-zinc-400">Sin datos fiscales para {fiscalMode === "trimestral" ? fmtQuarter(fiscalQuarter) : fmtMonth(fiscalMonth)}</p>
+                            <p className="text-lg font-semibold text-muted-foreground">Sin datos fiscales para {fiscalMode === "trimestral" ? fmtQuarter(fiscalQuarter) : fmtMonth(fiscalMonth)}</p>
                             <p className="text-sm mt-1">Prueba con otro periodo o registra actividad primero</p>
                         </div>
                     )}
@@ -576,18 +576,18 @@ export default function InformesPage() {
                 <Section title="Informes PDF generados" icon={FileText}>
                     <div className="space-y-2">
                         {reports.map(r => (
-                            <div key={r.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0 gap-3">
+                            <div key={r.id} className="flex items-center justify-between py-2 border-b border-border last:border-0 gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
+                                    <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                                     <div className="min-w-0">
-                                        <p className="text-sm text-zinc-200 truncate">{r.file_name}</p>
-                                        <p className="text-xs text-zinc-500">{new Date(r.created_at).toLocaleDateString("es-ES")} · {(r.file_size / 1024).toFixed(0)} KB</p>
+                                        <p className="text-sm text-foreground truncate">{r.file_name}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("es-ES")} · {(r.file_size / 1024).toFixed(0)} KB</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => handleDownload(r.id, r.file_name)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-zinc-300 hover:bg-white/5 transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-accent/50 transition-colors"
                                 >
                                     <Download className="w-3.5 h-3.5" /> Descargar
                                 </button>

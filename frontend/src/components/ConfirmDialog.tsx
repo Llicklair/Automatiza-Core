@@ -11,10 +11,10 @@ export default function ConfirmDialog() {
     const variant = options.confirmVariant ?? "danger";
     const btnCls =
         variant === "danger"
-            ? "bg-red-600 hover:bg-red-500 text-white"
+            ? "bg-red-600 hover:bg-red-500 text-foreground"
             : variant === "warning"
-            ? "bg-amber-500 hover:bg-amber-400 text-white"
-            : "bg-indigo-600 hover:bg-indigo-500 text-white";
+            ? "bg-amber-500 hover:bg-amber-400 text-foreground"
+            : "bg-indigo-600 hover:bg-indigo-500 text-foreground";
 
     const icon =
         variant === "danger" ? (
@@ -29,26 +29,29 @@ export default function ConfirmDialog() {
             onClick={_cancel}
         >
             <div
-                className="w-full max-w-sm rounded-2xl border border-[#27272a] bg-[#111113] shadow-2xl overflow-hidden"
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="confirm-dialog-title"
+                className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between px-5 py-4 border-b border-[#27272a]">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                     <div className="flex items-center gap-2">
                         {icon}
-                        <span className="font-semibold text-white text-sm">
+                        <span id="confirm-dialog-title" className="font-semibold text-foreground text-sm">
                             {options.title ?? "Confirmar acción"}
                         </span>
                     </div>
                     <button
                         onClick={_cancel}
-                        className="text-zinc-500 hover:text-white transition-colors"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
                     >
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
                 <div className="px-5 py-4">
-                    <p className="text-sm text-zinc-300 leading-relaxed">
+                    <p className="text-sm text-foreground leading-relaxed">
                         {options.message}
                     </p>
                 </div>
@@ -56,7 +59,7 @@ export default function ConfirmDialog() {
                 <div className="flex gap-2 px-5 pb-5">
                     <button
                         onClick={_cancel}
-                        className="flex-1 py-2 rounded-xl border border-[#3f3f46] text-zinc-400 text-sm hover:text-white hover:bg-white/5 transition-colors"
+                        className="flex-1 py-2 rounded-xl border border-border text-muted-foreground text-sm hover:text-foreground hover:bg-white/5 transition-colors"
                     >
                         {options.cancelLabel ?? "Cancelar"}
                     </button>

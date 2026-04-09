@@ -69,21 +69,21 @@ export default function IntegracionesPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-white">Integraciones</h1>
-                <p className="text-zinc-400 mt-1">
+                <h1 className="text-2xl font-bold text-foreground">Integraciones</h1>
+                <p className="text-muted-foreground mt-1">
                     Conecta servicios externos para gestionar tu empresa desde cualquier canal.
                 </p>
             </div>
 
             {/* Telegram */}
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+            <div className="bg-card rounded-xl border border-border p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 text-xl">
                         ✈
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-white">Telegram</h2>
-                        <p className="text-sm text-zinc-400">
+                        <h2 className="text-lg font-semibold text-foreground">Telegram</h2>
+                        <p className="text-sm text-muted-foreground">
                             Gestiona tu empresa por Telegram: crea facturas, consulta datos, habla con la IA.
                         </p>
                     </div>
@@ -93,7 +93,7 @@ export default function IntegracionesPage() {
                                 Conectado
                             </span>
                         ) : (
-                            <span className="px-3 py-1 bg-zinc-700 text-zinc-400 rounded-full text-sm">
+                            <span className="px-3 py-1 bg-accent text-muted-foreground rounded-full text-sm">
                                 Desconectado
                             </span>
                         )}
@@ -102,10 +102,10 @@ export default function IntegracionesPage() {
 
                 {tgStatus?.connected ? (
                     <div className="space-y-3">
-                        <div className="flex gap-6 text-sm text-zinc-300">
-                            <span>Chat ID: <code className="text-zinc-400">{tgStatus.chat_id}</code></span>
+                        <div className="flex gap-6 text-sm text-foreground">
+                            <span>Chat ID: <code className="text-muted-foreground">{tgStatus.chat_id}</code></span>
                             {tgStatus.username && (
-                                <span>Usuario: <code className="text-zinc-400">@{tgStatus.username}</code></span>
+                                <span>Usuario: <code className="text-muted-foreground">@{tgStatus.username}</code></span>
                             )}
                         </div>
                         <button
@@ -131,7 +131,7 @@ export default function IntegracionesPage() {
                                 >
                                     {linkUrl}
                                 </a>
-                                <p className="text-xs text-zinc-500 mt-2">
+                                <p className="text-xs text-muted-foreground mt-2">
                                     Esperando vinculación... La página se actualizará automáticamente.
                                 </p>
                             </div>
@@ -139,12 +139,12 @@ export default function IntegracionesPage() {
                             <button
                                 onClick={handleTelegramConnect}
                                 disabled={tgLoading}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm disabled:opacity-50"
+                                className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700 transition text-sm disabled:opacity-50"
                             >
                                 {tgLoading ? "Generando enlace..." : "Vincular Telegram"}
                             </button>
                         )}
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-muted-foreground">
                             Necesitas tener un bot de Telegram configurado en el servidor (TELEGRAM_BOT_TOKEN en .env).
                         </p>
                     </div>
@@ -152,16 +152,16 @@ export default function IntegracionesPage() {
             </div>
 
             {/* Placeholder: WhatsApp (próximamente) */}
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 opacity-60">
+            <div className="bg-card rounded-xl border border-border p-6 opacity-60">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-green-400 text-xl">
                         W
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-white">WhatsApp Business</h2>
-                        <p className="text-sm text-zinc-400">Próximamente — Atiende a clientes por WhatsApp con IA.</p>
+                        <h2 className="text-lg font-semibold text-foreground">WhatsApp Business</h2>
+                        <p className="text-sm text-muted-foreground">Próximamente — Atiende a clientes por WhatsApp con IA.</p>
                     </div>
-                    <span className="ml-auto px-3 py-1 bg-zinc-800 text-zinc-500 rounded-full text-sm">
+                    <span className="ml-auto px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm">
                         Próximamente
                     </span>
                 </div>

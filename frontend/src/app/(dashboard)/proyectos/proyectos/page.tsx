@@ -86,10 +86,10 @@ export default function ProyectosListado() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Proyectos</h1>
-                    <p className="text-zinc-400">Controla el presupuesto y el estado de tus proyectos en curso.</p>
+                    <h1 className="text-3xl font-bold text-foreground mb-2">Proyectos</h1>
+                    <p className="text-muted-foreground">Controla el presupuesto y el estado de tus proyectos en curso.</p>
                 </div>
-                <button onClick={() => setCreateOpen(true)} className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 font-medium">
+                <button onClick={() => setCreateOpen(true)} className="flex items-center justify-center gap-2 bg-primary hover:bg-primary text-foreground px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-primary/20 font-medium">
                     <Plus className="w-5 h-5" />
                     Nuevo Proyecto
                 </button>
@@ -98,12 +98,12 @@ export default function ProyectosListado() {
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full py-12 text-center text-zinc-500">Cargando proyectos...</div>
+                    <div className="col-span-full py-12 text-center text-muted-foreground">Cargando proyectos...</div>
                 ) : projects.length === 0 ? (
-                    <div className="col-span-full py-12 text-center bg-[#111113] border border-[#27272a] rounded-2xl flex flex-col items-center">
-                        <FolderGit2 className="w-12 h-12 text-zinc-600 mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-1">Sin Proyectos</h3>
-                        <p className="text-sm text-zinc-400">Pulsa &quot;Nuevo Proyecto&quot; para empezar.</p>
+                    <div className="col-span-full py-12 text-center bg-card border border-border rounded-2xl flex flex-col items-center">
+                        <FolderGit2 className="w-12 h-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-1">Sin Proyectos</h3>
+                        <p className="text-sm text-muted-foreground">Pulsa &quot;Nuevo Proyecto&quot; para empezar.</p>
                     </div>
                 ) : (
                     projects.map(project => {
@@ -111,22 +111,22 @@ export default function ProyectosListado() {
                         const StatusIcon = sConf.icon;
 
                         return (
-                            <div key={project.id} className="bg-[#111113] border border-[#27272a] hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col transition-colors shadow-black/20 hover:shadow-xl relative group">
+                            <div key={project.id} className="bg-card border border-border hover:border-primary/20 rounded-2xl p-6 flex flex-col transition-colors shadow-black/20 hover:shadow-xl relative group">
                                 {/* Menú opciones */}
                                 <div className="absolute top-4 right-4 z-10" ref={openMenuId === project.id ? menuRef : null}>
                                     <button
                                         onClick={(e) => { e.preventDefault(); setOpenMenuId(openMenuId === project.id ? null : project.id); }}
-                                        className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+                                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
                                     >
                                         <MoreHorizontal className="w-4 h-4" />
                                     </button>
                                     {openMenuId === project.id && (
-                                        <div className="absolute right-0 top-8 w-40 bg-[#1c1c1e] border border-[#3f3f46] rounded-xl shadow-xl overflow-hidden z-20">
+                                        <div className="absolute right-0 top-8 w-40 bg-muted border border-border rounded-xl shadow-xl overflow-hidden z-20">
                                             <button
                                                 onClick={() => { setEditProject(project); setEditForm({ name: project.name, description: project.description, budget: project.budget, status: project.status }); setOpenMenuId(null); }}
-                                                className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 transition-colors"
+                                                className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-foreground hover:bg-accent/50 transition-colors"
                                             >
-                                                <Pencil className="w-3.5 h-3.5 text-zinc-400" /> Editar
+                                                <Pencil className="w-3.5 h-3.5 text-muted-foreground" /> Editar
                                             </button>
                                             <button
                                                 onClick={() => { setOpenMenuId(null); deleteProject(project); }}
@@ -142,10 +142,10 @@ export default function ProyectosListado() {
                                 <Link href={`/proyectos/tareas?project_id=${project.id}`} className="flex flex-col flex-1">
                                     <div className="flex items-start justify-between mb-4 pr-8">
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="text-lg font-semibold text-white truncate group-hover:text-indigo-400 transition-colors">
+                                            <h3 className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                                                 {project.name}
                                             </h3>
-                                            <p className="text-sm text-zinc-500 line-clamp-2 mt-1">
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                                                 {project.description || 'Sin descripción'}
                                             </p>
                                         </div>
@@ -154,9 +154,9 @@ export default function ProyectosListado() {
                                             <span className="text-xs font-medium">{sConf.label}</span>
                                         </div>
                                     </div>
-                                    <div className="mt-auto pt-4 border-t border-[#27272a] flex items-center justify-between">
-                                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Presupuesto</span>
-                                        <span className="text-sm font-bold text-zinc-200">
+                                    <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
+                                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Presupuesto</span>
+                                        <span className="text-sm font-bold text-foreground">
                                             {Number(project.budget).toLocaleString('es-ES')} €
                                         </span>
                                     </div>
@@ -170,30 +170,30 @@ export default function ProyectosListado() {
             {/* Modal Crear */}
             {isCreateOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272a]">
-                            <h3 className="text-lg font-semibold text-white">Crear Proyecto</h3>
-                            <button onClick={() => setCreateOpen(false)} className="text-zinc-500 hover:text-white"><X className="w-5 h-5" /></button>
+                    <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                            <h3 className="text-lg font-semibold text-foreground">Crear Proyecto</h3>
+                            <button onClick={() => setCreateOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
                         </div>
                         <form onSubmit={createProject} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Nombre del Proyecto</label>
-                                <input required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500"
+                                <label className="block text-sm text-muted-foreground mb-1">Nombre del Proyecto</label>
+                                <input required type="text" className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary"
                                     value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} />
                             </div>
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Presupuesto (€)</label>
-                                <input required type="number" step="0.01" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500"
+                                <label className="block text-sm text-muted-foreground mb-1">Presupuesto (€)</label>
+                                <input required type="number" step="0.01" className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary"
                                     value={newProject.budget} onChange={e => setNewProject({ ...newProject, budget: Number(e.target.value) })} />
                             </div>
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Descripción corta</label>
-                                <textarea className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500 resize-none h-24"
+                                <label className="block text-sm text-muted-foreground mb-1">Descripción corta</label>
+                                <textarea className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary resize-none h-24"
                                     value={newProject.description || ''} onChange={e => setNewProject({ ...newProject, description: e.target.value })} />
                             </div>
-                            <div className="flex justify-end gap-3 pt-2 border-t border-[#27272a]">
-                                <button type="button" onClick={() => setCreateOpen(false)} className="px-4 py-2 text-zinc-400 hover:text-white">Cancelar</button>
-                                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl">Crear</button>
+                            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                                <button type="button" onClick={() => setCreateOpen(false)} className="px-4 py-2 text-muted-foreground hover:text-foreground">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary text-foreground rounded-xl">Crear</button>
                             </div>
                         </form>
                     </div>
@@ -203,25 +203,25 @@ export default function ProyectosListado() {
             {/* Modal Editar */}
             {editProject && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272a]">
-                            <h3 className="text-lg font-semibold text-white">Editar Proyecto</h3>
-                            <button onClick={() => setEditProject(null)} className="text-zinc-500 hover:text-white"><X className="w-5 h-5" /></button>
+                    <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                            <h3 className="text-lg font-semibold text-foreground">Editar Proyecto</h3>
+                            <button onClick={() => setEditProject(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
                         </div>
                         <form onSubmit={saveEdit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Nombre</label>
-                                <input required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500"
+                                <label className="block text-sm text-muted-foreground mb-1">Nombre</label>
+                                <input required type="text" className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary"
                                     value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
                             </div>
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Presupuesto (€)</label>
-                                <input required type="number" step="0.01" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500"
+                                <label className="block text-sm text-muted-foreground mb-1">Presupuesto (€)</label>
+                                <input required type="number" step="0.01" className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary"
                                     value={editForm.budget ?? ''} onChange={e => setEditForm({ ...editForm, budget: Number(e.target.value) })} />
                             </div>
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Estado</label>
-                                <select className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500"
+                                <label className="block text-sm text-muted-foreground mb-1">Estado</label>
+                                <select className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary"
                                     value={editForm.status || 'active'} onChange={e => setEditForm({ ...editForm, status: e.target.value })}>
                                     <option value="active">Activo</option>
                                     <option value="on_hold">En Pausa</option>
@@ -229,13 +229,13 @@ export default function ProyectosListado() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-1">Descripción</label>
-                                <textarea className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500 resize-none h-20"
+                                <label className="block text-sm text-muted-foreground mb-1">Descripción</label>
+                                <textarea className="w-full bg-muted border border-border rounded-xl px-4 py-2 text-foreground outline-none focus:border-primary resize-none h-20"
                                     value={editForm.description || ''} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
                             </div>
-                            <div className="flex justify-end gap-3 pt-2 border-t border-[#27272a]">
-                                <button type="button" onClick={() => setEditProject(null)} className="px-4 py-2 text-zinc-400 hover:text-white">Cancelar</button>
-                                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl">Guardar</button>
+                            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                                <button type="button" onClick={() => setEditProject(null)} className="px-4 py-2 text-muted-foreground hover:text-foreground">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary text-foreground rounded-xl">Guardar</button>
                             </div>
                         </form>
                     </div>

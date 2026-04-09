@@ -202,7 +202,7 @@ async def plan_node(state: OrchestratorState) -> dict:
             from pydantic import BaseModel, Field
 
             class PlanStep(BaseModel):
-                agent: str = Field(description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag")
+                agent: str = Field(description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag, team (para crear/gestionar empleados IA), custom (para agentes IA personalizados del equipo)")
                 action: str = Field(description="Acción corta, ej: extract_data, create_report, send_email")
                 instruction: str = Field(description="Instrucción muy detallada en español para el agente actual que ejecutará el paso.")
                 needs_output_from: list[int] = Field(default_factory=list, description="Índices (1-based) de pasos anteriores cuyo resultado necesita este paso. Vacío = independiente.")
@@ -274,7 +274,8 @@ async def plan_node(state: OrchestratorState) -> dict:
                 "- compliance: consultas fiscales (IVA, IRPF, IS), vencimientos tributarios, alertas BOE.\n"
                 "- documents: archivar, clasificar o analizar documentos subidos (contratos, albaranes, etc.).\n"
                 "- rag: buscar información en documentos internos de la empresa.\n"
-                "- excel: generar archivo Excel (.xlsx) con datos de la empresa (facturas, empleados, clientes, nóminas, inventario, banco).\n\n"
+                "- excel: generar archivo Excel (.xlsx) con datos de la empresa (facturas, empleados, clientes, nóminas, inventario, banco).\n"
+                "- custom: agentes IA personalizados del equipo (CTO, marketing, diseño, etc.). Úsalo cuando la tarea corresponda a un rol no estándar del equipo.\n\n"
                 "REGLAS:\n"
                 "1. Usa el MÍNIMO de pasos posible. Evita pasos redundantes.\n"
                 "2. Usa 'excel' cuando el usuario pida generar un Excel, informe tabular, listado en hoja de cálculo, exportar datos o cruzar ficheros CSV/Excel.\n"
@@ -559,14 +560,29 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
         from app.services.activity_service import log_activity
 
         async with AsyncSessionLocal() as db:
-            emp_result = await db.execute(
-                select(AIEmployee).where(
-                    AIEmployee.tenant_id == UUID(tenant_id),
-                    AIEmployee.domain == agent_name,
-                    AIEmployee.status.in_(["idle", "working"]),
-                ).limit(1)
-            )
-            employee = emp_result.scalar_one_or_none()
+            # Para agentes custom, priorizar el employee_id específico de la metadata
+            addressed_id = (enriched_state.get("additional_metadata") or {}).get("addressed_employee_id")
+            if addressed_id and agent_name == "custom":
+                try:
+                    emp_result = await db.execute(
+                        select(AIEmployee).where(
+                            AIEmployee.id == UUID(addressed_id),
+                            AIEmployee.tenant_id == UUID(tenant_id),
+                            AIEmployee.status.in_(["idle", "working", "pending_setup"]),
+                        )
+                    )
+                    employee = emp_result.scalar_one_or_none()
+                except Exception:
+                    employee = None
+            else:
+                emp_result = await db.execute(
+                    select(AIEmployee).where(
+                        AIEmployee.tenant_id == UUID(tenant_id),
+                        AIEmployee.domain == agent_name,
+                        AIEmployee.status.in_(["idle", "working"]),
+                    ).limit(1)
+                )
+                employee = emp_result.scalar_one_or_none()
             if not employee:
                 return None
 

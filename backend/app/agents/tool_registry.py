@@ -119,6 +119,10 @@ def _build_registry() -> dict[str, Callable]:
     registry["get_tenant_knowledge"] = get_tenant_knowledge
     registry["upsert_tenant_knowledge"] = upsert_tenant_knowledge
 
+    # — ai team —
+    from app.agents.agent_tools.ai_team import create_ai_employee_from_description
+    registry["create_ai_employee_from_description"] = create_ai_employee_from_description
+
     logger.info("Tool registry loaded: %d tools", len(registry))
     return registry
 

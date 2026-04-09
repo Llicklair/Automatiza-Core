@@ -9,11 +9,12 @@ import {
     Truck, FileEdit, Search, X, ChevronDown,
 } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft:     { label: "Borrador",   color: "text-zinc-400 bg-zinc-400/10 border-zinc-400/20" },
-    confirmed: { label: "Confirmado", color: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20" },
+    draft:     { label: "Borrador",   color: "text-muted-foreground bg-muted border-border" },
+    confirmed: { label: "Confirmado", color: "text-primary bg-primary/10 border-primary/20" },
     delivered: { label: "Entregado",  color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
 };
 
@@ -78,7 +79,8 @@ export default function AlbaranesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("¿Eliminar este albarán?")) return;
+        const ok = await showConfirm({ title: "Eliminar albarán", message: "¿Eliminar este albarán? Esta acción no se puede deshacer.", confirmLabel: "Eliminar", cancelLabel: "Cancelar", confirmVariant: "danger" });
+        if (!ok) return;
         try { await api.albaranes.delete(id); setAlbaranes(prev => prev.filter(a => a.id !== id)); toast.success("Albarán eliminado"); }
         catch (e: any) { toast.error(e.message); }
     };
@@ -116,12 +118,12 @@ export default function AlbaranesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-1">Albaranes</h1>
-                    <p className="text-zinc-400 text-sm">Gestión de albaranes y notas de entrega.</p>
+                    <h1 className="text-3xl font-bold text-foreground mb-1">Albaranes</h1>
+                    <p className="text-muted-foreground text-sm">Gestión de albaranes y notas de entrega.</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-medium shadow-lg shadow-indigo-500/20"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary text-foreground rounded-lg transition-colors font-medium shadow-lg shadow-primary/20"
                 >
                     <Plus className="w-4 h-4" /> Nuevo Albarán
                 </button>
@@ -130,16 +132,16 @@ export default function AlbaranesPage() {
             {/* Filters */}
             <div className="flex gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                         value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="Buscar por número..."
-                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#111113] border border-[#27272a] text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50"
+                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                     />
                 </div>
                 <select
                     value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    className="px-3 py-2 rounded-lg bg-[#111113] border border-[#27272a] text-sm text-white focus:outline-none focus:border-indigo-500/50"
+                    className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary/50"
                 >
                     <option value="">Todos los estados</option>
                     <option value="draft">Borrador</option>
@@ -149,21 +151,21 @@ export default function AlbaranesPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
                 {loading ? (
-                    <div className="p-12 flex items-center justify-center gap-3 text-zinc-500">
+                    <div className="p-12 flex items-center justify-center gap-3 text-muted-foreground">
                         <Loader2 className="w-5 h-5 animate-spin" /> Cargando albaranes...
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="p-16 text-center">
-                        <FileText className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-1">Sin albaranes</h3>
-                        <p className="text-zinc-500 text-sm">Crea el primero con el botón &ldquo;Nuevo Albarán&rdquo;.</p>
+                        <FileText className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-1">Sin albaranes</h3>
+                        <p className="text-muted-foreground text-sm">Crea el primero con el botón &ldquo;Nuevo Albarán&rdquo;.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-[#18181b] text-zinc-400 border-b border-[#27272a]">
+                            <thead className="bg-card text-muted-foreground border-b border-border">
                                 <tr>
                                     <th className="px-6 py-4 font-medium">Nº Albarán</th>
                                     <th className="px-6 py-4 font-medium">Fecha</th>
@@ -173,14 +175,14 @@ export default function AlbaranesPage() {
                                     <th className="px-6 py-4 font-medium w-48">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#27272a]/50">
+                            <tbody className="divide-y divide-border">
                                 {filtered.map(albaran => {
                                     const st = STATUS_LABELS[albaran.status] || STATUS_LABELS.draft;
                                     return (
-                                        <tr key={albaran.id} className="group hover:bg-white/[0.02] transition-colors">
-                                            <td className="px-6 py-4 font-mono text-indigo-400 font-medium">{albaran.albaran_number}</td>
-                                            <td className="px-6 py-4 text-zinc-300">{new Date(albaran.date).toLocaleDateString("es-ES")}</td>
-                                            <td className="px-6 py-4 text-zinc-300">{albaran.client_id ? "—" : "Sin cliente"}</td>
+                                        <tr key={albaran.id} className="group hover:bg-accent/50 transition-colors">
+                                            <td className="px-6 py-4 font-mono text-primary font-medium">{albaran.albaran_number}</td>
+                                            <td className="px-6 py-4 text-foreground">{new Date(albaran.date).toLocaleDateString("es-ES")}</td>
+                                            <td className="px-6 py-4 text-foreground">{albaran.client_id ? "—" : "Sin cliente"}</td>
                                             <td className="px-6 py-4">
                                                 <select
                                                     value={albaran.status}
@@ -192,24 +194,24 @@ export default function AlbaranesPage() {
                                                     <option value="delivered">Entregado</option>
                                                 </select>
                                             </td>
-                                            <td className="px-6 py-4 text-right font-medium text-white">{fmt(albaran.amount_total)}</td>
+                                            <td className="px-6 py-4 text-right font-medium text-foreground">{fmt(albaran.amount_total)}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => handleDownloadPdf(albaran.id)}
-                                                        className="p-1.5 rounded-lg text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+                                                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
                                                         title="Descargar PDF"
                                                     ><Download className="w-3.5 h-3.5" /></button>
                                                     {albaran.status === "confirmed" && (
                                                         <button
                                                             onClick={() => handleConvertToInvoice(albaran)}
-                                                            className="p-1.5 rounded-lg text-zinc-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                                                            className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
                                                             title="Convertir a Factura"
                                                         ><FileEdit className="w-3.5 h-3.5" /></button>
                                                     )}
                                                     <button
                                                         onClick={() => handleDelete(albaran.id)}
-                                                        className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
                                                         title="Eliminar"
                                                     ><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
@@ -226,39 +228,39 @@ export default function AlbaranesPage() {
             {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
-                        <div className="flex items-center justify-between p-6 border-b border-[#27272a]">
-                            <h3 className="text-xl font-bold text-white">Nuevo Albarán</h3>
-                            <button onClick={() => { setShowModal(false); resetModal(); }} className="text-zinc-500 hover:text-white transition">
+                    <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between p-6 border-b border-border">
+                            <h3 className="text-xl font-bold text-foreground">Nuevo Albarán</h3>
+                            <button onClick={() => { setShowModal(false); resetModal(); }} className="text-muted-foreground hover:text-foreground transition">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
                         <form onSubmit={handleCreate} className="flex-1 overflow-auto p-6 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs text-zinc-400 mb-1">Cliente</label>
+                                    <label className="block text-xs text-muted-foreground mb-1">Cliente</label>
                                     <input value={clientName} onChange={e => setClientName(e.target.value)}
                                         placeholder="Nombre del cliente (opcional)"
-                                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50" />
+                                        className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-zinc-400 mb-1">Fecha</label>
+                                    <label className="block text-xs text-muted-foreground mb-1">Fecha</label>
                                     <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-sm text-white focus:outline-none focus:border-indigo-500/50" />
+                                        className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground focus:outline-none focus:border-primary/50" />
                                 </div>
                             </div>
 
                             {/* Lines */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
-                                    <label className="text-xs text-zinc-400">Líneas</label>
+                                    <label className="text-xs text-muted-foreground">Líneas</label>
                                     <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
-                                        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition">
+                                        className="text-xs text-primary hover:text-primary flex items-center gap-1 transition">
                                         <Plus className="w-3 h-3" /> Añadir línea
                                     </button>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="grid grid-cols-12 gap-2 text-[10px] text-zinc-500 px-1">
+                                    <div className="grid grid-cols-12 gap-2 text-[10px] text-muted-foreground px-1">
                                         <span className="col-span-5">Descripción</span>
                                         <span className="col-span-2">Cantidad</span>
                                         <span className="col-span-2">Precio unit.</span>
@@ -268,15 +270,15 @@ export default function AlbaranesPage() {
                                     {lines.map((line, i) => (
                                         <div key={i} className="grid grid-cols-12 gap-2 items-center">
                                             <input value={line.description} onChange={e => setLines(prev => prev.map((l, j) => j === i ? { ...l, description: e.target.value } : l))}
-                                                placeholder="Descripción..." className="col-span-5 px-2 py-1.5 rounded-lg bg-black/40 border border-[#3f3f46] text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50" />
+                                                placeholder="Descripción..." className="col-span-5 px-2 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50" />
                                             <input type="number" value={line.quantity} onChange={e => setLines(prev => prev.map((l, j) => j === i ? { ...l, quantity: e.target.value } : l))}
-                                                className="col-span-2 px-2 py-1.5 rounded-lg bg-black/40 border border-[#3f3f46] text-xs text-white focus:outline-none focus:border-indigo-500/50" />
+                                                className="col-span-2 px-2 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground focus:outline-none focus:border-primary/50" />
                                             <input type="number" value={line.unit_price} onChange={e => setLines(prev => prev.map((l, j) => j === i ? { ...l, unit_price: e.target.value } : l))}
-                                                className="col-span-2 px-2 py-1.5 rounded-lg bg-black/40 border border-[#3f3f46] text-xs text-white focus:outline-none focus:border-indigo-500/50" />
+                                                className="col-span-2 px-2 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground focus:outline-none focus:border-primary/50" />
                                             <input type="number" value={line.tax_percentage} onChange={e => setLines(prev => prev.map((l, j) => j === i ? { ...l, tax_percentage: e.target.value } : l))}
-                                                className="col-span-2 px-2 py-1.5 rounded-lg bg-black/40 border border-[#3f3f46] text-xs text-white focus:outline-none focus:border-indigo-500/50" />
+                                                className="col-span-2 px-2 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground focus:outline-none focus:border-primary/50" />
                                             <button type="button" onClick={() => lines.length > 1 && setLines(prev => prev.filter((_, j) => j !== i))}
-                                                className="col-span-1 flex justify-center text-zinc-600 hover:text-red-400 transition">
+                                                className="col-span-1 flex justify-center text-muted-foreground/60 hover:text-red-400 transition">
                                                 <X className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
@@ -285,19 +287,19 @@ export default function AlbaranesPage() {
                             </div>
 
                             <div>
-                                <label className="block text-xs text-zinc-400 mb-1">Observaciones</label>
+                                <label className="block text-xs text-muted-foreground mb-1">Observaciones</label>
                                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
                                     placeholder="Notas adicionales (opcional)"
-                                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 resize-none" />
+                                    className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none" />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => { setShowModal(false); resetModal(); }}
-                                    className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-sm transition">
+                                    className="px-4 py-2 rounded-lg bg-muted hover:bg-accent text-foreground text-sm transition">
                                     Cancelar
                                 </button>
                                 <button type="submit" disabled={saving}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition">
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary disabled:opacity-50 text-foreground text-sm font-medium transition">
                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                     Crear Albarán
                                 </button>

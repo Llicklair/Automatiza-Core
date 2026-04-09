@@ -110,11 +110,11 @@ function MobileScannerInner() {
     // -- Not authenticated --
     if (authenticated === false) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
                 <div className="text-center space-y-3">
                     <XCircle className="w-12 h-12 text-red-400 mx-auto" />
-                    <h1 className="text-lg font-bold text-white">Token expirado o inválido</h1>
-                    <p className="text-sm text-zinc-500">Genera un nuevo código QR desde el escritorio</p>
+                    <h1 className="text-lg font-bold text-foreground">Token expirado o inválido</h1>
+                    <p className="text-sm text-muted-foreground">Genera un nuevo código QR desde el escritorio</p>
                 </div>
             </div>
         );
@@ -122,24 +122,24 @@ function MobileScannerInner() {
 
     if (authenticated === null) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 p-4 max-w-md mx-auto space-y-4">
+        <div className="min-h-screen bg-background p-4 max-w-md mx-auto space-y-4">
             {/* Header */}
             <div className="flex items-center gap-2 py-2">
                 <ScanLine className="w-5 h-5 text-cyan-400" />
-                <h1 className="text-base font-bold text-white">Escáner Almacén</h1>
+                <h1 className="text-base font-bold text-foreground">Escáner Almacén</h1>
                 <span className="ml-auto text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Conectado</span>
             </div>
 
             {/* Product scan */}
-            <div className="bg-zinc-900 rounded-xl p-4 space-y-3">
-                <label className="text-xs font-medium text-zinc-400">Buscar producto por SKU</label>
+            <div className="bg-card rounded-xl p-4 space-y-3">
+                <label className="text-xs font-medium text-muted-foreground">Buscar producto por SKU</label>
                 <div className="flex gap-2">
                     <input
                         type="text"
@@ -147,13 +147,13 @@ function MobileScannerInner() {
                         onChange={(e) => setSku(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && scanProduct()}
                         placeholder="Escanea o escribe SKU..."
-                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                        className="flex-1 bg-muted border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                         autoFocus
                     />
                     <button
                         onClick={scanProduct}
                         disabled={loading || !sku.trim()}
-                        className="px-3 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white"
+                        className="px-3 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-foreground"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
                     </button>
@@ -162,26 +162,26 @@ function MobileScannerInner() {
 
             {/* Product info */}
             {product && (
-                <div className="bg-zinc-900 rounded-xl p-4 space-y-3">
+                <div className="bg-card rounded-xl p-4 space-y-3">
                     <div className="flex items-start justify-between">
                         <div>
-                            <h3 className="text-sm font-semibold text-white">{product.name}</h3>
-                            <p className="text-[10px] text-zinc-500">SKU: {product.sku}</p>
+                            <h3 className="text-sm font-semibold text-foreground">{product.name}</h3>
+                            <p className="text-[10px] text-muted-foreground">SKU: {product.sku}</p>
                         </div>
-                        <Package className="w-5 h-5 text-zinc-600" />
+                        <Package className="w-5 h-5 text-muted-foreground" />
                     </div>
-                    {product.description && <p className="text-xs text-zinc-400">{product.description}</p>}
+                    {product.description && <p className="text-xs text-muted-foreground">{product.description}</p>}
                     <div className="flex items-center gap-4">
                         <div>
-                            <span className="text-xs text-zinc-500">Stock:</span>
-                            <span className={`ml-1 text-sm font-bold ${product.low_stock ? "text-red-400" : "text-white"}`}>
+                            <span className="text-xs text-muted-foreground">Stock:</span>
+                            <span className={`ml-1 text-sm font-bold ${product.low_stock ? "text-red-400" : "text-foreground"}`}>
                                 {product.stock_quantity}
                             </span>
                         </div>
                         {product.price != null && (
                             <div>
-                                <span className="text-xs text-zinc-500">Precio:</span>
-                                <span className="ml-1 text-sm text-white">{product.price.toFixed(2)}€</span>
+                                <span className="text-xs text-muted-foreground">Precio:</span>
+                                <span className="ml-1 text-sm text-foreground">{product.price.toFixed(2)}€</span>
                             </div>
                         )}
                         {product.low_stock && (
@@ -193,27 +193,27 @@ function MobileScannerInner() {
 
                     {/* Quantity + actions */}
                     <div className="flex items-center gap-2">
-                        <label className="text-xs text-zinc-500">Cantidad:</label>
+                        <label className="text-xs text-muted-foreground">Cantidad:</label>
                         <input
                             type="number"
                             min={1}
                             value={quantity}
                             onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-20 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                            className="w-20 bg-muted border border-border rounded-lg px-2 py-1.5 text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <button
                             onClick={stockEntry}
                             disabled={loading}
-                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-foreground text-sm font-medium transition-colors"
                         >
                             <ArrowDown className="w-4 h-4" /> Entrada
                         </button>
                         <button
                             onClick={stockExit}
                             disabled={loading}
-                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-foreground text-sm font-medium transition-colors"
                         >
                             <ArrowUp className="w-4 h-4" /> Salida
                         </button>
@@ -222,8 +222,8 @@ function MobileScannerInner() {
             )}
 
             {/* Delivery confirmation */}
-            <div className="bg-zinc-900 rounded-xl p-4 space-y-3">
-                <label className="text-xs font-medium text-zinc-400 flex items-center gap-1.5">
+            <div className="bg-card rounded-xl p-4 space-y-3">
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                     <Truck className="w-3.5 h-3.5" /> Confirmar albarán
                 </label>
                 <div className="flex gap-2">
@@ -233,12 +233,12 @@ function MobileScannerInner() {
                         onChange={(e) => setAlbaranNum(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && confirmDelivery()}
                         placeholder="Nº albarán (ej: ALB-2026-0015)"
-                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                        className="flex-1 bg-muted border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                     />
                     <button
                         onClick={confirmDelivery}
                         disabled={loading || !albaranNum.trim()}
-                        className="px-3 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white"
+                        className="px-3 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-foreground"
                     >
                         <CheckCircle2 className="w-4 h-4" />
                     </button>
@@ -264,7 +264,7 @@ export default function MobileScannerPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                <div className="min-h-screen bg-background flex items-center justify-center">
                     <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
                 </div>
             }

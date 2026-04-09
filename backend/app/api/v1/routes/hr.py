@@ -4,7 +4,7 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from app.middleware.rate_limit import limiter
 from sqlalchemy import desc, select
@@ -16,12 +16,13 @@ logger = logging.getLogger(__name__)
 
 from app.api.v1.schemas.hr import (
     EmployeeCreate, EmployeeResponse, EmployeeUpdate,
+    FiniquitoRequest, LiquidacionRequest, RegistroJornadaRequest,
     PayrollCalculateResponse, PayrollCreate, PayrollResponse, PayrollSimpleCreate,
     PayrollUpdate,
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import Employee, Payroll, TenantDocument, User
+from app.db.models.models import Employee, Payroll, Tenant, TenantDocument, User
 
 router = APIRouter(prefix="/hr", tags=["hr"])
 
@@ -123,11 +124,12 @@ async def delete_employee(
 
 # ─── Payrolls ─────────────────────────────────────────────────────────────────
 
-# Tasas SS empleado 2025 (Régimen General)
-_SS_CONTINGENCIAS = 0.0470
-_SS_DESEMPLEO     = 0.0155
-_SS_FP            = 0.0010
-_SS_MEI           = 0.0012
+# Tasas SS empleado 2024/2025 — Régimen General (trabajador)
+# Fuente: Seguridad Social / Orden PCM vigente
+_SS_CONTINGENCIAS = 0.0470   # 4,70%
+_SS_DESEMPLEO     = 0.0155   # 1,55% (contrato indefinido tipo general)
+_SS_FP            = 0.0010   # 0,10%
+_SS_MEI           = 0.0010   # 0,10% MEI trabajador (empresa: 0,50%; total: 0,58% — no 0,12%)
 
 
 def _calc_payroll(base_salary: float, irpf_rate: float) -> dict:
@@ -444,7 +446,8 @@ async def download_payroll_pdf(
     from app.api.v1.routes.templates import get_default_theme
     theme_config = await get_default_theme(current_user.tenant_id, "payroll", db)
 
-    pdf_bytes = _build_payroll_pdf(payroll, theme_config)
+    tenant = await db.get(Tenant, current_user.tenant_id)
+    pdf_bytes = _build_payroll_pdf(payroll, theme_config, tenant=tenant)
     emp_name = payroll.employee.name.replace(" ", "_") if payroll.employee else "empleado"
     period = payroll.period_start.strftime("%Y-%m") if payroll.period_start else "periodo"
     filename = f"Nomina_{emp_name}_{period}.pdf"
@@ -456,14 +459,135 @@ async def download_payroll_pdf(
     )
 
 
+# ─── Documentos de empleado ──────────────────────────────────────────────────
+
+@router.get("/employees/{employee_id}/documents")
+async def list_employee_documents(
+    employee_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    category = f"empleado_{employee_id}"
+    result = await db.execute(
+        select(TenantDocument)
+        .where(TenantDocument.tenant_id == current_user.tenant_id, TenantDocument.category == category)
+        .order_by(desc(TenantDocument.created_at))
+    )
+    docs = result.scalars().all()
+    return [
+        {
+            "id": str(d.id),
+            "file_name": d.file_name,
+            "file_type": d.file_type,
+            "file_size": d.file_size,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+        }
+        for d in docs
+    ]
+
+
+@router.post("/employees/{employee_id}/documents/upload", status_code=status.HTTP_201_CREATED)
+async def upload_employee_document_file(
+    employee_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Verify employee belongs to tenant
+    emp_result = await db.execute(
+        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id)
+    )
+    if not emp_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    folder = os.path.join(UPLOAD_DIR, "empleados", str(employee_id))
+    os.makedirs(folder, exist_ok=True)
+
+    safe_name = f"{uuid_mod.uuid4().hex[:8]}_{file.filename}"
+    file_path = os.path.join(folder, safe_name)
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    doc = TenantDocument(
+        id=uuid_mod.uuid4(),
+        tenant_id=current_user.tenant_id,
+        uploaded_by=current_user.id,
+        file_name=file.filename,
+        file_type=file.content_type,
+        file_path=file_path,
+        file_size=len(content),
+        category=f"empleado_{employee_id}",
+        status="uploaded",
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    return {"id": str(doc.id), "file_name": doc.file_name, "file_type": doc.file_type, "file_size": doc.file_size, "created_at": doc.created_at.isoformat() if doc.created_at else None}
+
+
+@router.get("/employees/{employee_id}/documents/{doc_id}/download")
+async def download_employee_document(
+    employee_id: UUID,
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == doc_id,
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == f"empleado_{employee_id}",
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    with open(doc.file_path, "rb") as f:
+        content = f.read()
+    return Response(
+        content=content,
+        media_type=doc.file_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{doc.file_name}"'},
+    )
+
+
+@router.delete("/employees/{employee_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_employee_document(
+    employee_id: UUID,
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == doc_id,
+            TenantDocument.tenant_id == current_user.tenant_id,
+            TenantDocument.category == f"empleado_{employee_id}",
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    if doc.file_path and os.path.exists(doc.file_path):
+        os.remove(doc.file_path)
+    await db.delete(doc)
+    await db.commit()
+
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _build_payroll_pdf(payroll: Payroll, theme_config: dict | None = None) -> bytes:
+def _build_payroll_pdf(
+    payroll: Payroll,
+    theme_config: dict | None = None,
+    tenant: Tenant | None = None,
+) -> bytes:
     """Construye los datos y llama al generador de PDF de nómina."""
     from app.services.pdf_service import generate_payroll_pdf
 
     emp = payroll.employee
     base = float(payroll.base_salary or 0)
+    gross = float(getattr(payroll, 'gross_salary', None) or base)
     irpf = float(payroll.irpf or 0)
     ss_cc  = float(payroll.ss_contingencias_comunes or 0)
     ss_des = float(payroll.ss_desempleo or 0)
@@ -473,30 +597,47 @@ def _build_payroll_pdf(payroll: Payroll, theme_config: dict | None = None) -> by
     other = float(payroll.other_deductions or 0)
     net  = float(payroll.net_salary or 0)
 
+    # Datos del empleado — todos los campos disponibles
+    employee_data = {
+        "name":       emp.name       if emp else "Empleado",
+        "nif":        emp.nif        if emp else "",
+        "position":   emp.role       if emp else "",
+        "department": emp.department if emp else "",
+        "numero_afiliacion_ss":   getattr(emp, 'numero_afiliacion_ss', '') or '' if emp else '',
+        "categoria_profesional":  getattr(emp, 'categoria_profesional', '') or '' if emp else '',
+        "grupo_cotizacion":       getattr(emp, 'grupo_cotizacion', '') or '' if emp else '',
+        "tipo_contrato":          getattr(emp, 'tipo_contrato', '') or '' if emp else '',
+        "convenio_colectivo":     getattr(emp, 'convenio_colectivo', '') or '' if emp else '',
+    }
+
+    # Datos de la empresa — del tenant real
+    company_data = {
+        "name":    tenant.name    if tenant else "Mi Empresa S.L.",
+        "nif":     tenant.nif     if tenant else "",
+        "address": tenant.address if tenant else "",
+    }
+
     payroll_data = {
-        "employee": {
-            "name":       emp.name       if emp else "Empleado",
-            "nif":        emp.nif        if emp else "—",
-            "position":   emp.role       if emp else "—",
-            "department": emp.department if emp else "—",
-        },
-        "company": {
-            "name":    "Mi Empresa S.L.",
-            "nif":     "B00000000",
-            "address": "Calle Principal, 1 · Madrid",
-        },
+        "employee": employee_data,
+        "company":  company_data,
         "period_start": payroll.period_start.isoformat() if payroll.period_start else "",
         "period_end":   payroll.period_end.isoformat()   if payroll.period_end   else "",
         "issue_date":   (payroll.issue_date or datetime.now(UTC)).isoformat(),
         "base_salary":  base,
+        "gross_salary": gross,
         "ss_contingencias_comunes": ss_cc,
         "ss_desempleo":             ss_des,
         "ss_formacion_profesional": ss_fp,
         "ss_mei":                   ss_mei,
         "ss_employee":              total_ss,
         "irpf":                     irpf,
+        "pct_irpf":       float(getattr(payroll, 'pct_irpf', 0) or 0),
         "other_deductions":         other,
         "net_salary":               net,
+        "devengos_json":          getattr(payroll, 'devengos_json', None),
+        "cuotas_empresa_json":    getattr(payroll, 'cuotas_empresa_json', None),
+        "base_cotizacion_cc":     float(getattr(payroll, 'base_cotizacion_cc', 0) or 0) or None,
+        "base_irpf":              float(getattr(payroll, 'base_irpf', 0) or 0) or None,
     }
     return generate_payroll_pdf(payroll_data, theme_config)
 
@@ -518,7 +659,10 @@ async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_i
             from app.api.v1.routes.templates import get_default_theme
             theme_config = await get_default_theme(uuid_mod.UUID(tenant_id), "payroll", db)
 
-            pdf_bytes = _build_payroll_pdf(payroll, theme_config)
+            # Cargar datos del tenant para la cabecera del PDF
+            tenant = await db.get(Tenant, uuid_mod.UUID(tenant_id))
+
+            pdf_bytes = _build_payroll_pdf(payroll, theme_config, tenant=tenant)
 
             emp_name = payroll.employee.name.replace(" ", "_") if payroll.employee else "empleado"
             period = payroll.period_start.strftime("%Y-%m") if payroll.period_start else "periodo"
@@ -549,3 +693,138 @@ async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_i
             logger.info("[HR] PDF de nómina guardado: %s", filename)
     except Exception as e:
         logger.error("[HR] Error generando PDF de nómina: %s", e, exc_info=True)
+
+
+# ─── Endpoints PDF: Finiquito / Liquidación / Registro de Jornada ─────────
+
+async def _load_employee_and_tenant(
+    employee_id: UUID, tenant_id: UUID, db: AsyncSession
+) -> tuple[Employee, Tenant]:
+    """Carga empleado y tenant, lanza 404 si no existe."""
+    emp = await db.get(Employee, employee_id)
+    if not emp or emp.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    tenant = await db.get(Tenant, tenant_id)
+    return emp, tenant
+
+
+@router.post("/documents/finiquito/pdf")
+@limiter.limit("10/minute")
+async def generate_finiquito_pdf_endpoint(
+    request: Request,
+    payload: FiniquitoRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Genera PDF de finiquito para un empleado."""
+    from app.services.pdf_service import generate_finiquito_pdf
+
+    emp, tenant = await _load_employee_and_tenant(
+        payload.employee_id, current_user.tenant_id, db)
+
+    finiquito_data = {
+        "employee": {"name": emp.name, "nif": emp.nif or ""},
+        "company": {
+            "name": tenant.name if tenant else "",
+            "nif": tenant.nif if tenant else "",
+            "address": tenant.address if tenant else "",
+        },
+        "fecha_baja": payload.fecha_baja,
+        "causa_baja": payload.causa_baja,
+        "conceptos": [c.model_dump() for c in payload.conceptos],
+        "total_percepciones": payload.total_percepciones,
+        "total_deducciones": payload.total_deducciones,
+        "liquido": payload.liquido,
+        "fecha": datetime.now(UTC).isoformat(),
+    }
+    pdf_bytes = generate_finiquito_pdf(finiquito_data)
+
+    filename = f"Finiquito_{emp.name.replace(' ', '_')}_{payload.fecha_baja[:10]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/documents/liquidacion-finiquito/pdf")
+@limiter.limit("10/minute")
+async def generate_liquidacion_finiquito_pdf_endpoint(
+    request: Request,
+    payload: LiquidacionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Genera PDF de documento de liquidación y finiquito."""
+    from app.services.pdf_service import generate_liquidacion_finiquito_pdf
+
+    emp, tenant = await _load_employee_and_tenant(
+        payload.employee_id, current_user.tenant_id, db)
+
+    liquidacion_data = {
+        "employee": {
+            "name": emp.name,
+            "nif": emp.nif or "",
+            "naf": getattr(emp, 'numero_afiliacion_ss', '') or '',
+            "fecha_alta": emp.join_date.isoformat() if emp.join_date else '',
+            "categoria": getattr(emp, 'categoria_profesional', '') or '',
+        },
+        "company": {
+            "name": tenant.name if tenant else "",
+            "nif": tenant.nif if tenant else "",
+            "address": tenant.address if tenant else "",
+        },
+        "fecha_baja": payload.fecha_baja,
+        "causa_baja": payload.causa_baja,
+        "conceptos": [c.model_dump() for c in payload.conceptos],
+        "total_devengos": payload.total_devengos,
+        "total_deducciones": payload.total_deducciones,
+        "liquido": payload.liquido,
+        "fecha": datetime.now(UTC).isoformat(),
+    }
+    pdf_bytes = generate_liquidacion_finiquito_pdf(liquidacion_data)
+
+    filename = f"Liquidacion_{emp.name.replace(' ', '_')}_{payload.fecha_baja[:10]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/documents/registro-jornada/pdf")
+@limiter.limit("10/minute")
+async def generate_registro_jornada_pdf_endpoint(
+    request: Request,
+    payload: RegistroJornadaRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Genera PDF de registro mensual de jornada."""
+    from app.services.pdf_service import generate_registro_jornada_pdf
+
+    emp, tenant = await _load_employee_and_tenant(
+        payload.employee_id, current_user.tenant_id, db)
+
+    registro_data = {
+        "employee": {"name": emp.name, "nif": emp.nif or ""},
+        "company": {
+            "name": tenant.name if tenant else "",
+            "nif": tenant.nif if tenant else "",
+            "centro_trabajo": tenant.address if tenant else "",
+        },
+        "mes": payload.mes,
+        "anio": payload.anio,
+        "registros": [r.model_dump() for r in payload.registros],
+        "total_horas_ordinarias": payload.total_horas_ordinarias,
+        "total_horas_extras": payload.total_horas_extras,
+    }
+    pdf_bytes = generate_registro_jornada_pdf(registro_data)
+
+    mes_str = f"{payload.anio}-{payload.mes:02d}"
+    filename = f"Registro_Jornada_{emp.name.replace(' ', '_')}_{mes_str}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

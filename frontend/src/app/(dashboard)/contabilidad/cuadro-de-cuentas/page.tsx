@@ -94,8 +94,8 @@ export default function CuadroCuentasPage() {
         <div className="p-8 max-w-6xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Cuadro de Cuentas (PGC)</h1>
-                    <p className="mt-1 text-sm text-zinc-400">
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Cuadro de Cuentas (PGC)</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Plan General Contable de España — cuentas con actividad real en el libro diario.
                     </p>
                 </div>
@@ -107,38 +107,38 @@ export default function CuadroCuentasPage() {
                         </div>
                     )}
                     <div className="relative">
-                        <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
                             placeholder="Buscar código 430, 700..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="bg-[#18181b] border border-[#3f3f46] text-white text-sm rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:border-indigo-500 transition-colors"
+                            className="bg-card border border-border text-foreground text-sm rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:border-primary transition-colors"
                         />
                     </div>
                 </div>
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-24 text-zinc-500 gap-2">
+                <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" /> Cargando cuentas…
                 </div>
             ) : filteredGroups.length === 0 ? (
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-16 flex flex-col items-center text-center">
-                    <FolderTree className="w-12 h-12 text-zinc-700 mb-4" />
-                    <h2 className="text-lg font-bold text-white mb-2">
+                <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center text-center">
+                    <FolderTree className="w-12 h-12 text-muted-foreground mb-4" />
+                    <h2 className="text-lg font-bold text-foreground mb-2">
                         {noData ? "Sin movimientos contables" : "Sin resultados"}
                     </h2>
-                    <p className="text-sm text-zinc-500 max-w-md">
+                    <p className="text-sm text-muted-foreground max-w-md">
                         {noData
                             ? "Las cuentas PGC aparecerán aquí automáticamente cuando se registren facturas o asientos en el libro diario."
                             : `No hay cuentas que coincidan con "${search}"`}
                     </p>
                 </div>
             ) : (
-                <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden shadow-xl shadow-black/20">
+                <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl shadow-black/20">
                     {/* Table header */}
-                    <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-[#27272a] text-xs font-medium text-zinc-500 uppercase tracking-wide bg-[#161618]">
+                    <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted">
                         <div className="col-span-5">Cuenta</div>
                         <div className="col-span-3 text-right">Debe</div>
                         <div className="col-span-3 text-right">Haber</div>
@@ -152,23 +152,23 @@ export default function CuadroCuentasPage() {
                         const groupSaldo = groupDebit - groupCredit;
 
                         return (
-                            <div key={group.group} className="border-b border-[#27272a] last:border-0">
+                            <div key={group.group} className="border-b border-border last:border-0">
                                 {/* Group row */}
                                 <button
                                     onClick={() => toggle(group.group)}
-                                    className="w-full grid grid-cols-12 gap-4 px-6 py-3.5 hover:bg-white/[0.02] transition-colors text-left group"
+                                    className="w-full grid grid-cols-12 gap-4 px-6 py-3.5 hover:bg-accent/50 transition-colors text-left group"
                                 >
                                     <div className="col-span-5 flex items-center gap-2">
                                         {isOpen
-                                            ? <ChevronDown className="w-4 h-4 text-zinc-500 group-hover:text-white flex-shrink-0" />
-                                            : <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white flex-shrink-0" />
+                                            ? <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground flex-shrink-0" />
+                                            : <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground flex-shrink-0" />
                                         }
-                                        <span className="font-bold font-mono text-zinc-200">Grupo {group.group}</span>
-                                        <span className="text-zinc-400 text-sm truncate">{group.name}</span>
+                                        <span className="font-bold font-mono text-foreground">Grupo {group.group}</span>
+                                        <span className="text-muted-foreground text-sm truncate">{group.name}</span>
                                     </div>
-                                    <div className="col-span-3 text-right font-mono text-sm text-zinc-400">{fmt(groupDebit)}</div>
-                                    <div className="col-span-3 text-right font-mono text-sm text-zinc-400">{fmt(groupCredit)}</div>
-                                    <div className={`col-span-1 text-right font-mono text-sm font-semibold ${groupSaldo >= 0 ? "text-zinc-200" : "text-rose-400"}`}>
+                                    <div className="col-span-3 text-right font-mono text-sm text-muted-foreground">{fmt(groupDebit)}</div>
+                                    <div className="col-span-3 text-right font-mono text-sm text-muted-foreground">{fmt(groupCredit)}</div>
+                                    <div className={`col-span-1 text-right font-mono text-sm font-semibold ${groupSaldo >= 0 ? "text-foreground" : "text-rose-400"}`}>
                                         {fmt(Math.abs(groupSaldo))}
                                         {groupSaldo < 0 && <span className="text-xs ml-0.5">H</span>}
                                     </div>
@@ -180,14 +180,14 @@ export default function CuadroCuentasPage() {
                                     .map(acct => {
                                         const saldo = acct.debit - acct.credit;
                                         return (
-                                            <div key={acct.code} className="grid grid-cols-12 gap-4 px-6 py-2.5 bg-[#161618]/30 hover:bg-white/[0.01] border-t border-[#27272a]/50 transition-colors">
+                                            <div key={acct.code} className="grid grid-cols-12 gap-4 px-6 py-2.5 bg-muted/30 hover:bg-white/[0.01] border-t border-border/50 transition-colors">
                                                 <div className="col-span-5 flex items-center gap-2 pl-6">
-                                                    <span className="font-bold font-mono text-indigo-400 text-sm w-10 flex-shrink-0">{acct.code}</span>
-                                                    <span className="text-zinc-400 text-sm truncate">{acct.name}</span>
+                                                    <span className="font-bold font-mono text-primary text-sm w-10 flex-shrink-0">{acct.code}</span>
+                                                    <span className="text-muted-foreground text-sm truncate">{acct.name}</span>
                                                 </div>
-                                                <div className="col-span-3 text-right font-mono text-sm text-zinc-400">{fmt(acct.debit)}</div>
-                                                <div className="col-span-3 text-right font-mono text-sm text-zinc-400">{fmt(acct.credit)}</div>
-                                                <div className={`col-span-1 text-right font-mono text-sm ${saldo >= 0 ? "text-zinc-300" : "text-rose-400"}`}>
+                                                <div className="col-span-3 text-right font-mono text-sm text-muted-foreground">{fmt(acct.debit)}</div>
+                                                <div className="col-span-3 text-right font-mono text-sm text-muted-foreground">{fmt(acct.credit)}</div>
+                                                <div className={`col-span-1 text-right font-mono text-sm ${saldo >= 0 ? "text-foreground" : "text-rose-400"}`}>
                                                     {fmt(Math.abs(saldo))}
                                                     {saldo < 0 && <span className="text-xs ml-0.5">H</span>}
                                                 </div>

@@ -49,34 +49,34 @@ export default function WorkflowFormModal({
 }: WorkflowFormModalProps) {
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[#111113] border border-zinc-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-indigo-400" />
+            <div className="bg-card border border-border rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-border flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-primary" />
                         {editingWorkflow ? "Editar Automatización" : "Nueva Regla de Automatización"}
                     </h2>
-                    <button onClick={onClose} className="text-zinc-400 hover:text-white transition">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs text-zinc-400 mb-1.5 uppercase tracking-wider">Nombre de la regla *</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">Nombre de la regla *</label>
                         <input required type="text" value={name} onChange={e => setName(e.target.value)}
                             placeholder="Ej: Alerta facturas vencidas"
-                            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 transition" />
+                            className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary transition" />
                     </div>
                     <div>
-                        <label className="block text-xs text-zinc-400 mb-1.5 uppercase tracking-wider">Descripción</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">Descripción</label>
                         <textarea value={description} onChange={e => setDescription(e.target.value)}
                             placeholder="¿Qué hace esta regla?"
-                            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 transition resize-none h-16" />
+                            className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary transition resize-none h-16" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-3 border-t border-zinc-800/50">
+                    <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
                         <div>
-                            <label className="block text-xs font-semibold text-indigo-400 mb-1.5 uppercase tracking-wider">Trigger (Cuándo)</label>
+                            <label className="block text-xs font-semibold text-primary mb-1.5 uppercase tracking-wider">Trigger (Cuándo)</label>
                             <select value={triggerType} onChange={e => setTriggerType(e.target.value)}
-                                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500">
+                                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary">
                                 <option value="event_based">⚡ Eventual — Al ocurrir un Evento ERP</option>
                                 <option value="schedule_based">🕐 De tiempo — Programación (Cron)</option>
                                 <option value="manual">🔄 Constante — A Demanda</option>
@@ -85,7 +85,7 @@ export default function WorkflowFormModal({
                         <div>
                             <label className="block text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Acción (Qué)</label>
                             <select value={actionType} onChange={e => setActionType(e.target.value)}
-                                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500">
+                                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-emerald-500">
                                 <option value="ai_task">Lanzar Agente IA</option>
                                 <option value="notify">Notificación</option>
                                 <option value="webhook">Llamar Webhook</option>
@@ -98,7 +98,7 @@ export default function WorkflowFormModal({
                     )}
                     {triggerType === "event_based" && (
                         <div>
-                            <label className="block text-xs text-zinc-400 mb-2 uppercase tracking-wider">Evento que dispara la automatización</label>
+                            <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">Evento que dispara la automatización</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
                                     { value: "invoice_created", label: "Factura creada" },
@@ -116,7 +116,7 @@ export default function WorkflowFormModal({
                                                 const cur: string[] = triggerConfig.events || [];
                                                 setTriggerConfig({ events: selected ? cur.filter((e: string) => e !== ev.value) : [...cur, ev.value] });
                                             }}
-                                            className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${selected ? "border-indigo-500/60 bg-indigo-500/10 text-indigo-300" : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}
+                                            className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${selected ? "border-primary/60 bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:border-border"}`}
                                         >
                                             {ev.label}
                                         </button>
@@ -127,18 +127,18 @@ export default function WorkflowFormModal({
                     )}
 
                     <div>
-                        <label className="block text-xs text-zinc-400 mb-1.5 uppercase tracking-wider">
+                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">
                             Instrucción para el Agente IA *
-                            <span className="text-zinc-600 ml-1 normal-case">(en lenguaje natural)</span>
+                            <span className="text-muted-foreground/60 ml-1 normal-case">(en lenguaje natural)</span>
                         </label>
                         <textarea required rows={3} value={actionIntent} onChange={e => setActionIntent(e.target.value)}
                             placeholder="Ej: Revisa todas las facturas con más de 30 días sin pagar y genera un recordatorio para cada cliente con el importe pendiente"
-                            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 transition resize-none" />
+                            className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-emerald-500 transition resize-none" />
                     </div>
 
                     {/* Execution mode selector */}
-                    <div className="pt-3 border-t border-zinc-800/50">
-                        <label className="block text-xs text-zinc-400 mb-2 uppercase tracking-wider">Modo de ejecución</label>
+                    <div className="pt-3 border-t border-border">
+                        <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">Modo de ejecución</label>
                         {canBeDeterministic === true && (
                             <div className="mb-3 flex items-start gap-2 bg-emerald-500/8 border border-emerald-500/25 rounded-lg px-3 py-2">
                                 <Info className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -182,7 +182,7 @@ export default function WorkflowFormModal({
                                 <button type="button" onClick={() => setExecutionMode("reasoning")}
                                     className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "reasoning"
                                         ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
-                                        : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}>
+                                        : "border-border bg-background text-muted-foreground hover:border-border"}`}>
                                     <div className="flex items-center gap-2">
                                         <BrainCircuit className="w-4 h-4" />
                                         <span className="text-xs font-semibold">Con IA</span>
@@ -194,7 +194,7 @@ export default function WorkflowFormModal({
                                 <button type="button" onClick={() => setExecutionMode("deterministic")}
                                     className={`flex flex-col items-start gap-1 rounded-xl px-4 py-3 border text-left transition-all ${executionMode === "deterministic"
                                         ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                                        : "border-zinc-800 bg-[#09090b] text-zinc-400 hover:border-zinc-700"}`}>
+                                        : "border-border bg-background text-muted-foreground hover:border-border"}`}>
                                     <div className="flex items-center gap-2">
                                         <Cpu className="w-4 h-4" />
                                         <span className="text-xs font-semibold">Determinista</span>
@@ -224,10 +224,10 @@ export default function WorkflowFormModal({
                     </div>
 
                     {/* Editor visual de nodos */}
-                    <div className="pt-3 border-t border-zinc-800/50">
+                    <div className="pt-3 border-t border-border">
                         <div className="flex items-center justify-between mb-2">
-                            <p className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-                                <BrainCircuit className="w-3 h-3 text-indigo-400" /> Editor visual de agentes
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                <BrainCircuit className="w-3 h-3 text-primary" /> Editor visual de agentes
                             </p>
                             <div className="flex items-center gap-2">
                                 {hasFanOut(parsedUiEdges) && (
@@ -247,7 +247,7 @@ export default function WorkflowFormModal({
                                 </button>
                             </div>
                         </div>
-                        <div className="h-72 rounded-xl overflow-hidden border border-zinc-800">
+                        <div className="h-72 rounded-xl overflow-hidden border border-border">
                             <WorkflowGraph
                                 key={graphKey}
                                 nodes={parsedUiNodes || defaultEditorNodes}
@@ -258,10 +258,10 @@ export default function WorkflowFormModal({
                             />
                         </div>
                     </div>
-                    <div className="pt-4 flex justify-end gap-3 border-t border-zinc-800/50">
-                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-zinc-400 hover:text-white transition text-sm">Cancelar</button>
+                    <div className="pt-4 flex justify-end gap-3 border-t border-border">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-muted-foreground hover:text-foreground transition text-sm">Cancelar</button>
                         <button type="submit" disabled={isSubmitting}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition disabled:opacity-50 flex items-center gap-2">
+                            className="bg-primary hover:bg-primary text-foreground px-6 py-2.5 rounded-lg font-medium text-sm transition disabled:opacity-50 flex items-center gap-2">
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                             {isSubmitting ? "Guardando..." : editingWorkflow ? "Guardar cambios" : "Crear Regla"}
                         </button>

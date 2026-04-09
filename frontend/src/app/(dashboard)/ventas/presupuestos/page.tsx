@@ -5,6 +5,7 @@ import { api, Quote, Client, Product } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
+import { useTranslations } from "next-intl";
 import {
     FileText, Plus, Search, FileSignature, CheckCircle2,
     XCircle, Clock, Send, FilePlus2, DollarSign,
@@ -15,6 +16,8 @@ import { es } from "date-fns/locale";
 
 export default function QuotesPage() {
     const toastNotif = useToastStore();
+    const t = useTranslations("ventas");
+    const tc = useTranslations("common");
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -72,21 +75,21 @@ export default function QuotesPage() {
             await loadData();
         } catch (error) {
             logError("ventas/presupuestos/page", error);
-            toastNotif.error("Error al emitir presupuesto");
+            toastNotif.error(t("quoteErrorCreate"));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleConvert = async (q: Quote) => {
-        if (!await showConfirm({ message: `¿Convertir el presupuesto a factura? Se creará una factura de ${formatCurrency(q.amount_total)} para ${q.client?.name ?? 'este cliente'}.`, confirmLabel: "Confirmar", confirmVariant: "primary" })) return;
+        if (!await showConfirm({ message: t("quoteConvertConfirmDetail", { amount: formatCurrency(q.amount_total), client: q.client?.name ?? t("quoteThisClient") }), confirmLabel: tc("confirm"), confirmVariant: "primary" })) return;
         setConvertingId(q.id);
         try {
             const result = await api.erp.quotes.convertToInvoice(q.id);
-            setToast({ msg: `✓ Factura ${result.invoice_number} creada correctamente (${formatCurrency(result.amount_total)})`, type: "ok" });
+            setToast({ msg: t("quoteInvoiceCreatedDetail", { number: result.invoice_number, amount: formatCurrency(result.amount_total) }), type: "ok" });
             await loadData();
         } catch (e: any) {
-            setToast({ msg: "Error: " + (e.message || "No se pudo convertir"), type: "err" });
+            setToast({ msg: t("errorConvert") + ": " + (e.message || ""), type: "err" });
         } finally {
             setConvertingId(null);
             setTimeout(() => setToast(null), 6000);
@@ -94,12 +97,12 @@ export default function QuotesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar este presupuesto?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("quoteDeleteConfirm"), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         try {
             await api.erp.quotes.delete(id);
             setQuotes(prev => prev.filter(q => q.id !== id));
         } catch (e: any) {
-            setToast({ msg: "Error al eliminar: " + (e.message || ""), type: "err" });
+            setToast({ msg: t("errorDelete") + ": " + (e.message || ""), type: "err" });
             setTimeout(() => setToast(null), 4000);
         }
     };
@@ -142,107 +145,107 @@ export default function QuotesPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'draft':
-                return <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-full text-xs font-medium"><FileSignature className="w-3.5 h-3.5" /> Borrador</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 bg-muted text-foreground border border-border rounded-full text-xs font-medium"><FileSignature className="w-3.5 h-3.5" /> {t("draft")}</span>;
             case 'sent':
-                return <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-xs font-medium"><Send className="w-3.5 h-3.5" /> Enviado</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-xs font-medium"><Send className="w-3.5 h-3.5" /> {t("sent")}</span>;
             case 'accepted':
-                return <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-xs font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Aceptado</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-xs font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> {t("approved")}</span>;
             case 'rejected':
-                return <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-xs font-medium"><XCircle className="w-3.5 h-3.5" /> Rechazado</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-xs font-medium"><XCircle className="w-3.5 h-3.5" /> {t("rejected")}</span>;
             default:
                 return null;
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-white p-8">
+        <div className="min-h-screen bg-background text-foreground p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-light text-white flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/10 rounded-xl">
-                            <FileText className="w-8 h-8 text-indigo-400" />
+                    <h1 className="text-3xl font-light text-foreground flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl">
+                            <FileText className="w-8 h-8 text-primary" />
                         </div>
-                        Presupuestos
+                        {t("quotes")}
                     </h1>
-                    <p className="text-zinc-400 mt-2 ml-14 text-sm max-w-2xl">
-                        Crea propuestas comerciales manualmente o revisa las pre-generadas por la Inteligencia Artificial a partir del CRM.
+                    <p className="text-muted-foreground mt-2 ml-14 text-sm max-w-2xl">
+                        {t("quotesDescription")}
                     </p>
                 </div>
 
                 <div className="flex gap-3">
                     <button
                         onClick={() => setShowModal(true)}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 px-5 py-2.5 rounded-full font-medium transition-colors"
+                        className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground shadow-lg shadow-primary/20 px-5 py-2.5 rounded-full font-medium transition-colors"
                     >
                         <Plus className="w-4 h-4" />
-                        Crear Presupuesto
+                        {t("newQuote")}
                     </button>
-                    <button className="flex items-center gap-2 bg-[#111113] border border-zinc-800 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-full font-medium transition-colors">
-                        <Clock className="w-4 h-4 text-zinc-400" />
-                        Expirados
+                    <button className="flex items-center gap-2 bg-card border border-border hover:bg-muted text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        {t("quoteExpired")}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-[#111113] border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#161618]">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
+                <div className="p-4 border-b border-border flex justify-between items-center bg-muted">
                     <div className="relative">
-                        <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
-                            placeholder="Buscar cliente o nº..."
-                            className="bg-[#09090b] border border-zinc-800 text-sm text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors w-72"
+                            placeholder={t("quoteSearchPlaceholder")}
+                            className="bg-background border border-border text-sm text-foreground rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-primary transition-colors w-72"
                         />
                     </div>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
-                        <thead className="bg-[#161618]/50 text-zinc-400 border-b border-zinc-800">
+                        <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                             <tr>
-                                <th className="px-6 py-4 font-medium">Nº Propuesta</th>
-                                <th className="px-6 py-4 font-medium">Cliente</th>
-                                <th className="px-6 py-4 font-medium">Fecha</th>
-                                <th className="px-6 py-4 font-medium text-right">Base</th>
-                                <th className="px-6 py-4 font-medium text-right text-indigo-400">Total</th>
-                                <th className="px-6 py-4 font-medium">Estado</th>
-                                <th className="px-6 py-4 font-medium text-right">Acción</th>
+                                <th className="px-6 py-4 font-medium">{t("quoteNumber")}</th>
+                                <th className="px-6 py-4 font-medium">{t("client")}</th>
+                                <th className="px-6 py-4 font-medium">{t("date")}</th>
+                                <th className="px-6 py-4 font-medium text-right">{t("subtotal")}</th>
+                                <th className="px-6 py-4 font-medium text-right text-primary">{t("total")}</th>
+                                <th className="px-6 py-4 font-medium">{t("status")}</th>
+                                <th className="px-6 py-4 font-medium text-right">{t("quoteAction")}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/50">
                             {isLoading ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-12 text-center">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500 mx-auto"></div>
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
                                     </td>
                                 </tr>
                             ) : quotes.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-16 text-center">
-                                        <FilePlus2 className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                                        <p className="text-zinc-400 font-medium">Agrega tu primer presupuesto para empezar</p>
+                                        <FilePlus2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                                        <p className="text-muted-foreground font-medium">{t("quoteEmptyState")}</p>
                                     </td>
                                 </tr>
                             ) : quotes.map((q) => (
-                                <tr key={q.id} className="hover:bg-indigo-500/[0.02] transition-colors group">
-                                    <td className="px-6 py-4 font-medium text-white">
-                                        {q.quote_number || 'Borrador'}
+                                <tr key={q.id} className="hover:bg-primary/[0.02] transition-colors group">
+                                    <td className="px-6 py-4 font-medium text-foreground">
+                                        {q.quote_number || t("draft")}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 font-medium">
+                                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium">
                                                 {q.client?.name.charAt(0) || '?'}
                                             </div>
-                                            <span className="font-medium text-zinc-300">{q.client?.name || 'Cliente sin nombre'}</span>
+                                            <span className="font-medium text-foreground">{q.client?.name || t("unknownClient")}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-zinc-400">
+                                    <td className="px-6 py-4 text-muted-foreground">
                                         {format(new Date(q.date), "dd/MM/yyyy")}
                                     </td>
-                                    <td className="px-6 py-4 text-right text-zinc-300">
+                                    <td className="px-6 py-4 text-right text-foreground">
                                         {formatCurrency(q.amount_base)}
                                     </td>
-                                    <td className="px-6 py-4 text-right font-semibold text-indigo-400">
+                                    <td className="px-6 py-4 text-right font-semibold text-primary">
                                         {formatCurrency(q.amount_total)}
                                     </td>
                                     <td className="px-6 py-4">
@@ -256,33 +259,33 @@ export default function QuotesPage() {
                                                     onClick={() => handleConvert(q)}
                                                     disabled={convertingId === q.id}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors disabled:opacity-50"
-                                                    title="Convertir en Factura"
+                                                    title={t("convertToInvoice")}
                                                 >
                                                     {convertingId === q.id
                                                         ? <Loader2 className="w-3 h-3 animate-spin" />
                                                         : <FileCheck2 className="w-3 h-3" />}
-                                                    Facturar
+                                                    {t("quoteToInvoice")}
                                                 </button>
                                             )}
                                             {q.status === "accepted" && (
-                                                <span className="text-xs text-zinc-500 italic">Factura emitida</span>
+                                                <span className="text-xs text-muted-foreground italic">{t("quoteInvoiceIssued")}</span>
                                             )}
                                             {/* Cambiar estado */}
                                             <select
                                                 value={q.status}
                                                 onChange={(e) => handleStatusChange(q.id, e.target.value)}
-                                                className="bg-[#09090b] text-xs border border-zinc-700 rounded pl-2 pr-6 py-1.5 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                                className="bg-background text-xs border border-border rounded pl-2 pr-6 py-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                                             >
-                                                <option value="draft">Borrador</option>
-                                                <option value="sent">Enviado</option>
-                                                <option value="accepted">Aceptado</option>
-                                                <option value="rejected">Rechazado</option>
+                                                <option value="draft">{t("draft")}</option>
+                                                <option value="sent">{t("sent")}</option>
+                                                <option value="accepted">{t("approved")}</option>
+                                                <option value="rejected">{t("rejected")}</option>
                                             </select>
                                             {/* Eliminar */}
                                             <button
                                                 onClick={() => handleDelete(q.id)}
-                                                className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                                title="Eliminar presupuesto"
+                                                className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                                title={t("deleteQuote")}
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </button>
@@ -298,73 +301,73 @@ export default function QuotesPage() {
             {/* Modal Crear Presupuesto Rápido */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-[#111113] border border-zinc-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl">
-                        <div className="p-5 border-b border-zinc-800 flex justify-between items-center bg-[#161618]">
-                            <h2 className="text-lg font-medium text-white flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-indigo-400" />
-                                Nuevo Presupuesto
+                    <div className="bg-card border border-border rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl">
+                        <div className="p-5 border-b border-border flex justify-between items-center bg-muted">
+                            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-primary" />
+                                {t("newQuote")}
                             </h2>
-                            <button onClick={() => setShowModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                            <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground">✕</button>
                         </div>
 
                         <form onSubmit={handleCreate} className="p-6 space-y-6">
-                            <div className="grid grid-cols-2 gap-6 border-b border-zinc-800/50 pb-6">
+                            <div className="grid grid-cols-2 gap-6 border-b border-border pb-6">
                                 <div>
-                                    <label className="block text-sm text-zinc-400 mb-1.5">Cliente</label>
+                                    <label className="block text-sm text-muted-foreground mb-1.5">{t("client")}</label>
                                     <select
                                         required
                                         value={selectedClient}
                                         onChange={e => setSelectedClient(e.target.value)}
-                                        className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
                                     >
-                                        <option value="" disabled>Selecciona o busca...</option>
+                                        <option value="" disabled>{t("quoteSelectClient")}</option>
                                         {clients.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-zinc-400 mb-1.5">Válido hasta</label>
+                                    <label className="block text-sm text-muted-foreground mb-1.5">{t("validUntil")}</label>
                                     <input
                                         type="date"
                                         value={validUntil}
                                         onChange={e => setValidUntil(e.target.value)}
-                                        className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
                                     />
                                 </div>
                             </div>
 
                             <div>
                                 <div className="flex justify-between items-center mb-3">
-                                    <label className="block text-sm font-medium text-zinc-300">Líneas (Conceptos)</label>
+                                    <label className="block text-sm font-medium text-foreground">{t("conceptLines")}</label>
                                     <button
                                         type="button"
                                         onClick={() => setLines([...lines, { product_id: "", description: "", quantity: 1, unit_price: 0, tax_percentage: 21 }])}
-                                        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium"
+                                        className="text-xs text-primary hover:text-primary flex items-center gap-1 font-medium"
                                     >
-                                        <Plus className="w-3 h-3" /> Añadir concepto
+                                        <Plus className="w-3 h-3" /> {t("addConcept")}
                                     </button>
                                 </div>
                                 <div className="space-y-3">
                                     {lines.map((l, i) => (
-                                        <div key={i} className="flex gap-3 items-start bg-[#161618] p-3 rounded-lg border border-zinc-800/50">
+                                        <div key={i} className="flex gap-3 items-start bg-muted p-3 rounded-lg border border-border">
                                             <div className="flex-1">
                                                 <input
                                                     type="text"
                                                     required
                                                     value={l.description}
                                                     onChange={e => updateLine(i, 'description', e.target.value)}
-                                                    placeholder="Descripción del concepto"
-                                                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-1.5 text-sm text-white focus:border-indigo-500"
+                                                    placeholder={t("conceptPlaceholder")}
+                                                    className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm text-foreground focus:border-primary"
                                                 />
                                                 <div className="mt-2 text-xs flex gap-2">
                                                     <select
                                                         value={l.product_id}
                                                         onChange={e => updateLine(i, 'product_id', e.target.value)}
-                                                        className="bg-[#09090b] border border-zinc-800 rounded px-2 text-zinc-400"
+                                                        className="bg-background border border-border rounded px-2 text-muted-foreground"
                                                     >
-                                                        <option value="">Rellenado libre</option>
-                                                        {products.map(p => <option key={p.id} value={p.id}>Catálogo: {p.name}</option>)}
+                                                        <option value="">{t("quoteFreeEntry")}</option>
+                                                        {products.map(p => <option key={p.id} value={p.id}>{t("quoteCatalog")}: {p.name}</option>)}
                                                     </select>
                                                 </div>
                                             </div>
@@ -374,20 +377,20 @@ export default function QuotesPage() {
                                                     min="1"
                                                     value={l.quantity}
                                                     onChange={e => updateLine(i, 'quantity', parseFloat(e.target.value))}
-                                                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-1.5 text-sm text-center text-white focus:border-indigo-500"
+                                                    className="w-full bg-background border border-border rounded px-3 py-1.5 text-sm text-center text-foreground focus:border-primary"
                                                 />
-                                                <span className="text-[10px] text-zinc-500 block text-center mt-1">Uds.</span>
+                                                <span className="text-[10px] text-muted-foreground block text-center mt-1">{t("quoteUnits")}</span>
                                             </div>
                                             <div className="w-28 relative">
-                                                <DollarSign className="w-3 h-3 text-zinc-500 absolute left-2 top-2.5" />
+                                                <DollarSign className="w-3 h-3 text-muted-foreground absolute left-2 top-2.5" />
                                                 <input
                                                     type="number"
                                                     step="0.01"
                                                     value={l.unit_price}
                                                     onChange={e => updateLine(i, 'unit_price', parseFloat(e.target.value))}
-                                                    className="w-full bg-[#09090b] border border-zinc-800 rounded pl-6 pr-2 py-1.5 text-sm text-right text-white focus:border-indigo-500"
+                                                    className="w-full bg-background border border-border rounded pl-6 pr-2 py-1.5 text-sm text-right text-foreground focus:border-primary"
                                                 />
-                                                <span className="text-[10px] text-zinc-500 block text-right mt-1 pr-1">Precio Un.</span>
+                                                <span className="text-[10px] text-muted-foreground block text-right mt-1 pr-1">{t("quoteUnitPrice")}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -398,16 +401,16 @@ export default function QuotesPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-5 py-2.5 text-zinc-300 hover:text-white transition-colors font-medium border border-transparent hover:border-zinc-700 rounded-lg"
+                                    className="px-5 py-2.5 text-foreground hover:text-foreground transition-colors font-medium border border-transparent hover:border-border rounded-lg"
                                 >
-                                    Cancelar
+                                    {tc("cancel")}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting || !selectedClient || lines.some(l => !l.description)}
-                                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                                    className="bg-primary hover:bg-primary text-foreground px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-primary/20 disabled:opacity-50"
                                 >
-                                    {isSubmitting ? "Guardando..." : "Crear Borrador"}
+                                    {isSubmitting ? t("quoteSaving") : t("quoteCreateDraft")}
                                 </button>
                             </div>
                         </form>

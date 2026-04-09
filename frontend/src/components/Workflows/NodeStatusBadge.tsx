@@ -13,8 +13,8 @@ const STATUS_CONFIG: Record<string, { icon: React.ElementType; cls: string; labe
     failed: { icon: XCircle, cls: "text-red-400 bg-red-500/10 border-red-500/20", label: "Error" },
     waiting: { icon: Clock, cls: "text-blue-400 bg-blue-500/10 border-blue-500/20", label: "Esperando" },
     paused: { icon: Pause, cls: "text-orange-400 bg-orange-500/10 border-orange-500/20", label: "Pausado" },
-    skipped: { icon: MinusCircle, cls: "text-zinc-500 bg-zinc-800 border-zinc-700 line-through", label: "Omitido" },
-    pending: { icon: Clock, cls: "text-zinc-500 bg-zinc-800 border-zinc-700", label: "Pendiente" },
+    skipped: { icon: MinusCircle, cls: "text-muted-foreground bg-muted border-border line-through", label: "Omitido" },
+    pending: { icon: Clock, cls: "text-muted-foreground bg-muted border-border", label: "Pendiente" },
 };
 
 export default function NodeStatusBadge({ status, size = "sm" }: NodeStatusBadgeProps) {

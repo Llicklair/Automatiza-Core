@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, Payroll, Employee, PayrollCalculation } from "@/lib/api";
 import {
     WalletCards, Search, CheckCircle2, Clock,
     Send, Download, Bot, Loader2, Sparkles,
-    AlertCircle, X, Calculator,
+    AlertCircle, X, Calculator, Wallet, ShieldCheck, Receipt,
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { logError } from "@/lib/logger";
 import { useNotificationStore } from "@/stores/notifications";
+import { KpiCard } from "@/components/shared/KpiCard";
 
 export default function PayrollsPage() {
     const [payrolls, setPayrolls] = useState<Payroll[]>([]);
@@ -20,6 +21,8 @@ export default function PayrollsPage() {
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
     const [search, setSearch] = useState("");
+    const [filterMonth, setFilterMonth] = useState("");
+    const [filterEmpId, setFilterEmpId] = useState("");
     const [autoOpen, setAutoOpen] = useState(false);
     const [autoEmployees, setAutoEmployees] = useState<Employee[]>([]);
     const [autoEmpLoading, setAutoEmpLoading] = useState(false);
@@ -181,32 +184,54 @@ export default function PayrollsPage() {
             case "draft": return <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20"><Clock className="w-3 h-3" /> Borrador</span>;
             case "sent": return <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20"><Send className="w-3 h-3" /> Emitida</span>;
             case "paid": return <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-3 h-3" /> Pagada</span>;
-            default: return <span className="text-xs text-zinc-500 capitalize">{status}</span>;
+            default: return <span className="text-xs text-muted-foreground capitalize">{status}</span>;
         }
     };
 
     const fmt = (v: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
 
-    const filtered = payrolls.filter(p =>
-        (p.employee?.name ?? "").toLowerCase().includes(search.toLowerCase())
-    );
+    const kpis = useMemo(() => {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const thisMonth = payrolls.filter(p => p.period_start && p.period_start.slice(0, 7) === currentMonth);
+        return {
+            costeNominas: thisMonth.reduce((s, p) => s + (p.base_salary || 0), 0),
+            totalSS: thisMonth.reduce((s, p) => s + ((p.deductions || 0) - (p.irpf || 0)), 0),
+            totalIRPF: thisMonth.reduce((s, p) => s + (p.irpf || 0), 0),
+        };
+    }, [payrolls]);
+
+    const uniqueEmployees = useMemo(() => {
+        const map = new Map<string, string>();
+        payrolls.forEach(p => {
+            if (p.employee_id && p.employee?.name) map.set(p.employee_id, p.employee.name);
+        });
+        return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    }, [payrolls]);
+
+    const filtered = payrolls.filter(p => {
+        if (search && !(p.employee?.name ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+        if (filterMonth && (!p.period_start || p.period_start.slice(0, 7) !== filterMonth)) return false;
+        if (filterEmpId && p.employee_id !== filterEmpId) return false;
+        return true;
+    });
 
     const drafts = payrolls.filter(p => p.status === "draft").length;
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-white p-8">
+        <div className="min-h-screen bg-background text-foreground p-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-light text-white flex items-center gap-3">
+                    <h1 className="text-3xl font-light text-foreground flex items-center gap-3">
                         <div className="p-2 bg-emerald-500/10 rounded-xl">
                             <WalletCards className="w-8 h-8 text-emerald-400" />
                         </div>
                         Emisión de Nóminas
                     </h1>
                     <div className="flex items-center gap-2 mt-2 ml-14">
-                        <p className="text-zinc-400 text-sm">Revisa, aprueba y descarga las pre-nóminas generadas por la IA.</p>
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-medium">
+                        <p className="text-muted-foreground text-sm">Revisa, aprueba y descarga las pre-nóminas generadas por la IA.</p>
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-medium">
                             <Bot className="w-3 h-3" /> IA-First
                         </span>
                     </div>
@@ -215,7 +240,7 @@ export default function PayrollsPage() {
                     <button
                         type="button"
                         onClick={openAutoModal}
-                        className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-5 py-2.5 rounded-full font-medium transition-colors"
+                        className="flex items-center gap-2 bg-muted hover:bg-accent border border-border text-foreground px-5 py-2.5 rounded-full font-medium transition-colors"
                     >
                         <Calculator className="w-4 h-4 text-emerald-400" />
                         Calcular automática
@@ -223,7 +248,7 @@ export default function PayrollsPage() {
                     <button
                         onClick={handleGeneratePayrolls}
                         disabled={generatingPayrolls}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white shadow-lg shadow-indigo-500/20 px-5 py-2.5 rounded-full font-medium transition-colors"
+                        className="flex items-center gap-2 bg-primary hover:bg-primary disabled:opacity-60 text-foreground shadow-lg shadow-primary/20 px-5 py-2.5 rounded-full font-medium transition-colors"
                     >
                         {generatingPayrolls ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         {generatingPayrolls ? "Generando..." : "Generar con IA"}
@@ -234,7 +259,7 @@ export default function PayrollsPage() {
                                 const draftPayrolls = payrolls.filter(p => p.status === "draft");
                                 for (const p of draftPayrolls) await handleApprove(p);
                             }}
-                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 px-5 py-2.5 rounded-full font-medium transition-colors"
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-foreground shadow-lg shadow-emerald-500/20 px-5 py-2.5 rounded-full font-medium transition-colors"
                         >
                             <CheckCircle2 className="w-4 h-4" />
                             Aprobar todos ({drafts})
@@ -243,34 +268,69 @@ export default function PayrollsPage() {
                 </div>
             </div>
 
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
+                <KpiCard title="Coste nóminas (mes)" value={fmt(kpis.costeNominas)} icon={Wallet} />
+                <KpiCard title="Total SS (mes)" value={fmt(kpis.totalSS)} icon={ShieldCheck} />
+                <KpiCard title="Total IRPF (mes)" value={fmt(kpis.totalIRPF)} icon={Receipt} />
+            </div>
+
             {/* Tabla */}
-            <div className="bg-[#111113] border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#161618]">
-                    <div className="relative">
-                        <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-border flex flex-wrap justify-between items-center gap-3 bg-muted">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative">
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                                type="text"
+                                placeholder="Buscar empleado..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="bg-background border border-border text-sm text-foreground rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-emerald-500 transition-colors w-56"
+                            />
+                        </div>
                         <input
-                            type="text"
-                            placeholder="Buscar empleado..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="bg-[#09090b] border border-zinc-800 text-sm text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-emerald-500 transition-colors w-64"
+                            type="month"
+                            value={filterMonth}
+                            onChange={e => setFilterMonth(e.target.value)}
+                            className="bg-background border border-border text-sm text-foreground rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 transition-colors"
+                            title="Filtrar por mes"
                         />
+                        <select
+                            value={filterEmpId}
+                            onChange={e => setFilterEmpId(e.target.value)}
+                            className="bg-background border border-border text-sm text-foreground rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 transition-colors"
+                        >
+                            <option value="">Todos los empleados</option>
+                            {uniqueEmployees.map(([id, name]) => (
+                                <option key={id} value={id}>{name}</option>
+                            ))}
+                        </select>
+                        {(filterMonth || filterEmpId) && (
+                            <button
+                                type="button"
+                                onClick={() => { setFilterMonth(""); setFilterEmpId(""); }}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Limpiar filtros
+                            </button>
+                        )}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-zinc-400 bg-[#09090b] px-3 py-1.5 rounded-lg border border-zinc-800">
-                        <span className={`w-2 h-2 rounded-full ${drafts > 0 ? "bg-amber-500 animate-pulse" : "bg-zinc-600"}`} />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background px-3 py-1.5 rounded-lg border border-border">
+                        <span className={`w-2 h-2 rounded-full ${drafts > 0 ? "bg-amber-500 animate-pulse" : "bg-accent"}`} />
                         Borradores: {drafts}
                     </div>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap min-w-[900px]">
-                        <thead className="bg-[#161618]/50 text-zinc-400 border-b border-zinc-800">
+                        <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                             <tr>
                                 <th className="px-6 py-4 font-medium">Empleado</th>
                                 <th className="px-6 py-4 font-medium">Período</th>
                                 <th className="px-6 py-4 font-medium text-right">Bruto</th>
                                 <th className="px-6 py-4 font-medium text-right">Deducciones</th>
-                                <th className="px-6 py-4 font-medium text-right border-l border-zinc-800">Neto</th>
+                                <th className="px-6 py-4 font-medium text-right border-l border-border">Neto</th>
                                 <th className="px-6 py-4 font-medium text-center">Estado</th>
                                 <th className="px-6 py-4 font-medium text-right">Acciones</th>
                             </tr>
@@ -282,26 +342,26 @@ export default function PayrollsPage() {
                                 </td></tr>
                             ) : filtered.length === 0 ? (
                                 <tr><td colSpan={7} className="px-6 py-16 text-center">
-                                    <WalletCards className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                                    <p className="text-zinc-400 font-medium">No hay nóminas aún</p>
-                                    <p className="text-zinc-500 text-xs mt-2">
+                                    <WalletCards className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                                    <p className="text-muted-foreground font-medium">No hay nóminas aún</p>
+                                    <p className="text-muted-foreground text-xs mt-2">
                                         Usa &quot;Calcular automática&quot; (preview + reglas fijas) o &quot;Generar con IA&quot; para el agente RRHH.
                                     </p>
                                 </td></tr>
                             ) : filtered.map((payroll) => (
                                 <tr key={payroll.id} className="hover:bg-emerald-500/[0.02] transition-colors group">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-white">{payroll.employee?.name ?? "—"}</div>
-                                        <div className="text-[10px] font-mono text-zinc-500 uppercase">PAY-{payroll.id.slice(0, 8)}</div>
+                                        <div className="font-medium text-foreground">{payroll.employee?.name ?? "—"}</div>
+                                        <div className="text-[10px] font-mono text-muted-foreground uppercase">PAY-{payroll.id.slice(0, 8)}</div>
                                     </td>
-                                    <td className="px-6 py-4 text-zinc-300">
-                                        <span className="bg-zinc-800/50 text-xs px-2 py-1 rounded">
+                                    <td className="px-6 py-4 text-foreground">
+                                        <span className="bg-muted text-xs px-2 py-1 rounded">
                                             {format(new Date(payroll.period_start), "d MMM", { locale: es })} – {format(new Date(payroll.period_end), "d MMM yyyy", { locale: es })}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right text-zinc-400">{fmt(payroll.base_salary)}</td>
+                                    <td className="px-6 py-4 text-right text-muted-foreground">{fmt(payroll.base_salary)}</td>
                                     <td className="px-6 py-4 text-right text-red-400/80 text-xs">−{fmt(payroll.deductions)}</td>
-                                    <td className="px-6 py-4 text-right font-semibold text-emerald-400 border-l border-zinc-800 bg-[#161618]/20 text-base">{fmt(payroll.net_salary)}</td>
+                                    <td className="px-6 py-4 text-right font-semibold text-emerald-400 border-l border-border bg-muted/20 text-base">{fmt(payroll.net_salary)}</td>
                                     <td className="px-6 py-4"><div className="flex justify-center">{getStatusBadge(payroll.status)}</div></td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-1.5">
@@ -309,7 +369,7 @@ export default function PayrollsPage() {
                                             <button
                                                 onClick={() => handleDownloadPdf(payroll)}
                                                 disabled={downloadingId === payroll.id}
-                                                className="p-1.5 text-zinc-400 hover:text-indigo-400 bg-zinc-800/50 hover:bg-indigo-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                                className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50"
                                                 title="Descargar PDF"
                                             >
                                                 {downloadingId === payroll.id
@@ -348,9 +408,9 @@ export default function PayrollsPage() {
                     aria-labelledby="auto-payroll-title"
                     onClick={(e) => e.target === e.currentTarget && !autoSubmitting && setAutoOpen(false)}
                 >
-                    <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-[#111113] shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-                            <h2 id="auto-payroll-title" className="text-lg font-medium text-white flex items-center gap-2">
+                    <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                            <h2 id="auto-payroll-title" className="text-lg font-medium text-foreground flex items-center gap-2">
                                 <Calculator className="w-5 h-5 text-emerald-400" />
                                 Nómina automática (mes actual)
                             </h2>
@@ -358,7 +418,7 @@ export default function PayrollsPage() {
                                 type="button"
                                 disabled={autoSubmitting}
                                 onClick={() => setAutoOpen(false)}
-                                className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800 disabled:opacity-50"
+                                className="p-2 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50"
                                 aria-label="Cerrar"
                             >
                                 <X className="w-4 h-4" />
@@ -370,14 +430,14 @@ export default function PayrollsPage() {
                                     <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                                 </div>
                             ) : autoEmployees.length === 0 ? (
-                                <p className="text-sm text-zinc-400 text-center py-4">No hay empleados. Crea uno en RRHH primero.</p>
+                                <p className="text-sm text-muted-foreground text-center py-4">No hay empleados. Crea uno en RRHH primero.</p>
                             ) : (
                                 <>
-                                    <label className="block text-xs text-zinc-500 uppercase tracking-wide">Empleado</label>
+                                    <label className="block text-xs text-muted-foreground uppercase tracking-wide">Empleado</label>
                                     <select
                                         value={autoEmpId}
                                         onChange={(e) => setAutoEmpId(e.target.value)}
-                                        className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-emerald-500"
                                     >
                                         {autoEmployees.map((e) => (
                                             <option key={e.id} value={e.id}>
@@ -386,56 +446,56 @@ export default function PayrollsPage() {
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="text-xs text-zinc-500">
+                                    <p className="text-xs text-muted-foreground">
                                         Período:{" "}
-                                        <span className="text-zinc-300">
+                                        <span className="text-foreground">
                                             {format(startOfMonth(new Date()), "d MMM", { locale: es })} –{" "}
                                             {format(endOfMonth(new Date()), "d MMM yyyy", { locale: es })}
                                         </span>
                                     </p>
-                                    <div className="rounded-xl border border-zinc-800 bg-[#09090b] p-4">
-                                        <p className="text-xs font-medium text-zinc-400 mb-3">Previsualización del cálculo</p>
+                                    <div className="rounded-xl border border-border bg-background p-4">
+                                        <p className="text-xs font-medium text-muted-foreground mb-3">Previsualización del cálculo</p>
                                         {autoPreviewLoading ? (
                                             <div className="flex justify-center py-6">
                                                 <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
                                             </div>
                                         ) : autoPreview ? (
                                             <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                                                <dt className="text-zinc-500">Bruto</dt>
-                                                <dd className="text-right text-zinc-200">{fmt(autoPreview.base_salary)}</dd>
-                                                <dt className="text-zinc-600 text-[11px] col-span-2 pt-1 border-t border-zinc-800/80">
+                                                <dt className="text-muted-foreground">Bruto</dt>
+                                                <dd className="text-right text-foreground">{fmt(autoPreview.base_salary)}</dd>
+                                                <dt className="text-muted-foreground text-[11px] col-span-2 pt-1 border-t border-border">
                                                     Cotizaciones SS (empleado, régimen general)
                                                 </dt>
-                                                <dt className="text-zinc-500 pl-2 text-xs">Contingencias comunes</dt>
+                                                <dt className="text-muted-foreground pl-2 text-xs">Contingencias comunes</dt>
                                                 <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_contingencias_comunes)}</dd>
-                                                <dt className="text-zinc-500 pl-2 text-xs">Desempleo</dt>
+                                                <dt className="text-muted-foreground pl-2 text-xs">Desempleo</dt>
                                                 <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_desempleo)}</dd>
-                                                <dt className="text-zinc-500 pl-2 text-xs">Formación profesional</dt>
+                                                <dt className="text-muted-foreground pl-2 text-xs">Formación profesional</dt>
                                                 <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_formacion_profesional)}</dd>
-                                                <dt className="text-zinc-500 pl-2 text-xs">MEI</dt>
+                                                <dt className="text-muted-foreground pl-2 text-xs">MEI</dt>
                                                 <dd className="text-right text-red-400/80 text-xs">−{fmt(autoPreview.ss_mei)}</dd>
-                                                <dt className="text-zinc-500">SS total</dt>
+                                                <dt className="text-muted-foreground">SS total</dt>
                                                 <dd className="text-right text-red-400/90">−{fmt(autoPreview.total_ss)}</dd>
-                                                <dt className="text-zinc-500">IRPF ({autoPreview.irpf_rate_applied}%)</dt>
+                                                <dt className="text-muted-foreground">IRPF ({autoPreview.irpf_rate_applied}%)</dt>
                                                 <dd className="text-right text-red-400/90">−{fmt(autoPreview.irpf)}</dd>
-                                                <dt className="text-zinc-500">Deducciones totales</dt>
-                                                <dd className="text-right text-zinc-400">−{fmt(autoPreview.deductions)}</dd>
-                                                <dt className="text-zinc-500 font-medium pt-1 border-t border-zinc-800/80">Neto estimado</dt>
-                                                <dd className="text-right font-semibold text-emerald-400 pt-1 border-t border-zinc-800/80">{fmt(autoPreview.net_salary)}</dd>
+                                                <dt className="text-muted-foreground">Deducciones totales</dt>
+                                                <dd className="text-right text-muted-foreground">−{fmt(autoPreview.deductions)}</dd>
+                                                <dt className="text-muted-foreground font-medium pt-1 border-t border-border">Neto estimado</dt>
+                                                <dd className="text-right font-semibold text-emerald-400 pt-1 border-t border-border">{fmt(autoPreview.net_salary)}</dd>
                                             </dl>
                                         ) : (
-                                            <p className="text-xs text-zinc-500 py-2">Selecciona un empleado con salario base.</p>
+                                            <p className="text-xs text-muted-foreground py-2">Selecciona un empleado con salario base.</p>
                                         )}
                                     </div>
                                 </>
                             )}
                         </div>
-                        <div className="flex justify-end gap-2 px-5 py-4 border-t border-zinc-800 bg-[#0c0c0e]">
+                        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border bg-background">
                             <button
                                 type="button"
                                 disabled={autoSubmitting}
                                 onClick={() => setAutoOpen(false)}
-                                className="px-4 py-2 text-sm rounded-lg text-zinc-400 hover:bg-zinc-800 disabled:opacity-50"
+                                className="px-4 py-2 text-sm rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50"
                             >
                                 Cancelar
                             </button>
@@ -449,7 +509,7 @@ export default function PayrollsPage() {
                                     autoEmployees.length === 0
                                 }
                                 onClick={() => void handleAutoCreate()}
-                                className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white"
+                                className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-foreground"
                             >
                                 {autoSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                 Crear borrador

@@ -1,16 +1,31 @@
 import asyncio
 import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
-import app.db.models.embeddings  # noqa
-import app.db.models.models  # noqa
+# ── Cargar .env automáticamente (para migraciones CLI sin variables de entorno) ──
+try:
+    from dotenv import load_dotenv
+    # env.py lives at: backend/app/db/migrations/env.py
+    # parents[0]=migrations, [1]=db, [2]=app, [3]=backend/
+    _env_file = Path(__file__).resolve().parents[3] / ".env"
+    if _env_file.exists():
+        load_dotenv(_env_file)
+    else:
+        # fallback: buscar en el directorio de trabajo actual
+        load_dotenv()
+except ImportError:
+    pass  # python-dotenv no instalado — se asume que DATABASE_URL ya está en el entorno
 
-# importar base y modelos para que alembic reconozca el schema
+import app.db.models.embeddings  # noqa — registra modelos en Base.metadata
+import app.db.models.models      # noqa — registra modelos en Base.metadata
+import app.api.v1.routes.generative_ui  # noqa — registra GeneratedUI en Base.metadata
+
 from app.db.base import Base
 
 config = context.config
@@ -18,13 +33,21 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Sobreescribir la URL con la variable de entorno si está disponible
-# Sobreescribir con variable de entorno si está disponible
-database_url = os.environ.get("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+# Obtener DATABASE_URL del entorno (con driver async para SQLAlchemy asyncpg)
+_database_url = os.environ.get("DATABASE_URL", "")
+
+# Alembic necesita la URL correctamente configurada
+if not _database_url:
+    raise RuntimeError(
+        "DATABASE_URL no está configurada. "
+        "Asegúrate de que el archivo .env existe en backend/ o que la variable está en el entorno."
+    )
+
+# Guardar en el config para que offline mode también la use
+config.set_main_option("sqlalchemy.url", _database_url)
 
 target_metadata = Base.metadata
+
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
@@ -45,19 +68,19 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    # Crear el engine directamente con la URL (evita el bug de get_section sin URL)
+    connectable = create_async_engine(
+        _database_url,
         poolclass=pool.NullPool,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
-
     await connectable.dispose()
 
 
 def run_migrations_online() -> None:
     asyncio.run(run_async_migrations())
+
 
 if context.is_offline_mode():
     run_migrations_offline()

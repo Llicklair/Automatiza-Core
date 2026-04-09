@@ -206,13 +206,13 @@ function ContratosTab() {
             {/* Lista de plantillas */}
             <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-zinc-500">
-                        Sube plantillas .docx con variables como <code className="text-indigo-400">{`{{nombre_cliente}}`}</code>. El sistema las rellenará con datos reales al generar contratos.
+                    <p className="text-xs text-muted-foreground">
+                        Sube plantillas .docx con variables como <code className="text-primary">{`{{nombre_cliente}}`}</code>. El sistema las rellenará con datos reales al generar contratos.
                     </p>
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
                         {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                         Subir .docx
@@ -222,33 +222,33 @@ function ContratosTab() {
 
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
                 ) : templates.length === 0 ? (
                     <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-[#27272a] rounded-xl cursor-pointer hover:border-zinc-600 transition-colors"
+                        className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-border transition-colors"
                     >
-                        <FileCode2 className="w-10 h-10 text-zinc-600 mb-3" />
-                        <p className="text-zinc-500 text-sm font-medium">Sin plantillas aún</p>
-                        <p className="text-zinc-600 text-xs mt-1">Haz clic para subir tu primer .docx</p>
+                        <FileCode2 className="w-10 h-10 text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground text-sm font-medium">Sin plantillas aún</p>
+                        <p className="text-muted-foreground text-xs mt-1">Haz clic para subir tu primer .docx</p>
                     </div>
                 ) : (
                     <div className="space-y-2">
                         {templates.map(tpl => (
-                            <div key={tpl.id} className="bg-[#18181b] border border-[#27272a] rounded-xl overflow-hidden">
+                            <div key={tpl.id} className="bg-card border border-border rounded-xl overflow-hidden">
                                 {/* Fila principal */}
                                 <div className="flex items-center gap-3 p-3 group">
-                                    <FileCode2 className="w-8 h-8 text-indigo-400 flex-shrink-0" />
+                                    <FileCode2 className="w-8 h-8 text-primary flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-white font-medium truncate">{tpl.file_name}</p>
-                                        <p className="text-xs text-zinc-500">{(tpl.file_size / 1024).toFixed(1)} KB</p>
+                                        <p className="text-sm text-foreground font-medium truncate">{tpl.file_name}</p>
+                                        <p className="text-xs text-muted-foreground">{(tpl.file_size / 1024).toFixed(1)} KB</p>
                                     </div>
                                     {/* Generar borrador */}
                                     <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => panel?.tplId === tpl.id ? setPanel(null) : openGeneratePanel(tpl.id, "client")}
-                                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30 text-xs rounded-lg transition-colors"
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/20 border border-primary/20 text-primary hover:bg-primary/20 text-xs rounded-lg transition-colors"
                                         >
                                             <FileText className="w-3.5 h-3.5" />
                                             Generar borrador
@@ -271,7 +271,7 @@ function ContratosTab() {
                                             type="button"
                                             onClick={() => void togglePreview(tpl.id)}
                                             disabled={previewLoading && previewFor === tpl.id}
-                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-xs rounded-lg transition-colors disabled:opacity-50"
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border text-foreground hover:bg-muted text-xs rounded-lg transition-colors disabled:opacity-50"
                                             title="Vista previa HTML (solo .docx)"
                                         >
                                             {previewLoading && previewFor === tpl.id ? (
@@ -283,13 +283,13 @@ function ContratosTab() {
                                         </button>
                                         <button
                                             onClick={() => handleOpen(tpl)}
-                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-zinc-700 text-zinc-400 hover:text-white text-xs rounded-lg transition-colors"
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border text-muted-foreground hover:text-foreground text-xs rounded-lg transition-colors"
                                         >
                                             <ExternalLink className="w-3.5 h-3.5" />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(tpl)}
-                                            className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-500/10"
+                                            className="p-1.5 text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-500/10"
                                         >
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
@@ -298,26 +298,26 @@ function ContratosTab() {
 
                                 {/* Vista previa mammoth (V1) */}
                                 {previewFor === tpl.id && (
-                                    <div className="border-t border-[#27272a] p-3 bg-[#09090b] space-y-3">
-                                        <p className="text-xs text-zinc-500">
+                                    <div className="border-t border-border p-3 bg-background space-y-3">
+                                        <p className="text-xs text-muted-foreground">
                                             Vista previa de solo lectura (HTML). Las variables{" "}
                                             <code className="text-amber-400/90">{`{{nombre}}`}</code> se resaltan si existen en el texto.
                                         </p>
                                         {previewLoading ? (
-                                            <div className="flex items-center gap-2 text-zinc-500 text-sm py-8 justify-center">
+                                            <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
                                                 <Loader2 className="w-5 h-5 animate-spin" />
                                                 Convirtiendo documento…
                                             </div>
                                         ) : previewData ? (
                                             <div className="flex flex-col lg:flex-row gap-4">
                                                 <div
-                                                    className="flex-1 min-h-[180px] max-h-[min(480px,55vh)] overflow-y-auto rounded-lg border border-[#27272a] bg-[#18181b] p-4 text-sm text-zinc-200 [&_.apx-docx-var]:ring-1 [&_.apx-docx-var]:ring-amber-500/30"
+                                                    className="flex-1 min-h-[180px] max-h-[min(480px,55vh)] overflow-y-auto rounded-lg border border-border bg-card p-4 text-sm text-foreground [&_.apx-docx-var]:ring-1 [&_.apx-docx-var]:ring-amber-500/30"
                                                     dangerouslySetInnerHTML={{
                                                         __html: sanitizeHTML(previewData.html),
                                                     }}
                                                 />
                                                 <div className="w-full lg:w-52 shrink-0 space-y-2">
-                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-wide font-medium">
+                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
                                                         Variables en el documento
                                                     </p>
                                                     {previewData.warnings.length > 0 && (
@@ -329,7 +329,7 @@ function ContratosTab() {
                                                     )}
                                                     <ul className="text-xs space-y-1.5 max-h-48 overflow-y-auto">
                                                         {previewData.variables_detected.length === 0 ? (
-                                                            <li className="text-zinc-600">
+                                                            <li className="text-muted-foreground">
                                                                 No se detectaron <code>{`{{ }}`}</code> en el texto convertido.
                                                             </li>
                                                         ) : (
@@ -348,8 +348,8 @@ function ContratosTab() {
 
                                 {/* Panel de generación inline */}
                                 {panel?.tplId === tpl.id && (
-                                    <div className="border-t border-[#27272a] p-3 bg-[#09090b] space-y-3">
-                                        <p className="text-xs text-zinc-400 font-medium">Generar borrador para:</p>
+                                    <div className="border-t border-border p-3 bg-background space-y-3">
+                                        <p className="text-xs text-muted-foreground font-medium">Generar borrador para:</p>
                                         {/* Selector de tipo */}
                                         <div className="flex gap-2">
                                             {(["client", "employee"] as const).map(type => (
@@ -359,8 +359,8 @@ function ContratosTab() {
                                                     className={cn(
                                                         "flex-1 py-1.5 text-xs rounded-lg border transition-colors",
                                                         panel.entityType === type
-                                                            ? "border-indigo-500 bg-indigo-600/10 text-indigo-300"
-                                                            : "border-[#27272a] text-zinc-500 hover:border-zinc-600"
+                                                            ? "border-primary bg-primary/20 text-primary"
+                                                            : "border-border text-muted-foreground hover:border-border"
                                                     )}
                                                 >
                                                     {type === "client" ? "Cliente" : "Empleado"}
@@ -369,14 +369,14 @@ function ContratosTab() {
                                         </div>
                                         {/* Selector de entidad */}
                                         {panel.loadingEntities ? (
-                                            <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
                                             </div>
                                         ) : (
                                             <select
                                                 value={panel.entityId}
                                                 onChange={e => setPanel(p => p ? { ...p, entityId: e.target.value } : null)}
-                                                className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                                                className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary"
                                             >
                                                 <option value="">-- Seleccionar {panel.entityType === "client" ? "cliente" : "empleado"} --</option>
                                                 {panel.entities.map(e => (
@@ -389,7 +389,7 @@ function ContratosTab() {
                                             <button
                                                 onClick={handleGenerate}
                                                 disabled={!panel.entityId || panel.generating}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
                                             >
                                                 {panel.generating
                                                     ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
@@ -398,7 +398,7 @@ function ContratosTab() {
                                             </button>
                                             <button
                                                 onClick={() => setPanel(null)}
-                                                className="px-3 py-1.5 border border-[#27272a] text-zinc-500 text-xs rounded-lg hover:text-white transition-colors"
+                                                className="px-3 py-1.5 border border-border text-muted-foreground text-xs rounded-lg hover:text-foreground transition-colors"
                                             >
                                                 Cancelar
                                             </button>
@@ -413,19 +413,19 @@ function ContratosTab() {
 
             {/* Catálogo de variables */}
             <div className="w-64 flex-shrink-0">
-                <p className="text-xs text-zinc-400 font-medium mb-3 uppercase tracking-wider">Variables disponibles</p>
-                <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-3 space-y-1">
+                <p className="text-xs text-muted-foreground font-medium mb-3 uppercase tracking-wider">Variables disponibles</p>
+                <div className="bg-card border border-border rounded-xl p-3 space-y-1">
                     {CONTRACT_VARIABLES.map(v => (
                         <button
                             key={v.key}
                             onClick={() => copyVariable(v.key)}
-                            className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-[#27272a] transition-colors text-left group"
+                            className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-border transition-colors text-left group"
                             title="Clic para copiar"
                         >
-                            <Copy className="w-3 h-3 text-zinc-600 group-hover:text-indigo-400 mt-0.5 flex-shrink-0 transition-colors" />
+                            <Copy className="w-3 h-3 text-muted-foreground group-hover:text-primary mt-0.5 flex-shrink-0 transition-colors" />
                             <div>
-                                <code className="text-xs text-indigo-400 font-mono">{v.key}</code>
-                                <p className="text-[10px] text-zinc-500 mt-0.5">{v.desc}</p>
+                                <code className="text-xs text-primary font-mono">{v.key}</code>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{v.desc}</p>
                             </div>
                         </button>
                     ))}
@@ -450,7 +450,7 @@ const LAYOUT_PRESETS = [
         value: "modern",
         label: "Modern",
         desc: "Banda de color, logo izquierda, tabla con rayas",
-        preview: "bg-indigo-500",
+        preview: "bg-primary",
     },
     {
         value: "classic",
@@ -462,7 +462,7 @@ const LAYOUT_PRESETS = [
         value: "minimal",
         label: "Minimal",
         desc: "Línea fina, logo derecha, tabla limpia",
-        preview: "bg-zinc-400",
+        preview: "bg-muted-foreground",
     },
     {
         value: "bold",
@@ -649,14 +649,14 @@ export default function PlantillasPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-xl font-semibold text-white">Plantillas de documentos</h1>
-                    <p className="text-xs text-zinc-500 mt-0.5">
+                    <h1 className="text-xl font-semibold text-foreground">Plantillas de documentos</h1>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                         Personaliza el estilo visual de tus facturas y nóminas. La IA usará la plantilla por defecto.
                     </p>
                 </div>
                 <button
                     onClick={openNew}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors"
                 >
                     <Plus className="w-3.5 h-3.5" />
                     Nueva plantilla
@@ -664,7 +664,7 @@ export default function PlantillasPage() {
             </div>
 
             {/* Tipo selector */}
-            <div className="flex gap-1 mb-6 bg-[#18181b] border border-[#27272a] rounded-xl p-1 w-fit">
+            <div className="flex gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-fit">
                 {TEMPLATE_TYPES.map(t => (
                     <button
                         key={t.value}
@@ -672,8 +672,8 @@ export default function PlantillasPage() {
                         className={cn(
                             "flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-colors",
                             activeType === t.value
-                                ? "bg-indigo-600 text-white"
-                                : "text-zinc-400 hover:text-white"
+                                ? "bg-primary text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
                         )}
                     >
                         <t.icon className="w-3.5 h-3.5" />
@@ -690,11 +690,11 @@ export default function PlantillasPage() {
                 <div className="w-72 flex-shrink-0 space-y-2">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                         </div>
                     ) : templates.length === 0 ? (
                         <div className="text-center py-12 space-y-3">
-                            <p className="text-zinc-500 text-sm">No hay plantillas de este tipo.</p>
+                            <p className="text-muted-foreground text-sm">No hay plantillas de este tipo.</p>
                             <button
                                 onClick={async () => {
                                     try {
@@ -705,7 +705,7 @@ export default function PlantillasPage() {
                                         showToast("Error creando preestablecidas", "error");
                                     }
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors"
                             >
                                 <Palette className="w-3.5 h-3.5" />
                                 Crear preestablecidas
@@ -719,8 +719,8 @@ export default function PlantillasPage() {
                                 className={cn(
                                     "group relative p-3 rounded-xl border cursor-pointer transition-all",
                                     editingId === tpl.id
-                                        ? "border-indigo-500/50 bg-indigo-600/10"
-                                        : "border-[#27272a] bg-[#18181b] hover:border-zinc-600"
+                                        ? "border-primary/20 bg-primary/20"
+                                        : "border-border bg-card hover:border-border"
                                 )}
                             >
                                 {/* Color swatch */}
@@ -729,16 +729,16 @@ export default function PlantillasPage() {
                                         className="w-5 h-5 rounded-md flex-shrink-0"
                                         style={{ background: tpl.accent_color }}
                                     />
-                                    <span className="text-sm text-white font-medium truncate">{tpl.name}</span>
+                                    <span className="text-sm text-foreground font-medium truncate">{tpl.name}</span>
                                     {tpl.is_default && (
                                         <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0 ml-auto" />
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
                                         {tpl.layout_style}
                                     </span>
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
                                         {tpl.font_family}
                                     </span>
                                 </div>
@@ -747,7 +747,7 @@ export default function PlantillasPage() {
                                     {!tpl.is_default && (
                                         <button
                                             onClick={e => { e.stopPropagation(); handleSetDefault(tpl); }}
-                                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-800 hover:bg-amber-500/20 text-zinc-400 hover:text-amber-400 transition-colors text-[10px] font-medium"
+                                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted hover:bg-amber-500/20 text-muted-foreground hover:text-amber-400 transition-colors text-[10px] font-medium"
                                         >
                                             <Star className="w-3 h-3" />
                                             Default
@@ -755,7 +755,7 @@ export default function PlantillasPage() {
                                     )}
                                     <button
                                         onClick={e => { e.stopPropagation(); handleDelete(tpl); }}
-                                        className="p-1 rounded-md bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors"
+                                        className="p-1 rounded-md bg-muted hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
                                     >
                                         <Trash2 className="w-3 h-3" />
                                     </button>
@@ -769,21 +769,21 @@ export default function PlantillasPage() {
                 {showForm && (
                     <div className="flex-1 flex gap-4 min-w-0">
                         {/* Editor */}
-                        <div className="flex-1 bg-[#18181b] border border-[#27272a] rounded-xl p-5 space-y-5 overflow-y-auto max-h-[calc(100vh-220px)]">
+                        <div className="flex-1 bg-card border border-border rounded-xl p-5 space-y-5 overflow-y-auto max-h-[calc(100vh-220px)]">
                             {/* Nombre */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Nombre de la plantilla</label>
+                                <label className="text-xs text-muted-foreground font-medium mb-1.5 block">Nombre de la plantilla</label>
                                 <input
                                     value={form.name}
                                     onChange={e => setField("name", e.target.value)}
                                     placeholder="Ej: Factura corporativa azul"
-                                    className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                                 />
                             </div>
 
                             {/* Preset de layout */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1.5">
+                                <label className="text-xs text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
                                     <Layout className="w-3.5 h-3.5" /> Estilo de diseño
                                 </label>
                                 <div className="grid grid-cols-2 gap-2">
@@ -794,18 +794,18 @@ export default function PlantillasPage() {
                                             className={cn(
                                                 "p-3 rounded-xl border text-left transition-all",
                                                 form.layout_style === p.value
-                                                    ? "border-indigo-500 bg-indigo-600/10"
-                                                    : "border-[#27272a] hover:border-zinc-600"
+                                                    ? "border-primary bg-primary/20"
+                                                    : "border-border hover:border-border"
                                             )}
                                         >
                                             <div className="flex items-center gap-2 mb-1">
                                                 <div className={cn("w-3 h-3 rounded-sm", p.preview)} />
-                                                <span className="text-xs font-medium text-white">{p.label}</span>
+                                                <span className="text-xs font-medium text-foreground">{p.label}</span>
                                                 {form.layout_style === p.value && (
-                                                    <Check className="w-3 h-3 text-indigo-400 ml-auto" />
+                                                    <Check className="w-3 h-3 text-primary ml-auto" />
                                                 )}
                                             </div>
-                                            <p className="text-[10px] text-zinc-500">{p.desc}</p>
+                                            <p className="text-[10px] text-muted-foreground">{p.desc}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -813,7 +813,7 @@ export default function PlantillasPage() {
 
                             {/* Color de acento */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1.5">
+                                <label className="text-xs text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
                                     <Palette className="w-3.5 h-3.5" /> Color de acento
                                 </label>
                                 <div className="flex flex-wrap gap-2">
@@ -825,7 +825,7 @@ export default function PlantillasPage() {
                                             className={cn(
                                                 "w-7 h-7 rounded-lg transition-all",
                                                 form.accent_color === c.value
-                                                    ? "ring-2 ring-white ring-offset-2 ring-offset-[#18181b] scale-110"
+                                                    ? "ring-2 ring-white ring-offset-2 ring-offset-card scale-110"
                                                     : "hover:scale-105"
                                             )}
                                             style={{ background: c.value }}
@@ -840,10 +840,10 @@ export default function PlantillasPage() {
                                             className="w-7 h-7 rounded-lg cursor-pointer opacity-0 absolute inset-0"
                                         />
                                         <div
-                                            className="w-7 h-7 rounded-lg border-2 border-dashed border-zinc-600 flex items-center justify-center"
+                                            className="w-7 h-7 rounded-lg border-2 border-dashed border-border flex items-center justify-center"
                                             style={{ background: ACCENT_COLORS.find(c => c.value === form.accent_color) ? "transparent" : form.accent_color }}
                                         >
-                                            <Plus className="w-3 h-3 text-zinc-400" />
+                                            <Plus className="w-3 h-3 text-muted-foreground" />
                                         </div>
                                     </div>
                                 </div>
@@ -851,7 +851,7 @@ export default function PlantillasPage() {
 
                             {/* Fuente */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1.5">
+                                <label className="text-xs text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
                                     <Type className="w-3.5 h-3.5" /> Tipografía
                                 </label>
                                 <div className="flex gap-2">
@@ -862,12 +862,12 @@ export default function PlantillasPage() {
                                             className={cn(
                                                 "flex-1 p-2.5 rounded-lg border text-center transition-all",
                                                 form.font_family === f.value
-                                                    ? "border-indigo-500 bg-indigo-600/10"
-                                                    : "border-[#27272a] hover:border-zinc-600"
+                                                    ? "border-primary bg-primary/20"
+                                                    : "border-border hover:border-border"
                                             )}
                                         >
-                                            <div className="text-xs font-medium text-white">{f.label}</div>
-                                            <div className="text-[10px] text-zinc-500 mt-0.5">{f.desc}</div>
+                                            <div className="text-xs font-medium text-foreground">{f.label}</div>
+                                            <div className="text-[10px] text-muted-foreground mt-0.5">{f.desc}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -875,7 +875,7 @@ export default function PlantillasPage() {
 
                             {/* Estilo de cabecera */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1.5">
+                                <label className="text-xs text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
                                     <AlignLeft className="w-3.5 h-3.5" /> Cabecera
                                 </label>
                                 <div className="grid grid-cols-2 gap-1.5">
@@ -886,12 +886,12 @@ export default function PlantillasPage() {
                                             className={cn(
                                                 "p-2.5 rounded-lg border text-left transition-all",
                                                 form.header_style === h.value
-                                                    ? "border-indigo-500 bg-indigo-600/10"
-                                                    : "border-[#27272a] hover:border-zinc-600"
+                                                    ? "border-primary bg-primary/20"
+                                                    : "border-border hover:border-border"
                                             )}
                                         >
-                                            <div className="text-xs font-medium text-white">{h.label}</div>
-                                            <div className="text-[10px] text-zinc-500">{h.desc}</div>
+                                            <div className="text-xs font-medium text-foreground">{h.label}</div>
+                                            <div className="text-[10px] text-muted-foreground">{h.desc}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -899,7 +899,7 @@ export default function PlantillasPage() {
 
                             {/* Estilo de tabla */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 flex items-center gap-1.5">
+                                <label className="text-xs text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
                                     <Table2 className="w-3.5 h-3.5" /> Tabla de líneas
                                 </label>
                                 <div className="grid grid-cols-2 gap-1.5">
@@ -910,12 +910,12 @@ export default function PlantillasPage() {
                                             className={cn(
                                                 "p-2.5 rounded-lg border text-left transition-all",
                                                 form.table_style === t.value
-                                                    ? "border-indigo-500 bg-indigo-600/10"
-                                                    : "border-[#27272a] hover:border-zinc-600"
+                                                    ? "border-primary bg-primary/20"
+                                                    : "border-border hover:border-border"
                                             )}
                                         >
-                                            <div className="text-xs font-medium text-white">{t.label}</div>
-                                            <div className="text-[10px] text-zinc-500">{t.desc}</div>
+                                            <div className="text-xs font-medium text-foreground">{t.label}</div>
+                                            <div className="text-[10px] text-muted-foreground">{t.desc}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -923,7 +923,7 @@ export default function PlantillasPage() {
 
                             {/* Posición del logo */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-2 block">Posición del logo / empresa</label>
+                                <label className="text-xs text-muted-foreground font-medium mb-2 block">Posición del logo / empresa</label>
                                 <div className="flex gap-2">
                                     {LOGO_POSITIONS.map(p => (
                                         <button
@@ -932,8 +932,8 @@ export default function PlantillasPage() {
                                             className={cn(
                                                 "flex-1 py-1.5 rounded-lg border text-xs transition-all",
                                                 form.logo_position === p.value
-                                                    ? "border-indigo-500 bg-indigo-600/10 text-indigo-300"
-                                                    : "border-[#27272a] text-zinc-400 hover:border-zinc-600"
+                                                    ? "border-primary bg-primary/20 text-primary"
+                                                    : "border-border text-muted-foreground hover:border-border"
                                             )}
                                         >
                                             {p.label}
@@ -944,13 +944,13 @@ export default function PlantillasPage() {
 
                             {/* Pie de página */}
                             <div>
-                                <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Texto del pie (opcional)</label>
+                                <label className="text-xs text-muted-foreground font-medium mb-1.5 block">Texto del pie (opcional)</label>
                                 <textarea
                                     value={form.footer_text || ""}
                                     onChange={e => setField("footer_text", e.target.value || null)}
                                     placeholder="Ej: Gracias por su confianza · www.miempresa.es · +34 91 000 0000"
                                     rows={2}
-                                    className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 resize-none"
+                                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
                                 />
                             </div>
 
@@ -960,7 +960,7 @@ export default function PlantillasPage() {
                                     onClick={() => setField("is_default", !form.is_default)}
                                     className={cn(
                                         "w-8 h-4 rounded-full transition-colors relative flex-shrink-0",
-                                        form.is_default ? "bg-indigo-600" : "bg-zinc-700"
+                                        form.is_default ? "bg-primary" : "bg-accent"
                                     )}
                                 >
                                     <div className={cn(
@@ -968,7 +968,7 @@ export default function PlantillasPage() {
                                         form.is_default ? "translate-x-4" : "translate-x-0.5"
                                     )} />
                                 </div>
-                                <span className="text-xs text-zinc-300">Usar como plantilla por defecto</span>
+                                <span className="text-xs text-foreground">Usar como plantilla por defecto</span>
                                 <Star className="w-3 h-3 text-amber-400" />
                             </label>
 
@@ -977,7 +977,7 @@ export default function PlantillasPage() {
                                 <button
                                     onClick={handlePreview}
                                     disabled={previewing}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 border border-[#27272a] text-zinc-300 hover:text-white hover:border-zinc-500 text-xs rounded-lg transition-colors disabled:opacity-50"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-foreground hover:text-foreground hover:border-border text-xs rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     {previewing
                                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -986,14 +986,14 @@ export default function PlantillasPage() {
                                 </button>
                                 <button
                                     onClick={() => setShowForm(false)}
-                                    className="px-3 py-1.5 border border-[#27272a] text-zinc-400 text-xs rounded-lg hover:text-white transition-colors"
+                                    className="px-3 py-1.5 border border-border text-muted-foreground text-xs rounded-lg hover:text-foreground transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={handleSave}
                                     disabled={saving}
-                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                                     {editingId ? "Guardar cambios" : "Crear plantilla"}
@@ -1005,17 +1005,17 @@ export default function PlantillasPage() {
                         {previewUrl && (
                             <div className="w-[480px] flex-shrink-0">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs text-zinc-400 font-medium">Vista previa</span>
+                                    <span className="text-xs text-muted-foreground font-medium">Vista previa</span>
                                     <button
                                         onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}
-                                        className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                                        className="text-[10px] text-muted-foreground hover:text-foreground"
                                     >
                                         Cerrar
                                     </button>
                                 </div>
                                 <iframe
                                     src={previewUrl}
-                                    className="w-full rounded-xl border border-[#27272a] bg-white"
+                                    className="w-full rounded-xl border border-border bg-white"
                                     style={{ height: "calc(100vh - 220px)" }}
                                 />
                             </div>

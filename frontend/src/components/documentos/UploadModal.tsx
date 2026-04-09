@@ -23,29 +23,29 @@ export default function UploadModal({
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col">
-                <div className="px-6 py-4 border-b border-[#27272a] flex items-center justify-between bg-zinc-900/50">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col">
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card">
+                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                         <Upload className="w-5 h-5 text-indigo-400" /> Cargar Documentos
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
+                        className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 <div className="p-6 space-y-6">
-                    <div className="bg-zinc-900 border border-[#27272a] p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="bg-card border border-border p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h3 className="text-sm font-medium text-white">Categoria de destino</h3>
-                            <p className="text-xs text-zinc-500 mt-0.5">A que carpeta los asignamos?</p>
+                            <h3 className="text-sm font-medium text-foreground">Categoria de destino</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">A que carpeta los asignamos?</p>
                         </div>
                         <select
                             value={uploadCategory}
                             onChange={(e) => setUploadCategory(e.target.value)}
-                            className="bg-[#0d0d0f] border border-[#27272a] text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-colors w-full md:w-auto"
+                            className="bg-background border border-border text-foreground text-sm rounded-lg px-3 py-2 outline-none focus:border-primary transition-colors w-full md:w-auto"
                         >
                             <option value="facturas">Facturas</option>
                             <option value="bancos">Bancos</option>
@@ -67,7 +67,7 @@ export default function UploadModal({
                         onDrop={e => { e.preventDefault(); setDragOver(false); onUpload(e.dataTransfer.files); }}
                         className={`rounded-xl border-2 border-dashed p-10 text-center transition-all duration-300 cursor-pointer ${dragOver
                             ? "border-indigo-500 bg-indigo-500/10 scale-[1.02]"
-                            : "border-[#27272a] bg-zinc-900 hover:border-zinc-500"
+                            : "border-border bg-card hover:border-muted-foreground"
                             }`}
                         onClick={() => fileInputRef.current?.click()}
                     >
@@ -76,10 +76,10 @@ export default function UploadModal({
                                 <FileText className={`w-6 h-6 transition-colors ${dragOver ? "text-indigo-400" : "text-indigo-500"}`} />
                             </div>
                         </div>
-                        <h3 className="text-base font-medium text-white mb-1">
+                        <h3 className="text-base font-medium text-foreground mb-1">
                             {uploading ? "Procesando subida..." : "Arrastra los archivos o haz clic"}
                         </h3>
-                        <p className="text-xs text-zinc-500 max-w-xs mx-auto">
+                        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
                             Formatos soportados: PDF, Imagenes, Excels, Word o importacion de lote via ZIP (max 50MB).
                         </p>
                         <input
