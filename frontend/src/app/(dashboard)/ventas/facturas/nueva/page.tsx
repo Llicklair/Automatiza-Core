@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, Client, Product, InvoiceLine } from "@/lib/api";
 import { ArrowLeft, Plus, Trash2, Loader2, FileText } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
+import { useTranslations } from "next-intl";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const in30 = () => {
@@ -19,10 +20,13 @@ function emptyLine(): InvoiceLine & { _key: number } {
 }
 
 function NuevaFacturaContent() {
+    const t = useTranslations("ventas");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const router = useRouter();
     const searchParams = useSearchParams();
     const preClientId = searchParams.get("client_id") || "";
+    const duplicateId = searchParams.get("duplicate_id") || "";
 
     const [clients, setClients] = useState<Client[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -38,6 +42,28 @@ function NuevaFacturaContent() {
         Promise.all([api.erp.clients.list({ limit: 200 }), api.erp.products.list({ limit: 200 })])
             .then(([c, p]) => { setClients(c); setProducts(p); });
     }, []);
+
+    useEffect(() => {
+        if (!duplicateId) return;
+        api.erp.invoices.get(duplicateId).then((inv: any) => {
+            if (inv.client_id) setClientId(inv.client_id);
+            if (inv.notes) setNotes(inv.notes);
+            if (inv.lines && inv.lines.length > 0) {
+                setLines(inv.lines.map((l: any) => ({
+                    _key: Date.now() + Math.random(),
+                    description: l.description || "",
+                    quantity: l.quantity ?? 1,
+                    unit_price: l.unit_price ?? 0,
+                    discount_percentage: l.discount_percentage ?? 0,
+                    tax_percentage: l.tax_percentage ?? 21,
+                    product_id: l.product_id,
+                })));
+            }
+        }).catch(() => {
+            toast.error("No se pudo cargar la factura para duplicar");
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [duplicateId]);
 
     const addLine = () => setLines(prev => [...prev, emptyLine()]);
     const removeLine = (key: number) => setLines(prev => prev.filter(l => l._key !== key));
@@ -95,25 +121,25 @@ function NuevaFacturaContent() {
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8">
             <div className="flex items-center gap-4">
-                <Link href="/ventas/facturas" className="p-2 -ml-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors">
+                <Link href="/ventas/facturas" className="p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors">
                     <ArrowLeft className="w-5 h-5" />
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Nueva Factura</h1>
-                    <p className="text-zinc-400 text-sm">Rellena los detalles para emitir una nueva factura</p>
+                    <h1 className="text-3xl font-bold text-foreground">{t("newInvoice")}</h1>
+                    <p className="text-muted-foreground text-sm">{t("newInvoiceDescription")}</p>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Cabecera */}
-                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-card border border-border rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
-                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">Cliente *</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("client")} *</label>
                         <select
                             value={clientId}
                             onChange={e => setClientId(e.target.value)}
                             required
-                            className="w-full bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/50"
+                            className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20"
                         >
                             <option value="">Seleccionar cliente…</option>
                             {clients.map(c => (
@@ -122,61 +148,61 @@ function NuevaFacturaContent() {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">Número de factura</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("invoiceNumber")}</label>
                         <input
                             type="text"
                             value={invoiceNumber}
                             onChange={e => setInvoiceNumber(e.target.value)}
                             placeholder="Ej: F-2024-001 (opcional)"
-                            className="w-full bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/50"
+                            className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20"
                         />
                     </div>
                     <div>{/* spacer */}</div>
                     <div>
-                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">Fecha de emisión *</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("issueDate")} *</label>
                         <input
                             type="date"
                             value={date}
                             onChange={e => setDate(e.target.value)}
                             required
-                            className="w-full bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/50"
+                            className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">Fecha de vencimiento</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("dueDate")}</label>
                         <input
                             type="date"
                             value={dueDate}
                             onChange={e => setDueDate(e.target.value)}
-                            className="w-full bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/50"
+                            className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20"
                         />
                     </div>
                     <div className="sm:col-span-2">
-                        <label className="block text-xs font-medium text-zinc-400 mb-1.5">Notas</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("internalNotes")}</label>
                         <textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
                             rows={2}
                             placeholder="Observaciones o condiciones de pago..."
-                            className="w-full bg-zinc-800 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-indigo-500/50 resize-none"
+                            className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20 resize-none"
                         />
                     </div>
                 </div>
 
                 {/* Líneas */}
-                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
-                    <h2 className="text-sm font-semibold text-zinc-300">Líneas de factura</h2>
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                    <h2 className="text-sm font-semibold text-foreground">{t("invoiceLines")}</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[700px]">
                             <thead>
-                                <tr className="text-xs text-zinc-500 border-b border-white/5">
-                                    <th className="pb-2 font-medium w-40">Producto</th>
-                                    <th className="pb-2 font-medium">Descripción</th>
-                                    <th className="pb-2 font-medium text-right w-20">Cant.</th>
-                                    <th className="pb-2 font-medium text-right w-24">P. unit.</th>
-                                    <th className="pb-2 font-medium text-right w-20">Dto. %</th>
-                                    <th className="pb-2 font-medium text-right w-20">IVA %</th>
-                                    <th className="pb-2 font-medium text-right w-24">Total</th>
+                                <tr className="text-xs text-muted-foreground border-b border-border">
+                                    <th className="pb-2 font-medium w-40">{t("product")}</th>
+                                    <th className="pb-2 font-medium">{t("descriptionLabel")}</th>
+                                    <th className="pb-2 font-medium text-right w-20">{t("qty")}</th>
+                                    <th className="pb-2 font-medium text-right w-24">{t("unitPrice")}</th>
+                                    <th className="pb-2 font-medium text-right w-20">{t("discount")}</th>
+                                    <th className="pb-2 font-medium text-right w-20">{t("vat")}</th>
+                                    <th className="pb-2 font-medium text-right w-24">{t("total")}</th>
                                     <th className="pb-2 w-8"></th>
                                 </tr>
                             </thead>
@@ -184,12 +210,12 @@ function NuevaFacturaContent() {
                                 {lines.map((line) => {
                                     const { total } = calcLine(line);
                                     return (
-                                        <tr key={line._key} className="border-b border-white/5">
+                                        <tr key={line._key} className="border-b border-border">
                                             <td className="py-2 pr-2">
                                                 <select
                                                     value={line.product_id || ""}
                                                     onChange={e => fillFromProduct(line._key, e.target.value)}
-                                                    className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-zinc-300 text-xs outline-none"
+                                                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs outline-none"
                                                 >
                                                     <option value="">—</option>
                                                     {products.map(p => (
@@ -203,7 +229,7 @@ function NuevaFacturaContent() {
                                                     value={line.description}
                                                     onChange={e => updateLine(line._key, "description", e.target.value)}
                                                     placeholder="Descripción del servicio/producto"
-                                                    className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs outline-none focus:border-indigo-500/50"
+                                                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs outline-none focus:border-primary/20"
                                                 />
                                             </td>
                                             <td className="py-2 pr-2">
@@ -213,7 +239,7 @@ function NuevaFacturaContent() {
                                                     step="0.01"
                                                     value={line.quantity}
                                                     onChange={e => updateLine(line._key, "quantity", e.target.value)}
-                                                    className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs text-right outline-none focus:border-indigo-500/50"
+                                                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs text-right outline-none focus:border-primary/20"
                                                 />
                                             </td>
                                             <td className="py-2 pr-2">
@@ -223,7 +249,7 @@ function NuevaFacturaContent() {
                                                     step="0.01"
                                                     value={line.unit_price}
                                                     onChange={e => updateLine(line._key, "unit_price", e.target.value)}
-                                                    className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs text-right outline-none focus:border-indigo-500/50"
+                                                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs text-right outline-none focus:border-primary/20"
                                                 />
                                             </td>
                                             <td className="py-2 pr-2">
@@ -234,7 +260,7 @@ function NuevaFacturaContent() {
                                                     step="0.01"
                                                     value={line.discount_percentage}
                                                     onChange={e => updateLine(line._key, "discount_percentage", e.target.value)}
-                                                    className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs text-right outline-none focus:border-indigo-500/50"
+                                                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs text-right outline-none focus:border-primary/20"
                                                 />
                                             </td>
                                             <td className="py-2 pr-2">
@@ -245,10 +271,10 @@ function NuevaFacturaContent() {
                                                     step="0.01"
                                                     value={line.tax_percentage}
                                                     onChange={e => updateLine(line._key, "tax_percentage", e.target.value)}
-                                                    className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs text-right outline-none focus:border-indigo-500/50"
+                                                    className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs text-right outline-none focus:border-primary/20"
                                                 />
                                             </td>
-                                            <td className="py-2 pr-2 text-right text-sm text-white font-medium tabular-nums whitespace-nowrap">
+                                            <td className="py-2 pr-2 text-right text-sm text-foreground font-medium tabular-nums whitespace-nowrap">
                                                 {total.toLocaleString("es-ES", { minimumFractionDigits: 2 })}€
                                             </td>
                                             <td className="py-2">
@@ -256,7 +282,7 @@ function NuevaFacturaContent() {
                                                     type="button"
                                                     onClick={() => removeLine(line._key)}
                                                     disabled={lines.length === 1}
-                                                    className="p-1 text-zinc-600 hover:text-red-400 disabled:opacity-30 transition-colors"
+                                                    className="p-1 text-muted-foreground hover:text-red-400 disabled:opacity-30 transition-colors"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -270,7 +296,7 @@ function NuevaFacturaContent() {
                     <button
                         type="button"
                         onClick={addLine}
-                        className="inline-flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary transition-colors"
                     >
                         <Plus className="w-4 h-4" />
                         Añadir línea
@@ -279,34 +305,34 @@ function NuevaFacturaContent() {
 
                 {/* Totales + submit */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
-                    <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-5 w-full sm:w-72 space-y-2 text-sm">
-                        <div className="flex justify-between text-zinc-400">
-                            <span>Base imponible</span>
+                    <div className="bg-card border border-border rounded-2xl p-5 w-full sm:w-72 space-y-2 text-sm">
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>{t("subtotal")}</span>
                             <span className="tabular-nums">{totals.base.toLocaleString("es-ES", { minimumFractionDigits: 2 })}€</span>
                         </div>
-                        <div className="flex justify-between text-zinc-400">
-                            <span>IVA</span>
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>{t("totalVat")}</span>
                             <span className="tabular-nums">{totals.tax.toLocaleString("es-ES", { minimumFractionDigits: 2 })}€</span>
                         </div>
-                        <div className="flex justify-between text-white font-bold border-t border-white/10 pt-2">
-                            <span>Total</span>
+                        <div className="flex justify-between text-foreground font-bold border-t border-border pt-2">
+                            <span>{t("total")}</span>
                             <span className="tabular-nums">{totals.total.toLocaleString("es-ES", { minimumFractionDigits: 2 })}€</span>
                         </div>
                     </div>
                     <div className="flex gap-3">
                         <Link
                             href="/ventas/facturas"
-                            className="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-5 py-2.5 rounded-xl transition font-medium text-sm"
+                            className="inline-flex items-center gap-2 bg-muted hover:bg-accent text-foreground px-5 py-2.5 rounded-xl transition font-medium text-sm"
                         >
-                            Cancelar
+                            {tc("cancel")}
                         </Link>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl transition font-medium text-sm shadow-lg shadow-indigo-500/20"
+                            className="inline-flex items-center gap-2 bg-primary hover:bg-primary disabled:opacity-50 text-foreground px-6 py-2.5 rounded-xl transition font-medium text-sm shadow-lg shadow-primary/20"
                         >
                             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                            Crear Factura
+                            {t("createInvoice")}
                         </button>
                     </div>
                 </div>
@@ -317,7 +343,7 @@ function NuevaFacturaContent() {
 
 export default function NuevaFacturaPage() {
     return (
-        <Suspense fallback={<div className="p-8 text-zinc-400">Cargando...</div>}>
+        <Suspense fallback={<div className="p-8 text-muted-foreground">Cargando...</div>}>
             <NuevaFacturaContent />
         </Suspense>
     );

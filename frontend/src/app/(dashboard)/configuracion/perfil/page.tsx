@@ -35,32 +35,32 @@ export default function PerfilPage() {
         <div className="p-8 max-w-lg mx-auto">
             <button
                 onClick={() => router.back()}
-                className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white transition mb-6"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-6"
             >
                 <ArrowLeft className="w-4 h-4" /> Volver
             </button>
 
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6">
-                <h1 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
-                    <User className="w-5 h-5 text-indigo-400" /> Perfil y empresa
+            <div className="bg-card border border-border rounded-2xl p-6">
+                <h1 className="text-xl font-bold text-foreground flex items-center gap-2 mb-6">
+                    <User className="w-5 h-5 text-primary" /> Perfil y empresa
                 </h1>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-zinc-400 mb-1">Razón Social / Nombre empresa</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Razón Social / Nombre empresa</label>
                         <input
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-lg bg-black/40 border border-[#3f3f46] text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition"
+                            className="w-full px-3 py-2.5 rounded-lg bg-muted border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/20 transition"
                             placeholder="Mi Empresa S.L."
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-zinc-400 mb-1">NIF / CIF</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">NIF / CIF</label>
                         <input
                             value={nif}
                             onChange={e => setNif(e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-lg bg-black/40 border border-[#3f3f46] text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition"
+                            className="w-full px-3 py-2.5 rounded-lg bg-muted border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/20 transition"
                             placeholder="B12345678"
                         />
                     </div>
@@ -77,7 +77,7 @@ export default function PerfilPage() {
                     <button
                         onClick={save}
                         disabled={saving}
-                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition"
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-primary hover:bg-primary disabled:opacity-50 text-foreground text-sm font-medium transition"
                     >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Guardar

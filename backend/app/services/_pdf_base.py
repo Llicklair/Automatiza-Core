@@ -187,3 +187,101 @@ def _format_date(date_str: str) -> str:
         return dt.strftime('%d/%m/%Y')
     except Exception:
         return date_str
+
+
+# ── Helpers para documentos HR con formato oficial español ──────────────────
+
+_MESES_ES = [
+    '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+
+def _month_name_es(month: int) -> str:
+    """Devuelve el nombre del mes en español."""
+    return _MESES_ES[month] if 1 <= month <= 12 else str(month)
+
+
+def _traditional_styles():
+    """Estilos para documentos HR oficiales: blanco y negro, sin colores."""
+    if not REPORTLAB_AVAILABLE:
+        return {}
+    styles = getSampleStyleSheet()
+
+    def sty(name, **kw):
+        return ParagraphStyle(name, parent=styles['Normal'], **kw)
+
+    return {
+        'title': sty('Trad_title', fontSize=12, fontName='Helvetica-Bold',
+                      textColor=colors.black, alignment=TA_CENTER),
+        'section': sty('Trad_section', fontSize=9, fontName='Helvetica-Bold',
+                        textColor=colors.black, spaceBefore=6, spaceAfter=2),
+        'body': sty('Trad_body', fontSize=8, fontName='Helvetica',
+                     textColor=colors.black),
+        'body_bold': sty('Trad_body_bold', fontSize=8, fontName='Helvetica-Bold',
+                          textColor=colors.black),
+        'body_right': sty('Trad_body_right', fontSize=8, fontName='Helvetica',
+                           textColor=colors.black, alignment=TA_RIGHT),
+        'body_right_bold': sty('Trad_body_right_bold', fontSize=8,
+                                fontName='Helvetica-Bold', textColor=colors.black,
+                                alignment=TA_RIGHT),
+        'small': sty('Trad_small', fontSize=6.5, fontName='Helvetica',
+                      textColor=colors.HexColor('#333333')),
+        'small_bold': sty('Trad_small_bold', fontSize=6.5, fontName='Helvetica-Bold',
+                           textColor=colors.HexColor('#333333')),
+        'footer': sty('Trad_footer', fontSize=6, fontName='Helvetica',
+                       textColor=colors.HexColor('#666666'), alignment=TA_CENTER),
+    }
+
+
+_TRAD_BORDER = colors.HexColor('#333333')
+
+
+def _trad_table_style(has_header: bool = True, grid: bool = True) -> list:
+    """Comandos TableStyle para tablas con bordes finos, sin colores de fondo."""
+    if not REPORTLAB_AVAILABLE:
+        return []
+    cmds = [
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]
+    if has_header:
+        cmds += [
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('LINEBELOW', (0, 0), (-1, 0), 0.75, _TRAD_BORDER),
+        ]
+    if grid:
+        cmds.append(('GRID', (0, 0), (-1, -1), 0.5, _TRAD_BORDER))
+    else:
+        cmds += [
+            ('LINEABOVE', (0, 0), (-1, 0), 0.5, _TRAD_BORDER),
+            ('LINEBELOW', (0, -1), (-1, -1), 0.5, _TRAD_BORDER),
+        ]
+    return cmds
+
+
+def _signature_block(labels: list[str], width_mm: float = 180) -> 'Table':
+    """Bloque de firmas con N columnas (Fdo. empresa, Fdo. trabajador, etc.)."""
+    if not REPORTLAB_AVAILABLE:
+        return None
+    col_w = (width_mm / len(labels)) * mm
+    header_row = [Paragraph(f'<b>{lbl}</b>', ParagraphStyle(
+        f'Sig_{lbl}', fontName='Helvetica-Bold', fontSize=7,
+        textColor=colors.black, alignment=TA_CENTER,
+    )) for lbl in labels]
+    spacer_row = [Spacer(1, 25 * mm)] * len(labels)
+    line_row = [HRFlowable(width='80%', thickness=0.5, color=_TRAD_BORDER)] * len(labels)
+
+    tbl = Table([header_row, spacer_row, line_row], colWidths=[col_w] * len(labels))
+    tbl.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    return tbl

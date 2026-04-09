@@ -20,7 +20,7 @@ type ScanResult = {
 };
 
 const CATEGORY_INFO: Record<string, { label: string; icon: typeof FileText; color: string; bg: string }> = {
-    facturas: { label: "Facturas", icon: FileText, color: "text-indigo-400", bg: "bg-indigo-500/10" },
+    facturas: { label: "Facturas", icon: FileText, color: "text-primary", bg: "bg-primary/10" },
     bancos: { label: "Bancos", icon: FileText, color: "text-blue-400", bg: "bg-blue-500/10" },
     nominas: { label: "Nóminas", icon: FileText, color: "text-emerald-400", bg: "bg-emerald-500/10" },
     fiscal: { label: "Asesor Fiscal", icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
@@ -29,8 +29,8 @@ const CATEGORY_INFO: Record<string, { label: string; icon: typeof FileText; colo
     informes: { label: "Informes", icon: Sheet, color: "text-purple-400", bg: "bg-purple-500/10" },
     correos: { label: "Correos", icon: Mail, color: "text-sky-400", bg: "bg-sky-500/10" },
     automatizaciones: { label: "Automatización", icon: Loader2, color: "text-orange-400", bg: "bg-orange-500/10" },
-    rrhh: { label: "RRHH", icon: FileText, color: "text-zinc-400", bg: "bg-zinc-500/10" },
-    otros: { label: "Otros", icon: FileImage, color: "text-zinc-500", bg: "bg-zinc-500/5" },
+    rrhh: { label: "RRHH", icon: FileText, color: "text-muted-foreground", bg: "bg-muted" },
+    otros: { label: "Otros", icon: FileImage, color: "text-muted-foreground", bg: "bg-muted" },
 };
 
 function formatSize(bytes: number): string {
@@ -146,25 +146,25 @@ export default function EscanerPage() {
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-1">
-                    <ScanLine className="w-7 h-7 text-indigo-400" />
-                    <h1 className="text-2xl font-bold text-white">Escáner Inteligente</h1>
+                    <ScanLine className="w-7 h-7 text-primary" />
+                    <h1 className="text-2xl font-bold text-foreground">Escáner Inteligente</h1>
                 </div>
-                <p className="text-sm text-zinc-400 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                     Sube cualquier archivo y la IA lo clasificará automáticamente en la carpeta correcta.
                 </p>
             </div>
 
             {getElectronAPI()?.getNetworkStatus && netStatus && (
-                <div className="rounded-xl border border-[#27272a] bg-[#111113] px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="rounded-xl border border-border bg-card px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-start gap-3">
                         {netStatus.localNetworkEnabled ? (
                             <Wifi className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
                         ) : (
-                            <WifiOff className="w-5 h-5 text-zinc-500 mt-0.5 flex-shrink-0" />
+                            <WifiOff className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                         )}
                         <div>
-                            <p className="text-sm font-medium text-white">Red local (escáner móvil)</p>
-                            <p className="text-xs text-zinc-500 mt-0.5">
+                            <p className="text-sm font-medium text-foreground">Red local (escáner móvil)</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
                                 {netStatus.localNetworkEnabled
                                     ? `Otros dispositivos en tu Wi‑Fi pueden usar la API en ${netStatus.lanIP || "—"}:8080. Desactívalo si solo usas este PC.`
                                     : "El backend solo escucha en este equipo (127.0.0.1). Los móviles en la red no podrán conectar."}
@@ -172,7 +172,7 @@ export default function EscanerPage() {
                         </div>
                     </div>
                     <label className="flex items-center gap-3 cursor-pointer select-none self-end sm:self-center">
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-muted-foreground">
                             {netToggling ? "Reiniciando…" : netStatus.localNetworkEnabled ? "LAN activa" : "Solo local"}
                         </span>
                         <button
@@ -182,7 +182,7 @@ export default function EscanerPage() {
                             disabled={netToggling}
                             onClick={() => void handleLanToggle(!netStatus.localNetworkEnabled)}
                             className={`relative w-11 h-6 rounded-full transition-colors ${
-                                netStatus.localNetworkEnabled ? "bg-emerald-600" : "bg-zinc-700"
+                                netStatus.localNetworkEnabled ? "bg-emerald-600" : "bg-accent"
                             } ${netToggling ? "opacity-60" : ""}`}
                         >
                             <span
@@ -203,21 +203,21 @@ export default function EscanerPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-300 cursor-pointer ${
                     dragOver
-                        ? "border-indigo-500 bg-indigo-500/10 scale-[1.01]"
-                        : "border-[#27272a] bg-[#111113] hover:border-zinc-600"
+                        ? "border-primary bg-primary/10 scale-[1.01]"
+                        : "border-border bg-card hover:border-border"
                 }`}
             >
                 <div className="flex justify-center mb-4">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${
-                        dragOver ? "bg-indigo-500/20" : "bg-zinc-800"
+                        dragOver ? "bg-primary/20" : "bg-muted"
                     }`}>
-                        <ScanLine className={`w-8 h-8 transition-colors ${dragOver ? "text-indigo-400" : "text-zinc-500"}`} />
+                        <ScanLine className={`w-8 h-8 transition-colors ${dragOver ? "text-primary" : "text-muted-foreground"}`} />
                     </div>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-1">
+                <h3 className="text-lg font-semibold text-foreground mb-1">
                     Arrastra archivos aquí o haz clic para seleccionar
                 </h3>
-                <p className="text-sm text-zinc-500 max-w-md mx-auto">
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
                     PDFs, imágenes, hojas de cálculo, correos... cualquier formato.
                     La IA detectará el tipo y lo clasificará automáticamente.
                 </p>
@@ -234,20 +234,20 @@ export default function EscanerPage() {
             {/* Selected Files */}
             {selectedFiles.length > 0 && (
                 <div className="space-y-3">
-                    <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
+                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                         Archivos seleccionados ({selectedFiles.length})
                     </h2>
-                    <div className="rounded-xl border border-[#27272a] bg-[#111113] divide-y divide-[#27272a]">
+                    <div className="rounded-xl border border-border bg-card divide-y divide-border">
                         {selectedFiles.map((file, i) => (
                             <div key={i} className="flex items-center justify-between px-5 py-3">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <FileText className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-                                    <span className="text-sm text-white truncate">{file.name}</span>
-                                    <span className="text-xs text-zinc-600">{formatSize(file.size)}</span>
+                                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-sm text-foreground truncate">{file.name}</span>
+                                    <span className="text-xs text-muted-foreground">{formatSize(file.size)}</span>
                                 </div>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                                    className="p-1 rounded hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition"
+                                    className="p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -258,7 +258,7 @@ export default function EscanerPage() {
                     <button
                         onClick={handleScan}
                         disabled={scanning}
-                        className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20"
+                        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-foreground py-3 rounded-xl font-semibold transition-all shadow-lg shadow-primary/20"
                     >
                         {scanning ? (
                             <>
@@ -301,7 +301,7 @@ export default function EscanerPage() {
                                     ) : (
                                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                                     )}
-                                    <h2 className="text-lg font-semibold text-white">
+                                    <h2 className="text-lg font-semibold text-foreground">
                                         {results.length} archivo{results.length > 1 ? "s" : ""}
                                     </h2>
                                     <div className="flex gap-2 text-xs">
@@ -311,7 +311,7 @@ export default function EscanerPage() {
                                     </div>
                                 </div>
                                 {/* Barra de progreso */}
-                                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 rounded-full"
                                         style={{ width: `${((done + failed) / results.length) * 100}%` }}
@@ -325,17 +325,17 @@ export default function EscanerPage() {
                         const info = CATEGORY_INFO[cat] || CATEGORY_INFO.otros;
                         const Icon = info.icon;
                         return (
-                            <div key={cat} className="rounded-xl border border-[#27272a] bg-[#111113] overflow-hidden">
-                                <div className="px-5 py-3 border-b border-[#27272a] flex items-center gap-3 bg-zinc-900/30">
+                            <div key={cat} className="rounded-xl border border-border bg-card overflow-hidden">
+                                <div className="px-5 py-3 border-b border-border flex items-center gap-3 bg-card">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${info.bg}`}>
                                         <FolderOpen className={`w-4 h-4 ${info.color}`} />
                                     </div>
                                     <div>
                                         <h3 className={`text-sm font-semibold ${info.color}`}>{info.label}</h3>
-                                        <p className="text-[10px] text-zinc-600">{items.length} archivo{items.length > 1 ? "s" : ""}</p>
+                                        <p className="text-[10px] text-muted-foreground">{items.length} archivo{items.length > 1 ? "s" : ""}</p>
                                     </div>
                                 </div>
-                                <div className="divide-y divide-[#27272a]">
+                                <div className="divide-y divide-border">
                                     {items.map((r, i) => {
                                         const live = docStatuses[r.document.id];
                                         const st = live?.status || r.document.status;
@@ -348,10 +348,10 @@ export default function EscanerPage() {
                                             <div key={i} className="flex items-center justify-between px-5 py-3">
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <Icon className={`w-4 h-4 ${info.color} flex-shrink-0`} />
-                                                    <span className="text-sm text-white truncate">{r.document.file_name}</span>
-                                                    <span className="text-xs text-zinc-600">{formatSize(r.document.file_size)}</span>
+                                                    <span className="text-sm text-foreground truncate">{r.document.file_name}</span>
+                                                    <span className="text-xs text-muted-foreground">{formatSize(r.document.file_size)}</span>
                                                     {reclassified && (
-                                                        <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
+                                                        <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                                                             → {(CATEGORY_INFO[finalCat] || CATEGORY_INFO.otros).label}
                                                         </span>
                                                     )}

@@ -11,9 +11,10 @@ Endpoints:
   PATCH  /generative-ui/{id}     — Actualiza título/descripción
   DELETE /generative-ui/{id}     — Elimina una interfaz
 """
+import asyncio
 import uuid
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
@@ -28,6 +29,109 @@ from app.db.models.auth import User
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/generative-ui", tags=["generative-ui"])
+
+
+# ── ERP data fetcher ──────────────────────────────────────────────────────────
+
+# Keyword groups → which data to fetch
+_KW_INVOICES = {"factura", "facturación", "facturacion", "cobro", "pago", "pendiente", "venta", "ingreso"}
+_KW_CLIENTS = {"cliente", "cartera", "crm", "contacto"}
+_KW_EMPLOYEES = {"empleado", "plantilla", "rrhh", "personal", "equipo", "trabajador"}
+_KW_PRODUCTS = {"producto", "inventario", "stock", "catálogo", "catalogo", "artículo", "articulo"}
+_KW_PAYROLLS = {"nómina", "nomina", "salario", "sueldo"}
+
+
+async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
+    """Query real ERP data based on prompt keywords. Returns JSON string for LLM context."""
+    from app.db.models.billing import Invoice
+    from app.db.models.crm import Client
+    from app.db.models.hr import Employee, Payroll
+
+    words = set(prompt.lower().split())
+    sections: list[str] = []
+
+    # --- Invoices ---
+    if words & _KW_INVOICES:
+        result = await db.execute(
+            select(
+                Invoice.invoice_number, Invoice.status,
+                Invoice.amount_total, Invoice.date, Invoice.due_date,
+            )
+            .where(Invoice.tenant_id == tenant_id)
+            .order_by(desc(Invoice.created_at))
+            .limit(20)
+        )
+        rows = result.all()
+        if rows:
+            items = [
+                {"numero": r.invoice_number, "estado": r.status,
+                 "total": float(r.amount_total or 0),
+                 "fecha": r.date.strftime("%Y-%m-%d") if r.date else None,
+                 "vencimiento": r.due_date.strftime("%Y-%m-%d") if r.due_date else None}
+                for r in rows
+            ]
+            # Summary
+            total = sum(i["total"] for i in items)
+            pending = [i for i in items if i["estado"] in ("draft", "sent", "pending")]
+            sections.append(
+                f"FACTURAS ({len(items)} más recientes, total: {total:.2f}€, "
+                f"pendientes: {len(pending)}, importe pendiente: {sum(i['total'] for i in pending):.2f}€):\n"
+                + "\n".join(f"  - {i['numero']} | {i['estado']} | {i['total']:.2f}€ | {i['fecha']} | vence {i['vencimiento']}" for i in items)
+            )
+
+    # --- Clients ---
+    if words & _KW_CLIENTS:
+        result = await db.execute(
+            select(Client.name, Client.email, Client.phone, Client.city, Client.nif)
+            .where(Client.tenant_id == tenant_id)
+            .order_by(desc(Client.created_at))
+            .limit(20)
+        )
+        rows = result.all()
+        if rows:
+            sections.append(
+                f"CLIENTES ({len(rows)} más recientes):\n"
+                + "\n".join(f"  - {r.name} | {r.nif or '-'} | {r.email or '-'} | {r.phone or '-'} | {r.city or '-'}" for r in rows)
+            )
+
+    # --- Employees ---
+    if words & _KW_EMPLOYEES:
+        result = await db.execute(
+            select(Employee.name, Employee.department, Employee.role, Employee.base_salary, Employee.email)
+            .where(Employee.tenant_id == tenant_id)
+            .order_by(desc(Employee.created_at))
+            .limit(20)
+        )
+        rows = result.all()
+        if rows:
+            sections.append(
+                f"EMPLEADOS ({len(rows)} más recientes):\n"
+                + "\n".join(f"  - {r.name} | {r.department or '-'} | {r.role or '-'} | {float(r.base_salary or 0):.2f}€" for r in rows)
+            )
+
+    # --- Payrolls ---
+    if words & _KW_PAYROLLS:
+        result = await db.execute(
+            select(Payroll.employee_id, Payroll.period_start, Payroll.period_end,
+                   Payroll.gross_salary, Payroll.net_salary, Payroll.status)
+            .where(Payroll.tenant_id == tenant_id)
+            .order_by(desc(Payroll.period_start))
+            .limit(20)
+        )
+        rows = result.all()
+        if rows:
+            sections.append(
+                f"NÓMINAS ({len(rows)} más recientes):\n"
+                + "\n".join(
+                    f"  - {r.period_start.strftime('%Y-%m') if r.period_start else '-'} | "
+                    f"Bruto {float(r.gross_salary or 0):.2f}€ | Neto {float(r.net_salary or 0):.2f}€ | {r.status}"
+                    for r in rows)
+            )
+
+    if not sections:
+        return ""
+
+    return "\n\n--- DATOS REALES DEL ERP (usa estos datos, NO inventes) ---\n\n" + "\n\n".join(sections)
 
 
 # ── Modelo DB ──────────────────────────────────────────────────────────────────
@@ -45,8 +149,8 @@ class GeneratedUI(Base):
     content_html = Column(Text, nullable=False)   # Sanitized HTML output
     is_pinned = Column(Boolean, default=True)     # True = pinned in sidebar/dashboard
     metadata_json = Column(JSON, nullable=True)   # Extra config (refresh interval, data sources, etc.)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
+    updated_at = Column(DateTime, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
@@ -80,20 +184,29 @@ El usuario describe lo que quiere ver y tú generas HTML+CSS inline que se rende
 
 REGLAS:
 1. Responde SOLO con el HTML, sin explicaciones fuera del código.
-2. Usa un estilo visual moderno, oscuro y profesional (fondo oscuro #1a1a2e, bordes sutiles, colores vibrantes para gráficos).
-3. Usa SOLO estas etiquetas HTML: div, span, p, table, thead, tbody, tr, td, th, button, b, i, strong, em, h1, h2, h3, h4, ul, ol, li, img, br, hr, a.
-4. NO uses <script>, <style>, <iframe>, <form>, <input>, onclick, onerror, ni ningún evento JavaScript.
-5. Usa estilos inline (style="...") para todo el diseño. NO references CSS externo.
-6. Si el usuario solicita datos del ERP (ventas, facturas, empleados), usa datos de ejemplo realistas en español.
+2. Si el mensaje incluye "DATOS REALES DEL ERP", USA ESOS DATOS EXACTOS. No inventes cifras ni nombres. Si no hay datos reales, usa datos de ejemplo realistas en español.
+3. Usa un estilo visual moderno, oscuro y profesional (fondo oscuro #1a1a2e, bordes sutiles, colores vibrantes para gráficos).
+4. Usa SOLO estas etiquetas HTML: div, span, p, table, thead, tbody, tr, td, th, button, b, i, strong, em, h1, h2, h3, h4, ul, ol, li, img, br, hr, a.
+5. NO uses <script>, <style>, <iframe>, <form>, <input>, onclick, onerror, ni ningún evento JavaScript.
+6. Usa estilos inline (style="...") para todo el diseño. NO references CSS externo.
 7. Los botones de acción deben tener el atributo data-erp-action="nombre_accion" y data-payload='{"key":"value"}'.
    Estos botones son de SOLO LECTURA: solo disparan consultas de datos, nunca modifican el ERP.
 8. Diseña con responsive en mente: usa flexbox y porcentajes para anchos.
 9. Incluye emojis como iconografía accesible (📊 📈 💰 👥 📋 etc).
 10. Las tablas deben tener cabeceras claras y datos alineados.
 
+ACCIONES DISPONIBLES (usa estos nombres exactos en data-erp-action):
+  - "create-task"   → Crea tarea IA. Payload: {"intent": "descripción de lo que hacer", "domain": "billing|hr|crm|general"}
+  - "view-invoice"  → Consulta factura(s) vía IA. Payload: {"id": "uuid"} o {} para listar
+  - "view-employee" → Consulta empleado(s) vía IA. Payload: {"id": "uuid"} o {} para listar
+  - "navigate"      → Navega a sección del ERP. Payload: {"href": "/ruta"}
+
+Los botones NO navegan a páginas externas — crean tareas IA que consultan datos reales.
+
 EJEMPLOS de botones válidos:
-  <button data-erp-action="view_invoices" data-payload='{"month":"current"}' style="...">Ver facturas del mes</button>
-  <button data-erp-action="view_employees" data-payload='{"department":"all"}' style="...">Ver plantilla</button>
+  <button data-erp-action="create-task" data-payload='{"intent":"revisar facturas pendientes","domain":"billing"}' style="...">📋 Revisar facturas</button>
+  <button data-erp-action="view-invoice" data-payload='{}' style="...">📄 Ver facturas recientes</button>
+  <button data-erp-action="view-employee" data-payload='{}' style="...">👥 Ver plantilla</button>
 
 NUNCA uses:
   <button onclick="...">  ← PROHIBIDO
@@ -102,6 +215,39 @@ NUNCA uses:
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
+
+@router.get("/debug-llm")
+async def debug_llm(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Diagnóstico rápido: verifica que el LLM responde."""
+    import shutil
+    from app.core.llm_factory import get_llm_for_tenant
+    from langchain_core.messages import HumanMessage
+
+    info = {
+        "claude_bin_found": shutil.which("claude") or "NOT IN PATH",
+        "tenant_id": str(current_user.tenant_id),
+    }
+    try:
+        llm = await get_llm_for_tenant(current_user.tenant_id, db, temperature=0)
+        info["llm_class"] = type(llm).__name__
+        info["llm_type"] = getattr(llm, "_llm_type", "unknown")
+
+        response = await asyncio.wait_for(
+            llm.ainvoke([HumanMessage(content="Responde solo 'OK'")]),
+            timeout=30,
+        )
+        info["response"] = response.content[:200]
+        info["status"] = "OK"
+    except asyncio.TimeoutError:
+        info["status"] = "TIMEOUT (30s)"
+    except Exception as e:
+        info["status"] = f"ERROR: {type(e).__name__}: {str(e)}"
+
+    return info
+
 
 @router.post("/generate", status_code=status.HTTP_201_CREATED)
 async def generate_ui(
@@ -114,14 +260,34 @@ async def generate_ui(
     from app.core.llm_factory import get_llm_for_tenant
 
     try:
+        # Fetch real ERP data based on prompt keywords
+        erp_context = await _fetch_erp_context(payload.prompt, current_user.tenant_id, db)
+        user_message = payload.prompt
+        if erp_context:
+            user_message = f"{payload.prompt}\n\n{erp_context}"
+
         llm = await get_llm_for_tenant(current_user.tenant_id, db, temperature=0.4)
-        response = await llm.ainvoke([
-            SystemMessage(content=_SYSTEM_PROMPT),
-            HumanMessage(content=payload.prompt),
-        ])
+        logger.info("Generative UI: usando LLM %s para tenant %s", type(llm).__name__, current_user.tenant_id)
+        response = await asyncio.wait_for(
+            llm.ainvoke([
+                SystemMessage(content=_SYSTEM_PROMPT),
+                HumanMessage(content=user_message),
+            ]),
+            timeout=120,
+        )
         content_html = response.content
+        if not content_html or not content_html.strip():
+            raise ValueError("El LLM devolvió una respuesta vacía")
+    except asyncio.TimeoutError:
+        logger.error("Generative UI: timeout de 120s para tenant %s", current_user.tenant_id)
+        raise HTTPException(status_code=504, detail="El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.")
+    except ValueError as e:
+        logger.error("Generative UI: %s", e)
+        raise HTTPException(status_code=502, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Error generando UI: %s", e)
+        logger.error("Error generando UI: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error al generar la interfaz: {str(e)}")
 
     # Auto-generate title if not provided
@@ -142,9 +308,12 @@ async def generate_ui(
     return {
         "id": str(ui.id),
         "title": ui.title,
+        "description": ui.description,
+        "prompt": ui.prompt,
         "content_html": ui.content_html,
         "is_pinned": ui.is_pinned,
         "created_at": ui.created_at.isoformat(),
+        "updated_at": ui.updated_at.isoformat() if ui.updated_at else ui.created_at.isoformat(),
     }
 
 

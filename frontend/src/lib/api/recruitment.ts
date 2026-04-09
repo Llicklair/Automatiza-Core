@@ -32,7 +32,7 @@ export interface Candidate {
 
 export const recruitment = {
     listPositions: (status = "all") =>
-        request<RecruitmentPosition[]>(`/recruitment/positions?status_filter=${status}`),
+        request<RecruitmentPosition[]>(`/api/v1/recruitment/positions?status_filter=${status}`),
 
     createPosition: (data: {
         title: string;
@@ -42,13 +42,13 @@ export const recruitment = {
         experience_min_years?: number;
         salary_range_min?: number;
         salary_range_max?: number;
-    }) => request<RecruitmentPosition>("/recruitment/positions", {
+    }) => request<RecruitmentPosition>("/api/v1/recruitment/positions", {
         method: "POST",
         body: JSON.stringify(data),
     }),
 
     listCandidates: (positionId: string) =>
-        request<Candidate[]>(`/recruitment/positions/${positionId}/candidates`),
+        request<Candidate[]>(`/api/v1/recruitment/positions/${positionId}/candidates`),
 
     uploadCV: async (positionId: string, file: File): Promise<Candidate> => {
         const token = getToken();
@@ -67,7 +67,7 @@ export const recruitment = {
     },
 
     updateCandidateStatus: (candidateId: string, status: string) =>
-        request<Candidate>(`/recruitment/candidates/${candidateId}/status`, {
+        request<Candidate>(`/api/v1/recruitment/candidates/${candidateId}/status`, {
             method: "PATCH",
             body: JSON.stringify({ status }),
         }),

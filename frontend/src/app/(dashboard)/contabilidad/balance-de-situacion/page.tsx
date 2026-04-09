@@ -72,8 +72,8 @@ function SectionBlock({ title, items, totalLabel, total, color }: {
     const c = colors[color];
 
     return (
-        <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
-            <div className={cn("px-5 py-4 border-b border-[#27272a] flex items-center justify-between")}>
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className={cn("px-5 py-4 border-b border-border flex items-center justify-between")}>
                 <h3 className={cn("font-bold text-lg flex items-center gap-2", c.header.split(" ")[0])}>
                     <span className={cn("w-2 h-2 rounded-full", c.dot)} />
                     {title}
@@ -87,27 +87,27 @@ function SectionBlock({ title, items, totalLabel, total, color }: {
                 const isOpen = expanded[subsection] ?? false;
 
                 return (
-                    <div key={subsection} className="border-b border-[#27272a]/50 last:border-b-0">
+                    <div key={subsection} className="border-b border-border/50 last:border-b-0">
                         <button
                             onClick={() => setExpanded(prev => ({ ...prev, [subsection]: !prev[subsection] }))}
-                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors text-left"
+                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-accent/50 transition-colors text-left"
                         >
-                            <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                                {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-zinc-500" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />}
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                                 {subsection}
                             </div>
-                            <span className="text-sm font-semibold text-zinc-200">{fmt(subTotal)}</span>
+                            <span className="text-sm font-semibold text-foreground">{fmt(subTotal)}</span>
                         </button>
 
                         {isOpen && (
-                            <div className="bg-black/20 divide-y divide-[#27272a]/30">
+                            <div className="bg-muted/50 divide-y divide-border">
                                 {accounts.map(acc => (
                                     <div key={acc.code} className="flex items-center justify-between px-8 py-2.5">
                                         <div className="flex items-center gap-3">
-                                            <span className="font-mono text-[11px] text-zinc-600 bg-zinc-800/50 px-1.5 py-0.5 rounded">{acc.code}</span>
-                                            <span className="text-sm text-zinc-400">{acc.name}</span>
+                                            <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{acc.code}</span>
+                                            <span className="text-sm text-muted-foreground">{acc.name}</span>
                                         </div>
-                                        <span className="text-sm text-zinc-300">{fmt(acc.saldo)}</span>
+                                        <span className="text-sm text-foreground">{fmt(acc.saldo)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -116,8 +116,8 @@ function SectionBlock({ title, items, totalLabel, total, color }: {
                 );
             })}
 
-            <div className={cn("px-5 py-3 bg-[#161618] flex items-center justify-between border-t border-[#27272a]")}>
-                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{totalLabel}</span>
+            <div className={cn("px-5 py-3 bg-muted flex items-center justify-between border-t border-border")}>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{totalLabel}</span>
                 <span className={cn("text-base font-bold", c.total)}>{fmt(total)}</span>
             </div>
         </div>
@@ -203,13 +203,13 @@ export default function BalanceSituacionPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
                         <div className="p-2 bg-blue-500/10 rounded-xl">
                             <Scale className="w-7 h-7 text-blue-400" />
                         </div>
                         Balance de Situación
                     </h1>
-                    <p className="text-zinc-400 ml-14">Estado patrimonial según PGC español — Activo = Pasivo + Patrimonio Neto</p>
+                    <p className="text-muted-foreground ml-14">Estado patrimonial según PGC español — Activo = Pasivo + Patrimonio Neto</p>
                 </div>
 
                 {/* Equilibrio */}
@@ -228,35 +228,35 @@ export default function BalanceSituacionPage() {
 
             {loading ? (
                 <div className="flex items-center justify-center py-24">
-                    <Loader2 className="w-8 h-8 text-zinc-500 animate-spin" />
+                    <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
                 </div>
             ) : isEmpty ? (
-                <div className="py-20 text-center bg-[#111113] border border-[#27272a] rounded-2xl">
-                    <Scale className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                    <p className="text-zinc-400 font-medium">Sin apuntes contables</p>
-                    <p className="text-zinc-600 text-sm mt-1">El Balance de Situación se construye a partir del libro diario.</p>
+                <div className="py-20 text-center bg-card border border-border rounded-2xl">
+                    <Scale className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground font-medium">Sin apuntes contables</p>
+                    <p className="text-muted-foreground text-sm mt-1">El Balance de Situación se construye a partir del libro diario.</p>
                 </div>
             ) : (
                 <>
                     {/* KPIs */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-[#111113] border border-blue-500/20 rounded-2xl p-5 relative overflow-hidden">
+                        <div className="bg-card border border-blue-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><TrendingUp className="w-20 h-20 text-blue-400" /></div>
                             <p className="text-xs font-semibold text-blue-400/70 uppercase tracking-wider mb-2">Total Activo</p>
                             <p className="text-3xl font-bold text-blue-400">{fmt(totalActivo)}</p>
-                            <p className="text-xs text-zinc-500 mt-1">Bienes y derechos de la empresa</p>
+                            <p className="text-xs text-muted-foreground mt-1">Bienes y derechos de la empresa</p>
                         </div>
-                        <div className="bg-[#111113] border border-orange-500/20 rounded-2xl p-5 relative overflow-hidden">
+                        <div className="bg-card border border-orange-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><TrendingDown className="w-20 h-20 text-orange-400" /></div>
                             <p className="text-xs font-semibold text-orange-400/70 uppercase tracking-wider mb-2">Total Pasivo</p>
                             <p className="text-3xl font-bold text-orange-400">{fmt(totalPasivo)}</p>
-                            <p className="text-xs text-zinc-500 mt-1">Deudas y obligaciones</p>
+                            <p className="text-xs text-muted-foreground mt-1">Deudas y obligaciones</p>
                         </div>
-                        <div className="bg-[#111113] border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden">
+                        <div className="bg-card border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><Wallet className="w-20 h-20 text-emerald-400" /></div>
                             <p className="text-xs font-semibold text-emerald-400/70 uppercase tracking-wider mb-2">Patrimonio Neto</p>
                             <p className={cn("text-3xl font-bold", totalPN >= 0 ? "text-emerald-400" : "text-red-400")}>{fmt(totalPN)}</p>
-                            <p className="text-xs text-zinc-500 mt-1">Incl. resultado {fmt(resultadoEjercicio)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Incl. resultado {fmt(resultadoEjercicio)}</p>
                         </div>
                     </div>
 
@@ -304,9 +304,9 @@ export default function BalanceSituacionPage() {
                             />
 
                             {/* Total Pasivo + PN */}
-                            <div className="flex items-center justify-between px-5 py-4 bg-[#111113] border border-[#27272a] rounded-2xl">
-                                <span className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Total Pasivo + Patrimonio Neto</span>
-                                <span className="text-lg font-bold text-white">{fmt(totalPasivoPN)}</span>
+                            <div className="flex items-center justify-between px-5 py-4 bg-card border border-border rounded-2xl">
+                                <span className="text-sm font-bold text-foreground uppercase tracking-wider">Total Pasivo + Patrimonio Neto</span>
+                                <span className="text-lg font-bold text-foreground">{fmt(totalPasivoPN)}</span>
                             </div>
                         </div>
                     </div>

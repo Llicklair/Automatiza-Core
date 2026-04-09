@@ -7,6 +7,7 @@ const http = require("http");
 const { spawn, execSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
+const crypto = require("crypto");
 
 const APPDATA_DIR = path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "AutomatizaPyme");
 if (!fs.existsSync(APPDATA_DIR)) try { fs.mkdirSync(APPDATA_DIR, { recursive: true }); } catch {}
@@ -167,7 +168,7 @@ function getOrCreateSecrets() {
  * Lee del .env del proyecto (prioridad) > variables del sistema > defaults.
  */
 function getBackendEnv(lanIP) {
-  const corsOrigins = `http://localhost:3000,http://${lanIP}:3000`;
+  const corsOrigins = `http://localhost:3000,http://127.0.0.1:3000,http://${lanIP}:3000`;
   const secrets = getOrCreateSecrets();
 
   return {
@@ -259,12 +260,30 @@ async function startFrontend() {
   };
 
   const nodeModulesDir = path.join(FRONTEND_DIR, "node_modules");
-  let depsInstalled = fs.existsSync(nodeModulesDir);
+  const lockfilePath = path.join(FRONTEND_DIR, "package-lock.json");
+  const installedLockPath = path.join(nodeModulesDir, ".installed-lock");
 
-  if (!depsInstalled) {
+  let depsUpToDate = false;
+  if (fs.existsSync(nodeModulesDir) && fs.existsSync(installedLockPath) && fs.existsSync(lockfilePath)) {
+    try {
+      const currentLock = crypto.createHash("md5").update(fs.readFileSync(lockfilePath)).digest("hex");
+      const installedLock = fs.readFileSync(installedLockPath, "utf8");
+      if (currentLock === installedLock) {
+        depsUpToDate = true;
+      }
+    } catch {}
+  }
+
+  if (!depsUpToDate) {
     logBoot("Frontend: instalando dependencias (npm install)...");
-    await runSpawn(npmCmd, ["install"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND INSTALL");
+    await runSpawn(npmCmd, ["install", "--no-audit", "--no-fund"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND INSTALL");
     logBoot("Frontend: dependencias instaladas.");
+    try {
+      if (fs.existsSync(lockfilePath)) {
+        const currentLock = crypto.createHash("md5").update(fs.readFileSync(lockfilePath)).digest("hex");
+        fs.writeFileSync(installedLockPath, currentLock);
+      }
+    } catch {}
   }
 
   // Solo rebuild si .next no existe (API URL se resuelve en runtime vía window.location)
@@ -273,6 +292,7 @@ async function startFrontend() {
   logBoot(`Frontend: needsBuild=${needsBuild}`);
 
   // ── FASE 1: Build solo si no existe .next ──────────────────────────────────
+  let buildFailed = false;
   if (needsBuild) {
     logBoot("Frontend: ejecutando 'npm run build'...");
     try {
@@ -280,12 +300,13 @@ async function startFrontend() {
       logBoot("Frontend: build completado.");
     } catch (buildErr) {
       logBoot(`[FRONTEND BUILD ERROR] ${buildErr.message}`);
+      buildFailed = true;
     }
   }
 
   // Guard: si no hay .next, no intentar arrancar (evita espera de 10 min)
-  if (!fs.existsSync(nextDir)) {
-    throw new Error("Frontend build falló: no existe .next — revisa errores de compilación en el log.");
+  if (buildFailed || !fs.existsSync(nextDir)) {
+    throw new Error("Frontend build falló. Revisa errores de compilación en el log.");
   }
 
   // ── FASE 2: Arrancar el servidor Next.js ─────────────────────────────────
@@ -337,10 +358,28 @@ function stopFrontend() {
 /**
  * Espera a que un puerto HTTP responda.
  */
-function waitForHTTP(port, timeoutMs = 120000) {
+function waitForHTTP(port, timeoutMs = 120000, childProc = null) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
+    let exited = false;
+    let exitCode = null;
+
+    if (childProc) {
+      childProc.on("close", (code) => {
+        exited = true;
+        exitCode = code;
+      });
+      childProc.on("error", (err) => {
+        exited = true;
+        exitCode = err.message;
+      });
+    }
+
     const check = () => {
+      if (exited) {
+        return reject(new Error(`El proceso cerró prematuramente (code/error: ${exitCode}) antes de responder en el puerto ${port}.`));
+      }
+      
       // Usar 127.0.0.1 explícitamente: en Windows, "localhost" resuelve a ::1 (IPv6)
       // pero uvicorn con 0.0.0.0 solo escucha IPv4.
       const req = http.get(`http://127.0.0.1:${port}`, (res) => {
@@ -439,7 +478,7 @@ async function startAll(onProgress) {
     if (line.includes("Ready")) onProgress("Frontend listo", 95);
   });
 
-    await waitForHTTP(3000, 600000); // 10 min por si npm build es lento
+    await waitForHTTP(3000, 600000, fp); // 10 min por si npm build es lento
     logBoot("Frontend operativo en puerto 3000.");
     onProgress("¡Todo listo!", 100);
 

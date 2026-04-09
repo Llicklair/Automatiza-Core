@@ -23,8 +23,8 @@ const COLOR_MAP: Record<string, string> = {
 
 export default function WorkflowToolbar({ onAddNode, onAddParallelBranch }: WorkflowToolbarProps) {
     return (
-        <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-zinc-900/80 border border-zinc-800 rounded-xl backdrop-blur-sm">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mr-1">Añadir:</span>
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-card border border-border rounded-xl backdrop-blur-sm">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Añadir:</span>
             {NODE_TYPES.map(({ type, label, icon: Icon, color }) => (
                 <button
                     key={type}

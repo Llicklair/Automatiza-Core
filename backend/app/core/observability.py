@@ -178,6 +178,27 @@ try:
         ["tenant_id"],
         registry=_registry,
     )
+
+    # ── HTTP metrics (integrated via RequestLoggerMiddleware) ──
+    HTTP_REQUESTS_TOTAL = Counter(
+        "automatizapyme_http_requests_total",
+        "Total HTTP requests",
+        ["method", "path", "status_code"],
+        registry=_registry,
+    )
+    HTTP_REQUEST_DURATION = Histogram(
+        "automatizapyme_http_request_duration_seconds",
+        "HTTP request duration in seconds",
+        ["method", "path"],
+        registry=_registry,
+        buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+    )
+    ACTIVE_WEBSOCKET_CONNECTIONS = Gauge(
+        "automatizapyme_active_websocket_connections",
+        "Number of active WebSocket connections",
+        registry=_registry,
+    )
+
     _metrics_enabled = True
 except ImportError:
     pass  # prometheus_client no instalado
@@ -212,6 +233,40 @@ def set_approvals_pending(tenant_id: str, count: int):
         return
     try:
         APPROVALS_PENDING.labels(tenant_id=tenant_id).set(count)
+    except Exception:
+        pass
+
+
+def record_http_request(method: str, path: str, status_code: int, duration_seconds: float):
+    """Record HTTP request metrics. No-op if Prometheus is unavailable."""
+    if not _metrics_enabled:
+        return
+    try:
+        # Normalize path to avoid high-cardinality labels (strip IDs)
+        import re
+        normalized = re.sub(r"/[0-9a-f-]{8,}", "/{id}", path)
+        HTTP_REQUESTS_TOTAL.labels(method=method, path=normalized, status_code=str(status_code)).inc()
+        HTTP_REQUEST_DURATION.labels(method=method, path=normalized).observe(duration_seconds)
+    except Exception:
+        pass
+
+
+def ws_connection_opened():
+    """Increment active WebSocket connections gauge."""
+    if not _metrics_enabled:
+        return
+    try:
+        ACTIVE_WEBSOCKET_CONNECTIONS.inc()
+    except Exception:
+        pass
+
+
+def ws_connection_closed():
+    """Decrement active WebSocket connections gauge."""
+    if not _metrics_enabled:
+        return
+    try:
+        ACTIVE_WEBSOCKET_CONNECTIONS.dec()
     except Exception:
         pass
 

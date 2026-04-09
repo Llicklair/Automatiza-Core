@@ -81,6 +81,13 @@ function createMainWindow() {
     }
   });
 
+  // F12 abre DevTools para diagnóstico
+  mainWindow.webContents.on("before-input-event", (_event, input) => {
+    if (input.key === "F12") {
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
+
   mainWindow.once("ready-to-show", () => {
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.close();

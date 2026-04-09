@@ -2,12 +2,14 @@
  * Base HTTP client — shared by all domain modules.
  * Handles JWT auth, token refresh, and blob downloads.
  */
+import { ApiError } from "./errors";
 
+// Runtime resolution — never bake a build-time URL that may go stale.
+// In the browser, derive from window.location so LAN access works automatically.
 export const BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (typeof window !== "undefined"
+  typeof window !== "undefined"
     ? `${window.location.protocol}//${window.location.hostname}:8080`
-    : "http://127.0.0.1:8080");
+    : "http://127.0.0.1:8080";
 
 export function getToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -65,7 +67,51 @@ export async function request<T>(
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail ?? "Error desconocido");
+        throw new ApiError(
+            res.status,
+            err.detail ?? "Error desconocido",
+            err.request_id,
+            err.type,
+        );
+    }
+
+    if (res.status === 204) return undefined as T;
+    return res.json();
+}
+
+export async function requestUpload<T>(path: string, formData: FormData): Promise<T> {
+    let token = getToken();
+    let res = await fetch(`${BASE}${path}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+    });
+
+    if (res.status === 401) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+            token = getToken();
+            res = await fetch(`${BASE}${path}`, {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+            });
+        } else {
+            localStorage.clear();
+            document.cookie = "auth_flag=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            window.location.href = "/login";
+            throw new Error("Sesión expirada");
+        }
+    }
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new ApiError(
+            res.status,
+            err.detail ?? "Error desconocido",
+            err.request_id,
+            err.type,
+        );
     }
 
     if (res.status === 204) return undefined as T;

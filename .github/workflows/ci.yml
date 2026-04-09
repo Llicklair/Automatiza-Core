@@ -46,8 +46,7 @@ jobs:
         run: poetry run ruff format app/ --check
 
       - name: Mypy type check
-        run: poetry run mypy app/ --ignore-missing-imports --no-strict-optional
-        continue-on-error: true  # Warning only en Fase 3
+        run: poetry run mypy app/ --ignore-missing-imports
 
   backend-test:
     name: Backend — Tests
@@ -93,13 +92,21 @@ jobs:
           OPENAI_API_KEY: sk-test-fake-key
         run: poetry run alembic upgrade head
 
+      - name: Alembic check (no pending migrations)
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
+          OPENAI_API_KEY: sk-test-fake-key
+        run: poetry run alembic check
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
           OPENAI_API_KEY: sk-test-fake-key
-        run: poetry run pytest tests/ -v --tb=short --cov=app --cov-report=xml
+        run: poetry run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-fail-under=50
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -109,8 +116,8 @@ jobs:
         continue-on-error: true
 
   # ─── Frontend ────────────────────────────────────────────────────────────────
-  frontend-build:
-    name: Frontend — Build & Lint
+  frontend-lint:
+    name: Frontend — Lint & Type Check
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -131,14 +138,63 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
-        continue-on-error: true
 
       - name: ESLint
         run: npx eslint src/ --ext .ts,.tsx --max-warnings 20
+
+  frontend-test:
+    name: Frontend — Tests
+    runs-on: ubuntu-latest
+    needs: frontend-lint
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: frontend/coverage/coverage-final.json
+          flags: frontend
         continue-on-error: true
+
+  frontend-build:
+    name: Frontend — Build
+    runs-on: ubuntu-latest
+    needs: [frontend-lint, frontend-test]
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Next.js build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
         run: npm run build
-

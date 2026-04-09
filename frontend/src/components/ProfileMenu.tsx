@@ -80,23 +80,25 @@ export default function ProfileMenu() {
             <div ref={ref} className="relative z-[9999]">
                 <button
                     onClick={() => setOpen(o => !o)}
+                    aria-haspopup="true"
+                    aria-expanded={open}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors group"
                 >
-                    <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-foreground text-xs font-bold flex-shrink-0">
                         {initials}
                     </div>
-                    <span className="text-sm text-zinc-400 group-hover:text-white transition-colors max-w-[140px] truncate hidden sm:block">
+                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors max-w-[140px] truncate hidden sm:block">
                         {displayName}
                     </span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
                 </button>
 
                 {open && (
-                    <div className="fixed right-6 top-16 w-56 bg-[#18181b] border border-[#27272a] rounded-xl shadow-2xl shadow-black/50 overflow-hidden" style={{ zIndex: 2147483647 }}>
+                    <div className="fixed right-6 top-16 w-56 bg-card border border-border rounded-xl shadow-2xl shadow-black/50 overflow-hidden" style={{ zIndex: 2147483647 }}>
                         {/* Header del menú */}
-                        <div className="px-4 py-3 border-b border-[#27272a]">
-                            <p className="text-xs font-semibold text-white truncate">{name || "Usuario"}</p>
-                            <p className="text-[10px] text-zinc-500 mt-0.5 truncate">{email}</p>
+                        <div className="px-4 py-3 border-b border-border">
+                            <p className="text-xs font-semibold text-foreground truncate">{name || "Usuario"}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{email}</p>
                         </div>
 
                         <div className="py-1">
@@ -104,9 +106,9 @@ export default function ProfileMenu() {
                             <Link
                                 href="/configuracion/empresa"
                                 onClick={() => setOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                             >
-                                <Building className="w-4 h-4 text-zinc-500" />
+                                <Building className="w-4 h-4 text-muted-foreground" />
                                 Mi empresa
                             </Link>
 
@@ -114,9 +116,9 @@ export default function ProfileMenu() {
                             <Link
                                 href="/configuracion/perfil"
                                 onClick={() => setOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                             >
-                                <User className="w-4 h-4 text-zinc-500" />
+                                <User className="w-4 h-4 text-muted-foreground" />
                                 Perfil y empresa
                             </Link>
 
@@ -124,9 +126,9 @@ export default function ProfileMenu() {
                             <Link
                                 href="/integraciones"
                                 onClick={() => setOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                             >
-                                <Mail className="w-4 h-4 text-zinc-500" />
+                                <Mail className="w-4 h-4 text-muted-foreground" />
                                 Conectar correo
                             </Link>
 
@@ -134,9 +136,9 @@ export default function ProfileMenu() {
                             <Link
                                 href="/configuracion/api-keys"
                                 onClick={() => setOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                             >
-                                <KeyRound className="w-4 h-4 text-zinc-500" />
+                                <KeyRound className="w-4 h-4 text-muted-foreground" />
                                 Claves API
                             </Link>
 
@@ -144,14 +146,14 @@ export default function ProfileMenu() {
                             <Link
                                 href="/configuracion/actualizaciones"
                                 onClick={() => setOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                             >
-                                <RefreshCw className="w-4 h-4 text-zinc-500" />
+                                <RefreshCw className="w-4 h-4 text-muted-foreground" />
                                 Actualizaciones
                             </Link>
                         </div>
 
-                        <div className="border-t border-[#27272a] py-1">
+                        <div className="border-t border-border py-1">
                             <button
                                 onClick={logout}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"

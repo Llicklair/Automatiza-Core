@@ -17,7 +17,9 @@ from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_recruitment,
     _dispatch_marketing,
     _dispatch_skill,
+    _dispatch_team,
 )
+from app.agents.orchestrator.dispatchers.custom import _dispatch_custom
 
 # Registro de dispatchers: agent_name → callable(state, subtask) -> AgentResult
 DISPATCHER_MAP = {
@@ -36,6 +38,7 @@ DISPATCHER_MAP = {
     "marketing": _dispatch_marketing,
     "skill": _dispatch_skill,
     "chat": _dispatch_chat,
+    "team": _dispatch_team,
 }
 
 __all__ = [
@@ -55,4 +58,5 @@ __all__ = [
     "_dispatch_marketing",
     "_dispatch_skill",
     "_dispatch_chat",
+    "_dispatch_team",
 ]

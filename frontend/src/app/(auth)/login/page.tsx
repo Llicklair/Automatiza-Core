@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 
 // ── Neural network canvas background ──────────────────────────────────────────
@@ -115,6 +116,7 @@ function NeuralBackground() {
 // ── Login form ─────────────────────────────────────────────────────────────────
 export default function LoginPage() {
     const router = useRouter();
+    const t = useTranslations("auth");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -131,14 +133,14 @@ export default function LoginPage() {
             document.cookie = "auth_flag=1; path=/; SameSite=Lax";
             router.push("/");
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Error al iniciar sesión");
+            setError(err instanceof Error ? err.message : t("errorLogin"));
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#09090b] relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
             {/* Animated neural network */}
             <NeuralBackground />
 
@@ -162,35 +164,35 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="mb-8 text-center">
                     <img src="/logo.svg" alt="AutomatizaPyme" className="w-14 h-14 rounded-2xl mb-4 shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-400/30 mx-auto" />
-                    <h1 className="text-2xl font-bold text-white tracking-tight">AutomatizaPyme</h1>
-                    <p className="mt-1 text-sm text-zinc-400">El ERP inteligente para tu empresa</p>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">AutomatizaPyme</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("tagline")}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1.5">Email</label>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">{t("email")}</label>
                         <input
                             type="email"
                             required
                             value={email}
                             onChange={e => setEmail(e.target.value)}
-                            placeholder="tu@empresa.es"
+                            placeholder={t("emailPlaceholder")}
                             className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10
-                                       text-white placeholder-zinc-500 focus:outline-none focus:ring-2
+                                       text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2
                                        focus:ring-indigo-500 focus:border-transparent transition"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1.5">Contraseña</label>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">{t("password")}</label>
                         <input
                             type="password"
                             required
                             value={password}
                             onChange={e => setPassword(e.target.value)}
-                            placeholder="••••••••"
+                            placeholder={t("passwordPlaceholder")}
                             className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10
-                                       text-white placeholder-zinc-500 focus:outline-none focus:ring-2
+                                       text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2
                                        focus:ring-indigo-500 focus:border-transparent transition"
                         />
                     </div>
@@ -205,7 +207,7 @@ export default function LoginPage() {
                         type="submit"
                         disabled={loading}
                         className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500
-                                   disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium
+                                   disabled:opacity-50 disabled:cursor-not-allowed text-foreground font-medium
                                    transition-all duration-150 shadow-lg shadow-indigo-500/25
                                    hover:shadow-indigo-500/40"
                     >
@@ -215,20 +217,20 @@ export default function LoginPage() {
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                 </svg>
-                                Entrando…
+                                {t("loggingIn")}
                             </span>
-                        ) : "Iniciar sesión"}
+                        ) : t("login")}
                     </button>
                 </form>
 
                 <div className="mt-6 flex flex-col items-center gap-2">
-                    <a href="/forgot-password" className="text-xs text-zinc-500 hover:text-zinc-300 transition">
-                        ¿Olvidaste tu contraseña?
+                    <a href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground transition">
+                        {t("forgotPassword")}
                     </a>
-                    <p className="text-xs text-zinc-500">
-                        ¿Sin cuenta?{" "}
+                    <p className="text-xs text-muted-foreground">
+                        {t("noAccount")}{" "}
                         <a href="/registro" className="text-indigo-400 hover:text-indigo-300 transition">
-                            Regístrarte aquí
+                            {t("registerHere")}
                         </a>
                     </p>
                 </div>

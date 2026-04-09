@@ -45,12 +45,13 @@ export default function NotificationBell() {
         <div ref={ref} className="relative">
             <button
                 onClick={handleOpen}
-                className="relative p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                aria-label="Notificaciones"
                 title="Notificaciones"
             >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white px-1">
+                    <span aria-live="polite" className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-foreground px-1">
                         {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                 )}
@@ -58,17 +59,17 @@ export default function NotificationBell() {
 
             {open && (
                 <div
-                    className="fixed right-16 top-12 w-80 max-h-[28rem] bg-[#18181b] border border-[#27272a] rounded-xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
+                    className="fixed right-16 top-12 w-80 max-h-[28rem] bg-card border border-border rounded-xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
                     style={{ zIndex: 2147483647 }}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#27272a]">
-                        <span className="text-xs font-semibold text-white">Notificaciones</span>
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                        <span className="text-xs font-semibold text-foreground">Notificaciones</span>
                         <div className="flex items-center gap-1">
                             {items.length > 0 && (
                                 <button
                                     onClick={clear}
-                                    className="p-1 rounded text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+                                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                                     title="Limpiar todo"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -76,7 +77,7 @@ export default function NotificationBell() {
                             )}
                             <button
                                 onClick={() => setOpen(false)}
-                                className="p-1 rounded text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+                                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>
@@ -86,7 +87,7 @@ export default function NotificationBell() {
                     {/* List */}
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                         {items.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-10 text-zinc-600">
+                            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                                 <Bell className="w-6 h-6 mb-2 opacity-40" />
                                 <span className="text-xs">Sin notificaciones</span>
                             </div>
@@ -96,7 +97,7 @@ export default function NotificationBell() {
                                 return (
                                     <div
                                         key={n.id}
-                                        className={`flex items-start gap-2.5 px-4 py-2.5 border-b border-[#27272a]/50 last:border-b-0 ${
+                                        className={`flex items-start gap-2.5 px-4 py-2.5 border-b border-border/50 last:border-b-0 ${
                                             !n.read ? "bg-white/[0.02]" : ""
                                         }`}
                                     >
@@ -104,10 +105,10 @@ export default function NotificationBell() {
                                             {style.icon}
                                         </span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs text-zinc-300 leading-relaxed break-words">
+                                            <p className="text-xs text-foreground leading-relaxed break-words">
                                                 {n.message}
                                             </p>
-                                            <span className="text-[10px] text-zinc-600 mt-0.5 block">
+                                            <span className="text-[10px] text-muted-foreground mt-0.5 block">
                                                 {timeAgo(n.timestamp)}
                                             </span>
                                         </div>

@@ -18,12 +18,12 @@ export interface TelegramStatus {
 export const messaging = {
     telegram: {
         connect: () =>
-            request<TelegramConnectResponse>("/messaging/telegram/connect", { method: "POST" }),
+            request<TelegramConnectResponse>("/api/v1/messaging/telegram/connect", { method: "POST" }),
         disconnect: () =>
-            request<{ status: string }>("/messaging/telegram/disconnect", { method: "DELETE" }),
+            request<{ status: string }>("/api/v1/messaging/telegram/disconnect", { method: "DELETE" }),
         status: () =>
-            request<TelegramStatus>("/messaging/telegram/status"),
+            request<TelegramStatus>("/api/v1/messaging/telegram/status"),
         setupWebhook: () =>
-            request<{ status: string; result: unknown }>("/messaging/telegram/setup-webhook", { method: "POST" }),
+            request<{ status: string; result: unknown }>("/api/v1/messaging/telegram/setup-webhook", { method: "POST" }),
     },
 };

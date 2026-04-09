@@ -97,13 +97,13 @@ export default function RecruitmentPage() {
                         <Briefcase className="w-5 h-5 text-violet-400" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-semibold text-white">Reclutamiento</h1>
-                        <p className="text-xs text-zinc-500">Gestiona puestos abiertos y analiza CVs con IA</p>
+                        <h1 className="text-lg font-semibold text-foreground">Reclutamiento</h1>
+                        <p className="text-xs text-muted-foreground">Gestiona puestos abiertos y analiza CVs con IA</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-foreground text-xs font-medium transition-colors"
                 >
                     <Plus className="w-3.5 h-3.5" /> Nuevo puesto
                 </button>
@@ -112,11 +112,11 @@ export default function RecruitmentPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Positions list */}
                 <div className="space-y-2">
-                    <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1">Puestos</h2>
+                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Puestos</h2>
                     {loading ? (
-                        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                     ) : positions.length === 0 ? (
-                        <div className="text-center py-8 text-xs text-zinc-600">Sin puestos. Crea el primero.</div>
+                        <div className="text-center py-8 text-xs text-muted-foreground">Sin puestos. Crea el primero.</div>
                     ) : positions.map(pos => (
                         <button
                             key={pos.id}
@@ -124,16 +124,16 @@ export default function RecruitmentPage() {
                             className={`w-full text-left p-3 rounded-xl border transition-colors ${
                                 selectedPos?.id === pos.id
                                     ? "bg-violet-600/10 border-violet-500/30"
-                                    : "bg-[#18181b] border-[#27272a] hover:border-zinc-600"
+                                    : "bg-card border-border hover:border-border"
                             }`}
                         >
                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-white">{pos.title}</span>
-                                <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+                                <span className="text-sm font-medium text-foreground">{pos.title}</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                                {pos.department && <span className="text-[10px] text-zinc-500">{pos.department}</span>}
-                                <span className="text-[10px] text-zinc-600">|</span>
+                                {pos.department && <span className="text-[10px] text-muted-foreground">{pos.department}</span>}
+                                <span className="text-[10px] text-muted-foreground">|</span>
                                 <span className="text-[10px] text-violet-400 flex items-center gap-1">
                                     <Users className="w-3 h-3" /> {pos.candidate_count}
                                 </span>
@@ -141,10 +141,10 @@ export default function RecruitmentPage() {
                             {pos.required_skills?.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-2">
                                     {pos.required_skills.slice(0, 4).map((s, i) => (
-                                        <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{s}</span>
+                                        <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s}</span>
                                     ))}
                                     {pos.required_skills.length > 4 && (
-                                        <span className="text-[9px] text-zinc-600">+{pos.required_skills.length - 4}</span>
+                                        <span className="text-[9px] text-muted-foreground">+{pos.required_skills.length - 4}</span>
                                     )}
                                 </div>
                             )}
@@ -157,7 +157,7 @@ export default function RecruitmentPage() {
                     {selectedPos ? (
                         <>
                             <div className="flex items-center justify-between">
-                                <h2 className="text-sm font-medium text-white">
+                                <h2 className="text-sm font-medium text-foreground">
                                     Candidatos — {selectedPos.title}
                                 </h2>
                                 <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export default function RecruitmentPage() {
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploading}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-foreground text-xs font-medium transition-colors"
                                     >
                                         {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                                         {uploading ? "Analizando..." : "Subir CV"}
@@ -180,21 +180,21 @@ export default function RecruitmentPage() {
                             </div>
 
                             {loadingCandidates ? (
-                                <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                                <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                             ) : candidates.length === 0 ? (
                                 <div className="flex flex-col items-center py-12 text-center">
-                                    <Upload className="w-8 h-8 text-zinc-700 mb-3" />
-                                    <p className="text-sm text-zinc-500">Sin candidatos</p>
-                                    <p className="text-xs text-zinc-600 mt-1">Sube un CV en PDF para que la IA lo analice y puntúe</p>
+                                    <Upload className="w-8 h-8 text-muted-foreground mb-3" />
+                                    <p className="text-sm text-muted-foreground">Sin candidatos</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Sube un CV en PDF para que la IA lo analice y puntúe</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
                                     {candidates.map(c => (
-                                        <div key={c.id} className="bg-[#18181b] border border-[#27272a] rounded-xl p-4 space-y-3">
+                                        <div key={c.id} className="bg-card border border-border rounded-xl p-4 space-y-3">
                                             {/* Header */}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium text-white">{c.name}</span>
+                                                    <span className="text-sm font-medium text-foreground">{c.name}</span>
                                                     <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[c.status] || ""}`}>
                                                         {STATUS_LABELS[c.status] || c.status}
                                                     </span>
@@ -203,10 +203,10 @@ export default function RecruitmentPage() {
                                                     <div className="flex items-center gap-1">
                                                         <Star className="w-3.5 h-3.5 text-amber-400" />
                                                         <span className="text-sm font-bold text-amber-400">{c.score}</span>
-                                                        <span className="text-[10px] text-zinc-600">/100</span>
+                                                        <span className="text-[10px] text-muted-foreground">/100</span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
                                                         Pendiente de análisis
                                                     </span>
                                                 )}
@@ -214,22 +214,22 @@ export default function RecruitmentPage() {
 
                                             {/* Details */}
                                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                                {c.email && <div className="text-zinc-500">Email: <span className="text-zinc-300">{c.email}</span></div>}
-                                                {c.phone && <div className="text-zinc-500">Tel: <span className="text-zinc-300">{c.phone}</span></div>}
+                                                {c.email && <div className="text-muted-foreground">Email: <span className="text-foreground">{c.email}</span></div>}
+                                                {c.phone && <div className="text-muted-foreground">Tel: <span className="text-foreground">{c.phone}</span></div>}
                                                 {c.experience_years != null && (
-                                                    <div className="text-zinc-500">Experiencia: <span className="text-zinc-300">{c.experience_years} años</span></div>
+                                                    <div className="text-muted-foreground">Experiencia: <span className="text-foreground">{c.experience_years} años</span></div>
                                                 )}
-                                                {c.education && <div className="text-zinc-500 col-span-2">Formación: <span className="text-zinc-300">{c.education}</span></div>}
+                                                {c.education && <div className="text-muted-foreground col-span-2">Formación: <span className="text-foreground">{c.education}</span></div>}
                                             </div>
 
                                             {/* Score bar */}
                                             {c.score != null && (
                                                 <div className="space-y-1">
-                                                    <div className="flex justify-between text-[10px] text-zinc-500">
+                                                    <div className="flex justify-between text-[10px] text-muted-foreground">
                                                         <span>Puntuación IA</span>
                                                         <span>{c.score}/100</span>
                                                     </div>
-                                                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full transition-all ${c.score >= 70 ? "bg-emerald-500" : c.score >= 50 ? "bg-amber-500" : "bg-red-500"}`}
                                                             style={{ width: `${c.score}%` }}
@@ -260,7 +260,7 @@ export default function RecruitmentPage() {
 
                                             {/* Summary */}
                                             {c.summary && (
-                                                <p className="text-xs text-zinc-400 leading-relaxed">{c.summary}</p>
+                                                <p className="text-xs text-muted-foreground leading-relaxed">{c.summary}</p>
                                             )}
 
                                             {/* Score breakdown */}
@@ -268,8 +268,8 @@ export default function RecruitmentPage() {
                                                 <div className="flex gap-3 flex-wrap">
                                                     {Object.entries(c.score_breakdown).map(([key, val]) => (
                                                         <div key={key} className="text-[10px]">
-                                                            <span className="text-zinc-600">{key.replace(/_/g, " ")}: </span>
-                                                            <span className="text-zinc-300 font-medium">{val}</span>
+                                                            <span className="text-muted-foreground">{key.replace(/_/g, " ")}: </span>
+                                                            <span className="text-foreground font-medium">{val}</span>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -304,7 +304,7 @@ export default function RecruitmentPage() {
                                                 {c.status !== "reviewed" && c.status !== "shortlisted" && c.status !== "hired" && (
                                                     <button
                                                         onClick={() => updateStatus(c.id, "reviewed")}
-                                                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-700/30 text-zinc-400 text-[10px] font-medium hover:bg-zinc-700/50 transition-colors"
+                                                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-accent text-muted-foreground text-[10px] font-medium hover:bg-accent transition-colors"
                                                     >
                                                         <ArrowUpDown className="w-3 h-3" /> Marcar revisado
                                                     </button>
@@ -317,8 +317,8 @@ export default function RecruitmentPage() {
                         </>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <Briefcase className="w-8 h-8 text-zinc-700 mb-3" />
-                            <p className="text-sm text-zinc-500">Selecciona un puesto para ver sus candidatos</p>
+                            <Briefcase className="w-8 h-8 text-muted-foreground mb-3" />
+                            <p className="text-sm text-muted-foreground">Selecciona un puesto para ver sus candidatos</p>
                         </div>
                     )}
                 </div>
@@ -327,60 +327,60 @@ export default function RecruitmentPage() {
             {/* Create position modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                    <div className="bg-[#18181b] border border-[#27272a] rounded-2xl p-6 w-full max-w-md space-y-4">
+                    <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-white">Nuevo puesto</h3>
-                            <button onClick={() => setShowCreateModal(false)}><X className="w-4 h-4 text-zinc-500" /></button>
+                            <h3 className="text-sm font-semibold text-foreground">Nuevo puesto</h3>
+                            <button onClick={() => setShowCreateModal(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
                         </div>
                         <div className="space-y-3">
                             <input
                                 placeholder="Título del puesto *"
                                 value={form.title}
                                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                             <input
                                 placeholder="Departamento"
                                 value={form.department}
                                 onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                             <textarea
                                 placeholder="Descripción del puesto"
                                 value={form.description}
                                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                                 rows={3}
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50 resize-none"
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50 resize-none"
                             />
                             <input
                                 placeholder="Habilidades requeridas (separadas por coma)"
                                 value={form.required_skills}
                                 onChange={e => setForm(f => ({ ...f, required_skills: e.target.value }))}
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                             />
                             <div className="flex items-center gap-2">
-                                <label className="text-xs text-zinc-500 whitespace-nowrap">Exp. mínima (años):</label>
+                                <label className="text-xs text-muted-foreground whitespace-nowrap">Exp. mínima (años):</label>
                                 <input
                                     type="number"
                                     min={0}
                                     step={0.5}
                                     value={form.experience_min_years}
                                     onChange={e => setForm(f => ({ ...f, experience_min_years: parseFloat(e.target.value) || 0 }))}
-                                    className="w-20 bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                                    className="w-20 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50"
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white transition-colors"
+                                className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={createPosition}
                                 disabled={!form.title.trim()}
-                                className="px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+                                className="px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-foreground text-xs font-medium transition-colors"
                             >
                                 Crear puesto
                             </button>

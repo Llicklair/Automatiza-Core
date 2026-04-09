@@ -171,15 +171,15 @@ export default function RemesasPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Remesas Bancarias SEPA</h1>
-                    <p className="mt-1 text-sm text-zinc-400">
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Remesas Bancarias SEPA</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Agrupa facturas y nóminas para generar ficheros SEPA XML listos para tu banco.
                     </p>
                 </div>
                 <button
                     onClick={handleGenerar}
                     disabled={selected.length === 0 || agent.status === "creating" || agent.status === "polling"}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-medium transition-colors text-sm shadow-lg shadow-indigo-500/20"
+                    className="flex items-center gap-2 bg-primary hover:bg-primary disabled:opacity-40 text-foreground px-5 py-2.5 rounded-xl font-medium transition-colors text-sm shadow-lg shadow-primary/20"
                 >
                     {(agent.status === "creating" || agent.status === "polling")
                         ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -202,7 +202,7 @@ export default function RemesasPage() {
                                     onClick={() => setActiveType(t)}
                                     className={cn(
                                         "px-4 py-2 rounded-xl text-sm font-medium border transition-all",
-                                        activeType === t ? `${c.color} ${c.border} ${c.bg}` : "text-zinc-400 border-[#27272a] hover:text-zinc-200 hover:border-zinc-600"
+                                        activeType === t ? `${c.color} ${c.border} ${c.bg}` : "text-muted-foreground border-border hover:text-foreground hover:border-border"
                                     )}
                                 >
                                     {c.label} ({count})
@@ -212,42 +212,42 @@ export default function RemesasPage() {
                     </div>
 
                     {/* Lista */}
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
                         {/* Toolbar */}
-                        <div className="px-5 py-3 border-b border-[#27272a] flex items-center justify-between bg-[#161618]">
-                            <span className="text-sm text-zinc-400">
+                        <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-muted">
+                            <span className="text-sm text-muted-foreground">
                                 {filtered.filter(i => i.selected).length} de {filtered.length} seleccionados
                             </span>
                             <div className="flex gap-3 text-xs">
-                                <button onClick={selectAll} className="text-indigo-400 hover:text-indigo-300 transition-colors">Seleccionar todo</button>
-                                <span className="text-zinc-700">|</span>
-                                <button onClick={deselectAll} className="text-zinc-500 hover:text-zinc-300 transition-colors">Ninguno</button>
+                                <button onClick={selectAll} className="text-primary hover:text-primary transition-colors">Seleccionar todo</button>
+                                <span className="text-muted-foreground">|</span>
+                                <button onClick={deselectAll} className="text-muted-foreground hover:text-foreground transition-colors">Ninguno</button>
                             </div>
                         </div>
 
                         {loading ? (
                             <div className="py-12 flex items-center justify-center">
-                                <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                             </div>
                         ) : filtered.length === 0 ? (
                             <div className="py-12 text-center">
-                                {activeType === "cobros" && <FileText className="w-10 h-10 text-zinc-700 mx-auto mb-3" />}
-                                {activeType === "pagos" && <Building2 className="w-10 h-10 text-zinc-700 mx-auto mb-3" />}
-                                {activeType === "nominas" && <WalletCards className="w-10 h-10 text-zinc-700 mx-auto mb-3" />}
-                                <p className="text-zinc-500 text-sm">
+                                {activeType === "cobros" && <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />}
+                                {activeType === "pagos" && <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />}
+                                {activeType === "nominas" && <WalletCards className="w-10 h-10 text-muted-foreground mx-auto mb-3" />}
+                                <p className="text-muted-foreground text-sm">
                                     {activeType === "cobros" && "No hay facturas emitidas pendientes de cobro"}
                                     {activeType === "pagos" && "No hay facturas recibidas pendientes de pago"}
                                     {activeType === "nominas" && "No hay nóminas emitidas pendientes de transferencia"}
                                 </p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-[#27272a]/50">
+                            <div className="divide-y divide-border">
                                 {filtered.map(item => (
                                     <label
                                         key={item.id}
                                         className={cn(
                                             "flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors",
-                                            item.selected ? "bg-indigo-500/5" : "hover:bg-white/[0.02]"
+                                            item.selected ? "bg-primary/5" : "hover:bg-accent/50"
                                         )}
                                     >
                                         <input
@@ -257,8 +257,8 @@ export default function RemesasPage() {
                                             className="w-4 h-4 rounded accent-indigo-500 shrink-0"
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-white truncate">{item.label}</p>
-                                            <p className="text-xs text-zinc-500">{item.sublabel} · {format(new Date(item.date), "d MMM yyyy", { locale: es })}</p>
+                                            <p className="text-sm font-medium text-foreground truncate">{item.label}</p>
+                                            <p className="text-xs text-muted-foreground">{item.sublabel} · {format(new Date(item.date), "d MMM yyyy", { locale: es })}</p>
                                         </div>
                                         <span className={cn("text-sm font-semibold shrink-0", typeConfig[item.type].color)}>
                                             {fmt(item.amount)}
@@ -273,10 +273,10 @@ export default function RemesasPage() {
                 {/* Panel derecho: resumen + config */}
                 <div className="space-y-5">
                     {/* Resumen selección */}
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-5">
-                        <h3 className="text-sm font-semibold text-white mb-4">Resumen remesa</h3>
+                    <div className="bg-card border border-border rounded-2xl p-5">
+                        <h3 className="text-sm font-semibold text-foreground mb-4">Resumen remesa</h3>
                         {selected.length === 0 ? (
-                            <p className="text-xs text-zinc-500 text-center py-4">Selecciona conceptos para incluir en la remesa.</p>
+                            <p className="text-xs text-muted-foreground text-center py-4">Selecciona conceptos para incluir en la remesa.</p>
                         ) : (
                             <div className="space-y-2">
                                 {(["cobros", "pagos", "nominas"] as RemesaType[]).map(t => {
@@ -285,37 +285,37 @@ export default function RemesasPage() {
                                     return (
                                         <div key={t} className="flex items-center justify-between text-sm">
                                             <span className={cn("text-xs", typeConfig[t].color)}>{typeConfig[t].label} ({tItems.length})</span>
-                                            <span className="text-zinc-300 font-medium">{fmt(tItems.reduce((s, i) => s + i.amount, 0))}</span>
+                                            <span className="text-foreground font-medium">{fmt(tItems.reduce((s, i) => s + i.amount, 0))}</span>
                                         </div>
                                     );
                                 })}
-                                <div className="pt-3 mt-3 border-t border-[#27272a] flex items-center justify-between">
-                                    <span className="text-sm font-semibold text-zinc-200">Total</span>
-                                    <span className="text-base font-bold text-white">{fmt(totalSelected)}</span>
+                                <div className="pt-3 mt-3 border-t border-border flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-foreground">Total</span>
+                                    <span className="text-base font-bold text-foreground">{fmt(totalSelected)}</span>
                                 </div>
-                                <div className="text-xs text-zinc-500 pt-1">{selected.length} concepto{selected.length !== 1 ? "s" : ""} incluido{selected.length !== 1 ? "s" : ""}</div>
+                                <div className="text-xs text-muted-foreground pt-1">{selected.length} concepto{selected.length !== 1 ? "s" : ""} incluido{selected.length !== 1 ? "s" : ""}</div>
                             </div>
                         )}
                     </div>
 
                     {/* Config SEPA */}
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-5">
-                        <h3 className="text-sm font-semibold text-white mb-4">Configuración SEPA</h3>
+                    <div className="bg-card border border-border rounded-2xl p-5">
+                        <h3 className="text-sm font-semibold text-foreground mb-4">Configuración SEPA</h3>
                         <div className="space-y-3 text-xs">
                             <div className="flex justify-between">
-                                <span className="text-zinc-500">Identificador Acreedor</span>
-                                <span className="font-mono text-zinc-300">ES99000B00000000</span>
+                                <span className="text-muted-foreground">Identificador Acreedor</span>
+                                <span className="font-mono text-foreground">ES99000B00000000</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-zinc-500">Banco por defecto</span>
-                                <span className="text-zinc-300">BBVA Empresas</span>
+                                <span className="text-muted-foreground">Banco por defecto</span>
+                                <span className="text-foreground">BBVA Empresas</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-zinc-500">Esquema</span>
-                                <span className="text-zinc-300">SEPA Credit Transfer (SCT)</span>
+                                <span className="text-muted-foreground">Esquema</span>
+                                <span className="text-foreground">SEPA Credit Transfer (SCT)</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-zinc-500">Firma conjunta</span>
+                                <span className="text-muted-foreground">Firma conjunta</span>
                                 <span className="text-emerald-400 font-medium">Activada</span>
                             </div>
                         </div>
@@ -324,7 +324,7 @@ export default function RemesasPage() {
                     {/* Aviso automatización */}
                     <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
                         <h3 className="text-xs font-semibold text-blue-400 mb-2">Automatización SEPA</h3>
-                        <p className="text-xs text-zinc-400 leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
                             El sistema agrupa automáticamente los pagos validados en ficheros SEPA los días 5 y 20 de cada mes y los envía a tu gestoría.
                         </p>
                     </div>
@@ -334,11 +334,11 @@ export default function RemesasPage() {
             {/* Modal resultado agente */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => { if (agent.status !== "creating" && agent.status !== "polling") setShowModal(false); }}>
-                    <div className="w-full max-w-md bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272a]">
-                            <h2 className="font-semibold text-white">Generando Remesa SEPA</h2>
+                    <div className="w-full max-w-md bg-card border border-border rounded-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                            <h2 className="font-semibold text-foreground">Generando Remesa SEPA</h2>
                             {agent.status !== "creating" && agent.status !== "polling" && (
-                                <button onClick={() => { setShowModal(false); agent.reset(); }} className="text-zinc-500 hover:text-white">
+                                <button onClick={() => { setShowModal(false); agent.reset(); }} className="text-muted-foreground hover:text-foreground">
                                     <X className="w-5 h-5" />
                                 </button>
                             )}
@@ -346,10 +346,10 @@ export default function RemesasPage() {
                         <div className="p-8 flex flex-col items-center text-center gap-4">
                             {(agent.status === "creating" || agent.status === "polling") && (
                                 <>
-                                    <Loader2 className="w-12 h-12 text-indigo-400 animate-spin" />
+                                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
                                     <div>
-                                        <p className="text-white font-semibold mb-1">El agente está procesando la remesa</p>
-                                        <p className="text-xs text-zinc-500">Agrupando {selected.length} concepto{selected.length !== 1 ? "s" : ""} por {fmt(totalSelected)}…</p>
+                                        <p className="text-foreground font-semibold mb-1">El agente está procesando la remesa</p>
+                                        <p className="text-xs text-muted-foreground">Agrupando {selected.length} concepto{selected.length !== 1 ? "s" : ""} por {fmt(totalSelected)}…</p>
                                     </div>
                                 </>
                             )}
@@ -357,17 +357,17 @@ export default function RemesasPage() {
                                 <>
                                     <CheckCircle2 className="w-12 h-12 text-emerald-400" />
                                     <div>
-                                        <p className="text-white font-semibold mb-1">Remesa generada correctamente</p>
-                                        <p className="text-xs text-zinc-400 mb-4">El fichero SEPA XML ha sido creado y registrado en Documentos.</p>
+                                        <p className="text-foreground font-semibold mb-1">Remesa generada correctamente</p>
+                                        <p className="text-xs text-muted-foreground mb-4">El fichero SEPA XML ha sido creado y registrado en Documentos.</p>
                                     </div>
                                     <div className="flex gap-3 w-full">
                                         <button
                                             onClick={() => { setShowModal(false); agent.reset(); setItems(prev => prev.map(i => ({ ...i, selected: false }))); }}
-                                            className="flex-1 py-2.5 bg-[#1c1c1e] hover:bg-zinc-800 border border-[#3f3f46] text-white rounded-xl text-sm font-medium transition-colors"
+                                            className="flex-1 py-2.5 bg-muted hover:bg-muted border border-border text-foreground rounded-xl text-sm font-medium transition-colors"
                                         >
                                             Cerrar
                                         </button>
-                                        <button className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                        <button className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-foreground rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
                                             <Download className="w-4 h-4" /> Ver en Documentos
                                         </button>
                                     </div>
@@ -377,10 +377,10 @@ export default function RemesasPage() {
                                 <>
                                     <AlertCircle className="w-12 h-12 text-red-400" />
                                     <div>
-                                        <p className="text-white font-semibold mb-1">Error al generar la remesa</p>
+                                        <p className="text-foreground font-semibold mb-1">Error al generar la remesa</p>
                                         <p className="text-xs text-red-400 mb-4">{agent.error || "Error desconocido"}</p>
                                     </div>
-                                    <button onClick={() => { setShowModal(false); agent.reset(); }} className="w-full py-2.5 bg-[#1c1c1e] hover:bg-zinc-800 border border-[#3f3f46] text-white rounded-xl text-sm font-medium transition-colors">
+                                    <button onClick={() => { setShowModal(false); agent.reset(); }} className="w-full py-2.5 bg-muted hover:bg-muted border border-border text-foreground rounded-xl text-sm font-medium transition-colors">
                                         Cerrar
                                     </button>
                                 </>

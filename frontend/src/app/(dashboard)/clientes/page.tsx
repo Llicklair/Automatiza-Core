@@ -1,55 +1,81 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { ColumnDef } from "@tanstack/react-table";
 import { api, Client, Invoice } from "@/lib/api";
 import { useNotificationStore } from "@/stores/notifications";
-import {
-    Plus, Building2, UserCircle, Search, Mail, MapPin, X,
-    FileText, ArrowUpRight, ArrowDownLeft, Hash, Calendar,
-    Phone, Globe, Loader2, ChevronRight, Download, ExternalLink
-} from "lucide-react";
-import Link from "next/link";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
+import Link from "next/link";
 
-async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string | null) {
+import { PageHeader, StatusBadge, FormModal, FormField, KpiCard, EmptyState } from "@/components/shared";
+import { DataTable, DataTableColumnHeader } from "@/components/data-table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+
+import {
+    Plus, Building2, UserCircle, Mail, MapPin, X,
+    FileText, Phone, Loader2, Download, ExternalLink, Eye,
+} from "lucide-react";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string | null, errorMsg: string) {
     try {
         await api.erp.invoices.downloadPdf(invoiceId, invoiceNumber);
     } catch {
-        useToastStore.getState().show("No se pudo descargar el PDF", "error");
+        useToastStore.getState().show(errorMsg, "error");
     }
 }
 
-const CLIENT_TYPE_MAP: Record<string, { label: string; color: string }> = {
-    customer: { label: "Cliente", color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
-    supplier: { label: "Proveedor", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
-    company: { label: "Empresa", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-    lead: { label: "Lead", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-};
+function getInitials(name: string) {
+    return name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase();
+}
 
-const STATUS_INV: Record<string, string> = {
-    draft: "text-zinc-400 bg-zinc-800 border-zinc-700",
-    pending: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-    paid: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    overdue: "text-red-400 bg-red-500/10 border-red-500/20",
-};
-const STATUS_INV_LABEL: Record<string, string> = {
-    draft: "Borrador", pending: "Pendiente", paid: "Cobrada", overdue: "Vencida",
-};
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientesPage() {
+    const t = useTranslations("clientes");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const [clients, setClients] = useState<Client[]>([]);
+
+    const CLIENT_TYPE_MAP: Record<string, { label: string; variant: "info" | "warning" | "default" | "success" }> = {
+        customer: { label: t("typeClient"), variant: "info" },
+        supplier: { label: t("typeSupplier"), variant: "warning" },
+        company: { label: t("typeCompany"), variant: "default" },
+        lead: { label: t("typeLead"), variant: "success" },
+    };
+
+    const CLIENT_TYPE_OPTIONS = [
+        { label: t("typeClient"), value: "customer" },
+        { label: t("typeSupplier"), value: "supplier" },
+        { label: t("typeCompany"), value: "company" },
+        { label: t("typeLead"), value: "lead" },
+    ];
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
 
     // Drawer
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [clientInvoices, setClientInvoices] = useState<Invoice[]>([]);
     const [loadingInvoices, setLoadingInvoices] = useState(false);
 
-    // Creación / Edición
+    // Creacion / Edicion
     const [isCreating, setIsCreating] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [newClient, setNewClient] = useState<Partial<Client>>({ client_type: "customer" });
@@ -57,13 +83,15 @@ export default function ClientesPage() {
     const [deleting, setDeleting] = useState(false);
     const refreshKey = useNotificationStore((s) => s.refreshKey);
 
+    // ── Data loading ─────────────────────────────────────────────────────────
+
     const loadClients = async () => {
         try {
             setLoading(true);
             const data = await api.erp.clients.list();
             setClients(data);
         } catch (err: any) {
-            setError(err.message || "Error al cargar clientes");
+            setError(err.message || t("errorLoading"));
         } finally {
             setLoading(false);
         }
@@ -71,6 +99,8 @@ export default function ClientesPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { loadClients(); }, [refreshKey]);
+
+    // ── CRUD handlers ────────────────────────────────────────────────────────
 
     const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,7 +116,7 @@ export default function ClientesPage() {
             setNewClient({ client_type: "customer" });
             loadClients();
         } catch (err: any) {
-            toast.error(err.message || "Error al guardar cliente");
+            toast.error(err.message || t("errorSaving"));
         } finally {
             setSaving(false);
         }
@@ -104,14 +134,14 @@ export default function ClientesPage() {
     };
 
     const handleDeleteClient = async (client: Client) => {
-        if (!await showConfirm({ message: `¿Eliminar "${client.name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("deleteConfirm", { name: client.name }), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         setDeleting(true);
         try {
             await api.erp.clients.delete(client.id);
             closeDrawer();
             loadClients();
         } catch (err: any) {
-            toast.error(err.message || "Error al eliminar cliente");
+            toast.error(err.message || t("errorDeleting"));
         } finally {
             setDeleting(false);
         }
@@ -135,288 +165,310 @@ export default function ClientesPage() {
         setClientInvoices([]);
     };
 
-    const filtered = clients.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.nif && c.nif.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (c.phone && c.phone.includes(searchTerm))
-    );
+    const closeModal = () => {
+        setIsCreating(false);
+        setEditingClient(null);
+        setNewClient({ client_type: "customer" });
+    };
+
+    // ── Derived data ─────────────────────────────────────────────────────────
 
     const totalFacturado = clientInvoices.reduce((s, i) => s + Number(i.amount_total), 0);
 
+    // ── DataTable columns ────────────────────────────────────────────────────
+
+    const columns = useMemo<ColumnDef<Client>[]>(() => [
+        {
+            accessorKey: "name",
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("nameColumn")} />,
+            cell: ({ row }) => {
+                const client = row.original;
+                return (
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-8 w-8 rounded-lg">
+                            <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                                {client.client_type === "company" || client.client_type === "supplier"
+                                    ? <Building2 className="h-4 w-4" />
+                                    : getInitials(client.name)
+                                }
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
+                            {client.city && <p className="text-xs text-muted-foreground truncate">{client.city}</p>}
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "nif",
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("nifColumn")} />,
+            cell: ({ row }) => {
+                const nif = row.original.nif;
+                return nif
+                    ? <span className="text-xs font-mono bg-muted border border-border text-foreground px-2 py-0.5 rounded">{nif}</span>
+                    : <span className="text-xs text-muted-foreground italic">{t("noNif")}</span>;
+            },
+        },
+        {
+            accessorKey: "client_type",
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("typeColumn")} />,
+            cell: ({ row }) => {
+                const ct = CLIENT_TYPE_MAP[row.original.client_type] ?? { label: row.original.client_type, variant: "default" as const };
+                return <StatusBadge status={row.original.client_type} label={ct.label} />;
+            },
+            filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
+        },
+        {
+            accessorKey: "email",
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("emailColumn")} />,
+            cell: ({ row }) => (
+                <span className="text-xs text-muted-foreground truncate block max-w-[180px]">
+                    {row.original.email || <span className="italic">--</span>}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "phone",
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("phoneColumn")} />,
+            cell: ({ row }) => (
+                <span className="text-xs text-muted-foreground truncate">
+                    {row.original.phone || <span>--</span>}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "created_at",
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("createdColumn")} />,
+            cell: ({ row }) => (
+                <span className="text-xs text-muted-foreground">
+                    {new Date(row.original.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "2-digit" })}
+                </span>
+            ),
+        },
+        {
+            id: "actions",
+            cell: ({ row }) => (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openClientDrawer(row.original)}
+                >
+                    <Eye className="h-4 w-4 mr-1" />
+                    {t("view")}
+                </Button>
+            ),
+        },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ], [t]);
+
+    // ── Faceted filters ──────────────────────────────────────────────────────
+
+    const facetedFilters = useMemo(() => [
+        {
+            column: "client_type",
+            title: t("type"),
+            options: CLIENT_TYPE_OPTIONS.map((o) => ({ label: o.label, value: o.value })),
+        },
+    ], [t, CLIENT_TYPE_OPTIONS]);
+
+    // ── Render ───────────────────────────────────────────────────────────────
+
+    if (error && !loading) {
+        return (
+            <div className="p-8 max-w-7xl mx-auto">
+                <EmptyState title={t("errorLoading")} description={error} />
+            </div>
+        );
+    }
+
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-6 relative">
-
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Directorio de Clientes</h1>
-                    <p className="text-zinc-400 text-sm mt-1">
-                        {clients.length} contacto{clients.length !== 1 ? "s" : ""} registrado{clients.length !== 1 ? "s" : ""}
-                    </p>
-                </div>
-                <button
-                    onClick={() => setIsCreating(true)}
-                    className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 font-medium text-sm"
-                >
-                    <Plus className="w-4 h-4" />
-                    Nuevo Cliente
-                </button>
-            </div>
+            <PageHeader
+                title={t("title")}
+                description={t("contactCount", { count: clients.length })}
+                icon={Building2}
+                actions={
+                    <Button onClick={() => setIsCreating(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t("newClient")}
+                    </Button>
+                }
+            />
 
-            {/* Buscador */}
-            <div className="flex items-center gap-3 bg-[#111113] border border-[#27272a] rounded-xl px-4 py-3 focus-within:border-indigo-500/50 transition-all max-w-md">
-                <Search className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-                <input
-                    type="text"
-                    placeholder="Buscar por nombre, NIF o email..."
-                    className="bg-transparent border-none outline-none text-zinc-100 text-sm w-full placeholder:text-zinc-600"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+            {/* Table or Empty */}
+            {!loading && clients.length === 0 ? (
+                <EmptyState
+                    icon={Building2}
+                    title={t("emptyTitle")}
+                    description={t("emptyDescription")}
+                    action={
+                        <div className="flex flex-col items-center gap-4">
+                            <Button onClick={() => setIsCreating(true)}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t("newClient")}
+                            </Button>
+                            <div className="flex flex-col items-center gap-2">
+                                <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">{t("orCreateWithAI")}</p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {[
+                                        t("aiSuggestion1"),
+                                        t("aiSuggestion2"),
+                                        t("aiSuggestion3"),
+                                    ].map((suggestion) => (
+                                        <Button
+                                            key={suggestion}
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={async () => {
+                                                try {
+                                                    await api.tasks.create("crm", suggestion);
+                                                    useToastStore.getState().show(t("taskSent"), "info");
+                                                } catch {
+                                                    useToastStore.getState().show(t("errorSendingTask"), "error");
+                                                }
+                                            }}
+                                        >
+                                            {suggestion}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    }
                 />
-                {searchTerm && (
-                    <button onClick={() => setSearchTerm("")} className="text-zinc-500 hover:text-white transition">
-                        <X className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={clients}
+                    searchKey="name"
+                    searchPlaceholder={t("searchPlaceholder")}
+                    facetedFilters={facetedFilters}
+                    isLoading={loading}
+                    emptyMessage={t("noMatchFilter")}
+                    pageSize={15}
+                />
+            )}
 
-            {/* Tabla */}
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl overflow-hidden">
-                {/* Cabecera */}
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-[#27272a] text-xs font-medium text-zinc-500 uppercase tracking-wide">
-                    <div className="col-span-4">Nombre / Razón social</div>
-                    <div className="col-span-2">NIF / CIF</div>
-                    <div className="col-span-2">Tipo</div>
-                    <div className="col-span-2">Email</div>
-                    <div className="col-span-1">Teléfono</div>
-                    <div className="col-span-1 text-right">Alta</div>
+            {/* ── FormModal: Create / Edit ──────────────────────────────────── */}
+            <FormModal
+                open={isCreating}
+                onClose={closeModal}
+                title={editingClient ? t("editClient") : t("newClient")}
+                description={editingClient ? t("editClientDesc") : t("newClientDesc")}
+                onSubmit={handleCreateClient}
+                isSubmitting={saving}
+                submitLabel={editingClient ? t("saveChanges") : t("createClient")}
+                className="sm:max-w-lg"
+            >
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField label={t("companyName")} required className="col-span-2">
+                        <Input
+                            required
+                            value={newClient.name || ""}
+                            onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                            placeholder={t("namePlaceholder")}
+                        />
+                    </FormField>
+
+                    <FormField label={t("nif")}>
+                        <Input
+                            value={newClient.nif || ""}
+                            onChange={(e) => setNewClient({ ...newClient, nif: e.target.value })}
+                            placeholder={t("nifPlaceholder")}
+                            className="uppercase"
+                        />
+                    </FormField>
+
+                    <FormField label={t("type")}>
+                        <Select
+                            value={newClient.client_type || "customer"}
+                            onValueChange={(v) => setNewClient({ ...newClient, client_type: v })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CLIENT_TYPE_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </FormField>
+
+                    <FormField label={t("email")}>
+                        <Input
+                            type="email"
+                            value={newClient.email || ""}
+                            onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                            placeholder={t("emailPlaceholder")}
+                        />
+                    </FormField>
+
+                    <FormField label={t("phone")}>
+                        <Input
+                            type="tel"
+                            value={newClient.phone || ""}
+                            onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                            placeholder={t("phonePlaceholder")}
+                        />
+                    </FormField>
+
+                    <FormField label={t("address")} className="col-span-2">
+                        <Input
+                            value={newClient.address || ""}
+                            onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+                            placeholder={t("addressPlaceholder")}
+                        />
+                    </FormField>
+
+                    <FormField label={t("city")}>
+                        <Input
+                            value={newClient.city || ""}
+                            onChange={(e) => setNewClient({ ...newClient, city: e.target.value })}
+                            placeholder={t("cityPlaceholder")}
+                        />
+                    </FormField>
+
+                    <FormField label={t("postalCode")}>
+                        <Input
+                            value={newClient.postal_code || ""}
+                            onChange={(e) => setNewClient({ ...newClient, postal_code: e.target.value })}
+                            placeholder={t("postalCodePlaceholder")}
+                        />
+                    </FormField>
                 </div>
+            </FormModal>
 
-                {loading ? (
-                    <div className="py-16 flex items-center justify-center gap-2 text-zinc-500 text-sm">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Cargando directorio…
-                    </div>
-                ) : error ? (
-                    <div className="py-10 text-center text-red-400 text-sm">{error}</div>
-                ) : filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        {searchTerm ? (
-                            <>
-                                <div className="bg-zinc-800/60 w-16 h-16 rounded-full flex items-center justify-center mb-4 border border-white/5">
-                                    <Search className="w-7 h-7 text-zinc-500" />
-                                </div>
-                                <h3 className="text-base font-semibold text-white mb-1">Sin resultados</h3>
-                                <p className="text-sm text-zinc-500 max-w-xs">
-                                    No hay clientes que coincidan con <span className="text-zinc-300">&ldquo;{searchTerm}&rdquo;</span>
-                                </p>
-                                <button
-                                    onClick={() => setSearchTerm("")}
-                                    className="mt-4 text-xs text-indigo-400 hover:text-indigo-300 transition"
-                                >
-                                    Limpiar búsqueda
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <div className="bg-indigo-500/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
-                                    <Building2 className="w-10 h-10 text-indigo-400" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-2">Añade tu primer cliente</h3>
-                                <p className="text-zinc-400 max-w-sm mb-6">
-                                    Gestiona tu cartera, consulta el historial de facturas y mantén todos los datos en un solo lugar.
-                                </p>
-                                <button
-                                    onClick={() => setIsCreating(true)}
-                                    className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl transition-all shadow-lg font-medium mb-8"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                    Nuevo Cliente
-                                </button>
-                                <div className="flex flex-col items-center gap-3 w-full max-w-md">
-                                    <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">o crea con IA</p>
-                                    <div className="flex flex-wrap justify-center gap-2">
-                                        {[
-                                            "Crea el cliente Empresa Ejemplo S.L. con NIF B12345678",
-                                            "Añade un cliente autónomo llamado Juan García",
-                                            "Importa clientes desde un Excel",
-                                        ].map((suggestion) => (
-                                            <button
-                                                key={suggestion}
-                                                onClick={async () => {
-                                                    try {
-                                                        await api.tasks.create("crm", suggestion);
-                                                        useToastStore.getState().show("Tarea enviada. Revisa Tareas IA.", "info");
-                                                    } catch {
-                                                        useToastStore.getState().show("Error al enviar la tarea", "error");
-                                                    }
-                                                }}
-                                                className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-indigo-500/40 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg transition-all"
-                                            >
-                                                {suggestion}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                ) : (
-                    <div className="divide-y divide-[#27272a]">
-                        {filtered.map(client => {
-                            const typeInfo = CLIENT_TYPE_MAP[client.client_type] ?? { label: client.client_type, color: "text-zinc-400 bg-zinc-800 border-zinc-700" };
-                            return (
-                                <div
-                                    key={client.id}
-                                    onClick={() => openClientDrawer(client)}
-                                    className="grid grid-cols-12 gap-4 px-6 py-3.5 items-center hover:bg-white/[0.02] cursor-pointer transition group"
-                                >
-                                    {/* Nombre */}
-                                    <div className="col-span-4 flex items-center gap-3 min-w-0">
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                            {client.client_type === "company" || client.client_type === "supplier"
-                                                ? <Building2 className="w-4 h-4 text-indigo-400" />
-                                                : <UserCircle className="w-4 h-4 text-indigo-400" />
-                                            }
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-white truncate group-hover:text-indigo-300 transition">{client.name}</p>
-                                            {client.city && <p className="text-xs text-zinc-600 truncate">{client.city}</p>}
-                                        </div>
-                                    </div>
-
-                                    {/* NIF */}
-                                    <div className="col-span-2">
-                                        {client.nif ? (
-                                            <span className="text-xs font-mono bg-zinc-800/60 border border-zinc-700/50 text-zinc-300 px-2 py-0.5 rounded">
-                                                {client.nif}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-zinc-600 italic">Sin NIF</span>
-                                        )}
-                                    </div>
-
-                                    {/* Tipo */}
-                                    <div className="col-span-2">
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide ${typeInfo.color}`}>
-                                            {typeInfo.label}
-                                        </span>
-                                    </div>
-
-                                    {/* Email */}
-                                    <div className="col-span-2 text-xs text-zinc-400 truncate">
-                                        {client.email || <span className="text-zinc-600 italic">—</span>}
-                                    </div>
-
-                                    {/* Teléfono */}
-                                    <div className="col-span-1 text-xs text-zinc-400 truncate">
-                                        {client.phone || <span className="text-zinc-600">—</span>}
-                                    </div>
-
-                                    {/* Fecha */}
-                                    <div className="col-span-1 text-xs text-zinc-500 text-right">
-                                        {new Date(client.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "2-digit" })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* Backdrop */}
-            {(selectedClient || isCreating) && (
+            {/* ── Backdrop for drawer ───────────────────────────────────────── */}
+            {selectedClient && (
                 <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
-                    onClick={() => { if (isCreating) { setIsCreating(false); setEditingClient(null); setNewClient({ client_type: "customer" }); } else closeDrawer(); }}
+                    onClick={closeDrawer}
                 />
             )}
 
-            {/* Modal creación */}
-            {isCreating && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#111113] border border-[#27272a] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-                        <div className="px-6 py-4 border-b border-[#27272a] flex justify-between items-center bg-[#18181b]">
-                            <h2 className="text-base font-bold text-white flex items-center gap-2">
-                                <Plus className="w-4 h-4 text-indigo-400" /> {editingClient ? "Editar Cliente" : "Nuevo Cliente"}
-                            </h2>
-                            <button onClick={() => setIsCreating(false)} className="text-zinc-500 hover:text-white transition"><X className="w-5 h-5" /></button>
-                        </div>
-                        <form onSubmit={handleCreateClient} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5 col-span-2">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Nombre o Razón Social *</label>
-                                    <input required type="text" value={newClient.name || ""} onChange={e => setNewClient({ ...newClient, name: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="Acme Corp S.L." />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">NIF / CIF</label>
-                                    <input type="text" value={newClient.nif || ""} onChange={e => setNewClient({ ...newClient, nif: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none uppercase" placeholder="B12345678" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Tipo</label>
-                                    <select value={newClient.client_type || "customer"} onChange={e => setNewClient({ ...newClient, client_type: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none">
-                                        <option value="customer">Cliente</option>
-                                        <option value="supplier">Proveedor</option>
-                                        <option value="company">Empresa</option>
-                                        <option value="lead">Lead</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</label>
-                                    <input type="email" value={newClient.email || ""} onChange={e => setNewClient({ ...newClient, email: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="contacto@empresa.com" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Teléfono</label>
-                                    <input type="tel" value={newClient.phone || ""} onChange={e => setNewClient({ ...newClient, phone: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="+34 612 345 678" />
-                                </div>
-                                <div className="space-y-1.5 col-span-2">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Dirección</label>
-                                    <input type="text" value={newClient.address || ""} onChange={e => setNewClient({ ...newClient, address: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="Calle Principal 123" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Ciudad</label>
-                                    <input type="text" value={newClient.city || ""} onChange={e => setNewClient({ ...newClient, city: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="Madrid" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Código Postal</label>
-                                    <input type="text" value={newClient.postal_code || ""} onChange={e => setNewClient({ ...newClient, postal_code: e.target.value })}
-                                        className="w-full bg-black/40 border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500/50 outline-none" placeholder="28001" />
-                                </div>
-                            </div>
-                            <div className="flex gap-3 justify-end pt-2 border-t border-[#27272a] mt-2">
-                                <button type="button" onClick={() => setIsCreating(false)} className="px-5 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition">Cancelar</button>
-                                <button type="submit" disabled={saving || !newClient.name} className="px-5 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white transition">
-                                    {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Guardando...</span> : editingClient ? "Guardar cambios" : "Crear Cliente"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Drawer lateral detalle cliente */}
-            <div className={`fixed top-0 right-0 h-full w-full max-w-[480px] bg-[#111113] border-l border-[#27272a] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${selectedClient ? "translate-x-0" : "translate-x-full"}`}>
+            {/* ── Drawer lateral detalle cliente ────────────────────────────── */}
+            <div className={`fixed top-0 right-0 h-full w-full max-w-[480px] bg-card border-l border-border shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${selectedClient ? "translate-x-0" : "translate-x-full"}`}>
                 {selectedClient && (
                     <>
                         {/* Header del drawer */}
-                        <div className="px-6 py-5 border-b border-[#27272a] bg-[#18181b] sticky top-0 z-10">
+                        <div className="px-6 py-5 border-b border-border bg-muted sticky top-0 z-10">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                        {selectedClient.client_type === "company" || selectedClient.client_type === "supplier"
-                                            ? <Building2 className="w-6 h-6 text-indigo-400" />
-                                            : <UserCircle className="w-6 h-6 text-indigo-400" />
-                                        }
-                                    </div>
+                                    <Avatar className="h-12 w-12 rounded-xl">
+                                        <AvatarFallback className="rounded-xl bg-primary/10 text-primary text-sm font-bold">
+                                            {selectedClient.client_type === "company" || selectedClient.client_type === "supplier"
+                                                ? <Building2 className="h-6 w-6" />
+                                                : getInitials(selectedClient.name)
+                                            }
+                                        </AvatarFallback>
+                                    </Avatar>
                                     <div className="min-w-0">
-                                        <h2 className="text-lg font-bold text-white leading-tight truncate">{selectedClient.name}</h2>
+                                        <h2 className="text-lg font-bold text-foreground leading-tight truncate">{selectedClient.name}</h2>
                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                                             {selectedClient.nif && (
                                                 <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
@@ -424,180 +476,164 @@ export default function ClientesPage() {
                                                 </span>
                                             )}
                                             {(() => {
-                                                const t = CLIENT_TYPE_MAP[selectedClient.client_type] ?? { label: selectedClient.client_type, color: "text-zinc-400 bg-zinc-800 border-zinc-700" };
-                                                return (
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide ${t.color}`}>
-                                                        {t.label}
-                                                    </span>
-                                                );
+                                                const typeInfo = CLIENT_TYPE_MAP[selectedClient.client_type] ?? { label: selectedClient.client_type, variant: "default" as const };
+                                                return <StatusBadge status={selectedClient.client_type} label={typeInfo.label} />;
                                             })()}
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={closeDrawer} className="p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-white transition flex-shrink-0">
-                                    <X className="w-5 h-5" />
-                                </button>
+                                <Button variant="ghost" size="icon" onClick={closeDrawer} className="shrink-0">
+                                    <X className="h-5 w-5" />
+                                </Button>
                             </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto">
                             {/* Datos de contacto */}
-                            <div className="px-6 py-5 border-b border-[#27272a]">
-                                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Información de contacto</h3>
+                            <div className="px-6 py-5 border-b border-border">
+                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("contactInfo")}</h3>
                                 <dl className="space-y-2.5">
                                     {selectedClient.email && (
                                         <div className="flex items-center gap-3">
-                                            <Mail className="w-4 h-4 text-zinc-600 flex-shrink-0" />
-                                            <span className="text-sm text-zinc-300">{selectedClient.email}</span>
+                                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <span className="text-sm text-foreground">{selectedClient.email}</span>
                                         </div>
                                     )}
                                     {selectedClient.phone && (
                                         <div className="flex items-center gap-3">
-                                            <Phone className="w-4 h-4 text-zinc-600 flex-shrink-0" />
-                                            <span className="text-sm text-zinc-300">{selectedClient.phone}</span>
+                                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <span className="text-sm text-foreground">{selectedClient.phone}</span>
                                         </div>
                                     )}
                                     {selectedClient.address && (
                                         <div className="flex items-start gap-3">
-                                            <MapPin className="w-4 h-4 text-zinc-600 flex-shrink-0 mt-0.5" />
-                                            <span className="text-sm text-zinc-300">{selectedClient.address}</span>
+                                            <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                            <span className="text-sm text-foreground">{selectedClient.address}</span>
                                         </div>
                                     )}
                                     {(selectedClient.city || selectedClient.postal_code) && (
                                         <div className="flex items-center gap-3 pl-7">
-                                            <span className="text-sm text-zinc-400">
+                                            <span className="text-sm text-muted-foreground">
                                                 {[selectedClient.postal_code, selectedClient.city].filter(Boolean).join(" · ")}
                                             </span>
                                         </div>
                                     )}
                                     {!selectedClient.email && !selectedClient.phone && !selectedClient.address && !selectedClient.city && (
-                                        <p className="text-sm text-zinc-600 italic">Sin datos de contacto</p>
+                                        <p className="text-sm text-muted-foreground italic">{t("noContactData")}</p>
                                     )}
                                 </dl>
                             </div>
 
-                            {/* Métricas rápidas */}
-                            <div className="px-6 py-4 border-b border-[#27272a] grid grid-cols-3 gap-3">
-                                <div className="bg-[#18181b] rounded-xl border border-[#27272a] p-3 text-center">
-                                    <p className="text-2xl font-bold text-white">{clientInvoices.length}</p>
-                                    <p className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wide">Facturas</p>
-                                </div>
-                                <div className="bg-[#18181b] rounded-xl border border-[#27272a] p-3 text-center">
-                                    <p className="text-2xl font-bold text-emerald-400">
-                                        {totalFacturado.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€
-                                    </p>
-                                    <p className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wide">Facturado</p>
-                                </div>
-                                <div className="bg-[#18181b] rounded-xl border border-[#27272a] p-3 text-center">
-                                    <p className="text-xs text-zinc-300 font-medium mt-1">
-                                        {new Date(selectedClient.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
-                                    </p>
-                                    <p className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wide">Alta</p>
-                                </div>
+                            {/* Metricas rapidas */}
+                            <div className="px-6 py-4 border-b border-border grid grid-cols-3 gap-3">
+                                <KpiCard title={t("invoicesKpi")} value={clientInvoices.length} icon={FileText} />
+                                <KpiCard
+                                    title={t("billedKpi")}
+                                    value={`${totalFacturado.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}€`}
+                                />
+                                <KpiCard
+                                    title={t("createdColumn")}
+                                    value={new Date(selectedClient.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                                />
                             </div>
 
                             {/* Historial de facturas */}
                             <div className="px-6 py-5">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                        <FileText className="w-3.5 h-3.5" /> Historial de facturas
+                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                        <FileText className="h-3.5 w-3.5" /> {t("invoiceHistory")}
                                     </h3>
-                                    <Link
-                                        href={`/ventas/facturas/nueva?client_id=${selectedClient.id}`}
-                                        className="text-xs font-medium text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                                    >
-                                        <Plus className="w-3 h-3" /> Nueva
-                                    </Link>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={`/ventas/facturas/nueva?client_id=${selectedClient.id}`}>
+                                            <Plus className="h-3 w-3 mr-1" /> {t("newInvoice")}
+                                        </Link>
+                                    </Button>
                                 </div>
 
                                 {loadingInvoices ? (
-                                    <div className="flex items-center justify-center gap-2 py-8 text-zinc-500 text-sm">
-                                        <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                                    <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-sm">
+                                        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loading")}
                                     </div>
                                 ) : clientInvoices.length === 0 ? (
-                                    <div className="text-center py-10 bg-[#18181b] rounded-xl border border-[#27272a] border-dashed">
-                                        <FileText className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                                        <p className="text-sm text-zinc-500">Sin facturas registradas</p>
-                                    </div>
+                                    <EmptyState
+                                        icon={FileText}
+                                        title={t("noInvoices")}
+                                        className="py-10"
+                                    />
                                 ) : (
                                     <div className="space-y-2">
-                                        {clientInvoices.map(inv => {
-                                            const stCls = STATUS_INV[inv.status] ?? STATUS_INV.draft;
-                                            const stLabel = STATUS_INV_LABEL[inv.status] ?? inv.status;
-                                            return (
-                                                <div key={inv.id} className="bg-[#18181b] rounded-xl border border-[#27272a] hover:border-indigo-500/30 transition p-4 flex items-center gap-3">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-sm font-medium text-white truncate">
-                                                                {inv.invoice_number || "Borrador"}
-                                                            </span>
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0 ${stCls}`}>
-                                                                {stLabel}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-xs text-zinc-500">
-                                                            <span>{new Date(inv.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</span>
-                                                            {inv.lines && inv.lines.length > 0 && (
-                                                                <span className="text-zinc-600">· {inv.lines[0].description?.slice(0, 40)}{(inv.lines[0].description?.length ?? 0) > 40 ? "..." : ""}</span>
-                                                            )}
-                                                        </div>
+                                        {clientInvoices.map((inv) => (
+                                            <div key={inv.id} className="bg-muted rounded-xl border border-border hover:border-primary/30 transition p-4 flex items-center gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-medium text-foreground truncate">
+                                                            {inv.invoice_number || t("draft")}
+                                                        </span>
+                                                        <StatusBadge status={inv.status} />
                                                     </div>
-                                                    <div className="text-right flex-shrink-0">
-                                                        <p className="text-sm font-semibold text-white tabular-nums">
-                                                            {Number(inv.amount_total).toLocaleString("es-ES", { minimumFractionDigits: 2 })}€
-                                                        </p>
-                                                        <p className="text-[10px] text-zinc-600">
-                                                            Base {Number(inv.amount_base).toLocaleString("es-ES", { minimumFractionDigits: 2 })}€
-                                                        </p>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <span>{new Date(inv.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                                                        {inv.lines && inv.lines.length > 0 && (
+                                                            <span>· {inv.lines[0].description?.slice(0, 40)}{(inv.lines[0].description?.length ?? 0) > 40 ? "..." : ""}</span>
+                                                        )}
                                                     </div>
-                                                    <button
-                                                        onClick={() => downloadInvoicePdf(inv.id, inv.invoice_number)}
-                                                        title="Descargar PDF"
-                                                        className="p-2 rounded-lg text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition flex-shrink-0"
-                                                    >
-                                                        <Download className="w-4 h-4" />
-                                                    </button>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-sm font-semibold text-foreground tabular-nums">
+                                                        {Number(inv.amount_total).toLocaleString("es-ES", { minimumFractionDigits: 2 })}€
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground">
+                                                        {t("base")} {Number(inv.amount_base).toLocaleString("es-ES", { minimumFractionDigits: 2 })}€
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => downloadInvoicePdf(inv.id, inv.invoice_number, t("errorDownloadPdf"))}
+                                                    title={t("downloadPdf")}
+                                                    className="shrink-0"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Footer del drawer */}
-                        <div className="px-6 py-4 border-t border-[#27272a] bg-[#0d0d0f] space-y-2">
+                        <div className="px-6 py-4 border-t border-border bg-background space-y-2">
                             <div className="flex gap-2">
-                                <button
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
                                     onClick={() => openEditClient(selectedClient)}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-indigo-400 hover:text-white border border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/10 transition"
                                 >
-                                    <FileText className="w-4 h-4" />
-                                    Editar cliente
-                                </button>
-                                <button
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    {t("editClient")}
+                                </Button>
+                                <Button
+                                    variant="destructive"
                                     onClick={() => handleDeleteClient(selectedClient)}
                                     disabled={deleting}
-                                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 hover:bg-red-500/10 transition disabled:opacity-50"
                                 >
-                                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                                    Eliminar
-                                </button>
+                                    {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <X className="h-4 w-4 mr-2" />}
+                                    {tc("delete")}
+                                </Button>
                             </div>
-                            <Link
-                                href={`/clientes/${selectedClient.id}`}
-                                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-indigo-400 hover:text-white border border-indigo-500/20 hover:border-indigo-500 hover:bg-indigo-500/10 transition"
-                            >
-                                <ExternalLink className="w-4 h-4" />
-                                Ver historial completo
-                            </Link>
-                            <Link
-                                href="/ventas/facturas"
-                                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white border border-[#27272a] hover:border-zinc-500 hover:bg-white/5 transition"
-                            >
-                                <ExternalLink className="w-4 h-4" />
-                                Ver todas las facturas en Ventas
-                            </Link>
+                            <Button variant="outline" className="w-full" asChild>
+                                <Link href={`/clientes/${selectedClient.id}`}>
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    {t("viewFullHistory")}
+                                </Link>
+                            </Button>
+                            <Button variant="ghost" className="w-full" asChild>
+                                <Link href="/ventas/facturas">
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    {t("viewAllInvoices")}
+                                </Link>
+                            </Button>
                         </div>
                     </>
                 )}

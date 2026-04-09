@@ -31,6 +31,9 @@ from app.services.pdf_invoices import (  # noqa: F401
 # ── RRHH ─────────────────────────────────────────────────────────────────────
 from app.services.pdf_hr import (  # noqa: F401
     generate_payroll_pdf,
+    generate_finiquito_pdf,
+    generate_liquidacion_finiquito_pdf,
+    generate_registro_jornada_pdf,
 )
 
 # ── Informes ─────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { hrDocuments } from "@/lib/api/hr_documents";
 import type { HRDocument } from "@/lib/api/hr_documents";
-import { FileText, Plus, CheckCircle2, Trash2, Copy, Loader2, X, ChevronDown, ChevronUp, Send, Wand2 } from "lucide-react";
+import { FileText, Plus, CheckCircle2, Trash2, Copy, Loader2, X, ChevronDown, ChevronUp, Send, Wand2, Download } from "lucide-react";
 
 // Parser de lenguaje natural → campos del documento
 function parseNLIntent(text: string): { doc_type: string; employee_name: string; instructions: string } {
@@ -34,6 +34,55 @@ const DOC_TYPES = [
     { value: "other", label: "Otro documento laboral" },
 ];
 
+const DOC_TEMPLATES: Record<string, string> = {
+    contract:
+`Tipo de contrato: indefinido / temporal (indica cuál).
+Jornada: completa 40h/semana / parcial [X]h/semana.
+Salario bruto anual: [X €] / mensual: [X €].
+Puesto: [nombre del puesto].
+Departamento: [departamento].
+Fecha de incorporación: [DD/MM/AAAA].
+Centro de trabajo: [ciudad].
+Período de prueba: [X meses] (máx. 6 meses técnicos, 2 meses resto).`,
+
+    nda:
+`Partes: la empresa y [nombre del trabajador / colaborador].
+Información confidencial que se protege: [describir — código fuente, clientes, estrategia, etc.].
+Duración de la obligación: [X años tras fin de relación laboral].
+Ámbito geográfico: [nacional / internacional].
+Consecuencias de incumplimiento: [indemnización / acciones legales].`,
+
+    termination:
+`Tipo de despido: disciplinario / objetivo / colectivo.
+Motivo: [describir causa concreta].
+Fecha efectiva del despido: [DD/MM/AAAA].
+Preaviso: [X días / no aplica despido disciplinario].
+Indemnización: [según ley: 20 días/año objetivo | 33 días/año improcedente | 0 disciplinario].
+Acumulación de vacaciones pendientes: [X días].`,
+
+    settlement:
+`Fecha de baja: [DD/MM/AAAA].
+Motivo de la baja: [despido / renuncia voluntaria / fin de contrato].
+Salario pendiente del mes en curso (días trabajados): [X €].
+Vacaciones no disfrutadas: [X días = X €].
+Pagas extras proporcionales pendientes: [X €].
+Indemnización (si aplica): [X €].`,
+
+    addendum:
+`Contrato original fecha: [DD/MM/AAAA].
+Cláusula(s) que se modifican: [describir qué cambia].
+Nueva condición: [texto de la nueva cláusula].
+Motivo del cambio: [acuerdo mutuo / cambio de funciones / ascenso / etc.].
+Fecha de entrada en vigor: [DD/MM/AAAA].`,
+
+    other:
+`Describe el documento que necesitas:
+Partes involucradas: [nombres y roles].
+Objeto del documento: [qué regula o certifica].
+Condiciones principales: [listar].
+Fecha: [DD/MM/AAAA].`,
+};
+
 function StatusBadge({ status }: { status: HRDocument["status"] }) {
     return status === "approved" ? (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -60,19 +109,32 @@ function DocumentCard({ doc, onApprove, onDelete }: {
         setTimeout(() => setCopying(false), 1500);
     };
 
+    const handleDownloadPdf = () => {
+        const win = window.open("", "_blank");
+        if (!win) return;
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>@media print{body{margin:0}}</style></head><body>${doc.content_html}</body></html>`);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); }, 400);
+    };
+
     return (
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl overflow-hidden">
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="p-4 flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-medium text-white truncate">{doc.title}</h3>
+                        <h3 className="text-sm font-medium text-foreground truncate">{doc.title}</h3>
                         <StatusBadge status={doc.status} />
                     </div>
-                    <p className="text-xs text-zinc-500 mt-1">{docTypeLabel} · {doc.employee_name} · {date}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{docTypeLabel} · {doc.employee_name} · {date}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={handleDownloadPdf} title="Descargar PDF"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        <Download className="w-4 h-4" />
+                    </button>
                     <button onClick={handleCopy} title="Copiar HTML"
-                        className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors">
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         {copying ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                     </button>
                     {doc.status === "draft" && (
@@ -86,14 +148,14 @@ function DocumentCard({ doc, onApprove, onDelete }: {
                         <Trash2 className="w-4 h-4" />
                     </button>
                     <button onClick={() => setExpanded(v => !v)}
-                        className="p-1.5 rounded-lg text-zinc-600 hover:bg-zinc-800 transition-colors">
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
                         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                 </div>
             </div>
             {expanded && (
-                <div className="border-t border-[#27272a] p-4 bg-[#09090b]">
-                    <div className="prose prose-invert prose-sm max-w-none text-zinc-300"
+                <div className="border-t border-border p-4 bg-background">
+                    <div className="prose prose-invert prose-sm max-w-none text-foreground"
                         dangerouslySetInnerHTML={{ __html: doc.content_html }} />
                 </div>
             )}
@@ -107,7 +169,7 @@ export default function HRDocumentosPage() {
     const [generating, setGenerating] = useState(false);
     const [error, setError]           = useState<string | null>(null);
     const [toast, setToast]           = useState<string | null>(null);
-    const [form, setForm]             = useState({ doc_type: "contract", employee_name: "", instructions: "" });
+    const [form, setForm]             = useState({ doc_type: "contract", employee_name: "", instructions: DOC_TEMPLATES["contract"] });
     const [nlText, setNlText]         = useState("");
     const [nlGenerating, setNlGenerating] = useState(false);
 
@@ -124,8 +186,11 @@ export default function HRDocumentosPage() {
         setNlGenerating(true); setError(null);
         try {
             const parsed = parseNLIntent(nlText.trim());
-            if (!parsed.employee_name) { setError("No detecté el nombre del empleado. Ej: '…para Laura Martínez'"); setNlGenerating(false); return; }
-            const doc = await hrDocuments.generate({ doc_type: parsed.doc_type, employee_name: parsed.employee_name, instructions: parsed.instructions || nlText.trim() });
+            const doc = await hrDocuments.generate({
+                doc_type: parsed.doc_type,
+                employee_name: parsed.employee_name || undefined,
+                instructions: parsed.instructions || nlText.trim(),
+            });
             setDocs(prev => [doc, ...prev]);
             setNlText("");
             showToast("Borrador generado");
@@ -134,10 +199,14 @@ export default function HRDocumentosPage() {
     };
 
     const handleGenerate = async () => {
-        if (!form.employee_name.trim()) { setError("Introduce el nombre del empleado"); return; }
+        if (!form.doc_type) { setError("Selecciona el tipo de documento"); return; }
         setGenerating(true); setError(null);
         try {
-            const doc = await hrDocuments.generate({ doc_type: form.doc_type, employee_name: form.employee_name.trim(), instructions: form.instructions.trim() || undefined });
+            const doc = await hrDocuments.generate({
+                doc_type: form.doc_type,
+                employee_name: form.employee_name.trim() || undefined,
+                instructions: form.instructions.trim(),
+            });
             setDocs(prev => [doc, ...prev]);
             setForm(f => ({ ...f, employee_name: "", instructions: "" }));
             showToast("Borrador generado");
@@ -158,27 +227,27 @@ export default function HRDocumentosPage() {
     return (
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
             {toast && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 border border-zinc-700 text-white text-sm px-5 py-2.5 rounded-full shadow-lg">{toast}</div>
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border text-foreground text-sm px-5 py-2.5 rounded-full shadow-lg">{toast}</div>
             )}
             <div>
-                <h1 className="text-xl font-semibold text-white flex items-center gap-2">
+                <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     <FileText className="w-6 h-6 text-violet-400" /> Gestoría Documental
                 </h1>
-                <p className="text-xs text-zinc-500 mt-1">Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar.</p>
+                <p className="text-xs text-muted-foreground mt-1">Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar.</p>
             </div>
 
             {/* Barra de lenguaje natural */}
-            <div className="flex items-center gap-2 bg-[#18181b] border border-[#27272a] rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <Wand2 className="w-4 h-4 text-violet-400 shrink-0" />
                 <input
                     value={nlText}
                     onChange={e => setNlText(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleNLGenerate()}
                     placeholder="Ej: quiero un contrato para Laura Martínez de contratación indefinida"
-                    className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 focus:outline-none"
+                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 <button onClick={handleNLGenerate} disabled={!nlText.trim() || nlGenerating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors shrink-0">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-foreground text-xs font-medium rounded-lg transition-colors shrink-0">
                     {nlGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                     {nlGenerating ? "Generando…" : "Generar"}
                 </button>
@@ -187,35 +256,35 @@ export default function HRDocumentosPage() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 {/* Formulario */}
                 <div className="lg:col-span-2">
-                    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-5 space-y-4 sticky top-6">
-                        <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                    <div className="bg-card border border-border rounded-xl p-5 space-y-4 sticky top-6">
+                        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                             <Plus className="w-3.5 h-3.5" /> Generar documento
                         </h2>
                         <div className="space-y-1">
-                            <label className="text-xs text-zinc-500">Tipo de documento</label>
-                            <select value={form.doc_type} onChange={e => setForm(f => ({ ...f, doc_type: e.target.value }))}
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-violet-500/50">
+                            <label className="text-xs text-muted-foreground">Tipo de documento</label>
+                            <select value={form.doc_type} onChange={e => setForm(f => ({ ...f, doc_type: e.target.value, instructions: DOC_TEMPLATES[e.target.value] ?? "" }))}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50">
                                 {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-zinc-500">Nombre del empleado</label>
+                            <label className="text-xs text-muted-foreground">Nombre del empleado</label>
                             <input value={form.employee_name} onChange={e => setForm(f => ({ ...f, employee_name: e.target.value }))}
                                 placeholder="Ej: María López"
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50" />
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50" />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs text-zinc-500">Instrucciones <span className="text-zinc-600">(opcional)</span></label>
+                            <label className="text-xs text-muted-foreground">Instrucciones <span className="text-muted-foreground/60">(edita los corchetes con los datos reales)</span></label>
                             <textarea value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))}
-                                placeholder="Ej: Contrato a tiempo parcial, 20h/semana…" rows={3}
-                                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50 resize-none" />
+                                placeholder="Describe los detalles del documento…" rows={7}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50 resize-none" />
                         </div>
                         {error && <p className="text-xs text-red-400">{error}</p>}
                         <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
                             <p className="text-xs text-amber-400/80">⚠️ Borradores orientativos. Revisa y aprueba antes de cualquier uso legal.</p>
                         </div>
-                        <button onClick={handleGenerate} disabled={generating || !form.employee_name.trim()}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+                        <button onClick={handleGenerate} disabled={generating}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-foreground rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
                             {generating && <Loader2 className="w-4 h-4 animate-spin" />}
                             {generating ? "Generando borrador…" : "Generar borrador"}
                         </button>
@@ -224,13 +293,13 @@ export default function HRDocumentosPage() {
 
                 {/* Lista */}
                 <div className="lg:col-span-3 space-y-3">
-                    <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Documentos ({docs.length})</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documentos ({docs.length})</p>
                     {loading ? (
                         <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
                     ) : docs.length === 0 ? (
-                        <div className="text-center py-16 border-2 border-dashed border-[#27272a] rounded-xl">
-                            <FileText className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-                            <p className="text-zinc-500 text-sm">Sin documentos todavía</p>
+                        <div className="text-center py-16 border-2 border-dashed border-border rounded-xl">
+                            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                            <p className="text-muted-foreground text-sm">Sin documentos todavía</p>
                         </div>
                     ) : docs.map(doc => (
                         <DocumentCard key={doc.id} doc={doc} onApprove={handleApprove} onDelete={handleDelete} />

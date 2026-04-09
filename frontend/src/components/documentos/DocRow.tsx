@@ -80,10 +80,10 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                 }}
             >
                 <div className="col-span-5 flex items-center gap-3 min-w-0">
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${isPdf ? "text-indigo-400" : "text-zinc-500"}`} />
-                    <span className="text-sm text-white truncate">{doc.file_name}</span>
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${isPdf ? "text-indigo-400" : "text-muted-foreground"}`} />
+                    <span className="text-sm text-foreground truncate">{doc.file_name}</span>
                 </div>
-                <div className="col-span-2 text-xs text-zinc-500">{formatSize(doc.file_size)}</div>
+                <div className="col-span-2 text-xs text-muted-foreground">{formatSize(doc.file_size)}</div>
                 <div className="col-span-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.color}`}>
                         {doc.status === "processing" && <Loader2 className="w-3 h-3 inline-block mr-1 animate-spin" />}
@@ -92,7 +92,7 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                     </span>
                 </div>
                 <div className="col-span-3 flex items-center justify-between gap-2">
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                         {new Date(doc.created_at).toLocaleDateString("es-ES", {
                             day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                         })}
@@ -103,7 +103,7 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                                 onClick={handleCancel}
                                 disabled={cancelling}
                                 title="Cancelar procesamiento"
-                                className="p-1 rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
+                                className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
                             >
                                 {cancelling
                                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -115,7 +115,7 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                             title={isPdf ? "Descargar PDF" : "Descargar archivo"}
                             className={`p-1 rounded transition ${isPdf
                                 ? "text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-                                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
+                                : "text-muted-foreground hover:text-foreground hover:bg-accent"
                                 }`}
                         >
                             <Download className="w-3.5 h-3.5" />
@@ -123,12 +123,12 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                         <button
                             onClick={handleDelete}
                             title="Eliminar documento"
-                            className="p-1 rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition"
+                            className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition"
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         {hasParsed && !isPdf && (
-                            <ChevronLeft className={`w-4 h-4 text-zinc-500 transition-transform duration-300 ${open ? "-rotate-90" : "rotate-180"}`} />
+                            <ChevronLeft className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${open ? "-rotate-90" : "rotate-180"}`} />
                         )}
                     </div>
                 </div>
@@ -137,9 +137,9 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
             {hasParsed && !isPdf && (
                 <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                     <div className="overflow-hidden">
-                        <div className="px-6 pb-4 pt-2 border-t border-[#27272a]/50">
-                            <p className="text-xs text-zinc-500 mb-2">Contenido extraido por el agente</p>
-                            <pre className="px-4 py-3 rounded-lg bg-[#0d0d0f] text-xs text-zinc-300 border border-[#27272a] overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+                        <div className="px-6 pb-4 pt-2 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground mb-2">Contenido extraido por el agente</p>
+                            <pre className="px-4 py-3 rounded-lg bg-background text-xs text-foreground border border-border overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap">
                                 {doc.parsed_content}
                             </pre>
                         </div>

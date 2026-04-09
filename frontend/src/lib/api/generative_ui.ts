@@ -12,10 +12,11 @@ export interface GenerativeInterface {
 }
 
 export const generativeUI = {
-    generate: (prompt: string) =>
+    generate: (prompt: string, signal?: AbortSignal) =>
         request<GenerativeInterface>("/api/v1/generative-ui/generate", {
             method: "POST",
             body: JSON.stringify({ prompt }),
+            signal,
         }),
 
     history: () =>

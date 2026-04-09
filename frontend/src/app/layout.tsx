@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ThemeProvider } from "next-themes";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -9,15 +12,22 @@ export const metadata: Metadata = {
     description: "Plataforma de automatización administrativa multiagente para PYMEs",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const locale = await getLocale();
+    const messages = await getMessages();
+
     return (
-        <html lang="es" className="dark">
-            <body className={`${inter.className} bg-[#09090b] text-[#fafafa] antialiased`}>
-                {children}
+        <html lang={locale} suppressHydrationWarning>
+            <body className={`${inter.className} antialiased`}>
+                <NextIntlClientProvider messages={messages}>
+                    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+                        {children}
+                    </ThemeProvider>
+                </NextIntlClientProvider>
             </body>
         </html>
     );

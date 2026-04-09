@@ -14,8 +14,9 @@ export interface HRDocument {
 
 export interface HRDocumentGeneratePayload {
     doc_type: string;
-    employee_name: string;
-    instructions?: string;
+    employee_name?: string;
+    employee_id?: string;
+    instructions: string;
 }
 
 export const hrDocuments = {

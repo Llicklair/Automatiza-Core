@@ -30,7 +30,7 @@ export interface StockMovementResult {
 
 export const scanner = {
     generateQR: (deviceName = "Scanner móvil") =>
-        request<ScannerToken>("/scanner/generate-qr", {
+        request<ScannerToken>("/api/v1/scanner/generate-qr", {
             method: "POST",
             body: JSON.stringify({ device_name: deviceName }),
         }),

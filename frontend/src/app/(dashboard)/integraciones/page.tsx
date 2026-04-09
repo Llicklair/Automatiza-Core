@@ -36,9 +36,9 @@ function openOAuthPopup(url: string, onSuccess: () => void) {
 /* ─── Status badge ───────────────────────────────────────────────────────── */
 
 function StatusBadge({ loading, connected }: { loading: boolean; connected: boolean }) {
-    if (loading) return <Loader2 className="w-4 h-4 text-zinc-500 animate-spin" />;
+    if (loading) return <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />;
     if (connected) return <div className="flex items-center gap-2 text-emerald-400 text-sm"><CheckCircle2 className="w-4 h-4" /> Conectado</div>;
-    return <div className="flex items-center gap-2 text-zinc-500 text-sm"><XCircle className="w-4 h-4" /> No conectado</div>;
+    return <div className="flex items-center gap-2 text-muted-foreground text-sm"><XCircle className="w-4 h-4" /> No conectado</div>;
 }
 
 /* ─── Card wrapper ───────────────────────────────────────────────────────── */
@@ -50,20 +50,20 @@ function IntegrationCard({
     loading: boolean; connected: boolean; lastSync?: string; children: React.ReactNode;
 }) {
     return (
-        <div className="rounded-xl border border-[#27272a] bg-[#111113] overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#27272a]">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
                 <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center`}>{icon}</div>
                     <div>
-                        <p className="font-semibold text-white">{title}</p>
-                        <p className="text-xs text-zinc-500">{subtitle}</p>
+                        <p className="font-semibold text-foreground">{title}</p>
+                        <p className="text-xs text-muted-foreground">{subtitle}</p>
                     </div>
                 </div>
                 <StatusBadge loading={loading} connected={connected} />
             </div>
             <div className="px-6 py-5">
                 {connected && lastSync && (
-                    <p className="text-xs text-zinc-500 mb-3">
+                    <p className="text-xs text-muted-foreground mb-3">
                         Última sincronización: {new Date(lastSync).toLocaleString("es-ES")}
                     </p>
                 )}
@@ -202,8 +202,8 @@ export default function IntegracionesPage() {
     return (
         <div className="p-8 max-w-3xl mx-auto space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-white">Integraciones</h1>
-                <p className="text-sm text-zinc-400 mt-1 mb-6">
+                <h1 className="text-2xl font-bold text-foreground">Integraciones</h1>
+                <p className="text-sm text-muted-foreground mt-1 mb-6">
                     Conecta tus herramientas para que los agentes puedan actuar sobre ellas
                 </p>
             </div>
@@ -212,7 +212,7 @@ export default function IntegracionesPage() {
                 <p>
                     Vincula tu banco, correo y almacenamiento para que los agentes puedan leer facturas,
                     enviar emails y sincronizar documentos automáticamente.
-                    Las conexiones usan OAuth — <span className="text-indigo-300">tus credenciales nunca se comparten con nosotros</span>.
+                    Las conexiones usan OAuth — <span className="text-primary">tus credenciales nunca se comparten con nosotros</span>.
                 </p>
             </InfoBanner>
 
@@ -245,19 +245,19 @@ export default function IntegracionesPage() {
                     </div>
                 ) : (
                     <form onSubmit={connectPsd2} className="space-y-4">
-                        <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-                            Para conectarte a tus cuentas bancarias usamos GoCardless (antes Nordigen), un agregador regulado bajo directiva <strong className="text-zinc-300">PSD2</strong> europea.
+                        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                            Para conectarte a tus cuentas bancarias usamos GoCardless (antes Nordigen), un agregador regulado bajo directiva <strong className="text-foreground">PSD2</strong> europea.
                         </p>
                         <div className="space-y-3">
                             <input type="text" required value={psd2Id} onChange={e => setPsd2Id(e.target.value)}
                                 placeholder="Secret ID (puedes usar: DEMO_PSD2_ID)"
-                                className="w-full px-4 py-2.5 rounded-lg bg-[#18181b] border border-[#3f3f46] text-white text-sm placeholder-zinc-600 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                                className="w-full px-4 py-2.5 rounded-lg bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
                             <input type="password" required value={psd2Key} onChange={e => setPsd2Key(e.target.value)}
                                 placeholder="Secret Key (puedes usar: DEMO_PSD2_ID)"
-                                className="w-full px-4 py-2.5 rounded-lg bg-[#18181b] border border-[#3f3f46] text-white text-sm placeholder-zinc-600 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+                                className="w-full px-4 py-2.5 rounded-lg bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
                         </div>
                         <button type="submit" disabled={connectingPsd2 || !psd2Id.trim() || !psd2Key.trim()}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium transition">
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
                             {connectingPsd2 ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando…</> : <><Plug className="w-4 h-4" /> Conectar PSD2</>}
                         </button>
                     </form>
@@ -274,7 +274,7 @@ export default function IntegracionesPage() {
             >
                 {isConnected("gmail") ? (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">El agente de email puede leer y enviar correos desde tu cuenta de Gmail.</p>
+                        <p className="text-sm text-muted-foreground">El agente de email puede leer y enviar correos desde tu cuenta de Gmail.</p>
                         <button onClick={() => disconnectIntegration("gmail", "Gmail")}
                             className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm transition">
                             Desconectar Gmail
@@ -282,12 +282,12 @@ export default function IntegracionesPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">Conecta tu cuenta de Gmail para que el agente pueda leer tu bandeja de entrada y enviar correos en tu nombre.</p>
+                        <p className="text-sm text-muted-foreground">Conecta tu cuenta de Gmail para que el agente pueda leer tu bandeja de entrada y enviar correos en tu nombre.</p>
                         <button onClick={() => connectOAuth("google")} disabled={connectingGoogle}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-medium transition">
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
                             {connectingGoogle ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando…</> : <><Mail className="w-4 h-4" /> Conectar con Google</>}
                         </button>
-                        <p className="text-xs text-zinc-600">Al conectar Google se habilitan Gmail y Google Drive simultáneamente.</p>
+                        <p className="text-xs text-muted-foreground">Al conectar Google se habilitan Gmail y Google Drive simultáneamente.</p>
                     </div>
                 )}
             </IntegrationCard>
@@ -302,7 +302,7 @@ export default function IntegracionesPage() {
             >
                 {isConnected("gdrive") ? (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">
+                        <p className="text-sm text-muted-foreground">
                             Sincroniza documentos, sube facturas y realiza backups automáticos en tu Google Drive.
                         </p>
                         <button onClick={() => disconnectIntegration("gdrive", "Google Drive")}
@@ -312,14 +312,14 @@ export default function IntegracionesPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">Conecta Google Drive para sincronizar documentos, exportar facturas y hacer backups automáticos.</p>
+                        <p className="text-sm text-muted-foreground">Conecta Google Drive para sincronizar documentos, exportar facturas y hacer backups automáticos.</p>
                         {isConnected("gmail") ? (
                             <p className="text-sm text-emerald-400/90 bg-emerald-500/10 px-4 py-3 border border-emerald-500/20 rounded-lg">
                                 Google Drive ya está conectado junto con Gmail. Actívalo arriba.
                             </p>
                         ) : (
                             <button onClick={() => connectOAuth("google")} disabled={connectingGoogle}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white text-sm font-medium transition">
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
                                 {connectingGoogle ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando…</> : <><HardDrive className="w-4 h-4" /> Conectar con Google</>}
                             </button>
                         )}
@@ -337,7 +337,7 @@ export default function IntegracionesPage() {
             >
                 {isConnected("outlook") ? (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">El agente de email puede leer y enviar correos desde tu cuenta de Outlook.</p>
+                        <p className="text-sm text-muted-foreground">El agente de email puede leer y enviar correos desde tu cuenta de Outlook.</p>
                         <button onClick={() => disconnectIntegration("outlook", "Outlook")}
                             className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm transition">
                             Desconectar Outlook
@@ -345,12 +345,12 @@ export default function IntegracionesPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">Conecta tu cuenta de Outlook / Microsoft 365 para que el agente gestione tu correo.</p>
+                        <p className="text-sm text-muted-foreground">Conecta tu cuenta de Outlook / Microsoft 365 para que el agente gestione tu correo.</p>
                         <button onClick={() => connectOAuth("microsoft")} disabled={connectingMicrosoft}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition">
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
                             {connectingMicrosoft ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando…</> : <><Mail className="w-4 h-4" /> Conectar con Microsoft</>}
                         </button>
-                        <p className="text-xs text-zinc-600">Al conectar Microsoft se habilitan Outlook y OneDrive simultáneamente.</p>
+                        <p className="text-xs text-muted-foreground">Al conectar Microsoft se habilitan Outlook y OneDrive simultáneamente.</p>
                     </div>
                 )}
             </IntegrationCard>
@@ -365,7 +365,7 @@ export default function IntegracionesPage() {
             >
                 {isConnected("onedrive") ? (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">
+                        <p className="text-sm text-muted-foreground">
                             Sincroniza documentos, sube facturas y realiza backups automáticos en tu OneDrive.
                         </p>
                         <button onClick={() => disconnectIntegration("onedrive", "OneDrive")}
@@ -375,14 +375,14 @@ export default function IntegracionesPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        <p className="text-sm text-zinc-400">Conecta OneDrive para sincronizar documentos, exportar facturas y hacer backups automáticos.</p>
+                        <p className="text-sm text-muted-foreground">Conecta OneDrive para sincronizar documentos, exportar facturas y hacer backups automáticos.</p>
                         {isConnected("outlook") ? (
                             <p className="text-sm text-emerald-400/90 bg-emerald-500/10 px-4 py-3 border border-emerald-500/20 rounded-lg">
                                 OneDrive ya está conectado junto con Outlook. Actívalo arriba.
                             </p>
                         ) : (
                             <button onClick={() => connectOAuth("microsoft")} disabled={connectingMicrosoft}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-medium transition">
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
                                 {connectingMicrosoft ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando…</> : <><Cloud className="w-4 h-4" /> Conectar con Microsoft</>}
                             </button>
                         )}

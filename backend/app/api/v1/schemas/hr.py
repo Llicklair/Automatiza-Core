@@ -97,3 +97,50 @@ class PayrollResponse(PayrollBase):
     created_at: datetime
     employee: EmployeeResponse | None = None
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Schemas para generación de PDFs HR ──────────────────────────────────────
+
+class FiniquitoConcepto(BaseModel):
+    concepto: str
+    importe: float
+
+class FiniquitoRequest(BaseModel):
+    employee_id: UUID
+    fecha_baja: str
+    causa_baja: str = "Baja voluntaria"
+    conceptos: list[FiniquitoConcepto] = []
+    total_percepciones: float = 0.0
+    total_deducciones: float = 0.0
+    liquido: float = 0.0
+
+class LiquidacionConcepto(BaseModel):
+    concepto: str
+    unidad: str = ""
+    devengos: float = 0.0
+    deducciones: float = 0.0
+
+class LiquidacionRequest(BaseModel):
+    employee_id: UUID
+    fecha_baja: str
+    causa_baja: str = "Baja voluntaria"
+    conceptos: list[LiquidacionConcepto] = []
+    total_devengos: float = 0.0
+    total_deducciones: float = 0.0
+    liquido: float = 0.0
+
+class RegistroJornadaDia(BaseModel):
+    dia: int
+    entrada: str = ""
+    salida: str = ""
+    horas_ordinarias: float = 0.0
+    incidencias: str = ""
+    horas_extras: float = 0.0
+
+class RegistroJornadaRequest(BaseModel):
+    employee_id: UUID
+    mes: int
+    anio: int
+    registros: list[RegistroJornadaDia] = []
+    total_horas_ordinarias: float = 0.0
+    total_horas_extras: float = 0.0

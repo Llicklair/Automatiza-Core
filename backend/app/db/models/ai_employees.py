@@ -28,6 +28,9 @@ class AIEmployee(Base):
     budget_limit_usd = Column(Numeric(10, 2), default=10.00)
     status = Column(String(20), nullable=False, default="idle")  # idle | working | paused | blocked
     is_builtin = Column(Boolean, nullable=False, default=False)  # True = agente pre-instalado
+    icon = Column(String(10), nullable=True)                    # emoji personalizado del agente
+    avatar_color = Column(String(20), nullable=True)            # color del círculo avatar: violet, amber, blue…
+    doc_folder = Column(String(200), nullable=True)             # carpeta de documentación asignada por el coordinador
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 

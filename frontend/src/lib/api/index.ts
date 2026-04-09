@@ -26,6 +26,8 @@ import { aiEmployees } from "./ai_employees";
 import { recruitment } from "./recruitment";
 import { scanner } from "./scanner";
 import { messaging } from "./messaging";
+import { hrDocuments } from "./hr_documents";
+import { generativeUI } from "./generative_ui";
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -52,6 +54,8 @@ export const api = {
     recruitment,
     scanner,
     messaging,
+    hrDocuments,
+    generativeUI,
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -92,3 +96,5 @@ export type { AIEmployee, ActivityEntry } from "./ai_employees";
 export type { RecruitmentPosition, Candidate } from "./recruitment";
 export type { ScannerToken, ScannedProduct, StockMovementResult } from "./scanner";
 export type { TelegramConnectResponse, TelegramStatus } from "./messaging";
+export type { HRDocument, HRDocumentGeneratePayload } from "./hr_documents";
+export type { GenerativeInterface } from "./generative_ui";

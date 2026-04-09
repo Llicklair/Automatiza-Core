@@ -160,7 +160,7 @@ export default function ApiKeysPage() {
     if (loading) {
         return (
             <div className="p-8 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -169,7 +169,7 @@ export default function ApiKeysPage() {
         <div className="p-8 max-w-2xl mx-auto">
             <button
                 onClick={() => router.back()}
-                className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white transition mb-6"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-6"
             >
                 <ArrowLeft className="w-4 h-4" /> Volver
             </button>
@@ -178,17 +178,17 @@ export default function ApiKeysPage() {
                 <p>
                     Las API Keys permiten que los agentes IA se conecten a modelos de lenguaje.
                     Necesitas al menos una para que el sistema funcione.
-                    <span className="text-indigo-300">Gemini</span> es el proveedor recomendado por defecto.
+                    <span className="text-primary">Gemini</span> es el proveedor recomendado por defecto.
                 </p>
             </InfoBanner>
 
             {/* LLM Providers */}
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 mb-4">
-                <h1 className="text-xl font-bold text-white flex items-center gap-2 mb-1">
-                    <Cpu className="w-5 h-5 text-indigo-400" /> Modelos de lenguaje (LLM)
+            <div className="bg-card border border-border rounded-2xl p-6 mb-4">
+                <h1 className="text-xl font-bold text-foreground flex items-center gap-2 mb-1">
+                    <Cpu className="w-5 h-5 text-primary" /> Modelos de lenguaje (LLM)
                 </h1>
-                <p className="text-xs text-zinc-500 mb-5">
-                    Activa los proveedores que quieras usar. El <span className="text-indigo-400">proveedor activo</span> es el que usan los agentes.
+                <p className="text-xs text-muted-foreground mb-5">
+                    Activa los proveedores que quieras usar. El <span className="text-primary">proveedor activo</span> es el que usan los agentes.
                     Las claves se cifran en base de datos.
                 </p>
 
@@ -203,10 +203,10 @@ export default function ApiKeysPage() {
                                 key={p.key}
                                 className={`rounded-xl border transition-all ${
                                     isActive
-                                        ? "border-indigo-500/50 bg-indigo-500/5"
+                                        ? "border-primary/20 bg-primary/5"
                                         : s.enabled
                                         ? "border-emerald-500/30 bg-emerald-500/5"
-                                        : "border-[#2e2e32] bg-[#18181b]"
+                                        : "border-border bg-card"
                                 }`}
                             >
                                 {/* Header row */}
@@ -215,13 +215,13 @@ export default function ApiKeysPage() {
                                     <button
                                         onClick={() => updateProvider(p.key, { enabled: !s.enabled })}
                                         className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
-                                            s.enabled ? "bg-emerald-500" : "bg-zinc-700"
+                                            s.enabled ? "bg-emerald-500" : "bg-accent"
                                         }`}
                                     >
                                         <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${s.enabled ? "left-4" : "left-0.5"}`} />
                                     </button>
 
-                                    <span className={`text-sm font-medium flex-1 ${isActive ? "text-indigo-300" : s.enabled ? "text-white" : "text-zinc-500"}`}>
+                                    <span className={`text-sm font-medium flex-1 ${isActive ? "text-primary" : s.enabled ? "text-foreground" : "text-muted-foreground"}`}>
                                         {p.label}
                                         {s.has_key && !s.api_key && (
                                             <span className="ml-2 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">clave guardada</span>
@@ -232,13 +232,13 @@ export default function ApiKeysPage() {
                                     {s.enabled && !isActive && (
                                         <button
                                             onClick={() => setActiveLlm(p.key)}
-                                            className="text-[11px] px-2.5 py-1 rounded-lg border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 transition"
+                                            className="text-[11px] px-2.5 py-1 rounded-lg border border-primary/20 text-primary hover:bg-primary/10 transition"
                                         >
                                             Usar como activo
                                         </button>
                                     )}
                                     {isActive && (
-                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500 text-white px-2 py-0.5 rounded-full">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-primary text-foreground px-2 py-0.5 rounded-full">
                                             Activo
                                         </span>
                                     )}
@@ -246,7 +246,7 @@ export default function ApiKeysPage() {
                                     {/* Expand */}
                                     <button
                                         onClick={() => updateProvider(p.key, { expanded: !s.expanded })}
-                                        className="text-zinc-600 hover:text-zinc-400 transition ml-1"
+                                        className="text-muted-foreground hover:text-muted-foreground transition ml-1"
                                     >
                                         {s.expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                     </button>
@@ -254,17 +254,17 @@ export default function ApiKeysPage() {
 
                                 {/* Expanded: api key + model */}
                                 {s.expanded && (
-                                    <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-3">
-                                                {p.hint && <p className="text-[11px] text-zinc-500 mb-1">{p.hint}</p>}
+                                    <div className="px-3 pb-3 space-y-2 border-t border-border pt-3">
+                                                {p.hint && <p className="text-[11px] text-muted-foreground mb-1">{p.hint}</p>}
                                                 <div>
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <label className="text-[11px] text-zinc-500">API Key</label>
+                                                        <label className="text-[11px] text-muted-foreground">API Key</label>
                                                         {p.consoleUrl && (
                                                             <a
                                                                 href={p.consoleUrl}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
+                                                                className="text-[11px] text-primary hover:text-primary flex items-center gap-1 transition"
                                                             >
                                                                 Obtener API Key <ExternalLink className="w-3 h-3" />
                                                             </a>
@@ -276,31 +276,31 @@ export default function ApiKeysPage() {
                                                             value={s.api_key}
                                                             onChange={e => updateProvider(p.key, { api_key: e.target.value })}
                                                             placeholder={s.has_key ? "••••••••  (dejar vacío para no cambiar)" : p.placeholder}
-                                                            className="w-full pr-9 px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition"
+                                                            className="w-full pr-9 px-3 py-2 rounded-lg bg-muted border border-border text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/20 transition"
                                                         />
                                                         <button
                                                             type="button"
                                                             onClick={() => updateProvider(p.key, { showKey: !s.showKey })}
-                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                                         >
                                                             {s.showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                                         </button>
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-[11px] text-zinc-500 mb-1 block">Modelo</label>
+                                                    <label className="text-[11px] text-muted-foreground mb-1 block">Modelo</label>
                                                     <select
                                                         value={p.models.includes(s.model) ? s.model : "__custom__"}
                                                         onChange={e => {
                                                             if (e.target.value !== "__custom__") updateProvider(p.key, { model: e.target.value });
                                                         }}
-                                                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-[#3f3f46] text-xs font-mono text-white focus:outline-none focus:border-indigo-500/50 transition mb-1"
+                                                        className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-xs font-mono text-foreground focus:outline-none focus:border-primary/20 transition mb-1"
                                                     >
                                                         {p.models.map(m => (
-                                                            <option key={m} value={m} className="bg-[#18181b]">{m}</option>
+                                                            <option key={m} value={m} className="bg-card">{m}</option>
                                                         ))}
                                                         {!p.models.includes(s.model) && (
-                                                            <option value="__custom__" className="bg-[#18181b]">{s.model} (personalizado)</option>
+                                                            <option value="__custom__" className="bg-card">{s.model} (personalizado)</option>
                                                         )}
                                                     </select>
                                                 </div>
@@ -313,11 +313,11 @@ export default function ApiKeysPage() {
             </div>
 
             {/* Embeddings */}
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 mb-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-1">
+            <div className="bg-card border border-border rounded-2xl p-6 mb-4">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2 mb-1">
                     <Layers className="w-4 h-4 text-purple-400" /> Embeddings (RAG / búsqueda semántica)
                 </h2>
-                <p className="text-xs text-zinc-500 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                     Modelo vectorial para buscar en documentos. La opción local no requiere API key.
                 </p>
                 <div className="space-y-2">
@@ -328,17 +328,17 @@ export default function ApiKeysPage() {
                             className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition ${
                                 activeEmbeddings === opt.key
                                     ? "border-purple-500/50 bg-purple-500/5"
-                                    : "border-[#2e2e32] bg-[#18181b] hover:border-zinc-600"
+                                    : "border-border bg-card hover:border-border"
                             }`}
                         >
                             <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                                activeEmbeddings === opt.key ? "border-purple-400 bg-purple-400" : "border-zinc-600"
+                                activeEmbeddings === opt.key ? "border-purple-400 bg-purple-400" : "border-border"
                             }`} />
                             <div>
-                                <div className={`text-sm font-medium ${activeEmbeddings === opt.key ? "text-purple-300" : "text-zinc-300"}`}>
+                                <div className={`text-sm font-medium ${activeEmbeddings === opt.key ? "text-purple-300" : "text-foreground"}`}>
                                     {opt.label}
                                 </div>
-                                <div className="text-[11px] text-zinc-500">{opt.desc}</div>
+                                <div className="text-[11px] text-muted-foreground">{opt.desc}</div>
                             </div>
                         </button>
                     ))}
@@ -346,18 +346,18 @@ export default function ApiKeysPage() {
             </div>
 
             {/* Claude Code — Conexión */}
-            <div className="bg-[#111113] border border-[#27272a] rounded-2xl p-6 mb-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-1">
-                    <Terminal className="w-4 h-4 text-indigo-400" /> Claude Code — Conexi&oacute;n
+            <div className="bg-card border border-border rounded-2xl p-6 mb-4">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2 mb-1">
+                    <Terminal className="w-4 h-4 text-primary" /> Claude Code — Conexi&oacute;n
                 </h2>
-                <p className="text-xs text-zinc-500 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                     Conecta tu suscripci&oacute;n de Claude (Pro/Team) para usar los agentes sin API Key.
                 </p>
 
                 {/* Checking */}
                 {claudeSetup.phase === "checking" && (
-                    <div className="flex items-center gap-2 text-xs text-zinc-400">
-                        <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
                         Verificando...
                     </div>
                 )}
@@ -413,7 +413,7 @@ export default function ApiKeysPage() {
                                         setClaudeSetup({ phase: "error", message: e?.message || "Error" });
                                     }
                                 }}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary text-foreground text-xs font-medium transition"
                             >
                                 <Terminal className="w-3.5 h-3.5" />
                                 Iniciar sesión
@@ -435,13 +435,13 @@ export default function ApiKeysPage() {
                                         setClaudeSetup({ phase: "error", message: e?.message || "Error" });
                                     }
                                 }}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 text-xs font-medium transition"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-primary/20 text-primary hover:bg-primary/10 text-xs font-medium transition"
                             >
                                 Verificar conexión
                             </button>
                         </div>
                         {claudeSetup.message && (
-                            <p className="text-[11px] text-zinc-500">{claudeSetup.message}</p>
+                            <p className="text-[11px] text-muted-foreground">{claudeSetup.message}</p>
                         )}
                     </div>
                 )}
@@ -449,8 +449,8 @@ export default function ApiKeysPage() {
                 {/* Idle — not installed or not checked */}
                 {claudeSetup.phase === "idle" && (
                     <div className="space-y-3">
-                        <p className="text-[11px] text-zinc-500">
-                            Instala y conecta Claude Code CLI automáticamente. Requiere <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Node.js</a> instalado.
+                        <p className="text-[11px] text-muted-foreground">
+                            Instala y conecta Claude Code CLI automáticamente. Requiere <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary underline">Node.js</a> instalado.
                         </p>
                         <div className="flex gap-2">
                             <button
@@ -471,7 +471,7 @@ export default function ApiKeysPage() {
                                         setClaudeSetup({ phase: "error", message: e?.message || "Error" });
                                     }
                                 }}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary text-foreground text-xs font-medium transition"
                             >
                                 <Terminal className="w-3.5 h-3.5" />
                                 Iniciar sesión
@@ -493,13 +493,13 @@ export default function ApiKeysPage() {
                                         setClaudeSetup({ phase: "error", message: e?.message || "Error" });
                                     }
                                 }}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 text-xs font-medium transition"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-primary/20 text-primary hover:bg-primary/10 text-xs font-medium transition"
                             >
                                 Verificar conexión
                             </button>
                         </div>
                         {claudeSetup.message && (
-                            <p className="text-[11px] text-zinc-500">{claudeSetup.message}</p>
+                            <p className="text-[11px] text-muted-foreground">{claudeSetup.message}</p>
                         )}
                     </div>
                 )}
@@ -512,7 +512,7 @@ export default function ApiKeysPage() {
                         </div>
                         <button
                             onClick={() => setClaudeSetup({ phase: "idle" })}
-                            className="text-[11px] text-indigo-400 hover:text-indigo-300 underline transition"
+                            className="text-[11px] text-primary hover:text-primary underline transition"
                         >
                             Reintentar
                         </button>
@@ -530,7 +530,7 @@ export default function ApiKeysPage() {
                 <button
                     onClick={save}
                     disabled={saving}
-                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition"
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-primary hover:bg-primary disabled:opacity-50 text-foreground text-sm font-medium transition"
                 >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Guardar configuración
