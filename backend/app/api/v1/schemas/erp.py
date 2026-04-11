@@ -14,6 +14,7 @@ class ClientCreate(BaseModel):
     postal_code: str | None = None
     client_type: str = "customer"
 
+
 class ClientResponse(BaseModel):
     id: UUID
     tenant_id: UUID
@@ -33,6 +34,7 @@ class ClientResponse(BaseModel):
 
 # --- Nuevos Modelos de Facturación Avanzada ---
 
+
 class ProductCreate(BaseModel):
     item_type: str = "product"  # product | service
     sku: str | None = None
@@ -43,6 +45,7 @@ class ProductCreate(BaseModel):
     stock_quantity: int = 0
     stock_min_alert: int = 0
 
+
 class ProductResponse(ProductCreate):
     id: UUID
     tenant_id: UUID
@@ -50,6 +53,7 @@ class ProductResponse(ProductCreate):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class InvoiceLineCreate(BaseModel):
     product_id: UUID | None = None
@@ -61,12 +65,14 @@ class InvoiceLineCreate(BaseModel):
     # No pedimos el 'total' al frontend, lo calcularemos nosotros si queremos mayor seguridad
     # o bien podemos aceptar el total como sugerencia y re-verificarlo.
 
+
 class InvoiceLineResponse(InvoiceLineCreate):
     id: UUID
     invoice_id: UUID
     total: float
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class ClientUpdate(BaseModel):
     nif: str | None = None
@@ -95,7 +101,7 @@ class InvoiceStatusUpdate(BaseModel):
 
 
 class InvoiceCreate(BaseModel):
-    serie: str | None = "F"   # Serie de facturación: F=normal, R=rectificativa, T=simplificada
+    serie: str | None = "F"  # Serie de facturación: F=normal, R=rectificativa, T=simplificada
     invoice_number: str | None = None  # Si se provee se ignora la numeración automática
     date: datetime
     due_date: datetime | None = None
@@ -104,6 +110,7 @@ class InvoiceCreate(BaseModel):
     notes: str | None = None
     terms: str | None = None
     lines: list[InvoiceLineCreate] = []
+
 
 class InvoiceResponse(BaseModel):
     id: UUID
@@ -131,11 +138,13 @@ class InvoiceResponse(BaseModel):
 
 # --- Stock / Inventario ---
 
+
 class StockMovementCreate(BaseModel):
     movement_type: str  # entrada | salida | ajuste
     quantity: int
     reference: str | None = None
     notes: str | None = None
+
 
 class StockMovementResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -153,6 +162,7 @@ class StockMovementResponse(BaseModel):
 
 # --- Pedidos de Venta ---
 
+
 class SalesOrderLineCreate(BaseModel):
     product_id: UUID | None = None
     description: str
@@ -161,12 +171,14 @@ class SalesOrderLineCreate(BaseModel):
     discount_percentage: float = 0.0
     tax_percentage: float = 21.0
 
+
 class SalesOrderLineResponse(SalesOrderLineCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     order_id: UUID
     total: float
+
 
 class SalesOrderCreate(BaseModel):
     client_id: UUID
@@ -177,10 +189,12 @@ class SalesOrderCreate(BaseModel):
     quote_id: UUID | None = None
     lines: list[SalesOrderLineCreate] = []
 
+
 class SalesOrderUpdate(BaseModel):
     status: str | None = None
     expected_delivery: datetime | None = None
     notes: str | None = None
+
 
 class SalesOrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -206,6 +220,7 @@ class SalesOrderResponse(BaseModel):
 
 # --- Pedidos de Compra ---
 
+
 class PurchaseOrderLineCreate(BaseModel):
     product_id: UUID | None = None
     description: str
@@ -213,11 +228,13 @@ class PurchaseOrderLineCreate(BaseModel):
     unit_price: float = 0.0
     tax_percentage: float = 21.0
 
+
 class PurchaseOrderLineResponse(PurchaseOrderLineCreate):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     order_id: UUID
     total: float
+
 
 class PurchaseOrderCreate(BaseModel):
     supplier_id: UUID
@@ -227,10 +244,12 @@ class PurchaseOrderCreate(BaseModel):
     notes: str | None = None
     lines: list[PurchaseOrderLineCreate] = []
 
+
 class PurchaseOrderUpdate(BaseModel):
     status: str | None = None
     expected_delivery: datetime | None = None
     notes: str | None = None
+
 
 class PurchaseOrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -262,14 +281,16 @@ class RecurringLineItem(BaseModel):
     unit_price: float = 0.0
     tax_percentage: float = 21.0
 
+
 class RecurringInvoiceCreate(BaseModel):
     client_id: UUID
     name: str
-    interval_type: str = "monthly"   # monthly | quarterly | yearly | weekly
+    interval_type: str = "monthly"  # monthly | quarterly | yearly | weekly
     next_run_date: DateType
     notes: str | None = None
     terms: str | None = None
     lines: list[RecurringLineItem] = []
+
 
 class RecurringInvoiceUpdate(BaseModel):
     name: str | None = None
@@ -279,6 +300,7 @@ class RecurringInvoiceUpdate(BaseModel):
     notes: str | None = None
     terms: str | None = None
     lines: list[RecurringLineItem] | None = None
+
 
 class RecurringInvoiceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

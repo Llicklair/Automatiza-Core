@@ -1,4 +1,5 @@
 """Rutas CRUD de tareas del orquestador."""
+
 import logging
 from uuid import UUID
 
@@ -105,23 +106,24 @@ async def cleanup_tasks(
         return {"deleted": 0, "cancelled": 0}
 
     task_ids = [row[0] for row in rows]
-    active_ids = [row[0] for row in rows if row[1] in ("pending", "planning", "executing", "awaiting_approval")]
+    active_ids = [
+        row[0]
+        for row in rows
+        if row[1] in ("pending", "planning", "executing", "awaiting_approval")
+    ]
 
     # Cancelar tareas activas
     cancelled = 0
     if active_ids:
         try:
             from app.services.task_dispatch import cancel_task as cancel_task_dispatch
+
             for tid in active_ids:
                 await cancel_task_dispatch(str(tid))
         except Exception as e:
             print(f"Error al revocar tareas: {e}")
         # Marcar como canceladas antes de borrar (para WorkflowExecutions asociadas)
-        await db.execute(
-            sql_update(Task)
-            .where(Task.id.in_(active_ids))
-            .values(status="cancelled")
-        )
+        await db.execute(sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled"))
         cancelled = len(active_ids)
 
     # Cancelar workflow executions asociadas que estén activas
@@ -138,8 +140,14 @@ async def cleanup_tasks(
     await db.execute(sql_delete(AuditLog).where(AuditLog.task_id.in_(task_ids)))
     await db.execute(sql_delete(PendingApproval).where(PendingApproval.task_id.in_(task_ids)))
     # Nullable FKs: poner a NULL en vez de borrar
-    await db.execute(sql_update(TenantDocument).where(TenantDocument.task_id.in_(task_ids)).values(task_id=None))
-    await db.execute(sql_update(WorkflowExecution).where(WorkflowExecution.task_id.in_(task_ids)).values(task_id=None))
+    await db.execute(
+        sql_update(TenantDocument).where(TenantDocument.task_id.in_(task_ids)).values(task_id=None)
+    )
+    await db.execute(
+        sql_update(WorkflowExecution)
+        .where(WorkflowExecution.task_id.in_(task_ids))
+        .values(task_id=None)
+    )
 
     # Borrar las tareas
     await db.execute(sql_delete(Task).where(Task.id.in_(task_ids)))
@@ -180,7 +188,9 @@ async def cancel_task(
     if not task:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
     if task.status in ("done", "failed", "cancelled"):
-        raise HTTPException(status_code=400, detail=f"Tarea en estado '{task.status}' no se puede cancelar")
+        raise HTTPException(
+            status_code=400, detail=f"Tarea en estado '{task.status}' no se puede cancelar"
+        )
 
     task.status = "cancelled"
     await db.commit()
@@ -188,6 +198,7 @@ async def cancel_task(
     # Cancelar la tarea si está en ejecución
     try:
         from app.services.task_dispatch import cancel_task as cancel_task_dispatch
+
         await cancel_task_dispatch(str(task_id))
     except Exception as e:
         print(f"Error al revocar la tarea: {e}")
@@ -210,9 +221,7 @@ async def get_task_audit(
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
 
     result = await db.execute(
-        select(AuditLog)
-        .where(AuditLog.task_id == task_id)
-        .order_by(AuditLog.executed_at)
+        select(AuditLog).where(AuditLog.task_id == task_id).order_by(AuditLog.executed_at)
     )
     entries = result.scalars().all()
 
@@ -243,7 +252,7 @@ async def _build_conversation_history(
         # Extraer respuesta del asistente desde agent_results
         assistant_msg = ""
         if task.agent_results:
-            for r in (task.agent_results if isinstance(task.agent_results, list) else []):
+            for r in task.agent_results if isinstance(task.agent_results, list) else []:
                 output = r.get("output", {})
                 if output.get("response"):
                     assistant_msg = output["response"]
@@ -267,6 +276,7 @@ async def _enqueue_task(task_id: str):
     """Encola la tarea en el task runner."""
     try:
         from app.services.task_dispatch import dispatch_orchestrator
+
         await dispatch_orchestrator(task_id)
     except Exception as e:
         print(f"Error encolando tarea: {e}")

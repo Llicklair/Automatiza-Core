@@ -3,6 +3,7 @@
 Solo lectura; no modifica el archivo. Si mammoth no está instalado, el endpoint
 devolverá error 501 con mensaje claro.
 """
+
 from __future__ import annotations
 
 import re

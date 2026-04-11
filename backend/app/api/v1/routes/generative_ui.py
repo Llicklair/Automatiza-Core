@@ -11,6 +11,7 @@ Endpoints:
   PATCH  /generative-ui/{id}     — Actualiza título/descripción
   DELETE /generative-ui/{id}     — Elimina una interfaz
 """
+
 import asyncio
 import logging
 import uuid
@@ -34,7 +35,16 @@ router = APIRouter(prefix="/generative-ui", tags=["generative-ui"])
 # ── ERP data fetcher ──────────────────────────────────────────────────────────
 
 # Keyword groups → which data to fetch
-_KW_INVOICES = {"factura", "facturación", "facturacion", "cobro", "pago", "pendiente", "venta", "ingreso"}
+_KW_INVOICES = {
+    "factura",
+    "facturación",
+    "facturacion",
+    "cobro",
+    "pago",
+    "pendiente",
+    "venta",
+    "ingreso",
+}
 _KW_CLIENTS = {"cliente", "cartera", "crm", "contacto"}
 _KW_EMPLOYEES = {"empleado", "plantilla", "rrhh", "personal", "equipo", "trabajador"}
 _KW_PRODUCTS = {"producto", "inventario", "stock", "catálogo", "catalogo", "artículo", "articulo"}
@@ -54,8 +64,11 @@ async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
     if words & _KW_INVOICES:
         result = await db.execute(
             select(
-                Invoice.invoice_number, Invoice.status,
-                Invoice.amount_total, Invoice.date, Invoice.due_date,
+                Invoice.invoice_number,
+                Invoice.status,
+                Invoice.amount_total,
+                Invoice.date,
+                Invoice.due_date,
             )
             .where(Invoice.tenant_id == tenant_id)
             .order_by(desc(Invoice.created_at))
@@ -64,10 +77,13 @@ async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
         rows = result.all()
         if rows:
             items = [
-                {"numero": r.invoice_number, "estado": r.status,
-                 "total": float(r.amount_total or 0),
-                 "fecha": r.date.strftime("%Y-%m-%d") if r.date else None,
-                 "vencimiento": r.due_date.strftime("%Y-%m-%d") if r.due_date else None}
+                {
+                    "numero": r.invoice_number,
+                    "estado": r.status,
+                    "total": float(r.amount_total or 0),
+                    "fecha": r.date.strftime("%Y-%m-%d") if r.date else None,
+                    "vencimiento": r.due_date.strftime("%Y-%m-%d") if r.due_date else None,
+                }
                 for r in rows
             ]
             # Summary
@@ -76,7 +92,10 @@ async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
             sections.append(
                 f"FACTURAS ({len(items)} más recientes, total: {total:.2f}€, "
                 f"pendientes: {len(pending)}, importe pendiente: {sum(i['total'] for i in pending):.2f}€):\n"
-                + "\n".join(f"  - {i['numero']} | {i['estado']} | {i['total']:.2f}€ | {i['fecha']} | vence {i['vencimiento']}" for i in items)
+                + "\n".join(
+                    f"  - {i['numero']} | {i['estado']} | {i['total']:.2f}€ | {i['fecha']} | vence {i['vencimiento']}"
+                    for i in items
+                )
             )
 
     # --- Clients ---
@@ -91,13 +110,22 @@ async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
         if rows:
             sections.append(
                 f"CLIENTES ({len(rows)} más recientes):\n"
-                + "\n".join(f"  - {r.name} | {r.nif or '-'} | {r.email or '-'} | {r.phone or '-'} | {r.city or '-'}" for r in rows)
+                + "\n".join(
+                    f"  - {r.name} | {r.nif or '-'} | {r.email or '-'} | {r.phone or '-'} | {r.city or '-'}"
+                    for r in rows
+                )
             )
 
     # --- Employees ---
     if words & _KW_EMPLOYEES:
         result = await db.execute(
-            select(Employee.name, Employee.department, Employee.role, Employee.base_salary, Employee.email)
+            select(
+                Employee.name,
+                Employee.department,
+                Employee.role,
+                Employee.base_salary,
+                Employee.email,
+            )
             .where(Employee.tenant_id == tenant_id)
             .order_by(desc(Employee.created_at))
             .limit(20)
@@ -106,14 +134,23 @@ async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
         if rows:
             sections.append(
                 f"EMPLEADOS ({len(rows)} más recientes):\n"
-                + "\n".join(f"  - {r.name} | {r.department or '-'} | {r.role or '-'} | {float(r.base_salary or 0):.2f}€" for r in rows)
+                + "\n".join(
+                    f"  - {r.name} | {r.department or '-'} | {r.role or '-'} | {float(r.base_salary or 0):.2f}€"
+                    for r in rows
+                )
             )
 
     # --- Payrolls ---
     if words & _KW_PAYROLLS:
         result = await db.execute(
-            select(Payroll.employee_id, Payroll.period_start, Payroll.period_end,
-                   Payroll.gross_salary, Payroll.net_salary, Payroll.status)
+            select(
+                Payroll.employee_id,
+                Payroll.period_start,
+                Payroll.period_end,
+                Payroll.gross_salary,
+                Payroll.net_salary,
+                Payroll.status,
+            )
             .where(Payroll.tenant_id == tenant_id)
             .order_by(desc(Payroll.period_start))
             .limit(20)
@@ -125,39 +162,50 @@ async def _fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
                 + "\n".join(
                     f"  - {r.period_start.strftime('%Y-%m') if r.period_start else '-'} | "
                     f"Bruto {float(r.gross_salary or 0):.2f}€ | Neto {float(r.net_salary or 0):.2f}€ | {r.status}"
-                    for r in rows)
+                    for r in rows
+                )
             )
 
     if not sections:
         return ""
 
-    return "\n\n--- DATOS REALES DEL ERP (usa estos datos, NO inventes) ---\n\n" + "\n\n".join(sections)
+    return "\n\n--- DATOS REALES DEL ERP (usa estos datos, NO inventes) ---\n\n" + "\n\n".join(
+        sections
+    )
 
 
 # ── Modelo DB ──────────────────────────────────────────────────────────────────
+
 
 class GeneratedUI(Base):
     """Interfaz HTML generada por IA y anclada como sección permanente.
     La comunicación con el ERP es unidireccional: solo lectura de datos,
     nunca escritura para proteger el monolito."""
+
     __tablename__ = "generated_uis"
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(PG_UUID(as_uuid=True), index=True, nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    prompt = Column(Text, nullable=False)         # The user's original prompt
-    content_html = Column(Text, nullable=False)   # Sanitized HTML output
-    is_pinned = Column(Boolean, default=True)     # True = pinned in sidebar/dashboard
-    metadata_json = Column(JSON, nullable=True)   # Extra config (refresh interval, data sources, etc.)
+    prompt = Column(Text, nullable=False)  # The user's original prompt
+    content_html = Column(Text, nullable=False)  # Sanitized HTML output
+    is_pinned = Column(Boolean, default=True)  # True = pinned in sidebar/dashboard
+    metadata_json = Column(
+        JSON, nullable=True
+    )  # Extra config (refresh interval, data sources, etc.)
     created_at = Column(DateTime, default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    updated_at = Column(
+        DateTime, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow()
+    )
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
+
 class GenerateRequest(BaseModel):
     prompt: str
     title: str | None = None
+
 
 class GeneratedUIOut(BaseModel):
     id: str
@@ -170,6 +218,7 @@ class GeneratedUIOut(BaseModel):
     updated_at: str
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class UpdateUIRequest(BaseModel):
     title: str | None = None
@@ -215,6 +264,7 @@ NUNCA uses:
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/debug-llm")
 async def debug_llm(
@@ -270,12 +320,18 @@ async def generate_ui(
             user_message = f"{payload.prompt}\n\n{erp_context}"
 
         llm = await get_llm_for_tenant(current_user.tenant_id, db, temperature=0.4)
-        logger.info("Generative UI: usando LLM %s para tenant %s", type(llm).__name__, current_user.tenant_id)
+        logger.info(
+            "Generative UI: usando LLM %s para tenant %s",
+            type(llm).__name__,
+            current_user.tenant_id,
+        )
         response = await asyncio.wait_for(
-            llm.ainvoke([
-                SystemMessage(content=_SYSTEM_PROMPT),
-                HumanMessage(content=user_message),
-            ]),
+            llm.ainvoke(
+                [
+                    SystemMessage(content=_SYSTEM_PROMPT),
+                    HumanMessage(content=user_message),
+                ]
+            ),
             timeout=120,
         )
         content_html = response.content
@@ -283,7 +339,10 @@ async def generate_ui(
             raise ValueError("El LLM devolvió una respuesta vacía")
     except asyncio.TimeoutError:
         logger.error("Generative UI: timeout de 120s para tenant %s", current_user.tenant_id)
-        raise HTTPException(status_code=504, detail="El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.")
+        raise HTTPException(
+            status_code=504,
+            detail="El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.",
+        )
     except ValueError as e:
         logger.error("Generative UI: %s", e)
         raise HTTPException(status_code=502, detail=str(e))
@@ -294,7 +353,10 @@ async def generate_ui(
         raise HTTPException(status_code=500, detail=f"Error al generar la interfaz: {str(e)}")
 
     # Auto-generate title if not provided
-    title = payload.title or f"Interfaz — {payload.prompt[:60]}{'...' if len(payload.prompt) > 60 else ''}"
+    title = (
+        payload.title
+        or f"Interfaz — {payload.prompt[:60]}{'...' if len(payload.prompt) > 60 else ''}"
+    )
 
     ui = GeneratedUI(
         id=uuid.uuid4(),

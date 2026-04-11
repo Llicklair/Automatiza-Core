@@ -14,8 +14,10 @@ class ProjectBase(BaseModel):
     start_date: datetime | None = None
     due_date: datetime | None = None
 
+
 class ProjectCreate(ProjectBase):
     pass
+
 
 class ProjectUpdate(BaseModel):
     name: str | None = None
@@ -26,11 +28,13 @@ class ProjectUpdate(BaseModel):
     start_date: datetime | None = None
     due_date: datetime | None = None
 
+
 class ProjectResponse(ProjectBase):
     id: UUID
     tenant_id: UUID
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
 
 # --- Project Tasks ---
 class ProjectTaskBase(BaseModel):
@@ -42,8 +46,10 @@ class ProjectTaskBase(BaseModel):
     start_date: datetime | None = None
     due_date: datetime | None = None
 
+
 class ProjectTaskCreate(ProjectTaskBase):
     pass
+
 
 class ProjectTaskUpdate(BaseModel):
     title: str | None = None
@@ -52,6 +58,7 @@ class ProjectTaskUpdate(BaseModel):
     assignee_id: UUID | None = None
     start_date: datetime | None = None
     due_date: datetime | None = None
+
 
 class ProjectTaskResponse(ProjectTaskBase):
     id: UUID

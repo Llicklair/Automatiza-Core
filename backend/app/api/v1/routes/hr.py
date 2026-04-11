@@ -43,10 +43,13 @@ from app.db.models.models import Employee, Payroll, Tenant, TenantDocument, User
 
 router = APIRouter(prefix="/hr", tags=["hr"])
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
+UPLOAD_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+)
 
 
 # ─── Employees ───────────────────────────────────────────────────────────────
+
 
 @router.get("/employees", response_model=list[EmployeeResponse])
 @limiter.limit("30/minute")
@@ -55,7 +58,11 @@ async def list_employees(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Employee).where(Employee.tenant_id == current_user.tenant_id).order_by(desc(Employee.created_at))
+    query = (
+        select(Employee)
+        .where(Employee.tenant_id == current_user.tenant_id)
+        .order_by(desc(Employee.created_at))
+    )
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -81,8 +88,14 @@ async def create_employee(
     # Emitir evento para automatizaciones (no crítico)
     try:
         from app.services.event_bus import emit_event
-        await emit_event(db, current_user.tenant_id, current_user.id, "employee_created",
-                         {"employee_id": str(new_employee.id), "name": new_employee.name})
+
+        await emit_event(
+            db,
+            current_user.tenant_id,
+            current_user.id,
+            "employee_created",
+            {"employee_id": str(new_employee.id), "name": new_employee.name},
+        )
     except Exception:
         logger.warning("emit_event employee_created falló — no es crítico")
 
@@ -99,7 +112,9 @@ async def update_employee(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id)
+        select(Employee).where(
+            Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id
+        )
     )
     emp = result.scalar_one_or_none()
     if not emp:
@@ -125,7 +140,9 @@ async def delete_employee(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id)
+        select(Employee).where(
+            Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id
+        )
     )
     emp = result.scalar_one_or_none()
     if not emp:
@@ -143,17 +160,17 @@ async def delete_employee(
 
 # Tasas SS empleado 2024/2025 — Régimen General (trabajador)
 # Fuente: Seguridad Social / Orden PCM vigente
-_SS_CONTINGENCIAS = 0.0470   # 4,70%
-_SS_DESEMPLEO     = 0.0155   # 1,55% (contrato indefinido tipo general)
-_SS_FP            = 0.0010   # 0,10%
-_SS_MEI           = 0.0010   # 0,10% MEI trabajador (empresa: 0,50%; total: 0,58% — no 0,12%)
+_SS_CONTINGENCIAS = 0.0470  # 4,70%
+_SS_DESEMPLEO = 0.0155  # 1,55% (contrato indefinido tipo general)
+_SS_FP = 0.0010  # 0,10%
+_SS_MEI = 0.0010  # 0,10% MEI trabajador (empresa: 0,50%; total: 0,58% — no 0,12%)
 
 
 def _calc_payroll(base_salary: float, irpf_rate: float) -> dict:
     """Calcula deducciones de SS e IRPF sobre el salario base mensual."""
-    ss_cc  = round(base_salary * _SS_CONTINGENCIAS, 2)
+    ss_cc = round(base_salary * _SS_CONTINGENCIAS, 2)
     ss_des = round(base_salary * _SS_DESEMPLEO, 2)
-    ss_fp  = round(base_salary * _SS_FP, 2)
+    ss_fp = round(base_salary * _SS_FP, 2)
     ss_mei = round(base_salary * _SS_MEI, 2)
     total_ss = round(ss_cc + ss_des + ss_fp + ss_mei, 2)
     irpf = round(base_salary * (irpf_rate / 100), 2)
@@ -181,7 +198,9 @@ async def preview_payroll(
 ):
     """Devuelve el cálculo de nómina para un empleado sin crear ningún registro."""
     result = await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id)
+        select(Employee).where(
+            Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id
+        )
     )
     emp = result.scalar_one_or_none()
     if not emp:
@@ -211,7 +230,9 @@ async def generate_payroll_auto(
 ):
     """Crea una nómina calculando automáticamente SS (tasas reales 2025) e IRPF."""
     emp_result = await db.execute(
-        select(Employee).where(Employee.id == payload.employee_id, Employee.tenant_id == current_user.tenant_id)
+        select(Employee).where(
+            Employee.id == payload.employee_id, Employee.tenant_id == current_user.tenant_id
+        )
     )
     emp = emp_result.scalar_one_or_none()
     if not emp:
@@ -250,9 +271,7 @@ async def generate_payroll_auto(
         raise HTTPException(status_code=500, detail="Error al guardar la nómina")
 
     result = await db.execute(
-        select(Payroll)
-        .options(joinedload(Payroll.employee))
-        .where(Payroll.id == new_payroll.id)
+        select(Payroll).options(joinedload(Payroll.employee)).where(Payroll.id == new_payroll.id)
     )
     return result.unique().scalar_one()
 
@@ -330,6 +349,7 @@ async def approve_payroll(
 
     # ── State machine: valida que la transición draft → approved esté permitida ──
     from app.services.state_machine import InvalidTransitionError, validate_transition
+
     try:
         validate_transition("Payroll", payroll.status, "approved")
     except InvalidTransitionError as e:
@@ -369,7 +389,9 @@ async def update_payroll(
     if not payroll:
         raise HTTPException(status_code=404, detail="Nómina no encontrada")
     if payroll.status != "draft":
-        raise HTTPException(status_code=400, detail="Solo se pueden editar nóminas en estado borrador")
+        raise HTTPException(
+            status_code=400, detail="Solo se pueden editar nóminas en estado borrador"
+        )
 
     data = payload.model_dump(exclude_unset=True)
 
@@ -378,15 +400,20 @@ async def update_payroll(
         emp = payroll.employee
         irpf_rate = float(emp.irpf_rate or 15.0) if emp else 15.0
         calc = _calc_payroll(data["base_salary"], irpf_rate)
-        data.update({
-            "ss_contingencias_comunes": calc["ss_contingencias_comunes"],
-            "ss_desempleo": calc["ss_desempleo"],
-            "ss_formacion_profesional": calc["ss_formacion_profesional"],
-            "ss_mei": calc["ss_mei"],
-            "irpf": calc["irpf"],
-            "deductions": round(calc["deductions"] + float(payroll.other_deductions or 0), 2),
-            "net_salary": round(data["base_salary"] - calc["deductions"] - float(payroll.other_deductions or 0), 2),
-        })
+        data.update(
+            {
+                "ss_contingencias_comunes": calc["ss_contingencias_comunes"],
+                "ss_desempleo": calc["ss_desempleo"],
+                "ss_formacion_profesional": calc["ss_formacion_profesional"],
+                "ss_mei": calc["ss_mei"],
+                "irpf": calc["irpf"],
+                "deductions": round(calc["deductions"] + float(payroll.other_deductions or 0), 2),
+                "net_salary": round(
+                    data["base_salary"] - calc["deductions"] - float(payroll.other_deductions or 0),
+                    2,
+                ),
+            }
+        )
 
     # Si cambia other_deductions (sin cambio de base_salary), recalcular totales
     if "other_deductions" in data and "base_salary" not in data:
@@ -409,9 +436,7 @@ async def update_payroll(
 
     # Re-cargar con joinedload para la respuesta
     result = await db.execute(
-        select(Payroll)
-        .options(joinedload(Payroll.employee))
-        .where(Payroll.id == payroll_id)
+        select(Payroll).options(joinedload(Payroll.employee)).where(Payroll.id == payroll_id)
     )
     return result.unique().scalar_one()
 
@@ -432,7 +457,9 @@ async def delete_payroll(
     if not payroll:
         raise HTTPException(status_code=404, detail="Nómina no encontrada")
     if payroll.status != "draft":
-        raise HTTPException(status_code=400, detail="Solo se pueden eliminar nóminas en estado borrador")
+        raise HTTPException(
+            status_code=400, detail="Solo se pueden eliminar nóminas en estado borrador"
+        )
     try:
         await db.delete(payroll)
         await db.commit()
@@ -461,6 +488,7 @@ async def download_payroll_pdf(
         raise HTTPException(status_code=404, detail="Nómina no encontrada")
 
     from app.api.v1.routes.templates import get_default_theme
+
     theme_config = await get_default_theme(current_user.tenant_id, "payroll", db)
 
     tenant = await db.get(Tenant, current_user.tenant_id)
@@ -478,6 +506,7 @@ async def download_payroll_pdf(
 
 # ─── Documentos de empleado ──────────────────────────────────────────────────
 
+
 @router.get("/employees/{employee_id}/documents")
 async def list_employee_documents(
     employee_id: UUID,
@@ -487,7 +516,9 @@ async def list_employee_documents(
     category = f"empleado_{employee_id}"
     result = await db.execute(
         select(TenantDocument)
-        .where(TenantDocument.tenant_id == current_user.tenant_id, TenantDocument.category == category)
+        .where(
+            TenantDocument.tenant_id == current_user.tenant_id, TenantDocument.category == category
+        )
         .order_by(desc(TenantDocument.created_at))
     )
     docs = result.scalars().all()
@@ -512,7 +543,9 @@ async def upload_employee_document_file(
 ):
     # Verify employee belongs to tenant
     emp_result = await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id)
+        select(Employee).where(
+            Employee.id == employee_id, Employee.tenant_id == current_user.tenant_id
+        )
     )
     if not emp_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -540,7 +573,13 @@ async def upload_employee_document_file(
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
-    return {"id": str(doc.id), "file_name": doc.file_name, "file_type": doc.file_type, "file_size": doc.file_size, "created_at": doc.created_at.isoformat() if doc.created_at else None}
+    return {
+        "id": str(doc.id),
+        "file_name": doc.file_name,
+        "file_type": doc.file_type,
+        "file_size": doc.file_size,
+        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+    }
 
 
 @router.get("/employees/{employee_id}/documents/{doc_id}/download")
@@ -569,7 +608,9 @@ async def download_employee_document(
     )
 
 
-@router.delete("/employees/{employee_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/employees/{employee_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_employee_document(
     employee_id: UUID,
     doc_id: UUID,
@@ -594,6 +635,7 @@ async def delete_employee_document(
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def _build_payroll_pdf(
     payroll: Payroll,
     theme_config: dict | None = None,
@@ -604,57 +646,57 @@ def _build_payroll_pdf(
 
     emp = payroll.employee
     base = float(payroll.base_salary or 0)
-    gross = float(getattr(payroll, 'gross_salary', None) or base)
+    gross = float(getattr(payroll, "gross_salary", None) or base)
     irpf = float(payroll.irpf or 0)
-    ss_cc  = float(payroll.ss_contingencias_comunes or 0)
+    ss_cc = float(payroll.ss_contingencias_comunes or 0)
     ss_des = float(payroll.ss_desempleo or 0)
-    ss_fp  = float(payroll.ss_formacion_profesional or 0)
+    ss_fp = float(payroll.ss_formacion_profesional or 0)
     ss_mei = float(payroll.ss_mei or 0)
     total_ss = round(ss_cc + ss_des + ss_fp + ss_mei, 2)
     other = float(payroll.other_deductions or 0)
-    net  = float(payroll.net_salary or 0)
+    net = float(payroll.net_salary or 0)
 
     # Datos del empleado — todos los campos disponibles
     employee_data = {
-        "name":       emp.name       if emp else "Empleado",
-        "nif":        emp.nif        if emp else "",
-        "position":   emp.role       if emp else "",
+        "name": emp.name if emp else "Empleado",
+        "nif": emp.nif if emp else "",
+        "position": emp.role if emp else "",
         "department": emp.department if emp else "",
-        "numero_afiliacion_ss":   getattr(emp, 'numero_afiliacion_ss', '') or '' if emp else '',
-        "categoria_profesional":  getattr(emp, 'categoria_profesional', '') or '' if emp else '',
-        "grupo_cotizacion":       getattr(emp, 'grupo_cotizacion', '') or '' if emp else '',
-        "tipo_contrato":          getattr(emp, 'tipo_contrato', '') or '' if emp else '',
-        "convenio_colectivo":     getattr(emp, 'convenio_colectivo', '') or '' if emp else '',
+        "numero_afiliacion_ss": getattr(emp, "numero_afiliacion_ss", "") or "" if emp else "",
+        "categoria_profesional": getattr(emp, "categoria_profesional", "") or "" if emp else "",
+        "grupo_cotizacion": getattr(emp, "grupo_cotizacion", "") or "" if emp else "",
+        "tipo_contrato": getattr(emp, "tipo_contrato", "") or "" if emp else "",
+        "convenio_colectivo": getattr(emp, "convenio_colectivo", "") or "" if emp else "",
     }
 
     # Datos de la empresa — del tenant real
     company_data = {
-        "name":    tenant.name    if tenant else "Mi Empresa S.L.",
-        "nif":     tenant.nif     if tenant else "",
+        "name": tenant.name if tenant else "Mi Empresa S.L.",
+        "nif": tenant.nif if tenant else "",
         "address": tenant.address if tenant else "",
     }
 
     payroll_data = {
         "employee": employee_data,
-        "company":  company_data,
+        "company": company_data,
         "period_start": payroll.period_start.isoformat() if payroll.period_start else "",
-        "period_end":   payroll.period_end.isoformat()   if payroll.period_end   else "",
-        "issue_date":   (payroll.issue_date or datetime.now(UTC)).isoformat(),
-        "base_salary":  base,
+        "period_end": payroll.period_end.isoformat() if payroll.period_end else "",
+        "issue_date": (payroll.issue_date or datetime.now(UTC)).isoformat(),
+        "base_salary": base,
         "gross_salary": gross,
         "ss_contingencias_comunes": ss_cc,
-        "ss_desempleo":             ss_des,
+        "ss_desempleo": ss_des,
         "ss_formacion_profesional": ss_fp,
-        "ss_mei":                   ss_mei,
-        "ss_employee":              total_ss,
-        "irpf":                     irpf,
-        "pct_irpf":       float(getattr(payroll, 'pct_irpf', 0) or 0),
-        "other_deductions":         other,
-        "net_salary":               net,
-        "devengos_json":          getattr(payroll, 'devengos_json', None),
-        "cuotas_empresa_json":    getattr(payroll, 'cuotas_empresa_json', None),
-        "base_cotizacion_cc":     float(getattr(payroll, 'base_cotizacion_cc', 0) or 0) or None,
-        "base_irpf":              float(getattr(payroll, 'base_irpf', 0) or 0) or None,
+        "ss_mei": ss_mei,
+        "ss_employee": total_ss,
+        "irpf": irpf,
+        "pct_irpf": float(getattr(payroll, "pct_irpf", 0) or 0),
+        "other_deductions": other,
+        "net_salary": net,
+        "devengos_json": getattr(payroll, "devengos_json", None),
+        "cuotas_empresa_json": getattr(payroll, "cuotas_empresa_json", None),
+        "base_cotizacion_cc": float(getattr(payroll, "base_cotizacion_cc", 0) or 0) or None,
+        "base_irpf": float(getattr(payroll, "base_irpf", 0) or 0) or None,
     }
     return generate_payroll_pdf(payroll_data, theme_config)
 
@@ -662,6 +704,7 @@ def _build_payroll_pdf(
 async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id: str):
     """Genera el PDF de la nómina, lo guarda en disco y lo registra como TenantDocument."""
     from app.db.base import AsyncSessionLocal
+
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -674,6 +717,7 @@ async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_i
                 return
 
             from app.api.v1.routes.templates import get_default_theme
+
             theme_config = await get_default_theme(uuid_mod.UUID(tenant_id), "payroll", db)
 
             # Cargar datos del tenant para la cabecera del PDF
@@ -714,6 +758,7 @@ async def _generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_i
 
 # ─── Endpoints PDF: Finiquito / Liquidación / Registro de Jornada ─────────
 
+
 async def _load_employee_and_tenant(
     employee_id: UUID, tenant_id: UUID, db: AsyncSession
 ) -> tuple[Employee, Tenant]:
@@ -736,8 +781,7 @@ async def generate_finiquito_pdf_endpoint(
     """Genera PDF de finiquito para un empleado."""
     from app.services.pdf_service import generate_finiquito_pdf
 
-    emp, tenant = await _load_employee_and_tenant(
-        payload.employee_id, current_user.tenant_id, db)
+    emp, tenant = await _load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
 
     finiquito_data = {
         "employee": {"name": emp.name, "nif": emp.nif or ""},
@@ -775,16 +819,15 @@ async def generate_liquidacion_finiquito_pdf_endpoint(
     """Genera PDF de documento de liquidación y finiquito."""
     from app.services.pdf_service import generate_liquidacion_finiquito_pdf
 
-    emp, tenant = await _load_employee_and_tenant(
-        payload.employee_id, current_user.tenant_id, db)
+    emp, tenant = await _load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
 
     liquidacion_data = {
         "employee": {
             "name": emp.name,
             "nif": emp.nif or "",
-            "naf": getattr(emp, 'numero_afiliacion_ss', '') or '',
-            "fecha_alta": emp.join_date.isoformat() if emp.join_date else '',
-            "categoria": getattr(emp, 'categoria_profesional', '') or '',
+            "naf": getattr(emp, "numero_afiliacion_ss", "") or "",
+            "fecha_alta": emp.join_date.isoformat() if emp.join_date else "",
+            "categoria": getattr(emp, "categoria_profesional", "") or "",
         },
         "company": {
             "name": tenant.name if tenant else "",
@@ -820,8 +863,7 @@ async def generate_registro_jornada_pdf_endpoint(
     """Genera PDF de registro mensual de jornada."""
     from app.services.pdf_service import generate_registro_jornada_pdf
 
-    emp, tenant = await _load_employee_and_tenant(
-        payload.employee_id, current_user.tenant_id, db)
+    emp, tenant = await _load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
 
     registro_data = {
         "employee": {"name": emp.name, "nif": emp.nif or ""},

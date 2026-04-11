@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # ── Cargar .env automáticamente (para migraciones CLI sin variables de entorno) ──
 try:
     from dotenv import load_dotenv
+
     # env.py lives at: backend/app/db/migrations/env.py
     # parents[0]=migrations, [1]=db, [2]=app, [3]=backend/
     _env_file = Path(__file__).resolve().parents[3] / ".env"
@@ -23,7 +24,7 @@ except ImportError:
     pass  # python-dotenv no instalado — se asume que DATABASE_URL ya está en el entorno
 
 import app.db.models.embeddings  # noqa — registra modelos en Base.metadata
-import app.db.models.models      # noqa — registra modelos en Base.metadata
+import app.db.models.models  # noqa — registra modelos en Base.metadata
 import app.api.v1.routes.generative_ui  # noqa — registra GeneratedUI en Base.metadata
 
 from app.db.base import Base

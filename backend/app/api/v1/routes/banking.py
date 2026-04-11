@@ -9,6 +9,7 @@ from app.middleware.rate_limit import limiter
 
 router = APIRouter(tags=["banking"])
 
+
 @router.get("/summary")
 @limiter.limit("20/minute")
 async def get_banking_summary(
@@ -31,21 +32,16 @@ async def get_banking_summary(
 
     # Si no hay facturas, devolvemos un flag is_demo=True para que el frontend lo sepa
     if not invoices:
-        return {
-            "ingresos": 0,
-            "gastos": 0,
-            "neto": 0,
-            "margen": 0,
-            "is_demo": False
-        }
+        return {"ingresos": 0, "gastos": 0, "neto": 0, "margen": 0, "is_demo": False}
 
     return {
         "ingresos": ingresos,
         "gastos": gastos,
         "neto": neto,
         "margen": margen,
-        "is_demo": False
+        "is_demo": False,
     }
+
 
 import random
 import uuid
@@ -63,6 +59,7 @@ from app.services.event_bus import emit_event
 class TransactionReconcile(BaseModel):
     invoice_id: str
 
+
 class BankTransactionResponse(BaseModel):
     id: uuid.UUID
     date: date
@@ -74,6 +71,7 @@ class BankTransactionResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # --- Routes ---
 @router.get("/transactions", response_model=list[BankTransactionResponse])
 @limiter.limit("20/minute")
@@ -82,9 +80,14 @@ async def list_transactions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(BankTransaction).where(BankTransaction.tenant_id == current_user.tenant_id).order_by(desc(BankTransaction.date))
+    query = (
+        select(BankTransaction)
+        .where(BankTransaction.tenant_id == current_user.tenant_id)
+        .order_by(desc(BankTransaction.date))
+    )
     result = await db.execute(query)
     return result.scalars().all()
+
 
 @router.post("/transactions/sync")
 @limiter.limit("20/minute")
@@ -94,7 +97,13 @@ async def sync_bank_transactions(
     current_user: User = Depends(get_current_user),
 ):
     """Genera movimientos demo simulando conexión PSD2 por Plaid/Nordigen"""
-    descriptions = ["Recibo Luz Gesternova", "Abono Cliente STRIPE", "Cuota Seguridad Social", "Transferencia recibida F. Perez", "Pago Suministros"]
+    descriptions = [
+        "Recibo Luz Gesternova",
+        "Abono Cliente STRIPE",
+        "Cuota Seguridad Social",
+        "Transferencia recibida F. Perez",
+        "Pago Suministros",
+    ]
     today = date.today()
 
     balance = 14500.00
@@ -108,13 +117,14 @@ async def sync_bank_transactions(
             description=random.choice(descriptions),
             amount=round(amount, 2),
             balance=round(balance, 2),
-            status="unreconciled"
+            status="unreconciled",
         )
         db.add(tx)
 
     await db.commit()
     await emit_event(db, current_user.tenant_id, current_user.id, "banking_synced", {"count": 5})
     return {"message": "Sincronizado correctamente", "status": "ok"}
+
 
 @router.post("/transactions/{tx_id}/reconcile")
 @limiter.limit("20/minute")
@@ -126,12 +136,20 @@ async def reconcile_transaction(
     current_user: User = Depends(get_current_user),
 ):
     """Concilia el movimiento contra una factura"""
-    result = await db.execute(select(BankTransaction).where(BankTransaction.id == tx_id, BankTransaction.tenant_id == current_user.tenant_id))
+    result = await db.execute(
+        select(BankTransaction).where(
+            BankTransaction.id == tx_id, BankTransaction.tenant_id == current_user.tenant_id
+        )
+    )
     tx = result.scalars().first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaccion no encontrada")
 
-    result_inv = await db.execute(select(Invoice).where(Invoice.id == uuid.UUID(payload.invoice_id), Invoice.tenant_id == current_user.tenant_id))
+    result_inv = await db.execute(
+        select(Invoice).where(
+            Invoice.id == uuid.UUID(payload.invoice_id), Invoice.tenant_id == current_user.tenant_id
+        )
+    )
     invoice = result_inv.scalars().first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -142,6 +160,7 @@ async def reconcile_transaction(
 
     # ── State machine: valida la transición antes de marcar como pagada ──
     from app.services.state_machine import can_transition
+
     if can_transition("Invoice", invoice.status, "paid"):
         invoice.status = "paid"
     elif invoice.status == "paid":
@@ -150,12 +169,19 @@ async def reconcile_transaction(
         raise HTTPException(
             status_code=400,
             detail=f"No se puede marcar como pagada una factura en estado '{invoice.status}'. "
-                   f"Emitela primero antes de conciliarla."
+            f"Emitela primero antes de conciliarla.",
         )
 
     await db.commit()
-    await emit_event(db, current_user.tenant_id, current_user.id, "invoice_paid", {"invoice_number": invoice.invoice_number, "tx_id": str(tx.id)})
+    await emit_event(
+        db,
+        current_user.tenant_id,
+        current_user.id,
+        "invoice_paid",
+        {"invoice_number": invoice.invoice_number, "tx_id": str(tx.id)},
+    )
     return {"message": "Conciliado correctamente", "status": "ok"}
+
 
 @router.get("/analytics")
 @limiter.limit("20/minute")
@@ -184,7 +210,7 @@ async def get_banking_analytics(
             "title": "Crecimiento sostenido detectado",
             "message": "Los ingresos del Q1 muestran un incremento del 18% frente al mes anterior, impulsado por nuevos clientes de software.",
             "action_text": "Ver informes",
-            "action_url": "/banca"
+            "action_url": "/banca",
         },
         {
             "id": "2",
@@ -192,7 +218,7 @@ async def get_banking_analytics(
             "title": "3 facturas a punto de vencer",
             "message": "Tienes 3 facturas emitidas por un valor total de 4.250€ que vencen esta semana y no están conciliadas.",
             "action_text": "Revisar facturas",
-            "action_url": "/ventas/facturas"
+            "action_url": "/ventas/facturas",
         },
         {
             "id": "3",
@@ -200,11 +226,8 @@ async def get_banking_analytics(
             "title": "Eficiencia en gastos",
             "message": "En comparación con tu sector, tus gastos recurrentes (servicios/cloud) están un 5% optimizados. ¡Buen trabajo!",
             "action_text": "Analizar costes",
-            "action_url": "/tesoreria/pagos-y-cobros"
-        }
+            "action_url": "/tesoreria/pagos-y-cobros",
+        },
     ]
 
-    return {
-        "cashflow": cashflow_data,
-        "insights": ai_insights
-    }
+    return {"cashflow": cashflow_data, "insights": ai_insights}

@@ -1,6 +1,7 @@
 """
 Sesión SQLAlchemy síncrona para uso en agentes LLM y scripts.
 """
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,9 +12,7 @@ def _get_sync_url() -> str:
     """Convierte la URL async de asyncpg a psycopg2 para uso síncrono."""
     url = settings.DATABASE_URL
     # postgresql+asyncpg://... → postgresql+psycopg2://...
-    return url.replace("postgresql+asyncpg://", "postgresql://").replace(
-        "+asyncpg", ""
-    )
+    return url.replace("postgresql+asyncpg://", "postgresql://").replace("+asyncpg", "")
 
 
 _sync_engine = create_engine(

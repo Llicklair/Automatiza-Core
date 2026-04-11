@@ -3,6 +3,7 @@ Validadores deterministas para facturación española.
 SIN LLM — lógica pura, 100% predecible.
 Fuentes: BOE, AEAT, Reglamento de Facturación (RD 1619/2012).
 """
+
 import re
 from datetime import date, timedelta
 from decimal import Decimal
@@ -55,9 +56,7 @@ def validate_nif(nif: str) -> tuple[bool, str]:
             return False, "Formato CIF inválido"
         digits = [int(c) for c in nif[1:8]]
         even_sum = sum(digits[1::2])
-        odd_sum = sum(
-            (d * 2 // 10) + (d * 2 % 10) for d in digits[::2]
-        )
+        odd_sum = sum((d * 2 // 10) + (d * 2 % 10) for d in digits[::2])
         total = even_sum + odd_sum
         control_digit = (10 - (total % 10)) % 10
         control_letter = "JABCDEFGHI"[control_digit]
@@ -74,13 +73,17 @@ def validate_nif(nif: str) -> tuple[bool, str]:
         else:
             # Acepta letra o dígito
             if last not in (control_letter, str(control_digit)):
-                return False, f"Control CIF incorrecto (esperado: {control_letter} o {control_digit})"
+                return (
+                    False,
+                    f"Control CIF incorrecto (esperado: {control_letter} o {control_digit})",
+                )
         return True, "CIF válido"
 
     return False, f"Prefijo desconocido: '{nif[0]}'"
 
 
 # ─── IBAN ────────────────────────────────────────────────────────────────────
+
 
 def validate_iban(iban: str) -> tuple[bool, str]:
     """Valida IBAN por módulo 97 (ISO 13616)."""
@@ -107,13 +110,16 @@ def validate_iban(iban: str) -> tuple[bool, str]:
 # ─── IVA ────────────────────────────────────────────────────────────────────
 
 VALID_VAT_RATES_ES = {0, 4, 10, 21}  # tipos vigentes en España
-VALID_IRPF_RATES   = {7, 15, 19}     # retenciones IRPF habituales
+VALID_IRPF_RATES = {7, 15, 19}  # retenciones IRPF habituales
 
 
 def validate_vat_rate(rate: float) -> tuple[bool, str]:
     """Verifica que el tipo de IVA sea válido en España."""
     if rate not in VALID_VAT_RATES_ES:
-        return False, f"Tipo de IVA inválido: {rate}%. Valores permitidos: {sorted(VALID_VAT_RATES_ES)}"
+        return (
+            False,
+            f"Tipo de IVA inválido: {rate}%. Valores permitidos: {sorted(VALID_VAT_RATES_ES)}",
+        )
     return True, f"IVA {rate}% válido"
 
 
@@ -133,10 +139,11 @@ def validate_amount(amount: Decimal) -> tuple[bool, str]:
 
 # ─── Fechas ──────────────────────────────────────────────────────────────────
 
+
 def validate_invoice_date(invoice_date: date) -> tuple[bool, str]:
     today = date.today()
-    too_old = today - timedelta(days=365)   # Más de 1 año en el pasado
-    too_future = today + timedelta(days=365) # Más de 1 año en el futuro
+    too_old = today - timedelta(days=365)  # Más de 1 año en el pasado
+    too_future = today + timedelta(days=365)  # Más de 1 año en el futuro
 
     if invoice_date < too_old:
         return False, f"Fecha de factura demasiado antigua: {invoice_date}"
@@ -146,6 +153,7 @@ def validate_invoice_date(invoice_date: date) -> tuple[bool, str]:
 
 
 # ─── Validación completa de factura ─────────────────────────────────────────
+
 
 class InvoiceValidationResult:
     def __init__(self):

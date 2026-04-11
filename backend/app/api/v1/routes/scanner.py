@@ -8,6 +8,7 @@ Scanner / Gatekeeper — Endpoints para escáner móvil de almacén.
 - POST /scanner/stock-exit     — Registra salida de stock
 - POST /scanner/confirm-delivery — Confirma recepción de albarán
 """
+
 import logging
 from uuid import UUID
 
@@ -32,6 +33,7 @@ router = APIRouter()
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
+
 class GenerateQRRequest(BaseModel):
     device_name: str = "Scanner móvil"
 
@@ -52,6 +54,7 @@ class ConfirmDeliveryRequest(BaseModel):
 
 # ── Desktop-side: genera token para el móvil ────────────────────────────────
 
+
 @router.post("/generate-qr")
 @limiter.limit("10/minute")
 async def generate_qr_token(
@@ -71,6 +74,7 @@ async def generate_qr_token(
 
 
 # ── Scanner-side: endpoints accesibles con token de scanner ─────────────────
+
 
 @router.get("/whoami")
 async def scanner_whoami(scanner=Depends(get_scanner_user)):
@@ -101,7 +105,9 @@ async def scan_product(
     )
     product = result.scalars().first()
     if not product:
-        raise HTTPException(status_code=404, detail=f"Producto con SKU '{payload.sku}' no encontrado")
+        raise HTTPException(
+            status_code=404, detail=f"Producto con SKU '{payload.sku}' no encontrado"
+        )
 
     return {
         "id": str(product.id),
@@ -161,7 +167,9 @@ async def confirm_delivery(
     )
     albaran = result.scalars().first()
     if not albaran:
-        raise HTTPException(status_code=404, detail=f"Albarán '{payload.albaran_number}' no encontrado")
+        raise HTTPException(
+            status_code=404, detail=f"Albarán '{payload.albaran_number}' no encontrado"
+        )
 
     if albaran.status == "delivered":
         return {"status": "already_delivered", "albaran_number": albaran.albaran_number}
@@ -179,8 +187,12 @@ async def confirm_delivery(
 
 # ── Helper ───────────────────────────────────────────────────────────────────
 
+
 async def _record_movement(
-    db: AsyncSession, scanner: dict, payload: StockMovementRequest, movement_type: str,
+    db: AsyncSession,
+    scanner: dict,
+    payload: StockMovementRequest,
+    movement_type: str,
 ) -> dict:
     """Registra un movimiento de stock y actualiza la cantidad."""
     tenant_id = UUID(scanner["tenant_id"])
@@ -192,7 +204,9 @@ async def _record_movement(
     )
     product = result.scalars().first()
     if not product:
-        raise HTTPException(status_code=404, detail=f"Producto con SKU '{payload.sku}' no encontrado")
+        raise HTTPException(
+            status_code=404, detail=f"Producto con SKU '{payload.sku}' no encontrado"
+        )
 
     current_stock = float(product.stock_quantity or 0)
     qty = abs(payload.quantity)
@@ -201,7 +215,9 @@ async def _record_movement(
         new_stock = current_stock + qty
     else:
         if qty > current_stock:
-            raise HTTPException(status_code=400, detail=f"Stock insuficiente ({current_stock} < {qty})")
+            raise HTTPException(
+                status_code=400, detail=f"Stock insuficiente ({current_stock} < {qty})"
+            )
         new_stock = current_stock - qty
 
     product.stock_quantity = new_stock
@@ -226,7 +242,6 @@ async def _record_movement(
         "stock_before": current_stock,
         "stock_after": new_stock,
         "low_stock": (
-            product.stock_min_alert is not None
-            and new_stock <= float(product.stock_min_alert)
+            product.stock_min_alert is not None and new_stock <= float(product.stock_min_alert)
         ),
     }

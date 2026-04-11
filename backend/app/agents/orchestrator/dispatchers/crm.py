@@ -3,6 +3,7 @@ Dispatcher de CRM / ventas.
 Invoca el CRM agent autónomo (LangGraph) y traduce su resultado
 al formato del orquestador.
 """
+
 import logging
 
 from app.agents.orchestrator.helpers import _save_ai_result_as_document
@@ -17,19 +18,23 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
     from app.agents.crm_agent import graph
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
 
     try:
-        result_state = await graph.ainvoke({
-            "tenant_id": tenant_id,
-            "task_id": state.get("task_id"),
-            "user_id": state.get("user_id"),
-            "user_intent": intent,
-            "current_intent": intent,
-            "messages": [],
-            "agent_results": [],
-            "status": "running",
-        })
+        result_state = await graph.ainvoke(
+            {
+                "tenant_id": tenant_id,
+                "task_id": state.get("task_id"),
+                "user_id": state.get("user_id"),
+                "user_intent": intent,
+                "current_intent": intent,
+                "messages": [],
+                "agent_results": [],
+                "status": "running",
+            }
+        )
 
         messages = result_state.get("messages", [])
 
@@ -61,7 +66,9 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
             "agent": "crm",
             "success": success,
             "output": _crm_output,
-            "summary": _format_summary("crm", _crm_output, success, None if success else final_text),
+            "summary": _format_summary(
+                "crm", _crm_output, success, None if success else final_text
+            ),
             "error": None if success else final_text,
         }
 

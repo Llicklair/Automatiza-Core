@@ -38,7 +38,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
+UPLOAD_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+)
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])
@@ -135,7 +137,12 @@ async def delete_invoice(
     await db.commit()
 
 
-@router.post("/clients/{client_id}/invoices", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@router.post(
+    "/clients/{client_id}/invoices",
+    response_model=InvoiceResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["erp"],
+)
 @limiter.limit("30/minute")
 async def create_invoice(
     request: Request,
@@ -197,7 +204,7 @@ async def create_invoice(
         amount_base=0.0,
         tax_amount=0.0,
         amount_total=0.0,
-        **payload_dict
+        **payload_dict,
     )
     db.add(new_invoice)
     await db.commit()
@@ -219,7 +226,7 @@ async def create_invoice(
         if tax_perc not in VALID_IVA:
             raise HTTPException(
                 status_code=400,
-                detail=f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%."
+                detail=f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%.",
             )
 
         # Calcular línea individual
@@ -243,7 +250,7 @@ async def create_invoice(
             unit_price=uprice,
             discount_percentage=discount_perc,
             tax_percentage=tax_perc,
-            total=line_total
+            total=line_total,
         )
         db.add(inv_line)
 
@@ -255,7 +262,9 @@ async def create_invoice(
     # Validaciones post-cálculo
     if new_invoice.amount_total < 0:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="El importe total de la factura no puede ser negativo.")
+        raise HTTPException(
+            status_code=400, detail="El importe total de la factura no puede ser negativo."
+        )
     if lines_data and new_invoice.amount_total == 0:
         logger.warning("Factura creada con importe 0 para cliente %s", client_id)
 
@@ -264,10 +273,7 @@ async def create_invoice(
     # 4. Refrescar Invoice para devolver con joins
     result = await db.execute(
         select(Invoice)
-        .options(
-            joinedload(Invoice.client),
-            joinedload(Invoice.lines)
-        )
+        .options(joinedload(Invoice.client), joinedload(Invoice.lines))
         .where(Invoice.id == new_invoice.id)
     )
     final_invoice = result.unique().scalar_one()
@@ -301,6 +307,7 @@ async def create_invoice(
 async def _generate_and_save_invoice_pdf(invoice, tenant_id, user_id):
     """Genera el PDF de la factura y lo registra como TenantDocument."""
     from app.db.base import AsyncSessionLocal
+
     try:
         async with AsyncSessionLocal() as session:
             tenant_obj = await session.get(Tenant, tenant_id)
@@ -386,9 +393,7 @@ async def download_invoice_pdf(
     invoice = result.unique().scalar_one_or_none()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
-    tenant_result = await db.execute(
-        select(Tenant).where(Tenant.id == current_user.tenant_id)
-    )
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant_obj = tenant_result.scalar_one_or_none()
     company_name = tenant_obj.name if tenant_obj else "Mi Empresa S.L."
     company_nif = tenant_obj.nif if tenant_obj else "B00000000"
@@ -466,12 +471,14 @@ async def download_rectificative_invoice_pdf(
     orig_total = float(invoice.amount_total or 0)
 
     corrected_lines = []
-    for line in (invoice.lines or []):
-        corrected_lines.append({
-            "description": line.description or "",
-            "original_amount": float(line.total or 0),
-            "corrected_amount": 0.0,
-        })
+    for line in invoice.lines or []:
+        corrected_lines.append(
+            {
+                "description": line.description or "",
+                "original_amount": float(line.total or 0),
+                "corrected_amount": 0.0,
+            }
+        )
 
     data = {
         "number": f"FR-{(invoice.invoice_number or str(invoice.id)[:8]).upper()}",

@@ -61,7 +61,9 @@ class Activity(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True)
-    opportunity_id = Column(UUID(as_uuid=True), ForeignKey("opportunities.id"), nullable=True, index=True)
+    opportunity_id = Column(
+        UUID(as_uuid=True), ForeignKey("opportunities.id"), nullable=True, index=True
+    )
 
     type = Column(String(50), nullable=False)
     description = Column(Text, nullable=False)

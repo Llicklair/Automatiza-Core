@@ -16,6 +16,7 @@ Flujo:
   5. Si delay/approval → suspende, programa reanudación/crea PendingApproval
   6. Todos los leaf nodes completados → execution.status = "success"
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,7 +38,7 @@ COMPLETED = "completed"
 FAILED = "failed"
 RUNNING = "running"
 WAITING = "waiting"  # delay
-PAUSED = "paused"    # approval_gate
+PAUSED = "paused"  # approval_gate
 SKIPPED = "skipped"
 PENDING = "pending"
 
@@ -53,6 +54,7 @@ def has_advanced_nodes(ui_nodes: list[dict], ui_edges: list[dict] | None = None)
     # Fan-out: any node has 2+ outgoing edges (implicit parallelism)
     if ui_edges:
         from collections import Counter
+
         source_counts = Counter(e.get("source") for e in ui_edges)
         if any(v >= 2 for v in source_counts.values()):
             return True
@@ -176,7 +178,11 @@ class NodeEngine:
                 execution.node_states = dict(self.node_states)
                 execution.current_node_id = None
                 await db.commit()
-                return {"status": "failed", "error": "Graph stuck: no ready nodes", "node_states": self.node_states}
+                return {
+                    "status": "failed",
+                    "error": "Graph stuck: no ready nodes",
+                    "node_states": self.node_states,
+                }
 
             # Execute ready nodes: sequential for single, parallel for multiple
             if len(ready_nodes) == 1:
@@ -241,7 +247,11 @@ class NodeEngine:
         execution.completed_at = datetime.now(UTC)
         execution.node_states = dict(self.node_states)
         await db.commit()
-        return {"status": "failed", "error": "Max iterations reached", "node_states": self.node_states}
+        return {
+            "status": "failed",
+            "error": "Max iterations reached",
+            "node_states": self.node_states,
+        }
 
     async def _execute_node(self, node: dict, db: AsyncSession) -> dict:
         """Despacha según type: skill, conditional, delay, approval_gate."""
@@ -312,7 +322,9 @@ class NodeEngine:
                 )
                 await db.flush()
             except Exception:
-                _logger.warning("Failed to audit node_execution_failed for node %s", node_id, exc_info=True)
+                _logger.warning(
+                    "Failed to audit node_execution_failed for node %s", node_id, exc_info=True
+                )
 
             return {}
 
@@ -336,7 +348,11 @@ class NodeEngine:
             for nid, ns in prev_outputs.items():
                 output = ns.get("output", {})
                 if isinstance(output, dict):
-                    summary = ", ".join(f"{k}: {v}" for k, v in output.items() if not isinstance(v, (dict, list)) or len(str(v)) < 200)
+                    summary = ", ".join(
+                        f"{k}: {v}"
+                        for k, v in output.items()
+                        if not isinstance(v, (dict, list)) or len(str(v)) < 200
+                    )
                     ctx_parts.append(f"Nodo {nid}: {summary}")
         enriched_intent = "\n".join(ctx_parts)
 
@@ -373,7 +389,11 @@ class NodeEngine:
 
         # Log to audit
         try:
-            action_str = result.get("output", {}).get("action", "execute") if isinstance(result.get("output"), dict) else "execute"
+            action_str = (
+                result.get("output", {}).get("action", "execute")
+                if isinstance(result.get("output"), dict)
+                else "execute"
+            )
             await log_action(
                 db,
                 tenant_id=uuid.UUID(self.tenant_id),
@@ -386,7 +406,9 @@ class NodeEngine:
             )
             await db.flush()
         except Exception:
-            _logger.warning("Failed to audit skill node execution for node %s", node["id"], exc_info=True)
+            _logger.warning(
+                "Failed to audit skill node execution for node %s", node["id"], exc_info=True
+            )
 
         return result.get("output", {})
 
@@ -433,7 +455,8 @@ class NodeEngine:
                     output = ns.get("output", {})
                     if isinstance(output, dict):
                         summary = ", ".join(
-                            f"{k}: {v}" for k, v in output.items()
+                            f"{k}: {v}"
+                            for k, v in output.items()
                             if not isinstance(v, (dict, list)) or len(str(v)) < 200
                         )
                         ctx_parts.append(f"Nodo {nid}: {summary}")
@@ -489,36 +512,47 @@ class NodeEngine:
         try:
             if domain == "billing":
                 from app.agents.orchestrator import _dispatch_billing
+
                 return await _dispatch_billing(state, subtask)
             elif domain == "documents":
                 from app.agents.orchestrator import _dispatch_documents
+
                 return await _dispatch_documents(state, subtask)
             elif domain == "hr":
                 from app.agents.orchestrator import _dispatch_hr
+
                 return await _dispatch_hr(state, subtask)
             elif domain == "email":
                 from app.agents.orchestrator import _dispatch_email
+
                 return await _dispatch_email(state, subtask)
             elif domain == "crm":
                 from app.agents.orchestrator import _dispatch_crm
+
                 return await _dispatch_crm(state, subtask)
             elif domain == "banking":
                 from app.agents.orchestrator import _dispatch_banking
+
                 return await _dispatch_banking(state, subtask)
             elif domain == "compliance":
                 from app.agents.orchestrator import _dispatch_compliance
+
                 return await _dispatch_compliance(state, subtask)
             elif domain == "rag":
                 from app.agents.orchestrator import _dispatch_rag
+
                 return await _dispatch_rag(state, subtask)
             elif domain == "excel":
                 from app.agents.orchestrator import _dispatch_excel
+
                 return await _dispatch_excel(state, subtask)
             elif domain == "workflow":
                 from app.agents.orchestrator import _dispatch_workflow
+
                 return await _dispatch_workflow(state, subtask)
             elif domain == "skill" or domain.startswith("skill:"):
                 from app.agents.orchestrator import _dispatch_skill
+
                 return await _dispatch_skill(state, subtask)
             else:
                 return {
@@ -553,6 +587,7 @@ class NodeEngine:
                 context["prev"] = self.node_states[last_pred]
 
         import logging
+
         logging.getLogger("node_engine").info(
             f"[CONDITIONAL] node={node['id']} condition={condition} "
             f"context_keys={list(context.keys())}"
@@ -560,6 +595,7 @@ class NodeEngine:
         # Log the resolved field value for debugging
         field = condition.get("field", "")
         from app.services.condition_evaluator import _resolve_field
+
         resolved = _resolve_field(field, context)
         logging.getLogger("node_engine").info(
             f"[CONDITIONAL] field='{field}' resolved_to={resolved}"
@@ -588,8 +624,10 @@ class NodeEngine:
         # Schedule task to resume after delay
         try:
             from app.services.task_dispatch import dispatch_resume_node_engine
+
             await dispatch_resume_node_engine(
-                self.execution_id, node_id,
+                self.execution_id,
+                node_id,
                 delay_seconds=delay_seconds,
             )
         except Exception as e:
@@ -602,7 +640,9 @@ class NodeEngine:
         from datetime import timedelta
 
         data = node.get("data", {})
-        description = data.get("description") or data.get("label") or "Aprobación requerida para continuar"
+        description = (
+            data.get("description") or data.get("label") or "Aprobación requerida para continuar"
+        )
         node_id = node["id"]
 
         self.node_states[node_id]["status"] = PAUSED
@@ -655,7 +695,9 @@ class NodeEngine:
             visited.add(nid)
             self.node_states[nid] = {
                 "status": SKIPPED,
-                "output": {"reason": f"Skipped: branch '{discarded_branch}' from {conditional_node_id}"},
+                "output": {
+                    "reason": f"Skipped: branch '{discarded_branch}' from {conditional_node_id}"
+                },
                 "started_at": datetime.now(UTC).isoformat(),
                 "completed_at": datetime.now(UTC).isoformat(),
             }
@@ -670,15 +712,26 @@ class NodeEngine:
         for node in self.nodes:
             nid = node["id"]
             # Skip already processed nodes
-            if nid in self.node_states and self.node_states[nid]["status"] in (COMPLETED, FAILED, SKIPPED, RUNNING, WAITING, PAUSED):
+            if nid in self.node_states and self.node_states[nid]["status"] in (
+                COMPLETED,
+                FAILED,
+                SKIPPED,
+                RUNNING,
+                WAITING,
+                PAUSED,
+            ):
                 continue
 
             # Check all predecessors are completed or skipped
             predecessors = self._get_predecessors(nid)
-            if all(
-                self.node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED)
-                for p in predecessors
-            ) if predecessors else not predecessors:
+            if (
+                all(
+                    self.node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED)
+                    for p in predecessors
+                )
+                if predecessors
+                else not predecessors
+            ):
                 # Node with no predecessors and not a trigger (triggers are pre-completed)
                 if not predecessors and node.get("type") != "trigger":
                     # This could be an orphan node — skip it
@@ -707,10 +760,7 @@ class NodeEngine:
 
     def _has_suspended_nodes(self) -> bool:
         """True si hay algún nodo en estado waiting o paused."""
-        return any(
-            ns.get("status") in (WAITING, PAUSED)
-            for ns in self.node_states.values()
-        )
+        return any(ns.get("status") in (WAITING, PAUSED) for ns in self.node_states.values())
 
     def _build_context_for_node(self, node_id: str) -> dict:
         """Construye un dict de contexto con los outputs de nodos predecesores."""

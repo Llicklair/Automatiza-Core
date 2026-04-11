@@ -6,6 +6,7 @@ Docs: https://nordigen.com/en/account_information_documenation/api-documention/
 Bancos españoles soportados: Santander, BBVA, CaixaBank, Sabadell, Bankinter,
 ING, Openbank, UniCaja, Ibercaja, Kutxabank, etc.
 """
+
 from datetime import date
 
 import httpx
@@ -25,7 +26,7 @@ class NordigenClient:
     """
 
     def __init__(self, secret_id: str, secret_key: str):
-        self._secret_id  = secret_id
+        self._secret_id = secret_id
         self._secret_key = secret_key
         self._access_token: str | None = None
         self._client = httpx.AsyncClient(base_url=NORDIGEN_BASE, timeout=30.0)
@@ -84,11 +85,11 @@ class NordigenClient:
         resp = await self._client.post(
             "/requisitions/",
             json={
-                "redirect":        redirect_url,
-                "institution_id":  institution_id,
-                "reference":       reference,
-                "agreement":       "",
-                "user_language":   language,
+                "redirect": redirect_url,
+                "institution_id": institution_id,
+                "reference": reference,
+                "agreement": "",
+                "user_language": language,
             },
             headers=self._auth_headers(),
         )
@@ -127,7 +128,12 @@ class NordigenClient:
     async def get_account_balances(self, account_id: str) -> list[dict]:
         """Saldos actuales de una cuenta (disponible, reservado)."""
         if self._secret_id == "DEMO_PSD2_ID":
-            return [{"balanceType": "interimAvailable", "balanceAmount": {"amount": "14250.00", "currency": "EUR"}}]
+            return [
+                {
+                    "balanceType": "interimAvailable",
+                    "balanceAmount": {"amount": "14250.00", "currency": "EUR"},
+                }
+            ]
 
         await self._get_access_token()
         resp = await self._client.get(
@@ -141,7 +147,7 @@ class NordigenClient:
         self,
         account_id: str,
         date_from: date | None = None,
-        date_to:   date | None = None,
+        date_to: date | None = None,
     ) -> dict:
         """
         Obtiene las transacciones de una cuenta.
@@ -151,30 +157,35 @@ class NordigenClient:
             return {
                 "booked": [
                     {
-                        "transactionId": "tx_1", "valueDate": "2023-10-01",
+                        "transactionId": "tx_1",
+                        "valueDate": "2023-10-01",
                         "transactionAmount": {"amount": "-1500.00", "currency": "EUR"},
                         "remittanceInformationUnstructured": "Pago Alquiler Oficina Octubre",
-                        "creditorName": "Inmobiliaria Centro SL"
+                        "creditorName": "Inmobiliaria Centro SL",
                     },
                     {
-                        "transactionId": "tx_2", "valueDate": "2023-10-05",
+                        "transactionId": "tx_2",
+                        "valueDate": "2023-10-05",
                         "transactionAmount": {"amount": "3400.00", "currency": "EUR"},
                         "remittanceInformationUnstructured": "Cobro Factura 2023-44",
-                        "debtorName": "Cliente Importante SA"
+                        "debtorName": "Cliente Importante SA",
                     },
                     {
-                        "transactionId": "tx_3", "valueDate": "2023-10-08",
+                        "transactionId": "tx_3",
+                        "valueDate": "2023-10-08",
                         "transactionAmount": {"amount": "-250.00", "currency": "EUR"},
                         "remittanceInformationUnstructured": "Recibo Luz",
-                        "creditorName": "Iberdrola Clientes"
-                    }
+                        "creditorName": "Iberdrola Clientes",
+                    },
                 ]
             }
 
         await self._get_access_token()
         params = {}
-        if date_from: params["date_from"] = date_from.isoformat()
-        if date_to:   params["date_to"]   = date_to.isoformat()
+        if date_from:
+            params["date_from"] = date_from.isoformat()
+        if date_to:
+            params["date_to"] = date_to.isoformat()
 
         resp = await self._client.get(
             f"/accounts/{account_id}/transactions/",
@@ -195,18 +206,20 @@ class NordigenClient:
         normalized = []
         for tx in raw_transactions.get("booked", []):
             amount_info = tx.get("transactionAmount", {})
-            normalized.append({
-                "id":           tx.get("transactionId") or tx.get("internalTransactionId", ""),
-                "fecha":        tx.get("valueDate") or tx.get("bookingDate", ""),
-                "importe":      float(amount_info.get("amount", 0)),
-                "moneda":       amount_info.get("currency", "EUR"),
-                "concepto":     tx.get("remittanceInformationUnstructured") or
-                                tx.get("remittanceInformationStructured", ""),
-                "deudor":       tx.get("debtorName", ""),
-                "acreedor":     tx.get("creditorName", ""),
-                "iban_deudor":  tx.get("debtorAccount", {}).get("iban", ""),
-                "iban_acreedor":tx.get("creditorAccount", {}).get("iban", ""),
-                "estado":       "confirmada",
-                "tipo":         "cargo" if float(amount_info.get("amount", 0)) < 0 else "abono",
-            })
+            normalized.append(
+                {
+                    "id": tx.get("transactionId") or tx.get("internalTransactionId", ""),
+                    "fecha": tx.get("valueDate") or tx.get("bookingDate", ""),
+                    "importe": float(amount_info.get("amount", 0)),
+                    "moneda": amount_info.get("currency", "EUR"),
+                    "concepto": tx.get("remittanceInformationUnstructured")
+                    or tx.get("remittanceInformationStructured", ""),
+                    "deudor": tx.get("debtorName", ""),
+                    "acreedor": tx.get("creditorName", ""),
+                    "iban_deudor": tx.get("debtorAccount", {}).get("iban", ""),
+                    "iban_acreedor": tx.get("creditorAccount", {}).get("iban", ""),
+                    "estado": "confirmada",
+                    "tipo": "cargo" if float(amount_info.get("amount", 0)) < 0 else "abono",
+                }
+            )
         return normalized

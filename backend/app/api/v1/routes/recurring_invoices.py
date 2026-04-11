@@ -39,7 +39,12 @@ async def list_recurring_invoices(
     return result.unique().scalars().all()
 
 
-@router.post("/recurring-invoices", response_model=RecurringInvoiceResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@router.post(
+    "/recurring-invoices",
+    response_model=RecurringInvoiceResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["erp"],
+)
 @limiter.limit("30/minute")
 async def create_recurring_invoice(
     request: Request,
@@ -77,7 +82,9 @@ async def update_recurring_invoice(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(RecurringInvoice).where(RecurringInvoice.id == rec_id, RecurringInvoice.tenant_id == current_user.tenant_id)
+        select(RecurringInvoice).where(
+            RecurringInvoice.id == rec_id, RecurringInvoice.tenant_id == current_user.tenant_id
+        )
     )
     rec = result.scalar_one_or_none()
     if not rec:
@@ -105,7 +112,9 @@ async def delete_recurring_invoice(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(RecurringInvoice).where(RecurringInvoice.id == rec_id, RecurringInvoice.tenant_id == current_user.tenant_id)
+        select(RecurringInvoice).where(
+            RecurringInvoice.id == rec_id, RecurringInvoice.tenant_id == current_user.tenant_id
+        )
     )
     rec = result.scalar_one_or_none()
     if not rec:
@@ -137,7 +146,7 @@ async def run_recurring_invoice(
 
     amount_base = 0.0
     tax_amount = 0.0
-    for line in (rec.lines_json or []):
+    for line in rec.lines_json or []:
         base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
         tax = base * (float(line.get("tax_percentage", 21)) / 100)
         amount_base += base
@@ -159,7 +168,7 @@ async def run_recurring_invoice(
     db.add(invoice)
     await db.flush()
 
-    for line in (rec.lines_json or []):
+    for line in rec.lines_json or []:
         base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
         tax = base * (float(line.get("tax_percentage", 21)) / 100)
         inv_line = InvoiceLine(

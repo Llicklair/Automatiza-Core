@@ -41,7 +41,9 @@ async def list_sales_orders(
     return result.unique().scalars().all()
 
 
-@router.post("/orders", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@router.post(
+    "/orders", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"]
+)
 @limiter.limit("30/minute")
 async def create_sales_order(
     request: Request,
@@ -109,7 +111,9 @@ async def update_sales_order(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == current_user.tenant_id)
+        select(SalesOrder).where(
+            SalesOrder.id == order_id, SalesOrder.tenant_id == current_user.tenant_id
+        )
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -134,7 +138,9 @@ async def delete_sales_order(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == current_user.tenant_id)
+        select(SalesOrder).where(
+            SalesOrder.id == order_id, SalesOrder.tenant_id == current_user.tenant_id
+        )
     )
     order = result.scalar_one_or_none()
     if not order:

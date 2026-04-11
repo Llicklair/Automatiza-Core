@@ -17,6 +17,7 @@ USO:
         "status": "running",
     })
 """
+
 import logging
 from typing import Any
 
@@ -42,9 +43,7 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
         KeyError: Si una AgentSkill apunta a una tool no registrada.
     """
     # 1. Cargar perfil del empleado
-    emp_result = await db.execute(
-        select(AIEmployee).where(AIEmployee.id == employee_id)
-    )
+    emp_result = await db.execute(select(AIEmployee).where(AIEmployee.id == employee_id))
     employee = emp_result.scalar_one_or_none()
     if not employee:
         raise ValueError(f"AIEmployee '{employee_id}' no encontrado")
@@ -59,7 +58,8 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
         logger.warning(
             "Empleado '%s' no tiene skills configuradas — "
             "usará herramientas del dominio '%s' por defecto",
-            employee.name, employee.domain,
+            employee.name,
+            employee.domain,
         )
 
     # Zero Trust: cada tool se resuelve explícitamente del registry.
@@ -88,10 +88,12 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
         response = await llm_with_tools.ainvoke(state["messages"])
 
         agent_results = list(state.get("agent_results") or [])
-        agent_results.append({
-            "agent": employee_name,
-            "tool_calls": len(response.tool_calls) if response.tool_calls else 0,
-        })
+        agent_results.append(
+            {
+                "agent": employee_name,
+                "tool_calls": len(response.tool_calls) if response.tool_calls else 0,
+            }
+        )
 
         return {"messages": [response], "agent_results": agent_results}
 
@@ -105,11 +107,13 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
         )
         return {
             "status": "done",
-            "agent_results": [{
-                "agent": employee_name,
-                "result": content,
-                "status": "completed",
-            }],
+            "agent_results": [
+                {
+                    "agent": employee_name,
+                    "result": content,
+                    "status": "completed",
+                }
+            ],
         }
 
     # 5. Ensamblar el grafo (mismo patrón que los agentes existentes)
@@ -120,7 +124,9 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     if allowed_tools:
         graph.add_node("tools", ToolNode(allowed_tools))
         graph.set_entry_point("agent")
-        graph.add_conditional_edges("agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
+        graph.add_conditional_edges(
+            "agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
+        )
         graph.add_edge("tools", "agent")
     else:
         # Sin tools: el agente solo razona (modo chat)

@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.dependencies import get_current_user
@@ -13,7 +12,9 @@ router = APIRouter(prefix="/advisory", tags=["advisory"])
 @limiter.limit("30/minute")
 async def get_boe_news(
     request: Request,
-    section: str = Query("fiscal", description="Sección del BOE a scrapear (fiscal, laboral, mercantil)"),
+    section: str = Query(
+        "fiscal", description="Sección del BOE a scrapear (fiscal, laboral, mercantil)"
+    ),
     limit: int = Query(10, description="Número máximo de noticias a obtener"),
     current_user=Depends(get_current_user),
 ):

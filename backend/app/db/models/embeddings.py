@@ -16,12 +16,12 @@ class DocumentEmbedding(Base):
     tenant_id = Column(UUID(as_uuid=True), index=True, nullable=False)
 
     chunk_index = Column(String, nullable=False)  # Para mantener el orden original de los trozos
-    text_content = Column(Text, nullable=False)   # El texto extraído
+    text_content = Column(Text, nullable=False)  # El texto extraído
 
     # Metadata de OpenDataLoader (nullable para compatibilidad con datos existentes)
-    page_number = Column(Integer, nullable=True)       # Página de origen en el PDF
-    element_type = Column(String, nullable=True)       # paragraph, table, heading, etc.
-    bounding_box = Column(JSONB, nullable=True)        # [left, bottom, right, top]
+    page_number = Column(Integer, nullable=True)  # Página de origen en el PDF
+    element_type = Column(String, nullable=True)  # paragraph, table, heading, etc.
+    bounding_box = Column(JSONB, nullable=True)  # [left, bottom, right, top]
 
     # Jurisdicción del tenant al momento de indexar (para filtro cross-border)
     jurisdiction = Column(String(20), nullable=True, index=True)

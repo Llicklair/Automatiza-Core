@@ -6,6 +6,7 @@ El LLM decide qué herramientas usar según la intención del usuario:
   - Ver transacciones → list_transactions
   - Resumen financiero → financial_summary
 """
+
 import json
 import logging
 from datetime import date, timedelta
@@ -34,16 +35,70 @@ ALERT_THRESHOLDS = {
 
 # Datos demo cuando PSD2 no está configurado
 _DEMO_SALDOS = [
-    {"account_id": "demo_001", "iban": "ES91 2100 0418 4502 0005 1332", "nombre": "Cuenta Corriente (Demo)", "saldo": 18450.72, "moneda": "EUR"},
-    {"account_id": "demo_002", "iban": "ES80 2310 0001 1800 0001 2345", "nombre": "Cuenta Ahorro (Demo)", "saldo": 5200.00, "moneda": "EUR"},
+    {
+        "account_id": "demo_001",
+        "iban": "ES91 2100 0418 4502 0005 1332",
+        "nombre": "Cuenta Corriente (Demo)",
+        "saldo": 18450.72,
+        "moneda": "EUR",
+    },
+    {
+        "account_id": "demo_002",
+        "iban": "ES80 2310 0001 1800 0001 2345",
+        "nombre": "Cuenta Ahorro (Demo)",
+        "saldo": 5200.00,
+        "moneda": "EUR",
+    },
 ]
 _DEMO_TXS = [
-    {"id": "1", "fecha": "2026-03-15", "concepto": "TRANSFERENCIA RECIBIDA ACME SL", "importe": 4500, "tipo": "abono", "categoria": "cliente_cobro"},
-    {"id": "2", "fecha": "2026-03-14", "concepto": "AMAZON WEB SERVICES", "importe": -350, "tipo": "cargo", "categoria": "proveedor_servicio"},
-    {"id": "3", "fecha": "2026-03-13", "concepto": "NOMINAS MARZO 2026", "importe": -12000, "tipo": "cargo", "categoria": "nominas"},
-    {"id": "4", "fecha": "2026-03-12", "concepto": "ENGIE ENERGIA FACTURA", "importe": -280.50, "tipo": "cargo", "categoria": "suministros"},
-    {"id": "5", "fecha": "2026-03-11", "concepto": "COBRO FACTURA #2026-041", "importe": 7200, "tipo": "abono", "categoria": "cliente_cobro"},
-    {"id": "6", "fecha": "2026-03-10", "concepto": "CUOTA PRESTAMO BANCO", "importe": -1100, "tipo": "cargo", "categoria": "financiero"},
+    {
+        "id": "1",
+        "fecha": "2026-03-15",
+        "concepto": "TRANSFERENCIA RECIBIDA ACME SL",
+        "importe": 4500,
+        "tipo": "abono",
+        "categoria": "cliente_cobro",
+    },
+    {
+        "id": "2",
+        "fecha": "2026-03-14",
+        "concepto": "AMAZON WEB SERVICES",
+        "importe": -350,
+        "tipo": "cargo",
+        "categoria": "proveedor_servicio",
+    },
+    {
+        "id": "3",
+        "fecha": "2026-03-13",
+        "concepto": "NOMINAS MARZO 2026",
+        "importe": -12000,
+        "tipo": "cargo",
+        "categoria": "nominas",
+    },
+    {
+        "id": "4",
+        "fecha": "2026-03-12",
+        "concepto": "ENGIE ENERGIA FACTURA",
+        "importe": -280.50,
+        "tipo": "cargo",
+        "categoria": "suministros",
+    },
+    {
+        "id": "5",
+        "fecha": "2026-03-11",
+        "concepto": "COBRO FACTURA #2026-041",
+        "importe": 7200,
+        "tipo": "abono",
+        "categoria": "cliente_cobro",
+    },
+    {
+        "id": "6",
+        "fecha": "2026-03-10",
+        "concepto": "CUOTA PRESTAMO BANCO",
+        "importe": -1100,
+        "tipo": "cargo",
+        "categoria": "financiero",
+    },
 ]
 
 
@@ -56,6 +111,7 @@ def _get_llm_json():
 
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
+
 
 @tool
 async def check_balances(tenant_id: str) -> str:
@@ -76,11 +132,13 @@ async def _check_balances_async(tenant_id: str) -> str:
         lines = [f"- {s['nombre']}: {s['saldo']:.2f}€ ({s['iban']})" for s in _DEMO_SALDOS]
         return (
             "⚠️ Banco no conectado — mostrando datos de demo.\n\n"
-            "Saldos:\n" + "\n".join(lines) +
-            "\n\nConecta tu banco desde Integraciones → PSD2 para ver datos reales."
+            "Saldos:\n"
+            + "\n".join(lines)
+            + "\n\nConecta tu banco desde Integraciones → PSD2 para ver datos reales."
         )
 
     from app.integrations.psd2 import NordigenClient
+
     client = NordigenClient(secret_id=creds["secret_id"], secret_key=creds["secret_key"])
     saldos = []
     alertas = []
@@ -91,9 +149,14 @@ async def _check_balances_async(tenant_id: str) -> str:
             try:
                 details = await client.get_account_details(acc_id)
                 balances = await client.get_account_balances(acc_id)
-                saldo_disp = next((b for b in balances if b.get("balanceType") == "interimAvailable"), balances[0] if balances else {})
+                saldo_disp = next(
+                    (b for b in balances if b.get("balanceType") == "interimAvailable"),
+                    balances[0] if balances else {},
+                )
                 importe = float(saldo_disp.get("balanceAmount", {}).get("amount", 0))
-                saldos.append(f"- {details.get('name', 'Cuenta')} ({details.get('iban', '')}): {importe:.2f}€")
+                saldos.append(
+                    f"- {details.get('name', 'Cuenta')} ({details.get('iban', '')}): {importe:.2f}€"
+                )
                 if importe < ALERT_THRESHOLDS["saldo_minimo_eur"]:
                     alertas.append(f"⚠️ Saldo bajo: {importe:.2f}€ en {details.get('iban', acc_id)}")
             except Exception as e:
@@ -124,13 +187,17 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
     creds = await _get_psd2_credentials(tenant_id)
 
     if not creds:
-        lines = [f"- {t['fecha']}: {t['concepto']} | {t['importe']:+.2f}€ [{t['categoria']}]" for t in _DEMO_TXS]
+        lines = [
+            f"- {t['fecha']}: {t['concepto']} | {t['importe']:+.2f}€ [{t['categoria']}]"
+            for t in _DEMO_TXS
+        ]
         return (
             "⚠️ Banco no conectado — datos de demo.\n\n"
             f"Transacciones (últimos {days_back} días):\n" + "\n".join(lines)
         )
 
     from app.integrations.psd2 import NordigenClient
+
     client = NordigenClient(secret_id=creds["secret_id"], secret_key=creds["secret_key"])
     todas_tx = []
     alertas = []
@@ -146,8 +213,13 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
                 todas_tx.extend(normalized)
 
                 for tx in normalized:
-                    if tx["tipo"] == "cargo" and abs(tx["importe"]) > ALERT_THRESHOLDS["cargo_inusual_eur"]:
-                        alertas.append(f"🔴 Cargo inusual: {abs(tx['importe']):.2f}€ — {tx['concepto']}")
+                    if (
+                        tx["tipo"] == "cargo"
+                        and abs(tx["importe"]) > ALERT_THRESHOLDS["cargo_inusual_eur"]
+                    ):
+                        alertas.append(
+                            f"🔴 Cargo inusual: {abs(tx['importe']):.2f}€ — {tx['concepto']}"
+                        )
             except Exception as e:
                 todas_tx.append({"concepto": f"Error en cuenta {acc_id}: {e}", "importe": 0})
     finally:
@@ -160,13 +232,19 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
     llm = _get_llm_json()
     sample = todas_tx[:50]
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content="""Clasifica cada transacción en una categoría:
+        response = await llm.ainvoke(
+            [
+                SystemMessage(
+                    content="""Clasifica cada transacción en una categoría:
 proveedor_material, proveedor_servicio, nominas, impuestos, alquiler,
 suministros, financiero, cliente_cobro, transferencia_interna, otros.
-Devuelve JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""),
-            HumanMessage(content=f"Transacciones:\n{json.dumps([{'id': t['id'], 'concepto': t['concepto'], 'importe': t['importe']} for t in sample], ensure_ascii=False)}"),
-        ])
+Devuelve JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""
+                ),
+                HumanMessage(
+                    content=f"Transacciones:\n{json.dumps([{'id': t['id'], 'concepto': t['concepto'], 'importe': t['importe']} for t in sample], ensure_ascii=False)}"
+                ),
+            ]
+        )
         cats = json.loads(response.content)
         cats = cats if isinstance(cats, list) else cats.get("categorias", [])
         cat_map = {c["id"]: c.get("categoria", "otros") for c in cats}
@@ -177,8 +255,13 @@ Devuelve JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""),
         for tx in todas_tx:
             tx["categoria"] = "otros"
 
-    lines = [f"- {t.get('fecha', 'N/A')}: {t['concepto']} | {t['importe']:+.2f}€ [{t.get('categoria', 'otros')}]" for t in todas_tx[:30]]
-    result = f"Transacciones (últimos {days_back} días, {len(todas_tx)} total):\n" + "\n".join(lines)
+    lines = [
+        f"- {t.get('fecha', 'N/A')}: {t['concepto']} | {t['importe']:+.2f}€ [{t.get('categoria', 'otros')}]"
+        for t in todas_tx[:30]
+    ]
+    result = f"Transacciones (últimos {days_back} días, {len(todas_tx)} total):\n" + "\n".join(
+        lines
+    )
     if alertas:
         result += "\n\nAlertas:\n" + "\n".join(alertas)
     return result
@@ -219,16 +302,22 @@ async def _financial_summary_async(tenant_id: str, days_back: int) -> str:
 
     llm = _get_llm()
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content="""Eres un contable experto en PYMEs españolas.
+        response = await llm.ainvoke(
+            [
+                SystemMessage(
+                    content="""Eres un contable experto en PYMEs españolas.
 Analiza los datos financieros y redacta un resumen claro para el empresario.
 Incluye: ingresos/gastos principales, tendencias, y recomendación concreta.
-Máximo 200 palabras. NO inventes datos."""),
-            HumanMessage(content=f"Saldos:\n{balance_text}\n\nTransacciones:\n{tx_text}"),
-        ])
+Máximo 200 palabras. NO inventes datos."""
+                ),
+                HumanMessage(content=f"Saldos:\n{balance_text}\n\nTransacciones:\n{tx_text}"),
+            ]
+        )
         return response.content
     except Exception as e:
-        logger.warning("Error generando resumen financiero con LLM: %s. Devolviendo datos sin procesar.", e)
+        logger.warning(
+            "Error generando resumen financiero con LLM: %s. Devolviendo datos sin procesar.", e
+        )
         return f"Datos disponibles:\n\n{balance_text}\n\n{tx_text}"
 
 
@@ -265,8 +354,11 @@ async def _get_psd2_credentials(tenant_id: str) -> dict | None:
 
 # ─── Conciliación bancaria ────────────────────────────────────────────────────
 
+
 @tool
-async def reconcile_transactions(tenant_id: str, tolerance_days: int = 3, tolerance_amount: float = 0.01) -> str:
+async def reconcile_transactions(
+    tenant_id: str, tolerance_days: int = 3, tolerance_amount: float = 0.01
+) -> str:
     """
     Concilia automáticamente transacciones bancarias con facturas pendientes/pagadas.
     Cruza movimientos de ingreso con facturas pending/paid por importe y fecha (±tolerancia).
@@ -281,7 +373,9 @@ async def reconcile_transactions(tenant_id: str, tolerance_days: int = 3, tolera
 
 
 async def _reconcile_transactions_async(
-    tenant_id: str, tolerance_days: int, tolerance_amount: float,
+    tenant_id: str,
+    tolerance_days: int,
+    tolerance_amount: float,
 ) -> str:
     from uuid import UUID
 
@@ -295,6 +389,7 @@ async def _reconcile_transactions_async(
         creds = await _get_psd2_credentials(tenant_id)
         if creds:
             from app.integrations.psd2 import PSD2Client
+
             psd2 = PSD2Client(creds["secret_id"], creds["secret_key"])
             accounts = psd2.get_accounts()
             transactions = []
@@ -304,12 +399,42 @@ async def _reconcile_transactions_async(
             # Datos demo de transacciones (ingresos)
             today = date.today()
             transactions = [
-                {"amount": 2420.00, "date": (today - timedelta(days=5)).isoformat(), "description": "Transferencia recibida - Acme Corp", "type": "credit"},
-                {"amount": 1815.00, "date": (today - timedelta(days=12)).isoformat(), "description": "Transferencia recibida - López SL", "type": "credit"},
-                {"amount": 3630.00, "date": (today - timedelta(days=20)).isoformat(), "description": "Transferencia recibida", "type": "credit"},
-                {"amount": 605.00, "date": (today - timedelta(days=2)).isoformat(), "description": "Bizum recibido", "type": "credit"},
-                {"amount": -850.00, "date": (today - timedelta(days=8)).isoformat(), "description": "Pago proveedor", "type": "debit"},
-                {"amount": -1200.00, "date": (today - timedelta(days=15)).isoformat(), "description": "Alquiler oficina", "type": "debit"},
+                {
+                    "amount": 2420.00,
+                    "date": (today - timedelta(days=5)).isoformat(),
+                    "description": "Transferencia recibida - Acme Corp",
+                    "type": "credit",
+                },
+                {
+                    "amount": 1815.00,
+                    "date": (today - timedelta(days=12)).isoformat(),
+                    "description": "Transferencia recibida - López SL",
+                    "type": "credit",
+                },
+                {
+                    "amount": 3630.00,
+                    "date": (today - timedelta(days=20)).isoformat(),
+                    "description": "Transferencia recibida",
+                    "type": "credit",
+                },
+                {
+                    "amount": 605.00,
+                    "date": (today - timedelta(days=2)).isoformat(),
+                    "description": "Bizum recibido",
+                    "type": "credit",
+                },
+                {
+                    "amount": -850.00,
+                    "date": (today - timedelta(days=8)).isoformat(),
+                    "description": "Pago proveedor",
+                    "type": "debit",
+                },
+                {
+                    "amount": -1200.00,
+                    "date": (today - timedelta(days=15)).isoformat(),
+                    "description": "Alquiler oficina",
+                    "type": "debit",
+                },
             ]
 
         # Filtrar solo ingresos
@@ -321,7 +446,9 @@ async def _reconcile_transactions_async(
         # 2. Obtener facturas pendientes y pagadas no conciliadas
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(Invoice, Client).join(Client).where(
+                select(Invoice, Client)
+                .join(Client)
+                .where(
                     Invoice.tenant_id == UUID(tenant_id),
                     or_(Invoice.status == "pending", Invoice.status == "paid"),
                 )
@@ -342,7 +469,7 @@ async def _reconcile_transactions_async(
 
                 for inv, cli in invoices:
                     inv_total = float(inv.amount_total)
-                    inv_date = inv.date.date() if hasattr(inv.date, 'date') else inv.date
+                    inv_date = inv.date.date() if hasattr(inv.date, "date") else inv.date
 
                     amount_match = abs(txn_amount - inv_total) <= tolerance_amount
                     date_match = abs((txn_date - inv_date).days) <= tolerance_days
@@ -351,21 +478,25 @@ async def _reconcile_transactions_async(
                         # Conciliado
                         if inv.status == "pending":
                             inv.status = "paid"
-                        matched.append({
-                            "invoice": inv.invoice_number,
-                            "client": cli.name,
-                            "amount": txn_amount,
-                            "txn_desc": txn.get("description", ""),
-                        })
+                        matched.append(
+                            {
+                                "invoice": inv.invoice_number,
+                                "client": cli.name,
+                                "amount": txn_amount,
+                                "txn_desc": txn.get("description", ""),
+                            }
+                        )
                         found = True
                         break
 
                 if not found:
-                    unmatched_txns.append({
-                        "amount": txn_amount,
-                        "date": txn.get("date", "?")[:10],
-                        "description": txn.get("description", ""),
-                    })
+                    unmatched_txns.append(
+                        {
+                            "amount": txn_amount,
+                            "date": txn.get("date", "?")[:10],
+                            "description": txn.get("description", ""),
+                        }
+                    )
 
             await db.commit()
 
@@ -381,15 +512,15 @@ async def _reconcile_transactions_async(
         if unmatched_txns:
             lines.append(f"\nSIN CONCILIAR ({len(unmatched_txns)}):")
             for u in unmatched_txns:
-                lines.append(
-                    f"  - {u['date']}: +{u['amount']:.2f}€ — {u['description']}"
-                )
+                lines.append(f"  - {u['date']}: +{u['amount']:.2f}€ — {u['description']}")
 
         total_conciliado = sum(m["amount"] for m in matched)
         total_pendiente = sum(u["amount"] for u in unmatched_txns)
 
-        lines.append(f"\nResumen: {len(matched)} conciliados ({total_conciliado:.2f}€), "
-                     f"{len(unmatched_txns)} sin conciliar ({total_pendiente:.2f}€).")
+        lines.append(
+            f"\nResumen: {len(matched)} conciliados ({total_conciliado:.2f}€), "
+            f"{len(unmatched_txns)} sin conciliar ({total_pendiente:.2f}€)."
+        )
 
         return "\n".join(lines)
     except Exception as e:
@@ -435,6 +566,7 @@ ID del Tenant actual: {tenant_id}"""
 
 async def banking_agent_node(state: AgentState):
     from datetime import datetime as dt
+
     if "messages" not in state or not state["messages"]:
         sys_msg = SystemMessage(
             content=BANKING_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
@@ -452,7 +584,9 @@ async def banking_agent_node(state: AgentState):
         step_id=f"banking_step_{dt.now().timestamp()}",
         description="Procesando solicitud bancaria...",
         status="completed",
-        action_taken="Invocando herramientas bancarias" if response.tool_calls else "Asistencia bancaria completada.",
+        action_taken="Invocando herramientas bancarias"
+        if response.tool_calls
+        else "Asistencia bancaria completada.",
     )
 
     if "agent_results" not in state:
@@ -467,7 +601,9 @@ def banking_finalize_node(state: AgentState):
         step_id="banking_final",
         description="Agente Bancario ha finalizado.",
         status="completed",
-        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operación bancaria completada.",
+        action_taken=last_msg.content
+        if isinstance(last_msg.content, str)
+        else "Operación bancaria completada.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

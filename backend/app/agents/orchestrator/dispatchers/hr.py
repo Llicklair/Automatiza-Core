@@ -2,6 +2,7 @@
 Dispatcher de Recursos Humanos (HR agent).
 Invoca el HR agent autónomo (LangGraph).
 """
+
 import logging
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState

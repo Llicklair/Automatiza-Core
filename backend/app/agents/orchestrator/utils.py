@@ -1,6 +1,7 @@
 """
 Utilidades del orquestador: formateo de resúmenes y extracción de fechas.
 """
+
 import re
 from datetime import datetime, timedelta
 
@@ -20,9 +21,12 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
             client = data.get("client", data.get("client_name", ""))
             total = data.get("total", data.get("amount_total", ""))
             parts = ["✅ Factura creada"]
-            if num: parts.append(f"**{num}**")
-            if client: parts.append(f"para {client}")
-            if total: parts.append(f"por {total}€")
+            if num:
+                parts.append(f"**{num}**")
+            if client:
+                parts.append(f"para {client}")
+            if total:
+                parts.append(f"por {total}€")
             return " ".join(parts) + "."
         if action == "summary":
             invoices = data.get("invoices", [])
@@ -64,8 +68,7 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
             return f"✅ {resumen}"
         if saldos:
             saldo_txt = ", ".join(
-                f"{s.get('nombre', 'Cuenta')}: {s.get('saldo', '?')}€"
-                for s in saldos[:3]
+                f"{s.get('nombre', 'Cuenta')}: {s.get('saldo', '?')}€" for s in saldos[:3]
             )
             return f"✅ Saldos bancarios: {saldo_txt}."
         return "✅ Consulta bancaria completada."
@@ -85,13 +88,33 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
 # ─── Utilidad: extraer mes y año de lenguaje natural ─────────────────────────
 
 _MESES_ES = {
-    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
-    "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10,
-    "noviembre": 11, "diciembre": 12,
+    "enero": 1,
+    "febrero": 2,
+    "marzo": 3,
+    "abril": 4,
+    "mayo": 5,
+    "junio": 6,
+    "julio": 7,
+    "agosto": 8,
+    "septiembre": 9,
+    "setiembre": 9,
+    "octubre": 10,
+    "noviembre": 11,
+    "diciembre": 12,
     # abreviaturas comunes
-    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "jun": 6, "jul": 7,
-    "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12,
+    "ene": 1,
+    "feb": 2,
+    "mar": 3,
+    "abr": 4,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dic": 12,
 }
+
 
 def _extract_month_year(intent: str) -> tuple[int, int]:
     """Extrae (mes, año) de un texto en lenguaje natural español.
@@ -108,10 +131,12 @@ def _extract_month_year(intent: str) -> tuple[int, int]:
 
     # Relativos primero
     if re.search(r"mes\s+(pasado|anterior)", text):
-        d = (now.replace(day=1) - timedelta(days=1))
+        d = now.replace(day=1) - timedelta(days=1)
         return d.month, d.year
-    if re.search(r"(próximo|siguiente|que\s+viene)\s+mes|mes\s+(próximo|siguiente|que\s+viene)", text):
-        d = (now.replace(day=28) + timedelta(days=4))
+    if re.search(
+        r"(próximo|siguiente|que\s+viene)\s+mes|mes\s+(próximo|siguiente|que\s+viene)", text
+    ):
+        d = now.replace(day=28) + timedelta(days=4)
         return d.month, d.year
 
     # Formato ISO: 2026-03 o 2026/03

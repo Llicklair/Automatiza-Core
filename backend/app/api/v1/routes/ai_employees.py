@@ -10,6 +10,7 @@ Endpoints:
   GET    /activity-feed                   — Timeline de actividad del tenant
   POST   /activity-feed                   — Registra entrada manual (uso interno/tests)
 """
+
 import json
 import logging
 import uuid
@@ -48,6 +49,7 @@ def _out(e: "AIEmployee") -> "AIEmployeeOut":
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
 
+
 class AIEmployeeOut(BaseModel):
     id: str
     name: str
@@ -80,6 +82,7 @@ class AIEmployeeCreate(BaseModel):
 
 class AIEmployeeProvision(BaseModel):
     """Usado por el coordinador para completar la configuración del agente."""
+
     domain: str | None = None
     role: str | None = None
     system_prompt: str | None = None
@@ -114,6 +117,7 @@ class ActivityEntryCreate(BaseModel):
 
 # ─── Empleados ────────────────────────────────────────────────────────────────
 
+
 @router.get("/ai-employees", response_model=list[AIEmployeeOut])
 async def list_ai_employees(
     db: AsyncSession = Depends(get_db),
@@ -125,9 +129,7 @@ async def list_ai_employees(
         .order_by(AIEmployee.created_at)
     )
     employees = result.scalars().all()
-    return [
-        _out(e) for e in employees
-    ]
+    return [_out(e) for e in employees]
 
 
 @router.post("/ai-employees", response_model=AIEmployeeOut, status_code=status.HTTP_201_CREATED)
@@ -170,12 +172,21 @@ async def create_ai_employee(
 
 
 _KNOWN_SKILLS = [
-    "billing.create_invoice", "billing.list_invoices", "billing.send_reminder",
-    "hr.list_employees", "hr.generate_payroll", "hr.generate_document",
-    "crm.list_clients", "crm.create_activity",
-    "email.send", "email.read_inbox",
-    "documents.search_rag", "documents.upload",
-    "banking.list_transactions", "compliance.check", "excel.export",
+    "billing.create_invoice",
+    "billing.list_invoices",
+    "billing.send_reminder",
+    "hr.list_employees",
+    "hr.generate_payroll",
+    "hr.generate_document",
+    "crm.list_clients",
+    "crm.create_activity",
+    "email.send",
+    "email.read_inbox",
+    "documents.search_rag",
+    "documents.upload",
+    "banking.list_transactions",
+    "compliance.check",
+    "excel.export",
 ]
 
 _SKILL_LABELS = {
@@ -197,7 +208,9 @@ _SKILL_LABELS = {
 }
 
 
-async def _provision_employee_bg(employee_id: str, tenant_id: str, name: str, role_description: str) -> None:
+async def _provision_employee_bg(
+    employee_id: str, tenant_id: str, name: str, role_description: str
+) -> None:
     """Llama al LLM para configurar el agente y genera un resumen de capacidades visible en el panel de tareas."""
     from langchain_core.messages import HumanMessage
 
@@ -275,25 +288,34 @@ async def _provision_employee_bg(employee_id: str, tenant_id: str, name: str, ro
                 domain="coordinator",
                 user_intent=f"Configuración automática de {emp.name} ({role_description})",
                 status="done",
-                agent_results=[{
-                    "agent": "coordinator",
-                    "success": True,
-                    "summary": summary,
-                    "output": {
-                        "action": "chat_response",
-                        "response": summary,
-                    },
-                }],
+                agent_results=[
+                    {
+                        "agent": "coordinator",
+                        "success": True,
+                        "summary": summary,
+                        "output": {
+                            "action": "chat_response",
+                            "response": summary,
+                        },
+                    }
+                ],
             )
             session.add(provision_task)
             await session.commit()
-            logger.info("Agente '%s' provisionado (domain=%s, skills=%d)", name, emp.domain, len(assigned_skills))
+            logger.info(
+                "Agente '%s' provisionado (domain=%s, skills=%d)",
+                name,
+                emp.domain,
+                len(assigned_skills),
+            )
 
     except Exception as exc:
         logger.error("Error provisionando agente '%s': %s", name, exc)
         try:
             async with AsyncSessionLocal() as session:
-                result = await session.execute(select(AIEmployee).where(AIEmployee.id == employee_id))
+                result = await session.execute(
+                    select(AIEmployee).where(AIEmployee.id == employee_id)
+                )
                 emp = result.scalar_one_or_none()
                 if emp and emp.status == "pending_setup":
                     emp.status = "idle"
@@ -335,9 +357,8 @@ async def provision_ai_employee(
     # Reemplazar skills existentes
     if payload.skills:
         from sqlalchemy import delete as sa_delete
-        await db.execute(
-            sa_delete(AgentSkill).where(AgentSkill.employee_id == employee.id)
-        )
+
+        await db.execute(sa_delete(AgentSkill).where(AgentSkill.employee_id == employee.id))
         for tool_module in payload.skills:
             db.add(AgentSkill(employee_id=employee.id, tool_module=tool_module))
 
@@ -457,6 +478,7 @@ async def instruct_employee(
     await db.flush()
 
     from app.services.activity_service import log_activity
+
     await log_activity(
         db=db,
         tenant_id=str(current_user.tenant_id),
@@ -518,6 +540,7 @@ async def update_employee_status(
             register_employee_heartbeat,
             unregister_employee_heartbeat,
         )
+
         if new_status == "idle":
             register_employee_heartbeat(str(employee.id), str(employee.tenant_id))
         else:
@@ -662,6 +685,7 @@ async def seed_builtin_employees(
 
 # ─── Activity Feed ─────────────────────────────────────────────────────────────
 
+
 @router.get("/activity-feed", response_model=list[ActivityEntryOut])
 async def get_activity_feed(
     employee_id: str | None = Query(None),
@@ -707,6 +731,7 @@ async def create_activity_entry(
 ):
     """Endpoint para registrar entradas manualmente (tests o sistema interno)."""
     from app.services.activity_service import log_activity
+
     entry = await log_activity(
         db=db,
         tenant_id=str(current_user.tenant_id),

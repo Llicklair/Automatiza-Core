@@ -1,4 +1,5 @@
 """Rutas para gestionar integraciones de cada tenant (Gmail, etc.)."""
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -41,6 +42,7 @@ def _pop_oauth_state(state: str) -> str | None:
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
 
+
 class IntegrationStatusOut(BaseModel):
     integration_type: str
     is_active: bool
@@ -48,6 +50,7 @@ class IntegrationStatusOut(BaseModel):
 
 
 # ─── Rutas ───────────────────────────────────────────────────────────────────
+
 
 @limiter.limit("10/minute")
 @router.get("/", response_model=list[IntegrationStatusOut])
@@ -58,9 +61,7 @@ async def list_integrations(
 ):
     """Lista todas las integraciones configuradas del tenant."""
     result = await db.execute(
-        select(TenantIntegration).where(
-            TenantIntegration.tenant_id == current_user.tenant_id
-        )
+        select(TenantIntegration).where(TenantIntegration.tenant_id == current_user.tenant_id)
     )
     integrations = result.scalars().all()
     return [
@@ -77,6 +78,7 @@ class Psd2ConnectRequest(BaseModel):
     secret_id: str
     secret_key: str
 
+
 @limiter.limit("10/minute")
 @router.post("/psd2/connect", status_code=201)
 async def connect_psd2(
@@ -87,23 +89,27 @@ async def connect_psd2(
 ):
     """Conecta la cuenta bancaria vía PSD2 (Nordigen) guardando las credenciales cifradas."""
     if not payload.secret_id.strip() or not payload.secret_key.strip():
-        raise HTTPException(status_code=400, detail="El secret_id y secret_key no pueden estar vacíos")
+        raise HTTPException(
+            status_code=400, detail="El secret_id y secret_key no pueden estar vacíos"
+        )
 
     # Verificar que las credenciales funcionan antes de guardar
     from app.integrations.psd2 import NordigenClient
+
     client = NordigenClient(secret_id=payload.secret_id, secret_key=payload.secret_key)
     try:
         await client._get_access_token()
     except Exception:
         raise HTTPException(
-            status_code=400,
-            detail="Las credenciales de Nordigen/GoCardless no son válidas."
+            status_code=400, detail="Las credenciales de Nordigen/GoCardless no son válidas."
         )
     finally:
         await client.close()
 
     # Cifrar y guardar (upsert)
-    encrypted = encrypt_credentials({"secret_id": payload.secret_id, "secret_key": payload.secret_key})
+    encrypted = encrypt_credentials(
+        {"secret_id": payload.secret_id, "secret_key": payload.secret_key}
+    )
 
     result = await db.execute(
         select(TenantIntegration).where(
@@ -117,12 +123,14 @@ async def connect_psd2(
         existing.encrypted_credentials = encrypted
         existing.is_active = True
     else:
-        db.add(TenantIntegration(
-            tenant_id=current_user.tenant_id,
-            integration_type="psd2",
-            encrypted_credentials=encrypted,
-            is_active=True,
-        ))
+        db.add(
+            TenantIntegration(
+                tenant_id=current_user.tenant_id,
+                integration_type="psd2",
+                encrypted_credentials=encrypted,
+                is_active=True,
+            )
+        )
 
     await db.commit()
     return {"status": "conectado", "integration": "psd2"}
@@ -153,11 +161,12 @@ async def disconnect_psd2(
 
 # ─── Email (IMAP / SMTP) ──────────────────────────────────────────────────────
 
+
 class EmailConnectRequest(BaseModel):
     email_address: str
     password: str
-    provider: str = "gmail"        # gmail | outlook | yahoo | custom
-    imap_host: str | None = None   # Opcional: se infiere del provider
+    provider: str = "gmail"  # gmail | outlook | yahoo | custom
+    imap_host: str | None = None  # Opcional: se infiere del provider
     imap_port: int | None = None
     smtp_host: str | None = None
     smtp_port: int | None = None
@@ -183,7 +192,9 @@ async def connect_email(
     from app.services.email_service import PROVIDER_PRESETS, EmailCredentials, test_imap_connection
 
     if not payload.email_address.strip() or not payload.password.strip():
-        raise HTTPException(status_code=400, detail="El email y la contraseña no pueden estar vacíos")
+        raise HTTPException(
+            status_code=400, detail="El email y la contraseña no pueden estar vacíos"
+        )
 
     preset = PROVIDER_PRESETS.get(payload.provider, PROVIDER_PRESETS["gmail"])
     creds = EmailCredentials(
@@ -207,15 +218,17 @@ async def connect_email(
             ),
         )
 
-    encrypted = encrypt_credentials({
-        "email_address": creds.email_address,
-        "password": creds.password,
-        "provider": creds.provider,
-        "imap_host": creds.imap_host,
-        "imap_port": creds.imap_port,
-        "smtp_host": creds.smtp_host,
-        "smtp_port": creds.smtp_port,
-    })
+    encrypted = encrypt_credentials(
+        {
+            "email_address": creds.email_address,
+            "password": creds.password,
+            "provider": creds.provider,
+            "imap_host": creds.imap_host,
+            "imap_port": creds.imap_port,
+            "smtp_host": creds.smtp_host,
+            "smtp_port": creds.smtp_port,
+        }
+    )
 
     result = await db.execute(
         select(TenantIntegration).where(
@@ -228,15 +241,22 @@ async def connect_email(
         existing.encrypted_credentials = encrypted
         existing.is_active = True
     else:
-        db.add(TenantIntegration(
-            tenant_id=current_user.tenant_id,
-            integration_type="email",
-            encrypted_credentials=encrypted,
-            is_active=True,
-        ))
+        db.add(
+            TenantIntegration(
+                tenant_id=current_user.tenant_id,
+                integration_type="email",
+                encrypted_credentials=encrypted,
+                is_active=True,
+            )
+        )
 
     await db.commit()
-    return {"status": "conectado", "integration": "email", "provider": payload.provider, "email": payload.email_address}
+    return {
+        "status": "conectado",
+        "integration": "email",
+        "provider": payload.provider,
+        "email": payload.email_address,
+    }
 
 
 @limiter.limit("10/minute")
@@ -296,11 +316,13 @@ async def email_status(
 
 # ─── Google OAuth (Gmail + Google Drive) ──────────────────────────────────────
 
+
 @limiter.limit("10/minute")
 @router.get("/google/auth-url")
 async def google_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     """Generate Google OAuth consent URL."""
     from app.integrations.google_oauth import generate_auth_url
+
     url, state = generate_auth_url(str(current_user.tenant_id))
     _set_oauth_state(state, str(current_user.tenant_id))
     return {"auth_url": url, "state": state}
@@ -308,27 +330,34 @@ async def google_auth_url(request: Request, current_user: User = Depends(get_cur
 
 @limiter.limit("10/minute")
 @router.get("/google/callback", response_class=HTMLResponse)
-async def google_callback(request: Request,
-                          code: str, state: str, db: AsyncSession = Depends(get_db)):
+async def google_callback(
+    request: Request, code: str, state: str, db: AsyncSession = Depends(get_db)
+):
     """Handle Google OAuth callback — exchanges code for tokens and stores them."""
     from app.integrations.google_oauth import exchange_code
 
     tenant_id = _pop_oauth_state(state)
 
     if not tenant_id:
-        return HTMLResponse("<html><body><h2>Error: estado OAuth inválido</h2></body></html>", status_code=400)
+        return HTMLResponse(
+            "<html><body><h2>Error: estado OAuth inválido</h2></body></html>", status_code=400
+        )
 
     try:
         tokens = await exchange_code(code)
     except Exception:
-        return HTMLResponse("<html><body><h2>Error al obtener tokens de Google</h2></body></html>", status_code=400)
+        return HTMLResponse(
+            "<html><body><h2>Error al obtener tokens de Google</h2></body></html>", status_code=400
+        )
 
-    encrypted = encrypt_credentials({
-        "access_token": tokens.get("access_token"),
-        "refresh_token": tokens.get("refresh_token"),
-        "token_type": tokens.get("token_type", "Bearer"),
-        "expires_in": tokens.get("expires_in"),
-    })
+    encrypted = encrypt_credentials(
+        {
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "token_type": tokens.get("token_type", "Bearer"),
+            "expires_in": tokens.get("expires_in"),
+        }
+    )
 
     # Save/update gmail + gdrive integrations
     for itype in ("gmail", "gdrive"):
@@ -343,24 +372,30 @@ async def google_callback(request: Request,
             existing.encrypted_credentials = encrypted
             existing.is_active = True
         else:
-            db.add(TenantIntegration(
-                tenant_id=tenant_id,
-                integration_type=itype,
-                encrypted_credentials=encrypted,
-                is_active=True,
-            ))
+            db.add(
+                TenantIntegration(
+                    tenant_id=tenant_id,
+                    integration_type=itype,
+                    encrypted_credentials=encrypted,
+                    is_active=True,
+                )
+            )
 
     await db.commit()
 
-    return HTMLResponse("""
+    return HTMLResponse(
+        """
     <html><body>
     <script>
         if (window.opener) { window.opener.postMessage({type:'oauth_success',provider:'google'}, '*'); window.close(); }
-        else { window.location.href = '""" + settings.FRONTEND_URL + """/integraciones?connected=google'; }
+        else { window.location.href = '"""
+        + settings.FRONTEND_URL
+        + """/integraciones?connected=google'; }
     </script>
     <p>Conectado con Google. Puedes cerrar esta ventana.</p>
     </body></html>
-    """)
+    """
+    )
 
 
 @limiter.limit("10/minute")
@@ -426,7 +461,9 @@ async def gmail_status(
 
 
 async def _get_oauth_access_token(
-    db: AsyncSession, tenant_id, integration_type: str = "gmail",
+    db: AsyncSession,
+    tenant_id,
+    integration_type: str = "gmail",
 ) -> str | None:
     """Load and auto-refresh OAuth access token for a tenant (Google or Microsoft)."""
     integration = (
@@ -452,11 +489,13 @@ async def _get_oauth_access_token(
     # Test token validity with the appropriate API
     is_microsoft = integration_type in ("outlook", "onedrive")
     test_url = (
-        "https://graph.microsoft.com/v1.0/me" if is_microsoft
+        "https://graph.microsoft.com/v1.0/me"
+        if is_microsoft
         else "https://gmail.googleapis.com/gmail/v1/users/me/profile"
     )
 
     import httpx
+
     async with httpx.AsyncClient() as client:
         test = await client.get(test_url, headers={"Authorization": f"Bearer {access_token}"})
 
@@ -490,6 +529,7 @@ async def gmail_recent(
     if not token:
         return []
     from app.integrations.gmail_client import GmailClient
+
     client = GmailClient(token)
     try:
         return await client.list_messages(max_results=5)
@@ -511,6 +551,7 @@ async def gdrive_recent(
     if not token:
         return []
     from app.integrations.google_drive_client import GoogleDriveClient
+
     client = GoogleDriveClient(token)
     try:
         files = await client.list_files(page_size=5)
@@ -543,11 +584,13 @@ async def gdrive_status(
 
 # ─── Microsoft OAuth (Outlook + OneDrive) ────────────────────────────────────
 
+
 @limiter.limit("10/minute")
 @router.get("/microsoft/auth-url")
 async def microsoft_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     """Generate Microsoft OAuth consent URL."""
     from app.integrations.microsoft_oauth import generate_auth_url
+
     url, state = generate_auth_url(str(current_user.tenant_id))
     _set_oauth_state(state, str(current_user.tenant_id))
     return {"auth_url": url, "state": state}
@@ -555,27 +598,35 @@ async def microsoft_auth_url(request: Request, current_user: User = Depends(get_
 
 @limiter.limit("10/minute")
 @router.get("/microsoft/callback", response_class=HTMLResponse)
-async def microsoft_callback(request: Request,
-                             code: str, state: str, db: AsyncSession = Depends(get_db)):
+async def microsoft_callback(
+    request: Request, code: str, state: str, db: AsyncSession = Depends(get_db)
+):
     """Handle Microsoft OAuth callback — exchanges code for tokens and stores them."""
     from app.integrations.microsoft_oauth import exchange_code
 
     tenant_id = _pop_oauth_state(state)
 
     if not tenant_id:
-        return HTMLResponse("<html><body><h2>Error: estado OAuth inválido</h2></body></html>", status_code=400)
+        return HTMLResponse(
+            "<html><body><h2>Error: estado OAuth inválido</h2></body></html>", status_code=400
+        )
 
     try:
         tokens = await exchange_code(code)
     except Exception:
-        return HTMLResponse("<html><body><h2>Error al obtener tokens de Microsoft</h2></body></html>", status_code=400)
+        return HTMLResponse(
+            "<html><body><h2>Error al obtener tokens de Microsoft</h2></body></html>",
+            status_code=400,
+        )
 
-    encrypted = encrypt_credentials({
-        "access_token": tokens.get("access_token"),
-        "refresh_token": tokens.get("refresh_token"),
-        "token_type": tokens.get("token_type", "Bearer"),
-        "expires_in": tokens.get("expires_in"),
-    })
+    encrypted = encrypt_credentials(
+        {
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "token_type": tokens.get("token_type", "Bearer"),
+            "expires_in": tokens.get("expires_in"),
+        }
+    )
 
     for itype in ("outlook", "onedrive"):
         result = await db.execute(
@@ -589,24 +640,30 @@ async def microsoft_callback(request: Request,
             existing.encrypted_credentials = encrypted
             existing.is_active = True
         else:
-            db.add(TenantIntegration(
-                tenant_id=tenant_id,
-                integration_type=itype,
-                encrypted_credentials=encrypted,
-                is_active=True,
-            ))
+            db.add(
+                TenantIntegration(
+                    tenant_id=tenant_id,
+                    integration_type=itype,
+                    encrypted_credentials=encrypted,
+                    is_active=True,
+                )
+            )
 
     await db.commit()
 
-    return HTMLResponse("""
+    return HTMLResponse(
+        """
     <html><body>
     <script>
         if (window.opener) { window.opener.postMessage({type:'oauth_success',provider:'microsoft'}, '*'); window.close(); }
-        else { window.location.href = '""" + settings.FRONTEND_URL + """/integraciones?connected=microsoft'; }
+        else { window.location.href = '"""
+        + settings.FRONTEND_URL
+        + """/integraciones?connected=microsoft'; }
     </script>
     <p>Conectado con Microsoft. Puedes cerrar esta ventana.</p>
     </body></html>
-    """)
+    """
+    )
 
 
 @limiter.limit("10/minute")
@@ -665,6 +722,7 @@ async def outlook_recent(
     if not token:
         return []
     from app.integrations.outlook_client import OutlookClient
+
     client = OutlookClient(token)
     try:
         return await client.list_messages(top=5)
@@ -686,6 +744,7 @@ async def onedrive_recent(
     if not token:
         return []
     from app.integrations.onedrive_client import OneDriveClient
+
     client = OneDriveClient(token)
     try:
         files = await client.list_files(top=5)

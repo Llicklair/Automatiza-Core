@@ -43,9 +43,7 @@ async def get_tenant_me(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Tenant).where(Tenant.id == current_user.tenant_id)
-    )
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
@@ -60,9 +58,7 @@ async def update_tenant_me(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Tenant).where(Tenant.id == current_user.tenant_id)
-    )
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
@@ -100,7 +96,7 @@ _MASKED = "••••••••"
 
 
 class LlmProviderConfig(BaseModel):
-    api_key: str | None = None       # vacío = no cambiar; _MASKED = ya guardada
+    api_key: str | None = None  # vacío = no cambiar; _MASKED = ya guardada
     model: str | None = None
     enabled: bool = False
 
@@ -162,9 +158,17 @@ async def update_llm_config(
     current_user: User = Depends(get_current_user),
 ):
     if payload.active_llm_provider and payload.active_llm_provider not in ALLOWED_LLM_PROVIDERS:
-        raise HTTPException(status_code=422, detail=f"Provider LLM no válido: {payload.active_llm_provider}")
-    if payload.active_embeddings_provider and payload.active_embeddings_provider not in ALLOWED_EMBEDDINGS_PROVIDERS:
-        raise HTTPException(status_code=422, detail=f"Provider embeddings no válido: {payload.active_embeddings_provider}")
+        raise HTTPException(
+            status_code=422, detail=f"Provider LLM no válido: {payload.active_llm_provider}"
+        )
+    if (
+        payload.active_embeddings_provider
+        and payload.active_embeddings_provider not in ALLOWED_EMBEDDINGS_PROVIDERS
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Provider embeddings no válido: {payload.active_embeddings_provider}",
+        )
 
     result = await db.execute(
         select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == current_user.tenant_id)
@@ -228,6 +232,7 @@ async def update_llm_config(
 # Claude Code CLI — setup automático
 # ---------------------------------------------------------------------------
 
+
 class ClaudeCodeSetupResponse(BaseModel):
     status: str  # "ready" | "needs_auth" | "installed" | "error"
     version: str | None = None
@@ -239,6 +244,7 @@ def _run_cmd(args: list[str], timeout: int = 120) -> tuple[int, str, str]:
     import os
     import shutil
     import subprocess
+
     # Resolver binario
     bin_path = shutil.which(args[0])
     if not bin_path:
@@ -248,8 +254,12 @@ def _run_cmd(args: list[str], timeout: int = 120) -> tuple[int, str, str]:
         args = [bin_path] + args[1:]
     try:
         r = subprocess.run(
-            args, capture_output=True, text=True, timeout=timeout,
-            encoding="utf-8", errors="replace",
+            args,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            encoding="utf-8",
+            errors="replace",
             env={**os.environ, "NO_COLOR": "1"},
         )
         return r.returncode, r.stdout.strip(), r.stderr.strip()
@@ -303,9 +313,7 @@ async def claude_code_setup(
             )
 
     # Step 3: Obtener versión
-    code, version, err = await loop.run_in_executor(
-        None, _run_cmd, ["claude", "--version"]
-    )
+    code, version, err = await loop.run_in_executor(None, _run_cmd, ["claude", "--version"])
     if code != 0:
         version = "desconocida"
 
@@ -319,12 +327,17 @@ async def claude_code_setup(
     if code == 0 and auth_out:
         try:
             import json as _json
+
             auth_data = _json.loads(auth_out)
             is_authenticated = auth_data.get("loggedIn", False) is True
         except (ValueError, KeyError):
             # Fallback: buscar texto
             full_output = f"{auth_out} {auth_err}".lower()
-            is_authenticated = "logged in" in full_output or "authenticated" in full_output or "active" in full_output
+            is_authenticated = (
+                "logged in" in full_output
+                or "authenticated" in full_output
+                or "active" in full_output
+            )
 
     if is_authenticated:
         return ClaudeCodeSetupResponse(
@@ -410,9 +423,7 @@ async def claude_code_logout(
     import asyncio
 
     loop = asyncio.get_event_loop()
-    code, out, err = await loop.run_in_executor(
-        None, _run_cmd, ["claude", "auth", "logout"]
-    )
+    code, out, err = await loop.run_in_executor(None, _run_cmd, ["claude", "auth", "logout"])
 
     if code == 0:
         return ClaudeCodeSetupResponse(
@@ -424,4 +435,3 @@ async def claude_code_logout(
         status="error",
         message=f"Error al cerrar sesión: {err or out}",
     )
-

@@ -4,6 +4,7 @@ Lee la bandeja de entrada y envía correos usando IMAP/SMTP real (con fallback a
 Si el tenant tiene credenciales de email configuradas → usa el servidor real.
 Si no → usa datos de demostración para no romper el flujo.
 """
+
 import logging
 from datetime import datetime
 
@@ -44,6 +45,7 @@ MOCK_EMAILS = [
 ]
 
 # ─── Carga de credenciales de email del tenant ────────────────────────────────
+
 
 async def _get_email_credentials(tenant_id: str):
     """
@@ -117,13 +119,17 @@ async def _get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
             # Test token validity
             is_microsoft = integration_type == "outlook"
             test_url = (
-                "https://graph.microsoft.com/v1.0/me" if is_microsoft
+                "https://graph.microsoft.com/v1.0/me"
+                if is_microsoft
                 else "https://gmail.googleapis.com/gmail/v1/users/me/profile"
             )
 
             import httpx
+
             async with httpx.AsyncClient() as client:
-                test = await client.get(test_url, headers={"Authorization": f"Bearer {access_token}"})
+                test = await client.get(
+                    test_url, headers={"Authorization": f"Bearer {access_token}"}
+                )
 
             if test.status_code == 401 and refresh_token:
                 if is_microsoft:
@@ -140,7 +146,9 @@ async def _get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
 
             return access_token
     except Exception as e:
-        logger.error("Error obteniendo token OAuth (%s) para tenant %s: %s", integration_type, tenant_id, e)
+        logger.error(
+            "Error obteniendo token OAuth (%s) para tenant %s: %s", integration_type, tenant_id, e
+        )
         return None
 
 
@@ -148,6 +156,7 @@ async def _get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
 
 # Se definen como closures para poder inyectar las credenciales en tiempo de ejecución.
 # El LLM las invoca por nombre — el runner las sobreescribe antes de compilar el grafo.
+
 
 @tool
 def check_inbox(tenant_id: str, max_results: int = 10) -> str:
@@ -184,7 +193,9 @@ def check_unread(tenant_id: str, max_results: int = 10) -> str:
 
 
 @tool
-def send_email(tenant_id: str, to: str, subject: str, body: str, attachment_ids: list[str] | None = None) -> str:
+def send_email(
+    tenant_id: str, to: str, subject: str, body: str, attachment_ids: list[str] | None = None
+) -> str:
     """
     Envía un correo electrónico al destinatario indicado, permitiendo adjuntar documentos.
     Args:
@@ -207,6 +218,7 @@ def send_email(tenant_id: str, to: str, subject: str, body: str, attachment_ids:
 
 
 # ─── Nodos del grafo ──────────────────────────────────────────────────────────
+
 
 def _build_tools_list(real_check_fn=None, real_unread_fn=None, real_send_fn=None):
     """Devuelve la lista de tools con las funciones reales o mock según disponibilidad."""
@@ -265,8 +277,13 @@ def _build_graph(tools_list, mode_note: str = ""):
             description="Procesando correos electrónicos...",
             status="completed",
             action_taken=(
-                "Invocando herramientas de correo" if response.tool_calls
-                else (response.content if isinstance(response.content, str) else "Operación de email completada.")
+                "Invocando herramientas de correo"
+                if response.tool_calls
+                else (
+                    response.content
+                    if isinstance(response.content, str)
+                    else "Operación de email completada."
+                )
             ),
         )
 
@@ -275,7 +292,10 @@ def _build_graph(tools_list, mode_note: str = ""):
         state["agent_results"].append(result_log.model_dump())
         # Incluir los mensajes de inicialización en el return para que LangGraph
         # los acumule correctamente en el estado (add_messages reducer)
-        return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
+        return {
+            "messages": extra_init_messages + [response],
+            "agent_results": state["agent_results"],
+        }
 
     def finalize_node(state: AgentState):
         last_msg = state["messages"][-1]
@@ -284,7 +304,8 @@ def _build_graph(tools_list, mode_note: str = ""):
             description="Agente Email ha finalizado sus operaciones.",
             status="completed",
             action_taken=(
-                last_msg.content if isinstance(last_msg.content, str)
+                last_msg.content
+                if isinstance(last_msg.content, str)
                 else "Operaciones de email completadas."
             ),
         )
@@ -304,7 +325,10 @@ def _build_graph(tools_list, mode_note: str = ""):
 
 # ─── Runner principal ──────────────────────────────────────────────────────────
 
-async def _load_attachments(tenant_id: str, attachment_ids: list[str] | None) -> list[tuple[str, bytes]]:
+
+async def _load_attachments(
+    tenant_id: str, attachment_ids: list[str] | None
+) -> list[tuple[str, bytes]]:
     """Load document attachments from DB by their IDs."""
     if not attachment_ids:
         return []
@@ -323,7 +347,7 @@ async def _load_attachments(tenant_id: str, attachment_ids: list[str] | None) ->
                 res = await db.execute(
                     select(TenantDocument.file_path, TenantDocument.title).where(
                         TenantDocument.id == uuid.UUID(doc_id),
-                        TenantDocument.tenant_id == uuid.UUID(tenant_id)
+                        TenantDocument.tenant_id == uuid.UUID(tenant_id),
                     )
                 )
                 row = res.one_or_none()
@@ -359,42 +383,56 @@ async def send_email_direct(
     try:
         if gmail_token:
             from app.integrations.gmail_client import GmailClient
+
             client = GmailClient(gmail_token)
             try:
-                await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
+                await client.send_message(
+                    to=to, subject=subject, body=body, attachments=attachments or None
+                )
                 return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
             finally:
                 await client.close()
         elif outlook_token:
             from app.integrations.outlook_client import OutlookClient
+
             client = OutlookClient(outlook_token)
             try:
-                await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
+                await client.send_message(
+                    to=to, subject=subject, body=body, attachments=attachments or None
+                )
                 return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
             finally:
                 await client.close()
         elif imap_creds:
             import os
             import uuid as _uuid
+
             attachment_paths = []
             if attachment_ids:
                 from sqlalchemy import select as sa_select
 
                 from app.db.base import AsyncSessionLocal
                 from app.db.models.models import TenantDocument
+
                 async with AsyncSessionLocal() as db:
                     for doc_id in attachment_ids:
                         try:
-                            res = await db.execute(sa_select(TenantDocument.file_path).where(
-                                TenantDocument.id == _uuid.UUID(doc_id),
-                                TenantDocument.tenant_id == _uuid.UUID(tenant_id),
-                            ))
+                            res = await db.execute(
+                                sa_select(TenantDocument.file_path).where(
+                                    TenantDocument.id == _uuid.UUID(doc_id),
+                                    TenantDocument.tenant_id == _uuid.UUID(tenant_id),
+                                )
+                            )
                             path = res.scalar_one_or_none()
                             if path and os.path.exists(path):
                                 attachment_paths.append(path)
                         except Exception as _e:
-                            logger.warning("Error resolviendo adjunto smtp doc_id=%s: %s", doc_id, _e)
-            result = send_email_smtp(imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths)
+                            logger.warning(
+                                "Error resolviendo adjunto smtp doc_id=%s: %s", doc_id, _e
+                            )
+            result = send_email_smtp(
+                imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths
+            )
             if result["success"]:
                 return f"Correo enviado via SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
             else:
@@ -441,7 +479,10 @@ async def run_email_agent(
     available_names = list(providers.keys())
 
     if is_mock:
-        logger.warning("[EMAIL] Tenant %s sin credenciales de email — usando datos DEMO. Las operaciones NO son reales.", tenant_id)
+        logger.warning(
+            "[EMAIL] Tenant %s sin credenciales de email — usando datos DEMO. Las operaciones NO son reales.",
+            tenant_id,
+        )
 
     if not is_mock:
         from app.integrations.gmail_client import GmailClient
@@ -450,7 +491,9 @@ async def run_email_agent(
         provider_desc = ", ".join(f'"{p}"' for p in available_names)
 
         @tool
-        async def check_inbox_real(tenant_id: str, provider: str = default_provider, max_results: int = 10) -> str:
+        async def check_inbox_real(
+            tenant_id: str, provider: str = default_provider, max_results: int = 10
+        ) -> str:
             """Lee los correos más recientes de la bandeja de entrada.
             Args:
                 tenant_id: ID del tenant
@@ -467,7 +510,10 @@ async def run_email_agent(
                         msgs = await client.list_messages(max_results=max_results)
                         if not msgs:
                             return "Bandeja de entrada de Gmail vacía."
-                        lines = [f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                        lines = [
+                            f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                            for m in msgs
+                        ]
                         return f"Correos en Gmail ({len(msgs)}):\n\n" + "\n\n".join(lines)
                     finally:
                         await client.close()
@@ -477,7 +523,10 @@ async def run_email_agent(
                         msgs = await client.list_messages(top=max_results)
                         if not msgs:
                             return "Bandeja de entrada de Outlook vacía."
-                        lines = [f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                        lines = [
+                            f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                            for m in msgs
+                        ]
                         return f"Correos en Outlook ({len(msgs)}):\n\n" + "\n\n".join(lines)
                     finally:
                         await client.close()
@@ -485,13 +534,18 @@ async def run_email_agent(
                     msgs = read_inbox(imap_creds, max_results=max_results)
                     if not msgs:
                         return "Bandeja de entrada IMAP vacía."
-                    lines = [f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}" for m in msgs]
+                    lines = [
+                        f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}"
+                        for m in msgs
+                    ]
                     return f"Correos IMAP ({len(msgs)}):\n\n" + "\n\n".join(lines)
             except Exception as e:
                 return f"Error al leer bandeja ({provider}): {e}"
 
         @tool
-        async def check_unread_real(tenant_id: str, provider: str = default_provider, max_results: int = 10) -> str:
+        async def check_unread_real(
+            tenant_id: str, provider: str = default_provider, max_results: int = 10
+        ) -> str:
             """Lee solo los correos NO LEÍDOS de la bandeja de entrada.
             Args:
                 tenant_id: ID del tenant
@@ -505,10 +559,15 @@ async def run_email_agent(
                 if provider == "gmail":
                     client = GmailClient(providers["gmail"])
                     try:
-                        msgs = await client.list_messages(query="is:unread", max_results=max_results)
+                        msgs = await client.list_messages(
+                            query="is:unread", max_results=max_results
+                        )
                         if not msgs:
                             return "No hay correos no leídos en Gmail."
-                        lines = [f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                        lines = [
+                            f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                            for m in msgs
+                        ]
                         return f"Correos no leídos en Gmail ({len(msgs)}):\n\n" + "\n\n".join(lines)
                     finally:
                         await client.close()
@@ -518,21 +577,36 @@ async def run_email_agent(
                         msgs = await client.list_messages(top=max_results, search="isRead:false")
                         if not msgs:
                             return "No hay correos no leídos en Outlook."
-                        lines = [f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
-                        return f"Correos no leídos en Outlook ({len(msgs)}):\n\n" + "\n\n".join(lines)
+                        lines = [
+                            f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                            for m in msgs
+                        ]
+                        return f"Correos no leídos en Outlook ({len(msgs)}):\n\n" + "\n\n".join(
+                            lines
+                        )
                     finally:
                         await client.close()
                 else:  # imap
                     msgs = read_unread(imap_creds, max_results=max_results)
                     if not msgs:
                         return "No hay correos no leídos (IMAP)."
-                    lines = [f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}" for m in msgs]
+                    lines = [
+                        f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}"
+                        for m in msgs
+                    ]
                     return f"Correos no leídos IMAP ({len(msgs)}):\n\n" + "\n\n".join(lines)
             except Exception as e:
                 return f"Error al leer no leídos ({provider}): {e}"
 
         @tool
-        async def send_email_real(tenant_id: str, to: str, subject: str, body: str, provider: str = default_provider, attachment_ids: list[str] | None = None) -> str:
+        async def send_email_real(
+            tenant_id: str,
+            to: str,
+            subject: str,
+            body: str,
+            provider: str = default_provider,
+            attachment_ids: list[str] | None = None,
+        ) -> str:
             """Envía un correo electrónico al destinatario indicado.
             Args:
                 tenant_id: ID del tenant
@@ -556,19 +630,28 @@ async def run_email_agent(
                 if provider == "gmail":
                     client = GmailClient(providers["gmail"])
                     try:
-                        await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
-                        return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
+                        await client.send_message(
+                            to=to, subject=subject, body=body, attachments=attachments or None
+                        )
+                        return (
+                            f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
+                        )
                     finally:
                         await client.close()
                 elif provider == "outlook":
                     client = OutlookClient(providers["outlook"])
                     try:
-                        await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
-                        return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
+                        await client.send_message(
+                            to=to, subject=subject, body=body, attachments=attachments or None
+                        )
+                        return (
+                            f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
+                        )
                     finally:
                         await client.close()
                 else:  # imap/smtp
                     import os
+
                     attachment_paths = []
                     if attachment_ids:
                         import uuid
@@ -577,18 +660,33 @@ async def run_email_agent(
 
                         from app.db.base import AsyncSessionLocal
                         from app.db.models.models import TenantDocument
+
                         async with AsyncSessionLocal() as db:
                             for doc_id in attachment_ids:
                                 try:
-                                    res = await db.execute(sa_select(TenantDocument.file_path).where(
-                                        TenantDocument.id == uuid.UUID(doc_id), TenantDocument.tenant_id == uuid.UUID(tenant_id)))
+                                    res = await db.execute(
+                                        sa_select(TenantDocument.file_path).where(
+                                            TenantDocument.id == uuid.UUID(doc_id),
+                                            TenantDocument.tenant_id == uuid.UUID(tenant_id),
+                                        )
+                                    )
                                     path = res.scalar_one_or_none()
                                     if path and os.path.exists(path):
                                         attachment_paths.append(path)
                                 except Exception as _e:
-                                    logger.warning("Error resolviendo ruta de adjunto doc_id=%s: %s", doc_id, _e)
+                                    logger.warning(
+                                        "Error resolviendo ruta de adjunto doc_id=%s: %s",
+                                        doc_id,
+                                        _e,
+                                    )
                                     continue
-                    result = send_email_smtp(imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths)
+                    result = send_email_smtp(
+                        imap_creds,
+                        to=to,
+                        subject=subject,
+                        body=body,
+                        attachment_paths=attachment_paths,
+                    )
                     if result["success"]:
                         return f"Correo enviado via IMAP/SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
                     else:
@@ -657,5 +755,7 @@ async def run_email_agent(
         action=final_action,
         success=True,
         messages=agent_results,
-        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración." if is_mock else None,
+        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración."
+        if is_mock
+        else None,
     )

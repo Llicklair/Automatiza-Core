@@ -3,6 +3,7 @@ Dispatcher para agentes de dominio personalizado (domain='custom').
 Usa el system_prompt del propio agente como contexto LLM y guarda
 el resultado en su carpeta de documentación.
 """
+
 import logging
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
@@ -21,7 +22,9 @@ async def _dispatch_custom(state: OrchestratorState, subtask: dict) -> AgentResu
     from app.db.models.ai_employees import AIEmployee
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
 
     # Obtener datos del agente desde metadata de la tarea
     metadata = state.get("additional_metadata") or {}
@@ -37,9 +40,7 @@ async def _dispatch_custom(state: OrchestratorState, subtask: dict) -> AgentResu
     if employee_id:
         try:
             async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    select(AIEmployee).where(AIEmployee.id == employee_id)
-                )
+                result = await db.execute(select(AIEmployee).where(AIEmployee.id == employee_id))
                 emp = result.scalar_one_or_none()
                 if emp:
                     employee_name = emp.name
@@ -52,10 +53,12 @@ async def _dispatch_custom(state: OrchestratorState, subtask: dict) -> AgentResu
         async with AsyncSessionLocal() as db:
             llm = await get_llm_for_tenant(tenant_id, db, temperature=0.4)
 
-        response = await llm.ainvoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=intent),
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=intent),
+            ]
+        )
         answer = response.content.strip()
 
         # Guardar en la carpeta de documentación del agente si tiene
@@ -107,6 +110,7 @@ async def _save_to_agent_folder(
     # Guardar usando la infraestructura de documentos RAG si está disponible
     try:
         from app.agents.orchestrator.helpers import _save_ai_result_as_document
+
         await _save_ai_result_as_document(
             tenant_id=tenant_id,
             task_id=task_id,

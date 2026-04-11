@@ -26,7 +26,9 @@ router = APIRouter()
 
 @router.get("/fiscal-snapshot", response_model=FiscalSnapshot)
 async def get_fiscal_snapshot(
-    period: str = Query(default=None, description="Periodo: YYYY-MM (mensual) o YYYY-Q1..Q4 (trimestral)"),
+    period: str = Query(
+        default=None, description="Periodo: YYYY-MM (mensual) o YYYY-Q1..Q4 (trimestral)"
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -59,6 +61,7 @@ async def generate_fiscal_snapshot_pdf(
     snap = await _aggregate_fiscal(db, current_user.tenant_id, start, end, period, label)
 
     from app.services.pdf_reports import generate_fiscal_report_pdf
+
     pdf_bytes = generate_fiscal_report_pdf(
         snap=snap.model_dump(),
         company_name=company_name,
@@ -134,7 +137,7 @@ async def generate_modelo_303(
             select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
         )
         inv_with_lines = lines_q.unique().scalar_one()
-        for line in (inv_with_lines.lines or []):
+        for line in inv_with_lines.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -164,7 +167,7 @@ async def generate_modelo_303(
             select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
         )
         inv_with_lines = lines_q.unique().scalar_one()
-        for line in (inv_with_lines.lines or []):
+        for line in inv_with_lines.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -237,12 +240,21 @@ async def export_libro_registro(
     writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
 
     # Cabecera AEAT-compatible
-    writer.writerow([
-        "Nº Factura", "Fecha Expedición", "Fecha Operación",
-        "NIF Destinatario/Emisor", "Nombre Destinatario/Emisor",
-        "Base Imponible", "Tipo IVA %", "Cuota IVA",
-        "Base Imponible Total", "Cuota IVA Total", "Total Factura",
-    ])
+    writer.writerow(
+        [
+            "Nº Factura",
+            "Fecha Expedición",
+            "Fecha Operación",
+            "NIF Destinatario/Emisor",
+            "Nombre Destinatario/Emisor",
+            "Base Imponible",
+            "Tipo IVA %",
+            "Cuota IVA",
+            "Base Imponible Total",
+            "Cuota IVA Total",
+            "Total Factura",
+        ]
+    )
 
     for inv in invoices:
         counterpart_nif = inv.client.nif if inv.client else ""
@@ -261,25 +273,38 @@ async def export_libro_registro(
                     base_line -= base_line * discount / 100
                 rate = float(line.tax_percentage or 21)
                 quota_line = base_line * rate / 100
-                writer.writerow([
-                    inv_number, inv_date, inv_date,
-                    counterpart_nif, counterpart_name,
-                    f"{base_line:.2f}", f"{rate:.2f}", f"{quota_line:.2f}",
+                writer.writerow(
+                    [
+                        inv_number,
+                        inv_date,
+                        inv_date,
+                        counterpart_nif,
+                        counterpart_name,
+                        f"{base_line:.2f}",
+                        f"{rate:.2f}",
+                        f"{quota_line:.2f}",
+                        f"{float(inv.amount_base or 0):.2f}",
+                        f"{float(inv.tax_amount or 0):.2f}",
+                        f"{float(inv.amount_total or 0):.2f}",
+                    ]
+                )
+        else:
+            # Sin líneas: usar los totales de cabecera
+            writer.writerow(
+                [
+                    inv_number,
+                    inv_date,
+                    inv_date,
+                    counterpart_nif,
+                    counterpart_name,
+                    f"{float(inv.amount_base or 0):.2f}",
+                    "21.00",
+                    f"{float(inv.tax_amount or 0):.2f}",
                     f"{float(inv.amount_base or 0):.2f}",
                     f"{float(inv.tax_amount or 0):.2f}",
                     f"{float(inv.amount_total or 0):.2f}",
-                ])
-        else:
-            # Sin líneas: usar los totales de cabecera
-            writer.writerow([
-                inv_number, inv_date, inv_date,
-                counterpart_nif, counterpart_name,
-                f"{float(inv.amount_base or 0):.2f}", "21.00",
-                f"{float(inv.tax_amount or 0):.2f}",
-                f"{float(inv.amount_base or 0):.2f}",
-                f"{float(inv.tax_amount or 0):.2f}",
-                f"{float(inv.amount_total or 0):.2f}",
-            ])
+                ]
+            )
 
     output.seek(0)
     company_nif = tenant_obj.nif if tenant_obj else "empresa"

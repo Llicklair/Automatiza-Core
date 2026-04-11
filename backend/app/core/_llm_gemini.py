@@ -3,6 +3,7 @@ Utilidades para compatibilidad con Gemini (Google Generative AI).
 Gemini exige que cada AIMessage con tool_calls vaya seguida inmediatamente
 por un ToolMessage por cada llamada. Este módulo sanitiza el historial.
 """
+
 from langchain_core.messages import AIMessage, ToolMessage
 
 

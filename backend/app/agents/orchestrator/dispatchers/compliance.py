@@ -2,6 +2,7 @@
 Dispatcher de compliance fiscal.
 Invoca el compliance agent autónomo (LangGraph).
 """
+
 import logging
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState

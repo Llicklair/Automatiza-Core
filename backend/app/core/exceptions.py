@@ -1,4 +1,5 @@
 """Jerarquia de excepciones tipadas para respuestas estructuradas."""
+
 from __future__ import annotations
 
 

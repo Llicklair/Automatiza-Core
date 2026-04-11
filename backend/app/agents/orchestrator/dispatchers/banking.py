@@ -2,6 +2,7 @@
 Dispatcher bancario (banking agent).
 Invoca el banking agent autónomo (LangGraph).
 """
+
 import logging
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState

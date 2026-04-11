@@ -1,4 +1,5 @@
 """Albaranes (delivery notes) API routes."""
+
 from datetime import date as date_type
 from typing import List, Optional
 from uuid import UUID
@@ -20,12 +21,14 @@ router = APIRouter(prefix="/albaranes", tags=["albaranes"])
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 
+
 class DeliveryNoteLineCreate(BaseModel):
     product_id: Optional[UUID] = None
     description: str
     quantity: float = 1
     unit_price: float = 0
     tax_percentage: float = 21
+
 
 class DeliveryNoteCreate(BaseModel):
     client_id: Optional[UUID] = None
@@ -34,8 +37,10 @@ class DeliveryNoteCreate(BaseModel):
     notes: Optional[str] = None
     lines: List[DeliveryNoteLineCreate] = []
 
+
 class DeliveryNoteStatusUpdate(BaseModel):
     status: str  # draft, confirmed, delivered
+
 
 class DeliveryNoteLineResponse(BaseModel):
     id: UUID
@@ -46,6 +51,7 @@ class DeliveryNoteLineResponse(BaseModel):
     tax_percentage: float
     total: float
     model_config = {"from_attributes": True}
+
 
 class DeliveryNoteResponse(BaseModel):
     id: UUID
@@ -62,7 +68,9 @@ class DeliveryNoteResponse(BaseModel):
     lines: List[DeliveryNoteLineResponse] = []
     model_config = {"from_attributes": True}
 
+
 # ─── Helper ───────────────────────────────────────────────────────────────────
+
 
 async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
     result = await db.execute(
@@ -81,7 +89,9 @@ async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
         num = 1
     return f"ALB-{num:05d}"
 
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
 
 @router.get("", response_model=List[DeliveryNoteResponse])
 @limiter.limit("30/minute")
@@ -108,6 +118,7 @@ async def create_albaran(
     current_user: User = Depends(get_current_user),
 ):
     from decimal import Decimal
+
     albaran_number = await _next_albaran_number(current_user.tenant_id, db)
     entry_date = payload.date or date_type.today()
 
@@ -136,19 +147,23 @@ async def create_albaran(
     for line in payload.lines:
         base = Decimal(str(line.quantity)) * Decimal(str(line.unit_price))
         total = base + base * Decimal(str(line.tax_percentage)) / Decimal("100")
-        db.add(DeliveryNoteLine(
-            albaran_id=note.id,
-            product_id=line.product_id,
-            description=line.description,
-            quantity=line.quantity,
-            unit_price=line.unit_price,
-            tax_percentage=line.tax_percentage,
-            total=total,
-        ))
+        db.add(
+            DeliveryNoteLine(
+                albaran_id=note.id,
+                product_id=line.product_id,
+                description=line.description,
+                quantity=line.quantity,
+                unit_price=line.unit_price,
+                tax_percentage=line.tax_percentage,
+                total=total,
+            )
+        )
 
     await db.commit()
     result = await db.execute(
-        select(DeliveryNote).where(DeliveryNote.id == note.id).options(selectinload(DeliveryNote.lines))
+        select(DeliveryNote)
+        .where(DeliveryNote.id == note.id)
+        .options(selectinload(DeliveryNote.lines))
     )
     return result.scalar_one()
 
@@ -206,8 +221,9 @@ async def delete_albaran(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(DeliveryNote)
-        .where(DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == current_user.tenant_id)
+        select(DeliveryNote).where(
+            DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == current_user.tenant_id
+        )
     )
     note = result.scalar_one_or_none()
     if not note:
@@ -251,6 +267,7 @@ async def get_albaran_pdf(
     theme = None
     try:
         from app.api.v1.routes.templates import get_default_theme
+
         theme = await get_default_theme(current_user.tenant_id, "albaran", db)
     except Exception:
         pass
@@ -281,6 +298,7 @@ async def get_albaran_pdf(
     }
 
     from app.services.pdf_albaranes import generate_albaran_pdf
+
     pdf_bytes = generate_albaran_pdf(albaran_data, theme)
 
     return Response(

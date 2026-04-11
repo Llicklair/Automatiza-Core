@@ -1,6 +1,7 @@
 """
 Generación de PDFs: Modelo 303 (IVA) e informe fiscal (IVA + IRPF + IS).
 """
+
 import io
 import logging
 from datetime import datetime
@@ -36,6 +37,7 @@ if REPORTLAB_AVAILABLE:
 # Modelo 303 — Autoliquidación IVA
 # ---------------------------------------------------------------------------
 
+
 def generate_modelo_303_pdf(data: dict) -> bytes:
     """
     Genera PDF borrador del Modelo 303 (liquidación trimestral IVA).
@@ -48,160 +50,273 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
     - vat_deducted: list of dict con rate, base, quota   (IVA deducible / compras)
     """
     if not REPORTLAB_AVAILABLE:
-        return f"MODELO 303 BORRADOR Q{data.get('quarter')}/{data.get('year')}\n".encode('utf-8')
+        return f"MODELO 303 BORRADOR Q{data.get('quarter')}/{data.get('year')}\n".encode("utf-8")
 
     s = _common_styles()
-    C = s['C']
+    C = s["C"]
     buffer = io.BytesIO()
     doc = _make_doc(buffer)
     elements = []
 
-    tenant = data.get('tenant', {})
-    quarter = int(data.get('quarter', 1))
-    year = int(data.get('year', 2026))
-    quarter_labels = {1: "1T (Enero - Marzo)", 2: "2T (Abril - Junio)",
-                      3: "3T (Julio - Septiembre)", 4: "4T (Octubre - Diciembre)"}
+    tenant = data.get("tenant", {})
+    quarter = int(data.get("quarter", 1))
+    year = int(data.get("year", 2026))
+    quarter_labels = {
+        1: "1T (Enero - Marzo)",
+        2: "2T (Abril - Junio)",
+        3: "3T (Julio - Septiembre)",
+        4: "4T (Octubre - Diciembre)",
+    }
 
     # ── CABECERA ──
-    elements.append(Paragraph("Modelo 303 — Autoliquidación IVA", s['title']))
-    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("Modelo 303 — Autoliquidación IVA", s["title"]))
+    elements.append(Spacer(1, 3 * mm))
 
-    draft_style = ParagraphStyle('DraftBadge', parent=s['styles']['Normal'],
-        fontSize=10, fontName='Helvetica-Bold', textColor=colors.HexColor(C['AMBER']))
+    draft_style = ParagraphStyle(
+        "DraftBadge",
+        parent=s["styles"]["Normal"],
+        fontSize=10,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor(C["AMBER"]),
+    )
     draft_data = [[Paragraph("BORRADOR — NO VÁLIDO PARA PRESENTACIÓN", draft_style)]]
-    draft_table = Table(draft_data, colWidths=[175*mm])
-    draft_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fffbeb')),
-        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor(C['AMBER'])),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-    ]))
+    draft_table = Table(draft_data, colWidths=[175 * mm])
+    draft_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fffbeb")),
+                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor(C["AMBER"])),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]
+        )
+    )
     elements.append(draft_table)
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 5 * mm))
 
     info_data = [
-        [Paragraph("Empresa:", s['header']), Paragraph(tenant.get('name', '—'), s['body']),
-         Paragraph("NIF:", s['header']), Paragraph(tenant.get('nif', '—'), s['body'])],
-        [Paragraph("Período:", s['header']), Paragraph(quarter_labels.get(quarter, ''), s['body']),
-         Paragraph("Ejercicio:", s['header']), Paragraph(str(year), s['body'])],
+        [
+            Paragraph("Empresa:", s["header"]),
+            Paragraph(tenant.get("name", "—"), s["body"]),
+            Paragraph("NIF:", s["header"]),
+            Paragraph(tenant.get("nif", "—"), s["body"]),
+        ],
+        [
+            Paragraph("Período:", s["header"]),
+            Paragraph(quarter_labels.get(quarter, ""), s["body"]),
+            Paragraph("Ejercicio:", s["header"]),
+            Paragraph(str(year), s["body"]),
+        ],
     ]
-    info_table = Table(info_data, colWidths=[22*mm, 65*mm, 22*mm, 65*mm])
-    info_table.setStyle(TableStyle([
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-    ]))
+    info_table = Table(info_data, colWidths=[22 * mm, 65 * mm, 22 * mm, 65 * mm])
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
     elements.append(info_table)
-    elements.append(Spacer(1, 5*mm))
-    elements.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor(C['INDIGO'])))
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 5 * mm))
+    elements.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor(C["INDIGO"])))
+    elements.append(Spacer(1, 5 * mm))
 
     # ── SECCIÓN A: IVA DEVENGADO ──
-    elements.append(Paragraph("A) IVA DEVENGADO (Ventas y prestaciones de servicios)", s['section']))
-    vat_collected = data.get('vat_collected', [])
+    elements.append(
+        Paragraph("A) IVA DEVENGADO (Ventas y prestaciones de servicios)", s["section"])
+    )
+    vat_collected = data.get("vat_collected", [])
 
-    vat_col_widths = [50*mm, 45*mm, 45*mm]
-    vat_data = [[Paragraph('Tipo IVA', s['header']), Paragraph('Base imponible', s['header']),
-                 Paragraph('Cuota', s['header'])]]
+    vat_col_widths = [50 * mm, 45 * mm, 45 * mm]
+    vat_data = [
+        [
+            Paragraph("Tipo IVA", s["header"]),
+            Paragraph("Base imponible", s["header"]),
+            Paragraph("Cuota", s["header"]),
+        ]
+    ]
     total_col_base = 0.0
     total_col_quota = 0.0
     for row in vat_collected:
-        base_v = float(row.get('base', 0))
-        quota_v = float(row.get('quota', 0))
+        base_v = float(row.get("base", 0))
+        quota_v = float(row.get("quota", 0))
         total_col_base += base_v
         total_col_quota += quota_v
-        vat_data.append([
-            Paragraph(f"{float(row.get('rate', 0)):.0f}%", s['body']),
-            Paragraph(f"{base_v:.2f} €", s['right']),
-            Paragraph(f"{quota_v:.2f} €", s['right']),
-        ])
-    vat_data.append([
-        Paragraph("TOTAL IVA DEVENGADO", ParagraphStyle('VatTotal', parent=s['styles']['Normal'],
-            fontSize=9, fontName='Helvetica-Bold', textColor=colors.HexColor(C['SLATE']))),
-        Paragraph(f"{total_col_base:.2f} €", s['right_bold']),
-        Paragraph(f"{total_col_quota:.2f} €", s['right_bold']),
-    ])
+        vat_data.append(
+            [
+                Paragraph(f"{float(row.get('rate', 0)):.0f}%", s["body"]),
+                Paragraph(f"{base_v:.2f} €", s["right"]),
+                Paragraph(f"{quota_v:.2f} €", s["right"]),
+            ]
+        )
+    vat_data.append(
+        [
+            Paragraph(
+                "TOTAL IVA DEVENGADO",
+                ParagraphStyle(
+                    "VatTotal",
+                    parent=s["styles"]["Normal"],
+                    fontSize=9,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["SLATE"]),
+                ),
+            ),
+            Paragraph(f"{total_col_base:.2f} €", s["right_bold"]),
+            Paragraph(f"{total_col_quota:.2f} €", s["right_bold"]),
+        ]
+    )
 
     vat_table = Table(vat_data, colWidths=vat_col_widths)
-    vat_table.setStyle(TableStyle(_table_header_style() + [
-        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-        ('LINEABOVE', (0, -1), (-1, -1), 1, colors.HexColor(C['LINE'])),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f0fdf4')),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-    ]))
+    vat_table.setStyle(
+        TableStyle(
+            _table_header_style()
+            + [
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("LINEABOVE", (0, -1), (-1, -1), 1, colors.HexColor(C["LINE"])),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f0fdf4")),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ]
+        )
+    )
     elements.append(vat_table)
-    elements.append(Spacer(1, 6*mm))
+    elements.append(Spacer(1, 6 * mm))
 
     # ── SECCIÓN B: IVA DEDUCIBLE ──
-    elements.append(Paragraph("B) IVA DEDUCIBLE (Compras y gastos)", s['section']))
-    vat_deducted = data.get('vat_deducted', [])
+    elements.append(Paragraph("B) IVA DEDUCIBLE (Compras y gastos)", s["section"]))
+    vat_deducted = data.get("vat_deducted", [])
 
-    ded_data = [[Paragraph('Tipo IVA', s['header']), Paragraph('Base imponible', s['header']),
-                 Paragraph('Cuota', s['header'])]]
+    ded_data = [
+        [
+            Paragraph("Tipo IVA", s["header"]),
+            Paragraph("Base imponible", s["header"]),
+            Paragraph("Cuota", s["header"]),
+        ]
+    ]
     total_ded_base = 0.0
     total_ded_quota = 0.0
     for row in vat_deducted:
-        base_v = float(row.get('base', 0))
-        quota_v = float(row.get('quota', 0))
+        base_v = float(row.get("base", 0))
+        quota_v = float(row.get("quota", 0))
         total_ded_base += base_v
         total_ded_quota += quota_v
-        ded_data.append([
-            Paragraph(f"{float(row.get('rate', 0)):.0f}%", s['body']),
-            Paragraph(f"{base_v:.2f} €", s['right']),
-            Paragraph(f"{quota_v:.2f} €", s['right']),
-        ])
-    ded_data.append([
-        Paragraph("TOTAL IVA DEDUCIBLE", ParagraphStyle('DedTotal', parent=s['styles']['Normal'],
-            fontSize=9, fontName='Helvetica-Bold', textColor=colors.HexColor(C['SLATE']))),
-        Paragraph(f"{total_ded_base:.2f} €", s['right_bold']),
-        Paragraph(f"{total_ded_quota:.2f} €", s['right_bold']),
-    ])
+        ded_data.append(
+            [
+                Paragraph(f"{float(row.get('rate', 0)):.0f}%", s["body"]),
+                Paragraph(f"{base_v:.2f} €", s["right"]),
+                Paragraph(f"{quota_v:.2f} €", s["right"]),
+            ]
+        )
+    ded_data.append(
+        [
+            Paragraph(
+                "TOTAL IVA DEDUCIBLE",
+                ParagraphStyle(
+                    "DedTotal",
+                    parent=s["styles"]["Normal"],
+                    fontSize=9,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["SLATE"]),
+                ),
+            ),
+            Paragraph(f"{total_ded_base:.2f} €", s["right_bold"]),
+            Paragraph(f"{total_ded_quota:.2f} €", s["right_bold"]),
+        ]
+    )
     ded_table = Table(ded_data, colWidths=vat_col_widths)
-    ded_table.setStyle(TableStyle(_table_header_style() + [
-        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-        ('LINEABOVE', (0, -1), (-1, -1), 1, colors.HexColor(C['LINE'])),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#fef2f2')),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-    ]))
+    ded_table.setStyle(
+        TableStyle(
+            _table_header_style()
+            + [
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("LINEABOVE", (0, -1), (-1, -1), 1, colors.HexColor(C["LINE"])),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#fef2f2")),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ]
+        )
+    )
     elements.append(ded_table)
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 8 * mm))
 
     # ── RESULTADO ──
     resultado = total_col_quota - total_ded_quota
     result_label = "A INGRESAR" if resultado >= 0 else "A COMPENSAR"
-    result_color = C['RED'] if resultado >= 0 else C['EMERALD']
+    result_color = C["RED"] if resultado >= 0 else C["EMERALD"]
 
     result_data = [
-        [Paragraph("IVA devengado (A):", s['right']), Paragraph(f"{total_col_quota:.2f} €", s['right_bold'])],
-        [Paragraph("IVA deducible (B):", s['right']), Paragraph(f"{total_ded_quota:.2f} €", s['right_bold'])],
-        [Paragraph(f"RESULTADO ({result_label}):", ParagraphStyle('ResLabel', parent=s['styles']['Normal'],
-            fontSize=12, fontName='Helvetica-Bold', textColor=colors.HexColor(result_color), alignment=TA_RIGHT)),
-         Paragraph(f"{abs(resultado):.2f} €", ParagraphStyle('ResVal', parent=s['styles']['Normal'],
-            fontSize=14, fontName='Helvetica-Bold', textColor=colors.HexColor(result_color), alignment=TA_RIGHT))],
+        [
+            Paragraph("IVA devengado (A):", s["right"]),
+            Paragraph(f"{total_col_quota:.2f} €", s["right_bold"]),
+        ],
+        [
+            Paragraph("IVA deducible (B):", s["right"]),
+            Paragraph(f"{total_ded_quota:.2f} €", s["right_bold"]),
+        ],
+        [
+            Paragraph(
+                f"RESULTADO ({result_label}):",
+                ParagraphStyle(
+                    "ResLabel",
+                    parent=s["styles"]["Normal"],
+                    fontSize=12,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(result_color),
+                    alignment=TA_RIGHT,
+                ),
+            ),
+            Paragraph(
+                f"{abs(resultado):.2f} €",
+                ParagraphStyle(
+                    "ResVal",
+                    parent=s["styles"]["Normal"],
+                    fontSize=14,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(result_color),
+                    alignment=TA_RIGHT,
+                ),
+            ),
+        ],
     ]
-    result_table = Table(result_data, colWidths=[130*mm, 40*mm], hAlign='RIGHT')
-    result_table.setStyle(TableStyle([
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LINEABOVE', (0, 2), (-1, 2), 2, colors.HexColor(result_color)),
-        ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#f8fafc')),
-    ]))
+    result_table = Table(result_data, colWidths=[130 * mm, 40 * mm], hAlign="RIGHT")
+    result_table.setStyle(
+        TableStyle(
+            [
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LINEABOVE", (0, 2), (-1, 2), 2, colors.HexColor(result_color)),
+                ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#f8fafc")),
+            ]
+        )
+    )
     elements.append(result_table)
-    elements.append(Spacer(1, 10*mm))
+    elements.append(Spacer(1, 10 * mm))
 
     # ── PIE ──
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(C['LINE'])))
-    elements.append(Spacer(1, 3*mm))
-    elements.append(Paragraph(
-        "Documento informativo generado automáticamente. No sustituye la presentación oficial ante la AEAT.",
-        ParagraphStyle('AEATFooter', parent=s['styles']['Normal'],
-            fontSize=8, fontName='Helvetica-Bold', textColor=colors.HexColor(C['RED']), alignment=TA_CENTER)))
-    elements.append(Spacer(1, 2*mm))
-    elements.append(Paragraph(
-        f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-        s['footer']))
+    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(C["LINE"])))
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(
+        Paragraph(
+            "Documento informativo generado automáticamente. No sustituye la presentación oficial ante la AEAT.",
+            ParagraphStyle(
+                "AEATFooter",
+                parent=s["styles"]["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                textColor=colors.HexColor(C["RED"]),
+                alignment=TA_CENTER,
+            ),
+        )
+    )
+    elements.append(Spacer(1, 2 * mm))
+    elements.append(
+        Paragraph(
+            f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            s["footer"],
+        )
+    )
 
     doc.build(elements)
     return buffer.getvalue()
@@ -210,6 +325,7 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
 # ---------------------------------------------------------------------------
 # Informe Fiscal (IVA + IRPF + IS)
 # ---------------------------------------------------------------------------
+
 
 def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> bytes:
     """
@@ -221,16 +337,16 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
     if not REPORTLAB_AVAILABLE:
         return f"Informe Fiscal {period}\n{snap.get('resumen_ejecutivo', '')}".encode("utf-8")
 
-    C_INDIGO  = colors.HexColor('#6366f1')
-    C_EMERALD = colors.HexColor('#10b981')
-    C_RED     = colors.HexColor('#ef4444')
-    C_AMBER   = colors.HexColor('#f59e0b')
-    C_BLUE    = colors.HexColor('#3b82f6')
-    C_SLATE   = colors.HexColor('#1e293b')
-    C_GRAY    = colors.HexColor('#64748b')
-    C_LIGHT   = colors.HexColor('#f8fafc')
-    C_LINE    = colors.HexColor('#e2e8f0')
-    C_FOOTER  = colors.HexColor('#94a3b8')
+    C_INDIGO = colors.HexColor("#6366f1")
+    C_EMERALD = colors.HexColor("#10b981")
+    C_RED = colors.HexColor("#ef4444")
+    C_AMBER = colors.HexColor("#f59e0b")
+    C_BLUE = colors.HexColor("#3b82f6")
+    C_SLATE = colors.HexColor("#1e293b")
+    C_GRAY = colors.HexColor("#64748b")
+    C_LIGHT = colors.HexColor("#f8fafc")
+    C_LINE = colors.HexColor("#e2e8f0")
+    C_FOOTER = colors.HexColor("#94a3b8")
 
     iva = snap.get("iva", {})
     irpf = snap.get("irpf", {})
@@ -243,60 +359,99 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        rightMargin=15*mm, leftMargin=15*mm,
-        topMargin=12*mm, bottomMargin=12*mm,
+        buffer,
+        pagesize=A4,
+        rightMargin=15 * mm,
+        leftMargin=15 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
     )
     styles = getSampleStyleSheet()
 
     def sty(name, **kw):
         return ParagraphStyle(name, parent=styles["Normal"], **kw)
 
-    s_company   = sty("FCo", fontSize=20, fontName="Helvetica-Bold", textColor=C_SLATE)
-    s_badge     = sty("FBa", fontSize=9,  fontName="Helvetica-Bold", textColor=C_RED)
-    s_period    = sty("FPe", fontSize=13, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT)
-    s_generated = sty("FGe", fontSize=7,  fontName="Helvetica", textColor=C_FOOTER, alignment=TA_RIGHT)
-    s_section   = sty("FSe", fontSize=10, fontName="Helvetica-Bold", textColor=C_GRAY, spaceBefore=6, spaceAfter=4)
-    s_resumen   = sty("FRe", fontSize=9,  fontName="Helvetica", textColor=colors.HexColor("#334155"), leading=13, spaceBefore=4)
-    s_kpi_lbl   = sty("FKl", fontSize=7,  fontName="Helvetica", textColor=C_GRAY, alignment=TA_CENTER)
-    s_footer    = sty("FFo", fontSize=7,  fontName="Helvetica", textColor=C_FOOTER, alignment=TA_CENTER)
-    s_row_lbl   = sty("FRl", fontSize=8,  fontName="Helvetica", textColor=C_GRAY)
-    s_row_val   = sty("FRv", fontSize=8,  fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT)
-    s_row_val_em  = sty("FRve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT)
-    s_row_val_red = sty("FRvr", fontSize=8, fontName="Helvetica-Bold", textColor=C_RED, alignment=TA_RIGHT)
+    s_company = sty("FCo", fontSize=20, fontName="Helvetica-Bold", textColor=C_SLATE)
+    s_badge = sty("FBa", fontSize=9, fontName="Helvetica-Bold", textColor=C_RED)
+    s_period = sty(
+        "FPe", fontSize=13, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT
+    )
+    s_generated = sty(
+        "FGe", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_RIGHT
+    )
+    s_section = sty(
+        "FSe", fontSize=10, fontName="Helvetica-Bold", textColor=C_GRAY, spaceBefore=6, spaceAfter=4
+    )
+    s_resumen = sty(
+        "FRe",
+        fontSize=9,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#334155"),
+        leading=13,
+        spaceBefore=4,
+    )
+    s_kpi_lbl = sty("FKl", fontSize=7, fontName="Helvetica", textColor=C_GRAY, alignment=TA_CENTER)
+    s_footer = sty("FFo", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_CENTER)
+    s_row_lbl = sty("FRl", fontSize=8, fontName="Helvetica", textColor=C_GRAY)
+    s_row_val = sty(
+        "FRv", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT
+    )
+    s_row_val_em = sty(
+        "FRve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT
+    )
+    s_row_val_red = sty(
+        "FRvr", fontSize=8, fontName="Helvetica-Bold", textColor=C_RED, alignment=TA_RIGHT
+    )
 
     elements = []
 
     # ── CABECERA ──
-    header_data = [[
-        [Paragraph(company_name, s_company), Spacer(1, 5), Paragraph("INFORME FISCAL", s_badge)],
-        [Paragraph(period_label, s_period), Spacer(1, 5),
-         Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", s_generated)],
-    ]]
-    header_table = Table(header_data, colWidths=[110*mm, 65*mm])
-    header_table.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "BOTTOM"),
-        ("LEFTPADDING", (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 0),
-    ]))
+    header_data = [
+        [
+            [
+                Paragraph(company_name, s_company),
+                Spacer(1, 5),
+                Paragraph("INFORME FISCAL", s_badge),
+            ],
+            [
+                Paragraph(period_label, s_period),
+                Spacer(1, 5),
+                Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", s_generated),
+            ],
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[110 * mm, 65 * mm])
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
     elements.append(header_table)
-    elements.append(Spacer(1, 7*mm))
+    elements.append(Spacer(1, 7 * mm))
     elements.append(HRFlowable(width="100%", thickness=2, color=C_RED))
-    elements.append(Spacer(1, 6*mm))
+    elements.append(Spacer(1, 6 * mm))
 
     # ── RESUMEN EJECUTIVO ──
     elements.append(Paragraph("RESUMEN EJECUTIVO", s_section))
-    resumen_box = Table([[Paragraph(resumen, s_resumen)]], colWidths=[175*mm])
-    resumen_box.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#fef2f2")),
-        ("LINEABOVE",  (0,0), (-1,0), 2, C_RED),
-        ("TOPPADDING", (0,0), (-1,-1), 8),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 8),
-        ("LEFTPADDING", (0,0), (-1,-1), 10),
-        ("RIGHTPADDING", (0,0), (-1,-1), 10),
-    ]))
+    resumen_box = Table([[Paragraph(resumen, s_resumen)]], colWidths=[175 * mm])
+    resumen_box.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fef2f2")),
+                ("LINEABOVE", (0, 0), (-1, 0), 2, C_RED),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
     elements.append(resumen_box)
-    elements.append(Spacer(1, 6*mm))
+    elements.append(Spacer(1, 6 * mm))
 
     # ── KPIs ──
     resultado_iva = float(iva.get("resultado_iva", 0))
@@ -305,83 +460,176 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
     saldo_fiscal = resultado_iva + total_irpf + cuota_is
     iva_color = C_RED if resultado_iva > 0 else C_EMERALD
 
-    kpi_data = [[
-        [Paragraph(fmt_eur(resultado_iva), sty("fkv1", fontSize=14, fontName="Helvetica-Bold", textColor=iva_color, alignment=TA_CENTER)),
-         Paragraph("Resultado IVA", s_kpi_lbl)],
-        [Paragraph(fmt_eur(total_irpf), sty("fkv2", fontSize=14, fontName="Helvetica-Bold", textColor=C_AMBER, alignment=TA_CENTER)),
-         Paragraph("IRPF Retenciones", s_kpi_lbl)],
-        [Paragraph(fmt_eur(cuota_is), sty("fkv3", fontSize=14, fontName="Helvetica-Bold", textColor=C_BLUE, alignment=TA_CENTER)),
-         Paragraph("IS Estimado", s_kpi_lbl)],
-        [Paragraph(fmt_eur(saldo_fiscal), sty("fkv4", fontSize=14, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_CENTER)),
-         Paragraph("Total obligaciones", s_kpi_lbl)],
-    ]]
-    kpi_table = Table(kpi_data, colWidths=[44*mm]*4)
-    kpi_table.setStyle(TableStyle([
-        ("BOX", (0,0),(0,0), 0.5, iva_color),
-        ("BOX", (1,0),(1,0), 0.5, C_AMBER),
-        ("BOX", (2,0),(2,0), 0.5, C_BLUE),
-        ("BOX", (3,0),(3,0), 0.5, C_SLATE),
-        ("BACKGROUND", (0,0),(0,0), colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4")),
-        ("BACKGROUND", (1,0),(1,0), colors.HexColor("#fffbeb")),
-        ("BACKGROUND", (2,0),(2,0), colors.HexColor("#eff6ff")),
-        ("BACKGROUND", (3,0),(3,0), C_LIGHT),
-        ("TOPPADDING", (0,0),(-1,-1), 8),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 8),
-        ("VALIGN", (0,0),(-1,-1), "MIDDLE"),
-        ("LEFTPADDING", (0,0),(-1,-1), 4),
-        ("RIGHTPADDING",(0,0),(-1,-1), 4),
-    ]))
+    kpi_data = [
+        [
+            [
+                Paragraph(
+                    fmt_eur(resultado_iva),
+                    sty(
+                        "fkv1",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=iva_color,
+                        alignment=TA_CENTER,
+                    ),
+                ),
+                Paragraph("Resultado IVA", s_kpi_lbl),
+            ],
+            [
+                Paragraph(
+                    fmt_eur(total_irpf),
+                    sty(
+                        "fkv2",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=C_AMBER,
+                        alignment=TA_CENTER,
+                    ),
+                ),
+                Paragraph("IRPF Retenciones", s_kpi_lbl),
+            ],
+            [
+                Paragraph(
+                    fmt_eur(cuota_is),
+                    sty(
+                        "fkv3",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=C_BLUE,
+                        alignment=TA_CENTER,
+                    ),
+                ),
+                Paragraph("IS Estimado", s_kpi_lbl),
+            ],
+            [
+                Paragraph(
+                    fmt_eur(saldo_fiscal),
+                    sty(
+                        "fkv4",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=C_SLATE,
+                        alignment=TA_CENTER,
+                    ),
+                ),
+                Paragraph("Total obligaciones", s_kpi_lbl),
+            ],
+        ]
+    ]
+    kpi_table = Table(kpi_data, colWidths=[44 * mm] * 4)
+    kpi_table.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (0, 0), 0.5, iva_color),
+                ("BOX", (1, 0), (1, 0), 0.5, C_AMBER),
+                ("BOX", (2, 0), (2, 0), 0.5, C_BLUE),
+                ("BOX", (3, 0), (3, 0), 0.5, C_SLATE),
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (0, 0),
+                    colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4"),
+                ),
+                ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#fffbeb")),
+                ("BACKGROUND", (2, 0), (2, 0), colors.HexColor("#eff6ff")),
+                ("BACKGROUND", (3, 0), (3, 0), C_LIGHT),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     elements.append(kpi_table)
-    elements.append(Spacer(1, 6*mm))
+    elements.append(Spacer(1, 6 * mm))
 
     # ── SECCIÓN 1: IVA ──
     elements.append(Paragraph("1. IMPUESTO SOBRE EL VALOR AÑADIDO (IVA)", s_section))
 
     rep_21 = float(iva.get("repercutido_21", 0))
     rep_10 = float(iva.get("repercutido_10", 0))
-    rep_4  = float(iva.get("repercutido_4", 0))
+    rep_4 = float(iva.get("repercutido_4", 0))
     sop_21 = float(iva.get("soportado_21", 0))
     sop_10 = float(iva.get("soportado_10", 0))
-    sop_4  = float(iva.get("soportado_4", 0))
+    sop_4 = float(iva.get("soportado_4", 0))
     total_rep = float(iva.get("total_repercutido", 0))
     total_sop = float(iva.get("total_soportado", 0))
 
     iva_detail = [
-        [Paragraph("Tipo", s_row_lbl), Paragraph("Repercutido", s_row_val),
-         Paragraph("Soportado", s_row_val), Paragraph("Diferencia", s_row_val)],
-        [Paragraph("General (21%)", s_row_lbl), Paragraph(fmt_eur(rep_21), s_row_val),
-         Paragraph(fmt_eur(sop_21), s_row_val), Paragraph(fmt_eur(rep_21 - sop_21), s_row_val)],
-        [Paragraph("Reducido (10%)", s_row_lbl), Paragraph(fmt_eur(rep_10), s_row_val),
-         Paragraph(fmt_eur(sop_10), s_row_val), Paragraph(fmt_eur(rep_10 - sop_10), s_row_val)],
-        [Paragraph("Superreducido (4%)", s_row_lbl), Paragraph(fmt_eur(rep_4), s_row_val),
-         Paragraph(fmt_eur(sop_4), s_row_val), Paragraph(fmt_eur(rep_4 - sop_4), s_row_val)],
-        [Paragraph("TOTAL", sty("FTot", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE)),
-         Paragraph(fmt_eur(total_rep), s_row_val_em), Paragraph(fmt_eur(total_sop), s_row_val_red),
-         Paragraph(fmt_eur(resultado_iva), sty("FResV", fontSize=8, fontName="Helvetica-Bold",
-                   textColor=C_RED if resultado_iva > 0 else C_EMERALD, alignment=TA_RIGHT))],
+        [
+            Paragraph("Tipo", s_row_lbl),
+            Paragraph("Repercutido", s_row_val),
+            Paragraph("Soportado", s_row_val),
+            Paragraph("Diferencia", s_row_val),
+        ],
+        [
+            Paragraph("General (21%)", s_row_lbl),
+            Paragraph(fmt_eur(rep_21), s_row_val),
+            Paragraph(fmt_eur(sop_21), s_row_val),
+            Paragraph(fmt_eur(rep_21 - sop_21), s_row_val),
+        ],
+        [
+            Paragraph("Reducido (10%)", s_row_lbl),
+            Paragraph(fmt_eur(rep_10), s_row_val),
+            Paragraph(fmt_eur(sop_10), s_row_val),
+            Paragraph(fmt_eur(rep_10 - sop_10), s_row_val),
+        ],
+        [
+            Paragraph("Superreducido (4%)", s_row_lbl),
+            Paragraph(fmt_eur(rep_4), s_row_val),
+            Paragraph(fmt_eur(sop_4), s_row_val),
+            Paragraph(fmt_eur(rep_4 - sop_4), s_row_val),
+        ],
+        [
+            Paragraph(
+                "TOTAL", sty("FTot", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE)
+            ),
+            Paragraph(fmt_eur(total_rep), s_row_val_em),
+            Paragraph(fmt_eur(total_sop), s_row_val_red),
+            Paragraph(
+                fmt_eur(resultado_iva),
+                sty(
+                    "FResV",
+                    fontSize=8,
+                    fontName="Helvetica-Bold",
+                    textColor=C_RED if resultado_iva > 0 else C_EMERALD,
+                    alignment=TA_RIGHT,
+                ),
+            ),
+        ],
     ]
-    iva_tbl = Table(iva_detail, colWidths=[45*mm, 38*mm, 38*mm, 38*mm])
-    iva_tbl.setStyle(TableStyle([
-        ("FONTSIZE", (0,0),(-1,-1), 8),
-        ("TOPPADDING", (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 5),
-        ("LEFTPADDING", (0,0),(-1,-1), 4),
-        ("RIGHTPADDING",(0,0),(-1,-1), 4),
-        ("LINEBELOW", (0,0),(-1,0), 0.5, C_LINE),
-        ("LINEBELOW", (0,-2),(-1,-2), 0.3, colors.HexColor("#f1f5f9")),
-        ("BACKGROUND", (0,0),(-1,0), C_LIGHT),
-        ("BACKGROUND", (0,-1),(-1,-1), colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4")),
-        ("FONTNAME", (0,0),(-1,0), "Helvetica-Bold"),
-    ]))
+    iva_tbl = Table(iva_detail, colWidths=[45 * mm, 38 * mm, 38 * mm, 38 * mm])
+    iva_tbl.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.5, C_LINE),
+                ("LINEBELOW", (0, -2), (-1, -2), 0.3, colors.HexColor("#f1f5f9")),
+                ("BACKGROUND", (0, 0), (-1, 0), C_LIGHT),
+                (
+                    "BACKGROUND",
+                    (0, -1),
+                    (-1, -1),
+                    colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4"),
+                ),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
     elements.append(iva_tbl)
 
     if total_rep > 0 or total_sop > 0:
-        d = Drawing(160*mm, 50*mm)
+        d = Drawing(160 * mm, 50 * mm)
         chart = VerticalBarChart()
         chart.x = 35
         chart.y = 15
-        chart.width = 150*mm - 50
-        chart.height = 50*mm - 25
+        chart.width = 150 * mm - 50
+        chart.height = 50 * mm - 25
         chart.data = [[total_rep, total_sop, abs(resultado_iva)]]
         chart.categoryAxis.categoryNames = ["Repercutido", "Soportado", "Resultado"]
         chart.categoryAxis.labels.fontSize = 7
@@ -399,12 +647,12 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
         chart.bars[(0, 1)].fillColor = C_RED
         chart.bars[(0, 2)].fillColor = C_AMBER
         d.add(chart)
-        elements.append(Spacer(1, 3*mm))
+        elements.append(Spacer(1, 3 * mm))
         elements.append(d)
 
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 5 * mm))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE))
-    elements.append(Spacer(1, 3*mm))
+    elements.append(Spacer(1, 3 * mm))
 
     # ── SECCIÓN 2: IRPF ──
     elements.append(Paragraph("2. RETENCIONES IRPF", s_section))
@@ -413,29 +661,44 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
 
     irpf_detail = [
         [Paragraph("Concepto", s_row_lbl), Paragraph("Importe", s_row_val)],
-        [Paragraph("Retenciones en nominas", s_row_lbl), Paragraph(fmt_eur(irpf_nominas), s_row_val)],
-        [Paragraph("Retenciones en facturas profesionales", s_row_lbl), Paragraph(fmt_eur(irpf_facturas), s_row_val)],
-        [Paragraph("TOTAL RETENCIONES", sty("FIrpfT", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE)),
-         Paragraph(fmt_eur(total_irpf), s_row_val_em)],
+        [
+            Paragraph("Retenciones en nominas", s_row_lbl),
+            Paragraph(fmt_eur(irpf_nominas), s_row_val),
+        ],
+        [
+            Paragraph("Retenciones en facturas profesionales", s_row_lbl),
+            Paragraph(fmt_eur(irpf_facturas), s_row_val),
+        ],
+        [
+            Paragraph(
+                "TOTAL RETENCIONES",
+                sty("FIrpfT", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE),
+            ),
+            Paragraph(fmt_eur(total_irpf), s_row_val_em),
+        ],
     ]
-    irpf_tbl = Table(irpf_detail, colWidths=[120*mm, 45*mm])
-    irpf_tbl.setStyle(TableStyle([
-        ("FONTSIZE", (0,0),(-1,-1), 8),
-        ("TOPPADDING", (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 5),
-        ("LEFTPADDING", (0,0),(-1,-1), 4),
-        ("RIGHTPADDING",(0,0),(-1,-1), 4),
-        ("LINEBELOW", (0,0),(-1,0), 0.5, C_LINE),
-        ("LINEBELOW", (0,-2),(-1,-2), 0.3, colors.HexColor("#f1f5f9")),
-        ("BACKGROUND", (0,0),(-1,0), C_LIGHT),
-        ("BACKGROUND", (0,-1),(-1,-1), colors.HexColor("#fffbeb")),
-        ("FONTNAME", (0,0),(-1,0), "Helvetica-Bold"),
-    ]))
+    irpf_tbl = Table(irpf_detail, colWidths=[120 * mm, 45 * mm])
+    irpf_tbl.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.5, C_LINE),
+                ("LINEBELOW", (0, -2), (-1, -2), 0.3, colors.HexColor("#f1f5f9")),
+                ("BACKGROUND", (0, 0), (-1, 0), C_LIGHT),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#fffbeb")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
     elements.append(irpf_tbl)
 
-    elements.append(Spacer(1, 5*mm))
+    elements.append(Spacer(1, 5 * mm))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE))
-    elements.append(Spacer(1, 3*mm))
+    elements.append(Spacer(1, 3 * mm))
 
     # ── SECCIÓN 3: IMPUESTO DE SOCIEDADES ──
     elements.append(Paragraph("3. IMPUESTO DE SOCIEDADES (ESTIMACION)", s_section))
@@ -446,41 +709,79 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
 
     is_detail = [
         [Paragraph("Concepto", s_row_lbl), Paragraph("Importe", s_row_val)],
-        [Paragraph("Ingresos brutos (base imponible ventas)", s_row_lbl), Paragraph(fmt_eur(ingresos_b), s_row_val)],
-        [Paragraph("Gastos deducibles (compras + nominas)", s_row_lbl), Paragraph(fmt_eur(gastos_d), s_row_val_red)],
-        [Paragraph("Base imponible", sty("FIsBI", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE)),
-         Paragraph(fmt_eur(base_imp), s_row_val_em)],
-        [Paragraph(f"Tipo impositivo ({tipo_is:.0f}%)", s_row_lbl), Paragraph(f"{tipo_is:.0f}%", s_row_val)],
-        [Paragraph("CUOTA ESTIMADA IS", sty("FIsQ", fontSize=9, fontName="Helvetica-Bold", textColor=C_SLATE)),
-         Paragraph(fmt_eur(cuota_is), sty("FIsQV", fontSize=9, fontName="Helvetica-Bold", textColor=C_BLUE, alignment=TA_RIGHT))],
+        [
+            Paragraph("Ingresos brutos (base imponible ventas)", s_row_lbl),
+            Paragraph(fmt_eur(ingresos_b), s_row_val),
+        ],
+        [
+            Paragraph("Gastos deducibles (compras + nominas)", s_row_lbl),
+            Paragraph(fmt_eur(gastos_d), s_row_val_red),
+        ],
+        [
+            Paragraph(
+                "Base imponible",
+                sty("FIsBI", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE),
+            ),
+            Paragraph(fmt_eur(base_imp), s_row_val_em),
+        ],
+        [
+            Paragraph(f"Tipo impositivo ({tipo_is:.0f}%)", s_row_lbl),
+            Paragraph(f"{tipo_is:.0f}%", s_row_val),
+        ],
+        [
+            Paragraph(
+                "CUOTA ESTIMADA IS",
+                sty("FIsQ", fontSize=9, fontName="Helvetica-Bold", textColor=C_SLATE),
+            ),
+            Paragraph(
+                fmt_eur(cuota_is),
+                sty(
+                    "FIsQV",
+                    fontSize=9,
+                    fontName="Helvetica-Bold",
+                    textColor=C_BLUE,
+                    alignment=TA_RIGHT,
+                ),
+            ),
+        ],
     ]
-    is_tbl = Table(is_detail, colWidths=[120*mm, 45*mm])
-    is_tbl.setStyle(TableStyle([
-        ("FONTSIZE", (0,0),(-1,-1), 8),
-        ("TOPPADDING", (0,0),(-1,-1), 5),
-        ("BOTTOMPADDING",(0,0),(-1,-1), 5),
-        ("LEFTPADDING", (0,0),(-1,-1), 4),
-        ("RIGHTPADDING",(0,0),(-1,-1), 4),
-        ("LINEBELOW", (0,0),(-1,0), 0.5, C_LINE),
-        ("LINEBELOW", (0,2),(-1,2), 0.3, colors.HexColor("#f1f5f9")),
-        ("LINEBELOW", (0,-2),(-1,-2), 0.5, C_LINE),
-        ("BACKGROUND", (0,0),(-1,0), C_LIGHT),
-        ("BACKGROUND", (0,-1),(-1,-1), colors.HexColor("#eff6ff")),
-        ("FONTNAME", (0,0),(-1,0), "Helvetica-Bold"),
-    ]))
+    is_tbl = Table(is_detail, colWidths=[120 * mm, 45 * mm])
+    is_tbl.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.5, C_LINE),
+                ("LINEBELOW", (0, 2), (-1, 2), 0.3, colors.HexColor("#f1f5f9")),
+                ("LINEBELOW", (0, -2), (-1, -2), 0.5, C_LINE),
+                ("BACKGROUND", (0, 0), (-1, 0), C_LIGHT),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#eff6ff")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
     elements.append(is_tbl)
 
-    elements.append(Spacer(1, 8*mm))
+    elements.append(Spacer(1, 8 * mm))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE))
-    elements.append(Spacer(1, 3*mm))
-    elements.append(Paragraph(
-        "Este informe es una estimacion orientativa generada automaticamente. "
-        "No sustituye el asesoramiento fiscal profesional ni las declaraciones oficiales ante la AEAT.",
-        sty("FDisc", fontSize=7, fontName="Helvetica", textColor=C_RED, alignment=TA_CENTER)))
-    elements.append(Spacer(1, 3*mm))
-    elements.append(Paragraph(
-        f"Generado por AutomatizaPyme \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-        s_footer))
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(
+        Paragraph(
+            "Este informe es una estimacion orientativa generada automaticamente. "
+            "No sustituye el asesoramiento fiscal profesional ni las declaraciones oficiales ante la AEAT.",
+            sty("FDisc", fontSize=7, fontName="Helvetica", textColor=C_RED, alignment=TA_CENTER),
+        )
+    )
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(
+        Paragraph(
+            f"Generado por AutomatizaPyme \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            s_footer,
+        )
+    )
 
     doc.build(elements)
     return buffer.getvalue()

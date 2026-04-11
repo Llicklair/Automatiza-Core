@@ -2,6 +2,7 @@
 Endpoints para gestión de reclutamiento.
 GET/POST puestos, GET candidatos, POST upload CV, PATCH estado candidato.
 """
+
 import logging
 import os
 import shutil
@@ -24,6 +25,7 @@ UPLOAD_DIR = os.environ.get("CV_UPLOAD_DIR", "uploads/cvs")
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
+
 
 class PositionCreate(BaseModel):
     title: str
@@ -75,6 +77,7 @@ class StatusUpdate(BaseModel):
 
 # ── Positions ────────────────────────────────────────────────────────────────
 
+
 @router.get("/positions", response_model=list[PositionResponse])
 @limiter.limit("30/minute")
 async def list_positions(
@@ -83,9 +86,7 @@ async def list_positions(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    q = select(RecruitmentPosition).where(
-        RecruitmentPosition.tenant_id == current_user.tenant_id
-    )
+    q = select(RecruitmentPosition).where(RecruitmentPosition.tenant_id == current_user.tenant_id)
     if status_filter != "all":
         q = q.where(RecruitmentPosition.status == status_filter)
 
@@ -104,12 +105,16 @@ async def list_positions(
     out = []
     for p in positions:
         d = {
-            "id": p.id, "title": p.title, "department": p.department,
-            "description": p.description, "required_skills": p.required_skills,
+            "id": p.id,
+            "title": p.title,
+            "department": p.department,
+            "description": p.description,
+            "required_skills": p.required_skills,
             "experience_min_years": float(p.experience_min_years) if p.experience_min_years else 0,
             "salary_range_min": float(p.salary_range_min) if p.salary_range_min else None,
             "salary_range_max": float(p.salary_range_max) if p.salary_range_max else None,
-            "status": p.status, "candidate_count": counts.get(p.id, 0),
+            "status": p.status,
+            "candidate_count": counts.get(p.id, 0),
         }
         out.append(d)
     return out
@@ -136,12 +141,15 @@ async def create_position(
     db.add(pos)
     await db.commit()
     await db.refresh(pos)
-    return {**{c.name: getattr(pos, c.name) for c in pos.__table__.columns},
-            "experience_min_years": float(pos.experience_min_years) if pos.experience_min_years else 0,
-            "candidate_count": 0}
+    return {
+        **{c.name: getattr(pos, c.name) for c in pos.__table__.columns},
+        "experience_min_years": float(pos.experience_min_years) if pos.experience_min_years else 0,
+        "candidate_count": 0,
+    }
 
 
 # ── Candidates ───────────────────────────────────────────────────────────────
+
 
 @router.get("/positions/{position_id}/candidates", response_model=list[CandidateResponse])
 @limiter.limit("30/minute")
@@ -152,10 +160,12 @@ async def list_candidates(
     current_user=Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Candidate).where(
+        select(Candidate)
+        .where(
             Candidate.tenant_id == current_user.tenant_id,
             Candidate.position_id == position_id,
-        ).order_by(Candidate.score.desc().nullslast())
+        )
+        .order_by(Candidate.score.desc().nullslast())
     )
     return result.scalars().all()
 
@@ -242,7 +252,9 @@ async def update_candidate_status(
 ):
     valid = {"new", "reviewed", "shortlisted", "rejected", "hired"}
     if payload.status not in valid:
-        raise HTTPException(status_code=400, detail=f"Estado inválido. Opciones: {', '.join(valid)}")
+        raise HTTPException(
+            status_code=400, detail=f"Estado inválido. Opciones: {', '.join(valid)}"
+        )
 
     result = await db.execute(
         select(Candidate).where(
@@ -277,6 +289,7 @@ async def analyze_cv_standalone(
             shutil.copyfileobj(file.file, f)
 
         from app.services.cv_parser import extract_cv_data, parse_cv_file
+
         cv_text = await parse_cv_file(tmp_path)
         if not cv_text.strip():
             raise HTTPException(status_code=422, detail="No se pudo extraer texto del PDF")

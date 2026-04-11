@@ -11,14 +11,17 @@ class QuoteLineBase(BaseModel):
     unit_price: float = 0.0
     tax_percentage: float = 21.0
 
+
 class QuoteLineCreate(QuoteLineBase):
     pass
+
 
 class QuoteLineResponse(QuoteLineBase):
     id: UUID
     quote_id: UUID
     total_line: float
     model_config = ConfigDict(from_attributes=True)
+
 
 class QuoteBase(BaseModel):
     client_id: UUID
@@ -33,8 +36,10 @@ class QuoteBase(BaseModel):
     terms: str | None = None
     opportunity_id: UUID | None = None
 
+
 class QuoteCreate(QuoteBase):
     lines: list[QuoteLineCreate] = []
+
 
 class QuoteUpdate(BaseModel):
     client_id: UUID | None = None
@@ -42,6 +47,7 @@ class QuoteUpdate(BaseModel):
     valid_until: datetime | None = None
     notes: str | None = None
     terms: str | None = None
+
 
 class QuoteResponse(QuoteBase):
     id: UUID

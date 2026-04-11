@@ -1,6 +1,5 @@
 """Modelos de configuración del tenant: integraciones, conocimiento y documentos."""
 
-
 from .common import (
     JSONB,
     UUID,
@@ -44,10 +43,13 @@ class TenantKnowledge(Base):
 
 class TenantLlmConfig(Base):
     """Configuración LLM por tenant: claves API cifradas + provider activo + toggles."""
+
     __tablename__ = "tenant_llm_configs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True)
+    tenant_id = Column(
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True
+    )
     # Provider activo para LLM y embeddings
     active_llm_provider = Column(String(50), nullable=False, default="gemini")
     active_embeddings_provider = Column(String(50), nullable=False, default="local")

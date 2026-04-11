@@ -23,6 +23,7 @@ router = APIRouter()
 
 # ─── Informe de Tesorería (Cash Flow) ────────────────────────────────────────
 
+
 @router.get("/cashflow")
 async def generate_cashflow(
     start: str = Query(description="Fecha inicio YYYY-MM-DD"),
@@ -80,8 +81,9 @@ async def generate_cashflow(
     payrolls_pending = payroll_pending_q.scalars().all()
 
     total_collections = sum(float(i.amount_total or 0) for i in issued_pending)
-    total_payments = sum(float(i.amount_total or 0) for i in received_pending) + \
-                     sum(float(p.net_salary or 0) for p in payrolls_pending)
+    total_payments = sum(float(i.amount_total or 0) for i in received_pending) + sum(
+        float(p.net_salary or 0) for p in payrolls_pending
+    )
 
     # Group by month
     monthly_coll = defaultdict(float)
@@ -113,19 +115,32 @@ async def generate_cashflow(
         c = round(monthly_coll.get(m, 0), 2)
         p = round(monthly_pay.get(m, 0), 2)
         cumulative += c - p
-        periods.append({"label": m, "collections": c, "payments": p, "cumulative_balance": round(cumulative, 2)})
+        periods.append(
+            {
+                "label": m,
+                "collections": c,
+                "payments": p,
+                "cumulative_balance": round(cumulative, 2),
+            }
+        )
 
     # Pending receivables for detail
     recv_detail = []
     for inv in sorted(issued_pending, key=lambda x: float(x.amount_total or 0), reverse=True)[:10]:
-        inv_q = await db.execute(select(Invoice).options(jl(Invoice.client)).where(Invoice.id == inv.id))
+        inv_q = await db.execute(
+            select(Invoice).options(jl(Invoice.client)).where(Invoice.id == inv.id)
+        )
         inv_full = inv_q.unique().scalar_one()
-        recv_detail.append({
-            "client_name": inv_full.client.name if inv_full.client else "—",
-            "invoice_number": inv_full.invoice_number or str(inv_full.id)[:8],
-            "due_date": (inv_full.due_date or inv_full.date).isoformat() if (inv_full.due_date or inv_full.date) else "",
-            "amount": float(inv_full.amount_total or 0),
-        })
+        recv_detail.append(
+            {
+                "client_name": inv_full.client.name if inv_full.client else "—",
+                "invoice_number": inv_full.invoice_number or str(inv_full.id)[:8],
+                "due_date": (inv_full.due_date or inv_full.date).isoformat()
+                if (inv_full.due_date or inv_full.date)
+                else "",
+                "amount": float(inv_full.amount_total or 0),
+            }
+        )
 
     data = {
         "company": {"name": company_name, "nif": tenant_obj.nif if tenant_obj else ""},
@@ -149,6 +164,7 @@ async def generate_cashflow(
 
 
 # ─── Informe de Morosidad ───────────────────────────────────────────────────
+
 
 @router.get("/delinquency")
 async def generate_delinquency(
@@ -181,15 +197,21 @@ async def generate_delinquency(
     overdue_invoices = overdue_q.unique().scalars().all()
 
     # Build aging buckets
-    buckets = {"0-30": {"count": 0, "amount": 0.0}, "31-60": {"count": 0, "amount": 0.0},
-               "61-90": {"count": 0, "amount": 0.0}, ">90": {"count": 0, "amount": 0.0}}
+    buckets = {
+        "0-30": {"count": 0, "amount": 0.0},
+        "31-60": {"count": 0, "amount": 0.0},
+        "61-90": {"count": 0, "amount": 0.0},
+        ">90": {"count": 0, "amount": 0.0},
+    }
 
     detail_list = []
     client_totals: dict[str, float] = {}
     total_days = 0
 
     for inv in overdue_invoices:
-        days = (today - inv.due_date.date() if hasattr(inv.due_date, 'date') else today - inv.due_date).days
+        days = (
+            today - inv.due_date.date() if hasattr(inv.due_date, "date") else today - inv.due_date
+        ).days
         amount = float(inv.amount_total or 0)
 
         if days <= 30:
@@ -209,14 +231,16 @@ async def generate_delinquency(
         client_name = inv.client.name if inv.client else "—"
         client_totals[client_name] = client_totals.get(client_name, 0) + amount
 
-        detail_list.append({
-            "client_name": client_name,
-            "invoice_number": inv.invoice_number or str(inv.id)[:8],
-            "due_date": inv.due_date.isoformat() if inv.due_date else "",
-            "days_overdue": days,
-            "amount": amount,
-            "collection_status": "Pendiente",
-        })
+        detail_list.append(
+            {
+                "client_name": client_name,
+                "invoice_number": inv.invoice_number or str(inv.id)[:8],
+                "due_date": inv.due_date.isoformat() if inv.due_date else "",
+                "days_overdue": days,
+                "amount": amount,
+                "collection_status": "Pendiente",
+            }
+        )
 
     # Round bucket amounts
     for b in buckets.values():
@@ -248,6 +272,7 @@ async def generate_delinquency(
 
 
 # ─── Compliance: Registro RGPD ──────────────────────────────────────────────
+
 
 @router.get("/compliance/rgpd-registry")
 async def generate_rgpd_registry(

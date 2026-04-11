@@ -19,6 +19,7 @@ from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/accounting", tags=["accounting"])
 
+
 @router.get("/journal", response_model=list[JournalEntryResponse])
 @limiter.limit("30/minute")
 async def list_journal_entries(
@@ -30,11 +31,15 @@ async def list_journal_entries(
     Devuelve los asientos del libro diario en orden cronológico inverso,
     incluyendo sus respectivas líneas (debe/haber).
     """
-    query = select(JournalEntry).where(JournalEntry.tenant_id == current_user.tenant_id).options(
-        selectinload(JournalEntry.lines)
-    ).order_by(desc(JournalEntry.date))
+    query = (
+        select(JournalEntry)
+        .where(JournalEntry.tenant_id == current_user.tenant_id)
+        .options(selectinload(JournalEntry.lines))
+        .order_by(desc(JournalEntry.date))
+    )
     result = await db.execute(query)
     return result.scalars().all()
+
 
 @router.post("/journal", response_model=JournalEntryResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
@@ -54,17 +59,17 @@ async def create_journal_entry(
     if abs(total_debit - total_credit) > 0.01:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})"
+            detail=f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})",
         )
 
     new_entry = JournalEntry(
         tenant_id=current_user.tenant_id,
         date=payload.date,
         description=payload.description,
-        reference_id=payload.reference_id
+        reference_id=payload.reference_id,
     )
     db.add(new_entry)
-    await db.flush() # Para obtener el ID del entry
+    await db.flush()  # Para obtener el ID del entry
 
     for line_data in payload.lines:
         new_line = JournalLine(
@@ -73,7 +78,7 @@ async def create_journal_entry(
             account_code=line_data.account_code,
             account_name=line_data.account_name,
             debit=line_data.debit,
-            credit=line_data.credit
+            credit=line_data.credit,
         )
         db.add(new_line)
 
@@ -81,13 +86,18 @@ async def create_journal_entry(
     await db.refresh(new_entry)
 
     # Recargar con relaciones
-    stmt = select(JournalEntry).where(JournalEntry.id == new_entry.id).options(selectinload(JournalEntry.lines))
+    stmt = (
+        select(JournalEntry)
+        .where(JournalEntry.id == new_entry.id)
+        .options(selectinload(JournalEntry.lines))
+    )
     res = await db.execute(stmt)
 
     return res.scalar_one()
 
 
 # ─── Fixed Assets ─────────────────────────────────────────────────────────────
+
 
 @router.get("/assets", response_model=list[FixedAssetResponse])
 @limiter.limit("30/minute")
@@ -129,7 +139,9 @@ async def update_fixed_asset(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(FixedAsset).where(FixedAsset.id == asset_id, FixedAsset.tenant_id == current_user.tenant_id)
+        select(FixedAsset).where(
+            FixedAsset.id == asset_id, FixedAsset.tenant_id == current_user.tenant_id
+        )
     )
     asset = result.scalar_one_or_none()
     if not asset:
@@ -150,7 +162,9 @@ async def delete_journal_entry(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(JournalEntry).where(JournalEntry.id == entry_id, JournalEntry.tenant_id == current_user.tenant_id)
+        select(JournalEntry).where(
+            JournalEntry.id == entry_id, JournalEntry.tenant_id == current_user.tenant_id
+        )
     )
     entry = result.scalar_one_or_none()
     if not entry:
@@ -168,7 +182,9 @@ async def delete_fixed_asset(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(FixedAsset).where(FixedAsset.id == asset_id, FixedAsset.tenant_id == current_user.tenant_id)
+        select(FixedAsset).where(
+            FixedAsset.id == asset_id, FixedAsset.tenant_id == current_user.tenant_id
+        )
     )
     asset = result.scalar_one_or_none()
     if not asset:

@@ -8,6 +8,7 @@ Uso:
     from app.agents.tool_registry import call_tool
     result = call_tool("list_invoices", {"tenant_id": "...", "limit": 10})
 """
+
 import logging
 from typing import Any, Callable
 
@@ -30,6 +31,7 @@ def _build_registry() -> dict[str, Callable]:
         update_invoice,
         update_invoice_status,
     )
+
     registry["create_invoice"] = create_invoice
     registry["list_invoices"] = list_invoices
     registry["search_client"] = search_client
@@ -47,6 +49,7 @@ def _build_registry() -> dict[str, Callable]:
         list_payrolls,
         update_payroll,
     )
+
     registry["create_employee"] = create_employee
     registry["calculate_and_create_payroll"] = calculate_and_create_payroll
     registry["generate_all_payrolls"] = generate_all_payrolls
@@ -62,6 +65,7 @@ def _build_registry() -> dict[str, Callable]:
         qualify_leads,
         update_opportunity_stage,
     )
+
     registry["list_opportunities"] = list_opportunities
     registry["create_opportunity"] = create_opportunity
     registry["update_opportunity_stage"] = update_opportunity_stage
@@ -74,6 +78,7 @@ def _build_registry() -> dict[str, Callable]:
         list_transactions,
         reconcile_transactions,
     )
+
     registry["check_balances"] = check_balances
     registry["list_transactions"] = list_transactions
     registry["financial_summary"] = financial_summary
@@ -81,12 +86,14 @@ def _build_registry() -> dict[str, Callable]:
 
     # — compliance —
     from app.agents.compliance_agent import check_boe_news, check_fiscal_deadlines, fiscal_query
+
     registry["check_fiscal_deadlines"] = check_fiscal_deadlines
     registry["check_boe_news"] = check_boe_news
     registry["fiscal_query"] = fiscal_query
 
     # — documents —
     from app.agents.documents_agent import classify_document, search_documents_semantic
+
     registry["classify_document"] = classify_document
     registry["search_documents_semantic"] = search_documents_semantic
 
@@ -98,6 +105,7 @@ def _build_registry() -> dict[str, Callable]:
         modify_excel,
         read_excel,
     )
+
     registry["export_erp_data"] = export_erp_data
     registry["list_available_datasets"] = list_available_datasets
     registry["import_excel"] = import_excel
@@ -106,17 +114,20 @@ def _build_registry() -> dict[str, Callable]:
 
     # — email —
     from app.agents.email_agent import check_inbox, check_unread, send_email
+
     registry["check_inbox"] = check_inbox
     registry["check_unread"] = check_unread
     registry["send_email"] = send_email
 
     # — rag —
     from app.agents.rag_agent import answer_from_documents, search_documents
+
     registry["search_documents"] = search_documents
     registry["answer_from_documents"] = answer_from_documents
 
     # — marketing —
     from app.agents.marketing_agent import get_product_catalog
+
     registry["get_product_catalog"] = get_product_catalog
 
     # — recruitment —
@@ -127,6 +138,7 @@ def _build_registry() -> dict[str, Callable]:
         process_cv,
         update_candidate_status,
     )
+
     registry["create_position"] = create_position
     registry["list_positions"] = list_positions
     registry["process_cv"] = process_cv
@@ -140,17 +152,20 @@ def _build_registry() -> dict[str, Callable]:
         list_tenant_documents,
         update_existing_document,
     )
+
     registry["create_document"] = create_document
     registry["list_tenant_documents"] = list_tenant_documents
     registry["update_existing_document"] = update_existing_document
     registry["get_document_content"] = get_document_content
 
     from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+
     registry["get_tenant_knowledge"] = get_tenant_knowledge
     registry["upsert_tenant_knowledge"] = upsert_tenant_knowledge
 
     # — ai team —
     from app.agents.agent_tools.ai_team import create_ai_employee_from_description
+
     registry["create_ai_employee_from_description"] = create_ai_employee_from_description
 
     logger.info("Tool registry loaded: %d tools", len(registry))

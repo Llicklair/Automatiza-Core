@@ -5,6 +5,7 @@ Analiza el catálogo de productos y genera un plan de contenidos mensual
 con textos, hashtags, horarios y sugerencias de imagen.
 El agente NO publica — solo planifica. El usuario ejecuta manualmente.
 """
+
 import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -97,7 +98,9 @@ async def _agent_node(state: AgentState) -> dict:
     if not state.get("messages"):
         state["messages"] = [
             SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=state.get("user_intent", "Genera un plan de contenidos para este mes")),
+            HumanMessage(
+                content=state.get("user_intent", "Genera un plan de contenidos para este mes")
+            ),
         ]
     response = await llm.ainvoke(state["messages"])
     return {"messages": [response]}

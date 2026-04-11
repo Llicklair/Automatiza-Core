@@ -11,8 +11,10 @@ class JournalLineBase(BaseModel):
     debit: float = 0.0
     credit: float = 0.0
 
+
 class JournalLineCreate(JournalLineBase):
     pass
+
 
 class JournalLineResponse(JournalLineBase):
     id: UUID
@@ -20,14 +22,17 @@ class JournalLineResponse(JournalLineBase):
     entry_id: UUID
     model_config = ConfigDict(from_attributes=True)
 
+
 # --- Journal Entries ---
 class JournalEntryBase(BaseModel):
     date: datetime
     description: str
     reference_id: str | None = None
 
+
 class JournalEntryCreate(JournalEntryBase):
     lines: list[JournalLineCreate]
+
 
 class JournalEntryResponse(JournalEntryBase):
     id: UUID
@@ -52,8 +57,10 @@ class FixedAssetBase(BaseModel):
     reference_invoice: str | None = None
     notes: str | None = None
 
+
 class FixedAssetCreate(FixedAssetBase):
     pass
+
 
 class FixedAssetUpdate(BaseModel):
     name: str | None = None
@@ -68,6 +75,7 @@ class FixedAssetUpdate(BaseModel):
     account_code: str | None = None
     reference_invoice: str | None = None
     notes: str | None = None
+
 
 class FixedAssetResponse(FixedAssetBase):
     id: UUID

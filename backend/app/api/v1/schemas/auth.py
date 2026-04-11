@@ -1,10 +1,12 @@
 """Schemas Pydantic para autenticación y usuarios."""
+
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -23,9 +25,10 @@ class RefreshRequest(BaseModel):
 
 # ─── Tenant ──────────────────────────────────────────────────────────────────
 
+
 class TenantCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=200)
-    nif: str = Field(..., pattern=r'^[A-Z0-9]{9}$', description="NIF/CIF español (9 chars)")
+    nif: str = Field(..., pattern=r"^[A-Z0-9]{9}$", description="NIF/CIF español (9 chars)")
 
 
 class TenantOut(BaseModel):
@@ -39,6 +42,7 @@ class TenantOut(BaseModel):
 
 
 # ─── User ────────────────────────────────────────────────────────────────────
+
 
 class UserCreate(BaseModel):
     email: EmailStr

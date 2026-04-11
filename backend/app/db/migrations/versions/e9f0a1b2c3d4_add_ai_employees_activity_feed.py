@@ -6,6 +6,7 @@ Create Date: 2026-04-02
 
 Tablas nuevas — completamente aditivas, no modifica ninguna tabla existente.
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
@@ -29,7 +30,12 @@ def upgrade() -> None:
         sa.Column("budget_limit_usd", sa.Numeric(10, 2), nullable=True, server_default="10.00"),
         sa.Column("status", sa.String(20), nullable=False, server_default="idle"),
         sa.Column("is_builtin", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -57,7 +63,12 @@ def upgrade() -> None:
         sa.Column("completion_tokens", sa.Integer(), nullable=False),
         sa.Column("cost_usd", sa.Numeric(10, 6), nullable=False),
         sa.Column("llm_provider", sa.String(50), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["employee_id"], ["ai_employees.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
@@ -77,7 +88,12 @@ def upgrade() -> None:
         sa.Column("icon", sa.String(10), nullable=False, server_default="📋"),
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("metadata_json", postgresql.JSONB(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["employee_id"], ["ai_employees.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),

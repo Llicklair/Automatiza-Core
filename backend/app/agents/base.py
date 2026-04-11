@@ -11,7 +11,7 @@ class AgentState(TypedDict, total=False):
 
     # Intención del usuario
     user_intent: str
-    current_intent: str   # puede diferir de user_intent en planes multiagente
+    current_intent: str  # puede diferir de user_intent en planes multiagente
 
     # Mensajes LangChain (lista de HumanMessage / AIMessage / ToolMessage)
     # Usamos add_messages para que LangGraph acumule el histórico automáticamente
@@ -21,4 +21,4 @@ class AgentState(TypedDict, total=False):
     agent_results: list[dict]
 
     # Estado de finalización
-    status: str   # "running" | "done" | "failed"
+    status: str  # "running" | "done" | "failed"

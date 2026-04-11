@@ -42,7 +42,9 @@ async def list_clients(
     return result.scalars().all()
 
 
-@router.post("/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@router.post(
+    "/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED, tags=["erp"]
+)
 @limiter.limit("30/minute")
 async def create_client(
     request: Request,
@@ -50,10 +52,7 @@ async def create_client(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_client = Client(
-        tenant_id=current_user.tenant_id,
-        **payload.model_dump()
-    )
+    new_client = Client(tenant_id=current_user.tenant_id, **payload.model_dump())
     db.add(new_client)
     try:
         await db.commit()
@@ -73,7 +72,11 @@ async def create_client(
             tenant_id=current_user.tenant_id,
             user_id=current_user.id,
             event_name="client_created",
-            context={"client_id": str(new_client.id), "client_name": new_client.name, "nif": new_client.nif},
+            context={
+                "client_id": str(new_client.id),
+                "client_name": new_client.name,
+                "nif": new_client.nif,
+            },
         )
     except Exception:
         logger.warning("emit_event client_created falló — no es crítico")

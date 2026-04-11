@@ -70,7 +70,11 @@ class GmailClient:
         return _extract_body(data.get("payload", {}))
 
     async def send_message(
-        self, to: str, subject: str, body: str, html: bool = False,
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        html: bool = False,
         attachments: list[tuple[str, bytes]] | None = None,
     ) -> dict:
         """Send an email. attachments = list of (filename, content_bytes)."""

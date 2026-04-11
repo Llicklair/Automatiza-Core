@@ -17,6 +17,7 @@ from app.middleware.rate_limit import limiter
 
 router = APIRouter()
 
+
 @router.post("/", response_model=QuoteResponse, status_code=201)
 @limiter.limit("30/minute")
 async def create_quote(
@@ -50,11 +51,11 @@ async def create_quote(
         status=quote_in.status,
         notes=quote_in.notes,
         terms=quote_in.terms,
-        opportunity_id=quote_in.opportunity_id
+        opportunity_id=quote_in.opportunity_id,
     )
 
     db.add(db_quote)
-    await db.flush() # To get the quote id
+    await db.flush()  # To get the quote id
 
     # Create lines
     for line in quote_in.lines:
@@ -66,7 +67,7 @@ async def create_quote(
             quantity=line.quantity,
             unit_price=line.unit_price,
             tax_percentage=line.tax_percentage,
-            total_line=line_base
+            total_line=line_base,
         )
         db.add(db_line)
 
@@ -80,6 +81,7 @@ async def create_quote(
         .where(Quote.id == db_quote.id)
     )
     return result.scalar_one()
+
 
 @router.get("/", response_model=list[QuoteResponse])
 @limiter.limit("30/minute")
@@ -101,6 +103,7 @@ async def list_quotes(
     result = await db.execute(query)
     return result.scalars().all()
 
+
 @router.get("/{quote_id}", response_model=QuoteResponse)
 @limiter.limit("30/minute")
 async def get_quote(
@@ -121,6 +124,7 @@ async def get_quote(
         raise HTTPException(status_code=404, detail="Quote not found")
 
     return quote
+
 
 @router.patch("/{quote_id}", response_model=QuoteResponse)
 @limiter.limit("30/minute")
@@ -211,9 +215,9 @@ async def convert_quote_to_invoice(
     await db.flush()
 
     # Copiar líneas del presupuesto
-    for ql in (quote.lines or []):
+    for ql in quote.lines or []:
         line_base = float(ql.quantity or 1) * float(ql.unit_price or 0)
-        line_tax  = line_base * (float(ql.tax_percentage or 21) / 100)
+        line_tax = line_base * (float(ql.tax_percentage or 21) / 100)
         inv_line = InvoiceLine(
             invoice_id=new_invoice.id,
             product_id=ql.product_id,
@@ -233,6 +237,7 @@ async def convert_quote_to_invoice(
     # Emitir evento
     try:
         from app.services.event_bus import emit_event
+
         await emit_event(
             db=db,
             tenant_id=current_user.tenant_id,
@@ -248,7 +253,11 @@ async def convert_quote_to_invoice(
             },
         )
     except Exception as e:
-        logger.warning("Error al emitir evento invoice_created tras conversión de presupuesto %s: %s", quote_id, e)
+        logger.warning(
+            "Error al emitir evento invoice_created tras conversión de presupuesto %s: %s",
+            quote_id,
+            e,
+        )
 
     return {
         "invoice_id": str(new_invoice.id),

@@ -2,6 +2,7 @@
 Tipos de estado del orquestador.
 Extraído de orchestrator.py para mejorar legibilidad y reutilización.
 """
+
 from enum import Enum
 from typing import Any, TypedDict
 
@@ -19,11 +20,11 @@ class TaskStatus(str, Enum):
 
 class SubTask(TypedDict):
     id: str
-    agent: str        # billing | documents | compliance | hr
+    agent: str  # billing | documents | compliance | hr
     action: str
     params: dict
     depends_on: list[str]
-    status: str       # pending | done | failed
+    status: str  # pending | done | failed
 
 
 class AgentResult(TypedDict):
@@ -67,7 +68,20 @@ class OrchestratorState(TypedDict):
 MAX_ITERATIONS = 20  # Límite duro
 
 VALID_DOMAINS = {
-    "billing", "documents", "compliance", "hr", "banking",
-    "rag", "crm", "excel", "email", "coordinator", "workflow", "skill",
-    "marketing", "recruitment", "chat", "custom",
+    "billing",
+    "documents",
+    "compliance",
+    "hr",
+    "banking",
+    "rag",
+    "crm",
+    "excel",
+    "email",
+    "coordinator",
+    "workflow",
+    "skill",
+    "marketing",
+    "recruitment",
+    "chat",
+    "custom",
 }

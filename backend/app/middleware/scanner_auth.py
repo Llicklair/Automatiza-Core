@@ -4,6 +4,7 @@ Scanner Auth — Middleware para tokens de escáner móvil.
 Los tokens de escáner son JWTs de corta vida (2 min) con scope restringido.
 Solo permiten acceso a inventario y albaranes — nunca a facturación, RRHH, etc.
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -61,12 +62,18 @@ def decode_scanner_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner expirado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner expirado"
+        )
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner inválido")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner inválido"
+        )
 
     if payload.get("sub") != "scanner_auth":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Token no es de tipo scanner")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Token no es de tipo scanner"
+        )
 
     return payload
 

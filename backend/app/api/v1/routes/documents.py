@@ -1,4 +1,5 @@
 """Rutas para gestión documental: upload y listado de documentos del tenant."""
+
 import logging
 import os
 import uuid
@@ -19,10 +20,13 @@ from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
+UPLOAD_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+)
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
+
 
 class DocumentOut(BaseModel):
     model_config = {"from_attributes": True}
@@ -40,10 +44,11 @@ class DocumentOut(BaseModel):
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+
 @limiter.limit("30/minute")
 @router.post("/upload", response_model=DocumentOut)
-async def upload_document(request: Request,
-
+async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     category: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
@@ -55,10 +60,28 @@ async def upload_document(request: Request,
 
     # Validar extensión permitida
     ALLOWED_EXTENSIONS = {
-        ".pdf", ".doc", ".docx", ".odt", ".txt", ".md",
-        ".xlsx", ".xls", ".csv", ".ods", ".json",
-        ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".tif",
-        ".eml", ".msg", ".zip",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".odt",
+        ".txt",
+        ".md",
+        ".xlsx",
+        ".xls",
+        ".csv",
+        ".ods",
+        ".json",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".tif",
+        ".eml",
+        ".msg",
+        ".zip",
     }
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -122,13 +145,26 @@ async def upload_document(request: Request,
 
 # ── Mapeo rápido extensión/MIME → categoría ─────────────────────────────────
 _EXT_CATEGORY_MAP: dict[str, str] = {
-    ".xlsx": "excels", ".xls": "excels", ".csv": "excels", ".ods": "excels",
-    ".pdf": "facturas",   # default para PDF; la IA refinará después
-    ".docx": "otros", ".doc": "otros", ".odt": "otros",
-    ".png": "otros", ".jpg": "otros", ".jpeg": "otros", ".webp": "otros",
-    ".gif": "otros", ".bmp": "otros", ".tiff": "otros", ".tif": "otros",
-    ".txt": "otros", ".md": "otros",
-    ".eml": "correos", ".msg": "correos",
+    ".xlsx": "excels",
+    ".xls": "excels",
+    ".csv": "excels",
+    ".ods": "excels",
+    ".pdf": "facturas",  # default para PDF; la IA refinará después
+    ".docx": "otros",
+    ".doc": "otros",
+    ".odt": "otros",
+    ".png": "otros",
+    ".jpg": "otros",
+    ".jpeg": "otros",
+    ".webp": "otros",
+    ".gif": "otros",
+    ".bmp": "otros",
+    ".tiff": "otros",
+    ".tif": "otros",
+    ".txt": "otros",
+    ".md": "otros",
+    ".eml": "correos",
+    ".msg": "correos",
 }
 
 _MIME_CATEGORY_MAP: dict[str, str] = {
@@ -161,8 +197,8 @@ class ScanResultOut(BaseModel):
 
 @limiter.limit("30/minute")
 @router.post("/scan", response_model=list[ScanResultOut])
-async def scan_documents(request: Request,
-
+async def scan_documents(
+    request: Request,
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -224,11 +260,13 @@ async def scan_documents(request: Request,
         except Exception as e:
             logger.warning("Orchestrator dispatch falló en scan para doc %s: %s", doc.id, e)
 
-        results.append(ScanResultOut(
-            document=doc,
-            auto_category=auto_cat,
-            message=f"Clasificado como '{auto_cat}'. La IA refinará la categoría.",
-        ))
+        results.append(
+            ScanResultOut(
+                document=doc,
+                auto_category=auto_cat,
+                message=f"Clasificado como '{auto_cat}'. La IA refinará la categoría.",
+            )
+        )
 
     for file in files:
         if not file.filename:
@@ -245,7 +283,11 @@ async def scan_documents(request: Request,
             try:
                 with zipfile.ZipFile(io.BytesIO(contents)) as z:
                     for info in z.infolist():
-                        if info.is_dir() or info.filename.startswith("__MACOSX") or info.filename.startswith("."):
+                        if (
+                            info.is_dir()
+                            or info.filename.startswith("__MACOSX")
+                            or info.filename.startswith(".")
+                        ):
                             continue
                         original_name = os.path.basename(info.filename)
                         if not original_name:
@@ -254,15 +296,21 @@ async def scan_documents(request: Request,
                         mime_type, _ = mimetypes.guess_type(original_name)
                         await _scan_single(original_name, extracted_data, mime_type)
             except Exception:
-                results.append(ScanResultOut(
-                    document=TenantDocument(
-                        id=uuid.uuid4(), tenant_id=current_user.tenant_id,
-                        file_name=file.filename, file_path="", file_size=len(contents),
-                        status="failed", category="otros",
-                    ),
-                    auto_category="otros",
-                    message=f"Error al descomprimir '{file.filename}'. Verifica que sea un ZIP válido.",
-                ))
+                results.append(
+                    ScanResultOut(
+                        document=TenantDocument(
+                            id=uuid.uuid4(),
+                            tenant_id=current_user.tenant_id,
+                            file_name=file.filename,
+                            file_path="",
+                            file_size=len(contents),
+                            status="failed",
+                            category="otros",
+                        ),
+                        auto_category="otros",
+                        message=f"Error al descomprimir '{file.filename}'. Verifica que sea un ZIP válido.",
+                    )
+                )
         else:
             await _scan_single(file.filename, contents, file.content_type)
 
@@ -271,15 +319,15 @@ async def scan_documents(request: Request,
 
 @limiter.limit("30/minute")
 @router.post("/bulk", response_model=list[DocumentOut])
-async def upload_bulk_documents(request: Request,
-
+async def upload_bulk_documents(
+    request: Request,
     file: UploadFile = File(...),
     category: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Sube un archivo ZIP y extrae múltiples documentos para procesarlos en lote."""
-    if not file.filename.lower().endswith('.zip'):
+    if not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="El archivo masivo debe ser un ZIP")
 
     import io
@@ -294,7 +342,11 @@ async def upload_bulk_documents(request: Request,
     try:
         with zipfile.ZipFile(io.BytesIO(contents)) as z:
             for info in z.infolist():
-                if info.is_dir() or info.filename.startswith('__MACOSX') or info.filename.startswith('.'):
+                if (
+                    info.is_dir()
+                    or info.filename.startswith("__MACOSX")
+                    or info.filename.startswith(".")
+                ):
                     continue
 
                 # Extraer archivo
@@ -314,6 +366,7 @@ async def upload_bulk_documents(request: Request,
 
                 # Registrar documento
                 import mimetypes
+
                 mime_type, _ = mimetypes.guess_type(original_name)
 
                 doc = TenantDocument(
@@ -362,8 +415,8 @@ async def upload_bulk_documents(request: Request,
 
 @limiter.limit("30/minute")
 @router.get("/export")
-async def export_documents(request: Request,
-
+async def export_documents(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -414,8 +467,8 @@ async def export_documents(request: Request,
 
 @limiter.limit("30/minute")
 @router.get("", response_model=list[DocumentOut])
-async def list_documents(request: Request,
-
+async def list_documents(
+    request: Request,
     category: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -437,8 +490,8 @@ async def list_documents(request: Request,
 
 @limiter.limit("30/minute")
 @router.delete("/{document_id}", status_code=200)
-async def delete_document(request: Request,
-
+async def delete_document(
+    request: Request,
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -476,8 +529,8 @@ async def delete_document(request: Request,
 
 @limiter.limit("30/minute")
 @router.get("/{document_id}/download")
-async def download_document(request: Request,
-
+async def download_document(
+    request: Request,
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -506,8 +559,7 @@ async def download_document(request: Request,
             file_path = fallback
         else:
             raise HTTPException(
-                status_code=404,
-                detail=f"Archivo no disponible en disco: {file_path}"
+                status_code=404, detail=f"Archivo no disponible en disco: {file_path}"
             )
 
     # Si es un PDF de factura IA antiguo y no es un PDF real, intentar regenerarlo al vuelo.
@@ -532,7 +584,7 @@ async def download_document(request: Request,
                     )
                     task = task_result.scalar_one_or_none()
                     if task and task.agent_results:
-                        for r in (task.agent_results or []):
+                        for r in task.agent_results or []:
                             if not isinstance(r, dict):
                                 continue
                             if r.get("agent") != "billing":
@@ -561,12 +613,15 @@ async def download_document(request: Request,
                     company_nif = extracted_data.get("issuer_nif") or (
                         tenant_obj.nif if tenant_obj else "B00000000"
                     )
-                    company_address = extracted_data.get("issuer_address") or "Calle Principal, 1 · Madrid"
+                    company_address = (
+                        extracted_data.get("issuer_address") or "Calle Principal, 1 · Madrid"
+                    )
                     company_email = extracted_data.get("issuer_email") or ""
 
                     invoice_data = {
                         "number": invoice_number,
-                        "date": extracted_data.get("invoice_date") or datetime.now(UTC).strftime("%Y-%m-%d"),
+                        "date": extracted_data.get("invoice_date")
+                        or datetime.now(UTC).strftime("%Y-%m-%d"),
                         "amount_base": base,
                         "tax_amount": tax,
                         "amount_total": total,
@@ -596,7 +651,9 @@ async def download_document(request: Request,
                     if extracted_data.get("notes"):
                         invoice_data["notes"] = extracted_data["notes"]
                     if extracted_data.get("payment_terms") or extracted_data.get("payment_method"):
-                        invoice_data["payment_terms"] = extracted_data.get("payment_terms") or extracted_data.get("payment_method")
+                        invoice_data["payment_terms"] = extracted_data.get(
+                            "payment_terms"
+                        ) or extracted_data.get("payment_method")
 
                     pdf_bytes = generate_invoice_pdf(invoice_data)
                     if pdf_bytes.startswith(b"%PDF-"):
@@ -624,7 +681,7 @@ async def download_document(request: Request,
         pass
 
     media_type = doc.file_type or "application/octet-stream"
-    safe_filename = doc.file_name.replace('"', '_') if doc.file_name else f"documento_{document_id}"
+    safe_filename = doc.file_name.replace('"', "_") if doc.file_name else f"documento_{document_id}"
 
     return FileResponse(
         path=file_path,
@@ -639,8 +696,8 @@ async def download_document(request: Request,
 
 @limiter.limit("30/minute")
 @router.patch("/{document_id}/content", response_model=DocumentOut)
-async def update_document_content(request: Request,
-
+async def update_document_content(
+    request: Request,
     document_id: uuid.UUID,
     body: dict,
     db: AsyncSession = Depends(get_db),
@@ -672,7 +729,7 @@ async def update_document_content(request: Request,
     if doc.file_type and "pdf" in doc.file_type.lower():
         raise HTTPException(
             status_code=400,
-            detail="No se puede modificar directamente un PDF. Modifica los datos originales y regenera el PDF."
+            detail="No se puede modificar directamente un PDF. Modifica los datos originales y regenera el PDF.",
         )
 
     # Actualizar el archivo en disco
@@ -681,7 +738,9 @@ async def update_document_content(request: Request,
             mode = "a" if append_mode else "w"
             with open(doc.file_path, mode, encoding="utf-8") as f:
                 if append_mode:
-                    f.write(f"\n\n--- Modificacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} ---\n")
+                    f.write(
+                        f"\n\n--- Modificacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} ---\n"
+                    )
                 f.write(new_content)
             # Actualizar tamaño
             doc.file_size = os.path.getsize(doc.file_path)
@@ -714,8 +773,8 @@ async def update_document_content(request: Request,
 
 @limiter.limit("30/minute")
 @router.get("/by-category/{category}", response_model=list[DocumentOut])
-async def list_documents_by_category(request: Request,
-
+async def list_documents_by_category(
+    request: Request,
     category: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -734,6 +793,7 @@ async def list_documents_by_category(request: Request,
 
 
 # ── Importar bases de datos ──────────────────────────────────────────────────
+
 
 class ImportDBOut(BaseModel):
     document_id: uuid.UUID
@@ -756,6 +816,7 @@ def _parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list
 
     if ext == ".csv":
         import csv
+
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             sample = f.read(4096)
             f.seek(0)
@@ -770,6 +831,7 @@ def _parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list
 
     elif ext in (".xlsx", ".xls", ".ods"):
         import openpyxl
+
         wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
         ws = wb.active
         rows_raw = list(ws.iter_rows(values_only=True))
@@ -803,6 +865,7 @@ def _parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list
 
 
 # ── Plantillas de Contrato (.docx) ───────────────────────────────────────────
+
 
 class ContractTemplateOut(BaseModel):
     model_config = {"from_attributes": True}
@@ -1007,9 +1070,8 @@ async def generate_contract(
 
     # Cargar tenant
     from app.db.models.auth import Tenant
-    tenant_result = await db.execute(
-        sa_select(Tenant).where(Tenant.id == current_user.tenant_id)
-    )
+
+    tenant_result = await db.execute(sa_select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = tenant_result.scalar_one_or_none()
 
     # Construir contexto según tipo de entidad
@@ -1022,6 +1084,7 @@ async def generate_contract(
     entity = None
     if entity_type == "client":
         from app.db.models.crm import Client
+
         r = await db.execute(
             sa_select(Client).where(
                 Client.id == entity_id, Client.tenant_id == current_user.tenant_id
@@ -1033,6 +1096,7 @@ async def generate_contract(
         context = build_context_for_client(entity, tenant)
     elif entity_type == "employee":
         from app.db.models.hr import Employee
+
         r = await db.execute(
             sa_select(Employee).where(
                 Employee.id == entity_id, Employee.tenant_id == current_user.tenant_id
@@ -1102,8 +1166,8 @@ async def delete_contract_template(
 
 @limiter.limit("30/minute")
 @router.post("/import-db", response_model=list[ImportDBOut])
-async def import_database(request: Request,
-
+async def import_database(
+    request: Request,
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1124,15 +1188,17 @@ async def import_database(request: Request,
 
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in (".csv", ".xlsx", ".xls", ".json", ".ods"):
-            results.append(ImportDBOut(
-                document_id=uuid.uuid4(),
-                file_name=file.filename,
-                rows_detected=0,
-                columns=[],
-                category="otros",
-                task_id=None,
-                message=f"Formato '{ext}' no soportado. Usa CSV, XLSX, JSON u ODS.",
-            ))
+            results.append(
+                ImportDBOut(
+                    document_id=uuid.uuid4(),
+                    file_name=file.filename,
+                    rows_detected=0,
+                    columns=[],
+                    category="otros",
+                    task_id=None,
+                    message=f"Formato '{ext}' no soportado. Usa CSV, XLSX, JSON u ODS.",
+                )
+            )
             continue
 
         contents = await file.read()
@@ -1152,13 +1218,22 @@ async def import_database(request: Request,
             auto_cat = "facturas"
         elif any(k in cols_lower for k in ("nomina", "salario", "sueldo", "empleado", "payroll")):
             auto_cat = "nominas"
-        elif any(k in cols_lower for k in ("correo", "email", "asunto", "subject", "inbox", "bandeja")):
+        elif any(
+            k in cols_lower for k in ("correo", "email", "asunto", "subject", "inbox", "bandeja")
+        ):
             auto_cat = "correos"
-        elif any(k in cols_lower for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")):
+        elif any(
+            k in cols_lower
+            for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")
+        ):
             auto_cat = "crm"
-        elif any(k in cols_lower for k in ("banco", "iban", "movimiento", "saldo", "transferencia")):
+        elif any(
+            k in cols_lower for k in ("banco", "iban", "movimiento", "saldo", "transferencia")
+        ):
             auto_cat = "bancos"
-        elif any(k in cols_lower for k in ("producto", "articulo", "precio", "stock", "referencia")):
+        elif any(
+            k in cols_lower for k in ("producto", "articulo", "precio", "stock", "referencia")
+        ):
             auto_cat = "crm"
         elif any(k in cols_lower for k in ("contrato", "alta", "baja", "puesto", "departamento")):
             auto_cat = "rrhh"
@@ -1176,12 +1251,16 @@ async def import_database(request: Request,
             file_size=len(contents),
             category=auto_cat,
             status="uploaded",
-            parsed_content=json_mod.dumps({
-                "format": fmt,
-                "columns": columns,
-                "row_count": len(rows),
-                "sample_rows": rows[:5],
-            }, ensure_ascii=False, default=str),
+            parsed_content=json_mod.dumps(
+                {
+                    "format": fmt,
+                    "columns": columns,
+                    "row_count": len(rows),
+                    "sample_rows": rows[:5],
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
         )
         db.add(doc)
         await db.commit()
@@ -1218,14 +1297,16 @@ async def import_database(request: Request,
         except Exception as e:
             logger.warning("Orchestrator dispatch falló en import para doc %s: %s", doc.id, e)
 
-        results.append(ImportDBOut(
-            document_id=doc.id,
-            file_name=file.filename,
-            rows_detected=len(rows),
-            columns=columns[:20],
-            category=auto_cat,
-            task_id=task_id,
-            message=f"{len(rows)} filas detectadas → carpeta '{auto_cat}'. La IA está procesando los datos.",
-        ))
+        results.append(
+            ImportDBOut(
+                document_id=doc.id,
+                file_name=file.filename,
+                rows_detected=len(rows),
+                columns=columns[:20],
+                category=auto_cat,
+                task_id=task_id,
+                message=f"{len(rows)} filas detectadas → carpeta '{auto_cat}'. La IA está procesando los datos.",
+            )
+        )
 
     return results

@@ -6,7 +6,9 @@ from pydantic import BaseModel
 
 class SkillInput(BaseModel):
     """Esquema base para la entrada de parámetros de cualquier Skill."""
+
     pass
+
 
 class BaseSkill(ABC):
     """

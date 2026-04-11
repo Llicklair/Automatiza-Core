@@ -7,9 +7,11 @@ from app.skills.base import BaseSkill, SkillInput
 
 logger = logging.getLogger(__name__)
 
+
 class HelloWorldInput(SkillInput):
     name: str = Field(description="Nombre de la persona a saludar.")
     uppercase: bool = Field(default=False, description="Si es True, el saludo será en mayúsculas.")
+
 
 class HelloWorldSkill(BaseSkill):
     """
@@ -44,8 +46,5 @@ class HelloWorldSkill(BaseSkill):
         return {
             "success": True,
             "message": greeting,
-            "metadata": {
-                "tenant_id": tenant_id,
-                "is_upper": uppercase
-            }
+            "metadata": {"tenant_id": tenant_id, "is_upper": uppercase},
         }

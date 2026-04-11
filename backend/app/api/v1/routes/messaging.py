@@ -4,6 +4,7 @@ Rutas de mensajería externa — Telegram webhook + gestión de conexión.
 El webhook recibe mensajes de Telegram, busca el tenant vinculado al chat_id,
 y enruta el mensaje al orquestador de agentes IA.
 """
+
 import logging
 import secrets
 
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/messaging", tags=["messaging"])
 
 
 # ─── Telegram Webhook (sin auth — llamado por Telegram) ──────────────────────
+
 
 @router.post("/telegram/webhook")
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
@@ -55,20 +57,26 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         return {"ok": True}
 
     if text == "/start":
-        await _send_reply(chat_id, (
-            "¡Hola! Soy el asistente IA de tu empresa.\n\n"
-            "Para vincular tu Telegram, ve a Configuración > Integraciones "
-            "en el panel web y sigue las instrucciones."
-        ))
+        await _send_reply(
+            chat_id,
+            (
+                "¡Hola! Soy el asistente IA de tu empresa.\n\n"
+                "Para vincular tu Telegram, ve a Configuración > Integraciones "
+                "en el panel web y sigue las instrucciones."
+            ),
+        )
         return {"ok": True}
 
     # ── Buscar tenant vinculado a este chat_id ──
     integration = await _find_integration_by_chat(db, chat_id)
     if not integration:
-        await _send_reply(chat_id, (
-            "No he encontrado ninguna empresa vinculada a este chat.\n"
-            "Vincula tu cuenta desde el panel web: Configuración > Integraciones > Telegram."
-        ))
+        await _send_reply(
+            chat_id,
+            (
+                "No he encontrado ninguna empresa vinculada a este chat.\n"
+                "Vincula tu cuenta desde el panel web: Configuración > Integraciones > Telegram."
+            ),
+        )
         return {"ok": True}
 
     # ── Enviar typing + invocar orquestador ──
@@ -83,6 +91,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
     # Invocar orquestador en background
     import asyncio
+
     asyncio.create_task(_process_and_reply(tenant_id, chat_id, text, update.message_id))
 
     return {"ok": True}
@@ -123,9 +132,7 @@ async def _process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: 
         for _ in range(60):
             await asyncio.sleep(2)
             async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    _sel(Task).where(Task.id == _UUID(task_id))
-                )
+                result = await db.execute(_sel(Task).where(Task.id == _UUID(task_id)))
                 task = result.scalar_one_or_none()
                 if not task:
                     break
@@ -154,7 +161,9 @@ async def _process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: 
 
     except Exception as e:
         logger.exception("Error procesando mensaje Telegram para tenant %s: %s", tenant_id, e)
-        await _send_reply(chat_id, "Ha ocurrido un error procesando tu mensaje. Inténtalo de nuevo.")
+        await _send_reply(
+            chat_id, "Ha ocurrido un error procesando tu mensaje. Inténtalo de nuevo."
+        )
 
 
 async def _send_reply(chat_id: int, text: str, reply_to_message_id: int | None = None):
@@ -172,7 +181,11 @@ async def _send_reply(chat_id: int, text: str, reply_to_message_id: int | None =
 
 
 async def _handle_link_command(
-    db: AsyncSession, chat_id: int, username: str | None, first_name: str | None, link_token: str,
+    db: AsyncSession,
+    chat_id: int,
+    username: str | None,
+    first_name: str | None,
+    link_token: str,
 ):
     """Vincula un chat de Telegram con un tenant usando el token de vinculación."""
     # Buscar integración pendiente con ese link_token
@@ -198,16 +211,21 @@ async def _handle_link_command(
             integration.config = {"chat_id": chat_id, "username": username or ""}
             await db.commit()
 
-            await _send_reply(chat_id, (
-                "¡Vinculación exitosa! 🎉\n\n"
-                "Este chat está ahora conectado a tu empresa.\n"
-                "Puedes escribirme cualquier cosa: crear facturas, consultar datos, "
-                "gestionar empleados, etc.\n\n"
-                "Escribe tu primera solicitud para empezar."
-            ))
+            await _send_reply(
+                chat_id,
+                (
+                    "¡Vinculación exitosa! 🎉\n\n"
+                    "Este chat está ahora conectado a tu empresa.\n"
+                    "Puedes escribirme cualquier cosa: crear facturas, consultar datos, "
+                    "gestionar empleados, etc.\n\n"
+                    "Escribe tu primera solicitud para empezar."
+                ),
+            )
             return
 
-    await _send_reply(chat_id, "Token de vinculación inválido o expirado. Genera uno nuevo desde el panel web.")
+    await _send_reply(
+        chat_id, "Token de vinculación inválido o expirado. Genera uno nuevo desde el panel web."
+    )
 
 
 async def _find_integration_by_chat(db: AsyncSession, chat_id: int) -> TenantIntegration | None:
@@ -226,6 +244,7 @@ async def _find_integration_by_chat(db: AsyncSession, chat_id: int) -> TenantInt
 
 
 # ─── Gestión de conexión Telegram (requiere auth) ────────────────────────────
+
 
 class TelegramConnectResponse(BaseModel):
     link_url: str
@@ -276,13 +295,15 @@ async def connect_telegram(
         existing.is_active = False
         existing.config = {}
     else:
-        db.add(TenantIntegration(
-            tenant_id=current_user.tenant_id,
-            integration_type="telegram",
-            encrypted_credentials=encrypted,
-            is_active=False,
-            config={},
-        ))
+        db.add(
+            TenantIntegration(
+                tenant_id=current_user.tenant_id,
+                integration_type="telegram",
+                encrypted_credentials=encrypted,
+                is_active=False,
+                config={},
+            )
+        )
 
     await db.commit()
 
@@ -360,6 +381,7 @@ async def telegram_status(
 
 
 # ─── Setup webhook (llamar una vez al desplegar) ─────────────────────────────
+
 
 @limiter.limit("3/minute")
 @router.post("/telegram/setup-webhook")

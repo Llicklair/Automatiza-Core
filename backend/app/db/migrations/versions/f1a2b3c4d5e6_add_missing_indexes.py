@@ -4,6 +4,7 @@ Revision ID: f1a2b3c4d5e6
 Revises: e1f2a3b4c5d6
 Create Date: 2026-03-11
 """
+
 from alembic import op
 
 revision = "f1a2b3c4d5e6"
@@ -14,14 +15,22 @@ depends_on = None
 
 def upgrade():
     # InvoiceLine.product_id — frecuente en JOINs de líneas de factura
-    op.create_index("ix_invoice_lines_product_id", "invoice_lines", ["product_id"], if_not_exists=True)
+    op.create_index(
+        "ix_invoice_lines_product_id", "invoice_lines", ["product_id"], if_not_exists=True
+    )
     # Activity — búsquedas por client_id y opportunity_id
     op.create_index("ix_activities_client_id", "activities", ["client_id"], if_not_exists=True)
-    op.create_index("ix_activities_opportunity_id", "activities", ["opportunity_id"], if_not_exists=True)
+    op.create_index(
+        "ix_activities_opportunity_id", "activities", ["opportunity_id"], if_not_exists=True
+    )
     # Índice compuesto tenant_id + created_at para filtros comunes en invoices
-    op.create_index("ix_invoices_tenant_created", "invoices", ["tenant_id", "created_at"], if_not_exists=True)
+    op.create_index(
+        "ix_invoices_tenant_created", "invoices", ["tenant_id", "created_at"], if_not_exists=True
+    )
     # Índice compuesto tenant_id + created_at para tasks
-    op.create_index("ix_tasks_tenant_created", "tasks", ["tenant_id", "created_at"], if_not_exists=True)
+    op.create_index(
+        "ix_tasks_tenant_created", "tasks", ["tenant_id", "created_at"], if_not_exists=True
+    )
 
 
 def downgrade():

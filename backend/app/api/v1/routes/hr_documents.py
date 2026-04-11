@@ -7,6 +7,7 @@ Endpoints:
   POST /hr/documents/{id}/approve — Marca como aprobado
   DELETE /hr/documents/{id}    — Elimina un borrador
 """
+
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -28,18 +29,22 @@ router = APIRouter(prefix="/hr/documents", tags=["hr-documents"])
 
 # ── Modelo DB ──────────────────────────────────────────────────────────────────
 
+
 class HRDocument(Base):
     """Documento laboral generado por IA. Append-mostly: se crea como borrador
     y se aprueba una vez. Nunca se edita el contenido — se regenera."""
+
     __tablename__ = "hr_documents"
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(PG_UUID(as_uuid=True), index=True, nullable=False)
-    doc_type = Column(String(50), nullable=False)       # contract, nda, termination, settlement, addendum, other
+    doc_type = Column(
+        String(50), nullable=False
+    )  # contract, nda, termination, settlement, addendum, other
     title = Column(String(255), nullable=False)
     employee_name = Column(String(200), nullable=True)  # Optional employee target
-    content_html = Column(Text, nullable=False)         # HTML rendered by LLM
-    status = Column(String(20), default="draft")        # draft | approved
-    instructions = Column(Text, nullable=True)          # User's original prompt
+    content_html = Column(Text, nullable=False)  # HTML rendered by LLM
+    status = Column(String(20), default="draft")  # draft | approved
+    instructions = Column(Text, nullable=True)  # User's original prompt
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     approved_at = Column(DateTime, nullable=True)
@@ -47,11 +52,13 @@ class HRDocument(Base):
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
+
 class GenerateRequest(BaseModel):
-    doc_type: str                    # contract, nda, termination, settlement, addendum, other
-    instructions: str = ""           # Free-text description of what to generate
-    employee_name: str | None = None # Optional: auto-fill employee data
-    employee_id: str | None = None   # Optional: pull data from HR module
+    doc_type: str  # contract, nda, termination, settlement, addendum, other
+    instructions: str = ""  # Free-text description of what to generate
+    employee_name: str | None = None  # Optional: auto-fill employee data
+    employee_id: str | None = None  # Optional: pull data from HR module
+
 
 class HRDocumentOut(BaseModel):
     id: str
@@ -76,7 +83,9 @@ import os as _os
 def _load_sepe_logo_b64() -> str:
     """Carga el logo SEPE como data URI PNG para embeber en HTML."""
     candidates = [
-        _os.path.join(_os.path.dirname(__file__), "..", "..", "services", "assets", "sepe_logo.png"),
+        _os.path.join(
+            _os.path.dirname(__file__), "..", "..", "services", "assets", "sepe_logo.png"
+        ),
         _os.path.join(_os.path.dirname(__file__), "assets", "sepe_logo.png"),
     ]
     for path in candidates:
@@ -85,6 +94,7 @@ def _load_sepe_logo_b64() -> str:
             with open(p, "rb") as f:
                 return "data:image/png;base64," + _b64.b64encode(f.read()).decode()
     return ""  # fallback: sin logo
+
 
 _SEPE_LOGO_URI = _load_sepe_logo_b64()
 
@@ -147,6 +157,7 @@ ESTILOS DE ELEMENTOS:
   .nota-final: font-size:8.5pt; color:#999; text-align:center; margin-top:40px; border-top:1px solid #eee; padding-top:10px
 """
 
+
 def _get_system_prompt(doc_type: str) -> str:
     """Devuelve el system prompt adaptado al tipo de documento."""
     if doc_type == "contract":
@@ -208,6 +219,7 @@ Usa un encabezado profesional con datos de empresa, título del documento y dato
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
+
 @router.post("/generate", status_code=status.HTTP_201_CREATED)
 async def generate_hr_document(
     payload: GenerateRequest,
@@ -224,6 +236,7 @@ async def generate_hr_document(
     if payload.employee_id:
         try:
             from app.db.models.hr import Employee
+
             result = await db.execute(
                 select(Employee).where(
                     Employee.id == payload.employee_id,
@@ -254,9 +267,8 @@ async def generate_hr_document(
     # Tenant data for company header
     try:
         from app.db.models.auth import Tenant
-        result = await db.execute(
-            select(Tenant).where(Tenant.id == current_user.tenant_id)
-        )
+
+        result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
         tenant = result.scalar_one_or_none()
         company_context = ""
         if tenant:
@@ -298,10 +310,12 @@ async def generate_hr_document(
         raise HTTPException(status_code=500, detail=f"Error al inicializar el modelo IA: {str(e)}")
 
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content=_get_system_prompt(payload.doc_type)),
-            HumanMessage(content=user_prompt),
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=_get_system_prompt(payload.doc_type)),
+                HumanMessage(content=user_prompt),
+            ]
+        )
         content_html = response.content.strip()
         # Eliminar wrappers de markdown (```html ... ```)
         if content_html.startswith("```"):
@@ -316,6 +330,7 @@ async def generate_hr_document(
     # Usar sesión fresca para el save — la sesión anterior puede haber expirado
     try:
         from app.db.base import AsyncSessionLocal
+
         async with AsyncSessionLocal() as save_db:
             doc = HRDocument(
                 id=uuid.uuid4(),
@@ -332,7 +347,9 @@ async def generate_hr_document(
             await save_db.refresh(doc)
     except Exception as e:
         logger.error("Error guardando documento en BD: %s", e)
-        raise HTTPException(status_code=500, detail=f"Documento generado pero no guardado: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Documento generado pero no guardado: {str(e)}"
+        )
 
     return {
         "id": str(doc.id),

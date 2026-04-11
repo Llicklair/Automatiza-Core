@@ -20,7 +20,9 @@ class OutlookClient:
     async def close(self):
         await self._client.aclose()
 
-    async def list_messages(self, folder: str = "inbox", top: int = 20, search: str = "") -> list[dict]:
+    async def list_messages(
+        self, folder: str = "inbox", top: int = 20, search: str = ""
+    ) -> list[dict]:
         """List messages from a mail folder."""
         params: dict = {
             "$top": top,
@@ -29,7 +31,9 @@ class OutlookClient:
         }
         if search:
             params["$search"] = f'"{search}"'
-        resp = await self._client.get(f"{GRAPH_API}/me/mailFolders/{folder}/messages", params=params)
+        resp = await self._client.get(
+            f"{GRAPH_API}/me/mailFolders/{folder}/messages", params=params
+        )
         resp.raise_for_status()
         return [_normalize_message(m) for m in resp.json().get("value", [])]
 
@@ -43,7 +47,11 @@ class OutlookClient:
         return _normalize_message(resp.json())
 
     async def send_message(
-        self, to: str, subject: str, body: str, html: bool = False,
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        html: bool = False,
         attachments: list[tuple[str, bytes]] | None = None,
     ) -> dict:
         """Send an email via Microsoft Graph."""

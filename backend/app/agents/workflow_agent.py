@@ -2,6 +2,7 @@
 Agente especializado en la gestión de Workflows y Automatizaciones.
 Permite al usuario crear, modificar o desactivar reglas de negocio mediante lenguaje natural.
 """
+
 from __future__ import annotations
 
 import json
@@ -134,6 +135,7 @@ REGLAS:
 4. Si no entiendes la petición, devuelve un error lógico en el campo 'error'.
 """
 
+
 async def _compile_deterministic_steps(
     name: str,
     description: str,
@@ -145,6 +147,7 @@ async def _compile_deterministic_steps(
     de ejecución determinista del workflow. Se llama una sola vez al crear la regla.
     """
     from app.core.llm_factory import get_llm
+
     llm = get_llm(temperature=0, format_output="json")
 
     context = (
@@ -155,10 +158,12 @@ async def _compile_deterministic_steps(
     )
 
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content=_COMPILE_STEPS_PROMPT),
-            HumanMessage(content=context),
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=_COMPILE_STEPS_PROMPT),
+                HumanMessage(content=context),
+            ]
+        )
         raw = response.content.strip()
         if raw.startswith("```json"):
             raw = raw[7:]
@@ -174,10 +179,18 @@ async def _compile_deterministic_steps(
                 step["type"] = "deterministic" if step.get("tool") else "reasoning"
         return steps
     except Exception as _e:
-        logger.warning("Error parseando pasos de workflow del LLM, usando fallback genérico: %s", _e)
+        logger.warning(
+            "Error parseando pasos de workflow del LLM, usando fallback genérico: %s", _e
+        )
         # Fallback: un paso reasoning genérico
-        return [{"type": "reasoning", "agent": "skill", "action": "execute_workflow",
-                 "params": {"intent": action_instruction}}]
+        return [
+            {
+                "type": "reasoning",
+                "agent": "skill",
+                "action": "execute_workflow",
+                "params": {"intent": action_instruction},
+            }
+        ]
 
 
 async def run_workflow_agent(
@@ -199,13 +212,19 @@ async def run_workflow_agent(
     try:
         # 1. Consultar al LLM para extraer la estructura del workflow
         from app.core.llm_factory import get_llm
+
         llm = get_llm(temperature=0, format_output="json")
 
         # Inyectar lista de workflows actuales si la intención parece una actualización
         current_context = ""
-        if any(w in user_intent.lower() for w in ["modifica", "actualiza", "cambia", "borra", "quita", "desactiva"]):
+        if any(
+            w in user_intent.lower()
+            for w in ["modifica", "actualiza", "cambia", "borra", "quita", "desactiva"]
+        ):
             async with AsyncSessionLocal() as db:
-                result = await db.execute(select(Workflow).where(Workflow.tenant_id == uuid.UUID(tenant_id)))
+                result = await db.execute(
+                    select(Workflow).where(Workflow.tenant_id == uuid.UUID(tenant_id))
+                )
                 wfs = result.scalars().all()
                 if wfs:
                     current_context = "\nWorkflows actuales del tenant:\n" + "\n".join(
@@ -213,16 +232,20 @@ async def run_workflow_agent(
                         for w in wfs
                     )
 
-        response = await llm.ainvoke([
-            SystemMessage(content=_SYSTEM_PROMPT + current_context),
-            HumanMessage(content=user_intent),
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=_SYSTEM_PROMPT + current_context),
+                HumanMessage(content=user_intent),
+            ]
+        )
 
         try:
             plan = json.loads(response.content)
         except Exception as _e:
             logger.warning("Error parseando respuesta JSON del LLM en workflow_agent: %s", _e)
-            return WorkflowAgentResult(success=False, action="parse", error="No se pudo parsear el plan del LLM.")
+            return WorkflowAgentResult(
+                success=False, action="parse", error="No se pudo parsear el plan del LLM."
+            )
 
         action = plan.get("action", "create")
 
@@ -233,7 +256,9 @@ async def run_workflow_agent(
                 wf_description = plan.get("description", "")
                 wf_trigger_type = plan.get("trigger_type", "event_based")
                 wf_action_config = plan.get("action_config", {})
-                wf_action_instruction = wf_action_config.get("instruction", wf_description or wf_name)
+                wf_action_instruction = wf_action_config.get(
+                    "instruction", wf_description or wf_name
+                )
 
                 # Compilar pasos deterministas si se solicita ese modo
                 compiled_steps = None
@@ -277,22 +302,28 @@ async def run_workflow_agent(
                 if not wf_id:
                     # Intento de búsqueda por nombre si no viene el ID (robusto para el usuario)
                     res = await db.execute(
-                        select(Workflow).where(
+                        select(Workflow)
+                        .where(
                             Workflow.tenant_id == uuid.UUID(tenant_id),
-                            Workflow.name.ilike(f"%{plan.get('name')}%")
-                        ).limit(1)
+                            Workflow.name.ilike(f"%{plan.get('name')}%"),
+                        )
+                        .limit(1)
                     )
                     existing_wf = res.scalar_one_or_none()
                 else:
                     existing_wf = await db.get(Workflow, uuid.UUID(wf_id))
 
                 if not existing_wf or str(existing_wf.tenant_id) != tenant_id:
-                    return WorkflowAgentResult(success=False, action=action, error="No se encontró el workflow indicado.")
+                    return WorkflowAgentResult(
+                        success=False, action=action, error="No se encontró el workflow indicado."
+                    )
 
                 if action == "delete":
                     await db.delete(existing_wf)
                     await db.commit()
-                    return WorkflowAgentResult(success=True, action="delete", workflow_id=str(existing_wf.id))
+                    return WorkflowAgentResult(
+                        success=True, action="delete", workflow_id=str(existing_wf.id)
+                    )
 
                 # Update / Toggle
                 if "is_active" in plan:
@@ -308,17 +339,26 @@ async def run_workflow_agent(
                     action=action,
                     workflow_id=str(existing_wf.id),
                     workflow_name=existing_wf.name,
-                    data=plan
+                    data=plan,
                 )
 
             elif action == "list":
-                res = await db.execute(select(Workflow).where(Workflow.tenant_id == uuid.UUID(tenant_id)))
+                res = await db.execute(
+                    select(Workflow).where(Workflow.tenant_id == uuid.UUID(tenant_id))
+                )
                 wfs = res.scalars().all()
                 data_list = [{"id": str(w.id), "name": w.name, "active": w.is_active} for w in wfs]
-                return WorkflowAgentResult(success=True, action="list", data={"workflows": data_list})
+                return WorkflowAgentResult(
+                    success=True, action="list", data={"workflows": data_list}
+                )
 
-        return WorkflowAgentResult(success=False, action=action, error="Accion no soportada o error en DB.")
+        return WorkflowAgentResult(
+            success=False, action=action, error="Accion no soportada o error en DB."
+        )
 
     except Exception as e:
         import traceback
-        return WorkflowAgentResult(success=False, action="error", error=str(e), data={"trace": traceback.format_exc()})
+
+        return WorkflowAgentResult(
+            success=False, action="error", error=str(e), data={"trace": traceback.format_exc()}
+        )

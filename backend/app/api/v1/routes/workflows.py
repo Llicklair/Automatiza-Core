@@ -29,12 +29,13 @@ from app.services.node_engine import has_advanced_nodes
 
 router = APIRouter(prefix="/workflows", tags=["Workflows & Automations"])
 
+
 @router.get("/", response_model=list[schemas.WorkflowResponse])
 @limiter.limit("30/minute")
 async def list_workflows(
     request: Request,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Lista todos los workflows del tenant actual."""
     result = await db.execute(
@@ -47,15 +48,15 @@ async def list_workflows(
 @limiter.limit("30/minute")
 async def recent_completions(
     request: Request,
-    since: float = Query(default=0.0, description="Unix timestamp; return executions completed after this time"),
+    since: float = Query(
+        default=0.0, description="Unix timestamp; return executions completed after this time"
+    ),
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Devuelve las ejecuciones de workflow completadas/fallidas recientemente (para toast global)."""
     since_dt = (
-        datetime.fromtimestamp(since, tz=timezone.utc)
-        if since > 0
-        else datetime.now(timezone.utc)
+        datetime.fromtimestamp(since, tz=timezone.utc) if since > 0 else datetime.now(timezone.utc)
     )
     stmt = (
         select(
@@ -92,7 +93,7 @@ async def create_workflow(
     request: Request,
     workflow_in: schemas.WorkflowCreate,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Crea una nueva regla de automatización."""
     db_workflow = models.Workflow(
@@ -106,7 +107,9 @@ async def create_workflow(
         action_type=workflow_in.action_type,
         action_config=workflow_in.action_config,
         execution_mode=workflow_in.execution_mode,
-        compiled_steps=workflow_in.compiled_steps if hasattr(workflow_in, "compiled_steps") else None,
+        compiled_steps=workflow_in.compiled_steps
+        if hasattr(workflow_in, "compiled_steps")
+        else None,
         ui_nodes=workflow_in.ui_nodes or [],
         ui_edges=workflow_in.ui_edges or [],
     )
@@ -122,13 +125,12 @@ async def get_workflow(
     request: Request,
     workflow_id: UUID,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Obtiene el detalle de un workflow."""
     result = await db.execute(
         select(models.Workflow).where(
-            models.Workflow.id == workflow_id,
-            models.Workflow.tenant_id == current_user.tenant_id
+            models.Workflow.id == workflow_id, models.Workflow.tenant_id == current_user.tenant_id
         )
     )
     workflow = result.scalar_one_or_none()
@@ -144,13 +146,12 @@ async def update_workflow(
     workflow_id: UUID,
     workflow_in: schemas.WorkflowUpdate,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Actualiza una regla existente."""
     result = await db.execute(
         select(models.Workflow).where(
-            models.Workflow.id == workflow_id,
-            models.Workflow.tenant_id == current_user.tenant_id
+            models.Workflow.id == workflow_id, models.Workflow.tenant_id == current_user.tenant_id
         )
     )
     db_workflow = result.scalar_one_or_none()
@@ -172,13 +173,12 @@ async def delete_workflow(
     request: Request,
     workflow_id: UUID,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Elimina una regla de automatización."""
     result = await db.execute(
         select(models.Workflow).where(
-            models.Workflow.id == workflow_id,
-            models.Workflow.tenant_id == current_user.tenant_id
+            models.Workflow.id == workflow_id, models.Workflow.tenant_id == current_user.tenant_id
         )
     )
     db_workflow = result.scalar_one_or_none()
@@ -197,13 +197,12 @@ async def run_workflow_manually(
     workflow_id: UUID,
     background_tasks: BackgroundTasks,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Ejecuta un workflow de forma manual via el orquestador AI o el motor de nodos."""
     result = await db.execute(
         select(models.Workflow).where(
-            models.Workflow.id == workflow_id,
-            models.Workflow.tenant_id == current_user.tenant_id
+            models.Workflow.id == workflow_id, models.Workflow.tenant_id == current_user.tenant_id
         )
     )
     workflow = result.scalar_one_or_none()
@@ -223,7 +222,7 @@ async def run_workflow_manually(
     if existing.scalars().first():
         raise HTTPException(
             status_code=409,
-            detail="Este workflow ya tiene una ejecución en curso. Espera a que termine antes de lanzarlo de nuevo."
+            detail="Este workflow ya tiene una ejecución en curso. Espera a que termine antes de lanzarlo de nuevo.",
         )
 
     # 1. Registrar ejecución
@@ -231,7 +230,7 @@ async def run_workflow_manually(
         workflow_id=workflow.id,
         tenant_id=current_user.tenant_id,
         status="running",
-        trigger_payload={"source": "manual_trigger", "user_id": str(current_user.id)}
+        trigger_payload={"source": "manual_trigger", "user_id": str(current_user.id)},
     )
     db.add(execution)
     await db.commit()
@@ -241,8 +240,11 @@ async def run_workflow_manually(
     if workflow.ui_nodes and has_advanced_nodes(workflow.ui_nodes, workflow.ui_edges):
         try:
             from app.services.task_dispatch import dispatch_node_engine
+
             await dispatch_node_engine(str(execution.id))
-            execution.result_log = f"Motor de nodos lanzado para ejecución [{str(execution.id)[:8]}...]."
+            execution.result_log = (
+                f"Motor de nodos lanzado para ejecución [{str(execution.id)[:8]}...]."
+            )
         except Exception as e:
             execution.result_log = f"Error al lanzar el motor de nodos: {e}"
             execution.status = "failed"
@@ -259,7 +261,10 @@ async def run_workflow_manually(
             domain="deterministic",
             user_intent=f"[Determinista] {workflow.name}",
             status="running",
-            additional_metadata={"workflow_id": str(workflow.id), "execution_id": str(execution.id)},
+            additional_metadata={
+                "workflow_id": str(workflow.id),
+                "execution_id": str(execution.id),
+            },
         )
         db.add(det_task)
         await db.flush()
@@ -275,7 +280,7 @@ async def run_workflow_manually(
             execution.result_log = (
                 f"Ejecución determinista completada: {len(results)} paso(s). "
                 + " | ".join(
-                    f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERROR: ' + str(r.get('error',''))[:60]}"
+                    f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
                     for r in results
                 )
             )
@@ -307,8 +312,11 @@ async def run_workflow_manually(
 
     try:
         from app.services.task_dispatch import dispatch_orchestrator
+
         await dispatch_orchestrator(str(task.id))
-        execution.result_log = f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
+        execution.result_log = (
+            f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
+        )
     except Exception as e:
         execution.result_log = f"Error al lanzar el orquestador: {e}"
         execution.status = "failed"
@@ -318,7 +326,10 @@ async def run_workflow_manually(
     return execution
 
 
-@router.post("/{workflow_id}/executions/{execution_id}/cancel", response_model=schemas.WorkflowExecutionResponse)
+@router.post(
+    "/{workflow_id}/executions/{execution_id}/cancel",
+    response_model=schemas.WorkflowExecutionResponse,
+)
 @limiter.limit("30/minute")
 async def cancel_execution(
     request: Request,
@@ -339,9 +350,13 @@ async def cancel_execution(
     if not execution:
         raise HTTPException(status_code=404, detail="Ejecución no encontrada")
     if execution.status not in ("running", "paused"):
-        raise HTTPException(status_code=400, detail=f"No se puede cancelar una ejecución en estado '{execution.status}'")
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede cancelar una ejecución en estado '{execution.status}'",
+        )
 
     from datetime import UTC, datetime
+
     execution.status = "failed"
     execution.result_log = "Cancelado manualmente por el usuario."
     execution.completed_at = datetime.now(UTC)
@@ -363,8 +378,7 @@ async def run_workflow_with_context(
     """Ejecuta un workflow con contexto adicional proporcionado por el usuario."""
     result = await db.execute(
         select(models.Workflow).where(
-            models.Workflow.id == workflow_id,
-            models.Workflow.tenant_id == current_user.tenant_id
+            models.Workflow.id == workflow_id, models.Workflow.tenant_id == current_user.tenant_id
         )
     )
     workflow = result.scalar_one_or_none()
@@ -375,13 +389,21 @@ async def run_workflow_with_context(
 
     context_msg = (body.get("context") or "").strip()
     base_instruction = _build_ai_instruction(workflow)
-    full_instruction = f"{base_instruction}\n\nContexto adicional: {context_msg}" if context_msg else base_instruction
+    full_instruction = (
+        f"{base_instruction}\n\nContexto adicional: {context_msg}"
+        if context_msg
+        else base_instruction
+    )
 
     execution = models.WorkflowExecution(
         workflow_id=workflow.id,
         tenant_id=current_user.tenant_id,
         status="running",
-        trigger_payload={"source": "manual_with_context", "user_id": str(current_user.id), "context": context_msg}
+        trigger_payload={
+            "source": "manual_with_context",
+            "user_id": str(current_user.id),
+            "context": context_msg,
+        },
     )
     db.add(execution)
     await db.commit()
@@ -404,6 +426,7 @@ async def run_workflow_with_context(
 
     try:
         from app.services.task_dispatch import dispatch_orchestrator
+
         await dispatch_orchestrator(str(task.id))
         execution.result_log = f"Tarea IA lanzada con contexto [{str(task.id)[:8]}...]."
     except Exception as e:
@@ -415,7 +438,10 @@ async def run_workflow_with_context(
     return execution
 
 
-@router.post("/{workflow_id}/executions/{execution_id}/resume", response_model=schemas.WorkflowExecutionResponse)
+@router.post(
+    "/{workflow_id}/executions/{execution_id}/resume",
+    response_model=schemas.WorkflowExecutionResponse,
+)
 @limiter.limit("30/minute")
 async def resume_execution(
     request: Request,
@@ -436,12 +462,17 @@ async def resume_execution(
     if not execution:
         raise HTTPException(status_code=404, detail="Ejecución no encontrada")
     if execution.status != "paused":
-        raise HTTPException(status_code=400, detail=f"La ejecución no está pausada (estado: {execution.status})")
+        raise HTTPException(
+            status_code=400, detail=f"La ejecución no está pausada (estado: {execution.status})"
+        )
     if not execution.current_node_id:
-        raise HTTPException(status_code=400, detail="No se puede determinar el nodo desde el que reanudar")
+        raise HTTPException(
+            status_code=400, detail="No se puede determinar el nodo desde el que reanudar"
+        )
 
     try:
         from app.services.task_dispatch import dispatch_resume_node_engine
+
         await dispatch_resume_node_engine(str(execution_id), execution.current_node_id)
         execution.result_log = f"Reanudación programada desde nodo {execution.current_node_id}."
     except Exception as e:
@@ -479,6 +510,7 @@ async def get_execution_logs(
     if execution.task_id:
         try:
             from app.services.exec_log_store import get_all
+
             stored_lines = get_all(str(execution.task_id))
             if stored_lines:
                 lines = stored_lines
@@ -498,7 +530,7 @@ async def get_workflow_executions(
     request: Request,
     workflow_id: UUID,
     current_user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Devuelve el historial de ejecuciones de un workflow."""
     result = await db.execute(
@@ -511,7 +543,6 @@ async def get_workflow_executions(
         .limit(20)
     )
     return result.scalars().all()
-
 
 
 @router.post("/parse-nl", response_model=schemas.WorkflowParseResponse)
@@ -534,7 +565,8 @@ async def parse_natural_language_workflow(
     llm = get_llm(temperature=0, format_output="json")
     llm_plain = get_llm(temperature=0)
 
-    sys_msg = SystemMessage(content='''Eres el Orquestador de Automatizaciones.
+    sys_msg = SystemMessage(
+        content="""Eres el Orquestador de Automatizaciones.
 Dada una instrucción del usuario, devuelve ÚNICAMENTE un JSON válido con la configuración de la regla.
 Format:
 {
@@ -546,7 +578,8 @@ Format:
   "action_config": {"instruction": "Instrucción exacta para el agente que se deba ejecutar"}
 }
 Events soportados: invoice_created, invoice_paid, client_created, document_uploaded, any.
-(usa "any" si el usuario no especifica).''')
+(usa "any" si el usuario no especifica)."""
+    )
 
     try:
         response = llm.invoke([sys_msg, HumanMessage(content=body.text)])
@@ -561,19 +594,24 @@ Events soportados: invoice_created, invoice_paid, client_created, document_uploa
         can_det = False
         try:
             instruction = payload.get("action_config", {}).get("instruction", body.text)
-            det_response = llm_plain.invoke([
-                SystemMessage(content=(
-                    "Responde ÚNICAMENTE con 'true' o 'false', sin ningún texto adicional.\n"
-                    "Pregunta: ¿Puede esta acción ejecutarse siempre como una secuencia fija de pasos "
-                    "sin necesidad de análisis, decisión o adaptación al contexto en cada ejecución?\n"
-                    "Ejemplos true: enviar email fijo, generar informe estándar, exportar a Excel, crear factura con datos fijos.\n"
-                    "Ejemplos false: analizar y decidir, revisar y responder según contenido, evaluar situación."
-                )),
-                HumanMessage(content=instruction),
-            ])
+            det_response = llm_plain.invoke(
+                [
+                    SystemMessage(
+                        content=(
+                            "Responde ÚNICAMENTE con 'true' o 'false', sin ningún texto adicional.\n"
+                            "Pregunta: ¿Puede esta acción ejecutarse siempre como una secuencia fija de pasos "
+                            "sin necesidad de análisis, decisión o adaptación al contexto en cada ejecución?\n"
+                            "Ejemplos true: enviar email fijo, generar informe estándar, exportar a Excel, crear factura con datos fijos.\n"
+                            "Ejemplos false: analizar y decidir, revisar y responder según contenido, evaluar situación."
+                        )
+                    ),
+                    HumanMessage(content=instruction),
+                ]
+            )
             can_det = det_response.content.strip().lower().startswith("true")
         except Exception as det_err:
             import logging
+
             logging.getLogger(__name__).warning("Fallo detección determinismo: %s", det_err)
         payload["can_be_deterministic"] = can_det
 
@@ -586,6 +624,7 @@ Events soportados: invoice_created, invoice_paid, client_created, document_uploa
 
 
 # ─── Endpoint para disparar desde eventos ERP ────────────────────────────────
+
 
 @router.post("/fire-event")
 @limiter.limit("30/minute")
@@ -635,7 +674,11 @@ async def fire_workflow_event(
                 domain="deterministic",
                 user_intent=f"[Determinista] {wf.name} ({event_name})",
                 status="running",
-                additional_metadata={"workflow_id": str(wf.id), "execution_id": str(execution.id), "event": event_name},
+                additional_metadata={
+                    "workflow_id": str(wf.id),
+                    "execution_id": str(execution.id),
+                    "event": event_name,
+                },
             )
             db.add(det_task)
             await db.flush()
@@ -652,7 +695,7 @@ async def fire_workflow_event(
                 execution.result_log = (
                     f"Evento {event_name} → {len(results)} paso(s) deterministas. "
                     + " | ".join(
-                        f"[{r.get('agent','?')}:{r.get('type','?')}] "
+                        f"[{r.get('agent', '?')}:{r.get('type', '?')}] "
                         f"{'OK' if r.get('success') else 'ERR'}"
                         for r in results
                     )
@@ -676,7 +719,11 @@ async def fire_workflow_event(
                 domain=_infer_domain(wf),
                 user_intent=ai_instruction,
                 status="pending",
-                additional_metadata={"workflow_id": str(wf.id), "execution_id": str(execution.id), "event": event_name},
+                additional_metadata={
+                    "workflow_id": str(wf.id),
+                    "execution_id": str(execution.id),
+                    "event": event_name,
+                },
             )
             db.add(task)
             await db.flush()
@@ -686,6 +733,7 @@ async def fire_workflow_event(
 
             try:
                 from app.services.task_dispatch import dispatch_orchestrator
+
                 await dispatch_orchestrator(str(task.id))
                 triggered.append(str(wf.id))
             except Exception as e:
@@ -698,13 +746,16 @@ async def fire_workflow_event(
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
+
 def _generate_preview_nodes(payload: dict) -> tuple[list, list]:
     """
     Genera una topología visual mínima (preview) a partir del payload parseado por IA.
     Devuelve (ui_nodes, ui_edges) para mostrar en el mapa antes de la primera ejecución real.
     """
     TRIGGER_LABELS = {
-        "event_based": "Evento ERP", "schedule_based": "Programación", "manual": "Inicio Manual",
+        "event_based": "Evento ERP",
+        "schedule_based": "Programación",
+        "manual": "Inicio Manual",
     }
     INSTRUCTION_TO_AGENT = [
         (["factura", "cobro", "pago", "billing", "invoice"], "billing", "Facturación"),
@@ -731,23 +782,31 @@ def _generate_preview_nodes(payload: dict) -> tuple[list, list]:
         detected = [("skill", "Agente IA")]
 
     CENTER_X = 300
-    nodes = [{
-        "id": "trigger",
-        "type": "trigger",
-        "position": {"x": CENTER_X, "y": 0},
-        "data": {"label": TRIGGER_LABELS.get(trigger_type, "Trigger"), "trigger_type": trigger_type},
-    }]
+    nodes = [
+        {
+            "id": "trigger",
+            "type": "trigger",
+            "position": {"x": CENTER_X, "y": 0},
+            "data": {
+                "label": TRIGGER_LABELS.get(trigger_type, "Trigger"),
+                "trigger_type": trigger_type,
+            },
+        }
+    ]
     edges = []
 
     if len(detected) <= 1:
         # Single agent — simple linear layout
         agent, label = detected[0]
         node_id = "preview_agent_0"
-        nodes.append({
-            "id": node_id, "type": "skill",
-            "position": {"x": CENTER_X, "y": 160},
-            "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
-        })
+        nodes.append(
+            {
+                "id": node_id,
+                "type": "skill",
+                "position": {"x": CENTER_X, "y": 160},
+                "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
+            }
+        )
         edges.append({"id": f"e-trigger-{node_id}", "source": "trigger", "target": node_id})
     else:
         # Multiple agents — parallel fan-out from trigger, then join node
@@ -759,21 +818,30 @@ def _generate_preview_nodes(payload: dict) -> tuple[list, list]:
         for i, (agent, label) in enumerate(detected):
             node_id = f"preview_{agent}_{i}"
             branch_ids.append(node_id)
-            nodes.append({
-                "id": node_id, "type": "skill",
-                "position": {"x": int(start_x + i * SPACING), "y": 170},
-                "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
-            })
+            nodes.append(
+                {
+                    "id": node_id,
+                    "type": "skill",
+                    "position": {"x": int(start_x + i * SPACING), "y": 170},
+                    "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
+                }
+            )
             edges.append({"id": f"e-trigger-{node_id}", "source": "trigger", "target": node_id})
 
         # Join/consolidator node — uses billing domain (always has DB access, no files needed)
         join_id = "preview_consolidar"
-        nodes.append({
-            "id": join_id, "type": "skill",
-            "position": {"x": CENTER_X, "y": 330},
-            "data": {"label": "Informe de resumen", "domain": "billing",
-                     "instruction": f"Genera un informe ejecutivo resumiendo el estado actual del negocio: {instruction[:150]}. Incluye totales, alertas y próximos pasos."},
-        })
+        nodes.append(
+            {
+                "id": join_id,
+                "type": "skill",
+                "position": {"x": CENTER_X, "y": 330},
+                "data": {
+                    "label": "Informe de resumen",
+                    "domain": "billing",
+                    "instruction": f"Genera un informe ejecutivo resumiendo el estado actual del negocio: {instruction[:150]}. Incluye totales, alertas y próximos pasos.",
+                },
+            }
+        )
         for bid in branch_ids:
             edges.append({"id": f"e-{bid}-{join_id}", "source": bid, "target": join_id})
 
@@ -837,8 +905,15 @@ async def _execute_deterministic_steps(
         if step_type == "deterministic":
             tool_name = step.get("tool", "")
             if not tool_name:
-                results.append({"agent": agent_name, "step": idx, "type": "deterministic",
-                                "success": False, "error": "Paso determinista sin campo 'tool'"})
+                results.append(
+                    {
+                        "agent": agent_name,
+                        "step": idx,
+                        "type": "deterministic",
+                        "success": False,
+                        "error": "Paso determinista sin campo 'tool'",
+                    }
+                )
                 continue
 
             # Construir params, inyectando tenant_id y $prev
@@ -853,13 +928,28 @@ async def _execute_deterministic_steps(
             try:
                 output = call_tool(tool_name, tool_params)
                 prev_output = output
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "deterministic",
-                    "tool": tool_name, "success": True, "output": output, "error": None,
-                })
+                results.append(
+                    {
+                        "agent": agent_name,
+                        "step": idx,
+                        "type": "deterministic",
+                        "tool": tool_name,
+                        "success": True,
+                        "output": output,
+                        "error": None,
+                    }
+                )
             except Exception as exc:
-                results.append({"agent": agent_name, "step": idx, "type": "deterministic",
-                                "tool": tool_name, "success": False, "error": str(exc)})
+                results.append(
+                    {
+                        "agent": agent_name,
+                        "step": idx,
+                        "type": "deterministic",
+                        "tool": tool_name,
+                        "success": False,
+                        "error": str(exc),
+                    }
+                )
 
         # ── Paso REASONING: dispatcher + LangGraph + LLM ──
         else:
@@ -882,24 +972,46 @@ async def _execute_deterministic_steps(
 
             dispatch_fn = _DISPATCH_MAP.get(agent_name)
             if dispatch_fn is None:
-                results.append({"agent": agent_name, "step": idx, "type": "reasoning",
-                                "success": False, "error": f"Agente '{agent_name}' no reconocido"})
+                results.append(
+                    {
+                        "agent": agent_name,
+                        "step": idx,
+                        "type": "reasoning",
+                        "success": False,
+                        "error": f"Agente '{agent_name}' no reconocido",
+                    }
+                )
                 continue
 
             try:
                 result = await dispatch_fn(base_state, subtask)  # type: ignore[arg-type]
                 output_data = result.get("output", {})
-                prev_output = output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "reasoning",
-                    "action": step.get("action", ""),
-                    "success": result.get("success", False),
-                    "output": output_data,
-                    "error": result.get("error"),
-                })
+                prev_output = (
+                    output_data.get("response", "")
+                    if isinstance(output_data, dict)
+                    else str(output_data)
+                )
+                results.append(
+                    {
+                        "agent": agent_name,
+                        "step": idx,
+                        "type": "reasoning",
+                        "action": step.get("action", ""),
+                        "success": result.get("success", False),
+                        "output": output_data,
+                        "error": result.get("error"),
+                    }
+                )
             except Exception as exc:
-                results.append({"agent": agent_name, "step": idx, "type": "reasoning",
-                                "success": False, "error": str(exc)})
+                results.append(
+                    {
+                        "agent": agent_name,
+                        "step": idx,
+                        "type": "reasoning",
+                        "success": False,
+                        "error": str(exc),
+                    }
+                )
 
     return results
 

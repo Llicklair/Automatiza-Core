@@ -32,10 +32,13 @@ from ._schemas import (
 
 _logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "uploads"))
+UPLOAD_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "uploads")
+)
 
 
 # ─── Period parsing ──────────────────────────────────────────────────────────
+
 
 def _parse_month(month: str) -> tuple[date, date]:
     """Devuelve (inicio_mes, fin_mes) a partir de 'YYYY-MM'."""
@@ -66,15 +69,30 @@ def _parse_period(period: str) -> tuple[date, date, str]:
             return start, end, label
         else:
             start, end = _parse_month(period)
-            months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-                       "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+            months = [
+                "Enero",
+                "Febrero",
+                "Marzo",
+                "Abril",
+                "Mayo",
+                "Junio",
+                "Julio",
+                "Agosto",
+                "Septiembre",
+                "Octubre",
+                "Noviembre",
+                "Diciembre",
+            ]
             label = f"{months[start.month - 1]} {start.year}"
             return start, end, label
     except (ValueError, IndexError):
-        raise HTTPException(status_code=400, detail="Formato de periodo inválido. Usa YYYY-MM o YYYY-Q1..Q4.")
+        raise HTTPException(
+            status_code=400, detail="Formato de periodo inválido. Usa YYYY-MM o YYYY-Q1..Q4."
+        )
 
 
 # ─── Report text builder ────────────────────────────────────────────────────
+
 
 def _build_report_text(snap: CompanySnapshot, company_name: str) -> str:
     """Construye el texto estructurado del informe mensual."""
@@ -128,7 +146,9 @@ def _build_report_text(snap: CompanySnapshot, company_name: str) -> str:
     ]
 
     if c.top_client_name:
-        lines.append(f"  Cliente principal:              {c.top_client_name} ({c.top_client_amount:,.2f} €)")
+        lines.append(
+            f"  Cliente principal:              {c.top_client_name} ({c.top_client_amount:,.2f} €)"
+        )
 
     lines += [
         "",
@@ -142,10 +162,21 @@ def _build_report_text(snap: CompanySnapshot, company_name: str) -> str:
 
 # ─── Resumen ejecutivo: IA + fallback determinista ───────────────────────────
 
+
 def _build_deterministic_resumen(
-    month_str, ingresos, gastos, margen, margen_pct,
-    fact_section, hr_section, bank_section, coste_nominas,
-    total_clients, new_clients, top_client_name, top_amount,
+    month_str,
+    ingresos,
+    gastos,
+    margen,
+    margen_pct,
+    fact_section,
+    hr_section,
+    bank_section,
+    coste_nominas,
+    total_clients,
+    new_clients,
+    top_client_name,
+    top_amount,
 ) -> str:
     tendencia = "positiva" if margen > 0 else "negativa" if margen < 0 else "neutra"
     resumen = (
@@ -172,19 +203,40 @@ def _build_deterministic_resumen(
 
 
 async def _generate_resumen_ejecutivo(
-    month_str, ingresos, gastos, margen, margen_pct,
-    fact_section, hr_section, bank_section, coste_nominas,
-    total_clients, new_clients, top_client_name, top_amount,
+    month_str,
+    ingresos,
+    gastos,
+    margen,
+    margen_pct,
+    fact_section,
+    hr_section,
+    bank_section,
+    coste_nominas,
+    total_clients,
+    new_clients,
+    top_client_name,
+    top_amount,
 ) -> str:
     """Genera resumen ejecutivo con IA. Si falla (sin tokens, timeout), usa determinista."""
     deterministic = _build_deterministic_resumen(
-        month_str, ingresos, gastos, margen, margen_pct,
-        fact_section, hr_section, bank_section, coste_nominas,
-        total_clients, new_clients, top_client_name, top_amount,
+        month_str,
+        ingresos,
+        gastos,
+        margen,
+        margen_pct,
+        fact_section,
+        hr_section,
+        bank_section,
+        coste_nominas,
+        total_clients,
+        new_clients,
+        top_client_name,
+        top_amount,
     )
 
     try:
         from app.core.llm_factory import get_llm
+
         llm = get_llm(temperature=0.3, max_tokens=600)
 
         prompt = (
@@ -204,6 +256,7 @@ async def _generate_resumen_ejecutivo(
         )
 
         from langchain_core.messages import HumanMessage
+
         response = await llm.ainvoke([HumanMessage(content=prompt)])
         ai_resumen = response.content.strip()
 
@@ -217,10 +270,18 @@ async def _generate_resumen_ejecutivo(
     return deterministic
 
 
-async def _generate_resumen_fiscal(period: str, label: str, iva: FiscalIVA, irpf: FiscalIRPF, is_: FiscalIS) -> str:
+async def _generate_resumen_fiscal(
+    period: str, label: str, iva: FiscalIVA, irpf: FiscalIRPF, is_: FiscalIS
+) -> str:
     """Resumen ejecutivo fiscal con IA, fallback determinista."""
     resultado_iva = iva.resultado_iva
-    estado_iva = "a ingresar" if resultado_iva > 0 else "a compensar/devolver" if resultado_iva < 0 else "neutro"
+    estado_iva = (
+        "a ingresar"
+        if resultado_iva > 0
+        else "a compensar/devolver"
+        if resultado_iva < 0
+        else "neutro"
+    )
 
     deterministic = (
         f"Periodo {label}: IVA repercutido {iva.total_repercutido:,.2f} € vs soportado {iva.total_soportado:,.2f} €, "
@@ -231,6 +292,7 @@ async def _generate_resumen_fiscal(period: str, label: str, iva: FiscalIVA, irpf
 
     try:
         from app.core.llm_factory import get_llm
+
         llm = get_llm(temperature=0.3, max_tokens=600)
 
         prompt = (
@@ -249,6 +311,7 @@ async def _generate_resumen_fiscal(period: str, label: str, iva: FiscalIVA, irpf
         )
 
         from langchain_core.messages import HumanMessage
+
         response = await llm.ainvoke([HumanMessage(content=prompt)])
         ai_resumen = response.content.strip()
         if len(ai_resumen) > 50:
@@ -261,7 +324,10 @@ async def _generate_resumen_fiscal(period: str, label: str, iva: FiscalIVA, irpf
 
 # ─── Aggregation logic ───────────────────────────────────────────────────────
 
-async def _aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date) -> CompanySnapshot:
+
+async def _aggregate(
+    db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date
+) -> CompanySnapshot:
     month_str = start.strftime("%Y-%m")
 
     # ── Facturas ──
@@ -322,9 +388,7 @@ async def _aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: d
 
     # ── RRHH ──
     emp_q = await db.execute(
-        select(Employee).where(
-            and_(Employee.tenant_id == tenant_id, Employee.status == "active")
-        )
+        select(Employee).where(and_(Employee.tenant_id == tenant_id, Employee.status == "active"))
     )
     employees = emp_q.scalars().all()
 
@@ -373,7 +437,9 @@ async def _aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: d
     new_clients = 0
     if unique_client_ids:
         nc_q = await db.execute(
-            select(func.count()).select_from(Client).where(
+            select(func.count())
+            .select_from(Client)
+            .where(
                 and_(
                     Client.tenant_id == tenant_id,
                     func.date(Client.created_at) >= start,
@@ -398,9 +464,19 @@ async def _aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: d
 
     # ── Resumen ejecutivo (intenta IA, fallback determinista) ──
     resumen = await _generate_resumen_ejecutivo(
-        month_str, ingresos, gastos, margen, margen_pct,
-        fact_section, hr_section, bank_section, coste_nominas,
-        total_clients, new_clients, top_client_name, top_amount,
+        month_str,
+        ingresos,
+        gastos,
+        margen,
+        margen_pct,
+        fact_section,
+        hr_section,
+        bank_section,
+        coste_nominas,
+        total_clients,
+        new_clients,
+        top_client_name,
+        top_amount,
     )
 
     return CompanySnapshot(
@@ -416,27 +492,34 @@ async def _aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: d
 
 # ─── Fiscal aggregation ─────────────────────────────────────────────────────
 
-async def _aggregate_fiscal(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date, period: str, label: str) -> FiscalSnapshot:
+
+async def _aggregate_fiscal(
+    db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date, period: str, label: str
+) -> FiscalSnapshot:
     """Agrega datos fiscales: IVA por tipo, IRPF retenciones, IS estimado."""
     from sqlalchemy.orm import joinedload as jl
 
     # ── IVA: Repercutido (ventas/emitidas) ──
     issued_q = await db.execute(
-        select(Invoice).where(and_(
-            Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "issued",
-            func.date(Invoice.date) >= start,
-            func.date(Invoice.date) <= end,
-        ))
+        select(Invoice).where(
+            and_(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_type == "issued",
+                func.date(Invoice.date) >= start,
+                func.date(Invoice.date) <= end,
+            )
+        )
     )
     issued_invoices = issued_q.scalars().all()
 
     vat_rep: dict[float, float] = {}  # rate -> quota
     base_rep: dict[float, float] = {}  # rate -> base
     for inv in issued_invoices:
-        lines_q = await db.execute(select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id))
+        lines_q = await db.execute(
+            select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
+        )
         inv_wl = lines_q.unique().scalar_one()
-        for line in (inv_wl.lines or []):
+        for line in inv_wl.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -446,21 +529,25 @@ async def _aggregate_fiscal(db: AsyncSession, tenant_id: uuid.UUID, start: date,
 
     # ── IVA: Soportado (compras/recibidas) ──
     received_q = await db.execute(
-        select(Invoice).where(and_(
-            Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "received",
-            func.date(Invoice.date) >= start,
-            func.date(Invoice.date) <= end,
-        ))
+        select(Invoice).where(
+            and_(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_type == "received",
+                func.date(Invoice.date) >= start,
+                func.date(Invoice.date) <= end,
+            )
+        )
     )
     received_invoices = received_q.scalars().all()
 
     vat_sop: dict[float, float] = {}
     base_sop: dict[float, float] = {}
     for inv in received_invoices:
-        lines_q = await db.execute(select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id))
+        lines_q = await db.execute(
+            select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
+        )
         inv_wl = lines_q.unique().scalar_one()
-        for line in (inv_wl.lines or []):
+        for line in inv_wl.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -487,11 +574,13 @@ async def _aggregate_fiscal(db: AsyncSession, tenant_id: uuid.UUID, start: date,
 
     # ── IRPF: Retenciones en nóminas ──
     payroll_q = await db.execute(
-        select(Payroll).where(and_(
-            Payroll.tenant_id == tenant_id,
-            func.date(Payroll.period_start) >= start,
-            func.date(Payroll.period_end) <= end,
-        ))
+        select(Payroll).where(
+            and_(
+                Payroll.tenant_id == tenant_id,
+                func.date(Payroll.period_start) >= start,
+                func.date(Payroll.period_end) <= end,
+            )
+        )
     )
     payrolls = payroll_q.scalars().all()
     irpf_nominas = round(sum(float(p.irpf or 0) for p in payrolls), 2)
@@ -503,8 +592,12 @@ async def _aggregate_fiscal(db: AsyncSession, tenant_id: uuid.UUID, start: date,
     )
 
     # ── IS: Estimación Impuesto de Sociedades ──
-    ingresos_brutos = round(sum(float(i.amount_base or i.amount_total or 0) for i in issued_invoices), 2)
-    gastos_deducibles = round(sum(float(i.amount_base or i.amount_total or 0) for i in received_invoices), 2)
+    ingresos_brutos = round(
+        sum(float(i.amount_base or i.amount_total or 0) for i in issued_invoices), 2
+    )
+    gastos_deducibles = round(
+        sum(float(i.amount_base or i.amount_total or 0) for i in received_invoices), 2
+    )
     coste_nominas = round(sum(float(p.base_salary or 0) for p in payrolls), 2)
     gastos_total = gastos_deducibles + coste_nominas
     base_imponible = round(ingresos_brutos - gastos_total, 2)

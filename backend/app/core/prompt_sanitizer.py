@@ -2,6 +2,7 @@
 Sanitizador de inputs de usuario antes de enviarlos al LLM.
 Previene prompt injection eliminando patrones peligrosos.
 """
+
 import re
 
 # Patrones que pueden indicar prompt injection

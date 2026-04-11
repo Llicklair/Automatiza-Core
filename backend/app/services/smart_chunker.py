@@ -6,6 +6,7 @@ A diferencia del chunking mecánico (cortar cada N chars), este módulo:
 - Mantiene tablas como chunks atómicos (nunca se cortan)
 - Preserva metadata por chunk (página, tipo, bounding box)
 """
+
 import logging
 from dataclasses import dataclass, field
 
@@ -14,12 +15,13 @@ from app.services.pdf_parser import ParsedElement
 logger = logging.getLogger(__name__)
 
 MAX_CHUNK_SIZE = 2000  # chars por chunk
-MIN_CHUNK_SIZE = 100   # no crear chunks triviales
+MIN_CHUNK_SIZE = 100  # no crear chunks triviales
 
 
 @dataclass
 class Chunk:
     """Un chunk listo para embeddings con metadata."""
+
     text: str
     page_number: int = 0
     element_type: str = "mixed"  # paragraph, table, heading, mixed
@@ -56,12 +58,14 @@ def smart_chunk(elements: list[ParsedElement], max_chunk_size: int = MAX_CHUNK_S
         nonlocal buffer_text, buffer_page, buffer_type, buffer_bbox
         text = buffer_text.strip()
         if len(text) >= MIN_CHUNK_SIZE:
-            chunks.append(Chunk(
-                text=text,
-                page_number=buffer_page,
-                element_type=buffer_type,
-                bounding_box=buffer_bbox,
-            ))
+            chunks.append(
+                Chunk(
+                    text=text,
+                    page_number=buffer_page,
+                    element_type=buffer_type,
+                    bounding_box=buffer_bbox,
+                )
+            )
         buffer_text = ""
         buffer_bbox = []
 
@@ -76,19 +80,23 @@ def smart_chunk(elements: list[ParsedElement], max_chunk_size: int = MAX_CHUNK_S
             # Si la tabla es muy grande, la dividimos por filas
             if len(text) > max_chunk_size:
                 for sub in _split_large_text(text, max_chunk_size):
-                    chunks.append(Chunk(
-                        text=sub,
+                    chunks.append(
+                        Chunk(
+                            text=sub,
+                            page_number=elem.page_number,
+                            element_type="table",
+                            bounding_box=elem.bounding_box,
+                        )
+                    )
+            else:
+                chunks.append(
+                    Chunk(
+                        text=text,
                         page_number=elem.page_number,
                         element_type="table",
                         bounding_box=elem.bounding_box,
-                    ))
-            else:
-                chunks.append(Chunk(
-                    text=text,
-                    page_number=elem.page_number,
-                    element_type="table",
-                    bounding_box=elem.bounding_box,
-                ))
+                    )
+                )
             continue
 
         # Headings: inician nuevo chunk
@@ -139,7 +147,7 @@ def _split_large_text(text: str, max_size: int) -> list[str]:
             # Si una línea sola es mayor que max_size, cortarla
             if len(line) > max_size:
                 for i in range(0, len(line), max_size):
-                    parts.append(line[i:i + max_size])
+                    parts.append(line[i : i + max_size])
                 current = ""
             else:
                 current = line + "\n"

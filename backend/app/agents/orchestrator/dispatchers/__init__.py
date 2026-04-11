@@ -1,6 +1,7 @@
 """
 Dispatcher registry — centraliza el mapeo agent_name → función dispatcher.
 """
+
 from app.agents.orchestrator.dispatchers.banking import _dispatch_banking
 from app.agents.orchestrator.dispatchers.billing import _dispatch_billing
 from app.agents.orchestrator.dispatchers.chat import _dispatch_chat

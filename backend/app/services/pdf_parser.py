@@ -4,6 +4,7 @@ Servicio de parsing de PDFs con OpenDataLoader.
 Usa OpenDataLoader como parser principal (mejor extracción de tablas, OCR, estructura).
 Fallback automático a pypdf si OpenDataLoader no está disponible (ej: JVM ausente).
 """
+
 import io
 import json
 import logging
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ParsedElement:
     """Un elemento extraído del PDF (párrafo, tabla, heading, etc.)."""
+
     text: str
     element_type: str = "paragraph"  # paragraph, table, heading, list, image, formula
     page_number: int = 0
@@ -29,6 +31,7 @@ class ParsedElement:
 @dataclass
 class ParsedDocument:
     """Resultado del parsing de un PDF."""
+
     markdown: str  # Texto completo en markdown
     elements: list[ParsedElement] = field(default_factory=list)
     total_pages: int = 0
@@ -86,7 +89,11 @@ def _parse_with_opendataloader(file_path: str) -> ParsedDocument | None:
         if json_files:
             try:
                 raw_json = json.loads(json_files[0].read_text(encoding="utf-8"))
-                items = raw_json if isinstance(raw_json, list) else raw_json.get("elements", raw_json.get("items", []))
+                items = (
+                    raw_json
+                    if isinstance(raw_json, list)
+                    else raw_json.get("elements", raw_json.get("items", []))
+                )
                 for item in items:
                     if not isinstance(item, dict):
                         continue
@@ -96,13 +103,15 @@ def _parse_with_opendataloader(file_path: str) -> ParsedDocument | None:
                     page = item.get("page_number", item.get("page", 0))
                     if page > total_pages:
                         total_pages = page
-                    elements.append(ParsedElement(
-                        text=content,
-                        element_type=item.get("type", "paragraph"),
-                        page_number=page,
-                        heading_level=item.get("heading_level", 0),
-                        bounding_box=item.get("bounding_box", item.get("bbox", [])),
-                    ))
+                    elements.append(
+                        ParsedElement(
+                            text=content,
+                            element_type=item.get("type", "paragraph"),
+                            page_number=page,
+                            heading_level=item.get("heading_level", 0),
+                            bounding_box=item.get("bounding_box", item.get("bbox", [])),
+                        )
+                    )
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning("Error parseando JSON de OpenDataLoader: %s", e)
 
@@ -139,11 +148,13 @@ def _parse_with_pypdf(file_path: str = None, file_bytes: bytes = None) -> Parsed
         text = (page.extract_text() or "").strip()
         if text:
             pages_text.append(text)
-            elements.append(ParsedElement(
-                text=text,
-                element_type="paragraph",
-                page_number=i,
-            ))
+            elements.append(
+                ParsedElement(
+                    text=text,
+                    element_type="paragraph",
+                    page_number=i,
+                )
+            )
 
     return ParsedDocument(
         markdown="\n\n".join(pages_text),

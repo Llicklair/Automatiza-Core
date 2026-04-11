@@ -19,6 +19,7 @@ from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
+
 # --- Projects ---
 @router.get("", response_model=list[ProjectResponse])
 @limiter.limit("30/minute")
@@ -27,9 +28,14 @@ async def list_projects(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Project).where(Project.tenant_id == current_user.tenant_id).order_by(desc(Project.created_at))
+    query = (
+        select(Project)
+        .where(Project.tenant_id == current_user.tenant_id)
+        .order_by(desc(Project.created_at))
+    )
     result = await db.execute(query)
     return result.scalars().all()
+
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
@@ -44,6 +50,7 @@ async def create_project(
     await db.commit()
     await db.refresh(new_project)
     return new_project
+
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
 @limiter.limit("30/minute")
@@ -66,6 +73,7 @@ async def update_project(
     await db.refresh(project)
     return project
 
+
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
 async def delete_project(
@@ -83,6 +91,7 @@ async def delete_project(
     await db.delete(project)
     await db.commit()
 
+
 # --- Project Tasks ---
 @router.get("/tasks", response_model=list[ProjectTaskResponse])
 @limiter.limit("30/minute")
@@ -99,6 +108,7 @@ async def list_tasks(
     result = await db.execute(query)
     return result.scalars().all()
 
+
 @router.post("/tasks", response_model=ProjectTaskResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
 async def create_task(
@@ -113,6 +123,7 @@ async def create_task(
     await db.refresh(new_task)
     return new_task
 
+
 @router.patch("/tasks/{task_id}", response_model=ProjectTaskResponse)
 @limiter.limit("30/minute")
 async def update_task(
@@ -124,8 +135,7 @@ async def update_task(
 ):
     result = await db.execute(
         select(ProjectTask).where(
-            ProjectTask.id == task_id,
-            ProjectTask.tenant_id == current_user.tenant_id
+            ProjectTask.id == task_id, ProjectTask.tenant_id == current_user.tenant_id
         )
     )
     task = result.scalar_one_or_none()
@@ -140,6 +150,7 @@ async def update_task(
     await db.refresh(task)
     return task
 
+
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
 async def delete_task(
@@ -150,8 +161,7 @@ async def delete_task(
 ):
     result = await db.execute(
         select(ProjectTask).where(
-            ProjectTask.id == task_id,
-            ProjectTask.tenant_id == current_user.tenant_id
+            ProjectTask.id == task_id, ProjectTask.tenant_id == current_user.tenant_id
         )
     )
     task = result.scalar_one_or_none()

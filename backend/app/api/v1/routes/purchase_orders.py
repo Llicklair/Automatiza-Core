@@ -38,7 +38,12 @@ async def list_purchase_orders(
     return result.unique().scalars().all()
 
 
-@router.post("/purchase-orders", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@router.post(
+    "/purchase-orders",
+    response_model=PurchaseOrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["erp"],
+)
 @limiter.limit("30/minute")
 async def create_purchase_order(
     request: Request,
@@ -103,7 +108,9 @@ async def update_purchase_order(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(PurchaseOrder).where(PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == current_user.tenant_id)
+        select(PurchaseOrder).where(
+            PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == current_user.tenant_id
+        )
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -128,7 +135,9 @@ async def delete_purchase_order(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(PurchaseOrder).where(PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == current_user.tenant_id)
+        select(PurchaseOrder).where(
+            PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == current_user.tenant_id
+        )
     )
     order = result.scalar_one_or_none()
     if not order:

@@ -4,6 +4,7 @@ Revision ID: a7b8c9d0e1f2
 Revises: f1a2b3c4d5e6
 Create Date: 2026-03-12
 """
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -18,12 +19,27 @@ def upgrade() -> None:
     # op.add_column("employees", sa.Column("irpf_rate", sa.Numeric(5, 2), server_default="15.00", nullable=True))
 
     # Payroll: SS breakdown
-    op.add_column("payrolls", sa.Column("ss_contingencias_comunes", sa.Numeric(10, 2), server_default="0", nullable=True))
-    op.add_column("payrolls", sa.Column("ss_desempleo", sa.Numeric(10, 2), server_default="0", nullable=True))
-    op.add_column("payrolls", sa.Column("ss_formacion_profesional", sa.Numeric(10, 2), server_default="0", nullable=True))
-    op.add_column("payrolls", sa.Column("ss_mei", sa.Numeric(10, 2), server_default="0", nullable=True))
-    op.add_column("payrolls", sa.Column("irpf", sa.Numeric(10, 2), server_default="0", nullable=True))
-    op.add_column("payrolls", sa.Column("other_deductions", sa.Numeric(10, 2), server_default="0", nullable=True))
+    op.add_column(
+        "payrolls",
+        sa.Column("ss_contingencias_comunes", sa.Numeric(10, 2), server_default="0", nullable=True),
+    )
+    op.add_column(
+        "payrolls", sa.Column("ss_desempleo", sa.Numeric(10, 2), server_default="0", nullable=True)
+    )
+    op.add_column(
+        "payrolls",
+        sa.Column("ss_formacion_profesional", sa.Numeric(10, 2), server_default="0", nullable=True),
+    )
+    op.add_column(
+        "payrolls", sa.Column("ss_mei", sa.Numeric(10, 2), server_default="0", nullable=True)
+    )
+    op.add_column(
+        "payrolls", sa.Column("irpf", sa.Numeric(10, 2), server_default="0", nullable=True)
+    )
+    op.add_column(
+        "payrolls",
+        sa.Column("other_deductions", sa.Numeric(10, 2), server_default="0", nullable=True),
+    )
 
 
 def downgrade() -> None:

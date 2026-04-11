@@ -1,6 +1,7 @@
 """
 Funciones auxiliares del orquestador: bloqueo de documentos, guardado de resultados IA.
 """
+
 import logging
 import uuid
 
@@ -26,13 +27,16 @@ async def _lock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID) -> bool:
     doc.locked_at = datetime.now(UTC)
     return True
 
+
 async def _unlock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID):
     """Libera el bloqueo de un documento."""
     from app.db.models.models import TenantDocument
+
     doc = await db.get(TenantDocument, doc_id)
     if doc and doc.locked_by == task_id:
         doc.locked_by = None
         doc.locked_at = None
+
 
 async def _save_ai_result_as_document(
     tenant_id: str,
@@ -40,7 +44,7 @@ async def _save_ai_result_as_document(
     category: str,
     title: str,
     content: str,
-    reference_name: str | None = None  # Si se especifica, se busca para sobreescribir
+    reference_name: str | None = None,  # Si se especifica, se busca para sobreescribir
 ) -> None:
     """
     Guarda el resultado textual de un Agente IA como un documento PDF.
@@ -64,7 +68,11 @@ async def _save_ai_result_as_document(
 
         # Nombre de fichero determinista (ahora .pdf)
         # Si hay un reference_name (ej: "factura_123"), lo usamos para ser constantes
-        clean_ref = "".join(c for c in (reference_name or title) if c.isalnum() or c in (' ', '_', '-')).replace(' ', '_').lower()
+        clean_ref = (
+            "".join(c for c in (reference_name or title) if c.isalnum() or c in (" ", "_", "-"))
+            .replace(" ", "_")
+            .lower()
+        )
         filename = f"{category.lower()}_{clean_ref[:30]}.pdf"
         file_path = os.path.join(upload_dir, filename)
 
@@ -83,8 +91,8 @@ async def _save_ai_result_as_document(
                     TenantDocument.category == category,
                     or_(
                         TenantDocument.file_name == filename,
-                        TenantDocument.task_id == uuid.UUID(task_id)
-                    )
+                        TenantDocument.task_id == uuid.UUID(task_id),
+                    ),
                 )
             )
             existing_doc = existing_result.scalars().first()
@@ -92,7 +100,9 @@ async def _save_ai_result_as_document(
             if existing_doc:
                 # INTENTAR BLOQUEO PARA CONCURRENCIA
                 if not await _lock_document(db, existing_doc.id, uuid.UUID(task_id)):
-                    logger.warning(f"[ORCHESTRATOR] Archivo {filename} bloqueado por otro agente. Esperando...")
+                    logger.warning(
+                        f"[ORCHESTRATOR] Archivo {filename} bloqueado por otro agente. Esperando..."
+                    )
                     # En una implementación real, reintentaríamos. Aquí lo forzamos tras aviso si es el mismo task
 
                 # Sobreescribir: actualizar campos
@@ -125,11 +135,7 @@ async def _save_ai_result_as_document(
 
 
 async def _save_ai_result_as_csv(
-    tenant_id: str,
-    task_id: str,
-    category: str,
-    filename: str,
-    data: list[dict]
+    tenant_id: str, task_id: str, category: str, filename: str, data: list[dict]
 ) -> None:
     """Exporta una lista de diccionarios a CSV y la registra en TenantDocument."""
     import csv
@@ -164,7 +170,7 @@ async def _save_ai_result_as_csv(
                 file_size=os.path.getsize(file_path),
                 category=category,
                 status="completed",
-                parsed_content=f"Datos exportados para análisis: {len(data)} registros."
+                parsed_content=f"Datos exportados para análisis: {len(data)} registros.",
             )
             db.add(doc)
             await db.commit()

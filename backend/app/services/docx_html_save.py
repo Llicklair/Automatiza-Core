@@ -3,6 +3,7 @@
 La conversión es aproximada: estilos complejos del Word original pueden perderse.
 Recomendado para ajustes de texto; ediciones profundas → «Abrir en Word».
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,9 +34,7 @@ def save_html_as_docx(html: str, file_path: str) -> None:
         from docx import Document
         from htmldocx import HtmlToDocx
     except ImportError as e:
-        raise ImportError(
-            "htmldocx no disponible. Ejecuta: pip install htmldocx"
-        ) from e
+        raise ImportError("htmldocx no disponible. Ejecuta: pip install htmldocx") from e
 
     path = Path(file_path)
     if path.suffix.lower() != ".docx":
