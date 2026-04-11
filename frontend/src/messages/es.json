@@ -19,9 +19,9 @@
     "noResults": "Sin resultados"
   },
   "auth": {
-    "login": "Iniciar sesion",
+    "login": "Iniciar sesión",
     "loggingIn": "Entrando…",
-    "logout": "Cerrar sesion",
+    "logout": "Cerrar sesión",
     "register": "Registrarse",
     "email": "Email",
     "emailPlaceholder": "tu@empresa.es",
