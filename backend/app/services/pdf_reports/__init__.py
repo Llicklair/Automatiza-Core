@@ -21,6 +21,7 @@ from app.services.pdf_reports._snapshot import (
 __all__ = [
     "generate_text_report_pdf",
     "generate_snapshot_pdf",
+    "_snapshot_text_fallback",
     "generate_modelo_303_pdf",
     "generate_fiscal_report_pdf",
     "generate_rgpd_registry_pdf",
