@@ -490,7 +490,8 @@ async def _resume_orchestrator(task_id: str):
 
         except Exception as _e:
             logger.error("[RESUME] Critical error early: %s", _e)
-            import traceback; traceback.print_exc()
+            import traceback
+            traceback.print_exc()
             return
 
         # 4. Recuperar Cliente Local (NIF o ID)

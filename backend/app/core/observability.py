@@ -150,7 +150,7 @@ _metrics_enabled = False
 _registry: Any = None
 
 try:
-    from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, push_to_gateway
+    from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
     _registry = CollectorRegistry()
 
     TASKS_CREATED = Counter(
