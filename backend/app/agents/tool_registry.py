@@ -8,8 +8,6 @@ Uso:
     from app.agents.tool_registry import call_tool
     result = call_tool("list_invoices", {"tenant_id": "...", "limit": 10})
 """
-import asyncio
-import inspect
 import logging
 from typing import Any, Callable
 
@@ -25,8 +23,12 @@ def _build_registry() -> dict[str, Callable]:
 
     # — billing —
     from app.agents.billing_agent import (
-        create_invoice, list_invoices, search_client,
-        update_invoice_status, update_invoice, send_invoice_by_email,
+        create_invoice,
+        list_invoices,
+        search_client,
+        send_invoice_by_email,
+        update_invoice,
+        update_invoice_status,
     )
     registry["create_invoice"] = create_invoice
     registry["list_invoices"] = list_invoices
@@ -37,8 +39,13 @@ def _build_registry() -> dict[str, Callable]:
 
     # — hr —
     from app.agents.hr_agent import (
-        create_employee, calculate_and_create_payroll, generate_all_payrolls,
-        list_employees, list_payrolls, update_payroll, approve_payroll,
+        approve_payroll,
+        calculate_and_create_payroll,
+        create_employee,
+        generate_all_payrolls,
+        list_employees,
+        list_payrolls,
+        update_payroll,
     )
     registry["create_employee"] = create_employee
     registry["calculate_and_create_payroll"] = calculate_and_create_payroll
@@ -49,21 +56,31 @@ def _build_registry() -> dict[str, Callable]:
     registry["approve_payroll"] = approve_payroll
 
     # — crm —
-    from app.agents.crm_agent import list_opportunities, create_opportunity, update_opportunity_stage, qualify_leads
+    from app.agents.crm_agent import (
+        create_opportunity,
+        list_opportunities,
+        qualify_leads,
+        update_opportunity_stage,
+    )
     registry["list_opportunities"] = list_opportunities
     registry["create_opportunity"] = create_opportunity
     registry["update_opportunity_stage"] = update_opportunity_stage
     registry["qualify_leads"] = qualify_leads
 
     # — banking —
-    from app.agents.banking_agent import check_balances, list_transactions, financial_summary, reconcile_transactions
+    from app.agents.banking_agent import (
+        check_balances,
+        financial_summary,
+        list_transactions,
+        reconcile_transactions,
+    )
     registry["check_balances"] = check_balances
     registry["list_transactions"] = list_transactions
     registry["financial_summary"] = financial_summary
     registry["reconcile_transactions"] = reconcile_transactions
 
     # — compliance —
-    from app.agents.compliance_agent import check_fiscal_deadlines, check_boe_news, fiscal_query
+    from app.agents.compliance_agent import check_boe_news, check_fiscal_deadlines, fiscal_query
     registry["check_fiscal_deadlines"] = check_fiscal_deadlines
     registry["check_boe_news"] = check_boe_news
     registry["fiscal_query"] = fiscal_query
@@ -74,7 +91,13 @@ def _build_registry() -> dict[str, Callable]:
     registry["search_documents_semantic"] = search_documents_semantic
 
     # — excel —
-    from app.agents.excel_agent import export_erp_data, list_available_datasets, import_excel, modify_excel, read_excel
+    from app.agents.excel_agent import (
+        export_erp_data,
+        import_excel,
+        list_available_datasets,
+        modify_excel,
+        read_excel,
+    )
     registry["export_erp_data"] = export_erp_data
     registry["list_available_datasets"] = list_available_datasets
     registry["import_excel"] = import_excel
@@ -88,7 +111,7 @@ def _build_registry() -> dict[str, Callable]:
     registry["send_email"] = send_email
 
     # — rag —
-    from app.agents.rag_agent import search_documents, answer_from_documents
+    from app.agents.rag_agent import answer_from_documents, search_documents
     registry["search_documents"] = search_documents
     registry["answer_from_documents"] = answer_from_documents
 
@@ -98,7 +121,11 @@ def _build_registry() -> dict[str, Callable]:
 
     # — recruitment —
     from app.agents.recruitment_agent import (
-        create_position, list_positions, process_cv, list_candidates, update_candidate_status,
+        create_position,
+        list_candidates,
+        list_positions,
+        process_cv,
+        update_candidate_status,
     )
     registry["create_position"] = create_position
     registry["list_positions"] = list_positions
@@ -108,7 +135,10 @@ def _build_registry() -> dict[str, Callable]:
 
     # — shared agent_tools —
     from app.agents.agent_tools.documents import (
-        create_document, list_tenant_documents, update_existing_document, get_document_content,
+        create_document,
+        get_document_content,
+        list_tenant_documents,
+        update_existing_document,
     )
     registry["create_document"] = create_document
     registry["list_tenant_documents"] = list_tenant_documents

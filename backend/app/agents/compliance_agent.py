@@ -23,7 +23,6 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.config import settings
 from app.core.llm_factory import get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
 from app.integrations.boe_scraper import BOEScraper, get_proximos_vencimientos
@@ -163,7 +162,9 @@ async def _fiscal_query_async(tenant_id: str, question: str) -> str:
     if tenant_id:
         try:
             import uuid
+
             import sqlalchemy as sa
+
             from app.core.llm_factory import get_embedder
             from app.db.base import AsyncSessionLocal
             from app.db.models.embeddings import DocumentEmbedding

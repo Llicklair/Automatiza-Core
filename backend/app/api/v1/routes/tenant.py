@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, ConfigDict
-from app.middleware.rate_limit import limiter
 from typing import Any
 from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import Tenant, User, TenantLlmConfig
-from app.services.encryption import encrypt_credentials, decrypt_credentials
+from app.db.models.models import Tenant, TenantLlmConfig, User
+from app.middleware.rate_limit import limiter
+from app.services.encryption import decrypt_credentials, encrypt_credentials
 
 
 class TenantMeResponse(BaseModel):
@@ -235,7 +236,9 @@ class ClaudeCodeSetupResponse(BaseModel):
 
 def _run_cmd(args: list[str], timeout: int = 120) -> tuple[int, str, str]:
     """Ejecuta un comando y devuelve (returncode, stdout, stderr)."""
-    import subprocess, shutil, os
+    import os
+    import shutil
+    import subprocess
     # Resolver binario
     bin_path = shutil.which(args[0])
     if not bin_path:
@@ -265,7 +268,8 @@ async def claude_code_setup(
     current_user: User = Depends(get_current_user),
 ):
     """Verifica/instala Claude Code CLI y comprueba autenticación."""
-    import asyncio, shutil
+    import asyncio
+    import shutil
 
     loop = asyncio.get_event_loop()
 
@@ -343,7 +347,10 @@ async def claude_code_login(
     current_user: User = Depends(get_current_user),
 ):
     """Lanza claude auth login (abre navegador para OAuth)."""
-    import asyncio, shutil, subprocess, os
+    import asyncio
+    import os
+    import shutil
+    import subprocess
 
     loop = asyncio.get_event_loop()
 

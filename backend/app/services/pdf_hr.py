@@ -5,29 +5,32 @@ Generacion de PDFs de RRHH con formato oficial espanol.
 - Liquidacion y finiquito
 - Registro de jornada
 """
-import io
 import calendar
+import io
 from datetime import datetime
 
 from app.services._pdf_base import (
+    _TRAD_BORDER,
     REPORTLAB_AVAILABLE,
     _format_date,
     _month_name_es,
-    _traditional_styles,
-    _trad_table_style,
     _signature_block,
-    _TRAD_BORDER,
+    _trad_table_style,
+    _traditional_styles,
 )
 
 if REPORTLAB_AVAILABLE:
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from reportlab.lib.enums import TA_RIGHT
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        HRFlowable, Paragraph, SimpleDocTemplate, Spacer,
-        Table, TableStyle, KeepTogether,
+        HRFlowable,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
     )
 
 
@@ -474,7 +477,7 @@ def generate_finiquito_pdf(finiquito_data: dict) -> bytes:
     ))
     elements.append(Spacer(1, 2 * mm))
 
-    elements.append(Paragraph(f'Recib\u00ed:', S['body']))
+    elements.append(Paragraph('Recib\u00ed:', S['body']))
     elements.append(Spacer(1, 8 * mm))
     elements.append(Paragraph(
         f'Fdo: {employee.get("name", "")}', S['body'],

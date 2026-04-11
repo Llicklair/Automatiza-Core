@@ -28,13 +28,13 @@ async def create_quote(
     # Calculate totals
     amount_base = 0
     tax_amount = 0
-    
+
     for line in quote_in.lines:
         line_base = line.quantity * line.unit_price
         line_tax = line_base * (line.tax_percentage / 100)
         amount_base += line_base
         tax_amount += line_tax
-        
+
     amount_total = amount_base + tax_amount
 
     # Create master
@@ -52,10 +52,10 @@ async def create_quote(
         terms=quote_in.terms,
         opportunity_id=quote_in.opportunity_id
     )
-    
+
     db.add(db_quote)
     await db.flush() # To get the quote id
-    
+
     # Create lines
     for line in quote_in.lines:
         line_base = line.quantity * line.unit_price
@@ -69,10 +69,10 @@ async def create_quote(
             total_line=line_base
         )
         db.add(db_line)
-        
+
     await db.commit()
     await db.refresh(db_quote)
-    
+
     # Needs to manually load relations for response
     result = await db.execute(
         select(Quote)
@@ -116,12 +116,12 @@ async def get_quote(
     )
     result = await db.execute(query)
     quote = result.scalar_one_or_none()
-    
+
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
-        
+
     return quote
-    
+
 @router.patch("/{quote_id}", response_model=QuoteResponse)
 @limiter.limit("30/minute")
 async def update_quote(
@@ -138,17 +138,17 @@ async def update_quote(
     )
     result = await db.execute(query)
     quote = result.scalar_one_or_none()
-    
+
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
 
     update_data = quote_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(quote, field, value)
-        
+
     await db.commit()
     await db.refresh(quote)
-    
+
     return quote
 
 

@@ -14,7 +14,7 @@ class DocumentEmbedding(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id = Column(String, index=True, nullable=False)
     tenant_id = Column(UUID(as_uuid=True), index=True, nullable=False)
-    
+
     chunk_index = Column(String, nullable=False)  # Para mantener el orden original de los trozos
     text_content = Column(Text, nullable=False)   # El texto extraído
 

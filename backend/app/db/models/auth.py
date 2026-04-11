@@ -1,10 +1,18 @@
 """Modelos de autenticación y tenancy."""
 
+
 from .common import (
-    Base, Column, Boolean, DateTime, ForeignKey, String, UUID,
-    relationship, uuid, utcnow,
+    UUID,
+    Base,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    relationship,
+    utcnow,
+    uuid,
 )
-from sqlalchemy import Text
 
 
 class Tenant(Base):

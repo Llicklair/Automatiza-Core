@@ -37,7 +37,7 @@ async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult
 
     try:
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-        from app.core.llm_factory import get_llm
+
 
         # Construir contexto del tenant
         tenant_context = _build_tenant_context(state)
@@ -63,8 +63,8 @@ async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult
         messages.append(HumanMessage(content=intent))
 
         # Usar LLM del tenant (respeta config de API Keys del dashboard)
-        from app.db.base import AsyncSessionLocal
         from app.core.llm_factory import get_llm_for_tenant
+        from app.db.base import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
             llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
         response = await llm.ainvoke(messages)
@@ -159,7 +159,9 @@ async def _load_workflow_context(tenant_id: str) -> str:
     """Carga resumen de workflows y últimas ejecuciones."""
     try:
         from uuid import UUID
-        from sqlalchemy import select, desc
+
+        from sqlalchemy import desc, select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.models import Workflow, WorkflowExecution
 
@@ -206,7 +208,9 @@ async def _load_billing_context(tenant_id: str) -> str:
     """Carga resumen y detalle de facturas."""
     try:
         from uuid import UUID
-        from sqlalchemy import func, select, desc
+
+        from sqlalchemy import desc, func, select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.billing import Invoice
         from app.db.models.crm import Client
@@ -254,7 +258,9 @@ async def _load_hr_context(tenant_id: str) -> str:
     """Carga resumen y detalle de empleados y nóminas."""
     try:
         from uuid import UUID
-        from sqlalchemy import func, select, desc
+
+        from sqlalchemy import desc, func, select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.hr import Employee, Payroll
 
@@ -314,7 +320,9 @@ async def _load_crm_context(tenant_id: str) -> str:
     """Carga detalle de clientes y oportunidades CRM."""
     try:
         from uuid import UUID
-        from sqlalchemy import func, select, desc
+
+        from sqlalchemy import desc, select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.crm import Client, Opportunity
 
@@ -354,7 +362,9 @@ async def _load_banking_context(tenant_id: str) -> str:
     """Carga movimientos bancarios recientes con detalle."""
     try:
         from uuid import UUID
-        from sqlalchemy import func, select, desc
+
+        from sqlalchemy import desc, func, select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.accounting import BankTransaction
 
@@ -392,7 +402,9 @@ async def _load_recent_tasks_context(tenant_id: str) -> str:
     """Carga las últimas tareas para consultas de estado."""
     try:
         from uuid import UUID
-        from sqlalchemy import select, desc
+
+        from sqlalchemy import desc, select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.models import Task
 

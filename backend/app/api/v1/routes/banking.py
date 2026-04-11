@@ -17,18 +17,18 @@ async def get_banking_summary(
     current_user: User = Depends(get_current_user),
 ):
     """Obtiene el resumen financiero del tenant basado en las facturas registradas localmente."""
-    
+
     # Obtener todas las facturas del tenant
     query = select(Invoice).where(Invoice.tenant_id == current_user.tenant_id)
     result = await db.execute(query)
     invoices = result.scalars().all()
-    
+
     ingresos = sum(float(inv.amount_total) for inv in invoices if inv.invoice_type == "issued")
     gastos = sum(float(inv.amount_total) for inv in invoices if inv.invoice_type == "received")
-    
+
     neto = ingresos - gastos
     margen = round((neto / ingresos) * 100) if ingresos > 0 else 0
-    
+
     # Si no hay facturas, devolvemos un flag is_demo=True para que el frontend lo sepa
     if not invoices:
         return {
@@ -38,7 +38,7 @@ async def get_banking_summary(
             "margen": 0,
             "is_demo": False
         }
-        
+
     return {
         "ingresos": ingresos,
         "gastos": gastos,
@@ -71,7 +71,7 @@ class BankTransactionResponse(BaseModel):
     balance: float | None = None
     status: str
     invoice_id: uuid.UUID | None = None
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 # --- Routes ---
@@ -96,7 +96,7 @@ async def sync_bank_transactions(
     """Genera movimientos demo simulando conexión PSD2 por Plaid/Nordigen"""
     descriptions = ["Recibo Luz Gesternova", "Abono Cliente STRIPE", "Cuota Seguridad Social", "Transferencia recibida F. Perez", "Pago Suministros"]
     today = date.today()
-    
+
     balance = 14500.00
     for i in range(5):
         day_offset = random.randint(0, 15)
@@ -111,7 +111,7 @@ async def sync_bank_transactions(
             status="unreconciled"
         )
         db.add(tx)
-    
+
     await db.commit()
     await emit_event(db, current_user.tenant_id, current_user.id, "banking_synced", {"count": 5})
     return {"message": "Sincronizado correctamente", "status": "ok"}
@@ -130,12 +130,12 @@ async def reconcile_transaction(
     tx = result.scalars().first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaccion no encontrada")
-        
+
     result_inv = await db.execute(select(Invoice).where(Invoice.id == uuid.UUID(payload.invoice_id), Invoice.tenant_id == current_user.tenant_id))
     invoice = result_inv.scalars().first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
-        
+
     # Vincular transacción con factura
     tx.invoice_id = invoice.id
     tx.status = "reconciled"
@@ -165,7 +165,7 @@ async def get_banking_analytics(
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve datos preprocesados de cashflow y consejos IA para la Home Page."""
-    
+
     # Simulación de un proceso analítico que extraería datos de 6 meses
     # Y generaría insights de IA mediante embeddings o reglas lógicas.
     cashflow_data = [

@@ -14,42 +14,39 @@ Estructura:
     _core.py        — Nodos del grafo LangGraph + build_orchestrator
     __init__.py     — Re-exporta todo (este archivo)
 """
+from app.agents.orchestrator._core import (
+    build_orchestrator,
+    dispatch_node,
+    load_knowledge_node,
+    orchestrator,
+    plan_node,
+    route_after_dispatch,
+    route_after_validate,
+    validate_node,
+)
+from app.agents.orchestrator.classifier import classify_node
+from app.agents.orchestrator.dispatchers import (
+    DISPATCHER_MAP,
+    _dispatch_banking,
+    _dispatch_billing,
+    _dispatch_compliance,
+    _dispatch_crm,
+    _dispatch_documents,
+    _dispatch_email,
+    _dispatch_excel,
+    _dispatch_hr,
+    _dispatch_rag,
+    _dispatch_report,
+    _dispatch_skill,
+    _dispatch_workflow,
+)
 from app.agents.orchestrator.state import (
-    AgentResult,
     MAX_ITERATIONS,
+    VALID_DOMAINS,
+    AgentResult,
     OrchestratorState,
     SubTask,
     TaskStatus,
-    VALID_DOMAINS,
-)
-
-from app.agents.orchestrator._core import (
-    orchestrator,
-    build_orchestrator,
-    plan_node,
-    validate_node,
-    dispatch_node,
-    load_knowledge_node,
-    route_after_validate,
-    route_after_dispatch,
-)
-
-from app.agents.orchestrator.classifier import classify_node
-
-from app.agents.orchestrator.dispatchers import (
-    DISPATCHER_MAP,
-    _dispatch_billing,
-    _dispatch_documents,
-    _dispatch_compliance,
-    _dispatch_banking,
-    _dispatch_rag,
-    _dispatch_crm,
-    _dispatch_hr,
-    _dispatch_excel,
-    _dispatch_email,
-    _dispatch_workflow,
-    _dispatch_report,
-    _dispatch_skill,
 )
 
 __all__ = [

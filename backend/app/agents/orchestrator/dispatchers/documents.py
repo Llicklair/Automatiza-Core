@@ -5,12 +5,11 @@ al formato del orquestador.
 """
 import logging
 
-from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.agents.orchestrator.utils import _format_summary
 from app.agents.orchestrator.helpers import (
     _save_ai_result_as_document,
-    _classify_document_category,
 )
+from app.agents.orchestrator.state import AgentResult, OrchestratorState
+from app.agents.orchestrator.utils import _format_summary
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,9 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
     enriched_intent = intent
     try:
         import uuid
+
         from sqlalchemy import select
+
         from app.db.base import AsyncSessionLocal
         from app.db.models.models import TenantDocument
 

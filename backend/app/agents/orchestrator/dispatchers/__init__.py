@@ -1,25 +1,25 @@
 """
 Dispatcher registry — centraliza el mapeo agent_name → función dispatcher.
 """
-from app.agents.orchestrator.dispatchers.billing import _dispatch_billing
-from app.agents.orchestrator.dispatchers.documents import _dispatch_documents
-from app.agents.orchestrator.dispatchers.compliance import _dispatch_compliance
-from app.agents.orchestrator.dispatchers.hr import _dispatch_hr
-from app.agents.orchestrator.dispatchers.crm import _dispatch_crm
 from app.agents.orchestrator.dispatchers.banking import _dispatch_banking
-from app.agents.orchestrator.dispatchers.reports import _dispatch_report
+from app.agents.orchestrator.dispatchers.billing import _dispatch_billing
 from app.agents.orchestrator.dispatchers.chat import _dispatch_chat
+from app.agents.orchestrator.dispatchers.compliance import _dispatch_compliance
+from app.agents.orchestrator.dispatchers.crm import _dispatch_crm
+from app.agents.orchestrator.dispatchers.custom import _dispatch_custom
+from app.agents.orchestrator.dispatchers.documents import _dispatch_documents
+from app.agents.orchestrator.dispatchers.hr import _dispatch_hr
 from app.agents.orchestrator.dispatchers.misc import (
-    _dispatch_rag,
-    _dispatch_excel,
     _dispatch_email,
-    _dispatch_workflow,
-    _dispatch_recruitment,
+    _dispatch_excel,
     _dispatch_marketing,
+    _dispatch_rag,
+    _dispatch_recruitment,
     _dispatch_skill,
     _dispatch_team,
+    _dispatch_workflow,
 )
-from app.agents.orchestrator.dispatchers.custom import _dispatch_custom
+from app.agents.orchestrator.dispatchers.reports import _dispatch_report
 
 # Registro de dispatchers: agent_name → callable(state, subtask) -> AgentResult
 DISPATCHER_MAP = {

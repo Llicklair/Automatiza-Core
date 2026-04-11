@@ -14,7 +14,6 @@ import logging
 import os
 import re
 import uuid
-from calendar import timegm
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
@@ -23,7 +22,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel, Field
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -31,13 +29,17 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
     update_existing_document,
 )
-from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge, delete_tenant_knowledge
+from app.agents.agent_tools.knowledge import (
+    delete_tenant_knowledge,
+    get_tenant_knowledge,
+    upsert_tenant_knowledge,
+)
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.agents.validators.billing import validate_invoice_data
 from app.core.config import settings
 from app.core.llm_factory import get_llm
-from app.core.prompt_sanitizer import sanitize_user_input
+
 logger = logging.getLogger(__name__)
 
 
@@ -127,7 +129,8 @@ async def _create_invoice_async(
     issuer_address: str,
     issuer_email: str,
 ) -> str:
-    from sqlalchemy import select, or_, func
+    from sqlalchemy import func, select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Client, Invoice, InvoiceLine, TenantDocument
 
@@ -359,8 +362,9 @@ async def _create_invoice_async(
                 }
 
                 try:
-                    from app.db.models.billing import DocumentTemplate as _DocTpl
                     from sqlalchemy import select as _sel
+
+                    from app.db.models.billing import DocumentTemplate as _DocTpl
                     async with AsyncSessionLocal() as db_tpl:
                         _r = await db_tpl.execute(
                             _sel(_DocTpl).where(
@@ -448,8 +452,9 @@ async def list_invoices(tenant_id: str, limit: int = 15) -> str:
 
 async def _list_invoices_async(tenant_id: str, limit: int) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, Client, TenantDocument
+    from app.db.models.models import Client, Invoice, TenantDocument
 
     try:
         async with AsyncSessionLocal() as db:
@@ -516,7 +521,8 @@ async def search_client(tenant_id: str, query: str = "") -> str:
 
 
 async def _search_client_async(tenant_id: str, query: str) -> str:
-    from sqlalchemy import select, or_, func
+    from sqlalchemy import func, or_, select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Client
 
@@ -566,8 +572,9 @@ async def update_invoice_status(tenant_id: str, invoice_id: str, new_status: str
 
 async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_status: str) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, Client
+    from app.db.models.models import Invoice
 
     allowed = {"draft", "pending", "paid", "cancelled"}
     if new_status not in allowed:
@@ -656,6 +663,7 @@ async def _update_invoice_async(
     amount_base_str: str, vat_rate: float, notes: str,
 ) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Invoice, InvoiceLine
 
@@ -754,8 +762,9 @@ async def send_invoice_by_email(tenant_id: str, invoice_id: str, recipient_email
 
 async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipient_email: str) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, Client, TenantDocument
+    from app.db.models.models import Client, Invoice, TenantDocument
 
     try:
         async with AsyncSessionLocal() as db:
@@ -824,7 +833,8 @@ async def list_albaranes(tenant_id: str, status: str = "") -> str:
         tenant_id: ID del tenant
         status: Filtro de estado (vacío = todos)
     """
-    from sqlalchemy import select, desc
+    from sqlalchemy import desc, select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.billing import DeliveryNote
     try:
@@ -864,9 +874,10 @@ async def create_albaran(
         albaran_date: Fecha del albarán en formato YYYY-MM-DD (opcional, hoy por defecto)
         notes: Observaciones opcionales
     """
-    import json
     from decimal import Decimal
-    from sqlalchemy import select, desc
+
+    from sqlalchemy import desc, func, select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.billing import DeliveryNote, DeliveryNoteLine
     from app.db.models.models import Client

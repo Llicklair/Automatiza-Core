@@ -1,8 +1,16 @@
 """Modelos de calendario: Eventos y Reservas."""
 
 from .common import (
-    Base, Column, DateTime, ForeignKey, String, Text, UUID,
-    relationship, uuid, utcnow,
+    UUID,
+    Base,
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
 )
 
 

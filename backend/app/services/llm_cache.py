@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Caché de respuestas LLM en memoria.
 
@@ -12,8 +13,8 @@ Estrategia:
 import hashlib
 import json
 import logging
-import time
 import threading
+import time
 
 logger = logging.getLogger(__name__)
 

@@ -10,6 +10,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.api.v1.routes.templates import get_default_theme
 from app.api.v1.schemas.erp import (
     InvoiceCreate,
     InvoiceResponse,
@@ -17,11 +18,21 @@ from app.api.v1.schemas.erp import (
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import Client, Invoice, InvoiceLine, InvoiceSeries, Product, Tenant, TenantDocument, User
-from app.services.event_bus import emit_event
-from app.services.pdf_service import generate_invoice_pdf, generate_rectificative_invoice_pdf, generate_retention_invoice_pdf
-from app.api.v1.routes.templates import get_default_theme
+from app.db.models.models import (
+    Invoice,
+    InvoiceLine,
+    InvoiceSeries,
+    Tenant,
+    TenantDocument,
+    User,
+)
 from app.middleware.rate_limit import limiter
+from app.services.event_bus import emit_event
+from app.services.pdf_service import (
+    generate_invoice_pdf,
+    generate_rectificative_invoice_pdf,
+    generate_retention_invoice_pdf,
+)
 
 logger = logging.getLogger(__name__)
 

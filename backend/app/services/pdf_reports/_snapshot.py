@@ -8,22 +8,26 @@ from datetime import datetime
 _logger = logging.getLogger(__name__)
 
 from app.services._pdf_base import (
-    REPORTLAB_AVAILABLE, _common_styles, _fmt_eur, _make_doc,
-    _table_header_style, _format_date,
+    REPORTLAB_AVAILABLE,
 )
 
 if REPORTLAB_AVAILABLE:
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.charts.piecharts import Pie
+    from reportlab.graphics.shapes import Drawing
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        HRFlowable,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
     )
-    from reportlab.graphics.shapes import Drawing
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
-    from reportlab.graphics.charts.piecharts import Pie
 
 
 # ---------------------------------------------------------------------------
@@ -177,15 +181,17 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
     s_body     = sty("Bo", fontSize=9,  fontName="Helvetica", textColor=C_SLATE, leading=13)
     s_resumen  = sty("Re", fontSize=9,  fontName="Helvetica", textColor=colors.HexColor("#334155"),
                      leading=14, leftIndent=4*mm, rightIndent=4*mm)
-    s_kpi_val  = sty("Kv", fontSize=16, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_CENTER)
+    sty("Kv", fontSize=16, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_CENTER)
     s_kpi_lbl  = sty("Kl", fontSize=7,  fontName="Helvetica",      textColor=C_GRAY,  alignment=TA_CENTER)
     s_footer   = sty("Fo", fontSize=7,  fontName="Helvetica", textColor=C_FOOTER, alignment=TA_CENTER)
     s_row_lbl  = sty("Rl", fontSize=8,  fontName="Helvetica", textColor=C_GRAY)
     s_row_val  = sty("Rv", fontSize=8,  fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT)
     s_row_val_em = sty("Rve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT)
 
-    fmt_eur = lambda v: f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
-    fmt_int = lambda v: str(int(v))
+    def fmt_eur(v):
+        return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    def fmt_int(v):
+        return str(int(v))
 
     elements = []
 

@@ -7,23 +7,21 @@ Los dispatchers, clasificador, utilidades y helpers se importan de módulos dedi
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from app.agents.orchestrator.classifier import classify_node
+from app.agents.orchestrator.dispatchers import DISPATCHER_MAP
 from app.agents.orchestrator.state import (
-    AgentResult,
     MAX_ITERATIONS,
+    VALID_DOMAINS,
+    AgentResult,
     OrchestratorState,
     SubTask,
     TaskStatus,
-    VALID_DOMAINS,
 )
-from app.agents.orchestrator.classifier import classify_node
-from app.agents.orchestrator.utils import _format_summary
-from app.agents.orchestrator.dispatchers import DISPATCHER_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +32,9 @@ async def init_tenant_node(state: OrchestratorState) -> dict:
     """Carga el LLM del tenant en el ContextVar ANTES de cualquier nodo que use LLM.
     Valida que el proveedor esté habilitado y tenga credenciales."""
     from uuid import UUID
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
 
     tenant_id = state.get("tenant_id")
@@ -83,7 +83,9 @@ async def init_tenant_node(state: OrchestratorState) -> dict:
 async def load_knowledge_node(state: OrchestratorState) -> dict:
     """Carga hechos y preferencias del TenantKnowledge para inyectar en el contexto."""
     from uuid import UUID
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantKnowledge
 
@@ -129,7 +131,9 @@ async def plan_node(state: OrchestratorState) -> dict:
     Sino, usa el LLM para dividir la tarea compleja si el dominio es 'coordinator'.
     """
     from uuid import UUID
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Workflow
 
@@ -210,10 +214,11 @@ async def plan_node(state: OrchestratorState) -> dict:
             class MultiAgentPlan(BaseModel):
                 steps: list[PlanStep] = Field(description="Lista de pasos para resolver la tarea. Pasos sin dependencias se ejecutan en paralelo.")
 
+            import json as _json
+
             from app.core.config import settings
             from app.core.llm_factory import get_llm
             from app.services.llm_cache import llm_cache
-            import json as _json
 
             # Consultar caché de planificación
             _tenant_id = state.get("tenant_id", "")
@@ -552,11 +557,13 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
         Returns None si no hay employee disponible (para que el caller use el fallback).
         """
         from uuid import UUID
+
         from sqlalchemy import select
+
+        from app.agents.budget_guard import check_agent_budget
+        from app.agents.custom_worker_agent import compile_dynamic_agent
         from app.db.base import AsyncSessionLocal
         from app.db.models.ai_employees import AIEmployee
-        from app.agents.custom_worker_agent import compile_dynamic_agent
-        from app.agents.budget_guard import check_agent_budget
         from app.services.activity_service import log_activity
 
         async with AsyncSessionLocal() as db:
@@ -680,13 +687,11 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
             enriched = step_instruction or state.get("current_intent") or state["user_intent"]
         enriched_state = {**state, "current_intent": enriched}
 
-        last_exc = None
         for attempt in range(2):  # 1 intento original + 1 retry
             try:
                 result = await _invoke_dispatcher(enriched_state, subtask, agent_name)
                 return idx, subtask, result
-            except asyncio.TimeoutError as e:
-                last_exc = e
+            except asyncio.TimeoutError:
                 if attempt == 0:
                     logger.warning("[ORCHESTRATOR] Timeout en agente '%s', reintentando (1/1)...", agent_name)
                     await asyncio.sleep(2)
@@ -700,7 +705,6 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
                     "error": f"Timeout: el agente '{agent_name}' no respondió en 120s (2 intentos)",
                 }
             except _TRANSIENT_ERRORS as e:
-                last_exc = e
                 err_str = str(e)
                 is_rate_limit = "429" in err_str or "rate" in err_str.lower() or "quota" in err_str.lower()
                 if attempt == 0 and (isinstance(e, (ConnectionError, OSError)) or is_rate_limit):
@@ -886,6 +890,7 @@ async def summarize_node(state: OrchestratorState) -> dict:
 
     try:
         from langchain_core.messages import HumanMessage, SystemMessage
+
         from app.core.llm_factory import get_llm
 
         # Construir resumen de los resultados de cada agente

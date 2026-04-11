@@ -11,18 +11,18 @@ Endpoints:
   POST   /activity-feed                   — Registra entrada manual (uso interno/tests)
 """
 import json
-import uuid
 import logging
+import uuid
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.ai_employees import AIEmployee, AgentSkill, ActivityEntry
+from app.db.models.ai_employees import ActivityEntry, AgentSkill, AIEmployee
 from app.db.models.auth import User
 from app.db.models.tasks import Task
 
@@ -199,9 +199,10 @@ _SKILL_LABELS = {
 
 async def _provision_employee_bg(employee_id: str, tenant_id: str, name: str, role_description: str) -> None:
     """Llama al LLM para configurar el agente y genera un resumen de capacidades visible en el panel de tareas."""
-    from app.db.base import AsyncSessionLocal
-    from app.core.llm_factory import get_llm
     from langchain_core.messages import HumanMessage
+
+    from app.core.llm_factory import get_llm
+    from app.db.base import AsyncSessionLocal
 
     all_skill_labels = ", ".join(f"{k} ({v})" for k, v in _SKILL_LABELS.items())
 
@@ -256,14 +257,14 @@ async def _provision_employee_bg(employee_id: str, tenant_id: str, name: str, ro
             summary_lines = [
                 f"✅ Agente **{emp.name}** configurado como *{emp.role}* (dominio: {emp.domain}).",
                 "",
-                f"**Puede hacer:**",
+                "**Puede hacer:**",
                 *[f"  • {item}" for item in can_do],
                 "",
-                f"**No puede hacer:**",
+                "**No puede hacer:**",
                 *[f"  • {item}" for item in cannot_do],
             ]
             if vs_others:
-                summary_lines += ["", f"**Respecto a otros agentes:**", f"  {vs_others}"]
+                summary_lines += ["", "**Respecto a otros agentes:**", f"  {vs_others}"]
 
             summary = "\n".join(summary_lines)
 

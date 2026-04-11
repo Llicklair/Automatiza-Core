@@ -18,24 +18,30 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
     month_str = f"{_year}-{_month:02d}"
 
     try:
-        import httpx as _httpx
 
         # Llamada interna al endpoint de generación de informes
-        from app.core.config import settings as _s
-        base_url = f"http://localhost:{_s.PORT}"
 
         # Obtener token del estado para autenticar la petición interna
         # Si no hay token en estado, usamos la BD directamente
         from calendar import monthrange as _mr
-        from datetime import UTC as _UTC, datetime as _dt, date as _date
+        from datetime import UTC as _UTC
+        from datetime import date as _date
+        from datetime import datetime as _dt
 
-        from sqlalchemy.ext.asyncio import AsyncSession
         from app.db.base import AsyncSessionLocal
 
         async with AsyncSessionLocal() as db:
-            from sqlalchemy import and_, func, select as _select
+            from sqlalchemy import and_, func
+            from sqlalchemy import select as _select
+
             from app.db.models.models import (
-                BankTransaction, Client, Employee, Invoice, Payroll, Tenant, TenantDocument, User
+                BankTransaction,
+                Client,
+                Employee,
+                Invoice,
+                Payroll,
+                Tenant,
+                TenantDocument,
             )
             from app.services.pdf_service import generate_snapshot_pdf
 
@@ -185,7 +191,8 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
             }
 
             # Generar PDF con gráficas
-            import os as _os, uuid as _uuid
+            import os as _os
+            import uuid as _uuid
             pdf_bytes = generate_snapshot_pdf(
                 snap=snap_dict,
                 company_name=company_name,

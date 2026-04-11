@@ -10,11 +10,10 @@ import smtplib
 import ssl
 
 _logger = logging.getLogger(__name__)
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
 
 # ─── Configuraciones predefinidas por proveedor ────────────────────────────────
 
@@ -222,8 +221,8 @@ def send_email_smtp(
     Envía un correo electrónico vía SMTP con STARTTLS y soporte para adjuntos.
     Devuelve dict con status y mensaje de resultado.
     """
-    import os
     import mimetypes
+    import os
     from email import encoders
     from email.mime.base import MIMEBase
 
@@ -245,17 +244,17 @@ def send_email_smtp(
             for path in attachment_paths:
                 if not os.path.exists(path):
                     continue
-                
+
                 filename = os.path.basename(path)
                 ctype, encoding = mimetypes.guess_type(path)
                 if ctype is None or encoding is not None:
                     ctype = "application/octet-stream"
-                
+
                 maintype, subtype = ctype.split("/", 1)
                 with open(path, "rb") as f:
                     part = MIMEBase(maintype, subtype)
                     part.set_payload(f.read())
-                
+
                 encoders.encode_base64(part)
                 part.add_header(
                     "Content-Disposition",

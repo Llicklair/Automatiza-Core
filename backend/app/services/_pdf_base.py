@@ -2,10 +2,13 @@
 Utilidades compartidas para la generación de PDFs.
 Importaciones de ReportLab + helpers de estilo reutilizables.
 """
-import io
 from datetime import datetime
 
 try:
+    from reportlab.graphics import renderPDF
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.charts.piecharts import Pie
+    from reportlab.graphics.shapes import Drawing, Line, Rect, String
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from reportlab.lib.pagesizes import A4
@@ -13,17 +16,13 @@ try:
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         HRFlowable,
+        KeepTogether,
         Paragraph,
         SimpleDocTemplate,
         Spacer,
         Table,
         TableStyle,
-        KeepTogether,
     )
-    from reportlab.graphics.shapes import Drawing, Rect, String, Line
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
-    from reportlab.graphics.charts.piecharts import Pie
-    from reportlab.graphics import renderPDF
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False

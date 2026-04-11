@@ -4,8 +4,6 @@ Usa el system_prompt del propio agente como contexto LLM y guarda
 el resultado en su carpeta de documentación.
 """
 import logging
-import uuid
-from datetime import UTC, datetime
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.agents.orchestrator.utils import _format_summary
@@ -15,11 +13,12 @@ logger = logging.getLogger(__name__)
 
 async def _dispatch_custom(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Ejecuta un agente de dominio personalizado usando su system_prompt."""
-    from langchain_core.messages import SystemMessage, HumanMessage
+    from langchain_core.messages import HumanMessage, SystemMessage
     from sqlalchemy import select
+
+    from app.core.llm_factory import get_llm_for_tenant
     from app.db.base import AsyncSessionLocal
     from app.db.models.ai_employees import AIEmployee
-    from app.core.llm_factory import get_llm_for_tenant
 
     tenant_id = state["tenant_id"]
     intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
@@ -104,9 +103,6 @@ async def _save_to_agent_folder(
     content: str,
 ) -> None:
     """Persiste el resultado del agente como documento en su carpeta."""
-    from sqlalchemy import Column, String, Text, DateTime
-    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-    from app.db.base import AsyncSessionLocal, Base
 
     # Guardar usando la infraestructura de documentos RAG si está disponible
     try:

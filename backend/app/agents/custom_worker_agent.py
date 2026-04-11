@@ -21,7 +21,7 @@ import logging
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.base import AgentState
 from app.agents.tool_registry import get_tool_for_employee
 from app.core.llm_factory import get_llm
-from app.db.models.ai_employees import AIEmployee, AgentSkill
+from app.db.models.ai_employees import AgentSkill, AIEmployee
 
 logger = logging.getLogger(__name__)
 

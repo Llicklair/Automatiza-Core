@@ -8,8 +8,8 @@ import shutil
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, func
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
@@ -192,7 +192,7 @@ async def upload_cv(
         shutil.copyfileobj(file.file, f)
 
     # Parsear y puntuar
-    from app.services.cv_parser import parse_cv_file, extract_cv_data, score_candidate
+    from app.services.cv_parser import extract_cv_data, parse_cv_file, score_candidate
 
     cv_text = await parse_cv_file(file_path)
     if not cv_text:
@@ -276,7 +276,7 @@ async def analyze_cv_standalone(
         with open(tmp_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        from app.services.cv_parser import parse_cv_file, extract_cv_data
+        from app.services.cv_parser import extract_cv_data, parse_cv_file
         cv_text = await parse_cv_file(tmp_path)
         if not cv_text.strip():
             raise HTTPException(status_code=422, detail="No se pudo extraer texto del PDF")

@@ -9,8 +9,9 @@ logger = logging.getLogger(__name__)
 
 async def _lock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID) -> bool:
     """Intenta bloquear un documento para una tarea específica."""
+    from datetime import UTC, datetime
+
     from app.db.models.models import TenantDocument
-    from datetime import datetime, UTC
 
     doc = await db.get(TenantDocument, doc_id)
     if not doc:
@@ -47,9 +48,9 @@ async def _save_ai_result_as_document(
     """
     import os
     import uuid
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
-    from sqlalchemy import select, and_, or_
+    from sqlalchemy import or_, select
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantDocument
@@ -134,6 +135,7 @@ async def _save_ai_result_as_csv(
     import csv
     import os
     import uuid
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantDocument
 

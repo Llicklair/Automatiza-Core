@@ -96,6 +96,7 @@ class SecurityHeadersMiddleware:
 app.add_middleware(SecurityHeadersMiddleware)
 
 from app.middleware.request_logger import RequestLoggerMiddleware
+
 app.add_middleware(RequestLoggerMiddleware)
 
 from app.api.ws.notifications import router as ws_router
@@ -175,7 +176,7 @@ async def metrics_endpoint():
             {"detail": "Prometheus metrics not available (prometheus_client not installed)"},
             status_code=501,
         )
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
     from starlette.responses import Response as StarletteResponse
     return StarletteResponse(
         content=generate_latest(registry),
@@ -189,6 +190,7 @@ async def health_check():
     import os
     import sys
     import time
+
     from app.services.task_runner import task_runner
 
     health = {
@@ -204,6 +206,7 @@ async def health_check():
     # ── PostgreSQL ────────────────────────────────────────────────────────
     try:
         from sqlalchemy import text
+
         from app.db.base import AsyncSessionLocal
 
         t0 = time.perf_counter()
@@ -231,6 +234,7 @@ async def readiness_check():
     import time
     try:
         from sqlalchemy import text
+
         from app.db.base import AsyncSessionLocal
 
         t0 = time.perf_counter()

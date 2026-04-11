@@ -5,12 +5,11 @@ Analiza el catálogo de productos y genera un plan de contenidos mensual
 con textos, hashtags, horarios y sugerencias de imagen.
 El agente NO publica — solo planifica. El usuario ejecuta manualmente.
 """
-import json
 import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
@@ -57,7 +56,9 @@ async def get_product_catalog(tenant_id: str) -> str:
     Devuelve nombre, descripción y precio de hasta 20 productos activos.
     """
     from uuid import UUID
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.billing import Product
 

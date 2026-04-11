@@ -5,8 +5,8 @@ Revises: c2d4f6e8a0b2
 Create Date: 2026-03-09 13:00:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = 'd4e6f8a2c0b4'

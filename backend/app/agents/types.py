@@ -1,5 +1,6 @@
 """Tipos base compartidos por todos los agentes."""
 from typing import Any
+
 from pydantic import BaseModel
 
 

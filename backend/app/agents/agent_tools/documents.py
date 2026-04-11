@@ -11,8 +11,9 @@ _logger = logging.getLogger(__name__)
 
 from langchain_core.tools import tool
 
-from app.db.models.models import TenantDocument
 from app.agents.agent_tools import get_sync_db
+from app.db.models.models import TenantDocument
+
 
 @tool
 def create_document(tenant_id: str, file_name: str, content: str, category: str = "informes") -> str:
@@ -28,7 +29,6 @@ def create_document(tenant_id: str, file_name: str, content: str, category: str 
     if not content or not content.strip():
         return "Error: No se puede crear un documento vacío. Genera el contenido antes de llamar a esta herramienta."
     try:
-        import uuid
         with get_sync_db() as db:
             # Directorio de uploads configurable por entorno
             upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")

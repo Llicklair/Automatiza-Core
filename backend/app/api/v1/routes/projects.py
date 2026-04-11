@@ -6,11 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.projects import (
     ProjectCreate,
-    ProjectUpdate,
     ProjectResponse,
     ProjectTaskCreate,
     ProjectTaskResponse,
     ProjectTaskUpdate,
+    ProjectUpdate,
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
@@ -131,7 +131,7 @@ async def update_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-        
+
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(task, key, value)

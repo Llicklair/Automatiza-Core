@@ -49,14 +49,14 @@ class QuoteResponse(QuoteBase):
     created_at: datetime
     updated_at: datetime | None = None
     lines: list[QuoteLineResponse] = []
-    
+
     # Client summary to avoid fetching big objects on simple grids
     class ClientBrief(BaseModel):
         id: UUID
         name: str
         nif: str | None = None
         model_config = ConfigDict(from_attributes=True)
-        
+
     client: ClientBrief | None = None
 
     model_config = ConfigDict(from_attributes=True)

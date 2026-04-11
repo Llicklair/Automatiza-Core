@@ -1,8 +1,18 @@
 """Modelos de automatizacion: Workflows, Ejecuciones y Eventos de dominio."""
 
 from .common import (
-    Base, Column, Boolean, DateTime, ForeignKey, String, Text, UUID, JSONB,
-    relationship, uuid, utcnow,
+    JSONB,
+    UUID,
+    Base,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
 )
 
 

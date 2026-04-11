@@ -1,7 +1,9 @@
 """Rutas para gestionar integraciones de cada tenant (Gmail, etc.)."""
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+
 from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import TenantIntegration, User
-from app.services.encryption import encrypt_credentials, decrypt_credentials
+from app.services.encryption import decrypt_credentials, encrypt_credentials
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -177,6 +179,7 @@ async def connect_email(
     'Contraseña de aplicación' en Seguridad > 2FA > App passwords.
     """
     import asyncio
+
     from app.services.email_service import PROVIDER_PRESETS, EmailCredentials, test_imap_connection
 
     if not payload.email_address.strip() or not payload.password.strip():

@@ -6,8 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.schemas.accounting import (
-    FixedAssetCreate, FixedAssetResponse, FixedAssetUpdate,
-    JournalEntryCreate, JournalEntryResponse,
+    FixedAssetCreate,
+    FixedAssetResponse,
+    FixedAssetUpdate,
+    JournalEntryCreate,
+    JournalEntryResponse,
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db

@@ -8,7 +8,9 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserCreate, UserOut
 from app.core.config import settings
+from app.core.dependencies import get_current_user
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -17,10 +19,8 @@ from app.core.security import (
     verify_password,
 )
 from app.db.base import get_db
-from app.db.models.models import Tenant, User, PasswordResetToken
-from app.core.dependencies import get_current_user
+from app.db.models.models import PasswordResetToken, Tenant, User
 from app.middleware.rate_limit import limiter
-from app.api.v1.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserCreate, UserOut
 from app.services.audit import log_action
 from app.services.email_reset import send_password_reset_email
 

@@ -1,8 +1,20 @@
 """Modelos RRHH: Empleados, Nóminas, Finiquitos y Reclutamiento."""
 
 from .common import (
-    Base, Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UUID, JSONB,
-    relationship, uuid, utcnow,
+    JSONB,
+    UUID,
+    Base,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
 )
 
 

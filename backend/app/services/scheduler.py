@@ -4,6 +4,7 @@ APScheduler — tareas periódicas.
 Arranca/para con el lifespan de FastAPI.
 """
 import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -17,8 +18,8 @@ def register_jobs() -> None:
     """Registra las tareas periódicas (equivalente a beat_schedule)."""
     from app.workers.tasks_scheduler import (
         check_scheduled_workflows,
-        process_recurring_invoices,
         cleanup_stuck_executions,
+        process_recurring_invoices,
     )
 
     # Cada minuto: comprobar workflows programados

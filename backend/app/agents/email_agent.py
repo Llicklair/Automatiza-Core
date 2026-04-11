@@ -4,15 +4,13 @@ Lee la bandeja de entrada y envía correos usando IMAP/SMTP real (con fallback a
 Si el tenant tiene credenciales de email configuradas → usa el servidor real.
 Si no → usa datos de demostración para no romper el flujo.
 """
+import logging
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-
-from app.core.config import settings
-from app.core.llm_factory import get_llm
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -22,8 +20,8 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
+from app.core.llm_factory import get_llm
 
-import logging
 logger = logging.getLogger(__name__)
 
 # ─── Mock fallback (cuando no hay credenciales configuradas) ──────────────────
@@ -53,11 +51,13 @@ async def _get_email_credentials(tenant_id: str):
     Devuelve EmailCredentials si están configuradas, None si no.
     """
     import uuid
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantIntegration
-    from app.services.encryption import decrypt_credentials
     from app.services.email_service import credentials_from_dict
+    from app.services.encryption import decrypt_credentials
 
     try:
         async with AsyncSessionLocal() as db:
@@ -86,7 +86,9 @@ async def _get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
     Si el token ha expirado, intenta refrescarlo automáticamente.
     """
     import uuid
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantIntegration
     from app.services.encryption import decrypt_credentials, encrypt_credentials
@@ -306,11 +308,13 @@ async def _load_attachments(tenant_id: str, attachment_ids: list[str] | None) ->
     """Load document attachments from DB by their IDs."""
     if not attachment_ids:
         return []
+    import os
+    import uuid
+
+    from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantDocument
-    from sqlalchemy import select
-    import uuid
-    import os
 
     attachments = []
     async with AsyncSessionLocal() as db:
@@ -374,9 +378,10 @@ async def send_email_direct(
             import uuid as _uuid
             attachment_paths = []
             if attachment_ids:
+                from sqlalchemy import select as sa_select
+
                 from app.db.base import AsyncSessionLocal
                 from app.db.models.models import TenantDocument
-                from sqlalchemy import select as sa_select
                 async with AsyncSessionLocal() as db:
                     for doc_id in attachment_ids:
                         try:
@@ -566,10 +571,12 @@ async def run_email_agent(
                     import os
                     attachment_paths = []
                     if attachment_ids:
+                        import uuid
+
+                        from sqlalchemy import select as sa_select
+
                         from app.db.base import AsyncSessionLocal
                         from app.db.models.models import TenantDocument
-                        from sqlalchemy import select as sa_select
-                        import uuid
                         async with AsyncSessionLocal() as db:
                             for doc_id in attachment_ids:
                                 try:

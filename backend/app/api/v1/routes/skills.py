@@ -1,4 +1,5 @@
 from typing import Any, List
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
@@ -25,7 +26,7 @@ async def list_available_skills(
     para que el frontend pueda mostrarlas en la paleta del grafo o en la UI.
     """
     skills = SkillRegistry.get_all_skills()
-    
+
     response = []
     for skill in skills:
         # Extraemos el JSON schema de Pydantic
@@ -35,5 +36,5 @@ async def list_available_skills(
             "description": skill.description,
             "input_schema": schema
         })
-        
+
     return response
