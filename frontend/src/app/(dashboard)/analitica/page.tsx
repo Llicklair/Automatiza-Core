@@ -5,12 +5,31 @@ import { api, type Invoice, type Task } from "@/lib/api";
 import {
     TrendingUp, TrendingDown, FileText, Users, Zap,
     ArrowUp, ArrowDown, BrainCircuit, Clock, CheckCircle2,
-    XCircle, Activity
+    XCircle, Activity, type LucideIcon
 } from "lucide-react";
 import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Legend
 } from "recharts";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface TooltipPayloadEntry {
+    value: number;
+    name: string;
+    color: string;
+}
+
+interface CashflowEntry {
+    month: string;
+    ingresos: number;
+    gastos: number;
+}
+
+interface BankingAnalyticsResponse {
+    cashflow: CashflowEntry[];
+    insights: unknown[];
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -21,7 +40,7 @@ function fmt(n: number) {
 function KpiCard({
     label, value, sub, icon: Icon, trend, color = "indigo"
 }: {
-    label: string; value: string; sub?: string; icon: any;
+    label: string; value: string; sub?: string; icon: LucideIcon;
     trend?: { dir: "up" | "down"; pct: number }; color?: "indigo" | "emerald" | "red" | "amber";
 }) {
     const colors = {
@@ -57,12 +76,12 @@ function KpiCard({
 
 // ─── Tooltip personalizado ────────────────────────────────────────────────────
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
     if (active && payload?.length) {
         return (
             <div className="bg-card border border-border rounded-xl p-3 text-xs shadow-xl">
                 <p className="text-muted-foreground mb-2 font-medium">{label}</p>
-                {payload.map((p: any) => (
+                {payload.map((p) => (
                     <p key={p.name} style={{ color: p.color }} className="font-semibold">
                         {p.name}: {fmt(p.value)}€
                     </p>
@@ -80,7 +99,7 @@ const COLORS_PIE = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b
 export default function AnaliticaPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [cashflow, setCashflow] = useState<any[]>([]);
+    const [cashflow, setCashflow] = useState<CashflowEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -91,7 +110,7 @@ export default function AnaliticaPage() {
         ]).then(([inv, tsk, analytics]) => {
             setInvoices(inv);
             setTasks(tsk);
-            setCashflow((analytics as any).cashflow || []);
+            setCashflow((analytics as BankingAnalyticsResponse).cashflow || []);
         }).finally(() => setLoading(false));
     }, []);
 
@@ -236,11 +255,11 @@ export default function AnaliticaPage() {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
-                                    {pieData.map((_: any, i: number) => (
+                                    {pieData.map((_, i) => (
                                         <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
                                     ))}
                                 </Pie>
-                                <RTooltip formatter={(v: any) => [`${fmt(Number(v))}€`]} contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px", fontSize: "12px" }} />
+                                <RTooltip formatter={(v) => [`${fmt(Number(v ?? 0))}€`]} contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px", fontSize: "12px" }} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>

@@ -69,7 +69,7 @@ export default function FacturaDetallePage() {
             .then(setInvoice)
             .catch((e: any) => setError(e?.message || t("errorLoadingInvoice")))
             .finally(() => setLoading(false));
-    }, [invoiceId]);
+    }, [invoiceId, t]);
 
     const handleStatusChange = async (nextStatus: string) => {
         if (!invoice) return;
@@ -131,15 +131,15 @@ export default function FacturaDetallePage() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {invoice && (STATUS_TRANSITIONS[invoice.status] ?? []).map((t) => (
+                    {invoice && (STATUS_TRANSITIONS[invoice.status] ?? []).map((tr) => (
                         <button
-                            key={t.next}
+                            key={tr.next}
                             disabled={statusLoading}
-                            onClick={() => handleStatusChange(t.next)}
-                            className={`inline-flex items-center gap-1.5 text-foreground px-3 py-2 rounded-xl transition text-sm font-medium disabled:opacity-50 ${t.color}`}
+                            onClick={() => handleStatusChange(tr.next)}
+                            className={`inline-flex items-center gap-1.5 text-foreground px-3 py-2 rounded-xl transition text-sm font-medium disabled:opacity-50 ${tr.color}`}
                         >
-                            {statusLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t.icon}
-                            {t.label}
+                            {statusLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : tr.icon}
+                            {tr.label}
                         </button>
                     ))}
                     <button

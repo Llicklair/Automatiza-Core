@@ -74,7 +74,7 @@ export default function AlbaranesPage() {
             await api.albaranes.create(payload);
             setShowModal(false); resetModal(); await loadData();
             toast.success("Albarán creado correctamente");
-        } catch (e: any) { toast.error("Error creando albarán: " + e.message); }
+        } catch (e: unknown) { toast.error("Error creando albarán: " + (e instanceof Error ? e.message : "Error desconocido")); }
         finally { setSaving(false); }
     };
 
@@ -82,14 +82,14 @@ export default function AlbaranesPage() {
         const ok = await showConfirm({ title: "Eliminar albarán", message: "¿Eliminar este albarán? Esta acción no se puede deshacer.", confirmLabel: "Eliminar", cancelLabel: "Cancelar", confirmVariant: "danger" });
         if (!ok) return;
         try { await api.albaranes.delete(id); setAlbaranes(prev => prev.filter(a => a.id !== id)); toast.success("Albarán eliminado"); }
-        catch (e: any) { toast.error(e.message); }
+        catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Error desconocido"); }
     };
 
     const handleStatusChange = async (id: string, status: string) => {
         try {
             const updated = await api.albaranes.updateStatus(id, status);
             setAlbaranes(prev => prev.map(a => a.id === id ? updated : a));
-        } catch (e: any) { toast.error(e.message); }
+        } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Error desconocido"); }
     };
 
     const handleDownloadPdf = (id: string) => {

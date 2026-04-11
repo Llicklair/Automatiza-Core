@@ -35,17 +35,20 @@ class TestAlembicMigrations:
                 pytest.fail(f"Pending migrations detected:\n{result.stdout}")
 
     @pytest.mark.slow
-    def test_migration_history_is_linear(self):
-        """Verifica que el historial de migraciones es lineal (sin branches)."""
+    def test_migration_history_has_single_head(self):
+        """Verifica que las migraciones convergen en un único head (sin branches abiertas)."""
         result = subprocess.run(
-            [PYTHON, "-m", "alembic", "branches"],
+            [PYTHON, "-m", "alembic", "heads"],
             cwd=BACKEND_DIR,
             capture_output=True,
             text=True,
             timeout=30,
         )
         if result.returncode != 0:
-            pytest.skip(f"alembic branches failed: {result.stderr}")
-        # If there are branches, the output will contain branch info
-        if result.stdout.strip():
-            pytest.fail(f"Migration branches detected:\n{result.stdout}")
+            pytest.skip(f"alembic heads failed: {result.stderr}")
+        heads = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
+        if len(heads) != 1:
+            pytest.fail(
+                f"Expected exactly 1 migration head, found {len(heads)}:\n"
+                + "\n".join(heads)
+            )

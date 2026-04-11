@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { api, Workflow, WorkflowExecution } from "@/lib/api";
 import {
     Zap, Plus, RotateCw, Loader2,
@@ -14,6 +14,46 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { TEMPLATES } from "./_components/constants";
 import WorkflowCard from "./_components/WorkflowCard";
 import WorkflowFormModal from "./_components/WorkflowFormModal";
+
+// ─── Local type definitions ─────────────────────────────────────────────────
+
+interface TriggerConfig {
+    events?: string[];
+    cron?: string;
+    [key: string]: unknown;
+}
+
+interface FlowNode {
+    id: string;
+    type: string;
+    position: { x: number; y: number };
+    data: Record<string, unknown>;
+}
+
+interface FlowEdge {
+    id: string;
+    source: string;
+    target: string;
+}
+
+interface ParsedWorkflow {
+    name?: string;
+    description?: string;
+    trigger_type?: string;
+    trigger_config?: TriggerConfig;
+    action_type?: string;
+    action_config?: { instruction?: string };
+    ui_nodes?: FlowNode[];
+    ui_edges?: FlowEdge[];
+    can_be_deterministic?: boolean;
+}
+
+interface AgentResult {
+    output?: { response?: string };
+    [key: string]: unknown;
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
 
 export default function WorkflowsPage() {
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -34,14 +74,14 @@ export default function WorkflowsPage() {
     const [triggerType, setTriggerType] = useState("event_based");
     const [actionType, setActionType] = useState("ai_task");
     const [actionIntent, setActionIntent] = useState("");
-    const [triggerConfig, setTriggerConfig] = useState<any>({ events: ["any"] });
+    const [triggerConfig, setTriggerConfig] = useState<TriggerConfig>({ events: ["any"] });
     const [executionMode, setExecutionMode] = useState<"reasoning" | "deterministic">("reasoning");
 
     // AI Parser
     const [nlQuery, setNlQuery] = useState("");
     const [isParsing, setIsParsing] = useState(false);
-    const [parsedUiNodes, setParsedUiNodes] = useState<any[] | null>(null);
-    const [parsedUiEdges, setParsedUiEdges] = useState<any[] | null>(null);
+    const [parsedUiNodes, setParsedUiNodes] = useState<FlowNode[] | null>(null);
+    const [parsedUiEdges, setParsedUiEdges] = useState<FlowEdge[] | null>(null);
     const [graphKey, setGraphKey] = useState(0);
     const [canBeDeterministic, setCanBeDeterministic] = useState<boolean | null>(null);
     const [modeLockedByAI, setModeLockedByAI] = useState(false);
@@ -76,11 +116,35 @@ export default function WorkflowsPage() {
         const active = showModal || isParsing || chatLoading || isSubmitting || runningId !== null;
         setGuard(active, "Hay una automatización en curso. Si cambias de sección perderás el progreso.");
         return () => { if (active) setGuard(false); };
-    }, [showModal, isParsing, chatLoading, isSubmitting, runningId]);
+    }, [showModal, isParsing, chatLoading, isSubmitting, runningId, setGuard]);
 
     // ─── Data loading ────────────────────────────────────────────────────────
 
-    useEffect(() => { loadWorkflows(); }, []);
+    const loadWorkflows = useCallback(async () => {
+        setIsLoading(true);
+        try { setWorkflows(await api.workflows.list()); }
+        catch (e) { logError("automatizaciones/page", e); }
+        finally { setIsLoading(false); }
+    }, []);
+
+    const loadExecutions = useCallback(async (id: string) => {
+        setLoadingExec(id);
+        try {
+            const data = await api.workflows.executions(id);
+            setExecutions(prev => ({ ...prev, [id]: data }));
+        } catch (e) { logError("automatizaciones/page", e); }
+        finally { setLoadingExec(null); }
+    }, []);
+
+    const loadLogs = useCallback(async (workflowId: string, executionId: string) => {
+        try {
+            const data = await api.workflows.executionLogs(workflowId, executionId);
+            setLiveLogs(prev => ({ ...prev, [executionId]: data.lines }));
+            return data.status;
+        } catch { return "unknown"; }
+    }, []);
+
+    useEffect(() => { loadWorkflows(); }, [loadWorkflows]);
 
     // Auto-refresh polling for active executions
     useEffect(() => {
@@ -96,7 +160,7 @@ export default function WorkflowsPage() {
             if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
         }
         return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
-    }, [expandedId, executions]);
+    }, [expandedId, executions, loadExecutions]);
 
     // Live logs polling
     useEffect(() => {
@@ -115,31 +179,7 @@ export default function WorkflowsPage() {
             }
         }, 2000);
         return () => { if (logsRef.current) { clearInterval(logsRef.current); logsRef.current = null; } };
-    }, [expandedId, executions]);
-
-    const loadWorkflows = async () => {
-        setIsLoading(true);
-        try { setWorkflows(await api.workflows.list()); }
-        catch (e) { logError("automatizaciones/page", e); }
-        finally { setIsLoading(false); }
-    };
-
-    const loadExecutions = async (id: string) => {
-        setLoadingExec(id);
-        try {
-            const data = await api.workflows.executions(id);
-            setExecutions(prev => ({ ...prev, [id]: data }));
-        } catch (e) { logError("automatizaciones/page", e); }
-        finally { setLoadingExec(null); }
-    };
-
-    const loadLogs = async (workflowId: string, executionId: string) => {
-        try {
-            const data = await api.workflows.executionLogs(workflowId, executionId);
-            setLiveLogs(prev => ({ ...prev, [executionId]: data.lines }));
-            return data.status;
-        } catch { return "unknown"; }
-    };
+    }, [expandedId, executions, loadExecutions, loadLogs]);
 
     // ─── Actions ─────────────────────────────────────────────────────────────
 
@@ -150,7 +190,8 @@ export default function WorkflowsPage() {
 
     const resetForm = () => {
         setName(""); setDescription(""); setTriggerType("event_based");
-        setActionType("ai_task"); setActionIntent(""); setTriggerConfig({ events: ["any"] });
+        setActionType("ai_task"); setActionIntent("");
+        setTriggerConfig({ events: ["any"] });
         setParsedUiNodes(null); setParsedUiEdges(null);
         setExecutionMode("reasoning"); setEditingWorkflow(null);
         setCanBeDeterministic(null); setModeLockedByAI(false);
@@ -169,8 +210,8 @@ export default function WorkflowsPage() {
             });
             setShowModal(false); resetForm(); await loadWorkflows();
             showToast("Automatización creada correctamente", "ok");
-        } catch (error: any) {
-            showToast(error.message || "Error creando la regla", "err");
+        } catch (error: unknown) {
+            showToast(error instanceof Error ? error.message : "Error creando la regla", "err");
         } finally { setIsSubmitting(false); }
     };
 
@@ -189,8 +230,8 @@ export default function WorkflowsPage() {
             setWorkflows(workflows.map(w => w.id === updated.id ? updated : w));
             setShowModal(false); resetForm();
             showToast("Automatización actualizada correctamente", "ok");
-        } catch (error: any) {
-            showToast(error.message || "Error al actualizar", "err");
+        } catch (error: unknown) {
+            showToast(error instanceof Error ? error.message : "Error al actualizar", "err");
         } finally { setIsSubmitting(false); }
     };
 
@@ -219,7 +260,7 @@ export default function WorkflowsPage() {
         return questionStarts.some(q => tl.startsWith(q));
     };
 
-    const _openModalWithParsed = (parsed: any) => {
+    const _openModalWithParsed = (parsed: ParsedWorkflow) => {
         setName(parsed.name || ""); setDescription(parsed.description || "");
         setTriggerType(parsed.trigger_type || "event_based");
         setTriggerConfig(parsed.trigger_config || { events: ["any"] });
@@ -249,11 +290,11 @@ export default function WorkflowsPage() {
                     await new Promise(r => setTimeout(r, 1000));
                     const updated = await api.tasks.get(taskId);
                     if (updated.status === "done" || updated.status === "failed") {
-                        const results = updated.agent_results as any[];
+                        const results = updated.agent_results as AgentResult[] | undefined;
                         if (Array.isArray(results)) {
                             for (let j = results.length - 1; j >= 0; j--) {
                                 if (results[j]?.output?.response) {
-                                    setChatResponse(results[j].output.response);
+                                    setChatResponse(results[j].output!.response!);
                                     found = true;
                                     break;
                                 }
@@ -263,8 +304,8 @@ export default function WorkflowsPage() {
                         break;
                     }
                 }
-            } catch (e: any) {
-                setChatResponse(`Error: ${e.message || "No se pudo procesar la pregunta"}`);
+            } catch (e: unknown) {
+                setChatResponse(`Error: ${e instanceof Error ? e.message : "No se pudo procesar la pregunta"}`);
             } finally { setChatLoading(false); }
         } else {
             // Es una regla → parsear workflow
@@ -273,8 +314,8 @@ export default function WorkflowsPage() {
                 const parsed = await api.workflows.parse(nlQuery);
                 setNlQuery("");
                 _openModalWithParsed(parsed);
-            } catch (e: any) {
-                showToast("Error al procesar con IA: " + (e.message || "Fallo"), "err");
+            } catch (e: unknown) {
+                showToast("Error al procesar con IA: " + (e instanceof Error ? e.message : "Fallo"), "err");
             } finally { setIsParsing(false); }
         }
     };
@@ -285,7 +326,7 @@ export default function WorkflowsPage() {
             setWorkflows(workflows.filter(w => w.id !== id));
             if (expandedId === id) { setExpandedId(null); }
             showToast("Automatización eliminada correctamente", "ok");
-        } catch (e: any) { showToast(e.message || "Error al eliminar la automatización", "err"); }
+        } catch (e: unknown) { showToast(e instanceof Error ? e.message : "Error al eliminar la automatización", "err"); }
     };
 
     const handleRun = async (id: string) => {
@@ -294,7 +335,7 @@ export default function WorkflowsPage() {
             await api.workflows.run(id);
             showToast("Automatización lanzada. El agente IA está procesando la instrucción.", "ok");
             if (expandedId === id) await loadExecutions(id);
-        } catch (error: any) { showToast(error.message || "Error al ejecutar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al ejecutar", "err"); }
         finally { setRunningId(null); }
     };
 
@@ -305,7 +346,7 @@ export default function WorkflowsPage() {
             showToast("Automatización lanzada con el contexto indicado.", "ok");
             setContextInputId(null); setContextText("");
             if (expandedId === wfId) await loadExecutions(wfId);
-        } catch (error: any) { showToast(error.message || "Error al ejecutar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al ejecutar", "err"); }
         finally { setRunningId(null); }
     };
 
@@ -314,7 +355,7 @@ export default function WorkflowsPage() {
             await api.workflows.cancelExecution(workflowId, executionId);
             showToast("Ejecución cancelada.", "ok");
             await loadExecutions(workflowId);
-        } catch (error: any) { showToast(error.message || "Error al cancelar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al cancelar", "err"); }
     };
 
     const handleResume = async (workflowId: string, executionId: string) => {
@@ -322,7 +363,7 @@ export default function WorkflowsPage() {
             await api.workflows.resumeExecution(workflowId, executionId);
             showToast("Ejecución reanudada. El motor de nodos continúa procesando.", "ok");
             await loadExecutions(workflowId);
-        } catch (error: any) { showToast(error.message || "Error al reanudar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al reanudar", "err"); }
     };
 
     const toggleStatus = async (workflow: Workflow) => {
@@ -349,10 +390,12 @@ export default function WorkflowsPage() {
 
     const openEdit = (wf: Workflow) => {
         setEditingWorkflow(wf); setName(wf.name); setDescription(wf.description || "");
-        setTriggerType(wf.trigger_type); setTriggerConfig(wf.trigger_config || { events: ["any"] });
+        setTriggerType(wf.trigger_type);
+        setTriggerConfig((wf.trigger_config as TriggerConfig) || { events: ["any"] });
         setActionType(wf.action_type); setActionIntent(wf.action_config?.instruction || "");
         setExecutionMode(wf.execution_mode as "reasoning" | "deterministic" || "reasoning");
-        setParsedUiNodes(wf.ui_nodes || null); setParsedUiEdges(wf.ui_edges || null);
+        setParsedUiNodes((wf.ui_nodes as FlowNode[]) || null);
+        setParsedUiEdges((wf.ui_edges as FlowEdge[]) || null);
         setShowModal(true);
     };
 
@@ -365,8 +408,8 @@ export default function WorkflowsPage() {
     };
 
     const handleAddParallelBranch = () => {
-        const allNodes: any[] = parsedUiNodes || defaultEditorNodes;
-        const allEdges: any[] = parsedUiEdges || defaultEditorEdges;
+        const allNodes: FlowNode[] = parsedUiNodes || defaultEditorNodes;
+        const allEdges: FlowEdge[] = parsedUiEdges || defaultEditorEdges;
         const source = allNodes.find(n => n.type === "trigger") || allNodes[0];
         if (!source) return;
 

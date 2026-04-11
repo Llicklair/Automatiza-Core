@@ -9,7 +9,7 @@ Endpoints:
 """
 import uuid
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
@@ -41,7 +41,7 @@ class HRDocument(Base):
     status = Column(String(20), default="draft")        # draft | approved
     instructions = Column(Text, nullable=True)          # User's original prompt
     metadata_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.utcnow())
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     approved_at = Column(DateTime, nullable=True)
 
 
@@ -221,11 +221,11 @@ async def generate_hr_document(
     employee_context = ""
     if payload.employee_id:
         try:
-            from app.db.models.hr import HREmployee
+            from app.db.models.hr import Employee
             result = await db.execute(
-                select(HREmployee).where(
-                    HREmployee.id == payload.employee_id,
-                    HREmployee.tenant_id == current_user.tenant_id,
+                select(Employee).where(
+                    Employee.id == payload.employee_id,
+                    Employee.tenant_id == current_user.tenant_id,
                 )
             )
             emp = result.scalar_one_or_none()
@@ -430,7 +430,7 @@ async def approve_hr_document(
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
     doc.status = "approved"
-    doc.approved_at = datetime.now(UTC)
+    doc.approved_at = datetime.now(timezone.utc)
     await db.commit()
     return {"id": str(doc.id), "status": "approved", "approved_at": doc.approved_at.isoformat()}
 
