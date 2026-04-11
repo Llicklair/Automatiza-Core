@@ -1,4 +1,5 @@
 """Rate limiting middleware usando slowapi (Starlette compatible)."""
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from slowapi import Limiter

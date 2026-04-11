@@ -3,6 +3,7 @@ Dispatcher de documentos (documents agent).
 Invoca el documents agent autónomo (LangGraph) y traduce su resultado
 al formato del orquestador.
 """
+
 import logging
 
 from app.agents.orchestrator.helpers import (
@@ -19,7 +20,9 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
     from app.agents.documents_agent import graph
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
 
     # Enriquecer el intent con el document_id si hay un documento vinculado a la tarea
     enriched_intent = intent
@@ -33,9 +36,7 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
 
         async with AsyncSessionLocal() as db:
             doc_result = await db.execute(
-                select(TenantDocument).where(
-                    TenantDocument.task_id == uuid.UUID(state["task_id"])
-                )
+                select(TenantDocument).where(TenantDocument.task_id == uuid.UUID(state["task_id"]))
             )
             linked_doc = doc_result.scalars().first()
             if linked_doc:
@@ -48,16 +49,18 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
         logger.debug("Error enriqueciendo intent con documento vinculado", exc_info=True)
 
     try:
-        result_state = await graph.ainvoke({
-            "tenant_id": tenant_id,
-            "task_id": state.get("task_id"),
-            "user_id": state.get("user_id"),
-            "user_intent": enriched_intent,
-            "current_intent": enriched_intent,
-            "messages": [],
-            "agent_results": [],
-            "status": "running",
-        })
+        result_state = await graph.ainvoke(
+            {
+                "tenant_id": tenant_id,
+                "task_id": state.get("task_id"),
+                "user_id": state.get("user_id"),
+                "user_intent": enriched_intent,
+                "current_intent": enriched_intent,
+                "messages": [],
+                "agent_results": [],
+                "status": "running",
+            }
+        )
 
         messages = result_state.get("messages", [])
 
@@ -91,7 +94,9 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
             "agent": "documents",
             "success": success,
             "output": _doc_output,
-            "summary": _format_summary("documents", _doc_output, success, None if success else final_text),
+            "summary": _format_summary(
+                "documents", _doc_output, success, None if success else final_text
+            ),
             "error": None if success else final_text,
         }
 

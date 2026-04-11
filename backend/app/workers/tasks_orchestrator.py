@@ -2,6 +2,7 @@
 Tareas del orquestador LangGraph.
 Coroutines puras ejecutadas por TaskRunner.
 """
+
 import asyncio
 import logging
 import uuid
@@ -42,10 +43,13 @@ async def execute_orchestrator(task_id: str):
         if is_transient:
             await guard.release("run_orchestrator", task_id)
             for attempt in range(3):
-                countdown = 30 * (2 ** attempt)
+                countdown = 30 * (2**attempt)
                 logger.warning(
                     "[RETRY] run_orchestrator:%s reintento %d/3 en %ds -- %s",
-                    task_id, attempt + 1, countdown, exc,
+                    task_id,
+                    attempt + 1,
+                    countdown,
+                    exc,
                 )
                 await asyncio.sleep(countdown)
                 try:
@@ -95,6 +99,7 @@ async def _mark_task_failed(task_id: str, error_msg: str):
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Task
+
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Task).where(Task.id == task_id))
@@ -114,34 +119,57 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
     Genera un grafo DAG con layout automatico de capas.
     """
     AGENT_TYPES = {
-        "billing": "skill", "hr": "skill", "crm": "skill",
-        "advisory": "skill", "banking": "skill", "documents": "skill",
-        "compliance": "skill", "rag": "skill", "excel": "skill",
-        "email": "skill", "coordinator": "action", "workflow": "action",
-        "orchestrator": "action", "skill": "skill",
+        "billing": "skill",
+        "hr": "skill",
+        "crm": "skill",
+        "advisory": "skill",
+        "banking": "skill",
+        "documents": "skill",
+        "compliance": "skill",
+        "rag": "skill",
+        "excel": "skill",
+        "email": "skill",
+        "coordinator": "action",
+        "workflow": "action",
+        "orchestrator": "action",
+        "skill": "skill",
     }
     AGENT_LABELS = {
-        "billing": "Facturacion", "hr": "RRHH", "crm": "CRM",
-        "advisory": "Asesoria Fiscal", "banking": "Banca",
-        "documents": "Documentos", "compliance": "Cumplimiento",
-        "rag": "Busqueda RAG", "excel": "Excel", "email": "Email",
-        "coordinator": "Coordinador", "orchestrator": "Orquestador",
+        "billing": "Facturacion",
+        "hr": "RRHH",
+        "crm": "CRM",
+        "advisory": "Asesoria Fiscal",
+        "banking": "Banca",
+        "documents": "Documentos",
+        "compliance": "Cumplimiento",
+        "rag": "Busqueda RAG",
+        "excel": "Excel",
+        "email": "Email",
+        "coordinator": "Coordinador",
+        "orchestrator": "Orquestador",
         "workflow": "Workflow",
     }
     TRIGGER_LABELS = {
-        "event_based": "Evento ERP", "schedule_based": "Programacion", "manual": "Inicio Manual",
+        "event_based": "Evento ERP",
+        "schedule_based": "Programacion",
+        "manual": "Inicio Manual",
     }
 
     nodes = []
     edges = []
 
     # 1. Nodo trigger
-    nodes.append({
-        "id": "trigger",
-        "type": "trigger",
-        "position": {"x": 250, "y": 0},
-        "data": {"label": TRIGGER_LABELS.get(trigger_type, "Trigger"), "trigger_type": trigger_type},
-    })
+    nodes.append(
+        {
+            "id": "trigger",
+            "type": "trigger",
+            "position": {"x": 250, "y": 0},
+            "data": {
+                "label": TRIGGER_LABELS.get(trigger_type, "Trigger"),
+                "trigger_type": trigger_type,
+            },
+        }
+    )
 
     # 2. Construir indice id -> position en el plan
     step_id_to_index: dict[str, int] = {}
@@ -164,6 +192,7 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
 
     # 4. Agrupar por capa y posicionar
     from collections import defaultdict
+
     layer_groups: dict[int, list] = defaultdict(list)
     for i, step in enumerate(plan):
         step_id = step.get("id", f"step_{i}")
@@ -180,32 +209,38 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
             agent = step.get("agent", step.get("domain", "skill"))
             x = start_x + col_idx * COL_W
             y = 150 + layer_idx * ROW_H
-            nodes.append({
-                "id": step_id,
-                "type": AGENT_TYPES.get(agent, "skill"),
-                "position": {"x": x, "y": y},
-                "data": {
-                    "label": AGENT_LABELS.get(agent, agent.title()),
-                    "domain": agent,
-                    "description": step.get("action", step.get("instruction", ""))[:120],
-                },
-            })
+            nodes.append(
+                {
+                    "id": step_id,
+                    "type": AGENT_TYPES.get(agent, "skill"),
+                    "position": {"x": x, "y": y},
+                    "data": {
+                        "label": AGENT_LABELS.get(agent, agent.title()),
+                        "domain": agent,
+                        "description": step.get("action", step.get("instruction", ""))[:120],
+                    },
+                }
+            )
             # Edges
             deps = step.get("depends_on", [])
             if deps:
                 for dep_id in deps:
-                    edges.append({
-                        "id": f"e-{dep_id}-{step_id}",
-                        "source": dep_id,
-                        "target": step_id,
-                    })
+                    edges.append(
+                        {
+                            "id": f"e-{dep_id}-{step_id}",
+                            "source": dep_id,
+                            "target": step_id,
+                        }
+                    )
             else:
                 # Sin dependencia explicita -> conectar desde trigger
-                edges.append({
-                    "id": f"e-trigger-{step_id}",
-                    "source": "trigger",
-                    "target": step_id,
-                })
+                edges.append(
+                    {
+                        "id": f"e-trigger-{step_id}",
+                        "source": "trigger",
+                        "target": step_id,
+                    }
+                )
 
     return nodes, edges
 
@@ -314,7 +349,9 @@ async def _execute_orchestrator(task_id: str):
         async def _run_stream():
             nonlocal final_state
             try:
-                async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
+                async for chunk in orchestrator.astream(
+                    initial_state, config={"recursion_limit": 50}
+                ):
                     for node_name, state_update in chunk.items():
                         if node_name == "__end__":
                             final_state = state_update
@@ -365,7 +402,11 @@ async def _execute_orchestrator(task_id: str):
 
         logger.info("FINAL STATE RETURNED BY LANGGRAPH: %s", final_state)
 
-        task.status = final_state["status"].value if hasattr(final_state["status"], "value") else final_state["status"]
+        task.status = (
+            final_state["status"].value
+            if hasattr(final_state["status"], "value")
+            else final_state["status"]
+        )
         task.plan = final_state.get("plan")
         task.agent_results = final_state.get("agent_results", [])
         task.current_step = final_state.get("current_step", 0)
@@ -381,10 +422,13 @@ async def _execute_orchestrator(task_id: str):
         plan_list = final_state.get("plan")
         if wf_id and plan_list:
             from app.db.models.models import Workflow as WFModel
+
             wf_res = await db.execute(select(WFModel).where(WFModel.id == uuid.UUID(wf_id)))
             wf_record = wf_res.scalar_one_or_none()
             if wf_record and not wf_record.ui_nodes:
-                ui_nodes, ui_edges = _plan_to_ui_graph(plan_list, wf_record.trigger_type or "manual")
+                ui_nodes, ui_edges = _plan_to_ui_graph(
+                    plan_list, wf_record.trigger_type or "manual"
+                )
                 wf_record.ui_nodes = ui_nodes
                 wf_record.ui_edges = ui_edges
 
@@ -392,9 +436,8 @@ async def _execute_orchestrator(task_id: str):
         wf_exec_id = (task.additional_metadata or {}).get("execution_id")
         if wf_exec_id:
             from app.db.models.models import WorkflowExecution as WFExec
-            exec_res = await db.execute(
-                select(WFExec).where(WFExec.id == uuid.UUID(wf_exec_id))
-            )
+
+            exec_res = await db.execute(select(WFExec).where(WFExec.id == uuid.UUID(wf_exec_id)))
             wf_exec = exec_res.scalar_one_or_none()
             if wf_exec and wf_exec.status == "running":
                 task_to_exec_status = {
@@ -407,12 +450,17 @@ async def _execute_orchestrator(task_id: str):
                     wf_exec.completed_at = datetime.now(UTC)
                 wf_exec.result_log = (
                     task.error_message
-                    or (str(task.agent_results[-1].get("output", "")) if task.agent_results else None)
+                    or (
+                        str(task.agent_results[-1].get("output", ""))
+                        if task.agent_results
+                        else None
+                    )
                     or wf_exec.result_log
                 )
 
         # -- Actualizar el documento vinculado (si hay) --
         from app.db.models.models import TenantDocument
+
         doc_result = await db.execute(
             select(TenantDocument).where(TenantDocument.task_id == task.id)
         )
@@ -443,7 +491,6 @@ async def _execute_orchestrator(task_id: str):
         await db.commit()
 
 
-
 async def _resume_orchestrator(task_id: str):
     """
     Reanuda la ejecucion despues de una aprobacion humana.
@@ -471,17 +518,22 @@ async def _resume_orchestrator(task_id: str):
             # 2. Buscar la PendingApproval aprobada para esta tarea
             logger.info("[RESUME] Buscando approval aprobado para %s", task_id)
             approval_res = await db.execute(
-                select(PendingApproval).where(
+                select(PendingApproval)
+                .where(
                     PendingApproval.task_id == uuid.UUID(task_id),
                     PendingApproval.status == "approved",
-                ).order_by(PendingApproval.approved_at.desc()).limit(1)
+                )
+                .order_by(PendingApproval.approved_at.desc())
+                .limit(1)
             )
             approval = approval_res.scalars().first()
 
             if not approval or not approval.action_payload:
                 logger.error("[RESUME] Error: Approval no encontrado o sin payload")
                 task.status = "failed"
-                task.error_message = "No se encontro la aprobacion asociada para continuar o el payload esta vacio."
+                task.error_message = (
+                    "No se encontro la aprobacion asociada para continuar o el payload esta vacio."
+                )
                 await db.commit()
                 return
 
@@ -491,6 +543,7 @@ async def _resume_orchestrator(task_id: str):
         except Exception as _e:
             logger.error("[RESUME] Critical error early: %s", _e)
             import traceback
+
             traceback.print_exc()
             return
 
@@ -502,25 +555,32 @@ async def _resume_orchestrator(task_id: str):
         invoice_date_str = payload_data.get("invoice_date", datetime.now(UTC).strftime("%Y-%m-%d"))
 
         from datetime import date
+
         inv_date = date.fromisoformat(invoice_date_str)
 
         cliente_local = None
         # Si venia el ID ya pre-guardado de la fase anterior
         if "contact_id_local" in payload_data:
-            client_res = await db.execute(select(Client).where(Client.id == uuid.UUID(payload_data["contact_id_local"])))
+            client_res = await db.execute(
+                select(Client).where(Client.id == uuid.UUID(payload_data["contact_id_local"]))
+            )
             cliente_local = client_res.scalars().first()
 
         if not cliente_local and client_nif:
-            client_res = await db.execute(select(Client).where(Client.tenant_id == task.tenant_id, Client.nif == client_nif))
+            client_res = await db.execute(
+                select(Client).where(Client.tenant_id == task.tenant_id, Client.nif == client_nif)
+            )
             cliente_local = client_res.scalars().first()
 
         # FALLBACK: Si todavia no existe (por rollbacks asincronos en el origen), crearlo aqui.
         if not cliente_local and client_nif:
-            logger.info("[RESUME] Cliente %s no estaba en DB. Re-creandolo como fallback.", client_nif)
+            logger.info(
+                "[RESUME] Cliente %s no estaba en DB. Re-creandolo como fallback.", client_nif
+            )
             cliente_local = Client(
                 tenant_id=task.tenant_id,
                 nif=client_nif,
-                name=payload_data.get("client_name", "Cliente Generado Auto")
+                name=payload_data.get("client_name", "Cliente Generado Auto"),
             )
             db.add(cliente_local)
             await db.commit()
@@ -528,7 +588,9 @@ async def _resume_orchestrator(task_id: str):
 
         if not cliente_local:
             task.status = "failed"
-            task.error_message = "No se encontro ni se pudo crear el cliente local vinculado durante la reanudacion."
+            task.error_message = (
+                "No se encontro ni se pudo crear el cliente local vinculado durante la reanudacion."
+            )
             await db.commit()
             return
 
@@ -538,6 +600,7 @@ async def _resume_orchestrator(task_id: str):
 
         # Generar numero de factura secuencial
         from sqlalchemy import func
+
         count_res = await db.execute(
             select(func.count(Invoice.id)).where(Invoice.tenant_id == task.tenant_id)
         )
@@ -554,13 +617,14 @@ async def _resume_orchestrator(task_id: str):
             amount_total=total_amount,
             status="draft",
             invoice_type="issued",
-            external_id=None
+            external_id=None,
         )
         db.add(new_invoice)
         await db.flush()
 
         # 6b. Crear la linea de detalle de la factura
         from app.db.models.models import InvoiceLine
+
         invoice_line = InvoiceLine(
             invoice_id=new_invoice.id,
             description=concept,
@@ -574,15 +638,17 @@ async def _resume_orchestrator(task_id: str):
 
         # 7. Actualizar la Tarea principal
         existing_results = list(task.agent_results or [])
-        existing_results.append({
-            "agent": "billing",
-            "success": True,
-            "output": {
-                "action": "draft_created",
-                "local_invoice_id": str(new_invoice.id),
-                "note": "Factura creada tras aprobacion manual.",
-            },
-        })
+        existing_results.append(
+            {
+                "agent": "billing",
+                "success": True,
+                "output": {
+                    "action": "draft_created",
+                    "local_invoice_id": str(new_invoice.id),
+                    "note": "Factura creada tras aprobacion manual.",
+                },
+            }
+        )
         task.agent_results = existing_results
 
         # En vez de "done", incrementamos paso y relanzamos el grafo
@@ -595,6 +661,7 @@ async def _resume_orchestrator(task_id: str):
 
         # Re-construir el estado y pasarle de vuelta a LangGraph
         from app.agents.orchestrator import OrchestratorState, TaskStatus, orchestrator
+
         initial_state: OrchestratorState = {
             "task_id": task_id,
             "tenant_id": str(task.tenant_id),
@@ -614,7 +681,11 @@ async def _resume_orchestrator(task_id: str):
 
         final_state = await orchestrator.ainvoke(initial_state, config={"recursion_limit": 50})
 
-        task.status = final_state["status"].value if hasattr(final_state["status"], "value") else final_state["status"]
+        task.status = (
+            final_state["status"].value
+            if hasattr(final_state["status"], "value")
+            else final_state["status"]
+        )
         task.plan = final_state.get("plan")
         task.agent_results = final_state.get("agent_results", [])
         task.current_step = final_state.get("current_step", 0)

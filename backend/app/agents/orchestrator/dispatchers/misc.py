@@ -2,6 +2,7 @@
 Dispatchers misceláneos: RAG, Excel, Email, Workflow, Skill.
 Todos invocan agentes autónomos via LangGraph graph.ainvoke.
 """
+
 import logging
 
 from app.agents.orchestrator.helpers import _save_ai_result_as_document
@@ -20,22 +21,28 @@ def _extract_final_text(result_state: dict) -> str:
     return ""
 
 
-async def _run_graph_agent(graph, state: OrchestratorState, subtask: dict, agent_name: str, category: str) -> AgentResult:
+async def _run_graph_agent(
+    graph, state: OrchestratorState, subtask: dict, agent_name: str, category: str
+) -> AgentResult:
     """Patrón genérico para ejecutar un agente LangGraph y devolver AgentResult."""
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
 
     try:
-        result_state = await graph.ainvoke({
-            "tenant_id": tenant_id,
-            "task_id": state.get("task_id"),
-            "user_id": state.get("user_id"),
-            "user_intent": intent,
-            "current_intent": intent,
-            "messages": [],
-            "agent_results": [],
-            "status": "running",
-        })
+        result_state = await graph.ainvoke(
+            {
+                "tenant_id": tenant_id,
+                "task_id": state.get("task_id"),
+                "user_id": state.get("user_id"),
+                "user_intent": intent,
+                "current_intent": intent,
+                "messages": [],
+                "agent_results": [],
+                "status": "running",
+            }
+        )
 
         final_text = _extract_final_text(result_state)
         is_error = final_text.lower().startswith("error")
@@ -57,7 +64,9 @@ async def _run_graph_agent(graph, state: OrchestratorState, subtask: dict, agent
             "agent": agent_name,
             "success": success,
             "output": output,
-            "summary": _format_summary(agent_name, output, success, None if success else final_text),
+            "summary": _format_summary(
+                agent_name, output, success, None if success else final_text
+            ),
             "error": None if success else final_text,
         }
 
@@ -76,12 +85,14 @@ async def _run_graph_agent(graph, state: OrchestratorState, subtask: dict, agent
 async def _dispatch_rag(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente RAG autónomo."""
     from app.agents.rag_agent import graph
+
     return await _run_graph_agent(graph, state, subtask, "rag", "informes")
 
 
 async def _dispatch_excel(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de Excel autónomo."""
     from app.agents.excel_agent import graph
+
     return await _run_graph_agent(graph, state, subtask, "excel", "informes")
 
 
@@ -91,7 +102,9 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
         from app.agents.email_agent import run_email_agent
 
         agent_result = await run_email_agent(
-            user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
+            user_intent=subtask.get("params", {}).get(
+                "intent", state.get("current_intent", state["user_intent"])
+            ),
             tenant_id=state["tenant_id"],
             task_id=state["task_id"],
         )
@@ -115,7 +128,9 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
             "agent": "email",
             "success": agent_result.success,
             "output": _email_output,
-            "summary": _format_summary("email", _email_output, agent_result.success, agent_result.error),
+            "summary": _format_summary(
+                "email", _email_output, agent_result.success, agent_result.error
+            ),
             "error": agent_result.error,
         }
     except Exception as e:
@@ -178,12 +193,14 @@ async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentRe
 async def _dispatch_recruitment(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de reclutamiento autónomo."""
     from app.agents.recruitment_agent import graph
+
     return await _run_graph_agent(graph, state, subtask, "recruitment", "reclutamiento")
 
 
 async def _dispatch_marketing(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de marketing autónomo."""
     from app.agents.marketing_agent import graph
+
     return await _run_graph_agent(graph, state, subtask, "marketing", "marketing")
 
 
@@ -192,7 +209,9 @@ async def _dispatch_team(state: OrchestratorState, subtask: dict) -> AgentResult
     from app.agents.tool_registry import get_registry
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
 
     try:
         registry = get_registry()
@@ -262,6 +281,7 @@ async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResul
         tenant_id = state.get("tenant_id")
 
         import inspect
+
         if inspect.iscoroutinefunction(skill.run):
             result_data = await skill.run(payload, tenant_id=tenant_id)
         else:

@@ -1,4 +1,3 @@
-
 import logging
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -9,6 +8,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
 
 class ConnectionManager:
     def __init__(self):
@@ -37,9 +37,12 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as _e:
-                    logger.warning("WebSocket roto para tenant %s, desconectando: %s", tenant_id, _e)
+                    logger.warning(
+                        "WebSocket roto para tenant %s, desconectando: %s", tenant_id, _e
+                    )
                     # Clean up broken connections
                     self.disconnect(connection, tenant_id)
+
 
 manager = ConnectionManager()
 

@@ -6,6 +6,7 @@ El LLM decide qué herramientas usar según la intención del usuario:
   - Responder preguntas sobre documentos → answer_from_documents
   - Listar documentos disponibles → list_tenant_documents
 """
+
 import logging
 import uuid
 from datetime import datetime
@@ -37,6 +38,7 @@ def _get_llm():
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
 
+
 @tool
 async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
     """
@@ -61,13 +63,17 @@ async def _search_documents_async(tenant_id: str, query: str, top_k: int) -> str
     try:
         async with AsyncSessionLocal() as db:
             # Búsqueda literal en nombres de archivo
-            stmt_files = sa.select(TenantDocument).where(
-                TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                sa.or_(
-                    TenantDocument.file_name.ilike(f"%{query}%"),
-                    TenantDocument.category.ilike(f"%{query}%"),
+            stmt_files = (
+                sa.select(TenantDocument)
+                .where(
+                    TenantDocument.tenant_id == uuid.UUID(tenant_id),
+                    sa.or_(
+                        TenantDocument.file_name.ilike(f"%{query}%"),
+                        TenantDocument.category.ilike(f"%{query}%"),
+                    ),
                 )
-            ).limit(2)
+                .limit(2)
+            )
             res_files = await db.execute(stmt_files)
             for fd in res_files.scalars().all():
                 source_names.add(fd.file_name)
@@ -79,21 +85,32 @@ async def _search_documents_async(tenant_id: str, query: str, top_k: int) -> str
             embedder = get_embedder()
             if embedder:
                 from app.db.models.auth import Tenant
-                j_res = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
+
+                j_res = await db.execute(
+                    sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
+                )
                 jurisdiction = j_res.scalar() or "ES_TAX"
 
                 query_vector = await embedder.aembed_query(query)
-                stmt_vector = sa.select(DocumentEmbedding).where(
-                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
-                    sa.or_(DocumentEmbedding.jurisdiction == jurisdiction, DocumentEmbedding.jurisdiction.is_(None)),
-                ).order_by(
-                    DocumentEmbedding.embedding.cosine_distance(query_vector)
-                ).limit(top_k)
+                stmt_vector = (
+                    sa.select(DocumentEmbedding)
+                    .where(
+                        DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
+                        sa.or_(
+                            DocumentEmbedding.jurisdiction == jurisdiction,
+                            DocumentEmbedding.jurisdiction.is_(None),
+                        ),
+                    )
+                    .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
+                    .limit(top_k)
+                )
 
                 res_vector = await db.execute(stmt_vector)
                 for match in res_vector.scalars().all():
                     doc_name_res = await db.execute(
-                        sa.select(TenantDocument.file_name).where(TenantDocument.id == match.document_id)
+                        sa.select(TenantDocument.file_name).where(
+                            TenantDocument.id == match.document_id
+                        )
                     )
                     doc_name = doc_name_res.scalar()
                     if doc_name:
@@ -108,7 +125,9 @@ async def _search_documents_async(tenant_id: str, query: str, top_k: int) -> str
     if not retrieved_chunks:
         return f"No se encontraron documentos relevantes para: '{query}'"
 
-    result = f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
+    result = (
+        f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
+    )
     result += f"Fuentes: {', '.join(source_names)}\n\n"
     for idx, chunk in enumerate(retrieved_chunks, 1):
         result += f"--- Fragmento {idx} ---\n{chunk[:500]}\n\n"
@@ -140,50 +159,69 @@ async def _answer_from_documents_async(tenant_id: str, question: str, top_k: int
     try:
         async with AsyncSessionLocal() as db:
             # Búsqueda por nombre
-            stmt_files = sa.select(TenantDocument).where(
-                TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                sa.or_(
-                    TenantDocument.file_name.ilike(f"%{question}%"),
-                    TenantDocument.category.ilike(f"%{question}%"),
+            stmt_files = (
+                sa.select(TenantDocument)
+                .where(
+                    TenantDocument.tenant_id == uuid.UUID(tenant_id),
+                    sa.or_(
+                        TenantDocument.file_name.ilike(f"%{question}%"),
+                        TenantDocument.category.ilike(f"%{question}%"),
+                    ),
                 )
-            ).limit(2)
+                .limit(2)
+            )
             res_files = await db.execute(stmt_files)
             for fd in res_files.scalars().all():
                 source_names.add(fd.file_name)
-                retrieved_chunks.append({
-                    "doc_id": str(fd.id),
-                    "text": f"Documento: {fd.file_name}. Categoría: {fd.category}. Contenido: {fd.parsed_content[:500] if fd.parsed_content else 'N/A'}"
-                })
+                retrieved_chunks.append(
+                    {
+                        "doc_id": str(fd.id),
+                        "text": f"Documento: {fd.file_name}. Categoría: {fd.category}. Contenido: {fd.parsed_content[:500] if fd.parsed_content else 'N/A'}",
+                    }
+                )
 
             # Búsqueda semántica (filtrada por jurisdicción)
             embedder = get_embedder()
             if embedder:
                 from app.db.models.auth import Tenant
-                j_res = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
+
+                j_res = await db.execute(
+                    sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
+                )
                 jurisdiction = j_res.scalar() or "ES_TAX"
 
                 query_vector = await embedder.aembed_query(question)
-                stmt_vector = sa.select(DocumentEmbedding).where(
-                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
-                    sa.or_(DocumentEmbedding.jurisdiction == jurisdiction, DocumentEmbedding.jurisdiction.is_(None)),
-                ).order_by(
-                    DocumentEmbedding.embedding.cosine_distance(query_vector)
-                ).limit(top_k)
+                stmt_vector = (
+                    sa.select(DocumentEmbedding)
+                    .where(
+                        DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
+                        sa.or_(
+                            DocumentEmbedding.jurisdiction == jurisdiction,
+                            DocumentEmbedding.jurisdiction.is_(None),
+                        ),
+                    )
+                    .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
+                    .limit(top_k)
+                )
 
                 res_vector = await db.execute(stmt_vector)
                 for match in res_vector.scalars().all():
                     doc_name_res = await db.execute(
-                        sa.select(TenantDocument.file_name).where(TenantDocument.id == match.document_id)
+                        sa.select(TenantDocument.file_name).where(
+                            TenantDocument.id == match.document_id
+                        )
                     )
                     doc_name = doc_name_res.scalar()
                     if doc_name:
                         source_names.add(doc_name)
                     # Incluir metadata posicional para citas precisas
                     page_ref = f" [Página {match.page_number}]" if match.page_number else ""
-                    retrieved_chunks.append({
-                        "doc_id": str(match.document_id),
-                        "text": f"{match.text_content}{page_ref}",
-                    })
+                    retrieved_chunks.append(
+                        {
+                            "doc_id": str(match.document_id),
+                            "text": f"{match.text_content}{page_ref}",
+                        }
+                    )
     except Exception as e:
         return f"Error buscando documentos: {e}"
 
@@ -197,10 +235,14 @@ async def _answer_from_documents_async(tenant_id: str, question: str, top_k: int
 
     llm = _get_llm()
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content="Eres un asistente empresarial experto. Responde ÚNICAMENTE basándote en los fragmentos proporcionados. Si no puedes responder, dilo claramente. Nunca inventes datos."),
-            HumanMessage(content=f"DOCUMENTOS:\n{contexto}\n\nPREGUNTA: {question}"),
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(
+                    content="Eres un asistente empresarial experto. Responde ÚNICAMENTE basándote en los fragmentos proporcionados. Si no puedes responder, dilo claramente. Nunca inventes datos."
+                ),
+                HumanMessage(content=f"DOCUMENTOS:\n{contexto}\n\nPREGUNTA: {question}"),
+            ]
+        )
         answer = response.content
     except Exception as e:
         return f"Error generando respuesta: {e}"
@@ -261,7 +303,9 @@ async def rag_agent_node(state: AgentState):
         step_id=f"rag_step_{datetime.now().timestamp()}",
         description="Procesando consulta documental...",
         status="completed",
-        action_taken="Buscando en documentos" if response.tool_calls else "Consulta documental completada.",
+        action_taken="Buscando en documentos"
+        if response.tool_calls
+        else "Consulta documental completada.",
     )
 
     if "agent_results" not in state:
@@ -276,7 +320,9 @@ def rag_finalize_node(state: AgentState):
         step_id="rag_final",
         description="Agente RAG ha finalizado.",
         status="completed",
-        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Consulta documental completada.",
+        action_taken=last_msg.content
+        if isinstance(last_msg.content, str)
+        else "Consulta documental completada.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

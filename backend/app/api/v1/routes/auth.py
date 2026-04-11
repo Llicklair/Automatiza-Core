@@ -1,4 +1,5 @@
 """Rutas de autenticación: registro, login y refresh token."""
+
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -48,9 +49,7 @@ async def register(request: Request, payload: UserCreate, db: AsyncSession = Dep
         raise HTTPException(status_code=400, detail="El email ya está registrado")
 
     # Comprobar NIF de tenant duplicado
-    existing_tenant = await db.execute(
-        select(Tenant).where(Tenant.nif == payload.tenant.nif)
-    )
+    existing_tenant = await db.execute(select(Tenant).where(Tenant.nif == payload.tenant.nif))
     if existing_tenant.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="El NIF ya está registrado")
 
@@ -102,7 +101,13 @@ async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depe
     user.last_login_at = datetime.now(UTC)
     await db.commit()
 
-    token_data = {"sub": str(user.id), "tenant_id": str(user.tenant_id), "role": user.role, "full_name": user.full_name or "", "email": user.email}
+    token_data = {
+        "sub": str(user.id),
+        "tenant_id": str(user.tenant_id),
+        "role": user.role,
+        "full_name": user.full_name or "",
+        "email": user.email,
+    }
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
@@ -115,7 +120,13 @@ async def refresh(payload: RefreshRequest):
     if not data or data.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
 
-    token_data = {"sub": data["sub"], "tenant_id": data["tenant_id"], "role": data["role"], "full_name": data.get("full_name", ""), "email": data.get("email", "")}
+    token_data = {
+        "sub": data["sub"],
+        "tenant_id": data["tenant_id"],
+        "role": data["role"],
+        "full_name": data.get("full_name", ""),
+        "email": data.get("email", ""),
+    }
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
@@ -124,8 +135,10 @@ async def refresh(payload: RefreshRequest):
 
 # ── Password Reset ─────────────────────────────────────────────────────────────
 
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
 
 class ResetPasswordRequest(BaseModel):
     token: str
@@ -151,8 +164,9 @@ async def forgot_password(
 
         # Invalidar tokens anteriores del mismo usuario
         old = await db.execute(
-            select(PasswordResetToken)
-            .where(PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None))
+            select(PasswordResetToken).where(
+                PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
+            )
         )
         for old_token in old.scalars().all():
             old_token.used_at = datetime.now(UTC)
@@ -172,7 +186,9 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
 ):
     if len(payload.new_password) < 8:
-        raise HTTPException(status_code=422, detail="La contraseña debe tener al menos 8 caracteres.")
+        raise HTTPException(
+            status_code=422, detail="La contraseña debe tener al menos 8 caracteres."
+        )
 
     token_hash = hashlib.sha256(payload.token.encode()).hexdigest()
     result = await db.execute(

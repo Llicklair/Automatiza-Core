@@ -1,4 +1,5 @@
 """Aplicación principal FastAPI."""
+
 import asyncio
 import inspect
 import logging
@@ -33,11 +34,13 @@ async def lifespan(app: FastAPI):
     logger.info("%s v%s arrancando", settings.APP_NAME, settings.APP_VERSION)
     # Arrancar scheduler
     from app.services.scheduler import start_scheduler, stop_scheduler
+
     await start_scheduler()
     yield
     # Parar scheduler y tareas en vuelo
     await stop_scheduler()
     from app.services.task_runner import task_runner
+
     await task_runner.shutdown()
     logger.info("Cerrando aplicación")
 
@@ -87,7 +90,9 @@ class SecurityHeadersMiddleware:
                 headers.append("X-XSS-Protection", "1; mode=block")
                 headers.append("Referrer-Policy", "strict-origin-when-cross-origin")
                 if settings.ENVIRONMENT == "production":
-                    headers.append("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+                    headers.append(
+                        "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+                    )
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
@@ -110,7 +115,10 @@ async def app_exception_handler(request: Request, exc: AppException):
     request_id = getattr(request.state, "request_id", None)
     logger.warning(
         "AppException %s on %s %s: %s",
-        exc.error_type, request.method, request.url.path, exc.detail,
+        exc.error_type,
+        request.method,
+        request.url.path,
+        exc.detail,
     )
     origin = request.headers.get("origin", "")
     cors_headers = {}
@@ -133,7 +141,9 @@ async def app_exception_handler(request: Request, exc: AppException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", None)
-    logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+    logger.error(
+        "Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True
+    )
     # Include CORS headers so the browser can read the error response.
     # Without them, cross-origin requests see "Failed to fetch" instead of the real error.
     origin = request.headers.get("origin", "")
@@ -146,7 +156,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            "detail": f"{type(exc).__name__}: {exc}" if settings.DEBUG else "Error interno del servidor.",
+            "detail": f"{type(exc).__name__}: {exc}"
+            if settings.DEBUG
+            else "Error interno del servidor.",
             "type": "internal_error",
             "request_id": request_id,
         },
@@ -170,6 +182,7 @@ _app_start_time = __import__("time").monotonic()
 async def metrics_endpoint():
     """Expose Prometheus metrics in text format."""
     from app.core.observability import get_metrics_registry
+
     registry = get_metrics_registry()
     if registry is None:
         return JSONResponse(
@@ -178,6 +191,7 @@ async def metrics_endpoint():
         )
     from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
     from starlette.responses import Response as StarletteResponse
+
     return StarletteResponse(
         content=generate_latest(registry),
         media_type=CONTENT_TYPE_LATEST,
@@ -199,7 +213,11 @@ async def health_check():
         "python_version": sys.version,
         "app_version": settings.APP_VERSION,
         "uptime_seconds": round(time.monotonic() - _app_start_time, 1),
-        "memory_mb": round(__import__("psutil").Process(os.getpid()).memory_info().rss / 1024 / 1024, 1) if _safe_import("psutil") else None,
+        "memory_mb": round(
+            __import__("psutil").Process(os.getpid()).memory_info().rss / 1024 / 1024, 1
+        )
+        if _safe_import("psutil")
+        else None,
         "checks": {},
     }
 
@@ -232,6 +250,7 @@ async def health_check():
 async def readiness_check():
     """Readiness probe: returns 200 only if DB is reachable."""
     import time
+
     try:
         from sqlalchemy import text
 

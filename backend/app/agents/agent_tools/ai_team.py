@@ -2,6 +2,7 @@
 Herramienta para crear empleados IA desde descripción en lenguaje natural.
 El LLM genera nombre, rol, dominio, system_prompt y skills automáticamente.
 """
+
 import json
 import logging
 import uuid
@@ -15,17 +16,34 @@ from app.db.models.ai_employees import AgentSkill, AIEmployee
 logger = logging.getLogger(__name__)
 
 AVAILABLE_SKILLS = [
-    "billing.create_invoice", "billing.list_invoices", "billing.send_reminder",
-    "hr.list_employees", "hr.generate_payroll", "hr.generate_document",
-    "crm.list_clients", "crm.create_activity",
-    "email.send", "email.read_inbox",
-    "documents.search_rag", "documents.upload",
-    "banking.list_transactions", "compliance.check", "excel.export",
+    "billing.create_invoice",
+    "billing.list_invoices",
+    "billing.send_reminder",
+    "hr.list_employees",
+    "hr.generate_payroll",
+    "hr.generate_document",
+    "crm.list_clients",
+    "crm.create_activity",
+    "email.send",
+    "email.read_inbox",
+    "documents.search_rag",
+    "documents.upload",
+    "banking.list_transactions",
+    "compliance.check",
+    "excel.export",
 ]
 
 VALID_EMPLOYEE_DOMAINS = {
-    "billing", "documents", "compliance", "hr", "banking",
-    "crm", "excel", "email", "marketing", "recruitment",
+    "billing",
+    "documents",
+    "compliance",
+    "hr",
+    "banking",
+    "crm",
+    "excel",
+    "email",
+    "marketing",
+    "recruitment",
 }
 
 SPEC_PROMPT = """\

@@ -2,6 +2,7 @@
 Tareas del motor de nodos (workflows visuales con condicionales, delays, etc.).
 Coroutines puras ejecutadas por TaskRunner.
 """
+
 import asyncio
 import logging
 
@@ -20,7 +21,9 @@ async def run_node_engine(execution_id: str):
 
     try:
         result = await _run_node_engine(execution_id)
-        await guard.mark_executed("run_node_engine", execution_id, {"status": result.get("status", "unknown")})
+        await guard.mark_executed(
+            "run_node_engine", execution_id, {"status": result.get("status", "unknown")}
+        )
         return result
     except Exception as exc:
         logger.exception("Error en run_node_engine:%s", execution_id)
@@ -31,7 +34,9 @@ async def run_node_engine(execution_id: str):
                 await asyncio.sleep(30 * (attempt + 1))
                 try:
                     result = await _run_node_engine(execution_id)
-                    await guard.mark_executed("run_node_engine", execution_id, {"status": result.get("status", "unknown")})
+                    await guard.mark_executed(
+                        "run_node_engine", execution_id, {"status": result.get("status", "unknown")}
+                    )
                     return result
                 except Exception:
                     continue
@@ -49,7 +54,9 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
 
     try:
         result = await _resume_node_engine(execution_id, from_node_id)
-        await guard.mark_executed("resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")})
+        await guard.mark_executed(
+            "resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")}
+        )
         return result
     except Exception as exc:
         logger.exception("Error en resume_node_engine:%s", idempotency_key)
@@ -59,7 +66,11 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
                 await asyncio.sleep(10 * (attempt + 1))
                 try:
                     result = await _resume_node_engine(execution_id, from_node_id)
-                    await guard.mark_executed("resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")})
+                    await guard.mark_executed(
+                        "resume_node_engine",
+                        idempotency_key,
+                        {"status": result.get("status", "unknown")},
+                    )
                     return result
                 except Exception:
                     continue

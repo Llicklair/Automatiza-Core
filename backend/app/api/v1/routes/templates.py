@@ -2,6 +2,7 @@
 Endpoints para gestión de plantillas de documentos (facturas, nóminas, excel).
 GET/POST/PUT/DELETE + POST /preview
 """
+
 import logging
 from uuid import UUID
 
@@ -22,9 +23,10 @@ router = APIRouter()
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
+
 class TemplateCreate(BaseModel):
     name: str
-    template_type: str = "invoice"          # invoice | payroll | excel
+    template_type: str = "invoice"  # invoice | payroll | excel
     layout_style: str = "modern"
     accent_color: str = "#6366f1"
     font_family: str = "helvetica"
@@ -75,6 +77,7 @@ class PreviewRequest(BaseModel):
 
 
 # ── CRUD ─────────────────────────────────────────────────────────────────────
+
 
 @router.get("", response_model=list[TemplateResponse])
 @limiter.limit("30/minute")
@@ -168,10 +171,42 @@ async def set_default(
 # ── Seed defaults ────────────────────────────────────────────────────────────
 
 _PRESET_TEMPLATES = [
-    {"name": "Modern Indigo",  "layout_style": "modern",  "accent_color": "#6366f1", "font_family": "helvetica", "logo_position": "left",   "header_style": "color_band",  "table_style": "striped"},
-    {"name": "Classic Green",  "layout_style": "classic", "accent_color": "#10b981", "font_family": "times",     "logo_position": "left",   "header_style": "line_only",   "table_style": "bordered"},
-    {"name": "Minimal Slate",  "layout_style": "minimal", "accent_color": "#1e293b", "font_family": "helvetica", "logo_position": "right",  "header_style": "none",        "table_style": "clean"},
-    {"name": "Bold Red",       "layout_style": "bold",    "accent_color": "#ef4444", "font_family": "helvetica", "logo_position": "left",   "header_style": "dark_band",   "table_style": "accent_header"},
+    {
+        "name": "Modern Indigo",
+        "layout_style": "modern",
+        "accent_color": "#6366f1",
+        "font_family": "helvetica",
+        "logo_position": "left",
+        "header_style": "color_band",
+        "table_style": "striped",
+    },
+    {
+        "name": "Classic Green",
+        "layout_style": "classic",
+        "accent_color": "#10b981",
+        "font_family": "times",
+        "logo_position": "left",
+        "header_style": "line_only",
+        "table_style": "bordered",
+    },
+    {
+        "name": "Minimal Slate",
+        "layout_style": "minimal",
+        "accent_color": "#1e293b",
+        "font_family": "helvetica",
+        "logo_position": "right",
+        "header_style": "none",
+        "table_style": "clean",
+    },
+    {
+        "name": "Bold Red",
+        "layout_style": "bold",
+        "accent_color": "#ef4444",
+        "font_family": "helvetica",
+        "logo_position": "left",
+        "header_style": "dark_band",
+        "table_style": "accent_header",
+    },
 ]
 
 
@@ -212,6 +247,7 @@ async def seed_defaults(
 
 # ── Preview ──────────────────────────────────────────────────────────────────
 
+
 @router.post("/preview")
 @limiter.limit("30/minute")
 async def preview_template(
@@ -245,6 +281,7 @@ async def preview_template(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _get_or_404(db: AsyncSession, template_id: UUID, tenant_id) -> DocumentTemplate:
     result = await db.execute(
         select(DocumentTemplate).where(
@@ -272,137 +309,209 @@ async def _clear_default(db: AsyncSession, tenant_id, template_type: str):
 
 def _generate_invoice_sample(theme_config: dict) -> bytes:
     from app.services.pdf_invoices import generate_invoice_pdf
-    return generate_invoice_pdf({
-        "number": "F-2026-0042",
-        "date": "2026-03-27T00:00:00",
-        "company": {
-            "name": "Mi Empresa S.L.",
-            "nif": "B12345678",
-            "address": "Calle Mayor 1, 28001 Madrid",
-            "phone": "+34 91 000 0000",
-            "email": "contacto@miempresa.es",
+
+    return generate_invoice_pdf(
+        {
+            "number": "F-2026-0042",
+            "date": "2026-03-27T00:00:00",
+            "company": {
+                "name": "Mi Empresa S.L.",
+                "nif": "B12345678",
+                "address": "Calle Mayor 1, 28001 Madrid",
+                "phone": "+34 91 000 0000",
+                "email": "contacto@miempresa.es",
+            },
+            "client": {
+                "name": "Cliente Ejemplo S.A.",
+                "nif": "A98765432",
+                "email": "cliente@ejemplo.com",
+                "address": "Avenida de la Constitución 5, 41001 Sevilla",
+            },
+            "lines": [
+                {
+                    "description": "Servicio de consultoría empresarial",
+                    "quantity": 10,
+                    "unit_price": 120.00,
+                    "tax_percentage": 21,
+                    "total": 1452.00,
+                },
+                {
+                    "description": "Licencia de software anual",
+                    "quantity": 1,
+                    "unit_price": 850.00,
+                    "tax_percentage": 21,
+                    "total": 1028.50,
+                },
+                {
+                    "description": "Soporte técnico mensual",
+                    "quantity": 3,
+                    "unit_price": 200.00,
+                    "tax_percentage": 21,
+                    "total": 726.00,
+                },
+            ],
+            "amount_base": 2050.00,
+            "tax_amount": 430.50,
+            "amount_total": 2480.50,
+            "payment_terms": "Transferencia bancaria — 30 días neto",
+            "notes": "Gracias por confiar en nuestros servicios.",
         },
-        "client": {
-            "name": "Cliente Ejemplo S.A.",
-            "nif": "A98765432",
-            "email": "cliente@ejemplo.com",
-            "address": "Avenida de la Constitución 5, 41001 Sevilla",
-        },
-        "lines": [
-            {"description": "Servicio de consultoría empresarial", "quantity": 10, "unit_price": 120.00, "tax_percentage": 21, "total": 1452.00},
-            {"description": "Licencia de software anual", "quantity": 1, "unit_price": 850.00, "tax_percentage": 21, "total": 1028.50},
-            {"description": "Soporte técnico mensual", "quantity": 3, "unit_price": 200.00, "tax_percentage": 21, "total": 726.00},
-        ],
-        "amount_base": 2050.00,
-        "tax_amount": 430.50,
-        "amount_total": 2480.50,
-        "payment_terms": "Transferencia bancaria — 30 días neto",
-        "notes": "Gracias por confiar en nuestros servicios.",
-    }, theme_config)
+        theme_config,
+    )
 
 
 def _generate_payroll_sample(theme_config: dict) -> bytes:
     from app.services.pdf_hr import generate_payroll_pdf
-    return generate_payroll_pdf({
-        "company": {
-            "name": "Mi Empresa S.L.",
-            "nif": "B12345678",
-            "address": "Calle Mayor 1, 28001 Madrid",
+
+    return generate_payroll_pdf(
+        {
+            "company": {
+                "name": "Mi Empresa S.L.",
+                "nif": "B12345678",
+                "address": "Calle Mayor 1, 28001 Madrid",
+            },
+            "employee": {
+                "name": "Ana García López",
+                "nif": "12345678A",
+                "position": "Responsable de Operaciones",
+                "department": "Administración",
+            },
+            "period_start": "2026-03-01T00:00:00",
+            "period_end": "2026-03-31T00:00:00",
+            "issue_date": "2026-03-27T00:00:00",
+            "base_salary": 2200.00,
+            "ss_contingencias_comunes": 103.40,
+            "ss_desempleo": 34.10,
+            "ss_formacion_profesional": 2.20,
+            "ss_mei": 2.86,
+            "irpf": 330.00,
+            "irpf_rate": 15.0,
+            "other_deductions": 0.0,
+            "net_salary": 1727.44,
         },
-        "employee": {
-            "name": "Ana García López",
-            "nif": "12345678A",
-            "position": "Responsable de Operaciones",
-            "department": "Administración",
-        },
-        "period_start": "2026-03-01T00:00:00",
-        "period_end":   "2026-03-31T00:00:00",
-        "issue_date":   "2026-03-27T00:00:00",
-        "base_salary": 2200.00,
-        "ss_contingencias_comunes": 103.40,
-        "ss_desempleo": 34.10,
-        "ss_formacion_profesional": 2.20,
-        "ss_mei": 2.86,
-        "irpf": 330.00,
-        "irpf_rate": 15.0,
-        "other_deductions": 0.0,
-        "net_salary": 1727.44,
-    }, theme_config)
+        theme_config,
+    )
 
 
 def _generate_albaran_sample(theme_config: dict) -> bytes:
     from app.services.pdf_albaranes import generate_albaran_pdf
-    return generate_albaran_pdf({
-        "albaran_number": "ALB-2026-0015",
-        "date": "2026-03-27T00:00:00",
-        "status": "confirmed",
-        "issuer_name": "Mi Empresa S.L.",
-        "issuer_nif": "B12345678",
-        "issuer_address": "Calle Mayor 1, 28001 Madrid",
-        "client_name": "Cliente Ejemplo S.A.",
-        "client_nif": "A98765432",
-        "lines": [
-            {"description": "Producto A — Lote 2026-03", "quantity": 50, "unit_price": 12.50, "tax_percentage": 21, "total": 756.25},
-            {"description": "Producto B — Ref. XK-200", "quantity": 20, "unit_price": 45.00, "tax_percentage": 21, "total": 1089.00},
-            {"description": "Embalaje y manipulación", "quantity": 1, "unit_price": 30.00, "tax_percentage": 21, "total": 36.30},
-        ],
-        "amount_base": 1555.00,
-        "tax_amount": 326.55,
-        "amount_total": 1881.55,
-        "notes": "Mercancía entregada en almacén del cliente. Conforme.",
-    }, theme_config)
+
+    return generate_albaran_pdf(
+        {
+            "albaran_number": "ALB-2026-0015",
+            "date": "2026-03-27T00:00:00",
+            "status": "confirmed",
+            "issuer_name": "Mi Empresa S.L.",
+            "issuer_nif": "B12345678",
+            "issuer_address": "Calle Mayor 1, 28001 Madrid",
+            "client_name": "Cliente Ejemplo S.A.",
+            "client_nif": "A98765432",
+            "lines": [
+                {
+                    "description": "Producto A — Lote 2026-03",
+                    "quantity": 50,
+                    "unit_price": 12.50,
+                    "tax_percentage": 21,
+                    "total": 756.25,
+                },
+                {
+                    "description": "Producto B — Ref. XK-200",
+                    "quantity": 20,
+                    "unit_price": 45.00,
+                    "tax_percentage": 21,
+                    "total": 1089.00,
+                },
+                {
+                    "description": "Embalaje y manipulación",
+                    "quantity": 1,
+                    "unit_price": 30.00,
+                    "tax_percentage": 21,
+                    "total": 36.30,
+                },
+            ],
+            "amount_base": 1555.00,
+            "tax_amount": 326.55,
+            "amount_total": 1881.55,
+            "notes": "Mercancía entregada en almacén del cliente. Conforme.",
+        },
+        theme_config,
+    )
 
 
 def _generate_excel_sample(theme_config: dict) -> bytes:
     from app.services.pdf_invoices import generate_invoice_pdf
-    return generate_invoice_pdf({
-        "doc_title": "EXPORTACIÓN EXCEL",
-        "number": "EXP-2026-0008",
-        "date": "2026-03-27T00:00:00",
-        "company": {
-            "name": "Mi Empresa S.L.",
-            "nif": "B12345678",
-            "address": "Calle Mayor 1, 28001 Madrid",
-            "phone": "+34 91 000 0000",
-            "email": "contacto@miempresa.es",
+
+    return generate_invoice_pdf(
+        {
+            "doc_title": "EXPORTACIÓN EXCEL",
+            "number": "EXP-2026-0008",
+            "date": "2026-03-27T00:00:00",
+            "company": {
+                "name": "Mi Empresa S.L.",
+                "nif": "B12345678",
+                "address": "Calle Mayor 1, 28001 Madrid",
+                "phone": "+34 91 000 0000",
+                "email": "contacto@miempresa.es",
+            },
+            "client": {
+                "name": "Exportación de datos",
+                "nif": "",
+                "email": "",
+                "address": "Vista previa del estilo de tabla",
+            },
+            "lines": [
+                {
+                    "description": "Ventas Enero 2026",
+                    "quantity": 1,
+                    "unit_price": 15200.00,
+                    "tax_percentage": 0,
+                    "total": 15200.00,
+                },
+                {
+                    "description": "Ventas Febrero 2026",
+                    "quantity": 1,
+                    "unit_price": 18400.00,
+                    "tax_percentage": 0,
+                    "total": 18400.00,
+                },
+                {
+                    "description": "Ventas Marzo 2026",
+                    "quantity": 1,
+                    "unit_price": 12800.00,
+                    "tax_percentage": 0,
+                    "total": 12800.00,
+                },
+            ],
+            "amount_base": 46400.00,
+            "tax_amount": 0.0,
+            "amount_total": 46400.00,
+            "payment_terms": "",
+            "notes": "Datos de ejemplo para vista previa de estilo.",
         },
-        "client": {
-            "name": "Exportación de datos",
-            "nif": "",
-            "email": "",
-            "address": "Vista previa del estilo de tabla",
-        },
-        "lines": [
-            {"description": "Ventas Enero 2026", "quantity": 1, "unit_price": 15200.00, "tax_percentage": 0, "total": 15200.00},
-            {"description": "Ventas Febrero 2026", "quantity": 1, "unit_price": 18400.00, "tax_percentage": 0, "total": 18400.00},
-            {"description": "Ventas Marzo 2026", "quantity": 1, "unit_price": 12800.00, "tax_percentage": 0, "total": 12800.00},
-        ],
-        "amount_base": 46400.00,
-        "tax_amount": 0.0,
-        "amount_total": 46400.00,
-        "payment_terms": "",
-        "notes": "Datos de ejemplo para vista previa de estilo.",
-    }, theme_config)
+        theme_config,
+    )
 
 
 async def get_default_theme(tenant_id, template_type: str, db: AsyncSession) -> dict | None:
     """Obtiene la config de la plantilla por defecto de un tipo. Usada por agentes.
     Si ninguna está marcada como default, devuelve la primera disponible del tipo."""
     result = await db.execute(
-        select(DocumentTemplate).where(
+        select(DocumentTemplate)
+        .where(
             DocumentTemplate.tenant_id == tenant_id,
             DocumentTemplate.template_type == template_type,
-        ).order_by(DocumentTemplate.is_default.desc(), DocumentTemplate.created_at)
+        )
+        .order_by(DocumentTemplate.is_default.desc(), DocumentTemplate.created_at)
     )
     tpl = result.scalars().first()
     if not tpl:
         return None
     return {
-        "accent_color":  tpl.accent_color,
-        "font_family":   tpl.font_family,
-        "layout_style":  tpl.layout_style,
+        "accent_color": tpl.accent_color,
+        "font_family": tpl.font_family,
+        "layout_style": tpl.layout_style,
         "logo_position": tpl.logo_position,
-        "header_style":  tpl.header_style,
-        "table_style":   tpl.table_style,
-        "footer_text":   tpl.footer_text,
+        "header_style": tpl.header_style,
+        "table_style": tpl.table_style,
+        "footer_text": tpl.footer_text,
     }

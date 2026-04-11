@@ -20,6 +20,7 @@ Uso (en dispatch_node, antes de llamar al agente):
     enriched = ctx.build_enriched_intent()
     # Pasar enriched_intent al agente en lugar de user_intent crudo
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -29,19 +30,32 @@ from typing import Any
 
 _EXTRACTABLE_KEYS = [
     # Billing
-    "invoice_id", "invoice_number",
-    "amount_base", "amount_total", "vat_rate",
-    "client_name", "client_nif",
+    "invoice_id",
+    "invoice_number",
+    "amount_base",
+    "amount_total",
+    "vat_rate",
+    "client_name",
+    "client_nif",
     # HR
-    "employee_id", "employee_name", "payroll_id", "net_salary",
+    "employee_id",
+    "employee_name",
+    "payroll_id",
+    "net_salary",
     # Documents
-    "document_id", "document_type", "file_path", "file_name",
+    "document_id",
+    "document_type",
+    "file_path",
+    "file_name",
     # CRM
-    "opportunity_id", "lead_name",
+    "opportunity_id",
+    "lead_name",
     # Banking
-    "transaction_id", "bank_account",
+    "transaction_id",
+    "bank_account",
     # General
-    "concept", "notes",
+    "concept",
+    "notes",
 ]
 
 
@@ -59,6 +73,7 @@ class ExecutionContext:
         entities:        Entidades extraídas de los resultados (invoice_id, etc.)
         previous_outputs: Lista completa de outputs de pasos anteriores
     """
+
     tenant_id: str
     task_id: str
     user_id: str

@@ -3,6 +3,7 @@ Cliente de Azure Form Recognizer (Document Intelligence).
 Extrae datos estructurados de facturas, contratos y documentos en general.
 Docs: https://learn.microsoft.com/azure/ai-services/document-intelligence/
 """
+
 import asyncio
 
 import httpx
@@ -17,8 +18,8 @@ class AzureFormsClient:
 
     def __init__(self, endpoint: str, api_key: str):
         self.endpoint = endpoint.rstrip("/")
-        self.api_key  = api_key
-        self._client  = httpx.AsyncClient(
+        self.api_key = api_key
+        self._client = httpx.AsyncClient(
             headers={"Ocp-Apim-Subscription-Key": api_key},
             timeout=60.0,
         )
@@ -28,7 +29,9 @@ class AzureFormsClient:
 
     # ─── Facturas ─────────────────────────────────────────────────────────
 
-    async def analyze_invoice(self, file_bytes: bytes, content_type: str = "application/pdf") -> dict:
+    async def analyze_invoice(
+        self, file_bytes: bytes, content_type: str = "application/pdf"
+    ) -> dict:
         """
         Analiza una factura recibida (PDF o imagen) y devuelve datos estructurados.
         Usa el modelo prebuilt-invoice de Azure.
@@ -52,13 +55,17 @@ class AzureFormsClient:
 
         return await self._poll_result(operation_url)
 
-    async def analyze_document(self, file_bytes: bytes, content_type: str = "application/pdf") -> dict:
+    async def analyze_document(
+        self, file_bytes: bytes, content_type: str = "application/pdf"
+    ) -> dict:
         """Analiza un documento genérico (contrato, extracto...)."""
         url = f"{self.endpoint}/documentintelligence/documentModels/prebuilt-document:analyze"
         params = {"api-version": "2024-02-29-preview"}
 
         resp = await self._client.post(
-            url, params=params, content=file_bytes,
+            url,
+            params=params,
+            content=file_bytes,
             headers={"Content-Type": content_type, "Ocp-Apim-Subscription-Key": self.api_key},
         )
         resp.raise_for_status()
@@ -70,10 +77,9 @@ class AzureFormsClient:
     async def _poll_result(self, operation_url: str, max_retries: int = 20) -> dict:
         """Espera a que Azure complete el análisis (polling con backoff)."""
         for attempt in range(max_retries):
-            await asyncio.sleep(2 + attempt * 0.5)   # backoff progresivo
+            await asyncio.sleep(2 + attempt * 0.5)  # backoff progresivo
             resp = await self._client.get(
-                operation_url,
-                headers={"Ocp-Apim-Subscription-Key": self.api_key}
+                operation_url, headers={"Ocp-Apim-Subscription-Key": self.api_key}
             )
             resp.raise_for_status()
             data = resp.json()
@@ -107,26 +113,32 @@ class AzureFormsClient:
         line_items = []
         for item in fields.get("Items", {}).get("valueArray", []):
             item_fields = item.get("valueObject", {})
-            line_items.append({
-                "descripcion": item_fields.get("Description", {}).get("content"),
-                "cantidad":    item_fields.get("Quantity", {}).get("valueNumber"),
-                "precio_unit": item_fields.get("UnitPrice", {}).get("valueCurrency", {}).get("amount"),
-                "importe":     item_fields.get("Amount", {}).get("valueCurrency", {}).get("amount"),
-            })
+            line_items.append(
+                {
+                    "descripcion": item_fields.get("Description", {}).get("content"),
+                    "cantidad": item_fields.get("Quantity", {}).get("valueNumber"),
+                    "precio_unit": item_fields.get("UnitPrice", {})
+                    .get("valueCurrency", {})
+                    .get("amount"),
+                    "importe": item_fields.get("Amount", {}).get("valueCurrency", {}).get("amount"),
+                }
+            )
 
         return {
-            "proveedor":          get_value("VendorName"),
-            "nif_proveedor":      get_value("VendorTaxId"),
-            "direccion_proveedor":get_value("VendorAddress"),
-            "cliente":            get_value("CustomerName"),
-            "nif_cliente":        get_value("CustomerTaxId"),
-            "numero_factura":     get_value("InvoiceId"),
-            "fecha_factura":      get_value("InvoiceDate"),
-            "fecha_vencimiento":  get_value("DueDate"),
-            "base_imponible":     fields.get("SubTotal", {}).get("valueCurrency", {}).get("amount"),
-            "total_iva":          fields.get("TotalTax", {}).get("valueCurrency", {}).get("amount"),
-            "total_factura":      fields.get("InvoiceTotal", {}).get("valueCurrency", {}).get("amount"),
-            "moneda":             fields.get("InvoiceTotal", {}).get("valueCurrency", {}).get("currencyCode", "EUR"),
-            "lineas":             line_items,
-            "confidence":         docs[0].get("confidence", 0),
+            "proveedor": get_value("VendorName"),
+            "nif_proveedor": get_value("VendorTaxId"),
+            "direccion_proveedor": get_value("VendorAddress"),
+            "cliente": get_value("CustomerName"),
+            "nif_cliente": get_value("CustomerTaxId"),
+            "numero_factura": get_value("InvoiceId"),
+            "fecha_factura": get_value("InvoiceDate"),
+            "fecha_vencimiento": get_value("DueDate"),
+            "base_imponible": fields.get("SubTotal", {}).get("valueCurrency", {}).get("amount"),
+            "total_iva": fields.get("TotalTax", {}).get("valueCurrency", {}).get("amount"),
+            "total_factura": fields.get("InvoiceTotal", {}).get("valueCurrency", {}).get("amount"),
+            "moneda": fields.get("InvoiceTotal", {})
+            .get("valueCurrency", {})
+            .get("currencyCode", "EUR"),
+            "lineas": line_items,
+            "confidence": docs[0].get("confidence", 0),
         }

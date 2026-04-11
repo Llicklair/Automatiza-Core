@@ -3,6 +3,7 @@ In-process async task runner.
 
 Mantiene un registro de tareas en vuelo para poder cancelarlas.
 """
+
 import asyncio
 import logging
 from typing import Any, Coroutine
@@ -37,6 +38,7 @@ class TaskRunner:
                 # Safety net: marcar tarea como failed si sigue en executing
                 try:
                     from app.workers.tasks_orchestrator import _mark_task_failed
+
                     await _mark_task_failed(task_id, f"{type(exc).__name__}: {exc}")
                 except Exception:
                     logger.error("No se pudo marcar tarea %s como failed", task_id)

@@ -2,6 +2,7 @@
 Tareas periodicas: workflows programados, facturas recurrentes, limpieza de ejecuciones.
 Coroutines puras invocadas por APScheduler.
 """
+
 import logging
 from datetime import UTC
 
@@ -33,6 +34,7 @@ async def _check_scheduled_workflows():
     now = datetime.now(UTC)
     # Usar hora de Madrid (UTC+1 / UTC+2)
     import zoneinfo
+
     try:
         madrid = zoneinfo.ZoneInfo("Europe/Madrid")
         now_local = datetime.now(madrid)
@@ -56,7 +58,9 @@ async def _check_scheduled_workflows():
 
                 guard = IdempotencyGuard(ttl=120)  # TTL 2 min: suficiente para el mismo minuto
                 if await guard.already_executed("workflow_beat", idempotency_key):
-                    logger.info("[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name)
+                    logger.info(
+                        "[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name
+                    )
                     continue
 
                 # Bloquear si ya hay una ejecucion activa para este workflow
@@ -103,6 +107,7 @@ async def _check_scheduled_workflows():
 
                     try:
                         from app.api.v1.routes.workflows import _execute_deterministic_steps
+
                         results = await _execute_deterministic_steps(
                             steps=wf.compiled_steps,
                             tenant_id=str(wf.tenant_id),
@@ -113,8 +118,8 @@ async def _check_scheduled_workflows():
                         execution.result_log = (
                             f"Ejecución determinista: {len(results)} paso(s). "
                             + " | ".join(
-                                f"[{r.get('agent','?')}:{r.get('type','?')}] "
-                                f"{'OK' if r.get('success') else 'ERROR: ' + str(r.get('error',''))[:60]}"
+                                f"[{r.get('agent', '?')}:{r.get('type', '?')}] "
+                                f"{'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
                                 for r in results
                             )
                         )
@@ -180,6 +185,7 @@ def _should_run_now(config: dict, now) -> bool:
         from datetime import timedelta
 
         from croniter import croniter
+
         # Ensure we're checking if the current minute is a match.
         # croniter returns next matching sequence. We check if 'now' is a match
         # by seeing if checking a minute ago yields 'now'.
@@ -188,11 +194,13 @@ def _should_run_now(config: dict, now) -> bool:
         next_run = it.get_next(now.__class__)
 
         # We consider a match if the next_run is within the same minute as 'now'
-        return next_run.year == now.year and \
-               next_run.month == now.month and \
-               next_run.day == now.day and \
-               next_run.hour == now.hour and \
-               next_run.minute == now.minute
+        return (
+            next_run.year == now.year
+            and next_run.month == now.month
+            and next_run.day == now.day
+            and next_run.hour == now.hour
+            and next_run.minute == now.minute
+        )
 
     except Exception as e:
         logger.warning("[SCHEDULER] Error parsing cron: %s -> %s", cron_expr, e)
@@ -277,7 +285,11 @@ async def _catchup_missed_workflows():
             if next_run > now_cmp:
                 continue  # nada perdido
 
-            logger.info("[CATCHUP] Workflow '%s' perdió ejecución(es) desde %s. Disparando una vez.", wf.name, since_local)
+            logger.info(
+                "[CATCHUP] Workflow '%s' perdió ejecución(es) desde %s. Disparando una vez.",
+                wf.name,
+                since_local,
+            )
 
             # Verificar que no hay ejecución activa ya
             active = await db.execute(
@@ -318,6 +330,7 @@ async def _catchup_missed_workflows():
                 await db.flush()
                 try:
                     from app.api.v1.routes.workflows import _execute_deterministic_steps
+
                     results = await _execute_deterministic_steps(
                         steps=wf.compiled_steps,
                         tenant_id=str(wf.tenant_id),
@@ -401,7 +414,7 @@ async def _process_recurring_invoices():
                 invoice_number = f"REC-{now.strftime('%Y%m%d%H%M%S')}-{generated}"
                 amount_base = 0.0
                 tax_amount = 0.0
-                for line in (rec.lines_json or []):
+                for line in rec.lines_json or []:
                     base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
                     tax = base * (float(line.get("tax_percentage", 21)) / 100)
                     amount_base += base
@@ -423,7 +436,7 @@ async def _process_recurring_invoices():
                 db.add(invoice)
                 await db.flush()
 
-                for line in (rec.lines_json or []):
+                for line in rec.lines_json or []:
                     base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
                     tax = base * (float(line.get("tax_percentage", 21)) / 100)
                     inv_line = InvoiceLine(
@@ -468,6 +481,7 @@ def _infer_domain_from_text(text: str) -> str:
 
 
 # --- Cleanup: ejecuciones atascadas ---
+
 
 async def cleanup_stuck_executions():
     """Cada 10 min: marca como 'failed' ejecuciones en 'running' de mas de 15 min."""

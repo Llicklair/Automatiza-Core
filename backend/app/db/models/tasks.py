@@ -24,10 +24,7 @@ class Task(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
-    status = Column(
-        String(50), nullable=False, default="pending",
-        index=True
-    )
+    status = Column(String(50), nullable=False, default="pending", index=True)
     domain = Column(String(100), nullable=False, index=True)
     user_intent = Column(Text)
     plan = Column(JSONB)
@@ -74,7 +71,9 @@ class PendingApproval(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=False, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    execution_id = Column(UUID(as_uuid=True), ForeignKey("workflow_executions.id"), nullable=True, index=True)
+    execution_id = Column(
+        UUID(as_uuid=True), ForeignKey("workflow_executions.id"), nullable=True, index=True
+    )
 
     action_description = Column(Text, nullable=False)
     action_payload = Column(JSONB, nullable=False)

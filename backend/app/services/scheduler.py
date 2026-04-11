@@ -3,6 +3,7 @@ APScheduler — tareas periódicas.
 
 Arranca/para con el lifespan de FastAPI.
 """
+
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -59,6 +60,7 @@ async def start_scheduler() -> None:
         logger.info("Scheduler arrancado")
         # Catch-up: ejecutar workflows perdidos mientras la app estaba cerrada
         from app.workers.tasks_scheduler import catchup_missed_workflows
+
         await catchup_missed_workflows()
     except Exception as e:
         logger.error("Error arrancando scheduler (no es fatal): %s", e)
@@ -66,6 +68,7 @@ async def start_scheduler() -> None:
     # Bootstrap heartbeats para AIEmployees activos (falla silenciosamente)
     try:
         from app.services.heartbeat_service import bootstrap_employee_heartbeats
+
         await bootstrap_employee_heartbeats()
     except Exception as e:
         logger.error("Bootstrap heartbeats falló (no es fatal): %s", e)

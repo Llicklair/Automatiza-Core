@@ -82,7 +82,9 @@ async def delete_product(
     await db.commit()
 
 
-@router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
+@router.post(
+    "/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["erp"]
+)
 @limiter.limit("30/minute")
 async def create_product(
     request: Request,
@@ -90,10 +92,7 @@ async def create_product(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_product = Product(
-        tenant_id=current_user.tenant_id,
-        **payload.model_dump()
-    )
+    new_product = Product(tenant_id=current_user.tenant_id, **payload.model_dump())
     db.add(new_product)
     await db.commit()
     await db.refresh(new_product)
@@ -103,7 +102,11 @@ async def create_product(
 # ─── Stock / Inventario ──────────────────────────────────────────────────────
 
 
-@router.get("/products/{product_id}/stock-movements", response_model=list[StockMovementResponse], tags=["inventory"])
+@router.get(
+    "/products/{product_id}/stock-movements",
+    response_model=list[StockMovementResponse],
+    tags=["inventory"],
+)
 @limiter.limit("30/minute")
 async def list_stock_movements(
     request: Request,
@@ -113,14 +116,22 @@ async def list_stock_movements(
 ):
     result = await db.execute(
         select(StockMovement)
-        .where(StockMovement.product_id == product_id, StockMovement.tenant_id == current_user.tenant_id)
+        .where(
+            StockMovement.product_id == product_id,
+            StockMovement.tenant_id == current_user.tenant_id,
+        )
         .order_by(desc(StockMovement.created_at))
         .limit(100)
     )
     return result.scalars().all()
 
 
-@router.post("/products/{product_id}/stock-movements", response_model=StockMovementResponse, status_code=status.HTTP_201_CREATED, tags=["inventory"])
+@router.post(
+    "/products/{product_id}/stock-movements",
+    response_model=StockMovementResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["inventory"],
+)
 @limiter.limit("30/minute")
 async def create_stock_movement(
     request: Request,

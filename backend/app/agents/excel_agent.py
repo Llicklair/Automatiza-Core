@@ -8,6 +8,7 @@ El LLM decide qué herramientas usar según la intención del usuario:
 
 Cada herramienta ejecuta lógica determinista (BD, openpyxl, pandas).
 """
+
 import logging
 import os
 import uuid
@@ -49,45 +50,95 @@ def _get_llm():
 
 # ─── DB Fetchers (reutilizados por las tools) ────────────────────────────────
 
+
 async def _fetch_invoices(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Invoice, Client.name.label("client_name"))
             .join(Client, Invoice.client_id == Client.id)
             .where(Invoice.tenant_id == uuid.UUID(tenant_id))
-            .order_by(Invoice.date.desc()).limit(500)
+            .order_by(Invoice.date.desc())
+            .limit(500)
         )
         rows = result.all()
     if not rows:
-        return pd.DataFrame(columns=["Número", "Cliente", "Fecha", "Base (€)", "IVA (€)", "Total (€)", "Estado"])
-    return pd.DataFrame([{
-        "Número": inv.invoice_number or "", "Cliente": cn or "",
-        "Fecha": inv.date.strftime("%d/%m/%Y") if inv.date else "",
-        "Base (€)": float(inv.amount_base or 0), "IVA (€)": float(inv.tax_amount or 0),
-        "Total (€)": float(inv.amount_total or 0), "Estado": inv.status or "",
-    } for inv, cn in rows])
+        return pd.DataFrame(
+            columns=["Número", "Cliente", "Fecha", "Base (€)", "IVA (€)", "Total (€)", "Estado"]
+        )
+    return pd.DataFrame(
+        [
+            {
+                "Número": inv.invoice_number or "",
+                "Cliente": cn or "",
+                "Fecha": inv.date.strftime("%d/%m/%Y") if inv.date else "",
+                "Base (€)": float(inv.amount_base or 0),
+                "IVA (€)": float(inv.tax_amount or 0),
+                "Total (€)": float(inv.amount_total or 0),
+                "Estado": inv.status or "",
+            }
+            for inv, cn in rows
+        ]
+    )
 
 
 async def _fetch_clients(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Client).where(Client.tenant_id == uuid.UUID(tenant_id)).order_by(Client.name).limit(500))
+        result = await db.execute(
+            select(Client)
+            .where(Client.tenant_id == uuid.UUID(tenant_id))
+            .order_by(Client.name)
+            .limit(500)
+        )
         clients = result.scalars().all()
     if not clients:
         return pd.DataFrame(columns=["Nombre", "NIF/CIF", "Email", "Tipo"])
-    return pd.DataFrame([{"Nombre": c.name or "", "NIF/CIF": c.nif or "", "Email": c.email or "", "Tipo": c.client_type or ""} for c in clients])
+    return pd.DataFrame(
+        [
+            {
+                "Nombre": c.name or "",
+                "NIF/CIF": c.nif or "",
+                "Email": c.email or "",
+                "Tipo": c.client_type or "",
+            }
+            for c in clients
+        ]
+    )
 
 
 async def _fetch_employees(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Employee).where(Employee.tenant_id == uuid.UUID(tenant_id)).order_by(Employee.name))
+        result = await db.execute(
+            select(Employee)
+            .where(Employee.tenant_id == uuid.UUID(tenant_id))
+            .order_by(Employee.name)
+        )
         employees = result.scalars().all()
     if not employees:
-        return pd.DataFrame(columns=["Nombre", "NIF", "Departamento", "Puesto", "Salario Base (€)", "IRPF (%)", "Estado"])
-    return pd.DataFrame([{
-        "Nombre": e.name or "", "NIF": e.nif or "", "Departamento": e.department or "",
-        "Puesto": e.role or "", "Salario Base (€)": float(e.base_salary or 0),
-        "IRPF (%)": float(e.irpf_rate or 0), "Estado": e.status or "",
-    } for e in employees])
+        return pd.DataFrame(
+            columns=[
+                "Nombre",
+                "NIF",
+                "Departamento",
+                "Puesto",
+                "Salario Base (€)",
+                "IRPF (%)",
+                "Estado",
+            ]
+        )
+    return pd.DataFrame(
+        [
+            {
+                "Nombre": e.name or "",
+                "NIF": e.nif or "",
+                "Departamento": e.department or "",
+                "Puesto": e.role or "",
+                "Salario Base (€)": float(e.base_salary or 0),
+                "IRPF (%)": float(e.irpf_rate or 0),
+                "Estado": e.status or "",
+            }
+            for e in employees
+        ]
+    )
 
 
 async def _fetch_payrolls(tenant_id: str) -> pd.DataFrame:
@@ -96,48 +147,102 @@ async def _fetch_payrolls(tenant_id: str) -> pd.DataFrame:
             select(Payroll, Employee.name.label("emp_name"))
             .join(Employee, Payroll.employee_id == Employee.id)
             .where(Payroll.tenant_id == uuid.UUID(tenant_id))
-            .order_by(Payroll.issue_date.desc()).limit(500)
+            .order_by(Payroll.issue_date.desc())
+            .limit(500)
         )
         rows = result.all()
     if not rows:
-        return pd.DataFrame(columns=["Empleado", "Período", "Salario Base (€)", "SS (€)", "IRPF (€)", "Neto (€)", "Estado"])
-    return pd.DataFrame([{
-        "Empleado": en or "",
-        "Período": f"{p.period_start.strftime('%d/%m/%Y')} - {p.period_end.strftime('%d/%m/%Y')}" if p.period_start else "",
-        "Salario Base (€)": float(p.base_salary or 0),
-        "SS (€)": float((p.ss_contingencias_comunes or 0) + (p.ss_desempleo or 0) + (p.ss_formacion_profesional or 0) + (p.ss_mei or 0)),
-        "IRPF (€)": float(p.irpf or 0), "Neto (€)": float(p.net_salary or 0), "Estado": p.status or "",
-    } for p, en in rows])
+        return pd.DataFrame(
+            columns=[
+                "Empleado",
+                "Período",
+                "Salario Base (€)",
+                "SS (€)",
+                "IRPF (€)",
+                "Neto (€)",
+                "Estado",
+            ]
+        )
+    return pd.DataFrame(
+        [
+            {
+                "Empleado": en or "",
+                "Período": f"{p.period_start.strftime('%d/%m/%Y')} - {p.period_end.strftime('%d/%m/%Y')}"
+                if p.period_start
+                else "",
+                "Salario Base (€)": float(p.base_salary or 0),
+                "SS (€)": float(
+                    (p.ss_contingencias_comunes or 0)
+                    + (p.ss_desempleo or 0)
+                    + (p.ss_formacion_profesional or 0)
+                    + (p.ss_mei or 0)
+                ),
+                "IRPF (€)": float(p.irpf or 0),
+                "Neto (€)": float(p.net_salary or 0),
+                "Estado": p.status or "",
+            }
+            for p, en in rows
+        ]
+    )
 
 
 async def _fetch_products(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Product).where(Product.tenant_id == uuid.UUID(tenant_id)).order_by(Product.name).limit(500))
+        result = await db.execute(
+            select(Product)
+            .where(Product.tenant_id == uuid.UUID(tenant_id))
+            .order_by(Product.name)
+            .limit(500)
+        )
         products = result.scalars().all()
     if not products:
         return pd.DataFrame(columns=["Nombre", "SKU", "Tipo", "Precio (€)", "Stock"])
-    return pd.DataFrame([{
-        "Nombre": p.name or "", "SKU": p.sku or "", "Tipo": p.item_type or "",
-        "Precio (€)": float(p.price or 0), "Stock": int(p.stock_quantity or 0),
-    } for p in products])
+    return pd.DataFrame(
+        [
+            {
+                "Nombre": p.name or "",
+                "SKU": p.sku or "",
+                "Tipo": p.item_type or "",
+                "Precio (€)": float(p.price or 0),
+                "Stock": int(p.stock_quantity or 0),
+            }
+            for p in products
+        ]
+    )
 
 
 async def _fetch_bank(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(BankTransaction).where(BankTransaction.tenant_id == uuid.UUID(tenant_id)).order_by(BankTransaction.date.desc()).limit(500))
+        result = await db.execute(
+            select(BankTransaction)
+            .where(BankTransaction.tenant_id == uuid.UUID(tenant_id))
+            .order_by(BankTransaction.date.desc())
+            .limit(500)
+        )
         txs = result.scalars().all()
     if not txs:
         return pd.DataFrame(columns=["Fecha", "Concepto", "Importe (€)", "Saldo (€)", "Estado"])
-    return pd.DataFrame([{
-        "Fecha": t.date.strftime("%d/%m/%Y") if t.date else "", "Concepto": t.description or "",
-        "Importe (€)": float(t.amount or 0), "Saldo (€)": float(t.balance or 0), "Estado": t.status or "",
-    } for t in txs])
+    return pd.DataFrame(
+        [
+            {
+                "Fecha": t.date.strftime("%d/%m/%Y") if t.date else "",
+                "Concepto": t.description or "",
+                "Importe (€)": float(t.amount or 0),
+                "Saldo (€)": float(t.balance or 0),
+                "Estado": t.status or "",
+            }
+            for t in txs
+        ]
+    )
 
 
 _FETCHER_MAP = {
-    "facturas": _fetch_invoices, "clientes": _fetch_clients,
-    "empleados": _fetch_employees, "nominas": _fetch_payrolls,
-    "productos": _fetch_products, "banco": _fetch_bank,
+    "facturas": _fetch_invoices,
+    "clientes": _fetch_clients,
+    "empleados": _fetch_employees,
+    "nominas": _fetch_payrolls,
+    "productos": _fetch_products,
+    "banco": _fetch_bank,
 }
 
 _INTENT_MAP = [
@@ -170,7 +275,9 @@ def _hex_to_lighter(hex_color: str, factor: float = 0.4) -> str:
     return f"{r:02X}{g:02X}{b:02X}"
 
 
-def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None) -> None:
+def _write_excel(
+    sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None
+) -> None:
     import openpyxl
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
@@ -214,7 +321,10 @@ def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str, theme: dict 
                 if fill:
                     cell.fill = fill
         for col_idx, col_name in enumerate(df.columns, start=1):
-            max_len = max(len(str(col_name)), df.iloc[:, col_idx - 1].astype(str).str.len().max() if not df.empty else 0)
+            max_len = max(
+                len(str(col_name)),
+                df.iloc[:, col_idx - 1].astype(str).str.len().max() if not df.empty else 0,
+            )
             ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 3, 50)
         ws.freeze_panes = "A2"
 
@@ -223,6 +333,7 @@ def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str, theme: dict 
 
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
+
 
 @tool
 async def export_erp_data(tenant_id: str, datasets: str = "todos", user_request: str = "") -> str:
@@ -350,34 +461,56 @@ _IMPORT_COLUMN_MAP = {
     "clientes": {
         "model": "Client",
         "fields": {
-            "nombre": "name", "name": "name",
-            "nif": "nif", "cif": "nif",
-            "email": "email", "correo": "email",
-            "telefono": "phone", "teléfono": "phone", "phone": "phone",
-            "direccion": "address", "dirección": "address", "address": "address",
+            "nombre": "name",
+            "name": "name",
+            "nif": "nif",
+            "cif": "nif",
+            "email": "email",
+            "correo": "email",
+            "telefono": "phone",
+            "teléfono": "phone",
+            "phone": "phone",
+            "direccion": "address",
+            "dirección": "address",
+            "address": "address",
         },
         "required": ["name"],
     },
     "productos": {
         "model": "Product",
         "fields": {
-            "nombre": "name", "name": "name",
-            "descripcion": "description", "descripción": "description", "description": "description",
-            "precio": "price", "price": "price", "pvp": "price",
-            "tipo": "item_type", "type": "item_type",
-            "iva": "tax_percentage", "tax": "tax_percentage",
+            "nombre": "name",
+            "name": "name",
+            "descripcion": "description",
+            "descripción": "description",
+            "description": "description",
+            "precio": "price",
+            "price": "price",
+            "pvp": "price",
+            "tipo": "item_type",
+            "type": "item_type",
+            "iva": "tax_percentage",
+            "tax": "tax_percentage",
         },
         "required": ["name"],
     },
     "empleados": {
         "model": "Employee",
         "fields": {
-            "nombre": "name", "name": "name",
-            "nif": "nif", "dni": "nif",
-            "email": "email", "correo": "email",
-            "cargo": "role", "puesto": "role", "role": "role",
-            "departamento": "department", "department": "department",
-            "salario": "base_salary", "salario_base": "base_salary", "base_salary": "base_salary",
+            "nombre": "name",
+            "name": "name",
+            "nif": "nif",
+            "dni": "nif",
+            "email": "email",
+            "correo": "email",
+            "cargo": "role",
+            "puesto": "role",
+            "role": "role",
+            "departamento": "department",
+            "department": "department",
+            "salario": "base_salary",
+            "salario_base": "base_salary",
+            "base_salary": "base_salary",
         },
         "required": ["name"],
     },
@@ -385,7 +518,9 @@ _IMPORT_COLUMN_MAP = {
 
 
 @tool
-async def import_excel(tenant_id: str, document_id: str, target: str = "", sheet_name: str = "") -> str:
+async def import_excel(
+    tenant_id: str, document_id: str, target: str = "", sheet_name: str = ""
+) -> str:
     """
     Importa datos desde un archivo Excel (.xlsx) subido al sistema hacia la base de datos del ERP.
     Lee las columnas del Excel y las mapea automáticamente a campos de la BD.
@@ -399,7 +534,9 @@ async def import_excel(tenant_id: str, document_id: str, target: str = "", sheet
     return await _import_excel_async(tenant_id, document_id, target, sheet_name)
 
 
-async def _import_excel_async(tenant_id: str, document_id: str, target: str, sheet_name: str) -> str:
+async def _import_excel_async(
+    tenant_id: str, document_id: str, target: str, sheet_name: str
+) -> str:
     import openpyxl
 
     from app.db.base import AsyncSessionLocal
@@ -411,6 +548,7 @@ async def _import_excel_async(tenant_id: str, document_id: str, target: str, she
         # 1. Cargar archivo
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select
+
             result = await db.execute(
                 select(TenantDocument).where(
                     TenantDocument.tenant_id == uuid.UUID(tenant_id),
@@ -541,7 +679,10 @@ async def modify_excel(
 
 
 async def _modify_excel_async(
-    tenant_id: str, document_id: str, modifications_json: str, default_sheet: str,
+    tenant_id: str,
+    document_id: str,
+    modifications_json: str,
+    default_sheet: str,
 ) -> str:
     import json as json_mod
 
@@ -554,6 +695,7 @@ async def _modify_excel_async(
         # 1. Cargar documento
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select
+
             result = await db.execute(
                 select(TenantDocument).where(
                     TenantDocument.tenant_id == uuid.UUID(tenant_id),
@@ -609,6 +751,7 @@ async def _modify_excel_async(
         # Actualizar tamaño en BD
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select
+
             result = await db.execute(
                 select(TenantDocument).where(TenantDocument.id == uuid.UUID(document_id))
             )
@@ -630,7 +773,9 @@ async def _modify_excel_async(
 
 
 @tool
-async def read_excel(tenant_id: str, document_id: str, sheet_name: str = "", max_rows: int = 30) -> str:
+async def read_excel(
+    tenant_id: str, document_id: str, sheet_name: str = "", max_rows: int = 30
+) -> str:
     """
     Lee el contenido de un archivo Excel y lo devuelve en formato texto tabular.
     Útil para que el LLM vea los datos antes de decidir qué modificar.
@@ -644,7 +789,9 @@ async def read_excel(tenant_id: str, document_id: str, sheet_name: str = "", max
     return await _read_excel_async(tenant_id, document_id, sheet_name, max_rows)
 
 
-async def _read_excel_async(tenant_id: str, document_id: str, sheet_name: str, max_rows: int) -> str:
+async def _read_excel_async(
+    tenant_id: str, document_id: str, sheet_name: str, max_rows: int
+) -> str:
     import openpyxl
 
     from app.db.base import AsyncSessionLocal
@@ -653,6 +800,7 @@ async def _read_excel_async(tenant_id: str, document_id: str, sheet_name: str, m
     try:
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select
+
             result = await db.execute(
                 select(TenantDocument).where(
                     TenantDocument.tenant_id == uuid.UUID(tenant_id),
@@ -758,7 +906,9 @@ async def excel_agent_node(state: AgentState):
         step_id=f"excel_step_{datetime.now().timestamp()}",
         description="Procesando solicitud de Excel...",
         status="completed",
-        action_taken="Invocando herramientas de Excel" if response.tool_calls else "Asistencia Excel completada.",
+        action_taken="Invocando herramientas de Excel"
+        if response.tool_calls
+        else "Asistencia Excel completada.",
     )
 
     if "agent_results" not in state:
@@ -773,7 +923,9 @@ def excel_finalize_node(state: AgentState):
         step_id="excel_final",
         description="Agente de Excel ha finalizado.",
         status="completed",
-        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operación Excel completada.",
+        action_taken=last_msg.content
+        if isinstance(last_msg.content, str)
+        else "Operación Excel completada.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

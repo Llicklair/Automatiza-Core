@@ -13,6 +13,7 @@ USO:
   with trace_llm_call(name="billing_extraction", user_id=..., trace_id=...):
       result = await llm.ainvoke(...)
 """
+
 import json
 import logging
 import time
@@ -25,17 +26,18 @@ from app.core.config import settings
 
 # ─── Logger estructurado ──────────────────────────────────────────────────────
 
+
 class StructuredFormatter(logging.Formatter):
     """Formatea los logs como JSON para ingestión en Loki/ELK."""
 
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
             "timestamp": self.formatTime(record),
-            "level":     record.levelname,
-            "logger":    record.name,
-            "message":   record.getMessage(),
-            "module":    record.module,
-            "function":  record.funcName,
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
         }
         # Añadir campos extra si existen (tenant_id, task_id, trace_id)
         for field in ("tenant_id", "task_id", "trace_id", "agent", "duration_ms"):
@@ -71,6 +73,7 @@ def _get_langfuse():
         return None
     try:
         from langfuse import Langfuse
+
         _langfuse_client = Langfuse(
             public_key=settings.LANGFUSE_PUBLIC_KEY,
             secret_key=settings.LANGFUSE_SECRET_KEY,
@@ -114,8 +117,8 @@ def trace_llm_call(
             id=trace_id,
             user_id=tenant_id or "unknown",
             metadata={
-                "agent":     agent,
-                "task_id":   task_id,
+                "agent": agent,
+                "task_id": task_id,
                 "tenant_id": tenant_id,
                 **(metadata or {}),
             },
@@ -136,9 +139,9 @@ def trace_llm_call(
             f"LLM call: {name}",
             extra={
                 "trace_id": trace_id,
-                "agent":    agent,
-                "task_id":  task_id or "",
-                "tenant_id":tenant_id or "",
+                "agent": agent,
+                "task_id": task_id or "",
+                "tenant_id": tenant_id or "",
                 "duration_ms": duration_ms,
             },
         )
@@ -151,6 +154,7 @@ _registry: Any = None
 
 try:
     from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+
     _registry = CollectorRegistry()
 
     TASKS_CREATED = Counter(
@@ -244,8 +248,11 @@ def record_http_request(method: str, path: str, status_code: int, duration_secon
     try:
         # Normalize path to avoid high-cardinality labels (strip IDs)
         import re
+
         normalized = re.sub(r"/[0-9a-f-]{8,}", "/{id}", path)
-        HTTP_REQUESTS_TOTAL.labels(method=method, path=normalized, status_code=str(status_code)).inc()
+        HTTP_REQUESTS_TOTAL.labels(
+            method=method, path=normalized, status_code=str(status_code)
+        ).inc()
         HTTP_REQUEST_DURATION.labels(method=method, path=normalized).observe(duration_seconds)
     except Exception:
         pass

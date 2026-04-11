@@ -3,6 +3,7 @@ Servicio de auditoría.
 Registra TODAS las acciones de los agentes en audit_log.
 Este módulo es determinista — no usa LLM.
 """
+
 from datetime import UTC, datetime
 from uuid import UUID
 

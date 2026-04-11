@@ -12,6 +12,7 @@ from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/crm", tags=["crm"])
 
+
 @router.get("/opportunities", response_model=list[schemas.OpportunityResponse])
 @limiter.limit("30/minute")
 async def list_opportunities(
@@ -27,7 +28,12 @@ async def list_opportunities(
     result = await db.execute(query)
     return result.scalars().all()
 
-@router.post("/opportunities", response_model=schemas.OpportunityResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/opportunities",
+    response_model=schemas.OpportunityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 @limiter.limit("30/minute")
 async def create_opportunity(
     request: Request,
@@ -35,14 +41,12 @@ async def create_opportunity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_opp = Opportunity(
-        tenant_id=current_user.tenant_id,
-        **payload.model_dump()
-    )
+    new_opp = Opportunity(tenant_id=current_user.tenant_id, **payload.model_dump())
     db.add(new_opp)
     await db.commit()
     await db.refresh(new_opp)
     return new_opp
+
 
 @router.patch("/opportunities/{opp_id}", response_model=schemas.OpportunityResponse)
 @limiter.limit("30/minute")
@@ -55,8 +59,7 @@ async def update_opportunity(
 ):
     result = await db.execute(
         select(Opportunity).where(
-            Opportunity.id == opp_id,
-            Opportunity.tenant_id == current_user.tenant_id
+            Opportunity.id == opp_id, Opportunity.tenant_id == current_user.tenant_id
         )
     )
     opp = result.scalar_one_or_none()
@@ -71,7 +74,9 @@ async def update_opportunity(
     await db.refresh(opp)
     return opp
 
+
 # --- Activities ---
+
 
 @router.get("/activities", response_model=list[schemas.ActivityResponse])
 @limiter.limit("30/minute")
@@ -92,7 +97,10 @@ async def list_activities(
     result = await db.execute(query)
     return result.scalars().all()
 
-@router.post("/activities", response_model=schemas.ActivityResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/activities", response_model=schemas.ActivityResponse, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("30/minute")
 async def create_activity(
     request: Request,
@@ -106,6 +114,7 @@ async def create_activity(
     await db.refresh(new_act)
     return new_act
 
+
 @router.delete("/activities/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
 async def delete_activity(
@@ -115,7 +124,9 @@ async def delete_activity(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Activity).where(Activity.id == activity_id, Activity.tenant_id == current_user.tenant_id)
+        select(Activity).where(
+            Activity.id == activity_id, Activity.tenant_id == current_user.tenant_id
+        )
     )
     activity = result.scalar_one_or_none()
     if not activity:
@@ -123,7 +134,9 @@ async def delete_activity(
     await db.delete(activity)
     await db.commit()
 
+
 # --- Events / Calendar ---
+
 
 @router.get("/events", response_model=list[schemas.EventResponse])
 @limiter.limit("30/minute")
@@ -132,9 +145,12 @@ async def list_events(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Event).where(Event.tenant_id == current_user.tenant_id).order_by(Event.start_time)
+    query = (
+        select(Event).where(Event.tenant_id == current_user.tenant_id).order_by(Event.start_time)
+    )
     result = await db.execute(query)
     return result.scalars().all()
+
 
 @router.post("/events", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
@@ -150,7 +166,9 @@ async def create_event(
     await db.refresh(new_evt)
     return new_evt
 
+
 # --- Reservations ---
+
 
 @router.get("/reservations", response_model=list[schemas.ReservationResponse])
 @limiter.limit("30/minute")
@@ -159,11 +177,18 @@ async def list_reservations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Reservation).where(Reservation.tenant_id == current_user.tenant_id).order_by(desc(Reservation.created_at))
+    query = (
+        select(Reservation)
+        .where(Reservation.tenant_id == current_user.tenant_id)
+        .order_by(desc(Reservation.created_at))
+    )
     result = await db.execute(query)
     return result.scalars().all()
 
-@router.post("/reservations", response_model=schemas.ReservationResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/reservations", response_model=schemas.ReservationResponse, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("30/minute")
 async def create_reservation(
     request: Request,
@@ -177,6 +202,7 @@ async def create_reservation(
     await db.refresh(new_res)
     return new_res
 
+
 @router.patch("/reservations/{res_id}", response_model=schemas.ReservationResponse)
 @limiter.limit("30/minute")
 async def update_reservation(
@@ -188,8 +214,7 @@ async def update_reservation(
 ):
     result = await db.execute(
         select(Reservation).where(
-            Reservation.id == res_id,
-            Reservation.tenant_id == current_user.tenant_id
+            Reservation.id == res_id, Reservation.tenant_id == current_user.tenant_id
         )
     )
     res = result.scalar_one_or_none()
@@ -201,6 +226,7 @@ async def update_reservation(
     await db.refresh(res)
     return res
 
+
 @router.delete("/reservations/{res_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
 async def delete_reservation(
@@ -211,8 +237,7 @@ async def delete_reservation(
 ):
     result = await db.execute(
         select(Reservation).where(
-            Reservation.id == res_id,
-            Reservation.tenant_id == current_user.tenant_id
+            Reservation.id == res_id, Reservation.tenant_id == current_user.tenant_id
         )
     )
     res = result.scalar_one_or_none()
@@ -221,7 +246,9 @@ async def delete_reservation(
     await db.delete(res)
     await db.commit()
 
+
 # --- Events PATCH / DELETE ---
+
 
 @router.patch("/events/{event_id}", response_model=schemas.EventResponse)
 @limiter.limit("30/minute")
@@ -233,10 +260,7 @@ async def update_event(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Event).where(
-            Event.id == event_id,
-            Event.tenant_id == current_user.tenant_id
-        )
+        select(Event).where(Event.id == event_id, Event.tenant_id == current_user.tenant_id)
     )
     evt = result.scalar_one_or_none()
     if not evt:
@@ -247,6 +271,7 @@ async def update_event(
     await db.refresh(evt)
     return evt
 
+
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
 async def delete_event(
@@ -256,10 +281,7 @@ async def delete_event(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Event).where(
-            Event.id == event_id,
-            Event.tenant_id == current_user.tenant_id
-        )
+        select(Event).where(Event.id == event_id, Event.tenant_id == current_user.tenant_id)
     )
     evt = result.scalar_one_or_none()
     if not evt:
@@ -267,7 +289,9 @@ async def delete_event(
     await db.delete(evt)
     await db.commit()
 
+
 # --- Opportunities DELETE ---
+
 
 @router.delete("/opportunities/{opp_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
@@ -279,8 +303,7 @@ async def delete_opportunity(
 ):
     result = await db.execute(
         select(Opportunity).where(
-            Opportunity.id == opp_id,
-            Opportunity.tenant_id == current_user.tenant_id
+            Opportunity.id == opp_id, Opportunity.tenant_id == current_user.tenant_id
         )
     )
     opp = result.scalar_one_or_none()

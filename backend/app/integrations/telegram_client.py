@@ -4,6 +4,7 @@ Telegram Bot API client — enviar mensajes, gestionar webhook, parsear updates.
 Cada tenant puede vincular su chat de Telegram al ERP.
 Los mensajes entrantes se enrutan al orquestador de agentes.
 """
+
 import hmac
 import logging
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ BASE_URL = "https://api.telegram.org/bot{token}"
 @dataclass
 class TelegramUpdate:
     """Parsed Telegram update (solo lo que necesitamos)."""
+
     update_id: int
     chat_id: int
     username: str | None
@@ -49,7 +51,7 @@ class TelegramClient:
         """Envía un mensaje de texto. Trocea si >4096 chars."""
         results = []
         # Telegram limit: 4096 chars per message
-        chunks = [text[i:i + 4096] for i in range(0, len(text), 4096)]
+        chunks = [text[i : i + 4096] for i in range(0, len(text), 4096)]
         for chunk in chunks:
             payload = {
                 "chat_id": chat_id,

@@ -4,6 +4,7 @@ Servicio de parsing de CVs.
 Extrae texto de PDFs con pdf_parser existente y luego usa LLM
 para normalizar la información en campos estructurados.
 """
+
 import json
 import logging
 from typing import Any
@@ -74,10 +75,12 @@ async def extract_cv_data(cv_text: str) -> dict[str, Any]:
     from langchain_core.messages import HumanMessage, SystemMessage
 
     llm = get_llm(temperature=0)
-    response = await llm.ainvoke([
-        SystemMessage(content=_EXTRACTION_PROMPT),
-        HumanMessage(content=f"CV:\n\n{cv_text[:8000]}"),
-    ])
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content=_EXTRACTION_PROMPT),
+            HumanMessage(content=f"CV:\n\n{cv_text[:8000]}"),
+        ]
+    )
 
     raw = response.content.strip()
     # Limpiar markdown fences si las hay
@@ -92,9 +95,13 @@ async def extract_cv_data(cv_text: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         logger.warning("LLM devolvió JSON inválido para CV, intentando extracción parcial")
         return {
-            "name": None, "email": None, "phone": None,
-            "skills": [], "experience_years": None,
-            "languages": [], "education": None,
+            "name": None,
+            "email": None,
+            "phone": None,
+            "skills": [],
+            "experience_years": None,
+            "languages": [],
+            "education": None,
             "summary": raw[:500],
         }
 
@@ -115,10 +122,12 @@ async def score_candidate(candidate_data: dict, position_data: dict) -> dict[str
     )
 
     llm = get_llm(temperature=0)
-    response = await llm.ainvoke([
-        SystemMessage(content="Eres un evaluador de RRHH experto. Responde SOLO con JSON."),
-        HumanMessage(content=prompt),
-    ])
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content="Eres un evaluador de RRHH experto. Responde SOLO con JSON."),
+            HumanMessage(content=prompt),
+        ]
+    )
 
     raw = response.content.strip()
     if raw.startswith("```"):

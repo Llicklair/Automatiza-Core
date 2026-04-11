@@ -3,6 +3,7 @@ Dispatcher de facturación (billing agent).
 Invoca el billing agent autónomo (LangGraph) y traduce su resultado
 al formato del orquestador.
 """
+
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -22,20 +23,24 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
     from app.agents.billing_agent import graph
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
 
     try:
         # Ejecutar el grafo autónomo del agente de facturación
-        result_state = await graph.ainvoke({
-            "tenant_id": tenant_id,
-            "task_id": state.get("task_id"),
-            "user_id": state.get("user_id"),
-            "user_intent": intent,
-            "current_intent": intent,
-            "messages": [],
-            "agent_results": [],
-            "status": "running",
-        })
+        result_state = await graph.ainvoke(
+            {
+                "tenant_id": tenant_id,
+                "task_id": state.get("task_id"),
+                "user_id": state.get("user_id"),
+                "user_intent": intent,
+                "current_intent": intent,
+                "messages": [],
+                "agent_results": [],
+                "status": "running",
+            }
+        )
 
         # Extraer el resultado final del último mensaje del agente
         messages = result_state.get("messages", [])
@@ -52,7 +57,9 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
         _lower = final_text.lower()
         is_creation = any(kw in _lower for kw in ["factura creada", "draft", "borrador"])
         is_approval = "aprobación requerida" in _lower
-        is_query = any(kw in _lower for kw in ["facturas recientes", "total facturado", "no hay facturas"])
+        is_query = any(
+            kw in _lower for kw in ["facturas recientes", "total facturado", "no hay facturas"]
+        )
 
         # Detección robusta de error: no solo prefix "error", también frases de fallo comunes
         _error_signals = [
@@ -138,7 +145,9 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
             "agent": "billing",
             "success": success,
             "output": _billing_output,
-            "summary": _format_summary("billing", _billing_output, success, None if success else final_text),
+            "summary": _format_summary(
+                "billing", _billing_output, success, None if success else final_text
+            ),
             "error": None if success else final_text,
         }
 

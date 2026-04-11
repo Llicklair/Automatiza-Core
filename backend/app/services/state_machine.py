@@ -14,6 +14,7 @@ Entidades cubiertas:
   - PendingApproval
   - Task
 """
+
 from __future__ import annotations
 
 
@@ -38,28 +39,25 @@ class InvalidTransitionError(ValueError):
 # un estado terminal (no se puede transicionar desde él).
 
 _ALLOWED: dict[str, dict[str, list[str]]] = {
-
     # ── Invoice ──────────────────────────────────────────────────────────────
     # draft  → (se puede emitir o cancelar sin emitir)
     # issued → (se puede cobrar o cancelar)
     # paid   → TERMINAL (no se puede deshacer)
     # cancelled → TERMINAL
     "Invoice": {
-        "draft":     ["issued", "cancelled"],
-        "issued":    ["paid", "cancelled"],
+        "draft": ["issued", "cancelled"],
+        "issued": ["paid", "cancelled"],
         # paid y cancelled son terminales → no aparecen
     },
-
     # ── Payroll ──────────────────────────────────────────────────────────────
     # draft    → aprobada por el responsable de RRHH
     # approved → pagada al empleado
     # paid     → TERMINAL
     # rejected → TERMINAL (vuelve a draft si se corrige se crea una nueva)
     "Payroll": {
-        "draft":     ["approved", "rejected"],
-        "approved":  ["paid", "rejected"],
+        "draft": ["approved", "rejected"],
+        "approved": ["paid", "rejected"],
     },
-
     # ── WorkflowExecution ────────────────────────────────────────────────────
     # pending → running al iniciar ejecución
     # running → success | failed | paused al terminar o pausar
@@ -70,13 +68,11 @@ _ALLOWED: dict[str, dict[str, list[str]]] = {
         "running": ["success", "failed", "paused"],
         "paused": ["running", "failed"],
     },
-
     # ── PendingApproval ──────────────────────────────────────────────────────
     # pending → approved | rejected | expired
     "PendingApproval": {
         "pending": ["approved", "rejected", "expired"],
     },
-
     # ── Task ─────────────────────────────────────────────────────────────────
     # pending → planning | executing | cancelled
     # planning → executing | failed | cancelled
@@ -84,21 +80,21 @@ _ALLOWED: dict[str, dict[str, list[str]]] = {
     # awaiting_approval → executing | cancelled
     # done / failed / cancelled → TERMINAL
     "Task": {
-        "pending":           ["planning", "executing", "cancelled"],
-        "planning":          ["executing", "failed", "cancelled"],
-        "executing":         ["done", "failed", "awaiting_approval", "cancelled"],
+        "pending": ["planning", "executing", "cancelled"],
+        "planning": ["executing", "failed", "cancelled"],
+        "executing": ["done", "failed", "awaiting_approval", "cancelled"],
         "awaiting_approval": ["executing", "cancelled"],
     },
-
     # ── Quote ────────────────────────────────────────────────────────────────
     "Quote": {
-        "draft":  ["sent", "cancelled"],
-        "sent":   ["accepted", "rejected", "cancelled"],
+        "draft": ["sent", "cancelled"],
+        "sent": ["accepted", "rejected", "cancelled"],
     },
 }
 
 
 # ─── Función principal de validación ─────────────────────────────────────────
+
 
 def validate_transition(entity: str, current_status: str, new_status: str) -> None:
     """

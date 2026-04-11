@@ -1,4 +1,5 @@
 """Schemas Pydantic para Tasks, AuditLog y Aprobaciones."""
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 from app.agents.types import StepResult  # noqa: F401
 
 # ─── Tasks ───────────────────────────────────────────────────────────────────
+
 
 class TaskCreate(BaseModel):
     domain: str
@@ -36,6 +38,7 @@ class TaskOut(BaseModel):
 
 # ─── Audit Log ───────────────────────────────────────────────────────────────
 
+
 class AuditLogOut(BaseModel):
     model_config = {"from_attributes": True}
     id: int
@@ -55,6 +58,7 @@ class AuditLogOut(BaseModel):
 
 
 # ─── Pending Approvals ───────────────────────────────────────────────────────
+
 
 class ApprovalDecision(BaseModel):
     approved: bool

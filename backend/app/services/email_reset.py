@@ -2,6 +2,7 @@
 Servicio de envío de email para recuperación de contraseña.
 Si no hay SMTP configurado, imprime el enlace en consola (modo desarrollo).
 """
+
 import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart

@@ -1,4 +1,5 @@
 """Endpoints de administración: backup y restauración de la base de datos."""
+
 import asyncio
 import logging
 import re
@@ -21,7 +22,9 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def _parse_db_url(url: str) -> dict:
     """Extrae host, port, user, password y dbname de DATABASE_URL."""
     # Normaliza asyncpg → psycopg2 scheme para parsear
-    clean = url.replace("postgresql+asyncpg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
+    clean = url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgresql+psycopg2://", "postgresql://"
+    )
     parsed = urllib.parse.urlparse(clean)
     return {
         "host": parsed.hostname or "localhost",
@@ -34,6 +37,7 @@ def _parse_db_url(url: str) -> dict:
 
 # ── Backup ─────────────────────────────────────────────────────────────────────
 
+
 @router.get("/backup")
 @limiter.limit("10/minute")
 async def download_backup(request: Request, current_user: User = Depends(get_current_user)):
@@ -43,10 +47,14 @@ async def download_backup(request: Request, current_user: User = Depends(get_cur
     env = {"PGPASSWORD": db_info["password"]}
     cmd = [
         "pg_dump",
-        "-h", db_info["host"],
-        "-p", db_info["port"],
-        "-U", db_info["user"],
-        "-d", db_info["dbname"],
+        "-h",
+        db_info["host"],
+        "-p",
+        db_info["port"],
+        "-U",
+        db_info["user"],
+        "-d",
+        db_info["dbname"],
         "--no-password",
         "--clean",
         "--if-exists",
@@ -81,6 +89,7 @@ async def download_backup(request: Request, current_user: User = Depends(get_cur
 
 # ── Restore ────────────────────────────────────────────────────────────────────
 
+
 @router.post("/restore")
 @limiter.limit("10/minute")
 async def restore_backup(
@@ -100,16 +109,22 @@ async def restore_backup(
     # Validación mínima: debe contener SQL típico de pg_dump
     snippet = content[:2048].decode("utf-8", errors="ignore")
     if not re.search(r"(PostgreSQL|SET|CREATE|INSERT|COPY|--)", snippet):
-        raise HTTPException(status_code=400, detail="El archivo no parece un backup de PostgreSQL válido")
+        raise HTTPException(
+            status_code=400, detail="El archivo no parece un backup de PostgreSQL válido"
+        )
 
     db_info = _parse_db_url(settings.DATABASE_URL)
     env = {"PGPASSWORD": db_info["password"]}
     cmd = [
         "psql",
-        "-h", db_info["host"],
-        "-p", db_info["port"],
-        "-U", db_info["user"],
-        "-d", db_info["dbname"],
+        "-h",
+        db_info["host"],
+        "-p",
+        db_info["port"],
+        "-U",
+        db_info["user"],
+        "-d",
+        db_info["dbname"],
         "--no-password",
     ]
 
@@ -123,7 +138,9 @@ async def restore_backup(
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(input=content), timeout=300)
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="La restauración tardó demasiado (timeout 5min)")
+        raise HTTPException(
+            status_code=504, detail="La restauración tardó demasiado (timeout 5min)"
+        )
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="psql no está disponible en el servidor")
 

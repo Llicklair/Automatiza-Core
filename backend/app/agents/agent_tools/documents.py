@@ -2,6 +2,7 @@
 Herramientas compartidas para que los agentes IA lean y modifiquen
 documentos del Escanear (TenantDocument) en la BD local.
 """
+
 import logging
 import os
 from datetime import datetime
@@ -16,7 +17,9 @@ from app.db.models.models import TenantDocument
 
 
 @tool
-def create_document(tenant_id: str, file_name: str, content: str, category: str = "informes") -> str:
+def create_document(
+    tenant_id: str, file_name: str, content: str, category: str = "informes"
+) -> str:
     """
     Crea un nuevo documento de texto (.txt, .csv, .md) en el Gestor Documental (Escanear).
     Util para que el agente genere informes, exporte datos, o guarde resúmenes.
@@ -33,7 +36,9 @@ def create_document(tenant_id: str, file_name: str, content: str, category: str 
             # Directorio de uploads configurable por entorno
             upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
             if not os.path.exists(upload_dir) and os.name == "nt":
-                upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
+                upload_dir = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+                )
             os.makedirs(upload_dir, exist_ok=True)
 
             file_path = os.path.join(upload_dir, file_name)
@@ -58,7 +63,6 @@ def create_document(tenant_id: str, file_name: str, content: str, category: str 
         return f"Error creando el documento: {str(e)}"
 
 
-
 @tool
 def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
     """
@@ -70,9 +74,7 @@ def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
     """
     try:
         with get_sync_db() as db:
-            query = db.query(TenantDocument).filter(
-                TenantDocument.tenant_id == UUID(tenant_id)
-            )
+            query = db.query(TenantDocument).filter(TenantDocument.tenant_id == UUID(tenant_id))
             if category != "all":
                 query = query.filter(TenantDocument.category == category)
             docs = query.order_by(TenantDocument.created_at.desc()).limit(15).all()
@@ -94,7 +96,9 @@ def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
 
 
 @tool
-def update_existing_document(tenant_id: str, document_id: str, new_content: str, append: bool = False) -> str:
+def update_existing_document(
+    tenant_id: str, document_id: str, new_content: str, append: bool = False
+) -> str:
     """
     Modifica el contenido de un documento existente en el Escanear.
     Solo funciona con documentos de texto (TXT). Los PDFs no se pueden editar directamente.
@@ -106,10 +110,14 @@ def update_existing_document(tenant_id: str, document_id: str, new_content: str,
     """
     try:
         with get_sync_db() as db:
-            doc = db.query(TenantDocument).filter(
-                TenantDocument.tenant_id == UUID(tenant_id),
-                TenantDocument.id == UUID(document_id),
-            ).first()
+            doc = (
+                db.query(TenantDocument)
+                .filter(
+                    TenantDocument.tenant_id == UUID(tenant_id),
+                    TenantDocument.id == UUID(document_id),
+                )
+                .first()
+            )
 
             if not doc:
                 return f"Error: Documento con ID {document_id} no encontrado en el Escanear."
@@ -126,7 +134,9 @@ def update_existing_document(tenant_id: str, document_id: str, new_content: str,
                 mode = "a" if append else "w"
                 with open(doc.file_path, mode, encoding="utf-8") as f:
                     if append:
-                        f.write(f"\n\n--- Actualizacion {datetime.now().strftime('%d/%m/%Y %H:%M')} (Agente IA) ---\n")
+                        f.write(
+                            f"\n\n--- Actualizacion {datetime.now().strftime('%d/%m/%Y %H:%M')} (Agente IA) ---\n"
+                        )
                     f.write(new_content)
                 doc.file_size = os.path.getsize(doc.file_path)
             else:
@@ -171,10 +181,14 @@ def get_document_content(tenant_id: str, document_id: str) -> str:
     """
     try:
         with get_sync_db() as db:
-            doc = db.query(TenantDocument).filter(
-                TenantDocument.tenant_id == UUID(tenant_id),
-                TenantDocument.id == UUID(document_id),
-            ).first()
+            doc = (
+                db.query(TenantDocument)
+                .filter(
+                    TenantDocument.tenant_id == UUID(tenant_id),
+                    TenantDocument.id == UUID(document_id),
+                )
+                .first()
+            )
 
             if not doc:
                 return f"Documento {document_id} no encontrado."
@@ -186,7 +200,11 @@ def get_document_content(tenant_id: str, document_id: str) -> str:
                         content = f.read()
                     return f"Contenido de '{doc.file_name}':\n\n{content[:3000]}{'...(truncado)' if len(content) > 3000 else ''}"
                 except Exception:
-                    _logger.warning("Failed to read file %s from disk, falling back to DB", doc.file_path, exc_info=True)
+                    _logger.warning(
+                        "Failed to read file %s from disk, falling back to DB",
+                        doc.file_path,
+                        exc_info=True,
+                    )
 
             # Fallback a parsed_content en BD
             if doc.parsed_content:

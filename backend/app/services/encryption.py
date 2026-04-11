@@ -2,6 +2,7 @@
 Servicio de cifrado/descifrado de credenciales de integraciones por tenant.
 Usa Fernet (AES-128-CBC + HMAC-SHA256). Nunca se almacenan en texto plano.
 """
+
 import base64
 import logging
 
@@ -38,6 +39,7 @@ def _get_fernet() -> Fernet:
 def encrypt_credentials(credentials: dict) -> str:
     """Cifra un diccionario de credenciales y devuelve un string base64."""
     import json
+
     f = _get_fernet()
     plaintext = json.dumps(credentials).encode()
     return f.encrypt(plaintext).decode()
@@ -46,6 +48,7 @@ def encrypt_credentials(credentials: dict) -> str:
 def decrypt_credentials(encrypted: str) -> dict:
     """Descifra credenciales. Lanza excepción si el token es inválido."""
     import json
+
     f = _get_fernet()
     plaintext = f.decrypt(encrypted.encode())
     return json.loads(plaintext)

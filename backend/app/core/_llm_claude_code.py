@@ -13,6 +13,7 @@ Tool calling: prompt-based.
   - Se parsea la respuesta para construir AIMessage.tool_calls reales.
   - tools_condition + ToolNode de LangGraph funcionan sin cambios.
 """
+
 import asyncio
 import json
 import logging
@@ -66,12 +67,15 @@ def _clean_env() -> dict:
 def _neutral_cwd() -> str:
     """Directorio temporal sin CLAUDE.md — evita que el CLI cargue el contexto del proyecto."""
     import tempfile
+
     return tempfile.gettempdir()
 
 
 async def _spawn_process() -> "asyncio.subprocess.Process":
     return await asyncio.create_subprocess_exec(
-        _resolve_claude_bin(), "-p", "--dangerously-skip-permissions",
+        _resolve_claude_bin(),
+        "-p",
+        "--dangerously-skip-permissions",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
@@ -204,7 +208,7 @@ def _build_tool_system_prompt(tools) -> str:
         "6. For multiple tools, put them all in one tool_calls array.\n\n"
         f"## EXAMPLE — calling {example_name}:\n"
         f"{_TOOL_CALL_START}\n"
-        f'{json.dumps({"tool_calls": [{"name": example_name, "arguments": example_args}]}, ensure_ascii=False)}\n'
+        f"{json.dumps({'tool_calls': [{'name': example_name, 'arguments': example_args}]}, ensure_ascii=False)}\n"
         f"{_TOOL_CALL_END}\n\n"
         f"## Available tools:\n{schemas_json}"
     )
@@ -255,26 +259,34 @@ def _parse_tool_response(text: str) -> AIMessage:
             continue
         args = tc.get("arguments") or tc.get("args") or {}
         # Coerce: si un valor debería ser string pero vino como número, convertir
-        tool_calls.append({
-            "name": tc["name"],
-            "args": {k: str(v) if isinstance(v, bool) and not isinstance(v, int) else v
-                     for k, v in args.items()},
-            "id": f"call_{uuid.uuid4().hex[:8]}",
-            "type": "tool_call",
-        })
+        tool_calls.append(
+            {
+                "name": tc["name"],
+                "args": {
+                    k: str(v) if isinstance(v, bool) and not isinstance(v, int) else v
+                    for k, v in args.items()
+                },
+                "id": f"call_{uuid.uuid4().hex[:8]}",
+                "type": "tool_call",
+            }
+        )
 
     if not tool_calls:
         _log.warning("[ClaudeCode] No se pudieron extraer tool_calls válidas, fallback a texto")
         return AIMessage(content=text)
 
-    _log.info("[ClaudeCode] Parseadas %d tool_calls: %s",
-              len(tool_calls), [tc["name"] for tc in tool_calls])
+    _log.info(
+        "[ClaudeCode] Parseadas %d tool_calls: %s",
+        len(tool_calls),
+        [tc["name"] for tc in tool_calls],
+    )
     return AIMessage(content="", tool_calls=tool_calls)
 
 
 # ---------------------------------------------------------------------------
 # Message conversion
 # ---------------------------------------------------------------------------
+
 
 def _messages_to_prompt(messages: List[BaseMessage], tool_system: str = "") -> str:
     parts = []
@@ -320,6 +332,7 @@ def _messages_to_prompt(messages: List[BaseMessage], tool_system: str = "") -> s
 # ChatModel
 # ---------------------------------------------------------------------------
 
+
 class ClaudeCodeChatModel(BaseChatModel):
     """LangChain ChatModel con warm process pool por tenant via Claude Code CLI."""
 
@@ -356,7 +369,8 @@ class ClaudeCodeChatModel(BaseChatModel):
                     _log.warning(
                         "[ClaudeCode] Claude mencionó tools %s en texto pero no usó el formato correcto. "
                         "Respuesta (primeros 200 chars): %s",
-                        mentioned, text[:200],
+                        mentioned,
+                        text[:200],
                     )
         else:
             msg = AIMessage(content=text)
@@ -370,6 +384,7 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         import subprocess
+
         prompt = _messages_to_prompt(messages, self._get_tool_system())
         try:
             result = subprocess.run(

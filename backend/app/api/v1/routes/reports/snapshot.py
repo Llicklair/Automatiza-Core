@@ -25,7 +25,9 @@ router = APIRouter()
 
 @router.get("/company-snapshot", response_model=CompanySnapshot)
 async def get_company_snapshot(
-    month: str = Query(default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."),
+    month: str = Query(
+        default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -40,7 +42,9 @@ async def get_company_snapshot(
 
 @router.post("/company-snapshot/generate", response_model=ReportOut, status_code=201)
 async def generate_company_snapshot_pdf(
-    month: str = Query(default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."),
+    month: str = Query(
+        default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -140,7 +144,9 @@ async def download_report(
         if fallback and os.path.exists(fallback):
             file_path = fallback
         else:
-            raise HTTPException(status_code=404, detail=f"Archivo no disponible (ruta: {file_path})")
+            raise HTTPException(
+                status_code=404, detail=f"Archivo no disponible (ruta: {file_path})"
+            )
 
     return FileResponse(
         path=file_path,
@@ -170,12 +176,17 @@ async def delete_report(
         raise HTTPException(status_code=404, detail="Informe no encontrado")
 
     # Borrar archivo de disco
-    for path_candidate in [doc.file_path, os.path.join(UPLOAD_DIR, doc.file_name) if doc.file_name else None]:
+    for path_candidate in [
+        doc.file_path,
+        os.path.join(UPLOAD_DIR, doc.file_name) if doc.file_name else None,
+    ]:
         if path_candidate and os.path.exists(path_candidate):
             try:
                 os.remove(path_candidate)
             except OSError:
-                _logger.debug("Failed to delete report file from disk: %s", path_candidate, exc_info=True)
+                _logger.debug(
+                    "Failed to delete report file from disk: %s", path_candidate, exc_info=True
+                )
             break
 
     await db.delete(doc)

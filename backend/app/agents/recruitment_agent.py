@@ -4,6 +4,7 @@ Agente de Reclutamiento — Parsing de CVs, scoring y gestión de candidatos.
 Lee PDFs de currículum, extrae datos estructurados, puntúa contra puestos
 abiertos y gestiona el pipeline de selección.
 """
+
 import json
 import logging
 from uuid import UUID
@@ -49,7 +50,9 @@ async def create_position(
     from app.db.models.hr import RecruitmentPosition
 
     try:
-        skills = json.loads(required_skills) if isinstance(required_skills, str) else required_skills
+        skills = (
+            json.loads(required_skills) if isinstance(required_skills, str) else required_skills
+        )
     except json.JSONDecodeError:
         skills = [s.strip() for s in required_skills.split(",") if s.strip()]
 
@@ -67,10 +70,16 @@ async def create_position(
         db.add(pos)
         await db.commit()
         await db.refresh(pos)
-        return json.dumps({
-            "id": str(pos.id), "title": pos.title, "department": pos.department,
-            "required_skills": pos.required_skills, "status": pos.status,
-        }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "id": str(pos.id),
+                "title": pos.title,
+                "department": pos.department,
+                "required_skills": pos.required_skills,
+                "status": pos.status,
+            },
+            ensure_ascii=False,
+        )
 
 
 @tool
@@ -94,7 +103,9 @@ async def list_positions(tenant_id: str, status: str = "open") -> str:
     lines = []
     for p in positions:
         skills = ", ".join(p.required_skills or [])
-        lines.append(f"- {p.title} ({p.department or 'Sin dept.'}) | Skills: {skills} | Estado: {p.status} | ID: {p.id}")
+        lines.append(
+            f"- {p.title} ({p.department or 'Sin dept.'}) | Skills: {skills} | Estado: {p.status} | ID: {p.id}"
+        )
     return "\n".join(lines)
 
 
@@ -162,17 +173,22 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
         await db.commit()
         await db.refresh(candidate)
 
-    return json.dumps({
-        "candidate_id": str(candidate.id),
-        "name": candidate.name,
-        "email": candidate.email,
-        "skills": candidate.skills,
-        "experience_years": float(candidate.experience_years) if candidate.experience_years else None,
-        "score": float(candidate.score) if candidate.score else 0,
-        "score_breakdown": scoring.get("breakdown", {}),
-        "strengths": scoring.get("strengths", []),
-        "gaps": scoring.get("gaps", []),
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "candidate_id": str(candidate.id),
+            "name": candidate.name,
+            "email": candidate.email,
+            "skills": candidate.skills,
+            "experience_years": float(candidate.experience_years)
+            if candidate.experience_years
+            else None,
+            "score": float(candidate.score) if candidate.score else 0,
+            "score_breakdown": scoring.get("breakdown", {}),
+            "strengths": scoring.get("strengths", []),
+            "gaps": scoring.get("gaps", []),
+        },
+        ensure_ascii=False,
+    )
 
 
 @tool
@@ -206,7 +222,9 @@ async def list_candidates(
     for c in candidates:
         score = f"{float(c.score):.0f}" if c.score else "—"
         skills = ", ".join((c.skills or [])[:5])
-        lines.append(f"- {c.name} | Score: {score} | Skills: {skills} | Estado: {c.status} | ID: {c.id}")
+        lines.append(
+            f"- {c.name} | Score: {score} | Skills: {skills} | Estado: {c.status} | ID: {c.id}"
+        )
     return "\n".join(lines)
 
 

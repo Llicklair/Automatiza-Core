@@ -9,6 +9,7 @@ El LLM decide qué herramientas usar según la intención del usuario:
 Cada herramienta ejecuta lógica determinista (validación, BD, PDF).
 El LLM solo razona y elige; nunca toca datos directamente.
 """
+
 import json
 import logging
 import os
@@ -48,6 +49,7 @@ def _get_llm():
 
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
+
 
 @tool
 async def create_invoice(
@@ -103,15 +105,25 @@ async def create_invoice(
     if invoice_date:
         try:
             from datetime import date as _date
+
             if isinstance(invoice_date, str):
                 _date.fromisoformat(invoice_date)
         except ValueError:
             return f"Error: fecha de factura inválida '{invoice_date}'. Usa formato YYYY-MM-DD."
 
     return await _create_invoice_async(
-            tenant_id, client_name, concept, amount_base, vat_rate,
-            invoice_date, client_nif, notes,
-            issuer_name, issuer_nif, issuer_address, issuer_email
+        tenant_id,
+        client_name,
+        concept,
+        amount_base,
+        vat_rate,
+        invoice_date,
+        client_nif,
+        notes,
+        issuer_name,
+        issuer_nif,
+        issuer_address,
+        issuer_email,
     )
 
 
@@ -139,7 +151,7 @@ async def _create_invoice_async(
     # ── Parsear importe ──
     try:
         raw = amount_base_str.strip()
-        if re.search(r'\.\d{3}(?:[,\d]|$)', raw):
+        if re.search(r"\.\d{3}(?:[,\d]|$)", raw):
             raw = raw.replace(".", "").replace(",", ".")
         else:
             raw = raw.replace(",", ".")
@@ -157,7 +169,9 @@ async def _create_invoice_async(
     # ── Resolución de cliente ──
     resolved_nif = client_nif.strip() if client_nif else ""
     resolved_name = client_name.strip()
-    resolved_client_id = None  # ID exacto del cliente encontrado, evita ambigüedad por NIF duplicado
+    resolved_client_id = (
+        None  # ID exacto del cliente encontrado, evita ambigüedad por NIF duplicado
+    )
 
     if not resolved_nif:
         if not resolved_name:
@@ -180,10 +194,13 @@ async def _create_invoice_async(
                 elif len(exact_clients) == 0:
                     # 2. Match parcial — sólo válido si el resultado es único
                     res = await db.execute(
-                        select(Client).where(
+                        select(Client)
+                        .where(
                             Client.tenant_id == UUID(tenant_id),
                             func.lower(Client.name).contains(resolved_name.lower()),
-                        ).order_by(Client.name).limit(5)
+                        )
+                        .order_by(Client.name)
+                        .limit(5)
                     )
                     partial_clients = res.scalars().all()
 
@@ -251,9 +268,7 @@ async def _create_invoice_async(
         try:
             # Upsert cliente — usar ID exacto si lo tenemos (evita ambigüedad por NIF compartido)
             if resolved_client_id:
-                result = await db.execute(
-                    select(Client).where(Client.id == resolved_client_id)
-                )
+                result = await db.execute(select(Client).where(Client.id == resolved_client_id))
                 local_client = result.scalars().first()
             else:
                 result = await db.execute(
@@ -312,6 +327,7 @@ async def _create_invoice_async(
             # Emitir evento
             try:
                 from app.services.event_bus import emit_event
+
                 await emit_event(
                     db=db,
                     tenant_id=UUID(tenant_id),
@@ -346,13 +362,15 @@ async def _create_invoice_async(
                     "amount_total": float(new_invoice.amount_total),
                     "notes": new_invoice.notes,
                     "client": {"name": local_client.name, "nif": local_client.nif},
-                    "lines": [{
-                        "description": invoice_line.description,
-                        "quantity": invoice_line.quantity,
-                        "unit_price": invoice_line.unit_price,
-                        "tax_percentage": invoice_line.tax_percentage,
-                        "total": invoice_line.total,
-                    }],
+                    "lines": [
+                        {
+                            "description": invoice_line.description,
+                            "quantity": invoice_line.quantity,
+                            "unit_price": invoice_line.unit_price,
+                            "tax_percentage": invoice_line.tax_percentage,
+                            "total": invoice_line.total,
+                        }
+                    ],
                     "company": {
                         "name": issuer_name or getattr(settings, "APP_NAME", "Empresa"),
                         "nif": issuer_nif or "B-00000000",
@@ -365,24 +383,27 @@ async def _create_invoice_async(
                     from sqlalchemy import select as _sel
 
                     from app.db.models.billing import DocumentTemplate as _DocTpl
+
                     async with AsyncSessionLocal() as db_tpl:
                         _r = await db_tpl.execute(
-                            _sel(_DocTpl).where(
+                            _sel(_DocTpl)
+                            .where(
                                 _DocTpl.tenant_id == UUID(tenant_id),
                                 _DocTpl.template_type == "invoice",
-                            ).order_by(_DocTpl.is_default.desc(), _DocTpl.created_at)
+                            )
+                            .order_by(_DocTpl.is_default.desc(), _DocTpl.created_at)
                         )
                         _tpl = _r.scalars().first()
                     if _tpl:
                         _template_name = _tpl.name
                         theme_config = {
                             "accent_color": _tpl.accent_color,
-                            "font_family":  _tpl.font_family,
+                            "font_family": _tpl.font_family,
                             "layout_style": _tpl.layout_style,
                             "logo_position": _tpl.logo_position,
                             "header_style": _tpl.header_style,
-                            "table_style":  _tpl.table_style,
-                            "footer_text":  _tpl.footer_text,
+                            "table_style": _tpl.table_style,
+                            "footer_text": _tpl.footer_text,
                         }
                     else:
                         theme_config = None
@@ -393,7 +414,9 @@ async def _create_invoice_async(
 
                 upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
                 if not os.path.exists(upload_dir) and os.name == "nt":
-                    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
+                    upload_dir = os.path.abspath(
+                        os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+                    )
                 os.makedirs(upload_dir, exist_ok=True)
 
                 file_name = f"Factura_{new_invoice.invoice_number}.pdf"
@@ -556,6 +579,7 @@ async def _search_client_async(tenant_id: str, query: str) -> str:
 
 # ─── Herramientas de modificación ─────────────────────────────────────────────
 
+
 @tool
 async def update_invoice_status(tenant_id: str, invoice_id: str, new_status: str) -> str:
     """
@@ -612,6 +636,7 @@ async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_stat
             # Emitir evento
             try:
                 from app.services.event_bus import emit_event
+
                 await emit_event(
                     db=db,
                     tenant_id=UUID(tenant_id),
@@ -625,11 +650,11 @@ async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_stat
                     },
                 )
             except Exception:
-                logger.debug("Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True)
+                logger.debug(
+                    "Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True
+                )
 
-            return (
-                f"Factura {invoice.invoice_number} actualizada: {old_status} → {new_status}."
-            )
+            return f"Factura {invoice.invoice_number} actualizada: {old_status} → {new_status}."
     except Exception as e:
         return f"Error actualizando factura: {e}"
 
@@ -659,8 +684,12 @@ async def update_invoice(
 
 
 async def _update_invoice_async(
-    tenant_id: str, invoice_id: str, concept: str,
-    amount_base_str: str, vat_rate: float, notes: str,
+    tenant_id: str,
+    invoice_id: str,
+    concept: str,
+    amount_base_str: str,
+    vat_rate: float,
+    notes: str,
 ) -> str:
     from sqlalchemy import select
 
@@ -705,9 +734,14 @@ async def _update_invoice_async(
 
             # Recalcular totales
             base = new_base if new_base is not None else invoice.amount_base
-            vat = Decimal(str(new_vat)) if new_vat is not None else (
-                Decimal(str((float(invoice.tax_amount) / float(invoice.amount_base) * 100)))
-                if invoice.amount_base and float(invoice.amount_base) > 0 else Decimal("21")
+            vat = (
+                Decimal(str(new_vat))
+                if new_vat is not None
+                else (
+                    Decimal(str((float(invoice.tax_amount) / float(invoice.amount_base) * 100)))
+                    if invoice.amount_base and float(invoice.amount_base) > 0
+                    else Decimal("21")
+                )
             )
             tax = round(base * vat / 100, 2)
             total = base + tax
@@ -760,7 +794,9 @@ async def send_invoice_by_email(tenant_id: str, invoice_id: str, recipient_email
     return await _send_invoice_by_email_async(tenant_id, invoice_id, recipient_email)
 
 
-async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipient_email: str) -> str:
+async def _send_invoice_by_email_async(
+    tenant_id: str, invoice_id: str, recipient_email: str
+) -> str:
     from sqlalchemy import select
 
     from app.db.base import AsyncSessionLocal
@@ -770,7 +806,9 @@ async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipien
         async with AsyncSessionLocal() as db:
             # Cargar factura + cliente
             result = await db.execute(
-                select(Invoice, Client).join(Client).where(
+                select(Invoice, Client)
+                .join(Client)
+                .where(
                     Invoice.tenant_id == UUID(tenant_id),
                     Invoice.id == UUID(invoice_id),
                 )
@@ -802,6 +840,7 @@ async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipien
 
         # Enviar usando el servicio real de email
         from app.agents.email_agent import send_email_direct
+
         result_text = await send_email_direct(
             tenant_id=tenant_id,
             to=email_to,
@@ -824,6 +863,7 @@ async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipien
 
 # ─── Herramientas de albaranes ────────────────────────────────────────────────
 
+
 @tool
 async def list_albaranes(tenant_id: str, status: str = "") -> str:
     """
@@ -837,6 +877,7 @@ async def list_albaranes(tenant_id: str, status: str = "") -> str:
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.billing import DeliveryNote
+
     try:
         async with AsyncSessionLocal() as db:
             q = select(DeliveryNote).where(DeliveryNote.tenant_id == UUID(tenant_id))
@@ -881,6 +922,7 @@ async def create_albaran(
     from app.db.base import AsyncSessionLocal
     from app.db.models.billing import DeliveryNote, DeliveryNoteLine
     from app.db.models.models import Client
+
     try:
         lines_data = json.loads(lines_json)
         entry_date = date.fromisoformat(albaran_date) if albaran_date else date.today()
@@ -903,10 +945,13 @@ async def create_albaran(
                 client_id = exact_clients[0].id
             elif len(exact_clients) == 0:
                 res = await db.execute(
-                    select(Client).where(
+                    select(Client)
+                    .where(
                         Client.tenant_id == UUID(tenant_id),
                         func.lower(Client.name).contains(client_name.strip().lower()),
-                    ).order_by(Client.name).limit(5)
+                    )
+                    .order_by(Client.name)
+                    .limit(5)
                 )
                 partial_clients = res.scalars().all()
                 if len(partial_clients) == 1:
@@ -939,7 +984,9 @@ async def create_albaran(
             amount_base = Decimal("0")
             tax_amount = Decimal("0")
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(
+                    str(line.get("unit_price", 0))
+                )
                 tax = base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
                 amount_base += base
                 tax_amount += tax
@@ -959,16 +1006,20 @@ async def create_albaran(
             await db.flush()
 
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(
+                    str(line.get("unit_price", 0))
+                )
                 total = base + base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
-                db.add(DeliveryNoteLine(
-                    albaran_id=note.id,
-                    description=line.get("description", ""),
-                    quantity=line.get("quantity", 1),
-                    unit_price=line.get("unit_price", 0),
-                    tax_percentage=line.get("tax_percentage", 21),
-                    total=total,
-                ))
+                db.add(
+                    DeliveryNoteLine(
+                        albaran_id=note.id,
+                        description=line.get("description", ""),
+                        quantity=line.get("quantity", 1),
+                        unit_price=line.get("unit_price", 0),
+                        tax_percentage=line.get("tax_percentage", 21),
+                        total=total,
+                    )
+                )
 
             await db.commit()
             client_label = client_name if client_name else "sin cliente"

@@ -84,12 +84,14 @@ class LLMCache:
     ) -> None:
         key = _make_key(tenant_id, intent, provider)
         ttl = ttl_override or self.ttl
-        payload = json.dumps({
-            "response": response,
-            "provider": provider,
-            "tenant_id": tenant_id,
-            "metadata": metadata or {},
-        })
+        payload = json.dumps(
+            {
+                "response": response,
+                "provider": provider,
+                "tenant_id": tenant_id,
+                "metadata": metadata or {},
+            }
+        )
         with _lock:
             _cache[key] = (payload, time.time() + ttl)
         _evict_oldest()

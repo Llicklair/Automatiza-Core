@@ -16,8 +16,10 @@ class EmployeeBase(BaseModel):
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
 
+
 class EmployeeCreate(EmployeeBase):
     pass
+
 
 class EmployeeUpdate(BaseModel):
     nif: str | None = None
@@ -31,12 +33,14 @@ class EmployeeUpdate(BaseModel):
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
 
+
 class EmployeeResponse(EmployeeBase):
     id: UUID
     tenant_id: UUID
     created_at: datetime
     updated_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class PayrollBase(BaseModel):
     employee_id: UUID
@@ -54,12 +58,14 @@ class PayrollBase(BaseModel):
     net_salary: float
     status: str = "draft"
 
+
 class PayrollCreate(PayrollBase):
     pass
 
 
 class PayrollSimpleCreate(BaseModel):
     """Crea nómina con cálculo automático de SS e IRPF (tasas reales 2025)."""
+
     employee_id: UUID
     period_start: datetime
     period_end: datetime
@@ -79,17 +85,19 @@ class PayrollUpdate(BaseModel):
 
 class PayrollCalculateResponse(BaseModel):
     """Previsualización del cálculo de nómina sin crear el registro."""
+
     employee_id: UUID
     base_salary: float
     ss_contingencias_comunes: float  # 4.70%
-    ss_desempleo: float              # 1.55%
+    ss_desempleo: float  # 1.55%
     ss_formacion_profesional: float  # 0.10%
-    ss_mei: float                    # 0.12%
+    ss_mei: float  # 0.12%
     total_ss: float
     irpf: float
     deductions: float
     net_salary: float
     irpf_rate_applied: float
+
 
 class PayrollResponse(PayrollBase):
     id: UUID
@@ -101,9 +109,11 @@ class PayrollResponse(PayrollBase):
 
 # ── Schemas para generación de PDFs HR ──────────────────────────────────────
 
+
 class FiniquitoConcepto(BaseModel):
     concepto: str
     importe: float
+
 
 class FiniquitoRequest(BaseModel):
     employee_id: UUID
@@ -114,11 +124,13 @@ class FiniquitoRequest(BaseModel):
     total_deducciones: float = 0.0
     liquido: float = 0.0
 
+
 class LiquidacionConcepto(BaseModel):
     concepto: str
     unidad: str = ""
     devengos: float = 0.0
     deducciones: float = 0.0
+
 
 class LiquidacionRequest(BaseModel):
     employee_id: UUID
@@ -129,6 +141,7 @@ class LiquidacionRequest(BaseModel):
     total_deducciones: float = 0.0
     liquido: float = 0.0
 
+
 class RegistroJornadaDia(BaseModel):
     dia: int
     entrada: str = ""
@@ -136,6 +149,7 @@ class RegistroJornadaDia(BaseModel):
     horas_ordinarias: float = 0.0
     incidencias: str = ""
     horas_extras: float = 0.0
+
 
 class RegistroJornadaRequest(BaseModel):
     employee_id: UUID

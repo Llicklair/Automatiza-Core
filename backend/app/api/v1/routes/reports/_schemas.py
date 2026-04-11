@@ -40,7 +40,7 @@ class SnapshotSectionClients(BaseModel):
 
 
 class CompanySnapshot(BaseModel):
-    month: str                       # "2026-03"
+    month: str  # "2026-03"
     generated_at: datetime
     facturas: SnapshotSectionInvoices
     banca: SnapshotSectionBanking

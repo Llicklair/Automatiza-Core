@@ -2,6 +2,7 @@
 Herramientas para gestionar la memoria a largo plazo (TenantKnowledge).
 Permite a los agentes IA persistir y consultar datos contextuales del tenant.
 """
+
 from uuid import UUID
 
 from langchain_core.tools import tool
@@ -22,9 +23,7 @@ def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
     """
     try:
         with get_sync_db() as db:
-            query = db.query(TenantKnowledge).filter(
-                TenantKnowledge.tenant_id == UUID(tenant_id)
-            )
+            query = db.query(TenantKnowledge).filter(TenantKnowledge.tenant_id == UUID(tenant_id))
             if category != "all":
                 query = query.filter(TenantKnowledge.category == category)
 
@@ -36,6 +35,7 @@ def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
             return f"Memoria del Tenant ({len(facts)} hechos):\n" + "\n".join(lines)
     except Exception as e:
         return f"Error consultando memoria: {e}"
+
 
 @tool
 def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
@@ -74,10 +74,11 @@ def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str 
     try:
         with get_sync_db() as db:
             # Buscar si ya existe la llave
-            existing = db.query(TenantKnowledge).filter(
-                TenantKnowledge.tenant_id == UUID(tenant_id),
-                TenantKnowledge.key == key
-            ).first()
+            existing = (
+                db.query(TenantKnowledge)
+                .filter(TenantKnowledge.tenant_id == UUID(tenant_id), TenantKnowledge.key == key)
+                .first()
+            )
 
             if existing:
                 existing.value = value
@@ -86,10 +87,7 @@ def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str 
                 return f"Hecho '{key}' actualizado en la memoria del tenant."
             else:
                 new_fact = TenantKnowledge(
-                    tenant_id=UUID(tenant_id),
-                    key=key,
-                    value=value,
-                    category=category
+                    tenant_id=UUID(tenant_id), key=key, value=value, category=category
                 )
                 db.add(new_fact)
                 db.commit()

@@ -1,6 +1,7 @@
 """
 Almacén en memoria para logs de ejecución de tareas.
 """
+
 import threading
 import time
 

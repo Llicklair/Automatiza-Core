@@ -6,26 +6,40 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # --- Workflows ---
 
+
 class WorkflowBase(BaseModel):
     name: str = Field(..., description="Nombre descriptivo de la regla o workflow")
     description: str | None = None
     is_active: bool = True
-    trigger_type: str = Field(..., description="Tipo de trigger: event_based, schedule_based, manual")
-    trigger_config: dict[str, Any] = Field(default_factory=dict, description="Configuración del trigger")
+    trigger_type: str = Field(
+        ..., description="Tipo de trigger: event_based, schedule_based, manual"
+    )
+    trigger_config: dict[str, Any] = Field(
+        default_factory=dict, description="Configuración del trigger"
+    )
     action_type: str = Field(..., description="Tipo de acción: create_task, webhook, email")
-    action_config: dict[str, Any] = Field(default_factory=dict, description="Configuración de la acción a realizar")
-    ui_nodes: list[dict[str, Any]] | None = Field(default=None, description="Topología visual de nodos del grafo")
-    ui_edges: list[dict[str, Any]] | None = Field(default=None, description="Conexiones visuales del grafo")
+    action_config: dict[str, Any] = Field(
+        default_factory=dict, description="Configuración de la acción a realizar"
+    )
+    ui_nodes: list[dict[str, Any]] | None = Field(
+        default=None, description="Topología visual de nodos del grafo"
+    )
+    ui_edges: list[dict[str, Any]] | None = Field(
+        default=None, description="Conexiones visuales del grafo"
+    )
     execution_mode: str = Field(
         default="reasoning",
         description="Modo de ejecución: 'reasoning' (LLM interpreta en tiempo real) o 'deterministic' (pasos precompilados)",
     )
 
+
 class WorkflowCreate(WorkflowBase):
     compiled_steps: list[dict[str, Any]] | None = None
 
+
 class WorkflowParseRequest(BaseModel):
     text: str = Field(..., description="Instrucción en lenguaje natural")
+
 
 class WorkflowParseResponse(BaseModel):
     name: str
@@ -39,6 +53,7 @@ class WorkflowParseResponse(BaseModel):
     can_be_deterministic: bool = False
     determinism_question: str | None = None
 
+
 class WorkflowUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
@@ -50,6 +65,7 @@ class WorkflowUpdate(BaseModel):
     execution_mode: str | None = None
     compiled_steps: list[dict[str, Any]] | None = None
 
+
 class WorkflowResponse(WorkflowBase):
     id: UUID
     tenant_id: UUID
@@ -60,12 +76,15 @@ class WorkflowResponse(WorkflowBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # --- Workflow Executions ---
+
 
 class WorkflowExecutionBase(BaseModel):
     workflow_id: UUID
     status: str = Field(default="pending")
     trigger_payload: dict[str, Any] | None = None
+
 
 class WorkflowExecutionResponse(WorkflowExecutionBase):
     id: UUID

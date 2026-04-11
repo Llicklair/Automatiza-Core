@@ -3,6 +3,7 @@ Servicio de correo electrónico real usando IMAP (lectura) y SMTP (envío).
 Soporta Gmail, Outlook, y cualquier servidor IMAP/SMTP estándar.
 Sin dependencias externas — usa las librerías nativas de Python.
 """
+
 import email
 import imaplib
 import logging
@@ -53,7 +54,7 @@ class EmailMessage:
 @dataclass
 class EmailCredentials:
     email_address: str
-    password: str                  # Contraseña de aplicación (app password)
+    password: str  # Contraseña de aplicación (app password)
     imap_host: str = "imap.gmail.com"
     imap_port: int = 993
     smtp_host: str = "smtp.gmail.com"
@@ -62,6 +63,7 @@ class EmailCredentials:
 
 
 # ─── Decodificación segura de cabeceras ───────────────────────────────────────
+
 
 def _decode_header_value(value: str | None) -> str:
     if not value:
@@ -94,16 +96,21 @@ def _extract_body(msg: email.message.Message) -> str:
                     body = part.get_payload(decode=True).decode(charset, errors="replace")
                     break
                 except Exception:
-                    _logger.debug("Failed to decode text/plain part (charset=%s)", charset, exc_info=True)
+                    _logger.debug(
+                        "Failed to decode text/plain part (charset=%s)", charset, exc_info=True
+                    )
             elif content_type == "text/html" and not body:
                 try:
                     charset = part.get_content_charset() or "utf-8"
                     raw_html = part.get_payload(decode=True).decode(charset, errors="replace")
                     # Strip básico de HTML sin dependencias
                     import re
+
                     body = re.sub(r"<[^>]+>", " ", raw_html).strip()
                 except Exception:
-                    _logger.debug("Failed to decode text/html part (charset=%s)", charset, exc_info=True)
+                    _logger.debug(
+                        "Failed to decode text/html part (charset=%s)", charset, exc_info=True
+                    )
     else:
         try:
             charset = msg.get_content_charset() or "utf-8"
@@ -115,7 +122,10 @@ def _extract_body(msg: email.message.Message) -> str:
 
 # ─── Lectura de correos vía IMAP ──────────────────────────────────────────────
 
-def read_inbox(credentials: EmailCredentials, max_results: int = 10, folder: str = "INBOX") -> list[EmailMessage]:
+
+def read_inbox(
+    credentials: EmailCredentials, max_results: int = 10, folder: str = "INBOX"
+) -> list[EmailMessage]:
     """
     Lee los correos más recientes de la bandeja de entrada vía IMAP SSL.
     Devuelve lista de EmailMessage ordenados del más reciente al más antiguo.
@@ -124,7 +134,9 @@ def read_inbox(credentials: EmailCredentials, max_results: int = 10, folder: str
 
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(credentials.imap_host, credentials.imap_port, ssl_context=ctx) as imap:
+        with imaplib.IMAP4_SSL(
+            credentials.imap_host, credentials.imap_port, ssl_context=ctx
+        ) as imap:
             imap.login(credentials.email_address, credentials.password)
             imap.select(folder, readonly=True)
 
@@ -150,15 +162,17 @@ def read_inbox(credentials: EmailCredentials, max_results: int = 10, folder: str
                     flags_data = msg_data[1] if len(msg_data) > 1 else b""
                     is_read = b"\\Seen" in flags_data if flags_data else False
 
-                    messages.append(EmailMessage(
-                        id=mail_id.decode(),
-                        from_address=_decode_header_value(msg.get("From", "")),
-                        to=_decode_header_value(msg.get("To", "")),
-                        subject=_decode_header_value(msg.get("Subject", "(Sin asunto)")),
-                        body=_extract_body(msg),
-                        date=_decode_header_value(msg.get("Date", "")),
-                        is_read=is_read,
-                    ))
+                    messages.append(
+                        EmailMessage(
+                            id=mail_id.decode(),
+                            from_address=_decode_header_value(msg.get("From", "")),
+                            to=_decode_header_value(msg.get("To", "")),
+                            subject=_decode_header_value(msg.get("Subject", "(Sin asunto)")),
+                            body=_extract_body(msg),
+                            date=_decode_header_value(msg.get("Date", "")),
+                            is_read=is_read,
+                        )
+                    )
                 except Exception:
                     continue
 
@@ -173,7 +187,9 @@ def read_unread(credentials: EmailCredentials, max_results: int = 10) -> list[Em
     messages: list[EmailMessage] = []
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(credentials.imap_host, credentials.imap_port, ssl_context=ctx) as imap:
+        with imaplib.IMAP4_SSL(
+            credentials.imap_host, credentials.imap_port, ssl_context=ctx
+        ) as imap:
             imap.login(credentials.email_address, credentials.password)
             imap.select("INBOX", readonly=True)
 
@@ -191,15 +207,17 @@ def read_unread(credentials: EmailCredentials, max_results: int = 10) -> list[Em
                         continue
                     raw_email = msg_data[0][1]
                     msg = email.message_from_bytes(raw_email)
-                    messages.append(EmailMessage(
-                        id=mail_id.decode(),
-                        from_address=_decode_header_value(msg.get("From", "")),
-                        to=_decode_header_value(msg.get("To", "")),
-                        subject=_decode_header_value(msg.get("Subject", "(Sin asunto)")),
-                        body=_extract_body(msg),
-                        date=_decode_header_value(msg.get("Date", "")),
-                        is_read=False,
-                    ))
+                    messages.append(
+                        EmailMessage(
+                            id=mail_id.decode(),
+                            from_address=_decode_header_value(msg.get("From", "")),
+                            to=_decode_header_value(msg.get("To", "")),
+                            subject=_decode_header_value(msg.get("Subject", "(Sin asunto)")),
+                            body=_extract_body(msg),
+                            date=_decode_header_value(msg.get("Date", "")),
+                            is_read=False,
+                        )
+                    )
                 except Exception:
                     continue
     except imaplib.IMAP4.error as e:
@@ -208,6 +226,7 @@ def read_unread(credentials: EmailCredentials, max_results: int = 10) -> list[Em
 
 
 # ─── Envío de correos vía SMTP ────────────────────────────────────────────────
+
 
 def send_email_smtp(
     credentials: EmailCredentials,
@@ -271,10 +290,11 @@ def send_email_smtp(
 
         return {
             "success": True,
-            "message": f"Correo enviado correctamente a {to}" + (f" con {len(attachment_paths)} adjuntos" if attachment_paths else ""),
+            "message": f"Correo enviado correctamente a {to}"
+            + (f" con {len(attachment_paths)} adjuntos" if attachment_paths else ""),
             "to": to,
             "subject": subject,
-            "attachments_count": len(attachment_paths) if attachment_paths else 0
+            "attachments_count": len(attachment_paths) if attachment_paths else 0,
         }
 
     except smtplib.SMTPAuthenticationError:
@@ -296,11 +316,14 @@ def send_email_smtp(
 
 # ─── Test de conexión ─────────────────────────────────────────────────────────
 
+
 def test_imap_connection(credentials: EmailCredentials) -> bool:
     """Verifica que las credenciales IMAP son correctas. Devuelve True si OK."""
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(credentials.imap_host, credentials.imap_port, ssl_context=ctx) as imap:
+        with imaplib.IMAP4_SSL(
+            credentials.imap_host, credentials.imap_port, ssl_context=ctx
+        ) as imap:
             imap.login(credentials.email_address, credentials.password)
             return True
     except Exception:

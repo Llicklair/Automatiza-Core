@@ -2,6 +2,7 @@
 Dispatcher de chat — responde preguntas generales y consultas de estado
 sin invocar agentes especializados. Usa el LLM directamente con contexto del tenant.
 """
+
 import logging
 from datetime import datetime
 
@@ -32,12 +33,13 @@ REGLAS:
 
 async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Responde directamente al usuario usando el LLM con contexto del tenant."""
-    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
+    intent = subtask.get("params", {}).get(
+        "intent", state.get("current_intent", state["user_intent"])
+    )
     tenant_id = state["tenant_id"]
 
     try:
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-
 
         # Construir contexto del tenant
         tenant_context = _build_tenant_context(state)
@@ -65,11 +67,14 @@ async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult
         # Usar LLM del tenant (respeta config de API Keys del dashboard)
         from app.core.llm_factory import get_llm_for_tenant
         from app.db.base import AsyncSessionLocal
+
         async with AsyncSessionLocal() as db:
             llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
         response = await llm.ainvoke(messages)
 
-        response_text = response.content.strip() if response.content else "No he podido generar una respuesta."
+        response_text = (
+            response.content.strip() if response.content else "No he podido generar una respuesta."
+        )
 
         return {
             "subtask_id": subtask["id"],
@@ -104,26 +109,64 @@ def _build_tenant_context(state: OrchestratorState) -> str:
     return "\n".join(lines)
 
 
-_BILLING_KW  = {"factura", "cobro", "pago", "presupuesto", "albarán", "iva", "emisión", "invoice", "facturación", "importe", "cobrada", "pendiente de cobro"}
-_HR_KW       = {"nómina", "empleado", "empleados", "salario", "trabajador", "vacaciones", "baja", "contrato laboral", "rrhh", "payroll"}
-_CRM_KW      = {"cliente", "clientes", "oportunidad", "lead", "venta", "embudo", "trato", "crm"}
-_BANKING_KW  = {"saldo", "banco", "cuenta", "transacción", "movimiento", "transferencia", "balance bancario", "extracto"}
+_BILLING_KW = {
+    "factura",
+    "cobro",
+    "pago",
+    "presupuesto",
+    "albarán",
+    "iva",
+    "emisión",
+    "invoice",
+    "facturación",
+    "importe",
+    "cobrada",
+    "pendiente de cobro",
+}
+_HR_KW = {
+    "nómina",
+    "empleado",
+    "empleados",
+    "salario",
+    "trabajador",
+    "vacaciones",
+    "baja",
+    "contrato laboral",
+    "rrhh",
+    "payroll",
+}
+_CRM_KW = {"cliente", "clientes", "oportunidad", "lead", "venta", "embudo", "trato", "crm"}
+_BANKING_KW = {
+    "saldo",
+    "banco",
+    "cuenta",
+    "transacción",
+    "movimiento",
+    "transferencia",
+    "balance bancario",
+    "extracto",
+}
 
 
 def _detect_topics(intent: str) -> set[str]:
     """Detecta qué módulos son relevantes para la pregunta."""
     t = intent.lower()
     topics: set[str] = set()
-    if any(kw in t for kw in _BILLING_KW):  topics.add("billing")
-    if any(kw in t for kw in _HR_KW):       topics.add("hr")
-    if any(kw in t for kw in _CRM_KW):      topics.add("crm")
-    if any(kw in t for kw in _BANKING_KW):  topics.add("banking")
+    if any(kw in t for kw in _BILLING_KW):
+        topics.add("billing")
+    if any(kw in t for kw in _HR_KW):
+        topics.add("hr")
+    if any(kw in t for kw in _CRM_KW):
+        topics.add("crm")
+    if any(kw in t for kw in _BANKING_KW):
+        topics.add("banking")
     return topics
 
 
 async def _build_extra_context(state: OrchestratorState) -> str:
     """Carga solo el contexto relevante para la pregunta del usuario."""
     import asyncio
+
     tenant_id = state.get("tenant_id")
     if not tenant_id:
         return ""
@@ -143,10 +186,14 @@ async def _build_extra_context(state: OrchestratorState) -> str:
             _load_banking_context(tenant_id),
         ]
     else:
-        if "billing"  in topics: loaders.append(_load_billing_context(tenant_id))
-        if "hr"       in topics: loaders.append(_load_hr_context(tenant_id))
-        if "crm"      in topics: loaders.append(_load_crm_context(tenant_id))
-        if "banking"  in topics: loaders.append(_load_banking_context(tenant_id))
+        if "billing" in topics:
+            loaders.append(_load_billing_context(tenant_id))
+        if "hr" in topics:
+            loaders.append(_load_hr_context(tenant_id))
+        if "crm" in topics:
+            loaders.append(_load_crm_context(tenant_id))
+        if "banking" in topics:
+            loaders.append(_load_banking_context(tenant_id))
 
     if metadata.get("context") == "workflows":
         loaders.append(_load_workflow_context(tenant_id))
@@ -180,7 +227,9 @@ async def _load_workflow_context(tenant_id: str) -> str:
             lines = ["AUTOMATIZACIONES CONFIGURADAS:"]
             for wf in workflows:
                 status = "activa" if wf.is_active else "pausada"
-                lines.append(f"- '{wf.name}' ({status}) — trigger: {wf.trigger_type}, modo: {wf.execution_mode}")
+                lines.append(
+                    f"- '{wf.name}' ({status}) — trigger: {wf.trigger_type}, modo: {wf.execution_mode}"
+                )
 
             # Últimas 10 ejecuciones
             wf_ids = [wf.id for wf in workflows]
@@ -196,7 +245,9 @@ async def _load_workflow_context(tenant_id: str) -> str:
                 lines.append("\nULTIMAS EJECUCIONES:")
                 for ex in execs:
                     wf_name = next((w.name for w in workflows if w.id == ex.workflow_id), "?")
-                    lines.append(f"- '{wf_name}' — {ex.status} ({ex.started_at.strftime('%d/%m %H:%M') if ex.started_at else '?'})")
+                    lines.append(
+                        f"- '{wf_name}' — {ex.status} ({ex.started_at.strftime('%d/%m %H:%M') if ex.started_at else '?'})"
+                    )
 
             return "\n".join(lines)
     except Exception as e:
@@ -224,8 +275,7 @@ async def _load_billing_context(tenant_id: str) -> str:
                     func.count(Invoice.id).filter(Invoice.status == "sent").label("sent"),
                     func.count(Invoice.id).filter(Invoice.status == "paid").label("paid"),
                     func.coalesce(func.sum(Invoice.amount_total), 0).label("amount_total"),
-                )
-                .where(Invoice.tenant_id == UUID(tenant_id))
+                ).where(Invoice.tenant_id == UUID(tenant_id))
             )
             s = stats.one()
 
@@ -269,8 +319,7 @@ async def _load_hr_context(tenant_id: str) -> str:
                 select(
                     func.count(Employee.id).label("total"),
                     func.count(Employee.id).filter(Employee.status == "active").label("active"),
-                )
-                .where(Employee.tenant_id == UUID(tenant_id))
+                ).where(Employee.tenant_id == UUID(tenant_id))
             )
             er = emp_stats.one()
 
@@ -286,8 +335,7 @@ async def _load_hr_context(tenant_id: str) -> str:
                 select(
                     func.count(Payroll.id).label("total"),
                     func.coalesce(func.sum(Payroll.net_salary), 0).label("net_total"),
-                )
-                .where(Payroll.tenant_id == UUID(tenant_id))
+                ).where(Payroll.tenant_id == UUID(tenant_id))
             )
             pr = pay_stats.one()
 
@@ -299,17 +347,25 @@ async def _load_hr_context(tenant_id: str) -> str:
             )
             pay_list = recent_payrolls.scalars().all()
 
-            lines = [f"RRHH (empleados activos: {er.active}/{er.total} | nóminas: {pr.total} | masa salarial neta: {float(pr.net_total):.2f} €):"]
+            lines = [
+                f"RRHH (empleados activos: {er.active}/{er.total} | nóminas: {pr.total} | masa salarial neta: {float(pr.net_total):.2f} €):"
+            ]
             lines.append("  Empleados:")
             for e in emp_list:
-                lines.append(f"    · {e.name} | {e.role or '-'} | {e.department or '-'} | salario base: {float(e.base_salary or 0):.2f} € | {e.status}")
+                lines.append(
+                    f"    · {e.name} | {e.role or '-'} | {e.department or '-'} | salario base: {float(e.base_salary or 0):.2f} € | {e.status}"
+                )
             if pay_list:
                 lines.append("  Últimas nóminas:")
                 for p in pay_list:
                     fecha = p.issue_date.strftime("%d/%m/%Y") if p.issue_date else "?"
                     # Buscar nombre empleado
-                    emp_name = next((e.name for e in emp_list if e.id == p.employee_id), str(p.employee_id))
-                    lines.append(f"    · {emp_name} | neto: {float(p.net_salary or 0):.2f} € | {p.status} | {fecha}")
+                    emp_name = next(
+                        (e.name for e in emp_list if e.id == p.employee_id), str(p.employee_id)
+                    )
+                    lines.append(
+                        f"    · {emp_name} | neto: {float(p.net_salary or 0):.2f} € | {p.status} | {fecha}"
+                    )
             return "\n".join(lines)
     except Exception as e:
         logger.debug("Error cargando contexto de RRHH: %s", e)
@@ -346,12 +402,18 @@ async def _load_crm_context(tenant_id: str) -> str:
             lines = [f"CRM (clientes: {len(client_list)} | oportunidades: {len(opp_list)}):"]
             lines.append("  Clientes:")
             for c in client_list:
-                lines.append(f"    · {c.name} | {c.nif or '-'} | {c.email or '-'} | {c.client_type}")
+                lines.append(
+                    f"    · {c.name} | {c.nif or '-'} | {c.email or '-'} | {c.client_type}"
+                )
             if opp_list:
                 lines.append("  Oportunidades:")
                 for o in opp_list:
-                    client_name = next((c.name for c in client_list if c.id == o.client_id), str(o.client_id))
-                    lines.append(f"    · {o.title} | {client_name} | {float(o.expected_value or 0):.0f} € | etapa: {o.stage}")
+                    client_name = next(
+                        (c.name for c in client_list if c.id == o.client_id), str(o.client_id)
+                    )
+                    lines.append(
+                        f"    · {o.title} | {client_name} | {float(o.expected_value or 0):.0f} € | etapa: {o.stage}"
+                    )
             return "\n".join(lines)
     except Exception as e:
         logger.debug("Error cargando contexto de CRM: %s", e)
@@ -372,9 +434,10 @@ async def _load_banking_context(tenant_id: str) -> str:
             stats = await db.execute(
                 select(
                     func.count(BankTransaction.id).label("total"),
-                    func.count(BankTransaction.id).filter(BankTransaction.status == "unreconciled").label("unreconciled"),
-                )
-                .where(BankTransaction.tenant_id == UUID(tenant_id))
+                    func.count(BankTransaction.id)
+                    .filter(BankTransaction.status == "unreconciled")
+                    .label("unreconciled"),
+                ).where(BankTransaction.tenant_id == UUID(tenant_id))
             )
             sr = stats.one()
 
@@ -387,11 +450,15 @@ async def _load_banking_context(tenant_id: str) -> str:
             tx_list = txs.scalars().all()
 
             last_balance = next((float(t.balance) for t in tx_list if t.balance is not None), None)
-            lines = [f"BANCA (movimientos: {sr.total} | sin conciliar: {sr.unreconciled}{f' | último saldo: {last_balance:.2f} €' if last_balance is not None else ''}):"]
+            lines = [
+                f"BANCA (movimientos: {sr.total} | sin conciliar: {sr.unreconciled}{f' | último saldo: {last_balance:.2f} €' if last_balance is not None else ''}):"
+            ]
             for t in tx_list:
                 fecha = t.date.strftime("%d/%m/%Y") if t.date else "?"
                 signo = "+" if (t.amount or 0) >= 0 else ""
-                lines.append(f"  · {fecha} | {t.description or '-'} | {signo}{float(t.amount or 0):.2f} € | {t.status}")
+                lines.append(
+                    f"  · {fecha} | {t.description or '-'} | {signo}{float(t.amount or 0):.2f} € | {t.status}"
+                )
             return "\n".join(lines)
     except Exception as e:
         logger.debug("Error cargando contexto de banca: %s", e)

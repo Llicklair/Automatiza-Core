@@ -8,6 +8,7 @@ Ejemplo de condición:
     {"field": "node-2.success", "operator": "eq", "value": True}
     {"field": "prev.output.amount_total", "operator": "gt", "value": 1000}
 """
+
 from __future__ import annotations
 
 from typing import Any

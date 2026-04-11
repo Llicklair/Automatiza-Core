@@ -10,13 +10,16 @@ class OpportunityBase(BaseModel):
     expected_value: float = 0.0
     stage: str = "new"
 
+
 class OpportunityCreate(OpportunityBase):
     pass
+
 
 class OpportunityUpdate(BaseModel):
     title: str | None = None
     expected_value: float | None = None
     stage: str | None = None
+
 
 class OpportunityResponse(OpportunityBase):
     id: UUID
@@ -25,7 +28,9 @@ class OpportunityResponse(OpportunityBase):
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+
 # ---- Nuevo: Expansión CRM ----
+
 
 class ActivityBase(BaseModel):
     client_id: UUID | None = None
@@ -34,8 +39,10 @@ class ActivityBase(BaseModel):
     description: str
     metadata_json: dict | None = {}
 
+
 class ActivityCreate(ActivityBase):
     pass
+
 
 class ActivityResponse(ActivityBase):
     id: UUID
@@ -53,8 +60,10 @@ class EventBase(BaseModel):
     location_or_link: str | None = None
     client_id: UUID | None = None
 
+
 class EventCreate(EventBase):
     pass
+
 
 class EventResponse(EventBase):
     id: UUID
@@ -72,14 +81,17 @@ class ReservationBase(BaseModel):
     status: str = "pending"
     notes: str | None = None
 
+
 class ReservationCreate(ReservationBase):
     pass
+
 
 class ReservationUpdate(BaseModel):
     status: str | None = None
     notes: str | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
+
 
 class ReservationResponse(ReservationBase):
     id: UUID

@@ -6,6 +6,7 @@ cada invocación LLM. Si lo supera, pausa el agente y devuelve False.
 No lanza HTTPException — el grafo LangGraph lo manejaría mal.
 El caller comprueba el retorno y termina el grafo si es False.
 """
+
 import logging
 from datetime import datetime, timezone
 
@@ -22,9 +23,7 @@ async def check_agent_budget(employee_id: str, db: AsyncSession) -> bool:
 
     Efecto secundario cuando False: pausa el agente (status='paused').
     """
-    result = await db.execute(
-        select(AIEmployee).where(AIEmployee.id == employee_id)
-    )
+    result = await db.execute(select(AIEmployee).where(AIEmployee.id == employee_id))
     employee = result.scalar_one_or_none()
     if not employee:
         return False
@@ -48,9 +47,10 @@ async def check_agent_budget(employee_id: str, db: AsyncSession) -> bool:
         employee.status = "paused"
         await db.commit()
         logger.warning(
-            "Empleado '%s' pausado por presupuesto agotado "
-            "(%.4f$ / %.2f$)",
-            employee.name, monthly_spend, employee.budget_limit_usd,
+            "Empleado '%s' pausado por presupuesto agotado (%.4f$ / %.2f$)",
+            employee.name,
+            monthly_spend,
+            employee.budget_limit_usd,
         )
         return False
 

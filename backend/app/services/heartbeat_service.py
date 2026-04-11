@@ -13,6 +13,7 @@ del mismo dominio ejecutando la misma tarea.
 Registro dinámico: los jobs se crean/cancelan cuando el usuario
 crea o pausa empleados en tiempo de ejecución.
 """
+
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -33,10 +34,12 @@ HEARTBEAT_MAX_DISPATCH_PER_CYCLE = 5  # evita inundar el TaskRunner en un solo t
 
 def get_scheduler():
     from app.services.scheduler import scheduler
+
     return scheduler
 
 
 # ─── Registro / Cancelación de Jobs ──────────────────────────────────────────
+
 
 def register_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
     """Registra o reemplaza el cron job de heartbeat para un empleado.
@@ -72,6 +75,7 @@ def unregister_employee_heartbeat(employee_id: str) -> None:
 
 
 # ─── Lógica del Heartbeat ────────────────────────────────────────────────────
+
 
 async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
     """Ejecuta un ciclo de heartbeat para un empleado.
@@ -115,9 +119,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
             pending_before = int(pending_count_result.scalar() or 0)
 
             await db.execute(
-                update(AIEmployee)
-                .where(AIEmployee.id == emp_uuid)
-                .values(status="working")
+                update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="working")
             )
             await db.commit()
 
@@ -161,9 +163,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
                 await dispatch_orchestrator(str(tid))
                 dispatched += 1
             except Exception as exc:
-                logger.exception(
-                    "Heartbeat: error despachando tarea %s: %s", tid, exc
-                )
+                logger.exception("Heartbeat: error despachando tarea %s: %s", tid, exc)
                 try:
                     async with AsyncSessionLocal() as dbx:
                         await dbx.execute(
@@ -208,9 +208,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
             db.add(entry)
 
             await db.execute(
-                update(AIEmployee)
-                .where(AIEmployee.id == emp_uuid)
-                .values(status="idle")
+                update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle")
             )
             await db.commit()
             logger.debug(
@@ -225,9 +223,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
         try:
             async with AsyncSessionLocal() as db:
                 await db.execute(
-                    update(AIEmployee)
-                    .where(AIEmployee.id == emp_uuid)
-                    .values(status="idle")
+                    update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle")
                 )
                 await db.commit()
         except Exception:
@@ -235,6 +231,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
 
 
 # ─── Bootstrap en Startup ─────────────────────────────────────────────────────
+
 
 async def bootstrap_employee_heartbeats() -> None:
     """Restaura los heartbeat jobs para todos los empleados activos.
@@ -245,9 +242,7 @@ async def bootstrap_employee_heartbeats() -> None:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(AIEmployee.id, AIEmployee.tenant_id).where(
-                    AIEmployee.status != "paused"
-                )
+                select(AIEmployee.id, AIEmployee.tenant_id).where(AIEmployee.status != "paused")
             )
             employees = result.all()
 

@@ -4,6 +4,7 @@ Clasificador de documentos por reglas — 0 tokens LLM.
 Detecta tipo de documento usando keywords y patrones regex.
 Solo recurre al LLM cuando no puede clasificar con confianza.
 """
+
 import logging
 import re
 from dataclasses import dataclass, field
@@ -14,8 +15,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RuleClassification:
     """Resultado de clasificación por reglas."""
+
     document_type: str  # factura_recibida, contrato, extracto_bancario, nomina, otro
-    confidence: float   # 0.0 - 1.0
+    confidence: float  # 0.0 - 1.0
     matched_rules: list[str] = field(default_factory=list)
     key_entities: dict = field(default_factory=dict)
     needs_llm: bool = False  # True si la clasificación no es fiable
@@ -25,47 +27,80 @@ class RuleClassification:
 NIF_PATTERN = re.compile(
     r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b"
 )
-IMPORTE_PATTERN = re.compile(
-    r"(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€"
-)
-FECHA_PATTERN = re.compile(
-    r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b"
-)
-IBAN_PATTERN = re.compile(
-    r"\b(ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10})\b"
-)
+IMPORTE_PATTERN = re.compile(r"(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€")
+FECHA_PATTERN = re.compile(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b")
+IBAN_PATTERN = re.compile(r"\b(ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10})\b")
 
 # Reglas de clasificación: (keywords, tipo, peso)
 RULES = [
     # Facturas
     {
         "type": "factura_recibida",
-        "keywords": ["factura", "invoice", "nº factura", "num factura", "base imponible",
-                     "iva", "irpf", "total factura", "importe total"],
+        "keywords": [
+            "factura",
+            "invoice",
+            "nº factura",
+            "num factura",
+            "base imponible",
+            "iva",
+            "irpf",
+            "total factura",
+            "importe total",
+        ],
         "strong_keywords": ["base imponible", "iva", "total factura"],
         "requires": ["importe"],  # debe tener al menos un importe
     },
     # Nóminas
     {
         "type": "nomina",
-        "keywords": ["nómina", "nomina", "salario bruto", "salario neto", "seguridad social",
-                     "retención irpf", "devengos", "deducciones", "trabajador", "categoría profesional"],
+        "keywords": [
+            "nómina",
+            "nomina",
+            "salario bruto",
+            "salario neto",
+            "seguridad social",
+            "retención irpf",
+            "devengos",
+            "deducciones",
+            "trabajador",
+            "categoría profesional",
+        ],
         "strong_keywords": ["salario bruto", "devengos", "deducciones", "seguridad social"],
         "requires": [],
     },
     # Extractos bancarios
     {
         "type": "extracto_bancario",
-        "keywords": ["extracto", "saldo", "movimientos", "cuenta corriente", "debe", "haber",
-                     "saldo anterior", "saldo final", "fecha valor", "concepto"],
+        "keywords": [
+            "extracto",
+            "saldo",
+            "movimientos",
+            "cuenta corriente",
+            "debe",
+            "haber",
+            "saldo anterior",
+            "saldo final",
+            "fecha valor",
+            "concepto",
+        ],
         "strong_keywords": ["saldo anterior", "saldo final", "fecha valor"],
         "requires": ["iban"],
     },
     # Contratos
     {
         "type": "contrato",
-        "keywords": ["contrato", "cláusula", "clausula", "estipulaciones", "partes contratantes",
-                     "objeto del contrato", "duración", "rescisión", "firma", "comparecen"],
+        "keywords": [
+            "contrato",
+            "cláusula",
+            "clausula",
+            "estipulaciones",
+            "partes contratantes",
+            "objeto del contrato",
+            "duración",
+            "rescisión",
+            "firma",
+            "comparecen",
+        ],
         "strong_keywords": ["cláusula", "partes contratantes", "estipulaciones", "comparecen"],
         "requires": [],
     },

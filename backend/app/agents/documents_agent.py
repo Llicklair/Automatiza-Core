@@ -9,6 +9,7 @@ El LLM decide qué herramientas usar según la intención del usuario:
 
 Cada herramienta ejecuta lógica determinista (OCR, clasificación, BD).
 """
+
 import json
 import logging
 import os
@@ -50,6 +51,7 @@ def _get_llm_json():
 
 # ─── Modelos ──────────────────────────────────────────────────────────────────
 
+
 class ClassifiedDocument(BaseModel):
     document_type: str
     confidence: float | None = 0.9
@@ -90,6 +92,7 @@ REGLAS:
 
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
+
 
 @tool
 async def classify_document(tenant_id: str, document_id: str) -> str:
@@ -137,12 +140,18 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
             if file_bytes and doc.file_type and "pdf" in doc.file_type.lower():
                 try:
                     parsed_doc = parse_pdf(
-                        file_path=doc.file_path if doc.file_path and os.path.exists(doc.file_path) else None,
+                        file_path=doc.file_path
+                        if doc.file_path and os.path.exists(doc.file_path)
+                        else None,
                         file_bytes=file_bytes,
                     )
                     raw_text = parsed_doc.markdown
-                    logger.info("PDF parseado con %s: %d páginas, %d elementos",
-                                parsed_doc.parser_used, parsed_doc.total_pages, len(parsed_doc.elements))
+                    logger.info(
+                        "PDF parseado con %s: %d páginas, %d elementos",
+                        parsed_doc.parser_used,
+                        parsed_doc.total_pages,
+                        len(parsed_doc.elements),
+                    )
                 except Exception as e:
                     logger.warning("Error parsing PDF: %s", e)
             elif file_bytes:
@@ -162,8 +171,12 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
 
     # ── Clasificar: primero reglas (0 tokens), luego LLM si ambiguo ──
     rule_result = classify_by_rules(raw_text)
-    logger.info("Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
-                rule_result.document_type, rule_result.confidence * 100, rule_result.needs_llm)
+    logger.info(
+        "Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
+        rule_result.document_type,
+        rule_result.confidence * 100,
+        rule_result.needs_llm,
+    )
 
     if not rule_result.needs_llm:
         # Clasificación mecánica — 0 tokens LLM
@@ -177,17 +190,23 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
         # Fallback a LLM para documentos ambiguos
         llm = _get_llm_json()
         try:
-            response = await llm.ainvoke([
-                SystemMessage(content=CLASSIFICATION_PROMPT),
-                HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
-            ])
+            response = await llm.ainvoke(
+                [
+                    SystemMessage(content=CLASSIFICATION_PROMPT),
+                    HumanMessage(
+                        content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"
+                    ),
+                ]
+            )
             raw_content = (response.content or "").strip()
             # Strip markdown code fences if present
             if raw_content.startswith("```"):
                 raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
                 raw_content = re.sub(r"\s*```$", "", raw_content)
             if not raw_content:
-                logger.warning("LLM returned empty response for document classification, using rule fallback")
+                logger.warning(
+                    "LLM returned empty response for document classification, using rule fallback"
+                )
                 classified = ClassifiedDocument(
                     document_type=rule_result.document_type,
                     confidence=rule_result.confidence,
@@ -219,6 +238,7 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
         try:
             async with AsyncSessionLocal() as db:
                 from sqlalchemy import select as sel
+
                 res = await db.execute(
                     sel(Client).where(
                         Client.tenant_id == UUID(tenant_id),
@@ -257,8 +277,9 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 chunk_size = 1500
                 doc_chunks = []
                 from app.services.smart_chunker import Chunk
+
                 for i in range(0, len(raw_text), chunk_size):
-                    doc_chunks.append(Chunk(text=raw_text[i:i + chunk_size]))
+                    doc_chunks.append(Chunk(text=raw_text[i : i + chunk_size]))
 
             chunk_texts = [c.text for c in doc_chunks]
             vectors = await embedder.aembed_documents(chunk_texts)
@@ -268,7 +289,10 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 import sqlalchemy as _sa
 
                 from app.db.models.auth import Tenant
-                _j_res = await db.execute(_sa.select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id)))
+
+                _j_res = await db.execute(
+                    _sa.select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id))
+                )
                 _jurisdiction = _j_res.scalar() or "ES_TAX"
 
                 for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
@@ -302,11 +326,14 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 doc.status = "completed"
                 await db.commit()
     except Exception:
-        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
+        logger.warning(
+            "Failed to update parsed_content for document %s", document_id, exc_info=True
+        )
 
     # ── Emitir evento ──
     try:
         from app.services.event_bus import emit_event
+
         async with AsyncSessionLocal() as db_ev:
             await emit_event(
                 db=db_ev,
@@ -374,11 +401,14 @@ async def _search_documents_semantic_async(tenant_id: str, query: str, limit: in
                 ORDER BY distance ASC
                 LIMIT :lim
             """)
-            result = await db.execute(stmt, {
-                "query_vec": str(query_vector),
-                "tid": tenant_id,
-                "lim": limit,
-            })
+            result = await db.execute(
+                stmt,
+                {
+                    "query_vec": str(query_vector),
+                    "tid": tenant_id,
+                    "lim": limit,
+                },
+            )
             rows = result.fetchall()
 
             if not rows:
@@ -388,9 +418,7 @@ async def _search_documents_semantic_async(tenant_id: str, query: str, limit: in
             for doc_id, text_content, distance in rows:
                 similarity = max(0, 1 - distance)
                 snippet = text_content[:200].replace("\n", " ")
-                lines.append(
-                    f"- Doc ID: {doc_id} | Relevancia: {similarity:.0%} | {snippet}..."
-                )
+                lines.append(f"- Doc ID: {doc_id} | Relevancia: {similarity:.0%} | {snippet}...")
 
             return f"Resultados de búsqueda semántica ({len(rows)}):\n" + "\n".join(lines)
     except Exception as e:

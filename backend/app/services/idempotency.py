@@ -18,6 +18,7 @@ Uso:
 
 Al ser single-process, un dict en memoria es suficiente.
 """
+
 import json
 import threading
 import time
@@ -61,12 +62,14 @@ class IdempotencyGuard:
         result_summary: dict | None = None,
     ) -> None:
         key = _make_key(operation, entity_id)
-        payload = json.dumps({
-            "executed_at": datetime.now(UTC).isoformat(),
-            "operation": operation,
-            "entity_id": entity_id,
-            "result": result_summary or {},
-        })
+        payload = json.dumps(
+            {
+                "executed_at": datetime.now(UTC).isoformat(),
+                "operation": operation,
+                "entity_id": entity_id,
+                "result": result_summary or {},
+            }
+        )
         with _lock:
             _store[key] = (payload, time.time() + self.ttl)
 

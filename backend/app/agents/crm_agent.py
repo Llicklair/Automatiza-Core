@@ -2,6 +2,7 @@
 Agente CRM — gestiona el embudo de ventas, leads y oportunidades.
 Puede crear, mover y analizar oportunidades de negocio de forma autónoma.
 """
+
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -30,6 +31,7 @@ def _get_llm():
 
 # ─── Herramientas ────────────────────────────────────────────────────────────
 
+
 @tool
 async def list_opportunities(tenant_id: str, stage: str = "all") -> str:
     """
@@ -40,11 +42,17 @@ async def list_opportunities(tenant_id: str, stage: str = "all") -> str:
     """
     return await _list_opportunities_async(tenant_id, stage)
 
+
 async def _list_opportunities_async(tenant_id: str, stage: str) -> str:
     try:
         from sqlalchemy.orm import selectinload
+
         async with AsyncSessionLocal() as db:
-            query = select(Opportunity).filter(Opportunity.tenant_id == UUID(tenant_id)).options(selectinload(Opportunity.client))
+            query = (
+                select(Opportunity)
+                .filter(Opportunity.tenant_id == UUID(tenant_id))
+                .options(selectinload(Opportunity.client))
+            )
             if stage != "all":
                 query = query.filter(Opportunity.stage == stage)
             query = query.order_by(Opportunity.created_at.desc())
@@ -69,7 +77,9 @@ async def _list_opportunities_async(tenant_id: str, stage: str) -> str:
 
 
 @tool
-async def create_opportunity(tenant_id: str, client_nif: str, title: str, expected_value: float = 0, stage: str = "new") -> str:
+async def create_opportunity(
+    tenant_id: str, client_nif: str, title: str, expected_value: float = 0, stage: str = "new"
+) -> str:
     """
     Crea una nueva Oportunidad de Venta (Lead) en el CRM para un cliente existente.
     Args:
@@ -90,17 +100,21 @@ async def create_opportunity(tenant_id: str, client_nif: str, title: str, expect
 
     VALID_STAGES = {"new", "qualified", "proposal", "negotiation", "won", "lost"}
     if stage not in VALID_STAGES:
-        return f"Error: etapa inválida '{stage}'. Opciones válidas: {', '.join(sorted(VALID_STAGES))}."
+        return (
+            f"Error: etapa inválida '{stage}'. Opciones válidas: {', '.join(sorted(VALID_STAGES))}."
+        )
 
     return await _create_opportunity_async(tenant_id, client_nif, title, expected_value, stage)
 
-async def _create_opportunity_async(tenant_id: str, client_nif: str, title: str, expected_value: float, stage: str) -> str:
+
+async def _create_opportunity_async(
+    tenant_id: str, client_nif: str, title: str, expected_value: float, stage: str
+) -> str:
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Client).filter(
-                Client.tenant_id == UUID(tenant_id),
-                Client.nif == client_nif
-            ))
+            result = await db.execute(
+                select(Client).filter(Client.tenant_id == UUID(tenant_id), Client.nif == client_nif)
+            )
             client = result.scalars().first()
 
             if not client:
@@ -111,7 +125,7 @@ async def _create_opportunity_async(tenant_id: str, client_nif: str, title: str,
                 client_id=client.id,
                 title=title,
                 expected_value=expected_value,
-                stage=stage
+                stage=stage,
             )
             db.add(opp)
             await db.commit()
@@ -122,7 +136,9 @@ async def _create_opportunity_async(tenant_id: str, client_nif: str, title: str,
 
 
 @tool
-async def update_opportunity_stage(tenant_id: str, opportunity_id: str, new_stage: str, notes: str = "") -> str:
+async def update_opportunity_stage(
+    tenant_id: str, opportunity_id: str, new_stage: str, notes: str = ""
+) -> str:
     """
     Mueve una Oportunidad de Venta de una fase a otra en el Embudo.
     Args:
@@ -131,19 +147,23 @@ async def update_opportunity_stage(tenant_id: str, opportunity_id: str, new_stag
         new_stage: Nueva fase ('new', 'qualified', 'proposal', 'won', 'lost')
         notes: Nota opcional sobre el cambio de etapa
     """
-    valid_stages = ['new', 'qualified', 'proposal', 'won', 'lost']
+    valid_stages = ["new", "qualified", "proposal", "won", "lost"]
     if new_stage not in valid_stages:
         return f"Error: Fase '{new_stage}' invalida. Usa una de: {valid_stages}."
 
     return await _update_opportunity_stage_async(tenant_id, opportunity_id, new_stage, notes)
 
-async def _update_opportunity_stage_async(tenant_id: str, opportunity_id: str, new_stage: str, notes: str) -> str:
+
+async def _update_opportunity_stage_async(
+    tenant_id: str, opportunity_id: str, new_stage: str, notes: str
+) -> str:
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Opportunity).filter(
-                Opportunity.tenant_id == UUID(tenant_id),
-                Opportunity.id == UUID(opportunity_id)
-            ))
+            result = await db.execute(
+                select(Opportunity).filter(
+                    Opportunity.tenant_id == UUID(tenant_id), Opportunity.id == UUID(opportunity_id)
+                )
+            )
             opp = result.scalars().first()
 
             if not opp:
@@ -172,13 +192,15 @@ async def qualify_leads(tenant_id: str) -> str:
     """
     return await _qualify_leads_async(tenant_id)
 
+
 async def _qualify_leads_async(tenant_id: str) -> str:
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Opportunity).filter(
-                Opportunity.tenant_id == UUID(tenant_id),
-                Opportunity.stage == "new"
-            ))
+            result = await db.execute(
+                select(Opportunity).filter(
+                    Opportunity.tenant_id == UUID(tenant_id), Opportunity.stage == "new"
+                )
+            )
             new_opps = result.scalars().all()
 
             if not new_opps:
@@ -188,6 +210,7 @@ async def _qualify_leads_async(tenant_id: str) -> str:
             for opp in new_opps:
                 # Usa fromtimestamp o convierte de naive a aware de forma robusta
                 from datetime import datetime
+
                 if opp.created_at:
                     now = datetime.now(UTC)
                     op_date = opp.created_at
@@ -215,9 +238,9 @@ async def _qualify_leads_async(tenant_id: str) -> str:
                 )
 
             return (
-                f"Analisis de {len(new_opps)} leads en fase 'new':\n" +
-                "\n".join(suggestions) +
-                "\n\nPuedo mover automaticamente los leads de alta prioridad a 'qualified' si me lo indicas."
+                f"Analisis de {len(new_opps)} leads en fase 'new':\n"
+                + "\n".join(suggestions)
+                + "\n\nPuedo mover automaticamente los leads de alta prioridad a 'qualified' si me lo indicas."
             )
     except Exception as e:
         return f"Error analizando leads: {str(e)}"
@@ -249,9 +272,11 @@ async def create_client(
         client_type: Tipo de cliente ('customer' o 'supplier')
     """
     from sqlalchemy.exc import IntegrityError
+
     try:
         async with AsyncSessionLocal() as db:
             from app.db.models.models import Client as ClientModel
+
             new_client = ClientModel(
                 tenant_id=UUID(tenant_id),
                 name=name,
@@ -286,11 +311,14 @@ tools = [
     update_existing_document,
     get_document_content,
 ]
+
+
 def _get_llm_with_tools():
     return _get_llm().bind_tools(tools)
 
 
 # ─── Nodos del grafo ─────────────────────────────────────────────────────────
+
 
 async def crm_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
@@ -322,7 +350,7 @@ async def crm_agent_node(state: AgentState):
         step_id=f"crm_step_{datetime.now().timestamp()}",
         description="Analizando intentención comercial y operando sobre ventas...",
         status="completed",
-        action_taken=f"{'Invocando herramientas CRM' if response.tool_calls else 'Asistencia CRM completada.'}"
+        action_taken=f"{'Invocando herramientas CRM' if response.tool_calls else 'Asistencia CRM completada.'}",
     )
 
     if "agent_results" not in state:
@@ -340,7 +368,9 @@ def crm_finalize_node(state: AgentState):
         step_id="crm_final",
         description="Agente CRM ha finalizado sus operaciones.",
         status="completed",
-        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operaciones en BD completadas."
+        action_taken=last_msg.content
+        if isinstance(last_msg.content, str)
+        else "Operaciones en BD completadas.",
     )
 
     return {"status": "done", "agent_results": [final_result.model_dump()]}

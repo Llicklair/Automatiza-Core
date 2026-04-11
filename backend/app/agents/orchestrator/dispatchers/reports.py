@@ -1,6 +1,7 @@
 """
 Dispatcher de informes mensuales (report).
 """
+
 import logging
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
@@ -18,7 +19,6 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
     month_str = f"{_year}-{_month:02d}"
 
     try:
-
         # Llamada interna al endpoint de generación de informes
 
         # Obtener token del estado para autenticar la petición interna
@@ -95,7 +95,9 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
 
             # RRHH
             emp_q = await db.execute(
-                _select(Employee).where(and_(Employee.tenant_id == tenant_id, Employee.status == "active"))
+                _select(Employee).where(
+                    and_(Employee.tenant_id == tenant_id, Employee.status == "active")
+                )
             )
             employees = emp_q.scalars().all()
             payroll_q = await db.execute(
@@ -117,7 +119,9 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
             )
             total_clients = total_clients_q.scalar() or 0
             new_clients_q = await db.execute(
-                _select(func.count()).select_from(Client).where(
+                _select(func.count())
+                .select_from(Client)
+                .where(
                     and_(
                         Client.tenant_id == tenant_id,
                         func.date(Client.created_at) >= start,
@@ -193,12 +197,15 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
             # Generar PDF con gráficas
             import os as _os
             import uuid as _uuid
+
             pdf_bytes = generate_snapshot_pdf(
                 snap=snap_dict,
                 company_name=company_name,
                 month=month_str,
             )
-            upload_dir = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
+            upload_dir = _os.path.abspath(
+                _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+            )
             _os.makedirs(upload_dir, exist_ok=True)
             file_name = f"informe_{month_str}_{_uuid.uuid4().hex[:8]}.pdf"
             file_path = _os.path.join(upload_dir, file_name)

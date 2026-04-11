@@ -19,6 +19,7 @@ Eventos disponibles:
   - task_completed       → cuando una tarea IA termina con éxito
   - task_failed          → cuando una tarea IA falla
 """
+
 from __future__ import annotations
 
 import logging
@@ -47,10 +48,7 @@ async def emit_event(
 
     # 1. Persistir el evento para trazabilidad (DDD) e histórico IA
     domain_event = DomainEvent(
-        tenant_id=tenant_id,
-        user_id=user_id,
-        event_name=event_name,
-        payload=context
+        tenant_id=tenant_id, user_id=user_id, event_name=event_name, payload=context
     )
     db.add(domain_event)
     await db.flush()
@@ -78,13 +76,19 @@ async def emit_event(
         # 3. Construir instrucción IA enriquecida con el contexto del evento
         base_instruction = _build_instruction(wf)
         # Limitar contexto si es muy grande para no saturar el prompt
-        safe_ctx = {k: v for k, v in context.items() if not isinstance(v, (dict, list)) or len(str(v)) < 200}
+        safe_ctx = {
+            k: v for k, v in context.items() if not isinstance(v, (dict, list)) or len(str(v)) < 200
+        }
         ctx_str = ", ".join(f"{k}: {v}" for k, v in safe_ctx.items())
 
         full_instruction = (
-            f"Automatizacion '{wf.name}': {base_instruction}. "
-            f"[Contexto: {event_name} -> {ctx_str}]"
-        ) if ctx_str else base_instruction
+            (
+                f"Automatizacion '{wf.name}': {base_instruction}. "
+                f"[Contexto: {event_name} -> {ctx_str}]"
+            )
+            if ctx_str
+            else base_instruction
+        )
 
         # 4. Crear la Task que procesará el Orquestador
         task = Task(
@@ -111,9 +115,12 @@ async def emit_event(
         # 6. Disparar tarea de forma asíncrona
         try:
             from app.services.task_dispatch import dispatch_orchestrator
+
             await dispatch_orchestrator(str(task.id))
             triggered_ids.append(str(wf.id))
-            print(f"[EVENT_BUS] Evento '{event_name}' → workflow '{wf.name}' iniciado (Task {task.id})")
+            print(
+                f"[EVENT_BUS] Evento '{event_name}' → workflow '{wf.name}' iniciado (Task {task.id})"
+            )
         except Exception as e:
             execution.status = "failed"
             execution.result_log = f"Error dispatch: {str(e)}"
@@ -126,14 +133,11 @@ async def emit_event(
         import asyncio
 
         from app.api.ws.notifications import manager
+
         asyncio.create_task(
             manager.broadcast_to_tenant(
                 str(tenant_id),
-                {
-                    "type": "event",
-                    "event": event_name,
-                    "workflow_count": len(triggered_ids)
-                }
+                {"type": "event", "event": event_name, "workflow_count": len(triggered_ids)},
             )
         )
     except Exception:
@@ -145,7 +149,12 @@ async def emit_event(
 def _build_instruction(workflow: Workflow) -> str:
     """Extrae la instrucción base del workflow."""
     action_config = workflow.action_config or {}
-    return action_config.get("instruction") or workflow.description or workflow.name or "Procesar automatización"
+    return (
+        action_config.get("instruction")
+        or workflow.description
+        or workflow.name
+        or "Procesar automatización"
+    )
 
 
 def _infer_domain(workflow: Workflow, instruction: str = "") -> str:
@@ -160,6 +169,8 @@ def _infer_domain(workflow: Workflow, instruction: str = "") -> str:
         return "coordinator"
 
     # Fallbacks clásicos
-    if any(w in text for w in ["factura", "billing", "invoice"]): return "billing"
-    if any(w in text for w in ["nómina", "nomina", "rrhh", "hr"]): return "hr"
+    if any(w in text for w in ["factura", "billing", "invoice"]):
+        return "billing"
+    if any(w in text for w in ["nómina", "nomina", "rrhh", "hr"]):
+        return "hr"
     return "billing"

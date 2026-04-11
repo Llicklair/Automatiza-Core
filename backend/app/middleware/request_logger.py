@@ -1,4 +1,5 @@
 """Middleware de logging de requests con request_id y metricas."""
+
 import logging
 import time
 import uuid

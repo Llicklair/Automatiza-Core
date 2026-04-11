@@ -4,6 +4,7 @@ Uso:
     context = build_context_for_client(client, tenant)
     docx_bytes = generate_contract(template_path, context)
 """
+
 import io
 import uuid
 from datetime import date

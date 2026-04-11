@@ -8,6 +8,7 @@ from app.skills.base import BaseSkill
 
 logger = logging.getLogger(__name__)
 
+
 class SkillRegistry:
     """Registro y cargador dinámico de Skills (Habilidades Modulares)."""
 
@@ -51,6 +52,7 @@ class SkillRegistry:
                             cls.register(obj())
             except Exception as e:
                 logger.error(f"Error cargando módulo de Skill {module_name}: {e}")
+
 
 # Ejecutar carga al inicializar
 SkillRegistry.load_builtins()

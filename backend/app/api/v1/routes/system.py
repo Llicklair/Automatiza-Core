@@ -1,4 +1,5 @@
 """System routes — frontend error reporting and diagnostics."""
+
 import logging
 
 from fastapi import APIRouter, Request
