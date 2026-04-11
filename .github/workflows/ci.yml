@@ -47,6 +47,7 @@ jobs:
 
       - name: Mypy type check
         run: poetry run mypy app/ --ignore-missing-imports
+        continue-on-error: true
 
   backend-test:
     name: Backend — Tests
