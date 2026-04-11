@@ -1,7 +1,6 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from app.middleware.rate_limit import limiter
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +8,7 @@ import app.api.v1.schemas.crm as schemas
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Activity, Event, Opportunity, Reservation, User
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/crm", tags=["crm"])
 
@@ -62,11 +62,11 @@ async def update_opportunity(
     opp = result.scalar_one_or_none()
     if not opp:
         raise HTTPException(status_code=404, detail="Oportunidad no encontrada")
-    
+
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(opp, key, value)
-        
+
     await db.commit()
     await db.refresh(opp)
     return opp
@@ -87,7 +87,7 @@ async def list_activities(
         query = query.where(Activity.client_id == client_id)
     if opportunity_id:
         query = query.where(Activity.opportunity_id == opportunity_id)
-        
+
     query = query.order_by(desc(Activity.created_at))
     result = await db.execute(query)
     return result.scalars().all()

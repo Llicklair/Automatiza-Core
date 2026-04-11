@@ -8,6 +8,7 @@ El caller comprueba el retorno y termina el grafo si es False.
 """
 import logging
 from datetime import datetime, timezone
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,6 +72,7 @@ async def record_token_usage(
     No hace commit — el caller gestiona la transacción.
     """
     import uuid
+
     from app.db.models.ai_employees import TokenLedger
 
     # Coste estimado: gemini-2.5-flash ~$0.00015/1k input + $0.0006/1k output

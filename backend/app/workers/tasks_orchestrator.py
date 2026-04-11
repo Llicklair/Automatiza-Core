@@ -7,8 +7,8 @@ import logging
 import uuid
 from datetime import UTC
 
-from app.services.idempotency import IdempotencyGuard
 from app.services.exec_log_store import push as log_push
+from app.services.idempotency import IdempotencyGuard
 
 logger = logging.getLogger(__name__)
 
@@ -215,11 +215,13 @@ async def _build_tenant_context(tenant_id: str, db) -> str:
     Carga contexto del tenant desde BD y lo devuelve como string para inyectar en el intent.
     Incluye: nombre empresa, NIF, fecha actual, primeros clientes disponibles.
     """
+    import uuid as _uuid
     from datetime import date
+
     from sqlalchemy import select
+
     from app.db.models.auth import Tenant
     from app.db.models.models import Client
-    import uuid as _uuid
 
     lines = [f"Fecha actual: {date.today().strftime('%d/%m/%Y')}. Moneda: EUR. Pais: Espana."]
 

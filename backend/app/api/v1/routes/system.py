@@ -1,6 +1,5 @@
 """System routes — frontend error reporting and diagnostics."""
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field

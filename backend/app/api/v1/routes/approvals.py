@@ -9,12 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.schemas.tasks import ApprovalDecision, PendingApprovalOut
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import PendingApproval, Task, User, WorkflowExecution
-from app.api.v1.schemas.tasks import ApprovalDecision, PendingApprovalOut
-from app.services.audit import log_action
 from app.middleware.rate_limit import limiter
+from app.services.audit import log_action
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -100,7 +100,8 @@ async def cleanup_approvals(
     current_user: User = Depends(get_current_user),
 ):
     """Elimina TODAS las aprobaciones. Las pendientes se rechazan y sus tareas/workflows se cancelan."""
-    from sqlalchemy import delete as sql_delete, update as sql_update
+    from sqlalchemy import delete as sql_delete
+    from sqlalchemy import update as sql_update
 
     # Obtener aprobaciones pendientes para cancelar sus tareas/workflows
     pending_result = await db.execute(

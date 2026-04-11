@@ -8,22 +8,28 @@ from datetime import datetime
 _logger = logging.getLogger(__name__)
 
 from app.services._pdf_base import (
-    REPORTLAB_AVAILABLE, _common_styles, _fmt_eur, _make_doc,
-    _table_header_style, _format_date,
+    REPORTLAB_AVAILABLE,
+    _common_styles,
+    _fmt_eur,
+    _format_date,
+    _make_doc,
+    _table_header_style,
 )
 
 if REPORTLAB_AVAILABLE:
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.shapes import Drawing
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        HRFlowable,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle,
     )
-    from reportlab.graphics.shapes import Drawing
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
-    from reportlab.graphics.charts.piecharts import Pie
 
 
 # ---------------------------------------------------------------------------

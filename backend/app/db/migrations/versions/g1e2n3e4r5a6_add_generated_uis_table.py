@@ -5,7 +5,6 @@ Revises: h0m1e2r3g4e5
 Create Date: 2026-04-08
 
 """
-import uuid
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

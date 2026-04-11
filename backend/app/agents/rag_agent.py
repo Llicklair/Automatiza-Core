@@ -8,13 +8,13 @@ El LLM decide qué herramientas usar según la intención del usuario:
 """
 import logging
 import uuid
+from datetime import datetime
 
 import sqlalchemy as sa
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-from datetime import datetime
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -24,8 +24,7 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.config import settings
-from app.core.llm_factory import get_llm, get_embedder
+from app.core.llm_factory import get_embedder, get_llm
 from app.db.base import AsyncSessionLocal
 from app.db.models.embeddings import DocumentEmbedding
 

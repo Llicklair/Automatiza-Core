@@ -5,8 +5,13 @@ import io
 from datetime import datetime
 
 from app.services._pdf_base import (
-    REPORTLAB_AVAILABLE, _common_styles, _fmt_eur, _make_doc, _table_header_style, _format_date,
-    build_theme, table_style_commands,
+    REPORTLAB_AVAILABLE,
+    _common_styles,
+    _format_date,
+    _make_doc,
+    _table_header_style,
+    build_theme,
+    table_style_commands,
 )
 
 if REPORTLAB_AVAILABLE:
@@ -15,7 +20,14 @@ if REPORTLAB_AVAILABLE:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import (
+        HRFlowable,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
 
 # ---------------------------------------------------------------------------

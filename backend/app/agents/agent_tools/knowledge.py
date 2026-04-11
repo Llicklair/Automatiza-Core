@@ -3,10 +3,13 @@ Herramientas para gestionar la memoria a largo plazo (TenantKnowledge).
 Permite a los agentes IA persistir y consultar datos contextuales del tenant.
 """
 from uuid import UUID
+
 from langchain_core.tools import tool
-from sqlalchemy import select, delete
-from app.db.models.models import TenantKnowledge
+from sqlalchemy import delete
+
 from app.agents.agent_tools import get_sync_db
+from app.db.models.models import TenantKnowledge
+
 
 @tool
 def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:

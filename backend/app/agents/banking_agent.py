@@ -8,7 +8,6 @@ El LLM decide qué herramientas usar según la intención del usuario:
 """
 import json
 import logging
-from collections import defaultdict
 from datetime import date, timedelta
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -24,7 +23,6 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.config import settings
 from app.core.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
@@ -237,7 +235,9 @@ Máximo 200 palabras. NO inventes datos."""),
 async def _get_psd2_credentials(tenant_id: str) -> dict | None:
     """Obtiene credenciales PSD2 del tenant si están configuradas."""
     import uuid
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantIntegration
     from app.services.encryption import decrypt_credentials
@@ -283,9 +283,12 @@ async def reconcile_transactions(tenant_id: str, tolerance_days: int = 3, tolera
 async def _reconcile_transactions_async(
     tenant_id: str, tolerance_days: int, tolerance_amount: float,
 ) -> str:
-    from sqlalchemy import select, and_, or_
+    from uuid import UUID
+
+    from sqlalchemy import or_, select
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, Client
+    from app.db.models.models import Client, Invoice
 
     try:
         # 1. Obtener transacciones (PSD2 o demo)

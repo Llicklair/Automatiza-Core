@@ -8,22 +8,28 @@ from datetime import datetime
 _logger = logging.getLogger(__name__)
 
 from app.services._pdf_base import (
-    REPORTLAB_AVAILABLE, _common_styles, _fmt_eur, _make_doc,
-    _table_header_style, _format_date,
+    REPORTLAB_AVAILABLE,
+    _common_styles,
+    _make_doc,
+    _table_header_style,
 )
 
 if REPORTLAB_AVAILABLE:
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.shapes import Drawing
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        HRFlowable,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
     )
-    from reportlab.graphics.shapes import Drawing
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
-    from reportlab.graphics.charts.piecharts import Pie
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +238,8 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
     resumen = snap.get("resumen_ejecutivo", "")
     period_label = snap.get("period_label", period)
 
-    fmt_eur = lambda v: f"{v:,.2f} \u20ac".replace(",", "X").replace(".", ",").replace("X", ".")
+    def fmt_eur(v):
+        return f"{v:,.2f} \u20ac".replace(",", "X").replace(".", ",").replace("X", ".")
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(

@@ -1,10 +1,24 @@
 """Modelos de facturacion: Facturas, Presupuestos y Recurrentes."""
 
-from .common import (
-    Base, Column, Boolean, DateTime, Date, ForeignKey, Integer, Numeric, String, Text, UUID, JSONB,
-    relationship, uuid, utcnow,
-)
 from sqlalchemy import UniqueConstraint
+
+from .common import (
+    JSONB,
+    UUID,
+    Base,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
+)
 
 
 class InvoiceSeries(Base):

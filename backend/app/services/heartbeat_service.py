@@ -22,7 +22,7 @@ from sqlalchemy import func, select, update
 
 from app.agents.budget_guard import check_agent_budget
 from app.db.base import AsyncSessionLocal
-from app.db.models.ai_employees import AIEmployee, ActivityEntry
+from app.db.models.ai_employees import ActivityEntry, AIEmployee
 from app.db.models.tasks import Task
 
 logger = logging.getLogger(__name__)

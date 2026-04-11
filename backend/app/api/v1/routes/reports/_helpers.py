@@ -17,6 +17,7 @@ from app.db.models.models import (
     Invoice,
     Payroll,
 )
+
 from ._schemas import (
     CompanySnapshot,
     FiscalIRPF,

@@ -10,7 +10,6 @@ Cada herramienta ejecuta lógica determinista (BD, openpyxl, pandas).
 """
 import logging
 import os
-import re
 import uuid
 from datetime import datetime, timezone
 
@@ -19,7 +18,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel
+from sqlalchemy.future import select
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -31,13 +30,12 @@ from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm
 from app.db.base import AsyncSessionLocal
-from app.db.models.tenant import TenantDocument
+from app.db.models.accounting import BankTransaction
 from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 from app.db.models.hr import Employee, Payroll
 from app.db.models.inventory import Product
-from app.db.models.accounting import BankTransaction
-from sqlalchemy.future import select
+from app.db.models.tenant import TenantDocument
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +172,7 @@ def _hex_to_lighter(hex_color: str, factor: float = 0.4) -> str:
 
 def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None) -> None:
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
     _theme = theme or {}
@@ -283,6 +281,7 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
         return f"Error: No se reconocieron los datasets '{datasets_str}'. Opciones: {', '.join(_FETCHER_MAP.keys())}"
 
     from uuid import UUID as _UUID
+
     from app.api.v1.routes.templates import get_default_theme
 
     _theme = None
@@ -402,8 +401,9 @@ async def import_excel(tenant_id: str, document_id: str, target: str = "", sheet
 
 async def _import_excel_async(tenant_id: str, document_id: str, target: str, sheet_name: str) -> str:
     import openpyxl
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import TenantDocument, Client, Product, Employee
+    from app.db.models.models import Client, Employee, Product, TenantDocument
 
     MODEL_MAP = {"Client": Client, "Product": Product, "Employee": Employee}
 
@@ -544,7 +544,9 @@ async def _modify_excel_async(
     tenant_id: str, document_id: str, modifications_json: str, default_sheet: str,
 ) -> str:
     import json as json_mod
+
     import openpyxl
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantDocument
 
@@ -616,7 +618,7 @@ async def _modify_excel_async(
                 await db.commit()
 
         result_lines = [
-            f"Excel modificado correctamente.",
+            "Excel modificado correctamente.",
             f"Celdas actualizadas: {applied}",
         ]
         if errors:
@@ -644,6 +646,7 @@ async def read_excel(tenant_id: str, document_id: str, sheet_name: str = "", max
 
 async def _read_excel_async(tenant_id: str, document_id: str, sheet_name: str, max_rows: int) -> str:
     import openpyxl
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantDocument
 
@@ -660,7 +663,7 @@ async def _read_excel_async(tenant_id: str, document_id: str, sheet_name: str, m
             if not doc:
                 return f"Error: Documento {document_id} no encontrado."
             if not doc.file_path or not os.path.exists(doc.file_path):
-                return f"Error: Archivo no encontrado en disco."
+                return "Error: Archivo no encontrado en disco."
 
         wb = openpyxl.load_workbook(doc.file_path, read_only=True, data_only=True)
 

@@ -6,43 +6,54 @@ Este archivo garantiza que cualquier import existente del tipo:
 siga funcionando sin cambios.
 """
 
-from .common import utcnow  # noqa: F401
+# --- Accounting ---
+from .accounting import BankTransaction, FixedAsset, JournalEntry, JournalLine  # noqa: F401
+
+# --- AI Employees ---
+from .ai_employees import ActivityEntry, AgentSkill, AIEmployee, TokenLedger  # noqa: F401
 
 # --- Auth ---
-from .auth import Tenant, User, PasswordResetToken  # noqa: F401
-
-# --- Tasks & Audit ---
-from .tasks import Task, AuditLog, PendingApproval  # noqa: F401
-
-# --- Tenant config ---
-from .tenant import TenantIntegration, TenantKnowledge, TenantDocument, TenantLlmConfig  # noqa: F401
-
-# --- CRM ---
-from .crm import Client, Opportunity, Activity  # noqa: F401
+from .auth import PasswordResetToken, Tenant, User  # noqa: F401
 
 # --- Billing ---
-from .billing import Invoice, InvoiceLine, InvoiceSeries, Quote, QuoteLine, RecurringInvoice  # noqa: F401
+from .billing import (  # noqa: F401
+    Invoice,
+    InvoiceLine,
+    InvoiceSeries,
+    Quote,
+    QuoteLine,
+    RecurringInvoice,
+)
+
+# --- Calendar ---
+from .calendar import Event, Reservation  # noqa: F401
+from .common import utcnow  # noqa: F401
+
+# --- CRM ---
+from .crm import Activity, Client, Opportunity  # noqa: F401
+
+# --- HR ---
+from .hr import Candidate, Employee, Payroll, RecruitmentPosition  # noqa: F401
 
 # --- Inventory ---
 from .inventory import Product, StockMovement  # noqa: F401
 
 # --- Orders ---
-from .orders import SalesOrder, SalesOrderLine, PurchaseOrder, PurchaseOrderLine  # noqa: F401
-
-# --- HR ---
-from .hr import Employee, Payroll, RecruitmentPosition, Candidate  # noqa: F401
-
-# --- Accounting ---
-from .accounting import JournalEntry, JournalLine, BankTransaction, FixedAsset  # noqa: F401
+from .orders import PurchaseOrder, PurchaseOrderLine, SalesOrder, SalesOrderLine  # noqa: F401
 
 # --- Projects ---
 from .projects import Project, ProjectTask  # noqa: F401
 
-# --- Calendar ---
-from .calendar import Event, Reservation  # noqa: F401
+# --- Tasks & Audit ---
+from .tasks import AuditLog, PendingApproval, Task  # noqa: F401
+
+# --- Tenant config ---
+from .tenant import (  # noqa: F401
+    TenantDocument,
+    TenantIntegration,
+    TenantKnowledge,
+    TenantLlmConfig,
+)
 
 # --- Workflows ---
-from .workflows import Workflow, WorkflowExecution, DomainEvent  # noqa: F401
-
-# --- AI Employees ---
-from .ai_employees import AIEmployee, AgentSkill, TokenLedger, ActivityEntry  # noqa: F401
+from .workflows import DomainEvent, Workflow, WorkflowExecution  # noqa: F401

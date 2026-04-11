@@ -1,8 +1,18 @@
 """Modelos CRM: Clientes, Oportunidades y Actividades."""
 
 from .common import (
-    Base, Column, DateTime, ForeignKey, Numeric, String, Text, UUID, JSONB,
-    relationship, uuid, utcnow,
+    JSONB,
+    UUID,
+    Base,
+    Column,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
 )
 
 

@@ -7,13 +7,13 @@ Endpoints:
   POST /hr/documents/{id}/approve — Marca como aprobado
   DELETE /hr/documents/{id}    — Elimina un borrador
 """
-import uuid
 import logging
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Column, String, Text, DateTime, JSON, select, desc
+from sqlalchemy import JSON, Column, DateTime, String, Text, desc, select
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,6 +71,7 @@ class HRDocumentOut(BaseModel):
 
 import base64 as _b64
 import os as _os
+
 
 def _load_sepe_logo_b64() -> str:
     """Carga el logo SEPE como data URI PNG para embeber en HTML."""
@@ -214,7 +215,8 @@ async def generate_hr_document(
     current_user: User = Depends(get_current_user),
 ):
     """Genera un borrador de documento laboral usando el LLM."""
-    from langchain_core.messages import SystemMessage, HumanMessage
+    from langchain_core.messages import HumanMessage, SystemMessage
+
     from app.core.llm_factory import get_llm_for_tenant
 
     # Build context with employee data if provided

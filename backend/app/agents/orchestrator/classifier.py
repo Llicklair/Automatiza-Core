@@ -5,9 +5,9 @@ Incluye clasificación por LLM (semántica) y fallback por palabras clave.
 import logging
 
 from app.agents.orchestrator.state import (
+    VALID_DOMAINS,
     OrchestratorState,
     TaskStatus,
-    VALID_DOMAINS,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,6 +120,7 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
         tenant_id = state.get("tenant_id", "")
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
+
             from app.core.llm_factory import get_llm
             from app.services.llm_cache import llm_cache
 

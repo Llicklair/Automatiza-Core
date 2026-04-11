@@ -39,7 +39,7 @@ class NordigenClient:
         """Obtiene o renueva el token de acceso."""
         if self._secret_id == "DEMO_PSD2_ID":
             return "demo_token_123"
-            
+
         if self._access_token:
             return self._access_token
         resp = await self._client.post(
@@ -115,7 +115,7 @@ class NordigenClient:
         """Metadatos de una cuenta (IBAN, nombre, moneda)."""
         if self._secret_id == "DEMO_PSD2_ID":
             return {"iban": "ES9121000418401234567891", "name": "Cuenta Principal Empresa"}
-            
+
         await self._get_access_token()
         resp = await self._client.get(
             f"/accounts/{account_id}/details/",
@@ -128,7 +128,7 @@ class NordigenClient:
         """Saldos actuales de una cuenta (disponible, reservado)."""
         if self._secret_id == "DEMO_PSD2_ID":
             return [{"balanceType": "interimAvailable", "balanceAmount": {"amount": "14250.00", "currency": "EUR"}}]
-            
+
         await self._get_access_token()
         resp = await self._client.get(
             f"/accounts/{account_id}/balances/",
@@ -170,7 +170,7 @@ class NordigenClient:
                     }
                 ]
             }
-            
+
         await self._get_access_token()
         params = {}
         if date_from: params["date_from"] = date_from.isoformat()

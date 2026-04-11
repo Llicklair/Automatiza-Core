@@ -10,15 +10,14 @@ Módulos internos:
 """
 import logging
 from contextvars import ContextVar
-from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
-from app.core.config import settings
-from app.core._llm_mock import MockChatModel
-from app.core._llm_gemini import GeminiSafeWrapper
 from app.core._llm_claude_code import ClaudeCodeChatModel
+from app.core._llm_gemini import GeminiSafeWrapper
+from app.core._llm_mock import MockChatModel
+from app.core.config import settings
 
 # ContextVar para propagar el LLM del tenant a todos los agentes del mismo request
 _tenant_llm_ctx: ContextVar = ContextVar("_tenant_llm_ctx", default=None)
@@ -114,6 +113,7 @@ async def get_llm_for_tenant(
     _log = logging.getLogger(__name__)
     try:
         from sqlalchemy import select
+
         from app.db.models.models import TenantLlmConfig
         from app.services.encryption import decrypt_credentials
 

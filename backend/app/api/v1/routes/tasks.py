@@ -6,10 +6,17 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.schemas.tasks import AuditLogOut, TaskCreate, TaskOut
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import AuditLog, PendingApproval, Task, TenantDocument, User, WorkflowExecution
-from app.api.v1.schemas.tasks import AuditLogOut, TaskCreate, TaskOut
+from app.db.models.models import (
+    AuditLog,
+    PendingApproval,
+    Task,
+    TenantDocument,
+    User,
+    WorkflowExecution,
+)
 from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -86,7 +93,8 @@ async def cleanup_tasks(
     current_user: User = Depends(get_current_user),
 ):
     """Elimina TODAS las tareas del tenant. Las activas se cancelan primero."""
-    from sqlalchemy import delete as sql_delete, update as sql_update
+    from sqlalchemy import delete as sql_delete
+    from sqlalchemy import update as sql_update
 
     # Obtener TODAS las tareas del tenant
     ids_result = await db.execute(

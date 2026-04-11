@@ -12,13 +12,13 @@ Endpoints:
   DELETE /generative-ui/{id}     — Elimina una interfaz
 """
 import asyncio
-import uuid
 import logging
+import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Column, String, Text, DateTime, Boolean, JSON, select, desc
+from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text, desc, select
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -223,8 +223,10 @@ async def debug_llm(
 ):
     """Diagnóstico rápido: verifica que el LLM responde."""
     import shutil
-    from app.core.llm_factory import get_llm_for_tenant
+
     from langchain_core.messages import HumanMessage
+
+    from app.core.llm_factory import get_llm_for_tenant
 
     info = {
         "claude_bin_found": shutil.which("claude") or "NOT IN PATH",
@@ -256,7 +258,8 @@ async def generate_ui(
     current_user: User = Depends(get_current_user),
 ):
     """Genera una interfaz HTML a partir del prompt del usuario."""
-    from langchain_core.messages import SystemMessage, HumanMessage
+    from langchain_core.messages import HumanMessage, SystemMessage
+
     from app.core.llm_factory import get_llm_for_tenant
 
     try:

@@ -12,7 +12,7 @@ Campos añadidos según estructura real de nóminas y contratos españoles:
 """
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 revision = "d1e2f3a4b5c6"
 down_revision = "c4d5e6f7a8b9"

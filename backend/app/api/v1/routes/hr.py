@@ -4,21 +4,38 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import Response
-from app.middleware.rate_limit import limiter
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.middleware.rate_limit import limiter
+
 logger = logging.getLogger(__name__)
 
 from app.api.v1.schemas.hr import (
-    EmployeeCreate, EmployeeResponse, EmployeeUpdate,
-    FiniquitoRequest, LiquidacionRequest, RegistroJornadaRequest,
-    PayrollCalculateResponse, PayrollCreate, PayrollResponse, PayrollSimpleCreate,
+    EmployeeCreate,
+    EmployeeResponse,
+    EmployeeUpdate,
+    FiniquitoRequest,
+    LiquidacionRequest,
+    PayrollCalculateResponse,
+    PayrollCreate,
+    PayrollResponse,
+    PayrollSimpleCreate,
     PayrollUpdate,
+    RegistroJornadaRequest,
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
@@ -312,7 +329,7 @@ async def approve_payroll(
         raise HTTPException(status_code=404, detail="Nómina no encontrada")
 
     # ── State machine: valida que la transición draft → approved esté permitida ──
-    from app.services.state_machine import validate_transition, InvalidTransitionError
+    from app.services.state_machine import InvalidTransitionError, validate_transition
     try:
         validate_transition("Payroll", payroll.status, "approved")
     except InvalidTransitionError as e:

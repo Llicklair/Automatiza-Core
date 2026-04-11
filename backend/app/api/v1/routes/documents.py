@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 from app.core.dependencies import get_current_user
-from app.middleware.rate_limit import limiter
 from app.db.base import get_db
 from app.db.models.models import Task, Tenant, TenantDocument, User
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -43,7 +43,7 @@ class DocumentOut(BaseModel):
 @limiter.limit("30/minute")
 @router.post("/upload", response_model=DocumentOut)
 async def upload_document(request: Request,
-                          
+
     file: UploadFile = File(...),
     category: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
@@ -162,7 +162,7 @@ class ScanResultOut(BaseModel):
 @limiter.limit("30/minute")
 @router.post("/scan", response_model=list[ScanResultOut])
 async def scan_documents(request: Request,
-                         
+
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -272,7 +272,7 @@ async def scan_documents(request: Request,
 @limiter.limit("30/minute")
 @router.post("/bulk", response_model=list[DocumentOut])
 async def upload_bulk_documents(request: Request,
-                                
+
     file: UploadFile = File(...),
     category: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
@@ -287,7 +287,7 @@ async def upload_bulk_documents(request: Request,
 
     # Guardar ZIP en memoria
     contents = await file.read()
-    
+
     docs_created = []
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -299,12 +299,12 @@ async def upload_bulk_documents(request: Request,
 
                 # Extraer archivo
                 extracted_data = z.read(info.filename)
-                
+
                 # Nombre original base (sin directorios)
                 original_name = os.path.basename(info.filename)
                 if not original_name:
                     continue
-                    
+
                 ext = os.path.splitext(original_name)[1]
                 unique_name = f"{uuid.uuid4().hex}{ext}"
                 file_path = os.path.join(UPLOAD_DIR, unique_name)
@@ -315,7 +315,7 @@ async def upload_bulk_documents(request: Request,
                 # Registrar documento
                 import mimetypes
                 mime_type, _ = mimetypes.guess_type(original_name)
-                
+
                 doc = TenantDocument(
                     tenant_id=current_user.tenant_id,
                     uploaded_by=current_user.id,
@@ -329,7 +329,7 @@ async def upload_bulk_documents(request: Request,
                 db.add(doc)
                 await db.commit()
                 await db.refresh(doc)
-                
+
                 # Crear tarea para este documento
                 from app.db.models.models import Task
                 from app.services.task_dispatch import dispatch_orchestrator
@@ -351,9 +351,9 @@ async def upload_bulk_documents(request: Request,
                 await db.refresh(doc)
 
                 await dispatch_orchestrator(str(task.id))
-                
+
                 docs_created.append(doc)
-                
+
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="El archivo ZIP está corrupto o es inválido")
 
@@ -363,13 +363,14 @@ async def upload_bulk_documents(request: Request,
 @limiter.limit("30/minute")
 @router.get("/export")
 async def export_documents(request: Request,
-                           
+
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Exporta todos los documentos del tenant como un archivo ZIP."""
     import io
     import zipfile
+
     from fastapi.responses import StreamingResponse
 
     result = await db.execute(
@@ -414,7 +415,7 @@ async def export_documents(request: Request,
 @limiter.limit("30/minute")
 @router.get("", response_model=list[DocumentOut])
 async def list_documents(request: Request,
-                         
+
     category: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -426,10 +427,10 @@ async def list_documents(request: Request,
         .order_by(desc(TenantDocument.created_at))
         .limit(50)
     )
-    
+
     if category and category != "all":
         query = query.where(TenantDocument.category == category)
-        
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -437,7 +438,7 @@ async def list_documents(request: Request,
 @limiter.limit("30/minute")
 @router.delete("/{document_id}", status_code=200)
 async def delete_document(request: Request,
-                          
+
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -476,7 +477,7 @@ async def delete_document(request: Request,
 @limiter.limit("30/minute")
 @router.get("/{document_id}/download")
 async def download_document(request: Request,
-                            
+
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -639,7 +640,7 @@ async def download_document(request: Request,
 @limiter.limit("30/minute")
 @router.patch("/{document_id}/content", response_model=DocumentOut)
 async def update_document_content(request: Request,
-                                  
+
     document_id: uuid.UUID,
     body: dict,
     db: AsyncSession = Depends(get_db),
@@ -714,7 +715,7 @@ async def update_document_content(request: Request,
 @limiter.limit("30/minute")
 @router.get("/by-category/{category}", response_model=list[DocumentOut])
 async def list_documents_by_category(request: Request,
-                                     
+
     category: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1013,7 +1014,9 @@ async def generate_contract(
 
     # Construir contexto según tipo de entidad
     from app.services.contract_generator import (
-        build_context_for_client, build_context_for_employee, generate_contract,
+        build_context_for_client,
+        build_context_for_employee,
+        generate_contract,
     )
 
     entity = None
@@ -1100,7 +1103,7 @@ async def delete_contract_template(
 @limiter.limit("30/minute")
 @router.post("/import-db", response_model=list[ImportDBOut])
 async def import_database(request: Request,
-                          
+
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

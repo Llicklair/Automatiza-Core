@@ -18,6 +18,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+
 from app.agents.agent_tools.documents import (
     create_document,
     get_document_content,
@@ -27,9 +28,8 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.db.models.models import Employee, Payroll
-from app.core.config import settings
 from app.core.llm_factory import get_llm
+from app.db.models.models import Employee, Payroll
 
 
 def _get_llm():
@@ -119,9 +119,10 @@ async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int,
             # --- Generar PDF y Guardar en TenantDocument ---
             document_id = None
             try:
-                from app.services.pdf_service import generate_payroll_pdf
-                from app.db.models.models import TenantDocument, Tenant
                 import os
+
+                from app.db.models.models import Tenant, TenantDocument
+                from app.services.pdf_service import generate_payroll_pdf
 
                 # Carga datos para el PDF
                 async with AsyncSessionLocal() as db_pdf:
@@ -284,13 +285,14 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     status="draft",
                 )
                 db.add(payroll)
-                
+
                 # --- Generar PDF silencioso para cada nómina del bloque ---
                 try:
-                    from app.services.pdf_service import generate_payroll_pdf
-                    from app.db.models.models import TenantDocument, Tenant
                     import os
-                    
+
+                    from app.db.models.models import TenantDocument
+                    from app.services.pdf_service import generate_payroll_pdf
+
                     payroll_pdf_data = {
                         "employee": {
                             "name": emp.name,
@@ -327,7 +329,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     os.makedirs(upload_dir, exist_ok=True)
                     file_path = os.path.join(upload_dir, file_name)
                     with open(file_path, "wb") as f: f.write(pdf_bytes)
-                    
+
                     new_doc = TenantDocument(
                         tenant_id=UUID(tenant_id),
                         file_name=file_name,
@@ -445,6 +447,7 @@ async def _create_employee_async(
     role: str, department: str, email: str, irpf_rate: float,
 ) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
 
     if not name.strip():
@@ -535,6 +538,7 @@ async def _update_payroll_async(
     base_salary_str: str, deductions_str: str, notes: str,
 ) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
 
     try:
@@ -624,7 +628,8 @@ async def approve_payroll(tenant_id: str, payroll_id: str = "", approve_all: boo
 async def _approve_payroll_async(
     tenant_id: str, payroll_id: str, approve_all: bool, month: int, year: int,
 ) -> str:
-    from sqlalchemy import select, and_
+    from sqlalchemy import and_, select
+
     from app.db.base import AsyncSessionLocal
 
     try:
@@ -706,6 +711,7 @@ async def list_payrolls(tenant_id: str, month: int = 0, year: int = 0, status_fi
 
 async def _list_payrolls_async(tenant_id: str, month: int, year: int, status_filter: str) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
 
     try:

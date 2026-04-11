@@ -1,8 +1,8 @@
 """
 Almacén en memoria para logs de ejecución de tareas.
 """
-import time
 import threading
+import time
 
 _LOG_TTL = 7200  # 2 horas
 

@@ -6,7 +6,6 @@ y enruta el mensaje al orquestador de agentes IA.
 """
 import logging
 import secrets
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -17,9 +16,9 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import TenantIntegration, User
-from app.integrations.telegram_client import TelegramClient, TelegramUpdate
+from app.integrations.telegram_client import TelegramClient
 from app.middleware.rate_limit import limiter
-from app.services.encryption import encrypt_credentials, decrypt_credentials
+from app.services.encryption import decrypt_credentials, encrypt_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +92,7 @@ async def _process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: 
     """Crea una Task en BD, despacha al orquestador, espera resultado y responde por Telegram."""
     import asyncio
     from uuid import UUID as _UUID
+
     from sqlalchemy import select as _sel
 
     try:
@@ -199,11 +199,11 @@ async def _handle_link_command(
             await db.commit()
 
             await _send_reply(chat_id, (
-                f"¡Vinculación exitosa! 🎉\n\n"
-                f"Este chat está ahora conectado a tu empresa.\n"
-                f"Puedes escribirme cualquier cosa: crear facturas, consultar datos, "
-                f"gestionar empleados, etc.\n\n"
-                f"Escribe tu primera solicitud para empezar."
+                "¡Vinculación exitosa! 🎉\n\n"
+                "Este chat está ahora conectado a tu empresa.\n"
+                "Puedes escribirme cualquier cosa: crear facturas, consultar datos, "
+                "gestionar empleados, etc.\n\n"
+                "Escribe tu primera solicitud para empezar."
             ))
             return
 

@@ -28,7 +28,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.models import Task, Workflow, WorkflowExecution, DomainEvent
+from app.db.models.models import DomainEvent, Task, Workflow, WorkflowExecution
 
 _logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ async def emit_event(
     for wf in workflows:
         wf_config = wf.trigger_config or {}
         wf_events: list[str] = wf_config.get("events", [])
-        
+
         # Escuchar el evento concreto o "any" (comodín)
         if event_name not in wf_events and "any" not in wf_events:
             continue
@@ -80,7 +80,7 @@ async def emit_event(
         # Limitar contexto si es muy grande para no saturar el prompt
         safe_ctx = {k: v for k, v in context.items() if not isinstance(v, (dict, list)) or len(str(v)) < 200}
         ctx_str = ", ".join(f"{k}: {v}" for k, v in safe_ctx.items())
-        
+
         full_instruction = (
             f"Automatizacion '{wf.name}': {base_instruction}. "
             f"[Contexto: {event_name} -> {ctx_str}]"
@@ -124,6 +124,7 @@ async def emit_event(
     # 7. Notificar via WebSocket (UI dinámica)
     try:
         import asyncio
+
         from app.api.ws.notifications import manager
         asyncio.create_task(
             manager.broadcast_to_tenant(

@@ -1,8 +1,18 @@
 """Modelos de inventario: Productos y Movimientos de stock."""
 
 from .common import (
-    Base, Column, DateTime, ForeignKey, Integer, Numeric, String, Text, UUID,
-    relationship, uuid, utcnow,
+    UUID,
+    Base,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
 )
 
 

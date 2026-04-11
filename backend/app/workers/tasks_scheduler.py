@@ -177,8 +177,9 @@ def _should_run_now(config: dict, now) -> bool:
         return False
 
     try:
-        from croniter import croniter
         from datetime import timedelta
+
+        from croniter import croniter
         # Ensure we're checking if the current minute is a match.
         # croniter returns next matching sequence. We check if 'now' is a match
         # by seeing if checking a minute ago yields 'now'.
@@ -210,8 +211,8 @@ async def catchup_missed_workflows():
 
 
 async def _catchup_missed_workflows():
-    from datetime import datetime, timedelta
     import zoneinfo
+    from datetime import datetime, timedelta
 
     from croniter import croniter
     from sqlalchemy import select
@@ -376,7 +377,9 @@ async def process_recurring_invoices():
 
 async def _process_recurring_invoices():
     import datetime as dt_module
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 
@@ -476,7 +479,9 @@ async def cleanup_stuck_executions():
 
 async def _cleanup_stuck_executions():
     from datetime import datetime, timedelta
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
 

@@ -10,7 +10,7 @@ from uuid import UUID
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
@@ -45,7 +45,6 @@ async def create_position(
     """Crea un nuevo puesto abierto para reclutar.
     required_skills es un JSON array de strings, ej: '["Python", "SQL"]'
     """
-    from sqlalchemy import select
     from app.db.base import AsyncSessionLocal
     from app.db.models.hr import RecruitmentPosition
 
@@ -78,6 +77,7 @@ async def create_position(
 async def list_positions(tenant_id: str, status: str = "open") -> str:
     """Lista los puestos abiertos del tenant. status: open|closed|paused|all"""
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.hr import RecruitmentPosition
 
@@ -105,9 +105,10 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
     position_id: UUID del puesto al que aplica.
     """
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.hr import RecruitmentPosition, Candidate
-    from app.services.cv_parser import parse_cv_file, extract_cv_data, score_candidate
+    from app.db.models.hr import Candidate, RecruitmentPosition
+    from app.services.cv_parser import extract_cv_data, parse_cv_file, score_candidate
 
     # 1. Parsear PDF
     cv_text = await parse_cv_file(cv_file_path)
@@ -183,6 +184,7 @@ async def list_candidates(
 ) -> str:
     """Lista candidatos. Filtra por puesto, estado o puntuación mínima."""
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.hr import Candidate
 
@@ -212,6 +214,7 @@ async def list_candidates(
 async def update_candidate_status(tenant_id: str, candidate_id: str, new_status: str) -> str:
     """Mueve un candidato en el pipeline. new_status: new|reviewed|shortlisted|rejected|hired"""
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.hr import Candidate
 

@@ -5,22 +5,18 @@ Permite al usuario crear, modificar o desactivar reglas de negocio mediante leng
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from dataclasses import dataclass, field
-import logging
-from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Workflow
-from app.agents.types import StepResult
 
 
 @dataclass
@@ -204,7 +200,7 @@ async def run_workflow_agent(
         # 1. Consultar al LLM para extraer la estructura del workflow
         from app.core.llm_factory import get_llm
         llm = get_llm(temperature=0, format_output="json")
-        
+
         # Inyectar lista de workflows actuales si la intención parece una actualización
         current_context = ""
         if any(w in user_intent.lower() for w in ["modifica", "actualiza", "cambia", "borra", "quita", "desactiva"]):
@@ -213,7 +209,7 @@ async def run_workflow_agent(
                 wfs = result.scalars().all()
                 if wfs:
                     current_context = "\nWorkflows actuales del tenant:\n" + "\n".join(
-                        f"- ID: {w.id}, Nombre: {w.name}, Trigger: {w.trigger_type}, Activo: {w.is_active}" 
+                        f"- ID: {w.id}, Nombre: {w.name}, Trigger: {w.trigger_type}, Activo: {w.is_active}"
                         for w in wfs
                     )
 
@@ -229,7 +225,7 @@ async def run_workflow_agent(
             return WorkflowAgentResult(success=False, action="parse", error="No se pudo parsear el plan del LLM.")
 
         action = plan.get("action", "create")
-        
+
         # 2. Ejecutar la acción contra la base de datos
         async with AsyncSessionLocal() as db:
             if action == "create":
@@ -305,12 +301,12 @@ async def run_workflow_agent(
                     existing_wf.trigger_config = plan["trigger_config"]
                 if "action_config" in plan:
                     existing_wf.action_config = plan["action_config"]
-                
+
                 await db.commit()
                 return WorkflowAgentResult(
-                    success=True, 
-                    action=action, 
-                    workflow_id=str(existing_wf.id), 
+                    success=True,
+                    action=action,
+                    workflow_id=str(existing_wf.id),
                     workflow_name=existing_wf.name,
                     data=plan
                 )

@@ -3,10 +3,11 @@ PDF generation for albaranes (delivery notes).
 Uses the same _pdf_base infrastructure as pdf_invoices.py.
 """
 import io
-from datetime import datetime
 
 from app.services._pdf_base import (
-    REPORTLAB_AVAILABLE, _fmt_eur, _make_doc, build_theme, table_style_commands,
+    REPORTLAB_AVAILABLE,
+    build_theme,
+    table_style_commands,
 )
 
 if REPORTLAB_AVAILABLE:
@@ -15,7 +16,14 @@ if REPORTLAB_AVAILABLE:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import (
+        HRFlowable,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
 
 def generate_albaran_pdf(albaran_data: dict, theme_config: dict | None = None) -> bytes:

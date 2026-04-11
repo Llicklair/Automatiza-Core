@@ -4,8 +4,8 @@ Clasificador de documentos por reglas — 0 tokens LLM.
 Detecta tipo de documento usando keywords y patrones regex.
 Solo recurre al LLM cuando no puede clasificar con confianza.
 """
-import re
 import logging
+import re
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)

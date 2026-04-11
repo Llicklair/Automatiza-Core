@@ -4,6 +4,7 @@ Usado desde tools y agentes al completar una acción significativa.
 NO llama a db.commit() — la transacción la gestiona el caller.
 """
 import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.ai_employees import ActivityEntry

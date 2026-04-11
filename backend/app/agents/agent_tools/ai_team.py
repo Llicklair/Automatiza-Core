@@ -9,8 +9,8 @@ from uuid import UUID
 
 from langchain_core.tools import tool
 
-from app.db.models.ai_employees import AIEmployee, AgentSkill
 from app.agents.agent_tools import get_sync_db
+from app.db.models.ai_employees import AgentSkill, AIEmployee
 
 logger = logging.getLogger(__name__)
 

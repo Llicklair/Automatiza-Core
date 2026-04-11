@@ -8,7 +8,6 @@ _logger = logging.getLogger(__name__)
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.middleware.rate_limit import limiter
 
 from app.agents.orchestrator import (
     _dispatch_banking,
@@ -25,6 +24,7 @@ from app.api.v1.schemas import workflows as schemas
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models import models
+from app.middleware.rate_limit import limiter
 from app.services.node_engine import has_advanced_nodes
 
 router = APIRouter(prefix="/workflows", tags=["Workflows & Automations"])
@@ -184,7 +184,7 @@ async def delete_workflow(
     db_workflow = result.scalar_one_or_none()
     if not db_workflow:
         raise HTTPException(status_code=404, detail="Workflow no encontrado")
-        
+
     await db.delete(db_workflow)
     await db.commit()
     return {"message": "Workflow eliminado correctamente"}
@@ -341,7 +341,7 @@ async def cancel_execution(
     if execution.status not in ("running", "paused"):
         raise HTTPException(status_code=400, detail=f"No se puede cancelar una ejecución en estado '{execution.status}'")
 
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
     execution.status = "failed"
     execution.result_log = "Cancelado manualmente por el usuario."
     execution.completed_at = datetime.now(UTC)
@@ -809,6 +809,7 @@ async def _execute_deterministic_steps(
     }
 
     import uuid as _uuid
+
     from app.agents.tool_registry import call_tool
 
     base_state: dict[str, Any] = {

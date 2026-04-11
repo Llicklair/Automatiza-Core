@@ -255,6 +255,7 @@ class PurchaseOrderResponse(BaseModel):
 
 from datetime import date as DateType
 
+
 class RecurringLineItem(BaseModel):
     description: str
     quantity: float = 1.0

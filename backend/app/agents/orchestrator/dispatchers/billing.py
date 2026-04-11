@@ -6,14 +6,11 @@ al formato del orquestador.
 import logging
 from datetime import UTC, datetime, timedelta
 
+from app.agents.orchestrator.helpers import (
+    _save_ai_result_as_document,
+)
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.agents.orchestrator.utils import _format_summary
-from app.agents.orchestrator.helpers import (
-    _lock_document,
-    _unlock_document,
-    _save_ai_result_as_document,
-    _save_ai_result_as_csv,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +39,7 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
 
         # Extraer el resultado final del último mensaje del agente
         messages = result_state.get("messages", [])
-        agent_results = result_state.get("agent_results", [])
+        result_state.get("agent_results", [])
 
         # El último mensaje con contenido de texto es la respuesta final
         final_text = ""
@@ -111,7 +108,6 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
 
         # Manejar aprobación humana
         if is_approval:
-            from sqlalchemy import select
             from app.db.base import AsyncSessionLocal
             from app.db.models.models import PendingApproval
 

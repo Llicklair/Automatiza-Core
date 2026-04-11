@@ -9,12 +9,10 @@ El LLM decide qué herramientas usar según la intención del usuario:
 
 Cada herramienta ejecuta lógica determinista (OCR, clasificación, BD).
 """
-import io
 import json
 import logging
 import os
 import re
-import uuid
 from datetime import datetime
 from uuid import UUID
 
@@ -33,12 +31,11 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.config import settings
-from app.core.llm_factory import get_llm, get_embedder
+from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
+from app.services.document_classifier import classify_by_rules
 from app.services.pdf_parser import parse_pdf
 from app.services.smart_chunker import smart_chunk
-from app.services.document_classifier import classify_by_rules
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +107,9 @@ async def classify_document(tenant_id: str, document_id: str) -> str:
 
 async def _classify_document_async(tenant_id: str, document_id: str) -> str:
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.models import TenantDocument, Client
+    from app.db.models.models import Client, TenantDocument
 
     # ── Leer documento de BD y disco ──
     try:
@@ -267,8 +265,9 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
 
             async with AsyncSessionLocal() as db:
                 # Obtener jurisdicción del tenant para stamping
-                from app.db.models.auth import Tenant
                 import sqlalchemy as _sa
+
+                from app.db.models.auth import Tenant
                 _j_res = await db.execute(_sa.select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id)))
                 _jurisdiction = _j_res.scalar() or "ES_TAX"
 
@@ -354,10 +353,9 @@ async def search_documents_semantic(tenant_id: str, query: str, limit: int = 5) 
 
 
 async def _search_documents_semantic_async(tenant_id: str, query: str, limit: int) -> str:
+    from sqlalchemy import text
+
     from app.db.base import AsyncSessionLocal
-    from app.db.models.embeddings import DocumentEmbedding
-    from app.db.models.models import TenantDocument
-    from sqlalchemy import select, text
 
     try:
         embedder = get_embedder()

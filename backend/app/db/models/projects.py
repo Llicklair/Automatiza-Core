@@ -1,8 +1,17 @@
 """Modelos de gestion de proyectos."""
 
 from .common import (
-    Base, Column, DateTime, ForeignKey, Numeric, String, Text, UUID,
-    relationship, uuid, utcnow,
+    UUID,
+    Base,
+    Column,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    relationship,
+    utcnow,
+    uuid,
 )
 
 

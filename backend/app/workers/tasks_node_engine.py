@@ -68,7 +68,9 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
 
 async def _run_node_engine(execution_id: str):
     import uuid as _uuid
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
     from app.services.node_engine import NodeEngine
@@ -93,7 +95,9 @@ async def _run_node_engine(execution_id: str):
 
 async def _resume_node_engine(execution_id: str, from_node_id: str):
     import uuid as _uuid
+
     from sqlalchemy import select
+
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
     from app.services.node_engine import NodeEngine

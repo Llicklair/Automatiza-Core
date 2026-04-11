@@ -3,14 +3,13 @@ Servicio de cifrado/descifrado de credenciales de integraciones por tenant.
 Usa Fernet (AES-128-CBC + HMAC-SHA256). Nunca se almacenan en texto plano.
 """
 import base64
-import hashlib
 import logging
 
 _logger = logging.getLogger(__name__)
 
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from app.core.config import settings
 

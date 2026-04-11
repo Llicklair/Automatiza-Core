@@ -22,10 +22,8 @@ Uso (en dispatch_node, antes de llamar al agente):
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # ─── Entidades que se extraen automáticamente de los resultados ───────────────
 
@@ -145,7 +143,7 @@ class ExecutionContext:
               · client_name: Acme SL
         """
         base_intent = current_instruction or self.user_intent
-        
+
         if not self.step_summaries and not current_instruction:
             return self.user_intent  # Sin pasos previos ni instrucción → intención pura
 

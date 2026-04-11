@@ -19,10 +19,10 @@ from app.agents.agent_tools.documents import (
 )
 from app.agents.base import AgentState
 from app.agents.types import StepResult
+from app.core.llm_factory import get_llm
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Opportunity
-from app.core.config import settings
-from app.core.llm_factory import get_llm
+
 
 def _get_llm():
     return get_llm(temperature=0)
@@ -151,7 +151,7 @@ async def _update_opportunity_stage_async(tenant_id: str, opportunity_id: str, n
 
             old_stage = opp.stage
             opp.stage = new_stage
-            
+
             await db.commit()
 
             msg = f"Oportunidad '{opp.title}' movida de '{old_stage}' a '{new_stage}'."
@@ -196,7 +196,7 @@ async def _qualify_leads_async(tenant_id: str) -> str:
                     days_in_pipeline = (now - op_date).days
                 else:
                     days_in_pipeline = 0
-                    
+
                 value = float(opp.expected_value or 0)
 
                 if value > 5000 or days_in_pipeline < 7:

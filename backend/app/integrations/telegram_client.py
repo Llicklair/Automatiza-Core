@@ -4,7 +4,6 @@ Telegram Bot API client — enviar mensajes, gestionar webhook, parsear updates.
 Cada tenant puede vincular su chat de Telegram al ERP.
 Los mensajes entrantes se enrutan al orquestador de agentes.
 """
-import hashlib
 import hmac
 import logging
 from dataclasses import dataclass

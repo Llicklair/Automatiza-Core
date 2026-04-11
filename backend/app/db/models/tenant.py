@@ -1,10 +1,19 @@
 """Modelos de configuración del tenant: integraciones, conocimiento y documentos."""
 
-from sqlalchemy import UniqueConstraint
 
 from .common import (
-    Base, Column, BigInteger, Boolean, DateTime, ForeignKey, String, Text, UUID, JSONB,
-    relationship, uuid, utcnow,
+    JSONB,
+    UUID,
+    Base,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    utcnow,
+    uuid,
 )
 
 
