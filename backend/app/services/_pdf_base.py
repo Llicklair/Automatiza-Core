@@ -5,18 +5,13 @@ Importaciones de ReportLab + helpers de estilo reutilizables.
 from datetime import datetime
 
 try:
-    from reportlab.graphics import renderPDF
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
-    from reportlab.graphics.charts.piecharts import Pie
-    from reportlab.graphics.shapes import Drawing, Line, Rect, String
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         HRFlowable,
-        KeepTogether,
         Paragraph,
         SimpleDocTemplate,
         Spacer,
