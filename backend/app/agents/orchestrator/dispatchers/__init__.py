@@ -48,6 +48,7 @@ __all__ = [
     "_dispatch_compliance",
     "_dispatch_hr",
     "_dispatch_crm",
+    "_dispatch_custom",
     "_dispatch_banking",
     "_dispatch_report",
     "_dispatch_rag",

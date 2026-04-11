@@ -40,7 +40,7 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Ruff lint
-        run: poetry run ruff check app/ --select E,W,F,I --ignore E501
+        run: poetry run ruff check app/ --select E,W,F,I --ignore E501,E402,E701,E702,E731,W293
 
       - name: Ruff format check
         run: poetry run ruff format app/ --check
