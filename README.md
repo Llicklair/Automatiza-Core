@@ -56,24 +56,14 @@ La **única amenaza real** que compete al código de la aplicación en este mode
 
 ## Proveedores LLM
 
-### Proveedor por defecto: Anthropic (Claude)
+### Proveedor por defecto (desarrollo): Claude Code CLI
 
 ```env
-DEFAULT_LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-4-6        # claude-sonnet-4-6 | claude-opus-4-6
-```
-
-**Recomendación**: Anthropic Claude Sonnet 4.6 es el modelo principal. Es el más equilibrado en precio/calidad para tareas de ERP. Claude Opus 4.6 para tareas que requieren máxima precisión.
-
-### Proveedor especial: Claude CLI (sin facturación por API)
-
-```env
-DEFAULT_LLM_PROVIDER=claude_cli
+DEFAULT_LLM_PROVIDER=claude_code
 # No requiere ANTHROPIC_API_KEY — usa la sesión activa de Claude Code CLI
 ```
 
-Este proveedor enruta todas las llamadas LLM a través del proceso **Claude Code CLI** (`claude`) en lugar de la API REST de Anthropic. Es útil para desarrollo y pruebas porque consume el plan de suscripción de Claude (Pro/Max) en lugar de generar créditos de API.
+Este es el proveedor activo por defecto en desarrollo. Enruta todas las llamadas LLM a través del proceso **Claude Code CLI** (`claude`) en lugar de la API REST de Anthropic. Consume el plan de suscripción de Claude (Pro/Max) en lugar de generar créditos de API.
 
 **Requisitos:**
 - Tener instalado Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
@@ -88,7 +78,7 @@ CLAUDE_CLI_PATH=C:\Users\Marcos\AppData\Roaming\npm\claude.cmd   # Windows
 **Cómo funciona internamente:**
 
 ```
-LLM request → llm_factory.get_llm() → ClaudeCliProvider
+LLM request → llm_factory.get_llm() → ClaudeCodeChatModel
   → spawns: claude --print --output-format json "<prompt>"
   → parsea stdout JSON → devuelve respuesta al agente
 ```
@@ -116,6 +106,16 @@ claude --logout && claude
 ```
 
 > **Nota**: Este proveedor está pensado para **desarrollo local**. En producción (clientes) usar `anthropic` con su propia API key.
+
+### Proveedor recomendado para producción: Anthropic (Claude)
+
+```env
+DEFAULT_LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-6        # claude-sonnet-4-6 | claude-opus-4-6
+```
+
+**Recomendación**: Claude Sonnet 4.6 es el más equilibrado en precio/calidad para tareas de ERP. Claude Opus 4.6 para tareas que requieren máxima precisión. Usar este proveedor en despliegues a clientes.
 
 ### Proveedor alternativo recomendado: Gemini
 
