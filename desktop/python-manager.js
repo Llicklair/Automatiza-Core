@@ -182,6 +182,8 @@ function startBackend(extraEnv = {}) {
   const env = {
     ...process.env,
     PYTHONPATH: `${BACKEND_DIR};${SITE_PACKAGES}`,
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
     ...extraEnv,
   };
 

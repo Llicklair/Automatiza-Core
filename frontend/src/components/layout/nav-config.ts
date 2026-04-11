@@ -81,6 +81,7 @@ export const NAV_SECTIONS: NavSection[] = [
                 label: "Proyectos", icon: Calendar, subItems: [
                     { label: "Panel", href: "/proyectos" },
                     { label: "Tareas", href: "/proyectos/tareas" },
+                    { label: "Mis tareas", href: "/proyectos/mis-tareas" },
                 ],
             },
         ],
@@ -107,6 +108,7 @@ export const NAV_SECTIONS: NavSection[] = [
                 ],
             },
             { label: "Impuestos", icon: Scale, href: "/impuestos" },
+            { label: "Compliance", icon: ShieldCheck, href: "/compliance" },
         ],
     },
     {
@@ -128,6 +130,14 @@ export const NAV_SECTIONS: NavSection[] = [
                 label: "Integraciones", icon: Plug, subItems: [
                     { label: "Conexiones", href: "/integraciones" },
                     { label: "Mensajería", href: "/configuracion/integraciones" },
+                ],
+            },
+            {
+                label: "Configuración", icon: Settings, subItems: [
+                    { label: "Empresa", href: "/configuracion/empresa" },
+                    { label: "Perfil", href: "/configuracion/perfil" },
+                    { label: "Claves API", href: "/configuracion/api-keys" },
+                    { label: "Actualizaciones", href: "/configuracion/actualizaciones" },
                 ],
             },
         ],

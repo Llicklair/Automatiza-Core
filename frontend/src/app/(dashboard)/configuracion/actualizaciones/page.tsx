@@ -7,10 +7,17 @@ import {
     Server, Database, Cpu, Loader2, Terminal,
 } from "lucide-react";
 
+interface HealthCheck {
+    status: string;
+    latency_ms?: number;
+    active_tasks?: number;
+    error?: string;
+}
+
 interface HealthData {
     status: string;
     version: string;
-    checks: Record<string, any>;
+    checks: Record<string, HealthCheck>;
 }
 
 type UpdateStatus = "idle" | "checking" | "available" | "up_to_date" | "error";
@@ -28,8 +35,8 @@ export default function ActualizacionesPage() {
         try {
             const data = await api.system.health();
             setHealth(data);
-        } catch (e: any) {
-            setError(e.message || "No se pudo conectar al servidor");
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "No se pudo conectar al servidor");
         } finally {
             setLoading(false);
         }

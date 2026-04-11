@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Employee, EmployeeDocument } from "@/lib/api/hr";
 import { X, Upload, Download, Trash2, FileText, Loader2, Paperclip } from "lucide-react";
@@ -28,14 +28,14 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
     const [error, setError] = useState<string | null>(null);
     const fileRef = useRef<HTMLInputElement>(null);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         try {
             setDocs(await api.hr.employees.documents.list(employee.id));
         } catch { }
         setLoading(false);
-    };
+    }, [employee.id]);
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { load(); }, [load]);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

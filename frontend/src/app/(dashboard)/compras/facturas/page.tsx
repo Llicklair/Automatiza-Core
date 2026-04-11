@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { api, Invoice, Client } from "@/lib/api";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -47,9 +47,7 @@ export default function FacturasRecibidasPage() {
     const [invStatus, setInvStatus] = useState("pending");
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => { loadData(); }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [allInvoices, allClients] = await Promise.all([
@@ -60,7 +58,9 @@ export default function FacturasRecibidasPage() {
             setClients(allClients);
         } catch { /* silent */ }
         finally { setLoading(false); }
-    };
+    }, []);
+
+    useEffect(() => { loadData(); }, [loadData]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -103,16 +103,16 @@ export default function FacturasRecibidasPage() {
         setDate(today()); setDueDate(""); setInvStatus("pending");
     };
 
-    const handleStatusChange = async (invId: string, nextStatus: string) => {
+    const handleStatusChange = useCallback(async (invId: string, nextStatus: string) => {
         try {
             const updated = await api.erp.invoices.updateStatus(invId, nextStatus);
             setInvoices(prev => prev.map(i => i.id === invId ? updated : i));
         } catch (err: any) {
             toast.error(err?.message || "Error cambiando estado");
         }
-    };
+    }, [toast]);
 
-    const handleDeleteInvoice = async (id: string) => {
+    const handleDeleteInvoice = useCallback(async (id: string) => {
         const confirmed = await showConfirm({
             title: "Eliminar factura",
             message: "¿Eliminar esta factura? Esta acción no se puede deshacer.",
@@ -127,7 +127,7 @@ export default function FacturasRecibidasPage() {
         } catch (err: any) {
             toast.error(err?.message || "Error al eliminar factura");
         }
-    };
+    }, [toast]);
 
     const totalPendiente = invoices.filter(i => i.status === "pending").reduce((a, b) => a + Number(b.amount_total), 0);
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -216,7 +216,7 @@ export default function FacturasRecibidasPage() {
                 );
             },
         },
-    ], []);
+    ], [handleDeleteInvoice, handleStatusChange]);
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">

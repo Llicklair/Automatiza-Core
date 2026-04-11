@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { api, Client, Invoice } from "@/lib/api";
@@ -54,19 +54,19 @@ export default function ClientesPage() {
     const toast = useToastStore();
     const [clients, setClients] = useState<Client[]>([]);
 
-    const CLIENT_TYPE_MAP: Record<string, { label: string; variant: "info" | "warning" | "default" | "success" }> = {
+    const CLIENT_TYPE_MAP = useMemo<Record<string, { label: string; variant: "info" | "warning" | "default" | "success" }>>(() => ({
         customer: { label: t("typeClient"), variant: "info" },
         supplier: { label: t("typeSupplier"), variant: "warning" },
         company: { label: t("typeCompany"), variant: "default" },
         lead: { label: t("typeLead"), variant: "success" },
-    };
+    }), [t]);
 
-    const CLIENT_TYPE_OPTIONS = [
+    const CLIENT_TYPE_OPTIONS = useMemo(() => [
         { label: t("typeClient"), value: "customer" },
         { label: t("typeSupplier"), value: "supplier" },
         { label: t("typeCompany"), value: "company" },
         { label: t("typeLead"), value: "lead" },
-    ];
+    ], [t]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -85,7 +85,7 @@ export default function ClientesPage() {
 
     // ── Data loading ─────────────────────────────────────────────────────────
 
-    const loadClients = async () => {
+    const loadClients = useCallback(async () => {
         try {
             setLoading(true);
             const data = await api.erp.clients.list();
@@ -95,10 +95,9 @@ export default function ClientesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadClients(); }, [refreshKey]);
+    useEffect(() => { loadClients(); }, [refreshKey, loadClients]);
 
     // ── CRUD handlers ────────────────────────────────────────────────────────
 
@@ -147,7 +146,7 @@ export default function ClientesPage() {
         }
     };
 
-    const openClientDrawer = async (client: Client) => {
+    const openClientDrawer = useCallback(async (client: Client) => {
         setSelectedClient(client);
         setLoadingInvoices(true);
         try {
@@ -158,7 +157,7 @@ export default function ClientesPage() {
         } finally {
             setLoadingInvoices(false);
         }
-    };
+    }, []);
 
     const closeDrawer = () => {
         setSelectedClient(null);
@@ -260,8 +259,7 @@ export default function ClientesPage() {
                 </Button>
             ),
         },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    ], [t]);
+    ], [t, openClientDrawer, CLIENT_TYPE_MAP]);
 
     // ── Faceted filters ──────────────────────────────────────────────────────
 

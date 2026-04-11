@@ -36,10 +36,10 @@ class Settings(BaseSettings):
         return self
 
     # Base de datos
-    DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5432/pyme_db"
+    DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db"
 
     # LLM
-    DEFAULT_LLM_PROVIDER: str = "gemini"  # anthropic | gemini | openai | groq | openrouter
+    DEFAULT_LLM_PROVIDER: str = "claude_code"  # claude_code | anthropic | gemini | openai | groq | openrouter
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_API_KEY: str = ""
