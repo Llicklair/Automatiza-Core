@@ -45,7 +45,8 @@
       "Bash(echo exit: $?:*)",
       "mcp__plugin_context-mode_context-mode__ctx_stats",
       "Bash(start:*)",
-      "Bash([ -f \"$HOME/Desktop/AutomatizaPyme_BOOT_LOG.txt\" ])"
+      "Bash([ -f \"$HOME/Desktop/AutomatizaPyme_BOOT_LOG.txt\" ])",
+      "Bash(python3:*)"
     ]
   }
 }

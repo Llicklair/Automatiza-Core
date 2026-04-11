@@ -76,7 +76,8 @@
       "Bash(\"$APPDATA/AutomatizaPyme/pgsql/bin/pg_ctl.exe\" stop:*)",
       "Bash(findstr /I \"node python next electron uvicorn celery postgres redis\")",
       "Bash(findstr /I \"LISTENING\")",
-      "Bash(findstr \"3000 8080 5432 8000\")"
+      "Bash(findstr \"3000 8080 5432 8000\")",
+      "Bash(grep -E '\\\\.py$')"
     ],
     "additionalDirectories": [
       "C:\\Users\\Marcos\\AppData\\Local\\electron-builder\\Cache\\winCodeSign",

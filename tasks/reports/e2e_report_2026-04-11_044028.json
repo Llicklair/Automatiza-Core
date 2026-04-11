@@ -1,0 +1,574 @@
+{
+  "timestamp": "2026-04-11T04:40:28.391763",
+  "base_url": "http://localhost:8080/api/v1",
+  "email": "marcosreciosanchez@gmail.com",
+  "skip_agents": true,
+  "duration_seconds": 7.12,
+  "summary": {
+    "total": 62,
+    "pass": 57,
+    "fail": 3,
+    "skip": 2,
+    "success_rate": 91.9
+  },
+  "results": [
+    {
+      "phase": "0-Health",
+      "test_name": "GET /health",
+      "status": "PASS",
+      "response_ms": 276.5556999947876,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "0-Health",
+      "test_name": "GET /ready",
+      "status": "PASS",
+      "response_ms": 2.696200041100383,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "1-Auth",
+      "test_name": "Login",
+      "status": "PASS",
+      "response_ms": 213.12869992107153,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "1-Auth",
+      "test_name": "GET /auth/me",
+      "status": "PASS",
+      "response_ms": 2.9070000164210796,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "2-Clientes",
+      "test_name": "Crear cliente",
+      "status": "PASS",
+      "response_ms": 7.532499963417649,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "2-Clientes",
+      "test_name": "Crear proveedor",
+      "status": "PASS",
+      "response_ms": 7.9483999870717525,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "2-Clientes",
+      "test_name": "Listar clientes",
+      "status": "PASS",
+      "response_ms": 3.3792000031098723,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "2-Clientes",
+      "test_name": "Actualizar cliente",
+      "status": "PASS",
+      "response_ms": 5.665399949066341,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "3-Productos",
+      "test_name": "Crear producto",
+      "status": "PASS",
+      "response_ms": 8.896799990907311,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "3-Productos",
+      "test_name": "Crear servicio",
+      "status": "PASS",
+      "response_ms": 6.773000000976026,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "3-Productos",
+      "test_name": "Listar productos",
+      "status": "PASS",
+      "response_ms": 5.583000020124018,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "3-Productos",
+      "test_name": "Mov. stock entrada +10",
+      "status": "PASS",
+      "response_ms": 7.802899926900864,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "3-Productos",
+      "test_name": "Historial stock",
+      "status": "PASS",
+      "response_ms": 6.557799992151558,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "4-Facturas",
+      "test_name": "Crear factura",
+      "status": "PASS",
+      "response_ms": 20.04899992607534,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "4-Facturas",
+      "test_name": "Listar facturas",
+      "status": "PASS",
+      "response_ms": 15.491200028918684,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "4-Facturas",
+      "test_name": "Detalle factura",
+      "status": "PASS",
+      "response_ms": 3.8759999442845583,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "4-Facturas",
+      "test_name": "Marcar factura pagada",
+      "status": "PASS",
+      "response_ms": 8.529799990355968,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "4-Facturas",
+      "test_name": "Descargar PDF",
+      "status": "PASS",
+      "response_ms": 11.08840003143996,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "4-Facturas",
+      "test_name": "Facturas de cliente",
+      "status": "PASS",
+      "response_ms": 5.369699909351766,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "5-Presupuestos",
+      "test_name": "Crear presupuesto",
+      "status": "PASS",
+      "response_ms": 13.684900011867285,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "5-Presupuestos",
+      "test_name": "Listar presupuestos",
+      "status": "PASS",
+      "response_ms": 7.522200001403689,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "5-Presupuestos",
+      "test_name": "Convertir a factura",
+      "status": "PASS",
+      "response_ms": 13.178099994547665,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "6-PedidosVenta",
+      "test_name": "Crear pedido venta",
+      "status": "PASS",
+      "response_ms": 10.127499932423234,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "6-PedidosVenta",
+      "test_name": "Listar pedidos venta",
+      "status": "PASS",
+      "response_ms": 4.247499979101121,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "6-PedidosVenta",
+      "test_name": "Confirmar pedido",
+      "status": "PASS",
+      "response_ms": 6.3399000791832805,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "7-PedidosCompra",
+      "test_name": "Crear pedido compra",
+      "status": "PASS",
+      "response_ms": 6.948400055989623,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "7-PedidosCompra",
+      "test_name": "Listar pedidos compra",
+      "status": "PASS",
+      "response_ms": 4.27310005761683,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "8-Recurrentes",
+      "test_name": "Crear recurrente",
+      "status": "FAIL",
+      "response_ms": 7.522400002926588,
+      "error": "{\"detail\":\"Error interno del servidor.\",\"type\":\"internal_error\",\"request_id\":\"090af45a-c5e2-463d-880",
+      "http_status": 500
+    },
+    {
+      "phase": "8-Recurrentes",
+      "test_name": "Listar recurrentes",
+      "status": "FAIL",
+      "response_ms": 268.29759997781366,
+      "error": "{\"detail\":\"Error interno del servidor.\",\"type\":\"internal_error\",\"request_id\":\"7df1d066-5e3d-4044-a6a",
+      "http_status": 500
+    },
+    {
+      "phase": "9-Contabilidad",
+      "test_name": "Crear asiento",
+      "status": "PASS",
+      "response_ms": 283.52920000907034,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "9-Contabilidad",
+      "test_name": "Listar asientos",
+      "status": "PASS",
+      "response_ms": 9.254500037059188,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "9-Contabilidad",
+      "test_name": "Listar activos fijos",
+      "status": "PASS",
+      "response_ms": 7.254600059241056,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "10-CRM",
+      "test_name": "Crear oportunidad",
+      "status": "PASS",
+      "response_ms": 6.108399946242571,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "10-CRM",
+      "test_name": "Listar oportunidades",
+      "status": "PASS",
+      "response_ms": 5.4697999730706215,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "10-CRM",
+      "test_name": "Mover oportunidad a negotiation",
+      "status": "PASS",
+      "response_ms": 5.89519995264709,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "10-CRM",
+      "test_name": "Crear actividad",
+      "status": "PASS",
+      "response_ms": 6.260700058192015,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "10-CRM",
+      "test_name": "Listar actividades",
+      "status": "PASS",
+      "response_ms": 3.1920999754220247,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "10-CRM",
+      "test_name": "Crear evento",
+      "status": "PASS",
+      "response_ms": 5.50109997857362,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "11-RRHH",
+      "test_name": "Crear empleado",
+      "status": "PASS",
+      "response_ms": 10.155900032259524,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "11-RRHH",
+      "test_name": "Listar empleados",
+      "status": "PASS",
+      "response_ms": 3.6533999955281615,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "11-RRHH",
+      "test_name": "Actualizar empleado",
+      "status": "PASS",
+      "response_ms": 6.771199987269938,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "11-RRHH",
+      "test_name": "Crear nómina",
+      "status": "PASS",
+      "response_ms": 15.046800021082163,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "11-RRHH",
+      "test_name": "Listar nóminas",
+      "status": "PASS",
+      "response_ms": 6.4119999296963215,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "12-Proyectos",
+      "test_name": "Crear proyecto",
+      "status": "PASS",
+      "response_ms": 5.525800050236285,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "12-Proyectos",
+      "test_name": "Listar proyectos",
+      "status": "PASS",
+      "response_ms": 4.793399944901466,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "12-Proyectos",
+      "test_name": "Crear tarea proyecto",
+      "status": "FAIL",
+      "response_ms": 8.00059991888702,
+      "error": "{\"detail\":\"Error interno del servidor.\",\"type\":\"internal_error\",\"request_id\":\"e1b6dc73-26e6-4dd4-a33",
+      "http_status": 500
+    },
+    {
+      "phase": "13-Banca",
+      "test_name": "Resumen financiero",
+      "status": "PASS",
+      "response_ms": 268.0826000869274,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "13-Banca",
+      "test_name": "Listar transacciones",
+      "status": "PASS",
+      "response_ms": 3.787799971178174,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "13-Banca",
+      "test_name": "Analytics banca",
+      "status": "PASS",
+      "response_ms": 2.80330004170537,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "14-Documentos",
+      "test_name": "Upload documento",
+      "status": "PASS",
+      "response_ms": 26.40199998859316,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "14-Documentos",
+      "test_name": "Listar documentos",
+      "status": "PASS",
+      "response_ms": 5.4512000642716885,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "15-Workflows",
+      "test_name": "Crear workflow",
+      "status": "PASS",
+      "response_ms": 14.172700000926852,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "15-Workflows",
+      "test_name": "Listar workflows",
+      "status": "PASS",
+      "response_ms": 7.458900101482868,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "15-Workflows",
+      "test_name": "Ejecutar workflow",
+      "status": "PASS",
+      "response_ms": 49.39629998989403,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "16-AIEmployees",
+      "test_name": "Seed AI employees",
+      "status": "PASS",
+      "response_ms": 10.836100089363754,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "16-AIEmployees",
+      "test_name": "Listar AI employees",
+      "status": "PASS",
+      "response_ms": 5.336000001989305,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "16-AIEmployees",
+      "test_name": "Crear AI employee",
+      "status": "PASS",
+      "response_ms": 45.30300002079457,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "17-GenerativeUI",
+      "test_name": "Generar UI",
+      "status": "PASS",
+      "response_ms": 4808.3682000869885,
+      "error": "",
+      "http_status": 201
+    },
+    {
+      "phase": "17-GenerativeUI",
+      "test_name": "Historial UI",
+      "status": "PASS",
+      "response_ms": 8.735199924558401,
+      "error": "",
+      "http_status": 200
+    },
+    {
+      "phase": "18-Agentes",
+      "test_name": "Agentes IA",
+      "status": "SKIP",
+      "response_ms": 0,
+      "error": "--skip-agents activado",
+      "http_status": 0
+    },
+    {
+      "phase": "19-Coordinador",
+      "test_name": "Coordinador",
+      "status": "SKIP",
+      "response_ms": 0,
+      "error": "--skip-agents activado",
+      "http_status": 0
+    },
+    {
+      "phase": "20-Cleanup",
+      "test_name": "Cleanup completado",
+      "status": "PASS",
+      "response_ms": 0,
+      "error": "",
+      "http_status": 200
+    }
+  ],
+  "slowest": [
+    {
+      "test": "Generar UI",
+      "ms": 4808.4
+    },
+    {
+      "test": "Crear asiento",
+      "ms": 283.5
+    },
+    {
+      "test": "GET /health",
+      "ms": 276.6
+    },
+    {
+      "test": "Listar recurrentes",
+      "ms": 268.3
+    },
+    {
+      "test": "Resumen financiero",
+      "ms": 268.1
+    },
+    {
+      "test": "Login",
+      "ms": 213.1
+    },
+    {
+      "test": "Ejecutar workflow",
+      "ms": 49.4
+    },
+    {
+      "test": "Crear AI employee",
+      "ms": 45.3
+    },
+    {
+      "test": "Upload documento",
+      "ms": 26.4
+    },
+    {
+      "test": "Crear factura",
+      "ms": 20.0
+    }
+  ],
+  "errors": [
+    {
+      "phase": "8-Recurrentes",
+      "test": "Crear recurrente",
+      "error": "{\"detail\":\"Error interno del servidor.\",\"type\":\"internal_error\",\"request_id\":\"090af45a-c5e2-463d-880",
+      "http_status": 500
+    },
+    {
+      "phase": "8-Recurrentes",
+      "test": "Listar recurrentes",
+      "error": "{\"detail\":\"Error interno del servidor.\",\"type\":\"internal_error\",\"request_id\":\"7df1d066-5e3d-4044-a6a",
+      "http_status": 500
+    },
+    {
+      "phase": "12-Proyectos",
+      "test": "Crear tarea proyecto",
+      "error": "{\"detail\":\"Error interno del servidor.\",\"type\":\"internal_error\",\"request_id\":\"e1b6dc73-26e6-4dd4-a33",
+      "http_status": 500
+    }
+  ]
+}
