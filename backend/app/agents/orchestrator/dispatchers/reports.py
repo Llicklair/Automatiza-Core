@@ -43,7 +43,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
                 Tenant,
                 TenantDocument,
             )
-            from app.services.pdf_service import generate_snapshot_pdf
+            from app.services.pdf import generate_snapshot_pdf
 
             tenant_id = state["tenant_id"]
             user_id = state["user_id"]

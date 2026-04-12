@@ -13,61 +13,11 @@ from app.core.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
 
-_EXTRACTION_PROMPT = """\
-Eres un extractor de información de currículums vitae (CV).
-Analiza el texto del CV y devuelve un JSON con esta estructura exacta:
+from app.prompts import load_prompt
 
-{
-  "name": "Nombre completo",
-  "email": "email@ejemplo.com",
-  "phone": "+34 600 000 000",
-  "skills": ["Python", "SQL", "React"],
-  "experience_years": 5.0,
-  "languages": [{"lang": "Español", "level": "nativo"}, {"lang": "Inglés", "level": "B2"}],
-  "education": "Grado en Ingeniería Informática, Universidad X (2018)",
-  "summary": "Resumen profesional de 2-3 frases"
-}
+_EXTRACTION_PROMPT = load_prompt("cv_extraction")
 
-REGLAS:
-- Devuelve SOLO JSON, sin texto adicional.
-- Si un campo no se puede extraer, usa null.
-- experience_years: estima el total de años de experiencia laboral.
-- skills: tecnologías, herramientas, metodologías mencionadas.
-- languages: idiomas con nivel estimado (nativo, C2, C1, B2, B1, A2).
-- summary: genera un resumen profesional conciso del candidato.
-"""
-
-_SCORING_PROMPT = """\
-Eres un evaluador de candidatos para procesos de selección.
-Evalúa la compatibilidad entre un candidato y un puesto.
-
-PUESTO:
-- Título: {title}
-- Departamento: {department}
-- Habilidades requeridas: {required_skills}
-- Experiencia mínima: {experience_min} años
-
-CANDIDATO:
-- Habilidades: {candidate_skills}
-- Experiencia: {candidate_exp} años
-- Idiomas: {candidate_langs}
-- Resumen: {candidate_summary}
-
-Devuelve SOLO un JSON con esta estructura:
-{{
-  "score": 75,
-  "breakdown": {{
-    "skills_match": 80,
-    "experience_match": 70,
-    "languages_match": 90,
-    "overall_fit": 75
-  }},
-  "strengths": ["Domina React y Node.js", "5 años de experiencia"],
-  "gaps": ["No tiene experiencia con Docker"]
-}}
-
-score es un número 0-100. Sé justo pero exigente.
-"""
+_SCORING_PROMPT = load_prompt("cv_scoring")
 
 
 async def extract_cv_data(cv_text: str) -> dict[str, Any]:
@@ -145,7 +95,7 @@ async def score_candidate(candidate_data: dict, position_data: dict) -> dict[str
 
 async def parse_cv_file(file_path: str) -> str:
     """Lee un PDF y extrae el texto usando el parser existente."""
-    from app.services.pdf_parser import parse_pdf
+    from app.services.pdf.parser import parse_pdf
 
     result = await parse_pdf(file_path)
     return result.markdown if result else ""

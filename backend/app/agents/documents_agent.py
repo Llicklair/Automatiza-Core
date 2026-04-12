@@ -35,7 +35,7 @@ from app.agents.types import StepResult
 from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
 from app.services.document_classifier import classify_by_rules
-from app.services.pdf_parser import parse_pdf
+from app.services.pdf.parser import parse_pdf
 from app.services.smart_chunker import smart_chunk
 
 logger = logging.getLogger(__name__)
@@ -62,33 +62,9 @@ class ClassifiedDocument(BaseModel):
     summary: str = ""
 
 
-CLASSIFICATION_PROMPT = """Eres un experto analista de documentos. Se te pasará el texto extraído de un documento real.
-Tu tarea es leer el documento y extraer la información solicitada basándote ÚNICAMENTE en su contenido.
+from app.prompts import load_prompt
 
-Devuelve ESTRICTAMENTE un objeto JSON siguiendo esta estructura:
-{
-  "document_type": "factura_recibida|contrato|extracto_bancario|nomina|otro",
-  "confidence": 0.95,
-  "language": "es",
-  "requires_action": true,
-  "suggested_action": "Breve sugerencia de qué hacer con este documento",
-  "key_entities": {
-    "emisor": "Nombre de quien emite",
-    "receptor": "Nombre de quien recibe",
-    "importe": "Cantidad con moneda",
-    "fecha": "Fecha del documento",
-    "numero_referencia": "Número de factura o referencia"
-  },
-  "summary": "Resumen conciso en una frase"
-}
-
-Si un dato no aparece en el texto, pon null. NO INVENTES DATOS.
-
-REGLAS:
-1. Si es factura recibida: requires_action=true, suggested_action="Registrar gasto + IVA soportado"
-2. Si es contrato: requires_action=true, suggested_action="Revisar cláusulas y fecha de vencimiento"
-3. Si es extracto: requires_action=false, suggested_action="Conciliar con facturas pendientes"
-4. NUNCA inventes importes ni fechas que no estén en el texto."""
+CLASSIFICATION_PROMPT = load_prompt("documents_classification")
 
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
@@ -441,24 +417,7 @@ tools = [
 
 # ─── Nodos del grafo LangGraph ───────────────────────────────────────────────
 
-DOCUMENTS_SYSTEM_PROMPT = """Eres el Agente de Documentos de un ERP para PYMEs españolas. Tus capacidades:
-
-1. **Clasificar documentos** con `classify_document` — analiza un documento subido, detecta su tipo (factura, contrato, extracto, nómina), extrae entidades, y genera embeddings para búsqueda.
-2. **Buscar documentos** con `search_documents_semantic` — búsqueda semántica por contenido (RAG con pgvector).
-3. **Listar documentos** con `list_tenant_documents` — ver documentos del sistema filtrados por categoría.
-4. **Leer documentos** con `get_document_content` — ver el contenido de un documento específico.
-5. **Crear documentos** con `create_document` — generar informes, exportar datos en CSV/TXT.
-6. **Modificar documentos** con `update_existing_document` — editar documentos de texto existentes.
-7. **Memoria del tenant** con `get_tenant_knowledge` y `upsert_tenant_knowledge`.
-
-REGLAS:
-- Si el usuario sube un documento, usa `classify_document` con su document_id.
-- Si el usuario pregunta sobre documentos, usa `search_documents_semantic` o `list_tenant_documents`.
-- Si necesitas ver qué hay en un documento, usa `get_document_content`.
-- Los NIFs/CIFs encontrados en documentos se vinculan automáticamente a clientes.
-- Responde siempre en español.
-
-ID del Tenant actual: {tenant_id}"""
+DOCUMENTS_SYSTEM_PROMPT = load_prompt("documents_agent")
 
 
 async def documents_agent_node(state: AgentState):

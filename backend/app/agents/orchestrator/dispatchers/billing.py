@@ -20,7 +20,7 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
     """Invoca el billing agent autónomo via LangGraph graph."""
     import uuid
 
-    from app.agents.billing_agent import graph
+    from app.agents.billing import graph
 
     tenant_id = state["tenant_id"]
     intent = subtask.get("params", {}).get(

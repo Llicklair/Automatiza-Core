@@ -91,7 +91,7 @@ async def _dispatch_rag(state: OrchestratorState, subtask: dict) -> AgentResult:
 
 async def _dispatch_excel(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de Excel autónomo."""
-    from app.agents.excel_agent import graph
+    from app.agents.excel import graph
 
     return await _run_graph_agent(graph, state, subtask, "excel", "informes")
 

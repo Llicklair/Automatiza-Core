@@ -6,13 +6,14 @@ Ahora:  misma sintaxis, funciona igual.
 
 Estructura:
   orchestrator/
-    state.py        — Tipos: TaskStatus, SubTask, AgentResult, OrchestratorState
-    classifier.py   — Clasificación de intenciones (LLM + keywords)
-    utils.py        — _format_summary, _extract_month_year
-    helpers.py      — _lock/unlock_document, _save_ai_result_as_document/csv
-    dispatchers/    — Un módulo por agente (billing, hr, crm, etc.)
-    _core.py        — Nodos del grafo LangGraph + build_orchestrator
-    __init__.py     — Re-exporta todo (este archivo)
+    state.py          — Tipos: TaskStatus, SubTask, AgentResult, OrchestratorState
+    classifier.py     — Clasificación de intenciones (LLM + keywords)
+    node_handlers.py  — Funciones de nodo del grafo (init, plan, validate, dispatch, summarize)
+    utils.py          — _format_summary, _extract_month_year
+    helpers.py        — _lock/unlock_document, _save_ai_result_as_document/csv
+    dispatchers/      — Un módulo por agente (billing, hr, crm, etc.)
+    _core.py          — Routing + construcción del grafo LangGraph + build_orchestrator
+    __init__.py       — Re-exporta todo (este archivo)
 """
 
 from app.agents.orchestrator._core import (

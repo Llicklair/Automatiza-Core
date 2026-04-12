@@ -1,7 +1,7 @@
 """
 Utilidades para compatibilidad con Gemini (Google Generative AI).
 Gemini exige que cada AIMessage con tool_calls vaya seguida inmediatamente
-por un ToolMessage por cada llamada. Este módulo sanitiza el historial.
+por un ToolMessage por cada llamada. Este modulo sanitiza el historial.
 """
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 def _sanitize_messages_for_gemini(messages: list) -> list:
     """
     Gemini exige que cada AIMessage con tool_calls vaya seguido inmediatamente
-    por un ToolMessage por cada llamada. Si hay huérfanos (tool_calls sin su
+    por un ToolMessage por cada llamada. Si hay huerfanos (tool_calls sin su
     ToolMessage correspondiente), los elimina para evitar el error 400.
     """
     sanitized = []

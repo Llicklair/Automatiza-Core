@@ -84,7 +84,7 @@ class MockChatModel(BaseChatModel):
         ).lower()
         tools = kwargs.get("tools", [])
 
-        # Si hay ToolMessage → herramienta ejecutada → respuesta final
+        # Si hay ToolMessage -> herramienta ejecutada -> respuesta final
         for m in reversed(messages):
             if isinstance(m, ToolMessage):
                 snippet = m.content[:400] if isinstance(m.content, str) else str(m.content)[:400]
@@ -94,13 +94,13 @@ class MockChatModel(BaseChatModel):
         if tools:
             return self._tool_call_response(full_text, tools, messages)
 
-        # ── Coordinador: plan multi-agente ──
+        # -- Coordinador: plan multi-agente --
         if "coordinador general" in full_text or (
             "steps" in full_text and "agent" in full_text and "instruction" in full_text
         ):
             return AIMessage(content=self._multi_agent_plan(full_text))
 
-        # ── Orchestrator: clasificar dominio ──
+        # -- Orchestrator: clasificar dominio --
         if (
             "billing|documents|compliance" in full_text
             or ("clasificador" in full_text and "billing" in full_text)
@@ -108,13 +108,13 @@ class MockChatModel(BaseChatModel):
         ):
             return AIMessage(content=self._classify_domain(full_text))
 
-        # ── Billing: extracción de datos ──
+        # -- Billing: extraccion de datos --
         if ("client_name" in full_text and "amount_base" in full_text) or (
-            "extracción de datos de facturación" in full_text
+            "extraccion de datos de facturacion" in full_text
         ):
             return AIMessage(content=self._billing_json(full_text))
 
-        # ── Compliance: alertas fiscales ──
+        # -- Compliance: alertas fiscales --
         if '"alertas"' in full_text or "vencimientos fiscales" in full_text:
             return AIMessage(
                 content=json.dumps(
@@ -128,7 +128,7 @@ class MockChatModel(BaseChatModel):
                 )
             )
 
-        # ── Compliance: resumen BOE ──
+        # -- Compliance: resumen BOE --
         if "resumen_boe" in full_text or "novedades del boe" in full_text:
             return AIMessage(
                 content=json.dumps(
@@ -137,7 +137,7 @@ class MockChatModel(BaseChatModel):
                         "boe_novedades": [
                             {
                                 "titulo": "Real Decreto 123/2026",
-                                "descripcion": "Modificación tipo IVA servicios digitales",
+                                "descripcion": "Modificacion tipo IVA servicios digitales",
                                 "url": "#",
                             }
                         ],
@@ -145,21 +145,21 @@ class MockChatModel(BaseChatModel):
                 )
             )
 
-        # ── Compliance: consulta fiscal ──
+        # -- Compliance: consulta fiscal --
         if "respuesta_consulta" in full_text or "asesor fiscal experto" in full_text:
             return AIMessage(
                 content=json.dumps(
                     {
                         "respuesta_consulta": (
-                            "Basándome en la normativa fiscal española vigente, "
-                            "la deducibilidad depende de que el gasto esté correlacionado con la actividad económica "
-                            "y debidamente documentado con factura. Consulte con su gestor para casos específicos."
+                            "Basandome en la normativa fiscal espanola vigente, "
+                            "la deducibilidad depende de que el gasto este correlacionado con la actividad economica "
+                            "y debidamente documentado con factura. Consulte con su gestor para casos especificos."
                         )
                     }
                 )
             )
 
-        # ── Fallback genérico ──
+        # -- Fallback generico --
         return AIMessage(
             content=json.dumps({"status": "ok", "message": "Respuesta simulada (MockLLM)"})
         )
@@ -167,12 +167,12 @@ class MockChatModel(BaseChatModel):
     def _multi_agent_plan(self, text: str) -> str:
         """Genera un plan multi-agente en formato JSON para el coordinador."""
         steps = []
-        if "nómin" in text or "nomina" in text or "emplead" in text:
+        if "nomin" in text or "nomina" in text or "emplead" in text:
             steps.append(
                 {
                     "agent": "hr",
                     "action": "generate_payrolls",
-                    "instruction": "Genera las nóminas en borrador para todos los empleados del mes actual.",
+                    "instruction": "Genera las nominas en borrador para todos los empleados del mes actual.",
                 }
             )
         if "factura" in text or "cobro" in text or "venta" in text:
@@ -204,7 +204,6 @@ class MockChatModel(BaseChatModel):
     def _classify_domain(self, text: str) -> str:
         """Devuelve una sola palabra: el dominio del agente a invocar."""
         mapping = {
-            "nómina": "hr",
             "nomina": "hr",
             "empleado": "hr",
             "sueldo": "hr",
@@ -226,10 +225,10 @@ class MockChatModel(BaseChatModel):
             "correo": "email",
             "email": "email",
             "excel": "excel",
-            "hoja de cálculo": "excel",
+            "hoja de calculo": "excel",
             "banco": "banking",
             "saldo": "banking",
-            "transacción": "banking",
+            "transaccion": "banking",
         }
         for kw, domain in mapping.items():
             if kw in text:
@@ -237,7 +236,7 @@ class MockChatModel(BaseChatModel):
         return "billing"
 
     def _billing_json(self, text: str) -> str:
-        """Extrae o genera JSON de facturación simulado."""
+        """Extrae o genera JSON de facturacion simulado."""
         query_keywords = [
             "lista",
             "listar",
@@ -248,7 +247,6 @@ class MockChatModel(BaseChatModel):
             "resumen",
             "ver",
             "mostrar",
-            "cuántas",
             "cuantas",
         ]
         is_query = any(kw in text for kw in query_keywords)
@@ -279,7 +277,7 @@ class MockChatModel(BaseChatModel):
                 "due_date": "2026-04-10",
                 "items": [
                     {
-                        "description": "Servicio de consultoría",
+                        "description": "Servicio de consultoria",
                         "quantity": "1",
                         "unit_price": "1500.00",
                         "tax_rate": "21",
@@ -296,7 +294,7 @@ class MockChatModel(BaseChatModel):
         )
 
     def _tool_call_response(self, full: str, tools: list, messages: List[BaseMessage]) -> AIMessage:
-        """Genera una llamada a herramienta apropiada según el contexto."""
+        """Genera una llamada a herramienta apropiada segun el contexto."""
         tenant_id = self._extract_tenant_id(messages)
 
         tool_names = []
@@ -308,10 +306,10 @@ class MockChatModel(BaseChatModel):
 
         call_id = f"call_{uuid4().hex[:8]}"
 
-        # ── HR: nóminas ──
+        # -- HR: nominas --
         if any("payroll" in n or "nomina" in n for n in tool_names):
             if "generate_all_payrolls" in tool_names and (
-                "todos" in full or "all" in full or "nóminas" in full
+                "todos" in full or "all" in full or "nominas" in full
             ):
                 return AIMessage(
                     content="",
@@ -337,7 +335,7 @@ class MockChatModel(BaseChatModel):
                     ],
                 )
 
-        # ── CRM: oportunidades ──
+        # -- CRM: oportunidades --
         if any("opportunit" in n or "oportunidad" in n or "leads" in n for n in tool_names):
             if "qualify_leads" in tool_names and (
                 "cualif" in full or "leads" in full or "analiz" in full
@@ -366,7 +364,7 @@ class MockChatModel(BaseChatModel):
                     ],
                 )
 
-        # ── Documentos ──
+        # -- Documentos --
         if "list_tenant_documents" in tool_names:
             return AIMessage(
                 content="",
@@ -380,9 +378,9 @@ class MockChatModel(BaseChatModel):
                 ],
             )
 
-        # ── Fallback: respuesta directa sin tool ──
+        # -- Fallback: respuesta directa sin tool --
         return AIMessage(
-            content="He procesado tu solicitud. Todo está en orden (respuesta simulada)."
+            content="He procesado tu solicitud. Todo esta en orden (respuesta simulada)."
         )
 
     def _extract_tenant_id(self, messages: List[BaseMessage]) -> str:

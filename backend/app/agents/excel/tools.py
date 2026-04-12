@@ -1,12 +1,8 @@
 """
-Agente de Excel — Autónomo con LangGraph.
+Herramientas del agente de Excel.
 
-El LLM decide qué herramientas usar según la intención del usuario:
-  - Exportar datos del ERP a Excel → export_erp_data
-  - Transformar archivos subidos → transform_uploaded_files
-  - Listar datos disponibles → list_available_datasets
-
-Cada herramienta ejecuta lógica determinista (BD, openpyxl, pandas).
+DB fetchers, utilidades de escritura/lectura, y las tools LangChain
+que el agente invoca de forma autónoma.
 """
 
 import logging
@@ -15,10 +11,7 @@ import uuid
 from datetime import datetime, timezone
 
 import pandas as pd
-from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langgraph.graph import StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
 from sqlalchemy.future import select
 
 from app.agents.agent_tools.documents import (
@@ -27,9 +20,6 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
-from app.agents.base import AgentState
-from app.agents.types import StepResult
-from app.core.llm_factory import get_llm
 from app.db.base import AsyncSessionLocal
 from app.db.models.accounting import BankTransaction
 from app.db.models.billing import Invoice
@@ -40,12 +30,10 @@ from app.db.models.tenant import TenantDocument
 
 logger = logging.getLogger(__name__)
 
-UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
+UPLOADS_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-
-def _get_llm():
-    return get_llm(temperature=0)
 
 
 # ─── DB Fetchers (reutilizados por las tools) ────────────────────────────────
@@ -332,6 +320,68 @@ def _write_excel(
     wb.save(output_path)
 
 
+# ─── Mapeo de columnas para importación ──────────────────────────────────────
+
+_IMPORT_COLUMN_MAP = {
+    "clientes": {
+        "model": "Client",
+        "fields": {
+            "nombre": "name",
+            "name": "name",
+            "nif": "nif",
+            "cif": "nif",
+            "email": "email",
+            "correo": "email",
+            "telefono": "phone",
+            "teléfono": "phone",
+            "phone": "phone",
+            "direccion": "address",
+            "dirección": "address",
+            "address": "address",
+        },
+        "required": ["name"],
+    },
+    "productos": {
+        "model": "Product",
+        "fields": {
+            "nombre": "name",
+            "name": "name",
+            "descripcion": "description",
+            "descripción": "description",
+            "description": "description",
+            "precio": "price",
+            "price": "price",
+            "pvp": "price",
+            "tipo": "item_type",
+            "type": "item_type",
+            "iva": "tax_percentage",
+            "tax": "tax_percentage",
+        },
+        "required": ["name"],
+    },
+    "empleados": {
+        "model": "Employee",
+        "fields": {
+            "nombre": "name",
+            "name": "name",
+            "nif": "nif",
+            "dni": "nif",
+            "email": "email",
+            "correo": "email",
+            "cargo": "role",
+            "puesto": "role",
+            "role": "role",
+            "departamento": "department",
+            "department": "department",
+            "salario": "base_salary",
+            "salario_base": "base_salary",
+            "base_salary": "base_salary",
+        },
+        "required": ["name"],
+    },
+}
+
+
 # ─── Herramientas del agente ──────────────────────────────────────────────────
 
 
@@ -393,7 +443,7 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
 
     from uuid import UUID as _UUID
 
-    from app.api.v1.routes.templates import get_default_theme
+    from app.services.template_service import get_default_theme
 
     _theme = None
     try:
@@ -452,69 +502,6 @@ async def _list_available_datasets_async(tenant_id: str) -> str:
             logger.debug("Error consultando dataset %s", key, exc_info=True)
             lines.append(f"- {key}: error al consultar")
     return "Datasets disponibles para exportar:\n" + "\n".join(lines)
-
-
-# ─── Importación y modificación de Excel ──────────────────────────────────────
-
-# Mapeo de columnas Excel → campos del modelo para importación
-_IMPORT_COLUMN_MAP = {
-    "clientes": {
-        "model": "Client",
-        "fields": {
-            "nombre": "name",
-            "name": "name",
-            "nif": "nif",
-            "cif": "nif",
-            "email": "email",
-            "correo": "email",
-            "telefono": "phone",
-            "teléfono": "phone",
-            "phone": "phone",
-            "direccion": "address",
-            "dirección": "address",
-            "address": "address",
-        },
-        "required": ["name"],
-    },
-    "productos": {
-        "model": "Product",
-        "fields": {
-            "nombre": "name",
-            "name": "name",
-            "descripcion": "description",
-            "descripción": "description",
-            "description": "description",
-            "precio": "price",
-            "price": "price",
-            "pvp": "price",
-            "tipo": "item_type",
-            "type": "item_type",
-            "iva": "tax_percentage",
-            "tax": "tax_percentage",
-        },
-        "required": ["name"],
-    },
-    "empleados": {
-        "model": "Employee",
-        "fields": {
-            "nombre": "name",
-            "name": "name",
-            "nif": "nif",
-            "dni": "nif",
-            "email": "email",
-            "correo": "email",
-            "cargo": "role",
-            "puesto": "role",
-            "role": "role",
-            "departamento": "department",
-            "department": "department",
-            "salario": "base_salary",
-            "salario_base": "base_salary",
-            "base_salary": "base_salary",
-        },
-        "required": ["name"],
-    },
-}
 
 
 @tool
@@ -600,7 +587,7 @@ async def _import_excel_async(
             return "Error: El archivo no tiene datos (solo headers o vacío)."
 
         headers = [str(h).strip().lower() if h else "" for h in rows[0]]
-        col_mapping = {}  # excel_col_idx → model_field_name
+        col_mapping = {}  # excel_col_idx -> model_field_name
         for idx, header in enumerate(headers):
             if header in config["fields"]:
                 col_mapping[idx] = config["fields"][header]
@@ -844,7 +831,7 @@ async def _read_excel_async(
         return f"Error leyendo Excel: {e}"
 
 
-# ─── Lista de herramientas ────────────────────────────────────────────────────
+# ─── Lista de herramientas (exportada para agent.py) ─────────────────────────
 
 tools = [
     export_erp_data,
@@ -858,87 +845,3 @@ tools = [
     get_tenant_knowledge,
     upsert_tenant_knowledge,
 ]
-
-
-# ─── Nodos del grafo LangGraph ───────────────────────────────────────────────
-
-EXCEL_SYSTEM_PROMPT = """Eres el Agente de Excel de un ERP para PYMEs españolas. Tus capacidades:
-
-1. **Exportar datos a Excel** con `export_erp_data` — genera .xlsx formateados. Datasets: facturas, clientes, empleados, nominas, productos, banco. "todos" para todo.
-2. **Ver datos disponibles** con `list_available_datasets` — qué datos hay y cuántos registros.
-3. **Importar Excel** con `import_excel` — lee un .xlsx subido e importa filas a la BD (clientes, productos, empleados). Mapea columnas automáticamente.
-4. **Leer Excel** con `read_excel` — muestra el contenido de un archivo Excel en formato texto. Útil antes de modificar.
-5. **Modificar Excel** con `modify_excel` — edita celdas específicas de un .xlsx existente. Recibe instrucciones en JSON.
-6. **Listar documentos** con `list_tenant_documents` — ver archivos ya generados.
-7. **Crear documentos** con `create_document` — para informes en texto/CSV.
-
-REGLAS:
-- Para EXPORTAR: usa `export_erp_data`. Pasa TODOS los datasets que el usuario menciona separados por coma.
-  Ejemplos: "facturas,nominas" o "facturas,empleados,nominas" o "todos" para exportar todo.
-  CRÍTICO: Incluye CADA tipo de dato que el usuario pide. Si dice "facturas y nóminas", usa datasets="facturas,nominas".
-  Si dice "facturas y empleados", usa datasets="facturas,empleados".
-  Si menciona nóminas → incluir "nominas". Si menciona facturas → incluir "facturas". NUNCA omitas un dataset mencionado.
-  SIEMPRE pasa user_request con el mensaje original del usuario para mejorar la detección automática.
-  En caso de duda, usa "todos" — es mejor dar más datos que menos.
-- Para IMPORTAR: primero usa `list_tenant_documents` para encontrar el document_id del Excel, luego `import_excel`.
-- Para MODIFICAR un Excel: primero `read_excel` para ver el contenido, luego `modify_excel` con las instrucciones JSON.
-- Para ver qué hay disponible: `list_available_datasets`.
-- Responde siempre en español.
-
-ID del Tenant actual: {tenant_id}"""
-
-
-async def excel_agent_node(state: AgentState):
-    if "messages" not in state or not state["messages"]:
-        sys_msg = SystemMessage(
-            content=EXCEL_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
-        )
-        user_msg = HumanMessage(content=state["user_intent"])
-        extra_init_messages = [sys_msg, user_msg]
-        state["messages"] = extra_init_messages
-    else:
-        extra_init_messages = []
-
-    llm_with_tools = _get_llm().bind_tools(tools)
-    response = await llm_with_tools.ainvoke(state["messages"])
-
-    result_log = StepResult(
-        step_id=f"excel_step_{datetime.now().timestamp()}",
-        description="Procesando solicitud de Excel...",
-        status="completed",
-        action_taken="Invocando herramientas de Excel"
-        if response.tool_calls
-        else "Asistencia Excel completada.",
-    )
-
-    if "agent_results" not in state:
-        state["agent_results"] = []
-    state["agent_results"].append(result_log.model_dump())
-    return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
-
-
-def excel_finalize_node(state: AgentState):
-    last_msg = state["messages"][-1]
-    final_result = StepResult(
-        step_id="excel_final",
-        description="Agente de Excel ha finalizado.",
-        status="completed",
-        action_taken=last_msg.content
-        if isinstance(last_msg.content, str)
-        else "Operación Excel completada.",
-    )
-    return {"status": "done", "agent_results": [final_result.model_dump()]}
-
-
-# ─── Compilar grafo ───────────────────────────────────────────────────────────
-
-workflow = StateGraph(AgentState)
-workflow.add_node("excel_agent", excel_agent_node)
-workflow.add_node("tools", ToolNode(tools))
-workflow.add_node("finalize", excel_finalize_node)
-
-workflow.set_entry_point("excel_agent")
-workflow.add_conditional_edges("excel_agent", tools_condition)
-workflow.add_edge("tools", "excel_agent")
-
-graph = workflow.compile()

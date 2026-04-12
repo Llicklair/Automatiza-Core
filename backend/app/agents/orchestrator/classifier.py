@@ -186,30 +186,9 @@ _KEYWORD_MAP: dict[str, list[str]] = {
     ],
 }
 
-_CLASSIFY_SYSTEM = """\
-Eres un clasificador de intenciones para una plataforma de automatización empresarial española.
-Tu única tarea es leer el texto del usuario y responder con UN SOLO valor del siguiente conjunto:
-  billing | documents | compliance | hr | banking | rag | excel | email | workflow | coordinator | report | marketing | recruitment | chat | unknown
+from app.prompts import load_prompt
 
-Definiciones:
-- billing: crear, enviar o consultar facturas, presupuestos, albaranes o cobros a clientes.
-- documents: subir, analizar, clasificar o gestionar documentos, PDFs, contratos.
-- compliance: modelos fiscales (303, 130, 111, 200), declaraciones AEAT, hacienda.
-- hr: nóminas, empleados, contratos laborales, vacaciones, bajas médicas, adelantos.
-- workflow: crear, modificar o eliminar automatizaciones, reglas recurrentes, tareas programadas.
-- coordinator: tareas complejas que requieren múltiples pasos o agentes.
-- crm: ventas, mover leads, nuevas oportunidades de negocio, embudo de clientes, tratos.
-- banking: saldos bancarios, transacciones, movimientos, cuentas, informes financieros.
-- rag: buscar información o responder preguntas sobre el contenido de documentos archivados.
-- excel: generar un archivo Excel (.xlsx) con datos de la empresa (facturas, clientes, empleados, nóminas, inventario, banco), manipular datos, cruzar archivos csv/excel, exportar listados tabulares.
-- email: revisar bandeja de entrada, leer o responder y procesar correos electrónicos.
-- report: generar informe mensual, resumen del estado de la empresa, análisis mensual completo, cierre mensual, snapshot empresarial.
-- recruitment: procesos de selección, parsear CVs, candidatos, puestos vacantes, shortlisting, scoring de candidatos.
-- marketing: planificación de contenidos para redes sociales (Instagram, Facebook, LinkedIn), campañas, posts, hashtags, community management.
-- chat: preguntas generales, saludos, consultas de estado ("¿terminó la tarea?"), dudas conceptuales ("¿qué es el modelo 303?"), o cualquier mensaje que NO requiera ejecutar una acción concreta en el ERP.
-- unknown: cualquier otra cosa.
-
-RESPONDE SOLO CON UNA SOLA PALABRA. Sin explicaciones ni puntuación."""
+_CLASSIFY_SYSTEM = load_prompt("classifier")
 
 
 def _is_question(text: str) -> bool:

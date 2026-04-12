@@ -1,16 +1,19 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.api.v1.schemas.crm as schemas
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import Activity, Event, Opportunity, Reservation, User
+from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services import crm_service as svc
 
 router = APIRouter(prefix="/crm", tags=["crm"])
+
+
+# ---- Opportunities ----
 
 
 @router.get("/opportunities", response_model=list[schemas.OpportunityResponse])
@@ -20,13 +23,7 @@ async def list_opportunities(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = (
-        select(Opportunity)
-        .where(Opportunity.tenant_id == current_user.tenant_id)
-        .order_by(desc(Opportunity.created_at))
-    )
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_opportunities(db, current_user.tenant_id)
 
 
 @router.post(
@@ -41,11 +38,7 @@ async def create_opportunity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_opp = Opportunity(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_opp)
-    await db.commit()
-    await db.refresh(new_opp)
-    return new_opp
+    return await svc.create_opportunity(db, current_user.tenant_id, payload.model_dump())
 
 
 @router.patch("/opportunities/{opp_id}", response_model=schemas.OpportunityResponse)
@@ -57,25 +50,29 @@ async def update_opportunity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Opportunity).where(
-            Opportunity.id == opp_id, Opportunity.tenant_id == current_user.tenant_id
+    try:
+        return await svc.update_opportunity(
+            db, current_user.tenant_id, opp_id, payload.model_dump(exclude_unset=True)
         )
-    )
-    opp = result.scalar_one_or_none()
-    if not opp:
-        raise HTTPException(status_code=404, detail="Oportunidad no encontrada")
-
-    update_data = payload.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(opp, key, value)
-
-    await db.commit()
-    await db.refresh(opp)
-    return opp
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
-# --- Activities ---
+@router.delete("/opportunities/{opp_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def delete_opportunity(
+    request: Request,
+    opp_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        await svc.delete_opportunity(db, current_user.tenant_id, opp_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# ---- Activities ----
 
 
 @router.get("/activities", response_model=list[schemas.ActivityResponse])
@@ -87,15 +84,9 @@ async def list_activities(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Activity).where(Activity.tenant_id == current_user.tenant_id)
-    if client_id:
-        query = query.where(Activity.client_id == client_id)
-    if opportunity_id:
-        query = query.where(Activity.opportunity_id == opportunity_id)
-
-    query = query.order_by(desc(Activity.created_at))
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_activities(
+        db, current_user.tenant_id, client_id=client_id, opportunity_id=opportunity_id
+    )
 
 
 @router.post(
@@ -108,11 +99,7 @@ async def create_activity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_act = Activity(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_act)
-    await db.commit()
-    await db.refresh(new_act)
-    return new_act
+    return await svc.create_activity(db, current_user.tenant_id, payload.model_dump())
 
 
 @router.delete("/activities/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -123,19 +110,13 @@ async def delete_activity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Activity).where(
-            Activity.id == activity_id, Activity.tenant_id == current_user.tenant_id
-        )
-    )
-    activity = result.scalar_one_or_none()
-    if not activity:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    await db.delete(activity)
-    await db.commit()
+    try:
+        await svc.delete_activity(db, current_user.tenant_id, activity_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
-# --- Events / Calendar ---
+# ---- Events / Calendar ----
 
 
 @router.get("/events", response_model=list[schemas.EventResponse])
@@ -145,11 +126,7 @@ async def list_events(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = (
-        select(Event).where(Event.tenant_id == current_user.tenant_id).order_by(Event.start_time)
-    )
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_events(db, current_user.tenant_id)
 
 
 @router.post("/events", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED)
@@ -160,14 +137,41 @@ async def create_event(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_evt = Event(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_evt)
-    await db.commit()
-    await db.refresh(new_evt)
-    return new_evt
+    return await svc.create_event(db, current_user.tenant_id, payload.model_dump())
 
 
-# --- Reservations ---
+@router.patch("/events/{event_id}", response_model=schemas.EventResponse)
+@limiter.limit("30/minute")
+async def update_event(
+    request: Request,
+    event_id: UUID,
+    payload: schemas.EventUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await svc.update_event(
+            db, current_user.tenant_id, event_id, payload.model_dump(exclude_unset=True)
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def delete_event(
+    request: Request,
+    event_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        await svc.delete_event(db, current_user.tenant_id, event_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# ---- Reservations ----
 
 
 @router.get("/reservations", response_model=list[schemas.ReservationResponse])
@@ -177,13 +181,7 @@ async def list_reservations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = (
-        select(Reservation)
-        .where(Reservation.tenant_id == current_user.tenant_id)
-        .order_by(desc(Reservation.created_at))
-    )
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_reservations(db, current_user.tenant_id)
 
 
 @router.post(
@@ -196,11 +194,7 @@ async def create_reservation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_res = Reservation(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_res)
-    await db.commit()
-    await db.refresh(new_res)
-    return new_res
+    return await svc.create_reservation(db, current_user.tenant_id, payload.model_dump())
 
 
 @router.patch("/reservations/{res_id}", response_model=schemas.ReservationResponse)
@@ -212,19 +206,12 @@ async def update_reservation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Reservation).where(
-            Reservation.id == res_id, Reservation.tenant_id == current_user.tenant_id
+    try:
+        return await svc.update_reservation(
+            db, current_user.tenant_id, res_id, payload.model_dump(exclude_unset=True)
         )
-    )
-    res = result.scalar_one_or_none()
-    if not res:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(res, key, value)
-    await db.commit()
-    await db.refresh(res)
-    return res
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.delete("/reservations/{res_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -235,79 +222,7 @@ async def delete_reservation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Reservation).where(
-            Reservation.id == res_id, Reservation.tenant_id == current_user.tenant_id
-        )
-    )
-    res = result.scalar_one_or_none()
-    if not res:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
-    await db.delete(res)
-    await db.commit()
-
-
-# --- Events PATCH / DELETE ---
-
-
-@router.patch("/events/{event_id}", response_model=schemas.EventResponse)
-@limiter.limit("30/minute")
-async def update_event(
-    request: Request,
-    event_id: UUID,
-    payload: schemas.EventUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(Event).where(Event.id == event_id, Event.tenant_id == current_user.tenant_id)
-    )
-    evt = result.scalar_one_or_none()
-    if not evt:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(evt, key, value)
-    await db.commit()
-    await db.refresh(evt)
-    return evt
-
-
-@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("30/minute")
-async def delete_event(
-    request: Request,
-    event_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(Event).where(Event.id == event_id, Event.tenant_id == current_user.tenant_id)
-    )
-    evt = result.scalar_one_or_none()
-    if not evt:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
-    await db.delete(evt)
-    await db.commit()
-
-
-# --- Opportunities DELETE ---
-
-
-@router.delete("/opportunities/{opp_id}", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("30/minute")
-async def delete_opportunity(
-    request: Request,
-    opp_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(Opportunity).where(
-            Opportunity.id == opp_id, Opportunity.tenant_id == current_user.tenant_id
-        )
-    )
-    opp = result.scalar_one_or_none()
-    if not opp:
-        raise HTTPException(status_code=404, detail="Oportunidad no encontrada")
-    await db.delete(opp)
-    await db.commit()
+    try:
+        await svc.delete_reservation(db, current_user.tenant_id, res_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))

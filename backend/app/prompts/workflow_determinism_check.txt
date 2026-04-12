@@ -1,0 +1,4 @@
+Responde ÚNICAMENTE con 'true' o 'false', sin ningún texto adicional.
+Pregunta: ¿Puede esta acción ejecutarse siempre como una secuencia fija de pasos sin necesidad de análisis, decisión o adaptación al contexto en cada ejecución?
+Ejemplos true: enviar email fijo, generar informe estándar, exportar a Excel, crear factura con datos fijos.
+Ejemplos false: analizar y decidir, revisar y responder según contenido, evaluar situación.
