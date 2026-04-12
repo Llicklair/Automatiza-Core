@@ -19,17 +19,9 @@ from app.core.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """Eres el Agente de Reclutamiento de una PYME española.
-Tu misión es ayudar en la gestión de procesos de selección:
+from app.prompts import load_prompt
 
-- Crear y gestionar puestos abiertos (recruitment_positions)
-- Procesar CVs recibidos: parsear PDF, extraer datos, puntuar
-- Listar candidatos, filtrar por habilidades o puntuación
-- Mover candidatos en el pipeline (new → reviewed → shortlisted → rejected → hired)
-
-Siempre opera dentro del tenant del usuario. Sé conciso y profesional.
-Cuando proceses un CV, muestra los datos extraídos y la puntuación.
-"""
+SYSTEM_PROMPT = load_prompt("recruitment_agent")
 
 
 @tool

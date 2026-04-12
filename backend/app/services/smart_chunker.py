@@ -10,7 +10,7 @@ A diferencia del chunking mecánico (cortar cada N chars), este módulo:
 import logging
 from dataclasses import dataclass, field
 
-from app.services.pdf_parser import ParsedElement
+from app.services.pdf.parser import ParsedElement
 
 logger = logging.getLogger(__name__)
 

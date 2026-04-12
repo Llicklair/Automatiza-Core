@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Tenant, TenantDocument, User
-from app.services.pdf_service import generate_snapshot_pdf
+from app.services.pdf import generate_snapshot_pdf
 
 from ._helpers import UPLOAD_DIR, _aggregate, _parse_month
 from ._schemas import CompanySnapshot, ReportOut

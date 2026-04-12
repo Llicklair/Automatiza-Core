@@ -1,5 +1,5 @@
 """
-ClaudeCodeChatModel — LangChain wrapper para Claude Code CLI (suscripción VSCode/Pro).
+ClaudeCodeChatModel — LangChain wrapper para Claude Code CLI (suscripcion VSCode/Pro).
 
 Estrategia: warm process pool por tenant.
   - Un proceso `claude -p` pre-spawneado por tenant espera en stdin.
@@ -215,8 +215,8 @@ def _build_tool_system_prompt(tools) -> str:
 
 
 def _extract_json_from_text(text: str) -> Optional[str]:
-    """Intenta extraer JSON de tool_calls usando múltiples estrategias de parseo."""
-    # 1. Marcadores explícitos (más fiable)
+    """Intenta extraer JSON de tool_calls usando multiples estrategias de parseo."""
+    # 1. Marcadores explicitos (mas fiable)
     match = _TOOL_CALL_RE.search(text)
     if match:
         return match.group(1).strip()
@@ -228,7 +228,7 @@ def _extract_json_from_text(text: str) -> Optional[str]:
         if '"tool_calls"' in raw:
             return raw
 
-    # 3. JSON suelto con tool_calls (Claude omitió los marcadores)
+    # 3. JSON suelto con tool_calls (Claude omitio los marcadores)
     match = _BARE_JSON_RE.search(text)
     if match:
         return match.group(0).strip()
@@ -237,7 +237,7 @@ def _extract_json_from_text(text: str) -> Optional[str]:
 
 
 def _parse_tool_response(text: str) -> AIMessage:
-    """Parsea la respuesta del CLI buscando tool calls con múltiples estrategias."""
+    """Parsea la respuesta del CLI buscando tool calls con multiples estrategias."""
     raw_json = _extract_json_from_text(text)
     if raw_json is None:
         return AIMessage(content=text)
@@ -250,7 +250,7 @@ def _parse_tool_response(text: str) -> AIMessage:
 
     raw_calls = parsed.get("tool_calls") if isinstance(parsed, dict) else None
     if not raw_calls or not isinstance(raw_calls, list):
-        _log.warning("[ClaudeCode] Estructura tool_calls inválida, fallback a texto")
+        _log.warning("[ClaudeCode] Estructura tool_calls invalida, fallback a texto")
         return AIMessage(content=text)
 
     tool_calls = []
@@ -258,7 +258,7 @@ def _parse_tool_response(text: str) -> AIMessage:
         if not isinstance(tc, dict) or "name" not in tc:
             continue
         args = tc.get("arguments") or tc.get("args") or {}
-        # Coerce: si un valor debería ser string pero vino como número, convertir
+        # Coerce: si un valor deberia ser string pero vino como numero, convertir
         tool_calls.append(
             {
                 "name": tc["name"],
@@ -272,7 +272,7 @@ def _parse_tool_response(text: str) -> AIMessage:
         )
 
     if not tool_calls:
-        _log.warning("[ClaudeCode] No se pudieron extraer tool_calls válidas, fallback a texto")
+        _log.warning("[ClaudeCode] No se pudieron extraer tool_calls validas, fallback a texto")
         return AIMessage(content=text)
 
     _log.info(
@@ -316,7 +316,7 @@ def _messages_to_prompt(messages: List[BaseMessage], tool_system: str = "") -> s
         else:
             parts.append(content)
 
-    # Tras recibir resultados de tools, instruir a Claude sobre qué hacer ahora
+    # Tras recibir resultados de tools, instruir a Claude sobre que hacer ahora
     if has_tool_results and tool_system:
         parts.append(
             "[System]: The tool results are above. Now you MUST either:\n"
@@ -360,14 +360,14 @@ class ClaudeCodeChatModel(BaseChatModel):
     def _process_response(self, text: str) -> ChatResult:
         if self._bound_tools:
             msg = _parse_tool_response(text)
-            # Log para debugging: si tenía tools pero no parseó ninguna
+            # Log para debugging: si tenia tools pero no parseo ninguna
             if not msg.tool_calls and self._bound_tools:
                 # Verificar si Claude estaba intentando llamar una tool pero con formato incorrecto
                 tool_names = {t.name for t in self._bound_tools}
                 mentioned = [n for n in tool_names if n in text]
                 if mentioned:
                     _log.warning(
-                        "[ClaudeCode] Claude mencionó tools %s en texto pero no usó el formato correcto. "
+                        "[ClaudeCode] Claude menciono tools %s en texto pero no uso el formato correcto. "
                         "Respuesta (primeros 200 chars): %s",
                         mentioned,
                         text[:200],
@@ -376,7 +376,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             msg = AIMessage(content=text)
         return ChatResult(generations=[ChatGeneration(message=msg)])
 
-    # ── sync ─────────────────────────────────────────────────────────────────
+    # -- sync ----------------------------------------------------------------
     def _generate(
         self,
         messages: List[BaseMessage],
@@ -399,14 +399,14 @@ class ClaudeCodeChatModel(BaseChatModel):
             )
             text = result.stdout.strip() or result.stderr.strip() or "Sin respuesta del CLI"
         except subprocess.TimeoutExpired:
-            text = "Error: Claude Code CLI no respondió en el tiempo límite."
+            text = "Error: Claude Code CLI no respondio en el tiempo limite."
         except FileNotFoundError:
-            text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' esté en el PATH."
+            text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' este en el PATH."
         except Exception as e:
             text = f"Error inesperado en Claude Code CLI: {e}"
         return self._process_response(text)
 
-    # ── async ─────────────────────────────────────────────────────────────────
+    # -- async ----------------------------------------------------------------
     async def _agenerate(
         self,
         messages: List[BaseMessage],
@@ -424,15 +424,15 @@ class ClaudeCodeChatModel(BaseChatModel):
             if not text:
                 text = stderr.decode("utf-8", errors="replace").strip() or "Sin respuesta del CLI"
         except asyncio.TimeoutError:
-            text = "Error: Claude Code CLI no respondió en el tiempo límite."
+            text = "Error: Claude Code CLI no respondio en el tiempo limite."
         except FileNotFoundError:
-            text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' esté en el PATH."
+            text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' este en el PATH."
         except Exception as e:
             text = f"Error inesperado en Claude Code CLI: {e}"
         _log.info("[ClaudeCode] _agenerate key='%s': %d chars", self.pool_key, len(text))
         return self._process_response(text)
 
-    # ── tool binding ─────────────────────────────────────────────────────────
+    # -- tool binding ---------------------------------------------------------
     def bind_tools(self, tools, *, tool_choice=None, **kwargs):
         """Devuelve un clon con las tools almacenadas para prompt-based tool calling."""
         return ClaudeCodeChatModel(
@@ -442,7 +442,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             _bound_tools=list(tools),
         )
 
-    # ── structured output ─────────────────────────────────────────────────────
+    # -- structured output ----------------------------------------------------
     def with_structured_output(self, schema, *, method="json_mode", include_raw=False, **kwargs):
         def _build_json_instruction():
             if hasattr(schema, "model_json_schema"):
@@ -452,7 +452,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             else:
                 schema_str = str(schema)
             return (
-                f"\n\nResponde ÚNICAMENTE con un objeto JSON válido que cumpla este esquema "
+                f"\n\nResponde UNICAMENTE con un objeto JSON valido que cumpla este esquema "
                 f"(sin markdown, sin texto adicional):\n{schema_str}"
             )
 

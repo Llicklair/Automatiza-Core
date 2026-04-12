@@ -33,107 +33,11 @@ class WorkflowAgentResult:
 
 # ─── Herramientas para el Agente (Simuladas en modo Prompt) ───────────────────
 
-_COMPILE_STEPS_PROMPT = """\
-Eres un compilador de pasos de workflow HÍBRIDO para AutomatizaPyme.
-Dado un workflow con su configuración, genera una lista CONCRETA y ORDENADA de pasos.
+from app.prompts import load_prompt
 
-Cada paso puede ser de dos tipos:
-- **deterministic**: Llama directamente a una función @tool por nombre. NO usa LLM. Coste: 0 tokens.
-- **reasoning**: El LLM analiza, decide o redacta. Coste: tokens LLM.
+_COMPILE_STEPS_PROMPT = load_prompt("workflow_compile_steps")
 
-REGLA DE ORO: Usa "deterministic" siempre que la acción sea concreta y predecible (queries, exports, envíos).
-Usa "reasoning" SOLO cuando se necesite analizar datos, tomar decisiones o generar texto libre.
-
-Devuelve SIEMPRE un JSON válido con este formato:
-{
-  "steps": [
-    {
-      "type": "deterministic",
-      "agent": "billing",
-      "tool": "list_invoices",
-      "action": "fetch_pending_invoices",
-      "params": {"tenant_id": "$tenant_id", "limit": 20}
-    },
-    {
-      "type": "reasoning",
-      "agent": "billing",
-      "action": "analyze_invoices",
-      "params": {"intent": "Analiza las facturas pendientes: $prev. Genera un resumen ejecutivo con totales y alertas."}
-    },
-    {
-      "type": "deterministic",
-      "agent": "email",
-      "tool": "send_email",
-      "action": "notify_admin",
-      "params": {"tenant_id": "$tenant_id", "to": "admin@empresa.com", "subject": "Informe semanal", "body": "$prev"}
-    }
-  ]
-}
-
-VARIABLES ESPECIALES:
-- $tenant_id → se reemplaza automáticamente por el tenant_id real.
-- $prev → resultado del paso anterior (encadenamiento).
-
-TOOLS DISPONIBLES (para pasos deterministic):
-billing: create_invoice, list_invoices, search_client, update_invoice_status, update_invoice, send_invoice_by_email
-hr: create_employee, calculate_and_create_payroll, generate_all_payrolls, list_employees, list_payrolls, update_payroll, approve_payroll
-crm: list_opportunities, create_opportunity, update_opportunity_stage, qualify_leads
-banking: check_balances, list_transactions, financial_summary, reconcile_transactions
-compliance: check_fiscal_deadlines, check_boe_news, fiscal_query
-documents: classify_document, search_documents_semantic
-excel: export_erp_data, list_available_datasets, import_excel, modify_excel, read_excel
-email: check_inbox, check_unread, send_email
-rag: search_documents, answer_from_documents
-
-REGLAS:
-1. Cada paso deterministic DEBE tener el campo "tool" con el nombre exacto de la función.
-2. Los parámetros de tools deterministic deben coincidir con la firma de la función.
-3. Si necesitas que el LLM interprete, analice o redacte → usa type "reasoning".
-4. Mantén el orden lógico: primero obtener datos, luego analizar, luego actuar.
-5. Minimiza pasos "reasoning" — son los únicos que cuestan tokens.
-"""
-
-_SYSTEM_PROMPT = """\
-Eres el Agente de Automatizaciones (Workflow Agent).
-Tu tarea es gestionar las reglas de automatización de la plataforma.
-
-FORMATO DE RESPUESTA:
-Debes responder SIEMPRE en formato JSON válido con esta estructura:
-{
-  "action": "create" | "update" | "delete" | "list" | "toggle",
-  "name": "Nombre descriptivo del workflow",
-  "description": "Explicación de qué hace",
-  "trigger_type": "event_based" | "schedule_based",
-  "trigger_config": {
-     "events": ["invoice_created"] (si es event_based),
-     "cron": "0 0 1 * *" (si es schedule_based, formato cron standard)
-  },
-  "action_type": "create_task",
-  "action_config": {
-     "instruction": "Lo que la IA debe hacer cuando se dispare",
-     "domain": "billing" | "hr" | "documents" | "banking" | "coordinator"
-  },
-  "ui_nodes": [
-     {"id": "node-1", "type": "trigger", "position": {"x": 50, "y": 50}, "data": {"label": "Inicio (Cron/Evento)"}},
-     {"id": "node-2", "type": "action", "position": {"x": 50, "y": 150}, "data": {"label": "Paso 1: Descripción", "domain": "billing"}}
-  ],
-  "ui_edges": [
-     {"id": "edge-1", "source": "node-1", "target": "node-2", "type": "smoothstep"}
-  ],
-  "is_active": true,
-  "workflow_id": "UUID si es actualización o borrado"
-}
-
-REGLAS:
-1. Si el usuario pide algo como "hazme la nómina todos los meses", usa trigger_type='schedule_based' y cron='0 0 1 * *'.
-2. Si el usuario pide "avísame cuando se cree una factura", usa trigger_type='event_based' y events=['invoice_created'].
-3. IMPORTANTE (GRAFO UI): Si "action" es "create", TIENES que generar una topología de Nodos y Aristas (`ui_nodes` y `ui_edges`) lógica representando los pasos internos de la instrucción.
-    - El nodo-1 SIEMPRE debe ser el trigger (type: "trigger").
-    - Coloca las posiciones ('x', 'y') en cascada descendente (y: 50, 150, 250, etc.).
-    - Crea nodos de tipo `action` extraídos de las intenciones (ej un nodo para buscar info, otro para crear algo y otro de email). Conecta los nodos con `ui_edges`.
-    - CADA nodo de tipo `action` DEBE incluir un campo `"domain"` en sus `data` (ej: "billing", "hr", "email", etc.) para que el orquestador sepa a qué agente llamar.
-4. Si no entiendes la petición, devuelve un error lógico en el campo 'error'.
-"""
+_SYSTEM_PROMPT = load_prompt("workflow_agent")
 
 
 async def _compile_deterministic_steps(

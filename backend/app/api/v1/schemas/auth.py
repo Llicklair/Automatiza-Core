@@ -61,3 +61,15 @@ class UserOut(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
+
+
+# ─── Password Reset ──────────────────────────────────────────────────────────
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

@@ -18,6 +18,7 @@ from .billing import (  # noqa: F401
 from .calendar import Event, Reservation  # noqa: F401
 from .crm import Activity, Client, Opportunity  # noqa: F401
 from .hr import Candidate, Employee, Payroll, RecruitmentPosition  # noqa: F401
+from .hr_documents import HRDocument  # noqa: F401
 from .inventory import Product, StockMovement  # noqa: F401
 from .orders import PurchaseOrder, PurchaseOrderLine, SalesOrder, SalesOrderLine  # noqa: F401
 from .projects import Project, ProjectTask  # noqa: F401
@@ -28,4 +29,5 @@ from .tenant import (  # noqa: F401
     TenantKnowledge,
     TenantLlmConfig,
 )
+from .generative_ui import GeneratedUI  # noqa: F401
 from .workflows import DomainEvent, Workflow, WorkflowExecution  # noqa: F401

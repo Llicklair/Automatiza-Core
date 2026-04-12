@@ -1,7 +1,8 @@
+"""Rutas Projects — thin controller para proyectos y tareas de proyecto."""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.projects import (
@@ -14,8 +15,9 @@ from app.api.v1.schemas.projects import (
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import Project, ProjectTask, User
+from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services import project_service as svc
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -28,13 +30,7 @@ async def list_projects(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = (
-        select(Project)
-        .where(Project.tenant_id == current_user.tenant_id)
-        .order_by(desc(Project.created_at))
-    )
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_projects(db, current_user.tenant_id)
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
@@ -45,11 +41,7 @@ async def create_project(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_project = Project(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_project)
-    await db.commit()
-    await db.refresh(new_project)
-    return new_project
+    return await svc.create_project(db, current_user.tenant_id, payload.model_dump())
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
@@ -61,17 +53,12 @@ async def update_project(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.tenant_id == current_user.tenant_id)
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(project, key, value)
-    await db.commit()
-    await db.refresh(project)
-    return project
+    try:
+        return await svc.update_project(
+            db, current_user.tenant_id, project_id, payload.model_dump(exclude_unset=True)
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -82,14 +69,10 @@ async def delete_project(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.tenant_id == current_user.tenant_id)
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    await db.delete(project)
-    await db.commit()
+    try:
+        await svc.delete_project(db, current_user.tenant_id, project_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # --- Project Tasks ---
@@ -101,12 +84,7 @@ async def list_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(ProjectTask).where(ProjectTask.tenant_id == current_user.tenant_id)
-    if project_id:
-        query = query.where(ProjectTask.project_id == project_id)
-    query = query.order_by(desc(ProjectTask.created_at))
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_tasks(db, current_user.tenant_id, project_id)
 
 
 @router.post("/tasks", response_model=ProjectTaskResponse, status_code=status.HTTP_201_CREATED)
@@ -117,11 +95,7 @@ async def create_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_task = ProjectTask(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_task)
-    await db.commit()
-    await db.refresh(new_task)
-    return new_task
+    return await svc.create_task(db, current_user.tenant_id, payload.model_dump())
 
 
 @router.patch("/tasks/{task_id}", response_model=ProjectTaskResponse)
@@ -133,22 +107,12 @@ async def update_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(ProjectTask).where(
-            ProjectTask.id == task_id, ProjectTask.tenant_id == current_user.tenant_id
+    try:
+        return await svc.update_task(
+            db, current_user.tenant_id, task_id, payload.model_dump(exclude_unset=True)
         )
-    )
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    update_data = payload.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(task, key, value)
-
-    await db.commit()
-    await db.refresh(task)
-    return task
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -159,13 +123,7 @@ async def delete_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(ProjectTask).where(
-            ProjectTask.id == task_id, ProjectTask.tenant_id == current_user.tenant_id
-        )
-    )
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    await db.delete(task)
-    await db.commit()
+    try:
+        await svc.delete_task(db, current_user.tenant_id, task_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))

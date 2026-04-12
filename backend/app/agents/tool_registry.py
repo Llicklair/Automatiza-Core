@@ -23,7 +23,7 @@ def _build_registry() -> dict[str, Callable]:
     registry: dict[str, Callable] = {}
 
     # — billing —
-    from app.agents.billing_agent import (
+    from app.agents.billing import (
         create_invoice,
         list_invoices,
         search_client,
@@ -40,7 +40,7 @@ def _build_registry() -> dict[str, Callable]:
     registry["send_invoice_by_email"] = send_invoice_by_email
 
     # — hr —
-    from app.agents.hr_agent import (
+    from app.agents.hr import (
         approve_payroll,
         calculate_and_create_payroll,
         create_employee,
@@ -98,7 +98,7 @@ def _build_registry() -> dict[str, Callable]:
     registry["search_documents_semantic"] = search_documents_semantic
 
     # — excel —
-    from app.agents.excel_agent import (
+    from app.agents.excel import (
         export_erp_data,
         import_excel,
         list_available_datasets,

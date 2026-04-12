@@ -1,43 +1,18 @@
-"""
-Agente de RRHH — calcula y genera nóminas (draft) para empleados.
-Puede generar la nómina de un empleado individual (por NIF) o para TODOS
-los empleados activos del tenant en un mes dado.
-
-Usa el LLM configurado en llm_factory (Gemini/Anthropic/OpenAI/Groq).
-Las nóminas se crean en modo DRAFT y requieren aprobación humana.
-Tras aprobación, se genera el PDF y se guarda como TenantDocument.
-"""
+"""HR agent — tool functions for payroll, employees and related operations."""
 
 import logging
 from calendar import monthrange
 from datetime import UTC, datetime
 from uuid import UUID
 
-logger = logging.getLogger(__name__)
-
-from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langgraph.graph import StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
 
-from app.agents.agent_tools.documents import (
-    create_document,
-    get_document_content,
-    list_tenant_documents,
-    update_existing_document,
-)
-from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
-from app.agents.base import AgentState
-from app.agents.types import StepResult
-from app.core.llm_factory import get_llm
 from app.db.models.models import Employee, Payroll
 
-
-def _get_llm():
-    return get_llm(temperature=0)
+logger = logging.getLogger(__name__)
 
 
-# ─── Herramientas ─────────────────────────────────────────────────────────────
+# ─── Payroll: individual ──────────────────────────────────────────────────────
 
 
 @tool
@@ -130,14 +105,14 @@ async def _create_payroll_async(
                 import os
 
                 from app.db.models.models import Tenant, TenantDocument
-                from app.services.pdf_service import generate_payroll_pdf
+                from app.services.pdf import generate_payroll_pdf
 
                 # Carga datos para el PDF
                 async with AsyncSessionLocal() as db_pdf:
                     res_t = await db_pdf.execute(select(Tenant).where(Tenant.id == UUID(tenant_id)))
                     tenant_obj = res_t.scalar_one_or_none()
                     try:
-                        from app.api.v1.routes.templates import get_default_theme
+                        from app.services.template_service import get_default_theme
 
                         payroll_theme = await get_default_theme(UUID(tenant_id), "payroll", db_pdf)
                     except Exception as _e:
@@ -239,6 +214,9 @@ async def _create_payroll_async(
         return f"Error procesando nómina de {nif}: {str(e)}"
 
 
+# ─── Payroll: bulk ────────────────────────────────────────────────────────────
+
+
 @tool
 async def generate_all_payrolls(tenant_id: str, month: int, year: int) -> str:
     """
@@ -306,7 +284,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     import os
 
                     from app.db.models.models import TenantDocument
-                    from app.services.pdf_service import generate_payroll_pdf
+                    from app.services.pdf import generate_payroll_pdf
 
                     payroll_pdf_data = {
                         "employee": {
@@ -334,7 +312,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                         "net_salary": net_salary,
                     }
                     try:
-                        from app.api.v1.routes.templates import get_default_theme
+                        from app.services.template_service import get_default_theme
 
                         _bulk_theme = await get_default_theme(UUID(tenant_id), "payroll", db)
                     except Exception as _e:
@@ -348,7 +326,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
                     if not os.path.exists(upload_dir) and os.name == "nt":
                         upload_dir = os.path.abspath(
-                            os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+                            os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
                         )
                     os.makedirs(upload_dir, exist_ok=True)
                     file_path = os.path.join(upload_dir, file_name)
@@ -402,6 +380,9 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
         )
     except Exception as e:
         return f"Error al generar nóminas en bloque: {str(e)}"
+
+
+# ─── Employees ────────────────────────────────────────────────────────────────
 
 
 @tool
@@ -547,6 +528,9 @@ async def _create_employee_async(
         return f"Error creando empleado: {e}"
 
 
+# ─── Payroll: update ──────────────────────────────────────────────────────────
+
+
 @tool
 async def update_payroll(
     tenant_id: str,
@@ -652,6 +636,9 @@ async def _update_payroll_async(
         return f"Error modificando nómina: {e}"
 
 
+# ─── Payroll: approve ─────────────────────────────────────────────────────────
+
+
 @tool
 async def approve_payroll(
     tenant_id: str, payroll_id: str = "", approve_all: bool = False, month: int = 0, year: int = 0
@@ -748,6 +735,9 @@ async def _approve_payroll_async(
         return f"Error aprobando nómina: {e}"
 
 
+# ─── Payroll: list ────────────────────────────────────────────────────────────
+
+
 @tool
 async def list_payrolls(
     tenant_id: str, month: int = 0, year: int = 0, status_filter: str = "all"
@@ -813,111 +803,3 @@ async def _list_payrolls_async(tenant_id: str, month: int, year: int, status_fil
             )
     except Exception as e:
         return f"Error listando nóminas: {e}"
-
-
-tools = [
-    create_employee,
-    calculate_and_create_payroll,
-    generate_all_payrolls,
-    list_employees,
-    list_payrolls,
-    update_payroll,
-    approve_payroll,
-    create_document,
-    list_tenant_documents,
-    update_existing_document,
-    get_document_content,
-    get_tenant_knowledge,
-    upsert_tenant_knowledge,
-]
-
-
-# ─── Nodos del grafo ──────────────────────────────────────────────────────────
-
-
-async def hr_agent_node(state: AgentState):
-    if "messages" not in state or not state["messages"]:
-        sys_msg = SystemMessage(
-            content=(
-                "Eres el Agente de RRHH (Recursos Humanos) de la empresa automatizada. "
-                "Tus capacidades:\n"
-                "1. Crear empleados con `create_employee` (nombre, NIF, salario, cargo, departamento).\n"
-                "2. Generar nóminas individuales con `calculate_and_create_payroll` (requiere NIF, mes, año).\n"
-                "3. Generar TODAS las nóminas del mes con `generate_all_payrolls` (solo mes y año).\n"
-                "4. Consultar empleados con `list_employees`.\n"
-                "5. Consultar nóminas con `list_payrolls` — filtrar por mes/año y estado.\n"
-                "6. Editar nómina con `update_payroll` — modificar salario base o deducciones (solo borradores).\n"
-                "7. Aprobar nóminas con `approve_payroll` — individual por ID o masiva por mes/año.\n"
-                "7. Crear documentos con `create_document`, leer con `get_document_content`.\n"
-                "8. Memoria del tenant con `get_tenant_knowledge` y `upsert_tenant_knowledge`.\n"
-                f"ID del Tenant actual: {state.get('tenant_id')}.\n"
-                "Reglas:\n"
-                "- Si el usuario pide crear un empleado que no existe, usa `create_employee` primero.\n"
-                "- Si te piden nómina de alguien que no existe, CREA al empleado primero y luego genera la nómina.\n"
-                "- Las nóminas se generan en estado DRAFT y requieren aprobación humana.\n"
-                "- Para EDITAR una nómina, primero usa `list_payrolls` para obtener el ID.\n"
-                "- Para APROBAR nóminas, usa `approve_payroll`. Puedes aprobar una o todas las del mes.\n"
-                "- Si el usuario no especifica mes/año, usa el mes y año actuales.\n"
-                "- Para generar todas las nóminas, usa `generate_all_payrolls` directamente sin pedir NIF.\n"
-                "- Si el usuario pide nómina de un empleado específico, primero usa `list_employees` para "
-                "obtener el NIF si no lo conoces.\n"
-                "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'."
-            )
-        )
-        user_msg = HumanMessage(content=state["user_intent"])
-        extra_init_messages = [sys_msg, user_msg]
-        state["messages"] = extra_init_messages
-    else:
-        extra_init_messages = []
-
-    llm_with_tools = _get_llm().bind_tools(tools)
-    response = await llm_with_tools.ainvoke(state["messages"])
-
-    result_log = StepResult(
-        step_id=f"hr_step_{datetime.now().timestamp()}",
-        description="Procesando solicitud de RRHH...",
-        status="completed",
-        action_taken=(
-            "Invocando herramientas de RRHH"
-            if response.tool_calls
-            else "Asistencia RRHH completada."
-        ),
-    )
-
-    if "agent_results" not in state:
-        state["agent_results"] = []
-
-    state["agent_results"].append(result_log.model_dump())
-    return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
-
-
-def hr_finalize_node(state: AgentState):
-    """Cierra el flujo del agente de RRHH."""
-    last_msg = state["messages"][-1]
-
-    final_result = StepResult(
-        step_id="hr_final",
-        description="Agente RRHH ha finalizado.",
-        status="completed",
-        action_taken=(
-            last_msg.content
-            if isinstance(last_msg.content, str)
-            else "Borradores generados localmente."
-        ),
-    )
-
-    return {"status": "done", "agent_results": [final_result.model_dump()]}
-
-
-# ─── Compilar grafo ───────────────────────────────────────────────────────────
-
-workflow = StateGraph(AgentState)
-workflow.add_node("hr_agent", hr_agent_node)
-workflow.add_node("tools", ToolNode(tools))
-workflow.add_node("finalize", hr_finalize_node)
-
-workflow.set_entry_point("hr_agent")
-workflow.add_conditional_edges("hr_agent", tools_condition)
-workflow.add_edge("tools", "hr_agent")
-
-graph = workflow.compile()

@@ -2,7 +2,6 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.erp import (
@@ -14,8 +13,9 @@ from app.api.v1.schemas.erp import (
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.models import Product, StockMovement, User
+from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services import product_service as svc
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,7 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = (
-        select(Product)
-        .where(Product.tenant_id == current_user.tenant_id)
-        .order_by(desc(Product.created_at))
-        .offset(skip)
-        .limit(limit)
-    )
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await svc.list_products(db, current_user.tenant_id, skip, limit)
 
 
 @router.patch("/products/{product_id}", response_model=ProductResponse, tags=["erp"])
@@ -51,17 +43,12 @@ async def update_product(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.tenant_id == current_user.tenant_id)
-    )
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    for key, value in payload.model_dump(exclude_none=True).items():
-        setattr(product, key, value)
-    await db.commit()
-    await db.refresh(product)
-    return product
+    try:
+        return await svc.update_product(
+            db, current_user.tenant_id, product_id, payload.model_dump(exclude_none=True)
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
@@ -72,14 +59,10 @@ async def delete_product(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.tenant_id == current_user.tenant_id)
-    )
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    await db.delete(product)
-    await db.commit()
+    try:
+        await svc.delete_product(db, current_user.tenant_id, product_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.post(
@@ -92,11 +75,7 @@ async def create_product(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    new_product = Product(tenant_id=current_user.tenant_id, **payload.model_dump())
-    db.add(new_product)
-    await db.commit()
-    await db.refresh(new_product)
-    return new_product
+    return await svc.create_product(db, current_user.tenant_id, payload.model_dump())
 
 
 # ─── Stock / Inventario ──────────────────────────────────────────────────────
@@ -114,16 +93,7 @@ async def list_stock_movements(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(StockMovement)
-        .where(
-            StockMovement.product_id == product_id,
-            StockMovement.tenant_id == current_user.tenant_id,
-        )
-        .order_by(desc(StockMovement.created_at))
-        .limit(100)
-    )
-    return result.scalars().all()
+    return await svc.list_stock_movements(db, current_user.tenant_id, product_id)
 
 
 @router.post(
@@ -140,35 +110,11 @@ async def create_stock_movement(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.tenant_id == current_user.tenant_id)
-    )
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-
-    # Calcular nuevo stock según tipo de movimiento
-    if payload.movement_type == "entrada":
-        new_stock = int(product.stock_quantity) + abs(payload.quantity)
-    elif payload.movement_type == "salida":
-        new_stock = int(product.stock_quantity) - abs(payload.quantity)
-        if new_stock < 0:
-            raise HTTPException(status_code=400, detail="Stock insuficiente")
-    else:  # ajuste
-        new_stock = payload.quantity
-
-    product.stock_quantity = new_stock
-
-    movement = StockMovement(
-        tenant_id=current_user.tenant_id,
-        product_id=product_id,
-        movement_type=payload.movement_type,
-        quantity=payload.quantity,
-        stock_after=new_stock,
-        reference=payload.reference,
-        notes=payload.notes,
-    )
-    db.add(movement)
-    await db.commit()
-    await db.refresh(movement)
-    return movement
+    try:
+        return await svc.create_stock_movement(
+            db, current_user.tenant_id, product_id, payload.model_dump()
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

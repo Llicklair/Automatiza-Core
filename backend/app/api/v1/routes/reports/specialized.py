@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload as jl
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Invoice, Payroll, Tenant, User
-from app.services.pdf_service import (
+from app.services.pdf import (
     generate_cashflow_report_pdf,
     generate_delinquency_report_pdf,
     generate_rgpd_registry_pdf,

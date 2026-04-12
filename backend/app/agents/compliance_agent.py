@@ -263,22 +263,9 @@ tools = [
 
 # ─── Nodos del grafo LangGraph ───────────────────────────────────────────────
 
-COMPLIANCE_SYSTEM_PROMPT = """Eres el Agente de Cumplimiento Legal y Fiscal de un ERP para PYMEs españolas. Tus capacidades:
+from app.prompts import load_prompt
 
-1. **Vencimientos fiscales** con `check_fiscal_deadlines` — consulta el calendario AEAT y alerta sobre plazos.
-2. **Novedades BOE** con `check_boe_news` — resume cambios legislativos relevantes para PYMEs.
-3. **Consultas fiscales** con `fiscal_query` — responde preguntas sobre obligaciones fiscales con RAG.
-4. **Crear documentos** con `create_document` — para informes de compliance.
-5. **Memoria del tenant** con `get_tenant_knowledge` y `upsert_tenant_knowledge`.
-
-REGLAS:
-- Si el usuario pregunta sobre plazos o vencimientos, usa `check_fiscal_deadlines`.
-- Si pregunta sobre novedades legales o BOE, usa `check_boe_news`.
-- Si hace una consulta fiscal específica, usa `fiscal_query`.
-- Siempre advierte que la información es orientativa y recomienda consultar un asesor fiscal.
-- Responde siempre en español.
-
-ID del Tenant actual: {tenant_id}"""
+COMPLIANCE_SYSTEM_PROMPT = load_prompt("compliance_agent")
 
 
 async def compliance_agent_node(state: AgentState):

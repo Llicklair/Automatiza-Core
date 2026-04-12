@@ -46,7 +46,11 @@
       "mcp__plugin_context-mode_context-mode__ctx_stats",
       "Bash(start:*)",
       "Bash([ -f \"$HOME/Desktop/AutomatizaPyme_BOOT_LOG.txt\" ])",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"exit:$?\")",
+      "Bash(cp pdf_hr.py pdf/hr.py)",
+      "Bash(cp pdf_invoices.py pdf/invoices.py)"
     ]
   }
 }

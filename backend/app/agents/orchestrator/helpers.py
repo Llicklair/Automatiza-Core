@@ -58,7 +58,7 @@ async def _save_ai_result_as_document(
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantDocument
-    from app.services.pdf_service import generate_text_report_pdf
+    from app.services.pdf import generate_text_report_pdf
 
     try:
         # Ruta de uploads

@@ -1,13 +1,7 @@
 """
-Agente de Facturación — Autónomo con LangGraph.
+Billing agent tool definitions.
 
-El LLM decide qué herramientas usar según la intención del usuario:
-  - Crear factura → create_invoice
-  - Consultar facturas → list_invoices
-  - Buscar cliente → search_client
-
-Cada herramienta ejecuta lógica determinista (validación, BD, PDF).
-El LLM solo razona y elige; nunca toca datos directamente.
+All @tool decorated functions and their private async helpers.
 """
 
 import json
@@ -19,10 +13,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langgraph.graph import StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -35,17 +26,10 @@ from app.agents.agent_tools.knowledge import (
     get_tenant_knowledge,
     upsert_tenant_knowledge,
 )
-from app.agents.base import AgentState
-from app.agents.types import StepResult
 from app.agents.validators.billing import validate_invoice_data
 from app.core.config import settings
-from app.core.llm_factory import get_llm
 
 logger = logging.getLogger(__name__)
-
-
-def _get_llm():
-    return get_llm(temperature=0)
 
 
 # ─── Herramientas del agente ──────────────────────────────────────────────────
@@ -352,7 +336,7 @@ async def _create_invoice_async(
             document_id = None
             _template_name = None
             try:
-                from app.services.pdf_service import generate_invoice_pdf
+                from app.services.pdf import generate_invoice_pdf
 
                 inv_pdf_data = {
                     "number": new_invoice.invoice_number,
@@ -1050,106 +1034,3 @@ tools = [
     upsert_tenant_knowledge,
     delete_tenant_knowledge,
 ]
-
-
-# ─── Nodos del grafo LangGraph ───────────────────────────────────────────────
-
-BILLING_SYSTEM_PROMPT = """Eres el Agente de Facturación de un ERP para PYMEs españolas. Tus capacidades:
-
-1. **Crear facturas** con `create_invoice` — necesitas: client_name, concept, amount_base. El NIF se busca automáticamente.
-2. **Consultar facturas** con `list_invoices` — facturas recientes, totales facturados, estados.
-3. **Buscar clientes** con `search_client` — encontrar NIFs o verificar datos antes de facturar.
-4. **Cambiar estado** con `update_invoice_status` — draft→pending→paid→cancelled.
-5. **Editar factura** con `update_invoice` — modificar concepto, importe, IVA o notas (solo en borrador).
-6. **Enviar por email** con `send_invoice_by_email` — envía la factura con PDF adjunto al cliente.
-7. **Crear documentos** con `create_document` — exportar informes, listados CSV, resúmenes.
-8. **Leer documentos** con `get_document_content` y `list_tenant_documents`.
-9. **Memoria del tenant** con `get_tenant_knowledge` y `upsert_tenant_knowledge`.
-10. **Albaranes** con `list_albaranes` y `create_albaran` — gestión de albaranes de entrega.
-
-REGLAS:
-- Si el usuario quiere CREAR una factura, usa `create_invoice`. Extrae los datos de su mensaje.
-- Si el usuario quiere VER/CONSULTAR/LISTAR facturas, usa `list_invoices`.
-- Si necesitas el NIF de un cliente y no lo tienes, usa `search_client` primero.
-- Para MODIFICAR una factura, primero usa `list_invoices` para obtener el ID, luego `update_invoice`.
-- Para ENVIAR una factura por email, usa `send_invoice_by_email`. Si no conoces el ID, usa `list_invoices` primero para obtener el invoice_number y document_id.
-- Si otro agente necesita adjuntar la factura, devuelve el document_id en tu respuesta final (está en el output de `list_invoices`).
-- Para marcar como PAGADA, usa `update_invoice_status` con new_status='paid'.
-- Si te faltan datos críticos (cliente, concepto, importe), PREGUNTA al usuario antes de crear.
-- Responde siempre en español.
-- Si la factura supera 5000€, el sistema pedirá aprobación humana automáticamente.
-- Las facturas se crean en estado BORRADOR (draft). El usuario las aprueba desde la UI.
-- El IVA por defecto es 21%. Solo cámbialo si el usuario lo especifica.
-
-ID del Tenant actual: {tenant_id}
-Fecha de hoy: {today}"""
-
-
-async def billing_agent_node(state: AgentState):
-    """Nodo principal: el LLM razona y elige herramientas."""
-    today = date.today().isoformat()
-
-    if "messages" not in state or not state["messages"]:
-        sys_msg = SystemMessage(
-            content=BILLING_SYSTEM_PROMPT.format(
-                tenant_id=state.get("tenant_id", ""),
-                today=today,
-            )
-        )
-        user_msg = HumanMessage(content=state["user_intent"])
-        extra_init_messages = [sys_msg, user_msg]
-        state["messages"] = extra_init_messages
-    else:
-        extra_init_messages = []
-
-    llm_with_tools = _get_llm().bind_tools(tools)
-    response = await llm_with_tools.ainvoke(state["messages"])
-
-    result_log = StepResult(
-        step_id=f"billing_step_{datetime.now().timestamp()}",
-        description="Procesando solicitud de facturación...",
-        status="completed",
-        action_taken=(
-            "Invocando herramientas de facturación"
-            if response.tool_calls
-            else "Asistencia de facturación completada."
-        ),
-    )
-
-    if "agent_results" not in state:
-        state["agent_results"] = []
-
-    state["agent_results"].append(result_log.model_dump())
-    return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
-
-
-def billing_finalize_node(state: AgentState):
-    """Cierra el flujo del agente de facturación."""
-    last_msg = state["messages"][-1]
-
-    final_result = StepResult(
-        step_id="billing_final",
-        description="Agente de Facturación ha finalizado.",
-        status="completed",
-        action_taken=(
-            last_msg.content
-            if isinstance(last_msg.content, str)
-            else "Operación de facturación completada."
-        ),
-    )
-
-    return {"status": "done", "agent_results": [final_result.model_dump()]}
-
-
-# ─── Compilar grafo ───────────────────────────────────────────────────────────
-
-workflow = StateGraph(AgentState)
-workflow.add_node("billing_agent", billing_agent_node)
-workflow.add_node("tools", ToolNode(tools))
-workflow.add_node("finalize", billing_finalize_node)
-
-workflow.set_entry_point("billing_agent")
-workflow.add_conditional_edges("billing_agent", tools_condition)
-workflow.add_edge("tools", "billing_agent")
-
-graph = workflow.compile()

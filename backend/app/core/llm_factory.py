@@ -15,9 +15,9 @@ from contextvars import ContextVar
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
-from app.core._llm_claude_code import ClaudeCodeChatModel
-from app.core._llm_gemini import GeminiSafeWrapper
-from app.core._llm_mock import MockChatModel
+from app.core.llm.claude_code import ClaudeCodeChatModel
+from app.core.llm.gemini import GeminiSafeWrapper
+from app.core.llm.mock import MockChatModel
 from app.core.config import settings
 
 # ContextVar para propagar el LLM del tenant a todos los agentes del mismo request

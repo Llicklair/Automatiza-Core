@@ -16,7 +16,7 @@ from sqlalchemy.orm import joinedload as jl
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import Invoice, Tenant, TenantDocument, User
-from app.services.pdf_service import generate_modelo_303_pdf
+from app.services.pdf import generate_modelo_303_pdf
 
 from ._helpers import UPLOAD_DIR, _aggregate_fiscal, _parse_period
 from ._schemas import FiscalSnapshot, ReportOut
