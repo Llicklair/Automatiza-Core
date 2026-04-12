@@ -15,7 +15,7 @@ from alembic import op
 revision: str = "cf7da4c31523"
 down_revision: str | None = "0406749c1f9a"
 branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = "a0b1c2d3e4f5"  # opportunities table must exist first
 
 
 def upgrade() -> None:

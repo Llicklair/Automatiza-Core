@@ -30,7 +30,7 @@ class RequestLoggerMiddleware:
         # Seed scope["state"] so request.state.request_id is accessible in route handlers
         if "state" not in scope or not isinstance(scope["state"], State):
             scope["state"] = State()
-        scope["state"].request_id = request_id  # type: ignore[union-attr]
+        scope["state"].request_id = request_id  # type: ignore[attr-defined]
 
         t0 = time.perf_counter()
         status_code = 500
