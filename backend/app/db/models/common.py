@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-def utcnow():
+def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
