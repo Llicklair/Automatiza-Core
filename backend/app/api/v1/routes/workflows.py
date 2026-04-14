@@ -12,7 +12,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models import models
 from app.middleware.rate_limit import limiter
-from app.services import workflow_service as svc
+from app.services.workflow import service as svc
 
 _logger = logging.getLogger(__name__)
 

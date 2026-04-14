@@ -16,7 +16,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services import auth_service as svc
+from app.services.auth import service as svc
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

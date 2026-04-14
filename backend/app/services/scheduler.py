@@ -67,7 +67,7 @@ async def start_scheduler() -> None:
 
     # Bootstrap heartbeats para AIEmployees activos (falla silenciosamente)
     try:
-        from app.services.heartbeat_service import bootstrap_employee_heartbeats
+        from app.services.integration.heartbeat import bootstrap_employee_heartbeats
 
         await bootstrap_employee_heartbeats()
     except Exception as e:

@@ -84,7 +84,7 @@ async def _run_graph_agent(
 
 async def _dispatch_rag(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente RAG autónomo."""
-    from app.agents.rag_agent import graph
+    from app.agents.rag import graph
 
     return await _run_graph_agent(graph, state, subtask, "rag", "informes")
 
@@ -99,7 +99,7 @@ async def _dispatch_excel(state: OrchestratorState, subtask: dict) -> AgentResul
 async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de email autónomo."""
     try:
-        from app.agents.email_agent import run_email_agent
+        from app.agents.email import run_email_agent
 
         agent_result = await run_email_agent(
             user_intent=subtask.get("params", {}).get(
@@ -148,7 +148,7 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
 async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de gestión de Workflows / Automatizaciones."""
     try:
-        from app.agents.workflow_agent import run_workflow_agent
+        from app.agents.workflow import run_workflow_agent
 
         agent_result = await run_workflow_agent(
             user_intent=state.get("current_intent", state["user_intent"]),
@@ -192,14 +192,14 @@ async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentRe
 
 async def _dispatch_recruitment(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de reclutamiento autónomo."""
-    from app.agents.recruitment_agent import graph
+    from app.agents.recruitment import graph
 
     return await _run_graph_agent(graph, state, subtask, "recruitment", "reclutamiento")
 
 
 async def _dispatch_marketing(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente de marketing autónomo."""
-    from app.agents.marketing_agent import graph
+    from app.agents.marketing import graph
 
     return await _run_graph_agent(graph, state, subtask, "marketing", "marketing")
 

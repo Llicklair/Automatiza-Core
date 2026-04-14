@@ -10,7 +10,7 @@ import calendar
 import io
 from datetime import datetime
 
-from app.services._pdf_base import (
+from app.services.documents._pdf_base import (
     _TRAD_BORDER,
     REPORTLAB_AVAILABLE,
     _format_date,

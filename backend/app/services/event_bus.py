@@ -114,7 +114,7 @@ async def emit_event(
 
         # 6. Disparar tarea de forma asíncrona
         try:
-            from app.services.task_dispatch import dispatch_orchestrator
+            from app.services.workflow.task_dispatch import dispatch_orchestrator
 
             await dispatch_orchestrator(str(task.id))
             triggered_ids.append(str(wf.id))

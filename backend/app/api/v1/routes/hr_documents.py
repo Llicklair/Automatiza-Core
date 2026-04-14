@@ -17,7 +17,7 @@ from app.api.v1.schemas.hr_documents import GenerateRequest, HRDocumentOut
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import User
-from app.services import hr_document_service as svc
+from app.services.hr import documents as svc
 
 logger = logging.getLogger(__name__)
 

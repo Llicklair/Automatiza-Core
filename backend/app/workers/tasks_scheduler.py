@@ -7,7 +7,7 @@ import logging
 from datetime import UTC
 
 from app.services.idempotency import IdempotencyGuard
-from app.services.task_dispatch import dispatch_orchestrator
+from app.services.workflow.task_dispatch import dispatch_orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ async def _catchup_missed_workflows():
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import Task, Workflow, WorkflowExecution
-    from app.services.task_dispatch import dispatch_orchestrator
+    from app.services.workflow.task_dispatch import dispatch_orchestrator
 
     try:
         madrid = zoneinfo.ZoneInfo("Europe/Madrid")

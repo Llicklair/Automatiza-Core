@@ -1,0 +1,47 @@
+"""
+Recruitment agent — LangGraph graph definition and node logic.
+"""
+
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+
+from app.agents.base import AgentState
+from app.core.llm_factory import get_llm
+from app.prompts import load_prompt
+
+from .tools import tools
+
+RECRUITMENT_SYSTEM_PROMPT = load_prompt("recruitment_agent")
+
+
+async def recruitment_agent_node(state: AgentState) -> dict:
+    llm = get_llm(temperature=0).bind_tools(tools)
+    if not state.get("messages"):
+        state["messages"] = [
+            SystemMessage(content=RECRUITMENT_SYSTEM_PROMPT),
+            HumanMessage(content=state.get("user_intent", "Lista los puestos abiertos")),
+        ]
+    response = await llm.ainvoke(state["messages"])
+    return {"messages": [response]}
+
+
+def recruitment_finalize_node(state: AgentState) -> dict:
+    last = state["messages"][-1] if state.get("messages") else None
+    content = last.content if last and isinstance(last.content, str) else "Operación completada."
+    return {
+        "status": "done",
+        "agent_results": [{"agent": "recruitment", "result": content, "status": "completed"}],
+    }
+
+
+workflow = StateGraph(AgentState)
+workflow.add_node("agent", recruitment_agent_node)
+workflow.add_node("tools", ToolNode(tools))
+workflow.add_node("finalize", recruitment_finalize_node)
+workflow.set_entry_point("agent")
+workflow.add_conditional_edges("agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
+workflow.add_edge("tools", "agent")
+workflow.add_edge("finalize", END)
+
+graph = workflow.compile()

@@ -33,7 +33,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services import hr_service as svc
+from app.services.hr import service as svc
 from app.services.state_machine import InvalidTransitionError
 
 logger = logging.getLogger(__name__)

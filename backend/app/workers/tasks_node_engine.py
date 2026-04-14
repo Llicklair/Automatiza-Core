@@ -84,7 +84,7 @@ async def _run_node_engine(execution_id: str):
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
-    from app.services.node_engine import NodeEngine
+    from app.services.ai.node_engine import NodeEngine
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -111,7 +111,7 @@ async def _resume_node_engine(execution_id: str, from_node_id: str):
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
-    from app.services.node_engine import NodeEngine
+    from app.services.ai.node_engine import NodeEngine
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(

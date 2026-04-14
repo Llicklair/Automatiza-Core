@@ -153,7 +153,7 @@ async def plan_node(state: OrchestratorState) -> dict:
 
                 if wf and wf.ui_nodes:
                     # ── Si tiene nodos avanzados, delegar al NodeEngine ──
-                    from app.services.node_engine import has_advanced_nodes
+                    from app.services.ai.node_engine import has_advanced_nodes
 
                     if has_advanced_nodes(wf.ui_nodes):
                         logger.info(
@@ -162,7 +162,7 @@ async def plan_node(state: OrchestratorState) -> dict:
                         execution_id = (state.get("additional_metadata") or {}).get("execution_id")
                         if execution_id:
                             try:
-                                from app.services.task_dispatch import dispatch_node_engine
+                                from app.services.workflow.task_dispatch import dispatch_node_engine
 
                                 await dispatch_node_engine(execution_id)
                             except Exception as ce:
@@ -664,11 +664,10 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
 
         from sqlalchemy import select
 
-        from app.agents.budget_guard import check_agent_budget
-        from app.agents.custom_worker_agent import compile_dynamic_agent
+        from app.agents.workers import check_agent_budget, compile_dynamic_agent
         from app.db.base import AsyncSessionLocal
         from app.db.models.ai_employees import AIEmployee
-        from app.services.activity_service import log_activity
+        from app.services.workflow.activity import log_activity
 
         async with AsyncSessionLocal() as db:
             # Para agentes custom, priorizar el employee_id específico de la metadata

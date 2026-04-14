@@ -20,7 +20,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services import document_service as svc
+from app.services.documents import service as svc
 
 logger = logging.getLogger(__name__)
 

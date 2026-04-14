@@ -17,7 +17,7 @@ from app.db.base import get_db
 from app.db.models.models import User
 from app.integrations.telegram_client import TelegramClient
 from app.middleware.rate_limit import limiter
-from app.services import messaging_service as svc
+from app.services.integration import messaging as svc
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,7 @@ from app.api.v1.schemas.ai_employees import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import User
-from app.services import ai_employee_service as svc
+from app.services.ai import employee as svc
 
 logger = logging.getLogger(__name__)
 
