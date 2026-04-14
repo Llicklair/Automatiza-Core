@@ -20,6 +20,13 @@ from app.services.billing.invoice import (
     build_rectificative_pdf,
     build_retention_pdf,
 )
+from app.services.billing.recurring import (
+    list_recurring,
+    create_recurring,
+    update_recurring,
+    delete_recurring,
+    run_recurring,
+)
 
 __all__ = [
     # accounting
@@ -40,4 +47,10 @@ __all__ = [
     "build_invoice_pdf",
     "build_rectificative_pdf",
     "build_retention_pdf",
+    # recurring
+    "list_recurring",
+    "create_recurring",
+    "update_recurring",
+    "delete_recurring",
+    "run_recurring",
 ]
