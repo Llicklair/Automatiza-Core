@@ -10,7 +10,7 @@ from uuid import UUID
 
 from langchain_core.tools import tool
 
-from app.agents.agent_tools import get_sync_db
+from app.db.base import AsyncSessionLocal
 from app.db.models.ai_employees import AgentSkill, AIEmployee
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ SOLO JSON, sin explicaciones."""
 
 
 @tool
-def create_ai_employee_from_description(tenant_id: str, description: str) -> str:
+async def create_ai_employee_from_description(tenant_id: str, description: str) -> str:
     """
     Crea un nuevo empleado IA a partir de una descripción en lenguaje natural.
     Usa LLM para generar nombre, rol, dominio, system_prompt y skills apropiados.
@@ -77,7 +77,6 @@ def create_ai_employee_from_description(tenant_id: str, description: str) -> str
     """
     from app.core.llm_factory import get_llm
 
-    # 1. Generar spec via LLM
     llm = get_llm(temperature=0.7)
     prompt = SPEC_PROMPT.format(
         description=description,
@@ -86,9 +85,8 @@ def create_ai_employee_from_description(tenant_id: str, description: str) -> str
     )
 
     try:
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
         text = response.content if hasattr(response, "content") else str(response)
-        # Limpiar markdown fences si las hay
         text = text.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1] if "\n" in text else text[3:]
@@ -98,7 +96,6 @@ def create_ai_employee_from_description(tenant_id: str, description: str) -> str
     except Exception as e:
         return f"Error generando especificación del empleado: {e}"
 
-    # 2. Validar y normalizar
     name = spec.get("name", "Agente IA")
     role = spec.get("role", "Asistente")
     domain = spec.get("domain", "marketing")
@@ -108,9 +105,8 @@ def create_ai_employee_from_description(tenant_id: str, description: str) -> str
     budget = float(spec.get("budget_limit_usd", 10.0))
     skills = [s for s in spec.get("skills", []) if s in AVAILABLE_SKILLS]
 
-    # 3. Crear en BD
     try:
-        with get_sync_db() as db:
+        async with AsyncSessionLocal() as db:
             employee = AIEmployee(
                 id=uuid.uuid4(),
                 tenant_id=UUID(tenant_id),
@@ -123,12 +119,12 @@ def create_ai_employee_from_description(tenant_id: str, description: str) -> str
                 is_builtin=False,
             )
             db.add(employee)
-            db.flush()
+            await db.flush()
 
             for skill_module in skills:
                 db.add(AgentSkill(employee_id=employee.id, tool_module=skill_module))
 
-            db.commit()
+            await db.commit()
 
             skills_text = ", ".join(skills) if skills else "ninguna asignada"
             return (

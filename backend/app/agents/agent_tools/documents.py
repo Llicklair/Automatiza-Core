@@ -8,16 +8,17 @@ import os
 from datetime import datetime
 from uuid import UUID
 
-_logger = logging.getLogger(__name__)
-
 from langchain_core.tools import tool
+from sqlalchemy import select
 
-from app.agents.agent_tools import get_sync_db
+from app.db.base import AsyncSessionLocal
 from app.db.models.models import TenantDocument
+
+_logger = logging.getLogger(__name__)
 
 
 @tool
-def create_document(
+async def create_document(
     tenant_id: str, file_name: str, content: str, category: str = "informes"
 ) -> str:
     """
@@ -32,8 +33,7 @@ def create_document(
     if not content or not content.strip():
         return "Error: No se puede crear un documento vacío. Genera el contenido antes de llamar a esta herramienta."
     try:
-        with get_sync_db() as db:
-            # Directorio de uploads configurable por entorno
+        async with AsyncSessionLocal() as db:
             upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
             if not os.path.exists(upload_dir) and os.name == "nt":
                 upload_dir = os.path.abspath(
@@ -56,15 +56,15 @@ def create_document(
                 parsed_content=content,
             )
             db.add(doc)
-            db.commit()
-            db.refresh(doc)
+            await db.commit()
+            await db.refresh(doc)
             return f"Documento '{file_name}' creado correctamente. ID: {doc.id} en la categoria '{category}'."
     except Exception as e:
         return f"Error creando el documento: {str(e)}"
 
 
 @tool
-def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
+async def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
     """
     Lista los documentos del tenant en el Escanear, opcionalmente filtrados por categoria.
     Util antes de modificar un documento — devuelve el ID que necesitas para actualizar.
@@ -73,11 +73,13 @@ def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
         category: Categoria a filtrar ('all', 'RRHH', 'CRM', 'Facturas', 'Nominas', etc.)
     """
     try:
-        with get_sync_db() as db:
-            query = db.query(TenantDocument).filter(TenantDocument.tenant_id == UUID(tenant_id))
+        async with AsyncSessionLocal() as db:
+            q = select(TenantDocument).where(TenantDocument.tenant_id == UUID(tenant_id))
             if category != "all":
-                query = query.filter(TenantDocument.category == category)
-            docs = query.order_by(TenantDocument.created_at.desc()).limit(15).all()
+                q = q.where(TenantDocument.category == category)
+            q = q.order_by(TenantDocument.created_at.desc()).limit(15)
+            result = await db.execute(q)
+            docs = result.scalars().all()
 
             if not docs:
                 return f"No hay documentos{' en la categoria ' + category if category != 'all' else ''} en el escaner."
@@ -96,7 +98,7 @@ def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
 
 
 @tool
-def update_existing_document(
+async def update_existing_document(
     tenant_id: str, document_id: str, new_content: str, append: bool = False
 ) -> str:
     """
@@ -109,27 +111,24 @@ def update_existing_document(
         append: Si True, adjunta el contenido al final. Si False (default), reemplaza todo el contenido.
     """
     try:
-        with get_sync_db() as db:
-            doc = (
-                db.query(TenantDocument)
-                .filter(
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(TenantDocument).where(
                     TenantDocument.tenant_id == UUID(tenant_id),
                     TenantDocument.id == UUID(document_id),
                 )
-                .first()
             )
+            doc = result.scalar_one_or_none()
 
             if not doc:
                 return f"Error: Documento con ID {document_id} no encontrado en el Escanear."
 
-            # Verificar que no es PDF
             if doc.file_type and "pdf" in doc.file_type.lower():
                 return (
                     "No puedo modificar directamente un PDF. "
                     "Para facturas, modifica los datos en el ERP y genera un nuevo PDF."
                 )
 
-            # Actualizar archivo en disco
             if doc.file_path and os.path.exists(doc.file_path):
                 mode = "a" if append else "w"
                 with open(doc.file_path, mode, encoding="utf-8") as f:
@@ -140,7 +139,6 @@ def update_existing_document(
                     f.write(new_content)
                 doc.file_size = os.path.getsize(doc.file_path)
             else:
-                # Recrear el archivo si no existe
                 upload_dir = "/app/uploads"
                 os.makedirs(upload_dir, exist_ok=True)
                 file_path = os.path.join(upload_dir, doc.file_name or f"doc_{document_id}.txt")
@@ -149,7 +147,6 @@ def update_existing_document(
                 doc.file_path = file_path
                 doc.file_size = len(new_content.encode())
 
-            # Actualizar parsed_content en BD (para RAG)
             if append:
                 doc.parsed_content = (doc.parsed_content or "") + "\n" + new_content
             else:
@@ -157,7 +154,7 @@ def update_existing_document(
 
             doc.processed_at = datetime.now()
             doc.status = "completed"
-            db.commit()
+            await db.commit()
 
             action = "adjuntado al" if append else "reemplazado en el"
             return (
@@ -171,7 +168,7 @@ def update_existing_document(
 
 
 @tool
-def get_document_content(tenant_id: str, document_id: str) -> str:
+async def get_document_content(tenant_id: str, document_id: str) -> str:
     """
     Lee el contenido actual de un documento del Escanear.
     Util para ver que hay antes de modificar.
@@ -180,20 +177,18 @@ def get_document_content(tenant_id: str, document_id: str) -> str:
         document_id: ID del documento
     """
     try:
-        with get_sync_db() as db:
-            doc = (
-                db.query(TenantDocument)
-                .filter(
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(TenantDocument).where(
                     TenantDocument.tenant_id == UUID(tenant_id),
                     TenantDocument.id == UUID(document_id),
                 )
-                .first()
             )
+            doc = result.scalar_one_or_none()
 
             if not doc:
                 return f"Documento {document_id} no encontrado."
 
-            # Intentar leer desde disco primero
             if doc.file_path and os.path.exists(doc.file_path):
                 try:
                     with open(doc.file_path, encoding="utf-8") as f:
@@ -206,7 +201,6 @@ def get_document_content(tenant_id: str, document_id: str) -> str:
                         exc_info=True,
                     )
 
-            # Fallback a parsed_content en BD
             if doc.parsed_content:
                 return f"Contenido de '{doc.file_name}':\n\n{doc.parsed_content[:3000]}"
 

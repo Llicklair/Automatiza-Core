@@ -6,14 +6,14 @@ Permite a los agentes IA persistir y consultar datos contextuales del tenant.
 from uuid import UUID
 
 from langchain_core.tools import tool
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
-from app.agents.agent_tools import get_sync_db
+from app.db.base import AsyncSessionLocal
 from app.db.models.models import TenantKnowledge
 
 
 @tool
-def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
+async def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
     """
     Consulta la base de conocimientos y preferencias del tenant.
     Util para recordar condiciones de pago, contactos favoritos o reglas de estilo.
@@ -22,12 +22,13 @@ def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
         category: Categoria a filtrar ('all', 'billing', 'hr', 'crm', 'general')
     """
     try:
-        with get_sync_db() as db:
-            query = db.query(TenantKnowledge).filter(TenantKnowledge.tenant_id == UUID(tenant_id))
+        async with AsyncSessionLocal() as db:
+            q = select(TenantKnowledge).where(TenantKnowledge.tenant_id == UUID(tenant_id))
             if category != "all":
-                query = query.filter(TenantKnowledge.category == category)
+                q = q.where(TenantKnowledge.category == category)
 
-            facts = query.all()
+            result = await db.execute(q)
+            facts = result.scalars().all()
             if not facts:
                 return f"No hay conocimientos registrados para la categoria '{category}'."
 
@@ -38,7 +39,7 @@ def get_tenant_knowledge(tenant_id: str, category: str = "all") -> str:
 
 
 @tool
-def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
+async def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
     """
     Elimina un hecho o preferencia de la memoria del tenant.
     Args:
@@ -46,23 +47,23 @@ def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
         key: Nombre corto del hecho a eliminar (ej: 'default_client', 'cliente_principal')
     """
     try:
-        with get_sync_db() as db:
-            result = db.execute(
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
                 delete(TenantKnowledge).where(
                     TenantKnowledge.tenant_id == UUID(tenant_id),
                     TenantKnowledge.key == key,
                 )
             )
-            db.commit()
+            await db.commit()
             if result.rowcount > 0:
                 return f"Hecho '{key}' eliminado de la memoria del tenant."
-            return f"No se encontró ningún hecho con la clave '{key}'."
+            return f"No se encontro ningun hecho con la clave '{key}'."
     except Exception as e:
         return f"Error eliminando memoria: {e}"
 
 
 @tool
-def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str = "general") -> str:
+async def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str = "general") -> str:
     """
     Guarda o actualiza un hecho o preferencia en la memoria del tenant.
     Args:
@@ -72,25 +73,26 @@ def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str 
         category: Categoria (billing, hr, crm, legal, general)
     """
     try:
-        with get_sync_db() as db:
-            # Buscar si ya existe la llave
-            existing = (
-                db.query(TenantKnowledge)
-                .filter(TenantKnowledge.tenant_id == UUID(tenant_id), TenantKnowledge.key == key)
-                .first()
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(TenantKnowledge).where(
+                    TenantKnowledge.tenant_id == UUID(tenant_id),
+                    TenantKnowledge.key == key,
+                )
             )
+            existing = result.scalar_one_or_none()
 
             if existing:
                 existing.value = value
                 existing.category = category
-                db.commit()
+                await db.commit()
                 return f"Hecho '{key}' actualizado en la memoria del tenant."
             else:
                 new_fact = TenantKnowledge(
                     tenant_id=UUID(tenant_id), key=key, value=value, category=category
                 )
                 db.add(new_fact)
-                db.commit()
+                await db.commit()
                 return f"Hecho '{key}' guardado en la memoria del tenant."
     except Exception as e:
         return f"Error guardando memoria: {e}"
