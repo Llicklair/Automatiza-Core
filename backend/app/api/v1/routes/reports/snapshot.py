@@ -15,8 +15,13 @@ from app.db.base import get_db
 from app.db.models.models import Tenant, TenantDocument, User
 from app.services.pdf import generate_snapshot_pdf
 
-from ._helpers import UPLOAD_DIR, _aggregate, _parse_month
+from app.services.reports import aggregate, parse_month
+
 from ._schemas import CompanySnapshot, ReportOut
+
+UPLOAD_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "uploads")
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -36,8 +41,11 @@ async def get_company_snapshot(
         today = date.today()
         month = today.strftime("%Y-%m")
 
-    start, end = _parse_month(month)
-    return await _aggregate(db, current_user.tenant_id, start, end)
+    try:
+        start, end = parse_month(month)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return await aggregate(db, current_user.tenant_id, start, end)
 
 
 @router.post("/company-snapshot/generate", response_model=ReportOut, status_code=201)
@@ -53,14 +61,17 @@ async def generate_company_snapshot_pdf(
         today = date.today()
         month = today.strftime("%Y-%m")
 
-    start, end = _parse_month(month)
+    try:
+        start, end = parse_month(month)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Obtener nombre de la empresa
     tenant_q = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = tenant_q.scalar_one_or_none()
     company_name = tenant.name if tenant and tenant.name else "Tu empresa"
 
-    snap = await _aggregate(db, current_user.tenant_id, start, end)
+    snap = await aggregate(db, current_user.tenant_id, start, end)
 
     # Generar PDF con gráficas
     pdf_bytes = generate_snapshot_pdf(
