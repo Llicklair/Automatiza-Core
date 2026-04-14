@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.services.activity_service import log_activity
+from app.services.workflow.activity import log_activity
 from app.db.models.ai_employees import ActivityEntry
 
 

@@ -59,7 +59,7 @@ def _build_registry() -> dict[str, Callable]:
     registry["approve_payroll"] = approve_payroll
 
     # — crm —
-    from app.agents.crm_agent import (
+    from app.agents.crm import (
         create_opportunity,
         list_opportunities,
         qualify_leads,
@@ -72,7 +72,7 @@ def _build_registry() -> dict[str, Callable]:
     registry["qualify_leads"] = qualify_leads
 
     # — banking —
-    from app.agents.banking_agent import (
+    from app.agents.banking import (
         check_balances,
         financial_summary,
         list_transactions,
@@ -85,14 +85,14 @@ def _build_registry() -> dict[str, Callable]:
     registry["reconcile_transactions"] = reconcile_transactions
 
     # — compliance —
-    from app.agents.compliance_agent import check_boe_news, check_fiscal_deadlines, fiscal_query
+    from app.agents.compliance import check_boe_news, check_fiscal_deadlines, fiscal_query
 
     registry["check_fiscal_deadlines"] = check_fiscal_deadlines
     registry["check_boe_news"] = check_boe_news
     registry["fiscal_query"] = fiscal_query
 
     # — documents —
-    from app.agents.documents_agent import classify_document, search_documents_semantic
+    from app.agents.documents import classify_document, search_documents_semantic
 
     registry["classify_document"] = classify_document
     registry["search_documents_semantic"] = search_documents_semantic
@@ -113,25 +113,25 @@ def _build_registry() -> dict[str, Callable]:
     registry["read_excel"] = read_excel
 
     # — email —
-    from app.agents.email_agent import check_inbox, check_unread, send_email
+    from app.agents.email import check_inbox, check_unread, send_email
 
     registry["check_inbox"] = check_inbox
     registry["check_unread"] = check_unread
     registry["send_email"] = send_email
 
     # — rag —
-    from app.agents.rag_agent import answer_from_documents, search_documents
+    from app.agents.rag import answer_from_documents, search_documents
 
     registry["search_documents"] = search_documents
     registry["answer_from_documents"] = answer_from_documents
 
     # — marketing —
-    from app.agents.marketing_agent import get_product_catalog
+    from app.agents.marketing import get_product_catalog
 
     registry["get_product_catalog"] = get_product_catalog
 
     # — recruitment —
-    from app.agents.recruitment_agent import (
+    from app.agents.recruitment import (
         create_position,
         list_candidates,
         list_positions,

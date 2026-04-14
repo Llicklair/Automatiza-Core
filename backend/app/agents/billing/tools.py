@@ -823,7 +823,7 @@ async def _send_invoice_by_email_async(
             doc_id = str(pdf_doc.id) if pdf_doc else None
 
         # Enviar usando el servicio real de email
-        from app.agents.email_agent import send_email_direct
+        from app.agents.email import send_email_direct
 
         result_text = await send_email_direct(
             tenant_id=tenant_id,

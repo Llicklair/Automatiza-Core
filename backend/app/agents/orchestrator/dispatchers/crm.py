@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca el agente CRM autónomo via LangGraph graph."""
-    from app.agents.crm_agent import graph
+    from app.agents.crm import graph
 
     tenant_id = state["tenant_id"]
     intent = subtask.get("params", {}).get(

@@ -127,7 +127,7 @@ async def send_email_direct(
     Envía un email real usando las credenciales del tenant (gmail > outlook > smtp).
     Usable desde otros agentes sin pasar por el grafo LangGraph.
     """
-    from app.services.email_service import send_email_smtp
+    from app.services.email.service import send_email_smtp
 
     gmail_token = await _get_oauth_token(tenant_id, "gmail")
     outlook_token = await _get_oauth_token(tenant_id, "outlook")
@@ -211,7 +211,7 @@ async def run_email_agent(
     """
     from langchain_core.tools import tool
 
-    from app.services.email_service import (
+    from app.services.email.service import (
         read_inbox,
         read_unread,
         send_email_smtp,

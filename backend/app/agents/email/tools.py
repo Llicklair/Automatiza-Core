@@ -49,7 +49,7 @@ async def _get_email_credentials(tenant_id: str):
 
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import TenantIntegration
-    from app.services.email_service import credentials_from_dict
+    from app.services.email.service import credentials_from_dict
     from app.services.encryption import decrypt_credentials
 
     try:

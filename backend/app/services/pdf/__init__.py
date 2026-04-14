@@ -34,7 +34,7 @@ from app.services.pdf.parser import (  # noqa: F401
 )
 
 # ── Base utilities (re-exported for legacy pdf_service importers) ─────────────
-from app.services._pdf_base import (  # noqa: F401
+from app.services.documents._pdf_base import (  # noqa: F401
     REPORTLAB_AVAILABLE,
     _common_styles,
     _fmt_eur,

@@ -5,7 +5,7 @@ Generación de PDFs de facturación: factura estándar, rectificativa y con rete
 import io
 from datetime import datetime
 
-from app.services._pdf_base import (
+from app.services.documents._pdf_base import (
     REPORTLAB_AVAILABLE,
     _common_styles,
     _format_date,

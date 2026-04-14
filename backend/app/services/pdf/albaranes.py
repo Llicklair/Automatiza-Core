@@ -5,7 +5,7 @@ Uses the same _pdf_base infrastructure as pdf_invoices.py.
 
 import io
 
-from app.services._pdf_base import (
+from app.services.documents._pdf_base import (
     REPORTLAB_AVAILABLE,
     build_theme,
     table_style_commands,

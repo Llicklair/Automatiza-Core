@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     yield
     # Parar scheduler y tareas en vuelo
     await stop_scheduler()
-    from app.services.task_runner import task_runner
+    from app.services.workflow.task_runner import task_runner
 
     await task_runner.shutdown()
     logger.info("Cerrando aplicación")
@@ -175,7 +175,7 @@ async def health_check():
     import sys
     import time
 
-    from app.services.task_runner import task_runner
+    from app.services.workflow.task_runner import task_runner
 
     health = {
         "status": "ok",

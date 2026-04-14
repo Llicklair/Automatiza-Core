@@ -22,9 +22,9 @@ from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant
 from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
 from app.prompts import load_prompt
-from app.services.document_classifier import classify_by_rules
+from app.services.documents.classifier import classify_by_rules
 from app.services.pdf.parser import parse_pdf
-from app.services.smart_chunker import smart_chunk
+from app.services.documents.smart_chunker import smart_chunk
 
 logger = logging.getLogger(__name__)
 
@@ -238,7 +238,7 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 # Fallback: chunking mecánico para archivos no-PDF
                 chunk_size = 1500
                 doc_chunks = []
-                from app.services.smart_chunker import Chunk
+                from app.services.documents.smart_chunker import Chunk
 
                 for i in range(0, len(raw_text), chunk_size):
                     doc_chunks.append(Chunk(text=raw_text[i : i + chunk_size]))

@@ -18,7 +18,7 @@ from app.api.v1.schemas.recruitment import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.middleware.rate_limit import limiter
-from app.services import recruitment_service as svc
+from app.services.hr import recruitment as svc
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
