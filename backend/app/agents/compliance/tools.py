@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 
+import sqlalchemy as sa
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 
@@ -16,8 +18,11 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
-from app.core.llm_factory import get_llm
+from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
+from app.db.base import AsyncSessionLocal
+from app.db.models.auth import Tenant
+from app.db.models.embeddings import DocumentEmbedding
 from app.integrations.boe_scraper import BOEScraper, get_proximos_vencimientos
 
 logger = logging.getLogger(__name__)
@@ -123,24 +128,7 @@ Devuelve JSON: {"resumen": "...", "novedades_relevantes": [...], "acciones_recom
     return f"Novedades BOE:\n\n{resumen}"
 
 
-@tool
-async def fiscal_query(tenant_id: str, question: str) -> str:
-    """
-    Responde una consulta fiscal usando normativa española y documentos de la empresa (RAG).
-
-    Args:
-        tenant_id: ID del tenant
-        question: Pregunta fiscal del usuario
-    """
-    import uuid
-
-    import sqlalchemy as sa
-
-    from app.core.llm_factory import get_embedder
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.embeddings import DocumentEmbedding
-
-    contexto_normativo = """
+_CONTEXTO_NORMATIVO = """
     - IVA General España: 21%. Reducido: 10%. Superreducido: 4%.
     - Plazo presentación Modelo 303 (IVA trimestral): 20 días tras fin de trimestre (30 días en 4T).
     - Modelo 130 (IRPF fraccionado Estimación Directa): mismos plazos que Modelo 303.
@@ -151,40 +139,53 @@ async def fiscal_query(tenant_id: str, question: str) -> str:
     - Autónomos en módulos: no presentan Modelo 130 sino Modelo 131.
     """
 
-    text_from_docs = ""
+
+async def _search_tenant_docs(tenant_id: str, question: str) -> str:
+    """Busca fragmentos relevantes en los documentos del tenant via RAG. Devuelve texto o vacío."""
+    try:
+        embedder = get_embedder()
+        if not embedder:
+            return ""
+        query_vector = await embedder.aembed_query(question)
+        async with AsyncSessionLocal() as db:
+            tenant_result = await db.execute(
+                sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
+            )
+            jurisdiction = tenant_result.scalar() or "ES_TAX"
+            stmt = (
+                sa.select(DocumentEmbedding)
+                .where(
+                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
+                    sa.or_(
+                        DocumentEmbedding.jurisdiction == jurisdiction,
+                        DocumentEmbedding.jurisdiction.is_(None),
+                    ),
+                )
+                .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
+                .limit(3)
+            )
+            result = await db.execute(stmt)
+            fragments = result.scalars().all()
+        return "".join(f"\n--- Fragmento {i} ---\n{m.text_content}\n" for i, m in enumerate(fragments, 1))
+    except Exception as e:
+        logger.warning("Error buscando embeddings en compliance: %s", e)
+        return ""
+
+
+@tool
+async def fiscal_query(tenant_id: str, question: str) -> str:
+    """
+    Responde una consulta fiscal usando normativa española y documentos de la empresa (RAG).
+
+    Args:
+        tenant_id: ID del tenant
+        question: Pregunta fiscal del usuario
+    """
+    contexto = _CONTEXTO_NORMATIVO
     if tenant_id:
-        try:
-            embedder = get_embedder()
-            if embedder:
-                from app.db.models.auth import Tenant
-
-                query_vector = await embedder.aembed_query(question)
-                async with AsyncSessionLocal() as db:
-                    tenant_result = await db.execute(
-                        sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
-                    )
-                    jurisdiction = tenant_result.scalar() or "ES_TAX"
-
-                    stmt = (
-                        sa.select(DocumentEmbedding)
-                        .where(
-                            DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
-                            sa.or_(
-                                DocumentEmbedding.jurisdiction == jurisdiction,
-                                DocumentEmbedding.jurisdiction.is_(None),
-                            ),
-                        )
-                        .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
-                        .limit(3)
-                    )
-                    result = await db.execute(stmt)
-                    for idx, match in enumerate(result.scalars().all(), 1):
-                        text_from_docs += f"\n--- Fragmento {idx} ---\n{match.text_content}\n"
-        except Exception as e:
-            logger.warning("Error buscando embeddings en compliance: %s", e)
-
-    if text_from_docs.strip():
-        contexto_normativo += "\n\nDOCUMENTOS DE LA EMPRESA:\n" + text_from_docs
+        docs_text = await _search_tenant_docs(tenant_id, question)
+        if docs_text.strip():
+            contexto += "\n\nDOCUMENTOS DE LA EMPRESA:\n" + docs_text
 
     llm = _get_llm()
     try:
@@ -193,7 +194,7 @@ async def fiscal_query(tenant_id: str, question: str) -> str:
                 SystemMessage(
                     content=f"""Eres un asesor fiscal experto en legislación española.
 CONTEXTO NORMATIVO:
-{contexto_normativo}
+{contexto}
 
 INSTRUCCIONES:
 1. Responde SOLO basándote en el contexto proporcionado.

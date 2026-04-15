@@ -4,196 +4,46 @@ Coroutines puras invocadas por APScheduler.
 """
 
 import logging
-from datetime import UTC
+import zoneinfo
+from datetime import UTC, date, datetime, timedelta
 
+from croniter import croniter
+from sqlalchemy import select
+
+from app.db.base import AsyncSessionLocal
+from app.db.models.models import (
+    Invoice,
+    InvoiceLine,
+    RecurringInvoice,
+    Task,
+    Workflow,
+    WorkflowExecution,
+)
 from app.services.idempotency import IdempotencyGuard
+from app.services.workflow import execute_deterministic_steps
 from app.services.workflow.task_dispatch import dispatch_orchestrator
 
 logger = logging.getLogger(__name__)
 
-
-async def check_scheduled_workflows():
-    """
-    Tarea periodica (cada minuto) que evalua que workflows schedule_based
-    deben ejecutarse ahora segun su trigger_config.
-    """
-    try:
-        await _check_scheduled_workflows()
-    except Exception as e:
-        logger.error("[SCHEDULER] Error en check_scheduled_workflows: %s", e)
+try:
+    _MADRID_TZ = zoneinfo.ZoneInfo("Europe/Madrid")
+except Exception:
+    _MADRID_TZ = UTC
 
 
-async def _check_scheduled_workflows():
-    from datetime import datetime
-
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Task, Workflow, WorkflowExecution
-
-    now = datetime.now(UTC)
-    # Usar hora de Madrid (UTC+1 / UTC+2)
-    import zoneinfo
-
-    try:
-        madrid = zoneinfo.ZoneInfo("Europe/Madrid")
-        now_local = datetime.now(madrid)
-    except Exception:
-        now_local = now
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Workflow).where(
-                Workflow.is_active.is_(True),
-                Workflow.trigger_type == "schedule_based",
-            )
-        )
-        workflows = result.scalars().all()
-
-        for wf in workflows:
-            config = wf.trigger_config or {}
-            if _should_run_now(config, now_local):
-                # -- Idempotencia: evitar disparar el mismo workflow dos veces en el mismo minuto --
-                idempotency_key = f"{wf.id}:{now_local.strftime('%Y%m%d%H%M')}"
-
-                guard = IdempotencyGuard(ttl=120)  # TTL 2 min: suficiente para el mismo minuto
-                if await guard.already_executed("workflow_beat", idempotency_key):
-                    logger.info(
-                        "[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name
-                    )
-                    continue
-
-                # Bloquear si ya hay una ejecucion activa para este workflow
-                existing_exec = await db.execute(
-                    select(WorkflowExecution).where(
-                        WorkflowExecution.workflow_id == wf.id,
-                        WorkflowExecution.status.in_(["running", "pending"]),
-                    )
-                )
-                if existing_exec.scalars().first():
-                    logger.info("[BEAT] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
-                    continue
-
-                logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
-
-                # Crear ejecucion
-                execution = WorkflowExecution(
-                    workflow_id=wf.id,
-                    tenant_id=wf.tenant_id,
-                    status="running",
-                    trigger_payload={"source": "apscheduler", "scheduled_at": now.isoformat()},
-                )
-                db.add(execution)
-                await db.flush()
-
-                # ── Ruta DETERMINISTA: pasos híbridos sin orquestador LLM ──
-                if wf.execution_mode == "deterministic" and wf.compiled_steps:
-                    task = Task(
-                        tenant_id=wf.tenant_id,
-                        created_by=None,
-                        domain="deterministic",
-                        user_intent=f"[Determinista] {wf.name}",
-                        status="running",
-                        additional_metadata={
-                            "workflow_id": str(wf.id),
-                            "execution_id": str(execution.id),
-                            "trigger_type": "schedule_based",
-                        },
-                    )
-                    db.add(task)
-                    await db.flush()
-                    execution.task_id = task.id
-                    await db.flush()
-
-                    try:
-                        from app.api.v1.routes.workflows import _execute_deterministic_steps
-
-                        results = await _execute_deterministic_steps(
-                            steps=wf.compiled_steps,
-                            tenant_id=str(wf.tenant_id),
-                            user_id=str(wf.created_by) if wf.created_by else "",
-                            task_id=str(task.id),
-                        )
-                        execution.status = "success"
-                        execution.result_log = (
-                            f"Ejecución determinista: {len(results)} paso(s). "
-                            + " | ".join(
-                                f"[{r.get('agent', '?')}:{r.get('type', '?')}] "
-                                f"{'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
-                                for r in results
-                            )
-                        )
-                        task.status = "done"
-                        await guard.mark_executed("workflow_beat", idempotency_key)
-                    except Exception as e:
-                        execution.status = "failed"
-                        execution.result_log = f"Error determinista: {e}"
-                        task.status = "failed"
-                        await guard.release("workflow_beat", idempotency_key)
-
-                # ── Ruta REASONING: orquestador clásico con LLM ──
-                else:
-                    action_config = wf.action_config or {}
-                    instruction = (
-                        action_config.get("instruction")
-                        or config.get("instruction")
-                        or wf.description
-                        or wf.name
-                    )
-                    text = f"{wf.name} {wf.description or ''} {instruction}".lower()
-                    domain = action_config.get("domain") or _infer_domain_from_text(text)
-
-                    task = Task(
-                        tenant_id=wf.tenant_id,
-                        created_by=None,
-                        domain=domain,
-                        user_intent=f"[Automatizacion programada] {instruction}",
-                        status="pending",
-                        additional_metadata={
-                            "workflow_id": str(wf.id),
-                            "execution_id": str(execution.id),
-                            "trigger_type": "schedule_based",
-                            "scheduled_at": now.isoformat(),
-                        },
-                    )
-                    db.add(task)
-                    await db.flush()
-                    execution.task_id = task.id
-                    await db.flush()
-
-                    try:
-                        await dispatch_orchestrator(str(task.id))
-                        await guard.mark_executed("workflow_beat", idempotency_key)
-                    except Exception as e:
-                        execution.status = "failed"
-                        execution.result_log = f"Error al lanzar orchestrator: {e}"
-                        await guard.release("workflow_beat", idempotency_key)
-
-        await db.commit()
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def _should_run_now(config: dict, now) -> bool:
-    """
-    Evalua si un workflow schedule_based debe ejecutarse en este momento basandose en una expresion cron.
-    """
+    """Evalua si la expresion cron del config coincide con el minuto actual."""
     cron_expr = config.get("cron")
     if not cron_expr:
-        # Fallback to old parsing if old config exists, or return False if broken
         return False
-
     try:
-        from datetime import timedelta
-
-        from croniter import croniter
-
-        # Ensure we're checking if the current minute is a match.
-        # croniter returns next matching sequence. We check if 'now' is a match
-        # by seeing if checking a minute ago yields 'now'.
         past = now - timedelta(minutes=1)
-        it = croniter(cron_expr, past)
-        next_run = it.get_next(now.__class__)
-
-        # We consider a match if the next_run is within the same minute as 'now'
+        next_run = croniter(cron_expr, past).get_next(now.__class__)
         return (
             next_run.year == now.year
             and next_run.month == now.month
@@ -201,267 +51,9 @@ def _should_run_now(config: dict, now) -> bool:
             and next_run.hour == now.hour
             and next_run.minute == now.minute
         )
-
     except Exception as e:
         logger.warning("[SCHEDULER] Error parsing cron: %s -> %s", cron_expr, e)
         return False
-
-
-async def catchup_missed_workflows():
-    """
-    Al arrancar la app: si un workflow programado debía haberse ejecutado mientras
-    la app estaba cerrada, lo dispara una vez (no por cada ocurrencia perdida).
-    """
-    try:
-        await _catchup_missed_workflows()
-    except Exception as e:
-        logger.error("[CATCHUP] Error en catchup_missed_workflows: %s", e)
-
-
-async def _catchup_missed_workflows():
-    import zoneinfo
-    from datetime import datetime, timedelta
-
-    from croniter import croniter
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Task, Workflow, WorkflowExecution
-    from app.services.workflow.task_dispatch import dispatch_orchestrator
-
-    try:
-        madrid = zoneinfo.ZoneInfo("Europe/Madrid")
-    except Exception:
-        madrid = None
-
-    now_utc = datetime.now(UTC)
-    now_local = datetime.now(madrid) if madrid else now_utc
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Workflow).where(
-                Workflow.is_active.is_(True),
-                Workflow.trigger_type == "schedule_based",
-            )
-        )
-        workflows = result.scalars().all()
-
-        for wf in workflows:
-            config = wf.trigger_config or {}
-            cron_expr = config.get("cron")
-            if not cron_expr:
-                continue
-
-            # Última ejecución registrada
-            last_exec_result = await db.execute(
-                select(WorkflowExecution)
-                .where(WorkflowExecution.workflow_id == wf.id)
-                .order_by(WorkflowExecution.started_at.desc())
-                .limit(1)
-            )
-            last_exec = last_exec_result.scalars().first()
-            since = last_exec.started_at if last_exec else wf.created_at
-            # Asegurar timezone-aware
-            if since.tzinfo is None:
-                since = since.replace(tzinfo=UTC)
-
-            # No buscar catch-ups de más de 7 días atrás
-            floor = now_utc - timedelta(days=7)
-            if since < floor:
-                since = floor
-
-            # Convertir 'since' a hora local para croniter
-            since_local = since.astimezone(madrid) if madrid else since
-
-            try:
-                it = croniter(cron_expr, since_local)
-                next_run = it.get_next(datetime)
-            except Exception as e:
-                logger.warning("[CATCHUP] Cron inválido '%s' en wf '%s': %s", cron_expr, wf.name, e)
-                continue
-
-            # Si la próxima ejecución prevista ya pasó → hay catch-up pendiente
-            now_cmp = now_local if madrid else now_utc
-            if next_run > now_cmp:
-                continue  # nada perdido
-
-            logger.info(
-                "[CATCHUP] Workflow '%s' perdió ejecución(es) desde %s. Disparando una vez.",
-                wf.name,
-                since_local,
-            )
-
-            # Verificar que no hay ejecución activa ya
-            active = await db.execute(
-                select(WorkflowExecution).where(
-                    WorkflowExecution.workflow_id == wf.id,
-                    WorkflowExecution.status.in_(["running", "pending"]),
-                )
-            )
-            if active.scalars().first():
-                logger.info("[CATCHUP] Workflow '%s' ya tiene ejecución activa. Skip.", wf.name)
-                continue
-
-            execution = WorkflowExecution(
-                workflow_id=wf.id,
-                tenant_id=wf.tenant_id,
-                status="running",
-                trigger_payload={"source": "catchup", "since": since.isoformat()},
-            )
-            db.add(execution)
-            await db.flush()
-
-            if wf.execution_mode == "deterministic" and wf.compiled_steps:
-                task = Task(
-                    tenant_id=wf.tenant_id,
-                    created_by=None,
-                    domain="deterministic",
-                    user_intent=f"[Catch-up determinista] {wf.name}",
-                    status="running",
-                    additional_metadata={
-                        "workflow_id": str(wf.id),
-                        "execution_id": str(execution.id),
-                        "trigger_type": "catchup",
-                    },
-                )
-                db.add(task)
-                await db.flush()
-                execution.task_id = task.id
-                await db.flush()
-                try:
-                    from app.api.v1.routes.workflows import _execute_deterministic_steps
-
-                    results = await _execute_deterministic_steps(
-                        steps=wf.compiled_steps,
-                        tenant_id=str(wf.tenant_id),
-                        user_id=str(wf.created_by) if wf.created_by else "",
-                        task_id=str(task.id),
-                    )
-                    execution.status = "success"
-                    execution.result_log = f"[Catch-up] {len(results)} paso(s) OK"
-                    task.status = "done"
-                except Exception as e:
-                    execution.status = "failed"
-                    execution.result_log = f"[Catch-up] Error: {e}"
-                    task.status = "failed"
-            else:
-                action_config = wf.action_config or {}
-                instruction = (
-                    action_config.get("instruction")
-                    or config.get("instruction")
-                    or wf.description
-                    or wf.name
-                )
-                text = f"{wf.name} {wf.description or ''} {instruction}".lower()
-                domain = action_config.get("domain") or _infer_domain_from_text(text)
-
-                task = Task(
-                    tenant_id=wf.tenant_id,
-                    created_by=None,
-                    domain=domain,
-                    user_intent=f"[Catch-up] {instruction}",
-                    status="pending",
-                    additional_metadata={
-                        "workflow_id": str(wf.id),
-                        "execution_id": str(execution.id),
-                        "trigger_type": "catchup",
-                    },
-                )
-                db.add(task)
-                await db.flush()
-                execution.task_id = task.id
-                await db.flush()
-                try:
-                    await dispatch_orchestrator(str(task.id))
-                except Exception as e:
-                    execution.status = "failed"
-                    execution.result_log = f"[Catch-up] Error lanzando orchestrator: {e}"
-
-        await db.commit()
-
-
-async def process_recurring_invoices():
-    """Tarea diaria (8:00) que genera facturas a partir de plantillas recurrentes vencidas."""
-    try:
-        return await _process_recurring_invoices()
-    except Exception as e:
-        logger.error("[SCHEDULER] Error en process_recurring_invoices: %s", e)
-
-
-async def _process_recurring_invoices():
-    import datetime as dt_module
-
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
-
-    today = dt_module.date.today()
-    now = dt_module.datetime.now(dt_module.timezone.utc)
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(RecurringInvoice).where(
-                RecurringInvoice.is_active.is_(True),
-                RecurringInvoice.next_run_date <= today,
-            )
-        )
-        due = result.scalars().all()
-        generated = 0
-
-        for rec in due:
-            try:
-                invoice_number = f"REC-{now.strftime('%Y%m%d%H%M%S')}-{generated}"
-                amount_base = 0.0
-                tax_amount = 0.0
-                for line in rec.lines_json or []:
-                    base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
-                    tax = base * (float(line.get("tax_percentage", 21)) / 100)
-                    amount_base += base
-                    tax_amount += tax
-
-                invoice = Invoice(
-                    tenant_id=rec.tenant_id,
-                    client_id=rec.client_id,
-                    invoice_number=invoice_number,
-                    date=now,
-                    status="draft",
-                    invoice_type="issued",
-                    notes=rec.notes,
-                    terms=rec.terms,
-                    amount_base=round(amount_base, 2),
-                    tax_amount=round(tax_amount, 2),
-                    amount_total=round(amount_base + tax_amount, 2),
-                )
-                db.add(invoice)
-                await db.flush()
-
-                for line in rec.lines_json or []:
-                    base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
-                    tax = base * (float(line.get("tax_percentage", 21)) / 100)
-                    inv_line = InvoiceLine(
-                        invoice_id=invoice.id,
-                        description=line.get("description", ""),
-                        quantity=line.get("quantity", 1),
-                        unit_price=line.get("unit_price", 0),
-                        discount_percentage=0,
-                        tax_percentage=line.get("tax_percentage", 21),
-                        total=round(base + tax, 2),
-                    )
-                    db.add(inv_line)
-
-                interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
-                days = interval_map.get(rec.interval_type, 30)
-                rec.last_run_date = today
-                rec.next_run_date = today + dt_module.timedelta(days=days)
-                generated += 1
-
-            except Exception as e:
-                logger.error("[RECURRING] Error procesando plantilla %s: %s", rec.id, e)
-
-        await db.commit()
-        logger.info("[RECURRING] %d facturas generadas automaticamente.", generated)
-        return {"generated": generated}
 
 
 def _infer_domain_from_text(text: str) -> str:
@@ -480,7 +72,303 @@ def _infer_domain_from_text(text: str) -> str:
     return "billing"
 
 
-# --- Cleanup: ejecuciones atascadas ---
+def _calc_line_totals(line: dict) -> tuple[float, float]:
+    """Devuelve (base, tax) para una linea de factura recurrente."""
+    base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
+    tax = base * (float(line.get("tax_percentage", 21)) / 100)
+    return base, tax
+
+
+async def _dispatch_workflow(
+    db,
+    wf,
+    execution,
+    trigger_source: str,
+    guard=None,
+    idempotency_key: str | None = None,
+) -> None:
+    """
+    Crea la Task y ejecuta el workflow (determinista o reasoning).
+    Actualiza execution.status y task.status segun el resultado.
+    """
+    label = trigger_source.replace("_", " ").title()
+    meta = {
+        "workflow_id": str(wf.id),
+        "execution_id": str(execution.id),
+        "trigger_type": trigger_source,
+    }
+
+    if wf.execution_mode == "deterministic" and wf.compiled_steps:
+        task = Task(
+            tenant_id=wf.tenant_id,
+            created_by=None,
+            domain="deterministic",
+            user_intent=f"[{label}] {wf.name}",
+            status="running",
+            additional_metadata=meta,
+        )
+        db.add(task)
+        await db.flush()
+        execution.task_id = task.id
+        await db.flush()
+
+        try:
+            results = await execute_deterministic_steps(
+                steps=wf.compiled_steps,
+                tenant_id=str(wf.tenant_id),
+                user_id=str(wf.created_by) if wf.created_by else "",
+                task_id=str(task.id),
+            )
+            execution.status = "success"
+            execution.result_log = (
+                f"{len(results)} paso(s). "
+                + " | ".join(
+                    f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
+                    for r in results
+                )
+            )
+            task.status = "done"
+            if guard and idempotency_key:
+                await guard.mark_executed("workflow_beat", idempotency_key)
+        except Exception as e:
+            execution.status = "failed"
+            execution.result_log = f"Error determinista: {e}"
+            task.status = "failed"
+            if guard and idempotency_key:
+                await guard.release("workflow_beat", idempotency_key)
+
+    else:
+        action_config = wf.action_config or {}
+        config = wf.trigger_config or {}
+        instruction = (
+            action_config.get("instruction")
+            or config.get("instruction")
+            or wf.description
+            or wf.name
+        )
+        domain = action_config.get("domain") or _infer_domain_from_text(
+            f"{wf.name} {wf.description or ''} {instruction}".lower()
+        )
+        task = Task(
+            tenant_id=wf.tenant_id,
+            created_by=None,
+            domain=domain,
+            user_intent=f"[{label}] {instruction}",
+            status="pending",
+            additional_metadata=meta,
+        )
+        db.add(task)
+        await db.flush()
+        execution.task_id = task.id
+        await db.flush()
+
+        try:
+            await dispatch_orchestrator(str(task.id))
+            if guard and idempotency_key:
+                await guard.mark_executed("workflow_beat", idempotency_key)
+        except Exception as e:
+            execution.status = "failed"
+            execution.result_log = f"Error lanzando orchestrator: {e}"
+            if guard and idempotency_key:
+                await guard.release("workflow_beat", idempotency_key)
+
+
+# ---------------------------------------------------------------------------
+# Tareas publicas (invocadas por APScheduler)
+# ---------------------------------------------------------------------------
+
+
+async def check_scheduled_workflows():
+    """Cada minuto: dispara workflows schedule_based cuyo cron coincide con ahora."""
+    try:
+        await _check_scheduled_workflows()
+    except Exception as e:
+        logger.error("[SCHEDULER] Error en check_scheduled_workflows: %s", e)
+
+
+async def _check_scheduled_workflows():
+    now = datetime.now(UTC)
+    now_local = datetime.now(_MADRID_TZ)
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Workflow).where(
+                Workflow.is_active.is_(True),
+                Workflow.trigger_type == "schedule_based",
+            )
+        )
+        for wf in result.scalars().all():
+            if not _should_run_now(wf.trigger_config or {}, now_local):
+                continue
+
+            idempotency_key = f"{wf.id}:{now_local.strftime('%Y%m%d%H%M')}"
+            guard = IdempotencyGuard(ttl=120)
+            if await guard.already_executed("workflow_beat", idempotency_key):
+                logger.info("[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name)
+                continue
+
+            active = await db.execute(
+                select(WorkflowExecution).where(
+                    WorkflowExecution.workflow_id == wf.id,
+                    WorkflowExecution.status.in_(["running", "pending"]),
+                )
+            )
+            if active.scalars().first():
+                logger.info("[BEAT] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
+                continue
+
+            logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
+            execution = WorkflowExecution(
+                workflow_id=wf.id,
+                tenant_id=wf.tenant_id,
+                status="running",
+                trigger_payload={"source": "apscheduler", "scheduled_at": now.isoformat()},
+            )
+            db.add(execution)
+            await db.flush()
+            await _dispatch_workflow(db, wf, execution, "schedule_based", guard, idempotency_key)
+
+        await db.commit()
+
+
+async def catchup_missed_workflows():
+    """Al arrancar la app: dispara una vez cada workflow que perdio ejecuciones."""
+    try:
+        await _catchup_missed_workflows()
+    except Exception as e:
+        logger.error("[CATCHUP] Error en catchup_missed_workflows: %s", e)
+
+
+async def _catchup_missed_workflows():
+    now_utc = datetime.now(UTC)
+    now_local = datetime.now(_MADRID_TZ)
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Workflow).where(
+                Workflow.is_active.is_(True),
+                Workflow.trigger_type == "schedule_based",
+            )
+        )
+        for wf in result.scalars().all():
+            cron_expr = (wf.trigger_config or {}).get("cron")
+            if not cron_expr:
+                continue
+
+            last_exec_result = await db.execute(
+                select(WorkflowExecution)
+                .where(WorkflowExecution.workflow_id == wf.id)
+                .order_by(WorkflowExecution.started_at.desc())
+                .limit(1)
+            )
+            last_exec = last_exec_result.scalars().first()
+            since = last_exec.started_at if last_exec else wf.created_at
+            if since.tzinfo is None:
+                since = since.replace(tzinfo=UTC)
+
+            since = max(since, now_utc - timedelta(days=7))
+            since_local = since.astimezone(_MADRID_TZ)
+
+            try:
+                next_run = croniter(cron_expr, since_local).get_next(datetime)
+            except Exception as e:
+                logger.warning("[CATCHUP] Cron invalido '%s' en wf '%s': %s", cron_expr, wf.name, e)
+                continue
+
+            if next_run > now_local:
+                continue
+
+            logger.info(
+                "[CATCHUP] Workflow '%s' perdio ejecucion(es) desde %s. Disparando una vez.",
+                wf.name, since_local,
+            )
+
+            active = await db.execute(
+                select(WorkflowExecution).where(
+                    WorkflowExecution.workflow_id == wf.id,
+                    WorkflowExecution.status.in_(["running", "pending"]),
+                )
+            )
+            if active.scalars().first():
+                logger.info("[CATCHUP] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
+                continue
+
+            execution = WorkflowExecution(
+                workflow_id=wf.id,
+                tenant_id=wf.tenant_id,
+                status="running",
+                trigger_payload={"source": "catchup", "since": since.isoformat()},
+            )
+            db.add(execution)
+            await db.flush()
+            await _dispatch_workflow(db, wf, execution, "catchup")
+
+        await db.commit()
+
+
+async def process_recurring_invoices():
+    """Tarea diaria (8:00) que genera facturas a partir de plantillas recurrentes vencidas."""
+    try:
+        return await _process_recurring_invoices()
+    except Exception as e:
+        logger.error("[SCHEDULER] Error en process_recurring_invoices: %s", e)
+
+
+async def _process_recurring_invoices():
+    today = date.today()
+    now = datetime.now(UTC)
+    interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(RecurringInvoice).where(
+                RecurringInvoice.is_active.is_(True),
+                RecurringInvoice.next_run_date <= today,
+            )
+        )
+        generated = 0
+        for rec in result.scalars().all():
+            try:
+                line_totals = [_calc_line_totals(ln) for ln in (rec.lines_json or [])]
+                amount_base = sum(b for b, _ in line_totals)
+                tax_amount = sum(t for _, t in line_totals)
+
+                invoice = Invoice(
+                    tenant_id=rec.tenant_id,
+                    client_id=rec.client_id,
+                    invoice_number=f"REC-{now.strftime('%Y%m%d%H%M%S')}-{generated}",
+                    date=now,
+                    status="draft",
+                    invoice_type="issued",
+                    notes=rec.notes,
+                    terms=rec.terms,
+                    amount_base=round(amount_base, 2),
+                    tax_amount=round(tax_amount, 2),
+                    amount_total=round(amount_base + tax_amount, 2),
+                )
+                db.add(invoice)
+                await db.flush()
+
+                for line, (base, tax) in zip(rec.lines_json or [], line_totals):
+                    db.add(InvoiceLine(
+                        invoice_id=invoice.id,
+                        description=line.get("description", ""),
+                        quantity=line.get("quantity", 1),
+                        unit_price=line.get("unit_price", 0),
+                        discount_percentage=0,
+                        tax_percentage=line.get("tax_percentage", 21),
+                        total=round(base + tax, 2),
+                    ))
+
+                rec.last_run_date = today
+                rec.next_run_date = today + timedelta(days=interval_map.get(rec.interval_type, 30))
+                generated += 1
+            except Exception as e:
+                logger.error("[RECURRING] Error procesando plantilla %s: %s", rec.id, e)
+
+        await db.commit()
+        logger.info("[RECURRING] %d facturas generadas automaticamente.", generated)
+        return {"generated": generated}
 
 
 async def cleanup_stuck_executions():
@@ -492,13 +380,6 @@ async def cleanup_stuck_executions():
 
 
 async def _cleanup_stuck_executions():
-    from datetime import datetime, timedelta
-
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import WorkflowExecution
-
     cutoff = datetime.now(UTC) - timedelta(minutes=15)
 
     async with AsyncSessionLocal() as db:

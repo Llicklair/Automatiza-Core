@@ -1,15 +1,94 @@
 """HR agent — tool functions for payroll, employees and related operations."""
 
 import logging
+import os
 from calendar import monthrange
 from datetime import UTC, datetime
 from uuid import UUID
 
 from langchain_core.tools import tool
+from sqlalchemy import select
 
-from app.db.models.models import Employee, Payroll
+from app.db.base import AsyncSessionLocal
+from app.db.models.models import Employee, Payroll, Tenant, TenantDocument
 
 logger = logging.getLogger(__name__)
+
+
+# ─── PDF helper ──────────────────────────────────────────────────────────────
+
+
+async def _generate_and_save_payroll_pdf(
+    tenant_id: str,
+    employee: Employee,
+    payroll_numbers: dict,
+    start_date: datetime,
+    end_date: datetime,
+    month: int,
+    year: int,
+) -> tuple[str | None, str | None]:
+    """Generate payroll PDF, save to disk, register TenantDocument. Returns (document_id, error_msg)."""
+    try:
+        from app.services.pdf import generate_payroll_pdf
+
+        async with AsyncSessionLocal() as db:
+            res_t = await db.execute(select(Tenant).where(Tenant.id == UUID(tenant_id)))
+            tenant_obj = res_t.scalar_one_or_none()
+            try:
+                from app.services.template_service import get_default_theme
+                payroll_theme = await get_default_theme(UUID(tenant_id), "payroll", db)
+            except Exception as _e:
+                logger.warning("Error cargando tema nómina para tenant %s: %s", tenant_id, _e)
+                payroll_theme = None
+
+        payroll_pdf_data = {
+            "employee": {
+                "name": employee.name,
+                "nif": employee.nif,
+                "position": employee.role or "Empleado",
+                "department": employee.department or "General",
+            },
+            "company": {
+                "name": tenant_obj.name if tenant_obj else "Empresa Cliente",
+                "nif": "B-00000000",
+                "address": "Calle Falsa 123, Madrid",
+            },
+            "period_start": start_date.isoformat(),
+            "period_end": end_date.isoformat(),
+            "issue_date": datetime.now(UTC).isoformat(),
+            **payroll_numbers,
+        }
+
+        pdf_bytes = generate_payroll_pdf(payroll_pdf_data, payroll_theme)
+
+        upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
+        if not os.path.exists(upload_dir) and os.name == "nt":
+            upload_dir = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+            )
+        os.makedirs(upload_dir, exist_ok=True)
+
+        file_name = f"Nomina_{employee.name.replace(' ', '_')}_{month}_{year}.pdf"
+        file_path = os.path.join(upload_dir, file_name)
+        with open(file_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        new_doc = TenantDocument(
+            tenant_id=UUID(tenant_id),
+            file_name=file_name,
+            file_path=file_path,
+            file_type="application/pdf",
+            file_size=len(pdf_bytes),
+            category="nominas",
+            status="completed",
+        )
+        async with AsyncSessionLocal() as db_doc:
+            db_doc.add(new_doc)
+            await db_doc.commit()
+            await db_doc.refresh(new_doc)
+            return str(new_doc.id), None
+    except Exception as e:
+        return None, str(e)
 
 
 # ─── Payroll: individual ──────────────────────────────────────────────────────
@@ -45,10 +124,6 @@ async def calculate_and_create_payroll(
 async def _create_payroll_async(
     tenant_id: str, nif: str, month: int, year: int, deductions: float
 ) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -58,17 +133,15 @@ async def _create_payroll_async(
                 )
             )
             employee = result.scalars().first()
-
             if not employee:
                 return f"Error: Empleado con NIF {nif} no encontrado. Usa `create_employee` para darlo de alta primero."
 
             base_salary = float(employee.base_salary) if employee.base_salary else 0
             irpf_rate = float(employee.irpf_rate) if employee.irpf_rate is not None else 15.0
 
-            # Desglose SS trabajador
-            ss_cc = round(base_salary * 0.0470, 2)  # Contingencias comunes
+            ss_cc = round(base_salary * 0.0470, 2)   # Contingencias comunes
             ss_des = round(base_salary * 0.0155, 2)  # Desempleo (indefinido)
-            ss_fp = round(base_salary * 0.0010, 2)  # Formación profesional
+            ss_fp = round(base_salary * 0.0010, 2)   # Formación profesional
             ss_mei = round(base_salary * 0.0013, 2)  # MEI
             irpf = round(base_salary * irpf_rate / 100, 2)
             total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf + deductions
@@ -99,109 +172,32 @@ async def _create_payroll_async(
             await db.commit()
             await db.refresh(payroll)
 
-            # --- Generar PDF y Guardar en TenantDocument ---
-            document_id = None
-            try:
-                import os
+        payroll_numbers = {
+            "base_salary": base_salary, "ss_contingencias_comunes": ss_cc,
+            "ss_desempleo": ss_des, "ss_formacion_profesional": ss_fp,
+            "ss_mei": ss_mei, "irpf": irpf, "irpf_rate": irpf_rate,
+            "other_deductions": deductions, "net_salary": net_salary,
+        }
+        document_id, pdf_err = await _generate_and_save_payroll_pdf(
+            tenant_id, employee, payroll_numbers, start_date, end_date, month, year
+        )
+        if pdf_err:
+            logger.warning("Error PDF RRHH: %s", pdf_err)
 
-                from app.db.models.models import Tenant, TenantDocument
-                from app.services.pdf import generate_payroll_pdf
-
-                # Carga datos para el PDF
-                async with AsyncSessionLocal() as db_pdf:
-                    res_t = await db_pdf.execute(select(Tenant).where(Tenant.id == UUID(tenant_id)))
-                    tenant_obj = res_t.scalar_one_or_none()
-                    try:
-                        from app.services.template_service import get_default_theme
-
-                        payroll_theme = await get_default_theme(UUID(tenant_id), "payroll", db_pdf)
-                    except Exception as _e:
-                        logger.warning(
-                            "Error cargando tema nómina para tenant %s: %s", tenant_id, _e
-                        )
-                        payroll_theme = None
-
-                payroll_pdf_data = {
-                    "employee": {
-                        "name": employee.name,
-                        "nif": employee.nif,
-                        "position": employee.role or "Empleado",
-                        "department": employee.department or "General",
+        try:
+            from app.services.event_bus import emit_event
+            async with AsyncSessionLocal() as db_ev:
+                await emit_event(
+                    db=db_ev, tenant_id=UUID(tenant_id), user_id=None,
+                    event_name="payroll_created",
+                    context={
+                        "payroll_id": str(payroll.id), "employee_name": employee.name,
+                        "employee_nif": employee.nif, "net_salary": float(net_salary),
+                        "document_id": document_id,
                     },
-                    "company": {
-                        "name": tenant_obj.name if tenant_obj else "Empresa Cliente",
-                        "nif": "B-00000000",
-                        "address": "Calle Falsa 123, Madrid",
-                    },
-                    "period_start": start_date.isoformat(),
-                    "period_end": end_date.isoformat(),
-                    "issue_date": datetime.now(UTC).isoformat(),
-                    "base_salary": base_salary,
-                    "ss_contingencias_comunes": ss_cc,
-                    "ss_desempleo": ss_des,
-                    "ss_formacion_profesional": ss_fp,
-                    "ss_mei": ss_mei,
-                    "irpf": irpf,
-                    "irpf_rate": irpf_rate,
-                    "other_deductions": deductions,
-                    "net_salary": net_salary,
-                }
-
-                pdf_bytes = generate_payroll_pdf(payroll_pdf_data, payroll_theme)
-
-                # Guardar en disco
-                upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-                if not os.path.exists(upload_dir) and os.name == "nt":
-                    upload_dir = os.path.abspath(
-                        os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
-                    )
-                os.makedirs(upload_dir, exist_ok=True)
-
-                file_name = f"Nomina_{employee.name.replace(' ', '_')}_{month}_{year}.pdf"
-                file_path = os.path.join(upload_dir, file_name)
-                with open(file_path, "wb") as f:
-                    f.write(pdf_bytes)
-
-                # Registrar en BD
-                new_doc = TenantDocument(
-                    tenant_id=UUID(tenant_id),
-                    file_name=file_name,
-                    file_path=file_path,
-                    file_type="application/pdf",
-                    file_size=len(pdf_bytes),
-                    category="nominas",
-                    status="completed",
                 )
-                async with AsyncSessionLocal() as db_doc:
-                    db_doc.add(new_doc)
-                    await db_doc.commit()
-                    await db_doc.refresh(new_doc)
-                    document_id = str(new_doc.id)
-            except Exception as pdf_err:
-                logger.warning(f"Error PDF RRHH: {pdf_err}")
-
-            # --- Emitir Evento para Automatización ---
-            try:
-                from app.services.event_bus import emit_event
-
-                async with AsyncSessionLocal() as db_ev:
-                    await emit_event(
-                        db=db_ev,
-                        tenant_id=UUID(tenant_id),
-                        user_id=None,
-                        event_name="payroll_created",
-                        context={
-                            "payroll_id": str(payroll.id),
-                            "employee_name": employee.name,
-                            "employee_nif": employee.nif,
-                            "net_salary": float(net_salary),
-                            "document_id": document_id,
-                        },
-                    )
-            except Exception as e:
-                logger.warning(
-                    "Error al emitir evento payroll_created para empleado %s: %s", nif, e
-                )
+        except Exception as e:
+            logger.warning("Error al emitir evento payroll_created para empleado %s: %s", nif, e)
 
         return (
             f"Pre-nómina generada: {employee.name} (NIF: {nif}) | "
@@ -231,23 +227,20 @@ async def generate_all_payrolls(tenant_id: str, month: int, year: int) -> str:
 
 
 async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Employee).where(Employee.tenant_id == UUID(tenant_id)))
             employees = result.scalars().all()
 
-            if not employees:
-                return "No hay empleados registrados. Usa `create_employee` primero para dar de alta empleados antes de generar nóminas."
+        if not employees:
+            return "No hay empleados registrados. Usa `create_employee` primero para dar de alta empleados antes de generar nóminas."
 
-            last_day = monthrange(year, month)[1]
-            start_date = datetime(year, month, 1, tzinfo=UTC)
-            end_date = datetime(year, month, last_day, tzinfo=UTC)
+        last_day = monthrange(year, month)[1]
+        start_date = datetime(year, month, 1, tzinfo=UTC)
+        end_date = datetime(year, month, last_day, tzinfo=UTC)
 
-            summary_lines = []
+        summary_lines = []
+        async with AsyncSessionLocal() as db:
             for emp in employees:
                 base_salary = float(emp.base_salary) if emp.base_salary else 0
                 irpf_rate = float(emp.irpf_rate) if emp.irpf_rate is not None else 15.0
@@ -255,12 +248,12 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 ss_cc = round(base_salary * 0.0470, 2)
                 ss_des = round(base_salary * 0.0155, 2)
                 ss_fp = round(base_salary * 0.0010, 2)
-                ss_mei_val = round(base_salary * 0.0013, 2)
+                ss_mei = round(base_salary * 0.0013, 2)
                 irpf = round(base_salary * irpf_rate / 100, 2)
-                total_ded = ss_cc + ss_des + ss_fp + ss_mei_val + irpf
+                total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf
                 net_salary = max(0.0, base_salary - total_ded)
 
-                payroll = Payroll(
+                db.add(Payroll(
                     tenant_id=UUID(tenant_id),
                     employee_id=emp.id,
                     period_start=start_date,
@@ -270,83 +263,25 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     ss_contingencias_comunes=ss_cc,
                     ss_desempleo=ss_des,
                     ss_formacion_profesional=ss_fp,
-                    ss_mei=ss_mei_val,
+                    ss_mei=ss_mei,
                     irpf=irpf,
                     other_deductions=0,
                     deductions=total_ded,
                     net_salary=net_salary,
                     status="draft",
+                ))
+
+                payroll_numbers = {
+                    "base_salary": base_salary, "ss_contingencias_comunes": ss_cc,
+                    "ss_desempleo": ss_des, "ss_formacion_profesional": ss_fp,
+                    "ss_mei": ss_mei, "irpf": irpf, "irpf_rate": irpf_rate,
+                    "other_deductions": 0.0, "net_salary": net_salary,
+                }
+                _, pdf_err = await _generate_and_save_payroll_pdf(
+                    tenant_id, emp, payroll_numbers, start_date, end_date, month, year
                 )
-                db.add(payroll)
-
-                # --- Generar PDF silencioso para cada nómina del bloque ---
-                try:
-                    import os
-
-                    from app.db.models.models import TenantDocument
-                    from app.services.pdf import generate_payroll_pdf
-
-                    payroll_pdf_data = {
-                        "employee": {
-                            "name": emp.name,
-                            "nif": emp.nif,
-                            "position": emp.role or "Empleado",
-                            "department": emp.department or "General",
-                        },
-                        "company": {
-                            "name": "Empresa Cliente",
-                            "nif": "B-00000000",
-                            "address": "Sede Central",
-                        },
-                        "period_start": start_date.isoformat(),
-                        "period_end": end_date.isoformat(),
-                        "issue_date": datetime.now(UTC).isoformat(),
-                        "base_salary": base_salary,
-                        "ss_contingencias_comunes": ss_cc,
-                        "ss_desempleo": ss_des,
-                        "ss_formacion_profesional": ss_fp,
-                        "ss_mei": ss_mei_val,
-                        "irpf": irpf,
-                        "irpf_rate": irpf_rate,
-                        "other_deductions": 0.0,
-                        "net_salary": net_salary,
-                    }
-                    try:
-                        from app.services.template_service import get_default_theme
-
-                        _bulk_theme = await get_default_theme(UUID(tenant_id), "payroll", db)
-                    except Exception as _e:
-                        logger.warning(
-                            "Error cargando tema nómina masiva para tenant %s: %s", tenant_id, _e
-                        )
-                        _bulk_theme = None
-                    pdf_bytes = generate_payroll_pdf(payroll_pdf_data, _bulk_theme)
-
-                    file_name = f"Nomina_{emp.name.replace(' ', '_')}_{month}_{year}.pdf"
-                    upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-                    if not os.path.exists(upload_dir) and os.name == "nt":
-                        upload_dir = os.path.abspath(
-                            os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-                        )
-                    os.makedirs(upload_dir, exist_ok=True)
-                    file_path = os.path.join(upload_dir, file_name)
-                    with open(file_path, "wb") as f:
-                        f.write(pdf_bytes)
-
-                    new_doc = TenantDocument(
-                        tenant_id=UUID(tenant_id),
-                        file_name=file_name,
-                        file_path=file_path,
-                        file_type="application/pdf",
-                        file_size=len(pdf_bytes),
-                        category="nominas",
-                        status="completed",
-                    )
-                    db.add(new_doc)
-                except Exception as e:
-                    logger.warning(
-                        "Error al generar o guardar PDF de nómina para empleado %s: %s", emp.name, e
-                    )
+                if pdf_err:
+                    logger.warning("Error PDF nómina masiva para %s: %s", emp.name, pdf_err)
 
                 summary_lines.append(
                     f"- {emp.name}: Bruto {base_salary:.2f}€ → Neto {net_salary:.2f}€"
@@ -354,29 +289,22 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
 
             await db.commit()
 
-            # --- Emitir Evento Global para el bloque ---
-            try:
-                from app.services.event_bus import emit_event
-
-                async with AsyncSessionLocal() as db_ev:
-                    await emit_event(
-                        db=db_ev,
-                        tenant_id=UUID(tenant_id),
-                        user_id=None,
-                        event_name="payrolls_bulk_created",
-                        context={"count": len(employees), "month": month, "year": year},
-                    )
-            except Exception as e:
-                logger.warning(
-                    "Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e
+        try:
+            from app.services.event_bus import emit_event
+            async with AsyncSessionLocal() as db_ev:
+                await emit_event(
+                    db=db_ev, tenant_id=UUID(tenant_id), user_id=None,
+                    event_name="payrolls_bulk_created",
+                    context={"count": len(employees), "month": month, "year": year},
                 )
+        except Exception as e:
+            logger.warning("Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e)
 
-        summary = "\n".join(summary_lines)
         return (
             f"Nóminas de {month}/{year} generadas en modo DRAFT para {len(employees)} empleados:\n"
-            f"{summary}\n\n"
-            f"IMPORTANTE: Las nóminas están en estado BORRADOR. "
-            f"El responsable debe revisarlas y aprobarlas desde RRHH > Nóminas."
+            + "\n".join(summary_lines)
+            + "\n\nIMPORTANTE: Las nóminas están en estado BORRADOR. "
+            "El responsable debe revisarlas y aprobarlas desde RRHH > Nóminas."
         )
     except Exception as e:
         return f"Error al generar nóminas en bloque: {str(e)}"
@@ -397,10 +325,6 @@ async def list_employees(tenant_id: str) -> str:
 
 
 async def _list_employees_async(tenant_id: str) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Employee).where(Employee.tenant_id == UUID(tenant_id)))
@@ -459,10 +383,6 @@ async def _create_employee_async(
     email: str,
     irpf_rate: float,
 ) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-
     if not name.strip():
         return "Error: El nombre del empleado es obligatorio."
     if not nif.strip():
@@ -560,10 +480,6 @@ async def _update_payroll_async(
     deductions_str: str,
     notes: str,
 ) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -664,9 +580,7 @@ async def _approve_payroll_async(
     month: int,
     year: int,
 ) -> str:
-    from sqlalchemy import and_, select
-
-    from app.db.base import AsyncSessionLocal
+    from sqlalchemy import and_
 
     try:
         async with AsyncSessionLocal() as db:
@@ -756,10 +670,6 @@ async def list_payrolls(
 
 
 async def _list_payrolls_async(tenant_id: str, month: int, year: int, status_filter: str) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-
     try:
         async with AsyncSessionLocal() as db:
             query = (

@@ -7,8 +7,10 @@ from datetime import datetime
 
 from app.services.documents._pdf_base import (
     REPORTLAB_AVAILABLE,
+    _client_block,
     _common_styles,
     _format_date,
+    _invoice_footer,
     _make_doc,
     _table_header_style,
     build_theme,
@@ -29,6 +31,99 @@ if REPORTLAB_AVAILABLE:
         Table,
         TableStyle,
     )
+
+
+# ---------------------------------------------------------------------------
+# Helpers internos de facturación
+# ---------------------------------------------------------------------------
+
+
+def _invoice_lines_table(lines: list, header_sty, body_sty, right_sty, theme: dict) -> Table:
+    """Tabla de líneas de factura reutilizable."""
+    col_widths = [80 * mm, 20 * mm, 22 * mm, 20 * mm, 26 * mm]
+    table_data = [
+        [
+            Paragraph("Descripción", header_sty),
+            Paragraph("Cant.", header_sty),
+            Paragraph("Precio unit.", header_sty),
+            Paragraph("IVA", header_sty),
+            Paragraph("Total", right_sty),
+        ]
+    ]
+    for ln in lines:
+        table_data.append(
+            [
+                Paragraph(str(ln.get("description", "")), body_sty),
+                Paragraph(str(ln.get("quantity", 1)), body_sty),
+                Paragraph(f"{float(ln.get('unit_price', 0)):.2f} €", body_sty),
+                Paragraph(f"{float(ln.get('tax_percentage', 21)):.0f}%", body_sty),
+                Paragraph(f"{float(ln.get('total', 0)):.2f} €", right_sty),
+            ]
+        )
+    tbl = Table(table_data, colWidths=col_widths)
+    if theme:
+        tbl.setStyle(
+            TableStyle(
+                table_style_commands(theme, len(lines)) + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
+            )
+        )
+    else:
+        tbl.setStyle(
+            TableStyle(
+                _table_header_style() + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
+            )
+        )
+    return tbl
+
+
+def _simple_header(company: dict, data: dict, s, accent: str, doc_title: str = "FACTURA") -> list:
+    """Cabecera simple (line_only / rectificativa / retención) sin banda de color."""
+    title_color = accent
+    header_data = [
+        [
+            [
+                Paragraph(company.get("name", "Mi Empresa S.L."), s["title"]),
+                Spacer(1, 15),
+                Paragraph(f"NIF: {company.get('nif', 'B00000000')}", s["body"]),
+                Paragraph(company.get("address", ""), s["body"]),
+                Paragraph(company.get("phone", ""), s["body"]),
+            ],
+            [
+                Spacer(1, 4),
+                Paragraph(
+                    doc_title,
+                    ParagraphStyle(
+                        "SH_title",
+                        parent=s["styles"]["Normal"],
+                        fontSize=18,
+                        fontName="Helvetica-Bold",
+                        textColor=colors.HexColor(title_color),
+                        alignment=TA_RIGHT,
+                    ),
+                ),
+                Spacer(1, 6),
+                Paragraph(f"Nº {data.get('number', 'F-0001')}", s["right"]),
+                Paragraph(f"Fecha: {_format_date(data.get('date', ''))}", s["right"]),
+            ],
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[100 * mm, 80 * mm])
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    C = s["C"]
+    return [
+        header_table,
+        Spacer(1, 5 * mm),
+        HRFlowable(width="100%", thickness=1, color=colors.HexColor(C["LINE"])),
+        Spacer(1, 5 * mm),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -62,77 +157,133 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
     styles = getSampleStyleSheet()
 
     title_sty = ParagraphStyle(
-        "T_title",
-        parent=styles["Normal"],
-        fontSize=20,
-        fontName=bold,
+        "T_title", parent=styles["Normal"], fontSize=20, fontName=bold,
         textColor=colors.HexColor("#1e293b"),
     )
     header_sty = ParagraphStyle(
-        "T_header",
-        parent=styles["Normal"],
-        fontSize=9,
-        fontName=bold,
+        "T_header", parent=styles["Normal"], fontSize=9, fontName=bold,
         textColor=colors.HexColor("#64748b"),
     )
     body_sty = ParagraphStyle(
-        "T_body",
-        parent=styles["Normal"],
-        fontSize=9,
-        fontName=font,
+        "T_body", parent=styles["Normal"], fontSize=9, fontName=font,
         textColor=colors.HexColor("#1e293b"),
     )
     right_sty = ParagraphStyle(
-        "T_right",
-        parent=styles["Normal"],
-        fontSize=9,
-        fontName=font,
-        textColor=colors.HexColor("#1e293b"),
-        alignment=TA_RIGHT,
+        "T_right", parent=styles["Normal"], fontSize=9, fontName=font,
+        textColor=colors.HexColor("#1e293b"), alignment=TA_RIGHT,
     )
     total_sty = ParagraphStyle(
-        "T_total",
-        parent=styles["Normal"],
-        fontSize=14,
-        fontName=bold,
-        textColor=colors.HexColor(acc),
-        alignment=TA_RIGHT,
+        "T_total", parent=styles["Normal"], fontSize=14, fontName=bold,
+        textColor=colors.HexColor(acc), alignment=TA_RIGHT,
     )
 
     elements = []
     company = invoice_data.get("company", {})
     client = invoice_data.get("client", {})
 
-    # ── CABECERA según header_style ──────────────────────────────────────────
+    # ── CABECERA según header_style ──
+    elements.extend(
+        _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc)
+    )
+
+    # ── CLIENTE ──
+    elements.extend(_client_block(client, header_sty, body_sty, bold_font=bold))
+    elements.append(Spacer(1, 1 * mm))
+
+    # ── LÍNEAS ──
+    invoice_lines = invoice_data.get("lines", [])
+    elements.append(_invoice_lines_table(invoice_lines, header_sty, body_sty, right_sty, th))
+    elements.append(Spacer(1, 6 * mm))
+
+    # ── TOTALES ──
+    base = float(invoice_data.get("amount_base", 0))
+    tax = float(invoice_data.get("tax_amount", 0))
+    total = float(invoice_data.get("amount_total", 0))
+
+    total_bg = colors.HexColor(acc + "22") if len(acc) == 7 else colors.HexColor("#eef2ff")
+    totals_data = [
+        [Paragraph("Base imponible:", right_sty), Paragraph(f"{base:.2f} €", right_sty)],
+        [Paragraph("IVA:", right_sty), Paragraph(f"{tax:.2f} €", right_sty)],
+        [
+            Paragraph(
+                "TOTAL:",
+                ParagraphStyle(
+                    "T_tlbl", parent=styles["Normal"], fontSize=12, fontName=bold,
+                    textColor=colors.HexColor(acc), alignment=TA_RIGHT,
+                ),
+            ),
+            Paragraph(f"{total:.2f} €", total_sty),
+        ],
+    ]
+    totals_table = Table(totals_data, colWidths=[130 * mm, 40 * mm], hAlign="RIGHT")
+    totals_table.setStyle(
+        TableStyle(
+            [
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LINEABOVE", (0, 2), (-1, 2), 1, colors.HexColor("#e2e8f0")),
+                ("BACKGROUND", (0, 2), (-1, 2), total_bg),
+            ]
+        )
+    )
+    elements.append(totals_table)
+
+    # ── NOTAS Y PAGO ──
+    payment_terms = invoice_data.get("payment_terms") or ""
+    notes = invoice_data.get("notes") or ""
+    if payment_terms or notes:
+        elements.append(Spacer(1, 8 * mm))
+        if payment_terms:
+            elements.append(Paragraph("FORMA DE PAGO", header_sty))
+            elements.append(Spacer(1, 1.5 * mm))
+            elements.append(Paragraph(str(payment_terms), body_sty))
+            elements.append(Spacer(1, 4 * mm))
+        if notes:
+            elements.append(Paragraph("NOTAS", header_sty))
+            elements.append(Spacer(1, 1.5 * mm))
+            elements.append(Paragraph(str(notes), body_sty))
+
+    # ── PIE ──
+    footer_text = (
+        th.get("footer_text")
+        or "Documento generado automáticamente por AutomatizaPyme · Gracias por su confianza."
+    )
+    elements.extend(_invoice_footer(footer_text, font=font))
+
+    doc.build(elements)
+    return buffer.getvalue()
+
+
+def _generate_simple_text_pdf(invoice_data: dict) -> bytes:
+    """Fallback minimalista si reportlab no está disponible."""
+    content = f"""FACTURA {invoice_data.get("number", "")}
+Fecha: {invoice_data.get("date", "")}
+Cliente: {invoice_data.get("client", {}).get("name", "")}
+Total: {invoice_data.get("amount_total", 0):.2f} EUR
+"""
+    return content.encode("utf-8")
+
+
+def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc):
+    """Genera la cabecera según el header_style del theme (color_band, dark_band, line_only)."""
     h_style = th["header_style"]
+    elements = []
 
     if h_style == "color_band":
-        # Banda de color full-width con datos empresa en blanco
         band_sty = ParagraphStyle(
             "T_band", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white
         )
         band_sub = ParagraphStyle(
-            "T_bandsub",
-            parent=styles["Normal"],
-            fontSize=8,
-            fontName=font,
+            "T_bandsub", parent=styles["Normal"], fontSize=8, fontName=font,
             textColor=colors.HexColor("#e0e7ff"),
         )
         band_right = ParagraphStyle(
-            "T_bandr",
-            parent=styles["Normal"],
-            fontSize=20,
-            fontName=bold,
-            textColor=colors.white,
-            alignment=TA_RIGHT,
+            "T_bandr", parent=styles["Normal"], fontSize=20, fontName=bold,
+            textColor=colors.white, alignment=TA_RIGHT,
         )
         band_rsub = ParagraphStyle(
-            "T_bandrs",
-            parent=styles["Normal"],
-            fontSize=9,
-            fontName=font,
-            textColor=colors.HexColor("#e0e7ff"),
-            alignment=TA_RIGHT,
+            "T_bandrs", parent=styles["Normal"], fontSize=9, fontName=font,
+            textColor=colors.HexColor("#e0e7ff"), alignment=TA_RIGHT,
         )
 
         logo_col = [
@@ -174,27 +325,16 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             "T_dark", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white
         )
         dark_sub = ParagraphStyle(
-            "T_darks",
-            parent=styles["Normal"],
-            fontSize=8,
-            fontName=font,
+            "T_darks", parent=styles["Normal"], fontSize=8, fontName=font,
             textColor=colors.HexColor("#94a3b8"),
         )
         dark_r = ParagraphStyle(
-            "T_darkr",
-            parent=styles["Normal"],
-            fontSize=20,
-            fontName=bold,
-            textColor=colors.HexColor(acc),
-            alignment=TA_RIGHT,
+            "T_darkr", parent=styles["Normal"], fontSize=20, fontName=bold,
+            textColor=colors.HexColor(acc), alignment=TA_RIGHT,
         )
         dark_rsub = ParagraphStyle(
-            "T_darkrs",
-            parent=styles["Normal"],
-            fontSize=9,
-            fontName=font,
-            textColor=colors.HexColor("#94a3b8"),
-            alignment=TA_RIGHT,
+            "T_darkrs", parent=styles["Normal"], fontSize=9, fontName=font,
+            textColor=colors.HexColor("#94a3b8"), alignment=TA_RIGHT,
         )
         logo_col = [
             Paragraph(company.get("name") or "Mi Empresa S.L.", dark_sty),
@@ -241,12 +381,8 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             Paragraph(
                 invoice_data.get("doc_title", "FACTURA"),
                 ParagraphStyle(
-                    "T_ftitle",
-                    parent=styles["Normal"],
-                    fontSize=18,
-                    fontName=bold,
-                    textColor=colors.HexColor(acc),
-                    alignment=TA_RIGHT,
+                    "T_ftitle", parent=styles["Normal"], fontSize=18, fontName=bold,
+                    textColor=colors.HexColor(acc), alignment=TA_RIGHT,
                 ),
             ),
             Spacer(1, 6),
@@ -257,22 +393,13 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             cols = [inv_block, company_block]
             widths = [80 * mm, 100 * mm]
         elif logo_pos == "center":
-            # empresa centrada, número a la derecha
             center_sty = ParagraphStyle(
-                "T_ccenter",
-                parent=styles["Normal"],
-                fontSize=20,
-                fontName=bold,
-                textColor=colors.HexColor("#1e293b"),
-                alignment=TA_CENTER,
+                "T_ccenter", parent=styles["Normal"], fontSize=20, fontName=bold,
+                textColor=colors.HexColor("#1e293b"), alignment=TA_CENTER,
             )
             center_sub = ParagraphStyle(
-                "T_ccsub",
-                parent=styles["Normal"],
-                fontSize=9,
-                fontName=font,
-                textColor=colors.HexColor("#64748b"),
-                alignment=TA_CENTER,
+                "T_ccsub", parent=styles["Normal"], fontSize=9, fontName=font,
+                textColor=colors.HexColor("#64748b"), alignment=TA_CENTER,
             )
             center_block = [
                 Paragraph(company.get("name") or "Mi Empresa S.L.", center_sty),
@@ -308,145 +435,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             elements.append(HRFlowable(width="100%", thickness=thickness, color=line_color))
         elements.append(Spacer(1, 5 * mm))
 
-    # ── CLIENTE ──────────────────────────────────────────────────────────────
-    elements.append(Paragraph("FACTURAR A:", header_sty))
-    elements.append(Spacer(1, 2 * mm))
-    elements.append(
-        Paragraph(
-            client.get("name", "—"),
-            ParagraphStyle(
-                "T_cname",
-                parent=styles["Normal"],
-                fontSize=11,
-                fontName=bold,
-                textColor=colors.HexColor("#1e293b"),
-            ),
-        )
-    )
-    for field, label in [("nif", "NIF/CIF"), ("email", "Email"), ("address", None)]:
-        if client.get(field):
-            txt = f"{label}: {client[field]}" if label else client[field]
-            elements.append(Paragraph(txt, body_sty))
-    elements.append(Spacer(1, 6 * mm))
-
-    # ── LÍNEAS ───────────────────────────────────────────────────────────────
-    col_widths = [80 * mm, 20 * mm, 22 * mm, 20 * mm, 26 * mm]
-    invoice_lines = invoice_data.get("lines", [])
-    table_data = [
-        [
-            Paragraph("Descripción", header_sty),
-            Paragraph("Cant.", header_sty),
-            Paragraph("Precio unit.", header_sty),
-            Paragraph("IVA", header_sty),
-            Paragraph("Total", right_sty),
-        ]
-    ]
-    for line in invoice_lines:
-        table_data.append(
-            [
-                Paragraph(str(line.get("description", "")), body_sty),
-                Paragraph(str(line.get("quantity", 1)), body_sty),
-                Paragraph(f"{float(line.get('unit_price', 0)):.2f} €", body_sty),
-                Paragraph(f"{float(line.get('tax_percentage', 21)):.0f}%", body_sty),
-                Paragraph(f"{float(line.get('total', 0)):.2f} €", right_sty),
-            ]
-        )
-    lines_table = Table(table_data, colWidths=col_widths)
-    lines_table.setStyle(
-        TableStyle(
-            table_style_commands(th, len(invoice_lines)) + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
-        )
-    )
-    elements.append(lines_table)
-    elements.append(Spacer(1, 6 * mm))
-
-    # ── TOTALES ──────────────────────────────────────────────────────────────
-    base = float(invoice_data.get("amount_base", 0))
-    tax = float(invoice_data.get("tax_amount", 0))
-    total = float(invoice_data.get("amount_total", 0))
-
-    # Color de fondo del total según preset
-    total_bg = colors.HexColor(acc + "22") if len(acc) == 7 else colors.HexColor("#eef2ff")
-    totals_data = [
-        [Paragraph("Base imponible:", right_sty), Paragraph(f"{base:.2f} €", right_sty)],
-        [Paragraph("IVA:", right_sty), Paragraph(f"{tax:.2f} €", right_sty)],
-        [
-            Paragraph(
-                "TOTAL:",
-                ParagraphStyle(
-                    "T_tlbl",
-                    parent=styles["Normal"],
-                    fontSize=12,
-                    fontName=bold,
-                    textColor=colors.HexColor(acc),
-                    alignment=TA_RIGHT,
-                ),
-            ),
-            Paragraph(f"{total:.2f} €", total_sty),
-        ],
-    ]
-    totals_table = Table(totals_data, colWidths=[130 * mm, 40 * mm], hAlign="RIGHT")
-    totals_table.setStyle(
-        TableStyle(
-            [
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("LINEABOVE", (0, 2), (-1, 2), 1, colors.HexColor("#e2e8f0")),
-                ("BACKGROUND", (0, 2), (-1, 2), total_bg),
-            ]
-        )
-    )
-    elements.append(totals_table)
-
-    # ── NOTAS Y PAGO ─────────────────────────────────────────────────────────
-    payment_terms = invoice_data.get("payment_terms") or ""
-    notes = invoice_data.get("notes") or ""
-    if payment_terms or notes:
-        elements.append(Spacer(1, 8 * mm))
-        if payment_terms:
-            elements.append(Paragraph("FORMA DE PAGO", header_sty))
-            elements.append(Spacer(1, 1.5 * mm))
-            elements.append(Paragraph(str(payment_terms), body_sty))
-            elements.append(Spacer(1, 4 * mm))
-        if notes:
-            elements.append(Paragraph("NOTAS", header_sty))
-            elements.append(Spacer(1, 1.5 * mm))
-            elements.append(Paragraph(str(notes), body_sty))
-
-    # ── PIE ──────────────────────────────────────────────────────────────────
-    elements.append(Spacer(1, 6 * mm))
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0")))
-    elements.append(Spacer(1, 3 * mm))
-    footer_text = (
-        th.get("footer_text")
-        or "Documento generado automáticamente por AutomatizaPyme · Gracias por su confianza."
-    )
-    elements.append(
-        Paragraph(
-            footer_text,
-            ParagraphStyle(
-                "T_foot",
-                parent=styles["Normal"],
-                fontSize=7,
-                fontName=font,
-                textColor=colors.HexColor("#94a3b8"),
-                alignment=TA_CENTER,
-            ),
-        )
-    )
-
-    doc.build(elements)
-    return buffer.getvalue()
-
-
-def _generate_simple_text_pdf(invoice_data: dict) -> bytes:
-    """Fallback minimalista si reportlab no está disponible."""
-    content = f"""FACTURA {invoice_data.get("number", "")}
-Fecha: {invoice_data.get("date", "")}
-Cliente: {invoice_data.get("client", {}).get("name", "")}
-Total: {invoice_data.get("amount_total", 0):.2f} EUR
-"""
-    return content.encode("utf-8")
+    return elements
 
 
 # ---------------------------------------------------------------------------
@@ -457,18 +446,6 @@ Total: {invoice_data.get("amount_total", 0):.2f} EUR
 def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = None) -> bytes:
     """
     Genera PDF de factura rectificativa (Art. 15 RD 1619/2012).
-
-    data:
-    - number: str (nº factura rectificativa)
-    - date: str (ISO)
-    - original_invoice: dict con number, date, amount_base, tax_amount, amount_total
-    - reason: str (motivo de rectificación)
-    - corrected_lines: list con description, original_amount, corrected_amount
-    - company: dict con name, nif, address, phone
-    - client: dict con name, nif, email, address
-    - corrected_base: float
-    - corrected_tax: float
-    - corrected_total: float
     """
     if not REPORTLAB_AVAILABLE:
         return f"FACTURA RECTIFICATIVA {data.get('number', '')}\n".encode("utf-8")
@@ -485,70 +462,10 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
     original = data.get("original_invoice", {})
 
     # ── CABECERA ──
-    red_title = ParagraphStyle(
-        "RectTitle",
-        parent=s["styles"]["Normal"],
-        fontSize=18,
-        fontName="Helvetica-Bold",
-        textColor=colors.HexColor(_accent),
-        alignment=TA_RIGHT,
-    )
+    elements.extend(_simple_header(company, data, s, _accent, doc_title="FACTURA RECTIFICATIVA"))
 
-    header_data = [
-        [
-            [
-                Paragraph(company.get("name", "Mi Empresa S.L."), s["title"]),
-                Spacer(1, 15),
-                Paragraph(f"NIF: {company.get('nif', 'B00000000')}", s["body"]),
-                Paragraph(company.get("address", ""), s["body"]),
-                Paragraph(company.get("phone", ""), s["body"]),
-            ],
-            [
-                Spacer(1, 4),
-                Paragraph("FACTURA RECTIFICATIVA", red_title),
-                Spacer(1, 6),
-                Paragraph(f"Nº {data.get('number', 'R-0001')}", s["right"]),
-                Paragraph(f"Fecha: {_format_date(data.get('date', ''))}", s["right"]),
-            ],
-        ]
-    ]
-    header_table = Table(header_data, colWidths=[100 * mm, 80 * mm])
-    header_table.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ]
-        )
-    )
-    elements.append(header_table)
-    elements.append(Spacer(1, 5 * mm))
-    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor(C["LINE"])))
-    elements.append(Spacer(1, 5 * mm))
-
-    # ── DATOS CLIENTE ──
-    elements.append(Paragraph("FACTURAR A:", s["header"]))
-    elements.append(Spacer(1, 2 * mm))
-    elements.append(
-        Paragraph(
-            client.get("name", "—"),
-            ParagraphStyle(
-                "RectClientName",
-                parent=s["styles"]["Normal"],
-                fontSize=11,
-                fontName="Helvetica-Bold",
-                textColor=colors.HexColor(C["SLATE"]),
-            ),
-        )
-    )
-    if client.get("nif"):
-        elements.append(Paragraph(f"NIF/CIF: {client['nif']}", s["body"]))
-    if client.get("email"):
-        elements.append(Paragraph(f"Email: {client['email']}", s["body"]))
-    if client.get("address"):
-        elements.append(Paragraph(client["address"], s["body"]))
-    elements.append(Spacer(1, 5 * mm))
+    # ── CLIENTE ──
+    elements.extend(_client_block(client, s["header"], s["body"]))
 
     # ── FACTURA ORIGINAL ──
     elements.append(Paragraph("FACTURA ORIGINAL RECTIFICADA", s["section"]))
@@ -570,11 +487,8 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
             Paragraph(
                 f"{float(original.get('amount_total', 0)):.2f} €",
                 ParagraphStyle(
-                    "OrigTotal",
-                    parent=s["styles"]["Normal"],
-                    fontSize=10,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(C["SLATE"]),
+                    "OrigTotal", parent=s["styles"]["Normal"], fontSize=10,
+                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["SLATE"]),
                 ),
             ),
             Paragraph("", s["body"]),
@@ -622,11 +536,8 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
                     Paragraph(
                         f"{float(ln.get('corrected_amount', 0)):.2f} €",
                         ParagraphStyle(
-                            "CorrAmt",
-                            parent=s["styles"]["Normal"],
-                            fontSize=9,
-                            fontName="Helvetica-Bold",
-                            textColor=colors.HexColor(C["RED"]),
+                            "CorrAmt", parent=s["styles"]["Normal"], fontSize=9,
+                            fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
                             alignment=TA_RIGHT,
                         ),
                     ),
@@ -634,12 +545,7 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
             )
         lines_table = Table(table_data, colWidths=col_widths)
         lines_table.setStyle(
-            TableStyle(
-                _table_header_style()
-                + [
-                    ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-                ]
-            )
+            TableStyle(_table_header_style() + [("ALIGN", (1, 0), (-1, -1), "RIGHT")])
         )
         elements.append(lines_table)
         elements.append(Spacer(1, 5 * mm))
@@ -650,31 +556,22 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
     corrected_total = float(data.get("corrected_total", 0))
 
     totals_data = [
-        [
-            Paragraph("Base corregida:", s["right"]),
-            Paragraph(f"{corrected_base:.2f} €", s["right"]),
-        ],
+        [Paragraph("Base corregida:", s["right"]), Paragraph(f"{corrected_base:.2f} €", s["right"])],
         [Paragraph("IVA corregido:", s["right"]), Paragraph(f"{corrected_tax:.2f} €", s["right"])],
         [
             Paragraph(
                 "TOTAL CORREGIDO:",
                 ParagraphStyle(
-                    "RectTotalLabel",
-                    parent=s["styles"]["Normal"],
-                    fontSize=12,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(C["RED"]),
+                    "RectTotalLabel", parent=s["styles"]["Normal"], fontSize=12,
+                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
                     alignment=TA_RIGHT,
                 ),
             ),
             Paragraph(
                 f"{corrected_total:.2f} €",
                 ParagraphStyle(
-                    "RectTotalVal",
-                    parent=s["styles"]["Normal"],
-                    fontSize=14,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(C["RED"]),
+                    "RectTotalVal", parent=s["styles"]["Normal"], fontSize=14,
+                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
                     alignment=TA_RIGHT,
                 ),
             ),
@@ -692,30 +589,13 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
         )
     )
     elements.append(totals_table)
-    elements.append(Spacer(1, 6 * mm))
 
     # ── PIE LEGAL ──
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(C["LINE"])))
-    elements.append(Spacer(1, 3 * mm))
-    elements.append(
-        Paragraph(
+    elements.extend(
+        _invoice_footer(
             "Factura rectificativa emitida conforme al Art. 15 del RD 1619/2012. "
             "Este documento modifica y sustituye parcialmente la factura original indicada.",
-            ParagraphStyle(
-                "RectLegal",
-                parent=s["styles"]["Normal"],
-                fontSize=7,
-                fontName="Helvetica",
-                textColor=colors.HexColor(C["RED"]),
-                alignment=TA_CENTER,
-            ),
-        )
-    )
-    elements.append(Spacer(1, 2 * mm))
-    elements.append(
-        Paragraph(
-            f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-            s["footer"],
+            footer_color=C["RED"],
         )
     )
 
@@ -731,11 +611,6 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
 def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None) -> bytes:
     """
     Genera PDF de factura con retención de IRPF.
-
-    data:
-    - number, date, company, client (igual que factura estándar)
-    - lines: list con description, quantity, unit_price, tax_percentage, total
-    - amount_base, tax_amount, retention_rate, retention_amount, amount_total
     """
     if not REPORTLAB_AVAILABLE:
         return f"FACTURA CON RETENCIÓN {data.get('number', '')}\n".encode("utf-8")
@@ -751,104 +626,14 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
     client = data.get("client", {})
 
     # ── CABECERA ──
-    header_data = [
-        [
-            [
-                Paragraph(company.get("name", "Mi Empresa S.L."), s["title"]),
-                Spacer(1, 15),
-                Paragraph(f"NIF: {company.get('nif', 'B00000000')}", s["body"]),
-                Paragraph(company.get("address", ""), s["body"]),
-                Paragraph(company.get("phone", ""), s["body"]),
-            ],
-            [
-                Spacer(1, 4),
-                Paragraph(
-                    "FACTURA",
-                    ParagraphStyle(
-                        "RetFTitle",
-                        parent=s["styles"]["Normal"],
-                        fontSize=18,
-                        fontName="Helvetica-Bold",
-                        textColor=colors.HexColor(_accent),
-                        alignment=TA_RIGHT,
-                    ),
-                ),
-                Spacer(1, 6),
-                Paragraph(f"Nº {data.get('number', 'F-0001')}", s["right"]),
-                Paragraph(f"Fecha: {_format_date(data.get('date', ''))}", s["right"]),
-            ],
-        ]
-    ]
-    header_table = Table(header_data, colWidths=[100 * mm, 80 * mm])
-    header_table.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ]
-        )
-    )
-    elements.append(header_table)
-    elements.append(Spacer(1, 5 * mm))
-    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor(C["LINE"])))
-    elements.append(Spacer(1, 5 * mm))
+    elements.extend(_simple_header(company, data, s, _accent))
 
     # ── CLIENTE ──
-    elements.append(Paragraph("FACTURAR A:", s["header"]))
-    elements.append(Spacer(1, 2 * mm))
-    elements.append(
-        Paragraph(
-            client.get("name", "—"),
-            ParagraphStyle(
-                "RetClientName",
-                parent=s["styles"]["Normal"],
-                fontSize=11,
-                fontName="Helvetica-Bold",
-                textColor=colors.HexColor(C["SLATE"]),
-            ),
-        )
-    )
-    if client.get("nif"):
-        elements.append(Paragraph(f"NIF/CIF: {client['nif']}", s["body"]))
-    if client.get("email"):
-        elements.append(Paragraph(f"Email: {client['email']}", s["body"]))
-    if client.get("address"):
-        elements.append(Paragraph(client["address"], s["body"]))
-    elements.append(Spacer(1, 5 * mm))
+    elements.extend(_client_block(client, s["header"], s["body"]))
 
     # ── LÍNEAS ──
     lines = data.get("lines", [])
-    col_widths = [80 * mm, 20 * mm, 22 * mm, 20 * mm, 26 * mm]
-    table_data = [
-        [
-            Paragraph("Descripción", s["header"]),
-            Paragraph("Cant.", s["header"]),
-            Paragraph("Precio unit.", s["header"]),
-            Paragraph("IVA", s["header"]),
-            Paragraph("Total", s["header"]),
-        ]
-    ]
-    for ln in lines:
-        table_data.append(
-            [
-                Paragraph(str(ln.get("description", "")), s["body"]),
-                Paragraph(str(ln.get("quantity", 1)), s["body"]),
-                Paragraph(f"{float(ln.get('unit_price', 0)):.2f} €", s["body"]),
-                Paragraph(f"{float(ln.get('tax_percentage', 21)):.0f}%", s["body"]),
-                Paragraph(f"{float(ln.get('total', 0)):.2f} €", s["right"]),
-            ]
-        )
-    lines_table = Table(table_data, colWidths=col_widths)
-    lines_table.setStyle(
-        TableStyle(
-            _table_header_style()
-            + [
-                ("ALIGN", (-1, 0), (-1, -1), "RIGHT"),
-            ]
-        )
-    )
-    elements.append(lines_table)
+    elements.append(_invoice_lines_table(lines, s["header"], s["body"], s["right"], theme=None))
     elements.append(Spacer(1, 6 * mm))
 
     # ── TOTALES CON RETENCIÓN ──
@@ -866,11 +651,8 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
             Paragraph(
                 f"-{ret_amount:.2f} €",
                 ParagraphStyle(
-                    "RetAmt",
-                    parent=s["styles"]["Normal"],
-                    fontSize=9,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(C["RED"]),
+                    "RetAmt", parent=s["styles"]["Normal"], fontSize=9,
+                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
                     alignment=TA_RIGHT,
                 ),
             ),
@@ -879,22 +661,16 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
             Paragraph(
                 "TOTAL A PAGAR:",
                 ParagraphStyle(
-                    "RetTotalLabel",
-                    parent=s["styles"]["Normal"],
-                    fontSize=12,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(C["INDIGO"]),
+                    "RetTotalLabel", parent=s["styles"]["Normal"], fontSize=12,
+                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["INDIGO"]),
                     alignment=TA_RIGHT,
                 ),
             ),
             Paragraph(
                 f"{total:.2f} €",
                 ParagraphStyle(
-                    "RetTotalVal",
-                    parent=s["styles"]["Normal"],
-                    fontSize=14,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(C["INDIGO"]),
+                    "RetTotalVal", parent=s["styles"]["Normal"], fontSize=14,
+                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["INDIGO"]),
                     alignment=TA_RIGHT,
                 ),
             ),
@@ -913,30 +689,10 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
         )
     )
     elements.append(totals_table)
-    elements.append(Spacer(1, 6 * mm))
 
     # ── PIE ──
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(C["LINE"])))
-    elements.append(Spacer(1, 3 * mm))
-    elements.append(
-        Paragraph(
-            "Factura con retención de IRPF conforme a la normativa vigente.",
-            ParagraphStyle(
-                "RetLegal",
-                parent=s["styles"]["Normal"],
-                fontSize=7,
-                fontName="Helvetica",
-                textColor=colors.HexColor(C["GRAY"]),
-                alignment=TA_CENTER,
-            ),
-        )
-    )
-    elements.append(Spacer(1, 2 * mm))
-    elements.append(
-        Paragraph(
-            f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-            s["footer"],
-        )
+    elements.extend(
+        _invoice_footer("Factura con retención de IRPF conforme a la normativa vigente.")
     )
 
     doc.build(elements)

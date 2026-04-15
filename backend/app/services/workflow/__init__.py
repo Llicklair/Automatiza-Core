@@ -9,6 +9,7 @@ from app.services.workflow.service import (
     execute_deterministic_steps,
     fire_event,
     generate_preview_nodes,
+    plan_to_ui_graph,
     get_execution,
     get_execution_logs,
     get_workflow,
@@ -63,6 +64,7 @@ __all__ = [
     "fire_event",
     "execute_deterministic_steps",
     "generate_preview_nodes",
+    "plan_to_ui_graph",
     # task
     "create_task",
     "list_tasks",

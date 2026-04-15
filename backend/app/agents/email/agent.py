@@ -6,15 +6,22 @@ Si no → usa datos de demostración para no romper el flujo.
 """
 
 import logging
+import os
+import uuid
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tools import tool
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+from sqlalchemy import select
 
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm
+from app.db.base import AsyncSessionLocal
+from app.db.models.models import TenantDocument
+from app.services.email.service import read_inbox, read_unread, send_email_smtp
 
 from .tools import (
     _get_email_credentials,
@@ -27,6 +34,52 @@ from .tools import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class EmailAgentResult:
+    def __init__(self, action: str, success: bool, messages: list, error: str | None):
+        self.action = action
+        self.success = success
+        self.extracted_data = {"messages_processed": messages}
+        self.error = error
+        self.validation_errors: list = []
+        self.validation_warnings: list = []
+
+
+async def _resolve_smtp_attachments(tenant_id: str, attachment_ids: list[str]) -> list[str]:
+    """Resuelve IDs de documentos a rutas en disco para adjuntos SMTP."""
+    paths = []
+    async with AsyncSessionLocal() as db:
+        for doc_id in attachment_ids:
+            try:
+                res = await db.execute(
+                    select(TenantDocument.file_path).where(
+                        TenantDocument.id == uuid.UUID(doc_id),
+                        TenantDocument.tenant_id == uuid.UUID(tenant_id),
+                    )
+                )
+                path = res.scalar_one_or_none()
+                if path and os.path.exists(path):
+                    paths.append(path)
+            except Exception as e:
+                logger.warning("Error resolviendo ruta de adjunto doc_id=%s: %s", doc_id, e)
+    return paths
+
+
+def _build_provider_note(providers: dict, available_names: list, is_mock: bool) -> str:
+    """Construye la nota de proveedores para el system prompt del agente."""
+    if is_mock:
+        return "NOTA: No hay credenciales de email configuradas. Usas datos de demostración."
+    providers_info = ", ".join(available_names)
+    if len(providers) == 1:
+        return f"Proveedor de correo conectado: {providers_info}. Usa este proveedor para todas las operaciones."
+    return (
+        f"Proveedores de correo disponibles: {providers_info}.\n"
+        "IMPORTANTE: Si el usuario especifica un proveedor (Gmail, Outlook, etc.), "
+        "usa ese directamente. Si el usuario NO especifica qué proveedor usar, "
+        "DEBES preguntarle desde cuál quiere operar antes de ejecutar la acción. "
+        "Ejemplo: '¿Quieres que use Gmail o Outlook para esto?'"
+    )
 
 
 def _build_graph(tools_list, mode_note: str = ""):
@@ -203,20 +256,12 @@ async def run_email_agent(
     user_intent: str,
     tenant_id: str,
     task_id: str | None = None,
-) -> object:
+) -> EmailAgentResult:
     """
     Punto de entrada del email agent.
     Detecta qué proveedores de correo están disponibles (Gmail OAuth, Outlook OAuth, IMAP/SMTP)
     y crea tools con un parámetro `provider` para que el LLM elija según la intención del usuario.
     """
-    from langchain_core.tools import tool
-
-    from app.services.email.service import (
-        read_inbox,
-        read_unread,
-        send_email_smtp,
-    )
-
     # ── Detectar todos los proveedores disponibles ────────────────────────
     providers: dict[str, str] = {}
 
@@ -407,36 +452,7 @@ async def run_email_agent(
                     finally:
                         await client.close()
                 else:  # imap/smtp
-                    import os
-
-                    attachment_paths = []
-                    if attachment_ids:
-                        import uuid
-
-                        from sqlalchemy import select as sa_select
-
-                        from app.db.base import AsyncSessionLocal
-                        from app.db.models.models import TenantDocument
-
-                        async with AsyncSessionLocal() as db:
-                            for doc_id in attachment_ids:
-                                try:
-                                    res = await db.execute(
-                                        sa_select(TenantDocument.file_path).where(
-                                            TenantDocument.id == uuid.UUID(doc_id),
-                                            TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                                        )
-                                    )
-                                    path = res.scalar_one_or_none()
-                                    if path and os.path.exists(path):
-                                        attachment_paths.append(path)
-                                except Exception as _e:
-                                    logger.warning(
-                                        "Error resolviendo ruta de adjunto doc_id=%s: %s",
-                                        doc_id,
-                                        _e,
-                                    )
-                                    continue
+                    attachment_paths = await _resolve_smtp_attachments(tenant_id, attachment_ids or [])
                     result = send_email_smtp(
                         imap_creds,
                         to=to,
@@ -455,25 +471,7 @@ async def run_email_agent(
     else:
         tools_list = build_tools_list()
 
-    # ── Construir system prompt con proveedores disponibles ───────────────
-    if not is_mock:
-        providers_info = ", ".join(available_names)
-        if len(providers) == 1:
-            mode_note = (
-                f"Proveedor de correo conectado: {providers_info}. "
-                "Usa este proveedor para todas las operaciones."
-            )
-        else:
-            mode_note = (
-                f"Proveedores de correo disponibles: {providers_info}.\n"
-                "IMPORTANTE: Si el usuario especifica un proveedor (Gmail, Outlook, etc.), "
-                "usa ese directamente. Si el usuario NO especifica qué proveedor usar, "
-                "DEBES preguntarle desde cuál quiere operar antes de ejecutar la acción. "
-                "Ejemplo: '¿Quieres que use Gmail o Outlook para esto?'"
-            )
-    else:
-        mode_note = "NOTA: No hay credenciales de email configuradas. Usas datos de demostración."
-
+    mode_note = _build_provider_note(providers, available_names, is_mock)
     graph = _build_graph(tools_list, mode_note)
 
     state = {
@@ -485,34 +483,17 @@ async def run_email_agent(
         "agent_results": [],
     }
 
-    class EmailAgentResult:
-        def __init__(self, action, success, messages, error):
-            self.action = action
-            self.success = success
-            self.extracted_data = {"messages_processed": messages}
-            self.error = error
-            self.validation_errors = []
-            self.validation_warnings = []
-
     try:
         result_state = await graph.ainvoke(state, config={"recursion_limit": 50})
     except Exception as e:
         logger.exception("Error ejecutando grafo del email agent")
-        return EmailAgentResult(
-            action=f"Error interno del agente de email: {e}",
-            success=False,
-            messages=[],
-            error=str(e),
-        )
+        return EmailAgentResult(action=f"Error interno del agente de email: {e}", success=False, messages=[], error=str(e))
 
     agent_results = result_state.get("agent_results", [])
     final_action = agent_results[-1]["action_taken"] if agent_results else "Sin resultado"
-
     return EmailAgentResult(
         action=final_action,
         success=True,
         messages=agent_results,
-        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración."
-        if is_mock
-        else None,
+        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración." if is_mock else None,
     )

@@ -5,13 +5,17 @@ DB fetchers, utilidades de escritura/lectura, y las tools LangChain
 que el agente invoca de forma autónoma.
 """
 
+import json
 import logging
 import os
 import uuid
 from datetime import datetime, timezone
 
+import openpyxl
 import pandas as pd
 from langchain_core.tools import tool
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 from sqlalchemy.future import select
 
 from app.agents.agent_tools.documents import (
@@ -266,10 +270,6 @@ def _hex_to_lighter(hex_color: str, factor: float = 0.4) -> str:
 def _write_excel(
     sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None
 ) -> None:
-    import openpyxl
-    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-    from openpyxl.utils import get_column_letter
-
     _theme = theme or {}
     accent_hex = _theme.get("accent_color", "#1F4E79").lstrip("#")
     table_style = _theme.get("table_style", "striped")
@@ -441,14 +441,12 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
     if not sheets:
         return f"Error: No se reconocieron los datasets '{datasets_str}'. Opciones: {', '.join(_FETCHER_MAP.keys())}"
 
-    from uuid import UUID as _UUID
-
     from app.services.template_service import get_default_theme
 
     _theme = None
     try:
         async with AsyncSessionLocal() as _db:
-            _theme = await get_default_theme(_UUID(tenant_id), "excel", _db)
+            _theme = await get_default_theme(uuid.UUID(tenant_id), "excel", _db)
     except Exception as _e:
         logger.warning("Error cargando tema Excel para tenant %s: %s", tenant_id, _e)
 
@@ -504,6 +502,97 @@ async def _list_available_datasets_async(tenant_id: str) -> str:
     return "Datasets disponibles para exportar:\n" + "\n".join(lines)
 
 
+async def _load_excel_doc(
+    tenant_id: str, document_id: str
+) -> "tuple[TenantDocument | None, str | None]":
+    """Carga TenantDocument desde BD y valida que el archivo exista en disco."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(TenantDocument).where(
+                TenantDocument.tenant_id == uuid.UUID(tenant_id),
+                TenantDocument.id == uuid.UUID(document_id),
+            )
+        )
+        doc = result.scalar_one_or_none()
+    if not doc:
+        return None, f"Error: Documento {document_id} no encontrado."
+    if not doc.file_path or not os.path.exists(doc.file_path):
+        return None, f"Error: Archivo no encontrado en disco: {doc.file_path}"
+    return doc, None
+
+
+def _detect_import_target(sheet_title: str) -> str | None:
+    """Infiere el target de importacion a partir del nombre de la hoja."""
+    title = sheet_title.lower().strip()
+    for key in _IMPORT_COLUMN_MAP:
+        if key in title:
+            return key
+    return None
+
+
+def _map_excel_columns(headers: list[str], config: dict) -> dict[int, str]:
+    """Mapea indices de columna Excel a nombres de campo del modelo."""
+    return {idx: config["fields"][h] for idx, h in enumerate(headers) if h in config["fields"]}
+
+
+async def _import_rows_to_db(
+    rows: list, col_mapping: dict, config: dict, model_cls, tenant_id: str
+) -> tuple[int, int, list[str]]:
+    """Persiste filas Excel en la BD. Devuelve (created, skipped, errors)."""
+    created, skipped, errors = 0, 0, []
+    async with AsyncSessionLocal() as db:
+        for row_idx, row in enumerate(rows[1:], start=2):
+            record_data: dict = {"tenant_id": uuid.UUID(tenant_id)}
+            for col_idx, field_name in col_mapping.items():
+                value = row[col_idx] if col_idx < len(row) else None
+                if value is not None:
+                    record_data[field_name] = value
+            if any(not record_data.get(r) for r in config["required"]):
+                skipped += 1
+                continue
+            try:
+                db.add(model_cls(**record_data))
+                created += 1
+            except Exception as e:
+                errors.append(f"Fila {row_idx}: {e}")
+                skipped += 1
+        if created > 0:
+            await db.commit()
+    return created, skipped, errors
+
+
+def _parse_mods_json(modifications_json: str) -> list | str:
+    """Parsea el JSON de modificaciones. Devuelve la lista o un mensaje de error."""
+    try:
+        mods = json.loads(modifications_json)
+    except (json.JSONDecodeError, TypeError):
+        return 'Error: El formato de modificaciones no es JSON válido. Ejemplo: [{"cell": "B3", "value": 1500}]'
+    if not isinstance(mods, list):
+        return "Error: Las modificaciones deben ser una lista JSON."
+    return mods
+
+
+def _apply_mods_to_workbook(wb, mods: list, default_sheet: str) -> tuple[int, list[str]]:
+    """Aplica una lista de modificaciones a un workbook openpyxl. Devuelve (applied, errors)."""
+    applied, errors = 0, []
+    for mod in mods:
+        cell_ref = mod.get("cell", "")
+        value = mod.get("value")
+        sheet = mod.get("sheet", default_sheet or wb.sheetnames[0])
+        if not cell_ref:
+            errors.append("Modificación sin 'cell' especificada.")
+            continue
+        if sheet not in wb.sheetnames:
+            errors.append(f"Hoja '{sheet}' no existe. Disponibles: {', '.join(wb.sheetnames)}")
+            continue
+        try:
+            wb[sheet][cell_ref] = value
+            applied += 1
+        except Exception as e:
+            errors.append(f"Error en {sheet}!{cell_ref}: {e}")
+    return applied, errors
+
+
 @tool
 async def import_excel(
     tenant_id: str, document_id: str, target: str = "", sheet_name: str = ""
@@ -524,33 +613,16 @@ async def import_excel(
 async def _import_excel_async(
     tenant_id: str, document_id: str, target: str, sheet_name: str
 ) -> str:
-    import openpyxl
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, Employee, Product, TenantDocument
-
     MODEL_MAP = {"Client": Client, "Product": Product, "Employee": Employee}
 
     try:
-        # 1. Cargar archivo
-        async with AsyncSessionLocal() as db:
-            from sqlalchemy import select
-
-            result = await db.execute(
-                select(TenantDocument).where(
-                    TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                    TenantDocument.id == uuid.UUID(document_id),
-                )
-            )
-            doc = result.scalar_one_or_none()
-            if not doc:
-                return f"Error: Documento {document_id} no encontrado."
-            if not doc.file_path or not os.path.exists(doc.file_path):
-                return f"Error: Archivo no encontrado en disco: {doc.file_path}"
+        doc, err = await _load_excel_doc(tenant_id, document_id)
+        if err:
+            return err
 
         wb = openpyxl.load_workbook(doc.file_path, read_only=True, data_only=True)
 
-        # 2. Seleccionar hoja
+        # Seleccionar hoja
         if sheet_name:
             if sheet_name not in wb.sheetnames:
                 return f"Error: Hoja '{sheet_name}' no encontrada. Hojas disponibles: {', '.join(wb.sheetnames)}"
@@ -558,28 +630,19 @@ async def _import_excel_async(
         else:
             ws = wb.active
 
-        actual_sheet_name = ws.title.lower().strip()
-
-        # 3. Detectar target
+        # Detectar target
+        target = (target or "").strip().lower() or _detect_import_target(ws.title) or ""
         if not target:
-            for key in _IMPORT_COLUMN_MAP:
-                if key in actual_sheet_name:
-                    target = key
-                    break
-            if not target:
-                return (
-                    f"Error: No se pudo detectar el tipo de datos de la hoja '{ws.title}'. "
-                    f"Especifica target: 'clientes', 'productos' o 'empleados'."
-                )
-
-        target = target.strip().lower()
+            return (
+                f"Error: No se pudo detectar el tipo de datos de la hoja '{ws.title}'. "
+                f"Especifica target: 'clientes', 'productos' o 'empleados'."
+            )
         if target not in _IMPORT_COLUMN_MAP:
             return f"Error: Target '{target}' no soportado. Opciones: {', '.join(_IMPORT_COLUMN_MAP.keys())}"
 
         config = _IMPORT_COLUMN_MAP[target]
         model_cls = MODEL_MAP[config["model"]]
 
-        # 4. Leer headers y mapear columnas
         rows = list(ws.iter_rows(values_only=True))
         wb.close()
 
@@ -587,11 +650,7 @@ async def _import_excel_async(
             return "Error: El archivo no tiene datos (solo headers o vacío)."
 
         headers = [str(h).strip().lower() if h else "" for h in rows[0]]
-        col_mapping = {}  # excel_col_idx -> model_field_name
-        for idx, header in enumerate(headers):
-            if header in config["fields"]:
-                col_mapping[idx] = config["fields"][header]
-
+        col_mapping = _map_excel_columns(headers, config)
         if not col_mapping:
             return (
                 f"Error: No se reconocieron columnas para '{target}'. "
@@ -599,45 +658,17 @@ async def _import_excel_async(
                 f"Columnas esperadas: {', '.join(config['fields'].keys())}"
             )
 
-        # 5. Importar filas
-        created = 0
-        skipped = 0
-        errors = []
-
-        async with AsyncSessionLocal() as db:
-            for row_idx, row in enumerate(rows[1:], start=2):
-                record_data = {"tenant_id": uuid.UUID(tenant_id)}
-                for col_idx, field_name in col_mapping.items():
-                    value = row[col_idx] if col_idx < len(row) else None
-                    if value is not None:
-                        record_data[field_name] = value
-
-                # Verificar campos requeridos
-                missing = [r for r in config["required"] if not record_data.get(r)]
-                if missing:
-                    skipped += 1
-                    continue
-
-                try:
-                    obj = model_cls(**record_data)
-                    db.add(obj)
-                    created += 1
-                except Exception as e:
-                    errors.append(f"Fila {row_idx}: {e}")
-                    skipped += 1
-
-            if created > 0:
-                await db.commit()
+        sheet_title = ws.title
+        created, skipped, errors = await _import_rows_to_db(rows, col_mapping, config, model_cls, tenant_id)
 
         result_lines = [
-            f"Importación completada desde '{ws.title}'.",
+            f"Importación completada desde '{sheet_title}'.",
             f"Target: {target}",
             f"Creados: {created} registros",
             f"Omitidos: {skipped} filas (datos incompletos o errores)",
         ]
         if errors[:5]:
             result_lines.append(f"Errores: {'; '.join(errors[:5])}")
-
         return "\n".join(result_lines)
     except Exception as e:
         return f"Error importando Excel: {e}"
@@ -671,74 +702,21 @@ async def _modify_excel_async(
     modifications_json: str,
     default_sheet: str,
 ) -> str:
-    import json as json_mod
-
-    import openpyxl
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import TenantDocument
-
     try:
-        # 1. Cargar documento
-        async with AsyncSessionLocal() as db:
-            from sqlalchemy import select
+        doc, err = await _load_excel_doc(tenant_id, document_id)
+        if err:
+            return err
 
-            result = await db.execute(
-                select(TenantDocument).where(
-                    TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                    TenantDocument.id == uuid.UUID(document_id),
-                )
-            )
-            doc = result.scalar_one_or_none()
-            if not doc:
-                return f"Error: Documento {document_id} no encontrado."
-            if not doc.file_path or not os.path.exists(doc.file_path):
-                return f"Error: Archivo no encontrado en disco: {doc.file_path}"
+        mods = _parse_mods_json(modifications_json)
+        if isinstance(mods, str):
+            return mods
 
-        # 2. Parsear modificaciones
-        try:
-            mods = json_mod.loads(modifications_json)
-        except (json_mod.JSONDecodeError, TypeError):
-            return (
-                "Error: El formato de modificaciones no es JSON válido. "
-                'Ejemplo: [{"cell": "B3", "value": 1500}]'
-            )
-
-        if not isinstance(mods, list):
-            return "Error: Las modificaciones deben ser una lista JSON."
-
-        # 3. Abrir y modificar
         wb = openpyxl.load_workbook(doc.file_path)
-
-        applied = 0
-        errors = []
-        for mod in mods:
-            cell_ref = mod.get("cell", "")
-            value = mod.get("value")
-            sheet = mod.get("sheet", default_sheet or wb.sheetnames[0])
-
-            if not cell_ref:
-                errors.append("Modificación sin 'cell' especificada.")
-                continue
-
-            if sheet not in wb.sheetnames:
-                errors.append(f"Hoja '{sheet}' no existe. Disponibles: {', '.join(wb.sheetnames)}")
-                continue
-
-            try:
-                ws = wb[sheet]
-                ws[cell_ref] = value
-                applied += 1
-            except Exception as e:
-                errors.append(f"Error en {sheet}!{cell_ref}: {e}")
-
+        applied, errors = _apply_mods_to_workbook(wb, mods, default_sheet)
         wb.save(doc.file_path)
         wb.close()
 
-        # Actualizar tamaño en BD
         async with AsyncSessionLocal() as db:
-            from sqlalchemy import select
-
             result = await db.execute(
                 select(TenantDocument).where(TenantDocument.id == uuid.UUID(document_id))
             )
@@ -747,13 +725,9 @@ async def _modify_excel_async(
                 doc_upd.file_size = os.path.getsize(doc.file_path)
                 await db.commit()
 
-        result_lines = [
-            "Excel modificado correctamente.",
-            f"Celdas actualizadas: {applied}",
-        ]
+        result_lines = ["Excel modificado correctamente.", f"Celdas actualizadas: {applied}"]
         if errors:
             result_lines.append(f"Errores: {'; '.join(errors[:5])}")
-
         return "\n".join(result_lines)
     except Exception as e:
         return f"Error modificando Excel: {e}"
@@ -779,26 +753,10 @@ async def read_excel(
 async def _read_excel_async(
     tenant_id: str, document_id: str, sheet_name: str, max_rows: int
 ) -> str:
-    import openpyxl
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import TenantDocument
-
     try:
-        async with AsyncSessionLocal() as db:
-            from sqlalchemy import select
-
-            result = await db.execute(
-                select(TenantDocument).where(
-                    TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                    TenantDocument.id == uuid.UUID(document_id),
-                )
-            )
-            doc = result.scalar_one_or_none()
-            if not doc:
-                return f"Error: Documento {document_id} no encontrado."
-            if not doc.file_path or not os.path.exists(doc.file_path):
-                return "Error: Archivo no encontrado en disco."
+        doc, err = await _load_excel_doc(tenant_id, document_id)
+        if err:
+            return err
 
         wb = openpyxl.load_workbook(doc.file_path, read_only=True, data_only=True)
 

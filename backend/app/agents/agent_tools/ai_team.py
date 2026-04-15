@@ -10,6 +10,7 @@ from uuid import UUID
 
 from langchain_core.tools import tool
 
+from app.core.llm_factory import get_llm
 from app.db.base import AsyncSessionLocal
 from app.db.models.ai_employees import AgentSkill, AIEmployee
 
@@ -75,8 +76,6 @@ async def create_ai_employee_from_description(tenant_id: str, description: str) 
         tenant_id: ID del tenant
         description: Descripción en lenguaje natural del empleado deseado
     """
-    from app.core.llm_factory import get_llm
-
     llm = get_llm(temperature=0.7)
     prompt = SPEC_PROMPT.format(
         description=description,

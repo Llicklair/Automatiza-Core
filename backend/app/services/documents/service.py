@@ -4,7 +4,9 @@ Encapsula: subida/descarga de archivos, clasificación automática,
 escaneo, procesamiento ZIP, importación de BD tabulares, y plantillas de contrato.
 """
 
+import csv
 import io
+import json
 import logging
 import mimetypes
 import os
@@ -12,11 +14,20 @@ import uuid
 import zipfile
 from datetime import UTC, datetime
 
+import openpyxl
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.crm import Client
+from app.db.models.hr import Employee
 from app.db.models.models import Task, Tenant, TenantDocument
-
+from app.services.crm.contract_generator import (
+    build_context_for_client,
+    build_context_for_employee,
+    generate_contract,
+)
+from app.services.documents.docx_html_save import save_html_as_docx
+from app.services.documents.docx_preview import docx_to_preview_html
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.path.abspath(

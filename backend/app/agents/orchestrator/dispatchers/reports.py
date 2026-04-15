@@ -3,9 +3,26 @@ Dispatcher de informes mensuales (report).
 """
 
 import logging
+import os
+import uuid
+from calendar import monthrange
+from datetime import UTC, date, datetime
+
+from sqlalchemy import and_, func, select
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.agents.orchestrator.utils import _extract_month_year
+from app.db.base import AsyncSessionLocal
+from app.db.models.models import (
+    BankTransaction,
+    Client,
+    Employee,
+    Invoice,
+    Payroll,
+    Tenant,
+    TenantDocument,
+)
+from app.services.pdf import generate_snapshot_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -19,48 +36,23 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
     month_str = f"{_year}-{_month:02d}"
 
     try:
-        # Llamada interna al endpoint de generación de informes
-
-        # Obtener token del estado para autenticar la petición interna
-        # Si no hay token en estado, usamos la BD directamente
-        from calendar import monthrange as _mr
-        from datetime import UTC as _UTC
-        from datetime import date as _date
-        from datetime import datetime as _dt
-
-        from app.db.base import AsyncSessionLocal
-
         async with AsyncSessionLocal() as db:
-            from sqlalchemy import and_, func
-            from sqlalchemy import select as _select
-
-            from app.db.models.models import (
-                BankTransaction,
-                Client,
-                Employee,
-                Invoice,
-                Payroll,
-                Tenant,
-                TenantDocument,
-            )
-            from app.services.pdf import generate_snapshot_pdf
-
             tenant_id = state["tenant_id"]
             user_id = state["user_id"]
 
             year, mon = map(int, month_str.split("-"))
-            start = _date(year, mon, 1)
-            last_day = _mr(year, mon)[1]
-            end = _date(year, mon, last_day)
+            start = date(year, mon, 1)
+            last_day = monthrange(year, mon)[1]
+            end = date(year, mon, last_day)
 
             # Obtener nombre de empresa
-            t_q = await db.execute(_select(Tenant).where(Tenant.id == tenant_id))
+            t_q = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
             tenant = t_q.scalar_one_or_none()
             company_name = tenant.name if tenant and tenant.name else "Tu empresa"
 
             # Facturas
             inv_q = await db.execute(
-                _select(Invoice).where(
+                select(Invoice).where(
                     and_(
                         Invoice.tenant_id == tenant_id,
                         func.date(Invoice.date) >= start,
@@ -80,7 +72,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
 
             # Banca
             tx_q = await db.execute(
-                _select(BankTransaction).where(
+                select(BankTransaction).where(
                     and_(
                         BankTransaction.tenant_id == tenant_id,
                         BankTransaction.date >= start,
@@ -95,13 +87,13 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
 
             # RRHH
             emp_q = await db.execute(
-                _select(Employee).where(
+                select(Employee).where(
                     and_(Employee.tenant_id == tenant_id, Employee.status == "active")
                 )
             )
             employees = emp_q.scalars().all()
             payroll_q = await db.execute(
-                _select(Payroll).where(
+                select(Payroll).where(
                     and_(
                         Payroll.tenant_id == tenant_id,
                         func.date(Payroll.period_start) >= start,
@@ -115,11 +107,11 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
 
             # Clientes
             total_clients_q = await db.execute(
-                _select(func.count()).select_from(Client).where(Client.tenant_id == tenant_id)
+                select(func.count()).select_from(Client).where(Client.tenant_id == tenant_id)
             )
             total_clients = total_clients_q.scalar() or 0
             new_clients_q = await db.execute(
-                _select(func.count())
+                select(func.count())
                 .select_from(Client)
                 .where(
                     and_(
@@ -142,7 +134,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
             if client_totals:
                 top_cid = max(client_totals, key=client_totals.get)
                 top_amount = client_totals[top_cid]
-                cl_q = await db.execute(_select(Client).where(Client.id == top_cid))
+                cl_q = await db.execute(select(Client).where(Client.id == top_cid))
                 cl = cl_q.scalar_one_or_none()
                 if cl:
                     top_client_name = cl.name
@@ -195,26 +187,23 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
             }
 
             # Generar PDF con gráficas
-            import os as _os
-            import uuid as _uuid
-
             pdf_bytes = generate_snapshot_pdf(
                 snap=snap_dict,
                 company_name=company_name,
                 month=month_str,
             )
-            upload_dir = _os.path.abspath(
-                _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
+            upload_dir = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
             )
-            _os.makedirs(upload_dir, exist_ok=True)
-            file_name = f"informe_{month_str}_{_uuid.uuid4().hex[:8]}.pdf"
-            file_path = _os.path.join(upload_dir, file_name)
+            os.makedirs(upload_dir, exist_ok=True)
+            file_name = f"informe_{month_str}_{uuid.uuid4().hex[:8]}.pdf"
+            file_path = os.path.join(upload_dir, file_name)
             with open(file_path, "wb") as fh:
                 fh.write(pdf_bytes)
 
             # Guardar en tenant_documents
             doc = TenantDocument(
-                id=_uuid.uuid4(),
+                id=uuid.uuid4(),
                 tenant_id=tenant_id,
                 uploaded_by=user_id,
                 file_name=file_name,
@@ -224,8 +213,8 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
                 status="processed",
                 parsed_content=resumen,
                 category="informes",
-                created_at=_dt.now(_UTC),
-                processed_at=_dt.now(_UTC),
+                created_at=datetime.now(UTC),
+                processed_at=datetime.now(UTC),
             )
             db.add(doc)
             await db.commit()

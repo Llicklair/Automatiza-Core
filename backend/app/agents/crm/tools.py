@@ -7,6 +7,8 @@ from uuid import UUID
 
 from langchain_core.tools import tool
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -34,8 +36,6 @@ async def list_opportunities(tenant_id: str, stage: str = "all") -> str:
 
 async def _list_opportunities_async(tenant_id: str, stage: str) -> str:
     try:
-        from sqlalchemy.orm import selectinload
-
         async with AsyncSessionLocal() as db:
             query = (
                 select(Opportunity)
@@ -257,13 +257,9 @@ async def create_client(
         postal_code: Código postal
         client_type: Tipo de cliente ('customer' o 'supplier')
     """
-    from sqlalchemy.exc import IntegrityError
-
     try:
         async with AsyncSessionLocal() as db:
-            from app.db.models.models import Client as ClientModel
-
-            new_client = ClientModel(
+            new_client = Client(
                 tenant_id=UUID(tenant_id),
                 name=name,
                 nif=nif or None,

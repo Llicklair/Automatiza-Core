@@ -6,10 +6,12 @@ parsing NL, ejecución determinista, y generación de preview nodes.
 
 import json
 import logging
+from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -24,9 +26,15 @@ from app.agents.orchestrator import (
     _dispatch_hr,
     _dispatch_rag,
 )
+from app.agents.tool_registry import call_tool
+from app.core.llm_factory import get_llm
 from app.db.models import models
 from app.prompts import load_prompt
-from app.services.ai.node_engine import has_advanced_nodes
+from app.services.workflow.task_dispatch import (
+    dispatch_node_engine,
+    dispatch_orchestrator,
+    dispatch_resume_node_engine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +205,69 @@ async def get_execution_logs(
     return {"lines": lines, "status": execution.status}
 
 
+# ── Execution dispatch helpers ────────────────────────────────────────────────
+
+
+async def _dispatch_deterministic(
+    db, workflow, execution, tenant_id, user_id, intent_prefix: str, extra_meta: dict | None = None,
+) -> None:
+    """Crea Task determinista, ejecuta pasos y actualiza execution + task."""
+    meta = {"workflow_id": str(workflow.id), "execution_id": str(execution.id)}
+    if extra_meta:
+        meta.update(extra_meta)
+    task = models.Task(
+        tenant_id=tenant_id, created_by=user_id, domain="deterministic",
+        user_intent=f"{intent_prefix} {workflow.name}", status="running",
+        additional_metadata=meta,
+    )
+    db.add(task)
+    await db.flush()
+    execution.task_id = task.id
+    try:
+        results = await execute_deterministic_steps(
+            steps=workflow.compiled_steps,
+            tenant_id=str(tenant_id),
+            user_id=str(user_id) if user_id else "",
+            task_id=str(task.id),
+        )
+        execution.status = "success"
+        execution.result_log = (
+            f"{len(results)} paso(s). "
+            + " | ".join(
+                f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERR: ' + str(r.get('error', ''))[:60]}"
+                for r in results
+            )
+        )
+        task.status = "done"
+    except Exception as e:
+        execution.status = "failed"
+        execution.result_log = f"Error determinista: {e}"
+        task.status = "failed"
+
+
+async def _dispatch_reasoning(
+    db, workflow, execution, tenant_id, user_id, intent: str, extra_meta: dict | None = None,
+) -> models.Task:
+    """Crea Task de reasoning, la vincula a execution y dispara el orquestador. Devuelve la Task."""
+    meta = {"workflow_id": str(workflow.id), "execution_id": str(execution.id)}
+    if extra_meta:
+        meta.update(extra_meta)
+    task = models.Task(
+        tenant_id=tenant_id, created_by=user_id, domain=_infer_domain(workflow),
+        user_intent=intent, status="pending", additional_metadata=meta,
+    )
+    db.add(task)
+    await db.flush()
+    execution.task_id = task.id
+    await db.commit()
+    try:
+        await dispatch_orchestrator(str(task.id))
+    except Exception as e:
+        execution.status = "failed"
+        execution.result_log = f"Error lanzando orchestrator: {e}"
+    return task
+
+
 # ── Run workflow ─────────────────────────────────────────────────────────────
 
 
@@ -210,7 +281,6 @@ async def run_workflow(
     if not workflow.is_active:
         raise ValueError("El workflow está desactivado")
 
-    # Bloquear ejecución simultánea
     existing = await db.execute(
         select(models.WorkflowExecution).where(
             models.WorkflowExecution.workflow_id == workflow_id,
@@ -223,96 +293,30 @@ async def run_workflow(
         )
 
     execution = models.WorkflowExecution(
-        workflow_id=workflow.id,
-        tenant_id=tenant_id,
-        status="running",
+        workflow_id=workflow.id, tenant_id=tenant_id, status="running",
         trigger_payload={"source": "manual_trigger", "user_id": str(user_id)},
     )
     db.add(execution)
     await db.commit()
     await db.refresh(execution)
 
-    # Modo NodeEngine
+    from app.services.ai.node_engine import has_advanced_nodes
+
     if workflow.ui_nodes and has_advanced_nodes(workflow.ui_nodes, workflow.ui_edges):
         try:
-            from app.services.workflow.task_dispatch import dispatch_node_engine
             await dispatch_node_engine(str(execution.id))
-            execution.result_log = (
-                f"Motor de nodos lanzado para ejecución [{str(execution.id)[:8]}...]."
-            )
+            execution.result_log = f"Motor de nodos lanzado para ejecución [{str(execution.id)[:8]}...]."
         except Exception as e:
             execution.result_log = f"Error al lanzar el motor de nodos: {e}"
             execution.status = "failed"
-        await db.commit()
-        await db.refresh(execution)
-        return execution
 
-    # Modo determinista
-    if workflow.execution_mode == "deterministic" and workflow.compiled_steps:
-        det_task = models.Task(
-            tenant_id=tenant_id,
-            created_by=user_id,
-            domain="deterministic",
-            user_intent=f"[Determinista] {workflow.name}",
-            status="running",
-            additional_metadata={
-                "workflow_id": str(workflow.id),
-                "execution_id": str(execution.id),
-            },
-        )
-        db.add(det_task)
-        await db.flush()
-        execution.task_id = det_task.id
-        try:
-            results = await execute_deterministic_steps(
-                steps=workflow.compiled_steps,
-                tenant_id=str(tenant_id),
-                user_id=str(user_id),
-                task_id=str(det_task.id),
-            )
-            execution.status = "success"
-            execution.result_log = (
-                f"Ejecución determinista completada: {len(results)} paso(s). "
-                + " | ".join(
-                    f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
-                    for r in results
-                )
-            )
-            det_task.status = "done"
-        except Exception as e:
-            execution.status = "failed"
-            execution.result_log = f"Error en ejecución determinista: {e}"
-            det_task.status = "failed"
-        await db.commit()
-        await db.refresh(execution)
-        return execution
+    elif workflow.execution_mode == "deterministic" and workflow.compiled_steps:
+        await _dispatch_deterministic(db, workflow, execution, tenant_id, user_id, "[Determinista]")
 
-    # Modo reasoning (orquestador clásico)
-    ai_instruction = _build_ai_instruction(workflow)
-    task = models.Task(
-        tenant_id=tenant_id,
-        created_by=user_id,
-        domain=_infer_domain(workflow),
-        user_intent=ai_instruction,
-        status="pending",
-        additional_metadata={"workflow_id": str(workflow.id), "execution_id": str(execution.id)},
-    )
-    db.add(task)
-    await db.commit()
-    await db.refresh(task)
-
-    execution.task_id = task.id
-    await db.commit()
-
-    try:
-        from app.services.workflow.task_dispatch import dispatch_orchestrator
-        await dispatch_orchestrator(str(task.id))
-        execution.result_log = (
-            f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
-        )
-    except Exception as e:
-        execution.result_log = f"Error al lanzar el orquestador: {e}"
-        execution.status = "failed"
+    else:
+        task = await _dispatch_reasoning(db, workflow, execution, tenant_id, user_id, _build_ai_instruction(workflow))
+        if execution.status != "failed":
+            execution.result_log = f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
 
     await db.commit()
     await db.refresh(execution)
@@ -330,48 +334,19 @@ async def run_workflow_with_context(
         raise ValueError("El workflow está desactivado")
 
     base_instruction = _build_ai_instruction(workflow)
-    full_instruction = (
-        f"{base_instruction}\n\nContexto adicional: {context_msg}"
-        if context_msg
-        else base_instruction
-    )
+    intent = f"{base_instruction}\n\nContexto adicional: {context_msg}" if context_msg else base_instruction
 
     execution = models.WorkflowExecution(
-        workflow_id=workflow.id,
-        tenant_id=tenant_id,
-        status="running",
-        trigger_payload={
-            "source": "manual_with_context",
-            "user_id": str(user_id),
-            "context": context_msg,
-        },
+        workflow_id=workflow.id, tenant_id=tenant_id, status="running",
+        trigger_payload={"source": "manual_with_context", "user_id": str(user_id), "context": context_msg},
     )
     db.add(execution)
     await db.commit()
     await db.refresh(execution)
 
-    task = models.Task(
-        tenant_id=tenant_id,
-        created_by=user_id,
-        domain=_infer_domain(workflow),
-        user_intent=full_instruction,
-        status="pending",
-        additional_metadata={"workflow_id": str(workflow.id), "execution_id": str(execution.id)},
-    )
-    db.add(task)
-    await db.commit()
-    await db.refresh(task)
-
-    execution.task_id = task.id
-    await db.commit()
-
-    try:
-        from app.services.workflow.task_dispatch import dispatch_orchestrator
-        await dispatch_orchestrator(str(task.id))
+    task = await _dispatch_reasoning(db, workflow, execution, tenant_id, user_id, intent)
+    if execution.status != "failed":
         execution.result_log = f"Tarea IA lanzada con contexto [{str(task.id)[:8]}...]."
-    except Exception as e:
-        execution.result_log = f"Error al lanzar: {e}"
-        execution.status = "failed"
 
     await db.commit()
     await db.refresh(execution)
@@ -409,7 +384,6 @@ async def resume_execution(
     if not execution.current_node_id:
         raise ValueError("No se puede determinar el nodo desde el que reanudar")
 
-    from app.services.workflow.task_dispatch import dispatch_resume_node_engine
     await dispatch_resume_node_engine(str(execution_id), execution.current_node_id)
     execution.result_log = f"Reanudación programada desde nodo {execution.current_node_id}."
 
@@ -426,10 +400,6 @@ async def parse_natural_language(text: str) -> dict:
 
     Raises Exception si el LLM no puede parsear.
     """
-    from langchain_core.messages import HumanMessage, SystemMessage
-
-    from app.core.llm_factory import get_llm
-
     llm = get_llm(temperature=0, format_output="json")
     llm_plain = get_llm(temperature=0)
 
@@ -493,84 +463,94 @@ async def fire_event(
         db.add(execution)
         await db.flush()
 
-        # Ruta DETERMINISTA
+        extra_meta = {"event": event_name}
         if wf.execution_mode == "deterministic" and wf.compiled_steps:
-            det_task = models.Task(
-                tenant_id=tenant_id,
-                created_by=user_id,
-                domain="deterministic",
-                user_intent=f"[Determinista] {wf.name} ({event_name})",
-                status="running",
-                additional_metadata={
-                    "workflow_id": str(wf.id),
-                    "execution_id": str(execution.id),
-                    "event": event_name,
-                },
+            await _dispatch_deterministic(
+                db, wf, execution, tenant_id, user_id,
+                f"[Determinista] ({event_name})", extra_meta,
             )
-            db.add(det_task)
-            await db.flush()
-            execution.task_id = det_task.id
-
-            try:
-                results = await execute_deterministic_steps(
-                    steps=wf.compiled_steps,
-                    tenant_id=str(tenant_id),
-                    user_id=str(user_id),
-                    task_id=str(det_task.id),
-                )
-                execution.status = "success"
-                execution.result_log = (
-                    f"Evento {event_name} → {len(results)} paso(s) deterministas. "
-                    + " | ".join(
-                        f"[{r.get('agent', '?')}:{r.get('type', '?')}] "
-                        f"{'OK' if r.get('success') else 'ERR'}"
-                        for r in results
-                    )
-                )
-                det_task.status = "done"
+            if execution.status == "success":
                 triggered.append(str(wf.id))
-            except Exception as e:
-                execution.status = "failed"
-                execution.result_log = str(e)
-                det_task.status = "failed"
             await db.commit()
-
-        # Ruta REASONING
         else:
             context_str = ", ".join(f"{k}={v}" for k, v in context.items())
-            ai_instruction = f"{_build_ai_instruction(wf)} [Contexto: {event_name} - {context_str}]"
-
-            task = models.Task(
-                tenant_id=tenant_id,
-                created_by=user_id,
-                domain=_infer_domain(wf),
-                user_intent=ai_instruction,
-                status="pending",
-                additional_metadata={
-                    "workflow_id": str(wf.id),
-                    "execution_id": str(execution.id),
-                    "event": event_name,
-                },
-            )
-            db.add(task)
-            await db.flush()
-            execution.task_id = task.id
-            await db.commit()
-            await db.refresh(task)
-
-            try:
-                from app.services.workflow.task_dispatch import dispatch_orchestrator
-                await dispatch_orchestrator(str(task.id))
+            intent = f"{_build_ai_instruction(wf)} [Contexto: {event_name} - {context_str}]"
+            await _dispatch_reasoning(db, wf, execution, tenant_id, user_id, intent, extra_meta)
+            if execution.status != "failed":
                 triggered.append(str(wf.id))
-            except Exception as e:
-                execution.status = "failed"
-                execution.result_log = str(e)
-                await db.commit()
+            await db.commit()
 
     return triggered
 
 
 # ── Deterministic execution ──────────────────────────────────────────────────
+
+
+def _run_deterministic_step(step: dict, idx: int, prev_output: str, tenant_id: str) -> tuple[dict, str]:
+    """Ejecuta un paso tool-directo. Devuelve (resultado, nuevo prev_output)."""
+    agent_name = step.get("agent", "")
+    tool_name = step.get("tool", "")
+    if not tool_name:
+        return (
+            {"agent": agent_name, "step": idx, "type": "deterministic",
+             "success": False, "error": "Paso sin campo 'tool'"},
+            prev_output,
+        )
+    tool_params = {
+        k: v.replace("$prev", prev_output) if isinstance(v, str) else v
+        for k, v in step.get("params", {}).items()
+    }
+    tool_params.setdefault("tenant_id", tenant_id)
+    try:
+        output = call_tool(tool_name, tool_params)
+        return (
+            {"agent": agent_name, "step": idx, "type": "deterministic",
+             "tool": tool_name, "success": True, "output": output, "error": None},
+            output,
+        )
+    except Exception as exc:
+        return (
+            {"agent": agent_name, "step": idx, "type": "deterministic",
+             "tool": tool_name, "success": False, "error": str(exc)},
+            prev_output,
+        )
+
+
+async def _run_reasoning_step(step: dict, idx: int, prev_output: str, base_state: dict) -> tuple[dict, str]:
+    """Ejecuta un paso LLM-reasoning. Devuelve (resultado, nuevo prev_output)."""
+    agent_name = step.get("agent", "")
+    intent = step.get("params", {}).get("intent", "").replace("$prev", prev_output)
+    base_state["user_intent"] = intent
+    base_state["current_intent"] = intent
+
+    dispatch_fn = _DISPATCH_MAP.get(agent_name)
+    if dispatch_fn is None:
+        return (
+            {"agent": agent_name, "step": idx, "type": "reasoning",
+             "success": False, "error": f"Agente '{agent_name}' no reconocido"},
+            prev_output,
+        )
+    subtask = {
+        "id": f"hybrid_{idx}_{agent_name}", "subtask_id": f"hybrid_{idx}_{agent_name}",
+        "agent": agent_name, "action": step.get("action", ""),
+        "params": {"intent": intent}, "depends_on": [], "status": "pending",
+    }
+    try:
+        result = await dispatch_fn(base_state, subtask)
+        output_data = result.get("output", {})
+        new_prev = output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)
+        return (
+            {"agent": agent_name, "step": idx, "type": "reasoning",
+             "action": step.get("action", ""), "success": result.get("success", False),
+             "output": output_data, "error": result.get("error")},
+            new_prev,
+        )
+    except Exception as exc:
+        return (
+            {"agent": agent_name, "step": idx, "type": "reasoning",
+             "success": False, "error": str(exc)},
+            prev_output,
+        )
 
 
 async def execute_deterministic_steps(
@@ -583,12 +563,8 @@ async def execute_deterministic_steps(
 
     Cada paso tiene 'type': "deterministic" (tool directo) o "reasoning" (LLM).
     """
-    import uuid as _uuid
-
-    from app.agents.tool_registry import call_tool
-
     base_state: dict[str, Any] = {
-        "task_id": task_id or str(_uuid.uuid4()),
+        "task_id": task_id or str(uuid4()),
         "tenant_id": tenant_id,
         "user_id": user_id,
         "user_intent": "",
@@ -601,95 +577,124 @@ async def execute_deterministic_steps(
         "error_message": None,
     }
 
-    results = []
+    results: list[dict] = []
     prev_output = ""
 
     for idx, step in enumerate(steps):
-        agent_name = step.get("agent", "")
         step_type = step.get("type", "deterministic" if step.get("tool") else "reasoning")
-
         if step_type == "deterministic":
-            tool_name = step.get("tool", "")
-            if not tool_name:
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "deterministic",
-                    "success": False, "error": "Paso determinista sin campo 'tool'",
-                })
-                continue
-
-            tool_params = dict(step.get("params", {}))
-            tool_params.setdefault("tenant_id", tenant_id)
-            for k, v in tool_params.items():
-                if isinstance(v, str) and "$prev" in v:
-                    tool_params[k] = v.replace("$prev", prev_output)
-
-            try:
-                output = call_tool(tool_name, tool_params)
-                prev_output = output
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "deterministic",
-                    "tool": tool_name, "success": True, "output": output, "error": None,
-                })
-            except Exception as exc:
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "deterministic",
-                    "tool": tool_name, "success": False, "error": str(exc),
-                })
-
-        else:  # reasoning
-            intent = step.get("params", {}).get("intent", "")
-            if "$prev" in intent:
-                intent = intent.replace("$prev", prev_output)
-
-            subtask = {
-                "id": f"hybrid_{idx}_{agent_name}",
-                "subtask_id": f"hybrid_{idx}_{agent_name}",
-                "agent": agent_name,
-                "action": step.get("action", ""),
-                "params": {"intent": intent},
-                "depends_on": [],
-                "status": "pending",
-            }
-            base_state["user_intent"] = intent
-            base_state["current_intent"] = intent
-
-            dispatch_fn = _DISPATCH_MAP.get(agent_name)
-            if dispatch_fn is None:
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "reasoning",
-                    "success": False, "error": f"Agente '{agent_name}' no reconocido",
-                })
-                continue
-
-            try:
-                result = await dispatch_fn(base_state, subtask)
-                output_data = result.get("output", {})
-                prev_output = (
-                    output_data.get("response", "")
-                    if isinstance(output_data, dict) else str(output_data)
-                )
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "reasoning",
-                    "action": step.get("action", ""), "success": result.get("success", False),
-                    "output": output_data, "error": result.get("error"),
-                })
-            except Exception as exc:
-                results.append({
-                    "agent": agent_name, "step": idx, "type": "reasoning",
-                    "success": False, "error": str(exc),
-                })
+            result, prev_output = _run_deterministic_step(step, idx, prev_output, tenant_id)
+        else:
+            result, prev_output = await _run_reasoning_step(step, idx, prev_output, base_state)
+        results.append(result)
 
     return results
 
 
-# ── Preview node generation ──────────────────────────────────────────────────
+# ── Plan / Preview node generation ───────────────────────────────────────────
 
+_AGENT_TYPES = {
+    "billing": "skill",
+    "hr": "skill",
+    "crm": "skill",
+    "advisory": "skill",
+    "banking": "skill",
+    "documents": "skill",
+    "compliance": "skill",
+    "rag": "skill",
+    "excel": "skill",
+    "email": "skill",
+    "coordinator": "action",
+    "workflow": "action",
+    "orchestrator": "action",
+    "skill": "skill",
+}
+
+_AGENT_LABELS = {
+    "billing": "Facturacion",
+    "hr": "RRHH",
+    "crm": "CRM",
+    "advisory": "Asesoria Fiscal",
+    "banking": "Banca",
+    "documents": "Documentos",
+    "compliance": "Cumplimiento",
+    "rag": "Busqueda RAG",
+    "excel": "Excel",
+    "email": "Email",
+    "coordinator": "Coordinador",
+    "orchestrator": "Orquestador",
+    "workflow": "Workflow",
+}
 
 _TRIGGER_LABELS = {
     "event_based": "Evento ERP",
     "schedule_based": "Programación",
     "manual": "Inicio Manual",
 }
+
+
+def plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
+    """Convierte el plan del orquestador (lista de SubTask) en nodos y aristas ReactFlow."""
+    nodes: list[dict] = []
+    edges: list[dict] = []
+
+    # Nodo trigger
+    nodes.append({
+        "id": "trigger",
+        "type": "trigger",
+        "position": {"x": 250, "y": 0},
+        "data": {
+            "label": _TRIGGER_LABELS.get(trigger_type, "Trigger"),
+            "trigger_type": trigger_type,
+        },
+    })
+
+    # Indice id -> posicion
+    step_id_to_index: dict[str, int] = {}
+    for i, step in enumerate(plan):
+        step_id_to_index[step.get("id", f"step_{i}")] = i
+
+    # Capas topologicas
+    layers: dict[str, int] = {}
+    for i, step in enumerate(plan):
+        step_id = step.get("id", f"step_{i}")
+        deps = step.get("depends_on", [])
+        if not deps:
+            layers[step_id] = 0
+        else:
+            layers[step_id] = max(layers.get(d, 0) for d in deps) + 1
+
+    # Agrupar por capa y posicionar
+    layer_groups: dict[int, list] = defaultdict(list)
+    for i, step in enumerate(plan):
+        step_id = step.get("id", f"step_{i}")
+        layer_groups[layers.get(step_id, i)].append((i, step_id, step))
+
+    COL_W, ROW_H = 220, 130
+    for layer_idx in sorted(layer_groups.keys()):
+        items = layer_groups[layer_idx]
+        total_w = len(items) * COL_W
+        start_x = 250 - total_w // 2 + COL_W // 2
+        for col_idx, (_original_idx, step_id, step) in enumerate(items):
+            agent = step.get("agent", step.get("domain", "skill"))
+            nodes.append({
+                "id": step_id,
+                "type": _AGENT_TYPES.get(agent, "skill"),
+                "position": {"x": start_x + col_idx * COL_W, "y": 150 + layer_idx * ROW_H},
+                "data": {
+                    "label": _AGENT_LABELS.get(agent, agent.title()),
+                    "domain": agent,
+                    "description": step.get("action", step.get("instruction", ""))[:120],
+                },
+            })
+            deps = step.get("depends_on", [])
+            if deps:
+                for dep_id in deps:
+                    edges.append({"id": f"e-{dep_id}-{step_id}", "source": dep_id, "target": step_id})
+            else:
+                edges.append({"id": f"e-trigger-{step_id}", "source": "trigger", "target": step_id})
+
+    return nodes, edges
 
 _INSTRUCTION_TO_AGENT = [
     (["factura", "cobro", "pago", "billing", "invoice"], "billing", "Facturación"),
