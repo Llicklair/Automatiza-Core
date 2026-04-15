@@ -405,3 +405,75 @@ def _signature_block(labels: list[str], width_mm: float = 180) -> "Table":
         )
     )
     return tbl
+
+
+def _client_block(
+    client: dict,
+    header_style,
+    body_style,
+    bold_font: str = "Helvetica-Bold",
+    slate_color: str = "#1e293b",
+) -> list:
+    """Bloque 'FACTURAR A:' reutilizable: nombre, NIF, email, dirección."""
+    if not REPORTLAB_AVAILABLE:
+        return []
+    elems = [
+        Paragraph("FACTURAR A:", header_style),
+        Spacer(1, 2 * mm),
+        Paragraph(
+            client.get("name", "\u2014"),
+            ParagraphStyle(
+                "CB_name",
+                parent=getSampleStyleSheet()["Normal"],
+                fontSize=11,
+                fontName=bold_font,
+                textColor=colors.HexColor(slate_color),
+            ),
+        ),
+    ]
+    for field, label in [("nif", "NIF/CIF"), ("email", "Email"), ("address", None)]:
+        if client.get(field):
+            txt = f"{label}: {client[field]}" if label else client[field]
+            elems.append(Paragraph(txt, body_style))
+    elems.append(Spacer(1, 5 * mm))
+    return elems
+
+
+def _invoice_footer(
+    text: str,
+    font: str = "Helvetica",
+    footer_color: str = "#94a3b8",
+    line_color: str = "#e2e8f0",
+) -> list:
+    """Pie de factura reutilizable: línea + texto legal + timestamp."""
+    if not REPORTLAB_AVAILABLE:
+        return []
+    styles = getSampleStyleSheet()
+    return [
+        Spacer(1, 6 * mm),
+        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(line_color)),
+        Spacer(1, 3 * mm),
+        Paragraph(
+            text,
+            ParagraphStyle(
+                "IF_legal",
+                parent=styles["Normal"],
+                fontSize=7,
+                fontName=font,
+                textColor=colors.HexColor(footer_color),
+                alignment=TA_CENTER,
+            ),
+        ),
+        Spacer(1, 2 * mm),
+        Paragraph(
+            f"Generado por AutomatizaPyme \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            ParagraphStyle(
+                "IF_ts",
+                parent=styles["Normal"],
+                fontSize=7,
+                fontName=font,
+                textColor=colors.HexColor(footer_color),
+                alignment=TA_CENTER,
+            ),
+        ),
+    ]

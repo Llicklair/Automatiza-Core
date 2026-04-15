@@ -4,6 +4,9 @@ APScheduler — tareas periódicas.
 Arranca/para con el lifespan de FastAPI.
 """
 
+from __future__ import annotations
+
+import asyncio
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -13,6 +16,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="Europe/Madrid")
+_deferred_task: "asyncio.Task[None] | None" = None
 
 
 def register_jobs() -> None:
@@ -58,22 +62,33 @@ async def start_scheduler() -> None:
         register_jobs()
         scheduler.start()
         logger.info("Scheduler arrancado")
-        # Catch-up: ejecutar workflows perdidos mientras la app estaba cerrada
-        from app.workers.tasks_scheduler import catchup_missed_workflows
-
-        await catchup_missed_workflows()
     except Exception as e:
         logger.error("Error arrancando scheduler (no es fatal): %s", e)
 
-    # Bootstrap heartbeats para AIEmployees activos (falla silenciosamente)
-    try:
-        from app.services.integration.heartbeat import bootstrap_employee_heartbeats
+    # Catch-up y heartbeats se lanzan como tareas de fondo para no bloquear
+    # el lifespan de FastAPI (uvicorn no sirve HTTP hasta que lifespan termine).
+    async def _deferred_startup():
+        try:
+            from app.workers.tasks_scheduler import catchup_missed_workflows
 
-        await bootstrap_employee_heartbeats()
-    except Exception as e:
-        logger.error("Bootstrap heartbeats falló (no es fatal): %s", e)
+            await catchup_missed_workflows()
+        except Exception as e:
+            logger.error("Error en catchup_missed_workflows (no es fatal): %s", e)
+        try:
+            from app.services.integration.heartbeat import bootstrap_employee_heartbeats
+
+            await bootstrap_employee_heartbeats()
+        except Exception as e:
+            logger.error("Bootstrap heartbeats falló (no es fatal): %s", e)
+
+    global _deferred_task
+    _deferred_task = asyncio.create_task(_deferred_startup())
 
 
 async def stop_scheduler() -> None:
+    global _deferred_task
+    if _deferred_task and not _deferred_task.done():
+        _deferred_task.cancel()
+        _deferred_task = None
     scheduler.shutdown(wait=False)
     logger.info("Scheduler parado")

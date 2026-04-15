@@ -4,10 +4,12 @@ Banking agent tools — all @tool decorated functions.
 
 import json
 import logging
+import uuid
 from datetime import date, timedelta
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
+from sqlalchemy import or_, select
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -16,6 +18,9 @@ from app.agents.agent_tools.documents import (
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.core.llm_factory import get_llm
+from app.db.base import AsyncSessionLocal
+from app.db.models.models import Client, Invoice, TenantIntegration
+from app.services.encryption import decrypt_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -103,14 +108,6 @@ def _get_llm_json():
 
 async def _get_psd2_credentials(tenant_id: str) -> dict | None:
     """Obtiene credenciales PSD2 del tenant si están configuradas."""
-    import uuid
-
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import TenantIntegration
-    from app.services.encryption import decrypt_credentials
-
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -363,13 +360,6 @@ async def _reconcile_transactions_async(
     tolerance_days: int,
     tolerance_amount: float,
 ) -> str:
-    from uuid import UUID
-
-    from sqlalchemy import or_, select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, Invoice
-
     try:
         creds = await _get_psd2_credentials(tenant_id)
         if creds:
@@ -431,7 +421,7 @@ async def _reconcile_transactions_async(
                 select(Invoice, Client)
                 .join(Client)
                 .where(
-                    Invoice.tenant_id == UUID(tenant_id),
+                    Invoice.tenant_id == uuid.UUID(tenant_id),
                     or_(Invoice.status == "pending", Invoice.status == "paid"),
                 )
             )

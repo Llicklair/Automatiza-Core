@@ -11,6 +11,7 @@ from uuid import UUID
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -21,10 +22,14 @@ from app.agents.agent_tools.documents import (
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
 from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
+from app.db.base import AsyncSessionLocal
+from app.db.models.auth import Tenant
+from app.db.models.embeddings import DocumentEmbedding
+from app.db.models.models import Client, TenantDocument
 from app.prompts import load_prompt
 from app.services.documents.classifier import classify_by_rules
+from app.services.documents.smart_chunker import Chunk, smart_chunk
 from app.services.pdf.parser import parse_pdf
-from app.services.documents.smart_chunker import smart_chunk
 
 logger = logging.getLogger(__name__)
 
@@ -70,13 +75,10 @@ async def classify_document(tenant_id: str, document_id: str) -> str:
     return await _classify_document_async(tenant_id, document_id)
 
 
-async def _classify_document_async(tenant_id: str, document_id: str) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, TenantDocument
-
-    # ── Leer documento de BD y disco ──
+async def _load_doc_and_extract_text(
+    tenant_id: str, document_id: str
+) -> "tuple[TenantDocument, str, object] | str":
+    """Carga el documento de BD, lee bytes del disco y extrae texto. Devuelve (doc, raw_text, parsed_doc) o error."""
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -86,237 +88,188 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
                 )
             )
             doc = result.scalar_one_or_none()
+        if not doc:
+            return f"Error: Documento {document_id} no encontrado."
 
-            if not doc:
-                return f"Error: Documento {document_id} no encontrado."
+        file_bytes = None
+        if doc.file_path and os.path.exists(doc.file_path):
+            with open(doc.file_path, "rb") as f:
+                file_bytes = f.read()
 
-            file_bytes = None
-            raw_text = ""
+        parsed_doc = None
+        raw_text = ""
+        if file_bytes and doc.file_type and "pdf" in doc.file_type.lower():
+            try:
+                parsed_doc = parse_pdf(
+                    file_path=doc.file_path if doc.file_path and os.path.exists(doc.file_path) else None,
+                    file_bytes=file_bytes,
+                )
+                raw_text = parsed_doc.markdown
+                logger.info("PDF parseado con %s: %d páginas, %d elementos",
+                            parsed_doc.parser_used, parsed_doc.total_pages, len(parsed_doc.elements))
+            except Exception as e:
+                logger.warning("Error parsing PDF: %s", e)
+        elif file_bytes:
+            try:
+                raw_text = file_bytes.decode("utf-8", errors="ignore")[:5000]
+            except Exception as e:
+                logger.warning("Error decodificando bytes de documento: %s", e)
 
-            if doc.file_path and os.path.exists(doc.file_path):
-                with open(doc.file_path, "rb") as f:
-                    file_bytes = f.read()
-
-            # Extraer texto con OpenDataLoader (fallback a pypdf)
-            parsed_doc = None
-            if file_bytes and doc.file_type and "pdf" in doc.file_type.lower():
-                try:
-                    parsed_doc = parse_pdf(
-                        file_path=doc.file_path
-                        if doc.file_path and os.path.exists(doc.file_path)
-                        else None,
-                        file_bytes=file_bytes,
-                    )
-                    raw_text = parsed_doc.markdown
-                    logger.info(
-                        "PDF parseado con %s: %d páginas, %d elementos",
-                        parsed_doc.parser_used,
-                        parsed_doc.total_pages,
-                        len(parsed_doc.elements),
-                    )
-                except Exception as e:
-                    logger.warning("Error parsing PDF: %s", e)
-            elif file_bytes:
-                try:
-                    raw_text = file_bytes.decode("utf-8", errors="ignore")[:5000]
-                except Exception as _e:
-                    logger.warning("Error decodificando bytes de documento: %s", _e)
-
-            if doc.parsed_content and not raw_text:
-                raw_text = doc.parsed_content[:5000]
-
-            if not raw_text:
-                return f"Error: No se pudo extraer texto del documento '{doc.file_name}'."
-
+        if doc.parsed_content and not raw_text:
+            raw_text = doc.parsed_content[:5000]
+        if not raw_text:
+            return f"Error: No se pudo extraer texto del documento '{doc.file_name}'."
+        return doc, raw_text, parsed_doc
     except Exception as e:
         return f"Error leyendo documento: {e}"
 
-    # ── Clasificar: primero reglas (0 tokens), luego LLM si ambiguo ──
+
+async def _link_client_from_nif(
+    tenant_id: str, primary_nif: str, key_entities: dict
+) -> str:
+    """Busca o crea un cliente a partir de un NIF extraído del documento. Devuelve client_info string."""
+    try:
+        async with AsyncSessionLocal() as db:
+            res = await db.execute(
+                select(Client).where(Client.tenant_id == UUID(tenant_id), Client.nif == primary_nif)
+            )
+            existing = res.scalar_one_or_none()
+            if existing:
+                return f"\nCliente vinculado: {existing.name} (NIF: {primary_nif})"
+            new_client = Client(
+                tenant_id=UUID(tenant_id),
+                nif=primary_nif,
+                name=key_entities.get("emisor") or f"Contacto {primary_nif}",
+                client_type="supplier",
+            )
+            db.add(new_client)
+            await db.commit()
+            return f"\nNuevo cliente creado: {new_client.name} (NIF: {primary_nif})"
+    except Exception as e:
+        return f"\nError vinculando cliente: {e}"
+
+
+async def _store_embeddings(
+    tenant_id: str, document_id: str, raw_text: str, parsed_doc
+) -> str:
+    """Genera embeddings y los almacena en BD. Devuelve embeddings_info string."""
+    try:
+        embedder = get_embedder()
+        if not embedder or not raw_text.strip():
+            return ""
+
+        if parsed_doc and parsed_doc.elements:
+            doc_chunks = smart_chunk(parsed_doc.elements)
+        else:
+            chunk_size = 1500
+            doc_chunks = [Chunk(text=raw_text[i:i + chunk_size]) for i in range(0, len(raw_text), chunk_size)]
+
+        vectors = await embedder.aembed_documents([c.text for c in doc_chunks])
+
+        async with AsyncSessionLocal() as db:
+            j_res = await db.execute(select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id)))
+            jurisdiction = j_res.scalar() or "ES_TAX"
+            for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
+                db.add(DocumentEmbedding(
+                    document_id=document_id,
+                    tenant_id=UUID(tenant_id),
+                    chunk_index=str(i),
+                    text_content=chunk.text,
+                    page_number=chunk.page_number or None,
+                    element_type=chunk.element_type or None,
+                    bounding_box=chunk.bounding_box or None,
+                    jurisdiction=jurisdiction,
+                    embedding=vector,
+                ))
+            await db.commit()
+
+        parser_label = f" ({parsed_doc.parser_used})" if parsed_doc else ""
+        return f"\nEmbeddings RAG{parser_label}: {len(doc_chunks)} chunks indexados para búsqueda semántica."
+    except Exception as e:
+        return f"\nEmbeddings no generados: {e}"
+
+
+async def _classify_document_async(tenant_id: str, document_id: str) -> str:
+    # Cargar documento y extraer texto
+    load_result = await _load_doc_and_extract_text(tenant_id, document_id)
+    if isinstance(load_result, str):
+        return load_result
+    _doc, raw_text, parsed_doc = load_result
+
+    # Clasificar: primero reglas, luego LLM si ambiguo
     rule_result = classify_by_rules(raw_text)
-    logger.info(
-        "Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
-        rule_result.document_type,
-        rule_result.confidence * 100,
-        rule_result.needs_llm,
-    )
+    logger.info("Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
+                rule_result.document_type, rule_result.confidence * 100, rule_result.needs_llm)
 
     if not rule_result.needs_llm:
-        # Clasificación mecánica — 0 tokens LLM
         classified = ClassifiedDocument(
-            document_type=rule_result.document_type,
-            confidence=rule_result.confidence,
+            document_type=rule_result.document_type, confidence=rule_result.confidence,
             key_entities=rule_result.key_entities,
             summary=f"Documento clasificado por reglas como {rule_result.document_type}",
         )
     else:
-        # Fallback a LLM para documentos ambiguos
         llm = _get_llm_json()
         try:
-            response = await llm.ainvoke(
-                [
-                    SystemMessage(content=CLASSIFICATION_PROMPT),
-                    HumanMessage(
-                        content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"
-                    ),
-                ]
-            )
+            response = await llm.ainvoke([
+                SystemMessage(content=CLASSIFICATION_PROMPT),
+                HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
+            ])
             raw_content = (response.content or "").strip()
-            # Strip markdown code fences if present
             if raw_content.startswith("```"):
                 raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
                 raw_content = re.sub(r"\s*```$", "", raw_content)
             if not raw_content:
-                logger.warning(
-                    "LLM returned empty response for document classification, using rule fallback"
-                )
+                logger.warning("LLM returned empty response for document classification, using rule fallback")
                 classified = ClassifiedDocument(
-                    document_type=rule_result.document_type,
-                    confidence=rule_result.confidence,
+                    document_type=rule_result.document_type, confidence=rule_result.confidence,
                     key_entities=rule_result.key_entities,
                     summary=f"Clasificado por reglas (LLM sin respuesta): {rule_result.document_type}",
                 )
             else:
-                data_dict = json.loads(raw_content)
-                classified = ClassifiedDocument(**data_dict)
+                classified = ClassifiedDocument(**json.loads(raw_content))
         except Exception as e:
             logger.warning("LLM classification failed (%s), falling back to rules", e)
             classified = ClassifiedDocument(
-                document_type=rule_result.document_type,
-                confidence=max(rule_result.confidence, 0.5),
+                document_type=rule_result.document_type, confidence=max(rule_result.confidence, 0.5),
                 key_entities=rule_result.key_entities,
                 summary=f"Clasificado por reglas (LLM falló): {rule_result.document_type}",
             )
 
-    # ── Extraer NIFs y crear/vincular cliente ──
-    nif_pattern = re.compile(
-        r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b"
-    )
+    # Extraer NIFs y vincular cliente
+    nif_pattern = re.compile(r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b")
     raw_nifs = nif_pattern.findall(raw_text.upper())
     nifs_found = list(dict.fromkeys([n.replace("-", "").replace(" ", "") for n in raw_nifs]))
+    client_info = await _link_client_from_nif(tenant_id, nifs_found[0], classified.key_entities) if nifs_found else ""
 
-    client_info = ""
-    if nifs_found:
-        primary_nif = nifs_found[0]
-        try:
-            async with AsyncSessionLocal() as db:
-                from sqlalchemy import select as sel
+    # Generar embeddings RAG
+    embeddings_info = await _store_embeddings(tenant_id, document_id, raw_text, parsed_doc)
 
-                res = await db.execute(
-                    sel(Client).where(
-                        Client.tenant_id == UUID(tenant_id),
-                        Client.nif == primary_nif,
-                    )
-                )
-                existing = res.scalar_one_or_none()
-                if existing:
-                    client_info = f"\nCliente vinculado: {existing.name} (NIF: {primary_nif})"
-                else:
-                    # Crear cliente desde datos del documento
-                    new_client = Client(
-                        tenant_id=UUID(tenant_id),
-                        nif=primary_nif,
-                        name=classified.key_entities.get("emisor") or f"Contacto {primary_nif}",
-                        client_type="supplier",
-                    )
-                    db.add(new_client)
-                    await db.commit()
-                    client_info = f"\nNuevo cliente creado: {new_client.name} (NIF: {primary_nif})"
-        except Exception as e:
-            client_info = f"\nError vinculando cliente: {e}"
-
-    # ── Generar embeddings para RAG (chunking inteligente) ──
-    embeddings_info = ""
+    # Actualizar documento en BD
     try:
-        embedder = get_embedder()
-        if embedder and raw_text.strip():
-            from app.db.models.embeddings import DocumentEmbedding
-
-            # Chunking inteligente si tenemos elementos estructurados
-            if parsed_doc and parsed_doc.elements:
-                doc_chunks = smart_chunk(parsed_doc.elements)
-            else:
-                # Fallback: chunking mecánico para archivos no-PDF
-                chunk_size = 1500
-                doc_chunks = []
-                from app.services.documents.smart_chunker import Chunk
-
-                for i in range(0, len(raw_text), chunk_size):
-                    doc_chunks.append(Chunk(text=raw_text[i : i + chunk_size]))
-
-            chunk_texts = [c.text for c in doc_chunks]
-            vectors = await embedder.aembed_documents(chunk_texts)
-
-            async with AsyncSessionLocal() as db:
-                # Obtener jurisdicción del tenant para stamping
-                import sqlalchemy as _sa
-
-                from app.db.models.auth import Tenant
-
-                _j_res = await db.execute(
-                    _sa.select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id))
-                )
-                _jurisdiction = _j_res.scalar() or "ES_TAX"
-
-                for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
-                    emb = DocumentEmbedding(
-                        document_id=document_id,
-                        tenant_id=UUID(tenant_id),
-                        chunk_index=str(i),
-                        text_content=chunk.text,
-                        page_number=chunk.page_number or None,
-                        element_type=chunk.element_type or None,
-                        bounding_box=chunk.bounding_box or None,
-                        jurisdiction=_jurisdiction,
-                        embedding=vector,
-                    )
-                    db.add(emb)
-                await db.commit()
-            parser_label = f" ({parsed_doc.parser_used})" if parsed_doc else ""
-            embeddings_info = f"\nEmbeddings RAG{parser_label}: {len(doc_chunks)} chunks indexados para búsqueda semántica."
-    except Exception as e:
-        embeddings_info = f"\nEmbeddings no generados: {e}"
-
-    # ── Actualizar documento en BD con clasificación ──
-    try:
-        async with AsyncSessionLocal() as db:
-            from sqlalchemy import select as sel2
-
-            result = await db.execute(
-                sel2(TenantDocument).where(TenantDocument.id == UUID(document_id))
-            )
+        async with AsyncSessionLocal() as db_upd:
+            result = await db_upd.execute(select(TenantDocument).where(TenantDocument.id == UUID(document_id)))
             doc = result.scalar_one_or_none()
             if doc:
                 doc.parsed_content = raw_text[:3000]
                 doc.status = "completed"
-                await db.commit()
+                await db_upd.commit()
     except Exception:
-        logger.warning(
-            "Failed to update parsed_content for document %s", document_id, exc_info=True
-        )
+        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
 
-    # ── Emitir evento ──
+    # Emitir evento
     try:
-        from app.db.base import AsyncSessionLocal as ASL
         from app.services.event_bus import emit_event
-
-        async with ASL() as db_ev:
-            await emit_event(
-                db=db_ev,
-                tenant_id=UUID(tenant_id),
-                user_id=None,
-                event_name="document_processed",
-                context={
-                    "document_id": document_id,
-                    "document_type": classified.document_type,
-                    "key_entities": classified.key_entities,
-                },
-            )
+        async with AsyncSessionLocal() as db_ev:
+            await emit_event(db=db_ev, tenant_id=UUID(tenant_id), user_id=None,
+                             event_name="document_processed",
+                             context={"document_id": document_id,
+                                      "document_type": classified.document_type,
+                                      "key_entities": classified.key_entities})
     except Exception as e:
         logger.warning("Error emitiendo evento document_processed: %s", e)
 
     conf = classified.confidence if classified.confidence is not None else 0.9
     review_note = " ⚠️ Confianza baja, requiere revisión manual." if conf < 0.7 else ""
-
     return (
         f"Documento clasificado correctamente.\n"
         f"Tipo: {classified.document_type}\n"
@@ -324,10 +277,10 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
         f"Resumen: {classified.summary}\n"
         f"Entidades: {json.dumps(classified.key_entities, ensure_ascii=False)}\n"
         f"Acción sugerida: {classified.suggested_action or 'Ninguna'}"
-        f"{client_info}"
-        f"{embeddings_info}"
-        f"{review_note}"
+        f"{client_info}{embeddings_info}{review_note}"
     )
+
+
 
 
 @tool

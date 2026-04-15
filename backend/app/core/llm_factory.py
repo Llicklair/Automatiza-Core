@@ -14,6 +14,7 @@ from contextvars import ContextVar
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.llm.claude_code import ClaudeCodeChatModel
 from app.core.llm.gemini import GeminiSafeWrapper
@@ -205,7 +206,7 @@ async def get_llm_for_tenant(
 
     except ValueError:
         raise
-    except Exception as e:
+    except (SQLAlchemyError, KeyError, ImportError) as e:
         _log.warning("Error leyendo LLM config del tenant (%s), usando config global.", e)
 
     return get_llm(temperature=temperature, format_output=format_output)
@@ -232,7 +233,7 @@ def get_embedder():
             model_name = settings.EMBEDDINGS_LOCAL_MODEL or "BAAI/bge-m3"
             _log.info("Cargando embeddings locales: %s", model_name)
             return HuggingFaceEmbeddings(model_name=model_name)
-        except Exception as e:
+        except (ImportError, OSError, ValueError) as e:
             _log.warning("HuggingFaceEmbeddings no disponible: %s", e)
 
     elif provider == "gemini":
@@ -244,7 +245,7 @@ def get_embedder():
                     model="models/text-embedding-004",
                     google_api_key=settings.GEMINI_API_KEY,
                 )
-            except Exception as e:
+            except (ImportError, OSError, ValueError) as e:
                 _log.warning("GoogleGenerativeAIEmbeddings no disponible: %s", e)
         else:
             _log.warning("EMBEDDINGS_PROVIDER=gemini pero GEMINI_API_KEY está vacía.")
@@ -258,7 +259,7 @@ def get_embedder():
                     model="text-embedding-3-small",
                     api_key=settings.OPENAI_API_KEY,
                 )
-            except Exception as e:
+            except (ImportError, OSError, ValueError) as e:
                 _log.warning("OpenAIEmbeddings no disponible: %s", e)
         else:
             _log.warning("EMBEDDINGS_PROVIDER=openai pero OPENAI_API_KEY está vacía.")
@@ -305,12 +306,12 @@ def _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fal
                 if format_output == "json":
                     openai_kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
                 groq_fallbacks.insert(0, ChatOpenAI(**openai_kwargs))
-            except Exception:
+            except (ImportError, ValueError, TypeError) as exc:
                 logging.getLogger(__name__).warning(
-                    "Failed to init OpenAI fallback for Groq", exc_info=True
+                    "Failed to init OpenAI fallback for Groq: %s", exc
                 )
         return base_llm.with_fallbacks(groq_fallbacks)
-    except Exception as e:
+    except (ImportError, ValueError, TypeError) as e:
         logging.getLogger(__name__).warning("Error iniciando Groq (%s), usando fallbacks.", e)
         return mock_fallback
 
@@ -341,12 +342,12 @@ def _build_gemini(temperature, format_output, max_tokens, base_fallbacks, mock_f
                     timeout=30,
                 )
                 fallback_chain.insert(0, groq_fallback)
-        except Exception:
+        except (ImportError, ValueError, TypeError) as exc:
             logging.getLogger(__name__).warning(
-                "Failed to init Groq fallback for Gemini", exc_info=True
+                "Failed to init Groq fallback for Gemini: %s", exc
             )
         return GeminiSafeWrapper(base_llm.with_fallbacks(fallback_chain))
-    except Exception as e:
+    except (ImportError, ValueError, TypeError) as e:
         logging.getLogger(__name__).warning("Error iniciando Gemini (%s), usando fallbacks.", e)
         return mock_fallback
 
@@ -379,9 +380,9 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
                         timeout=30,
                     ),
                 )
-            except Exception:
+            except (ImportError, ValueError, TypeError) as exc:
                 logging.getLogger(__name__).warning(
-                    "Failed to init Gemini fallback for Anthropic", exc_info=True
+                    "Failed to init Gemini fallback for Anthropic: %s", exc
                 )
         if settings.OPENAI_API_KEY:
             try:
@@ -395,12 +396,12 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
                         timeout=30,
                     ),
                 )
-            except Exception:
+            except (ImportError, ValueError, TypeError) as exc:
                 logging.getLogger(__name__).warning(
-                    "Failed to init OpenAI fallback for Anthropic", exc_info=True
+                    "Failed to init OpenAI fallback for Anthropic: %s", exc
                 )
         return base_llm.with_fallbacks(anthropic_fallbacks)
-    except Exception as e:
+    except (ImportError, ValueError, TypeError) as e:
         logging.getLogger(__name__).warning("Error iniciando Anthropic (%s), usando fallbacks.", e)
         return mock_fallback
 
@@ -420,7 +421,7 @@ def _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_f
             kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
         base_llm = ChatOpenAI(**kwargs)
         return base_llm.with_fallbacks(base_fallbacks)
-    except Exception as e:
+    except (ImportError, ValueError, TypeError) as e:
         logging.getLogger(__name__).warning("Error iniciando OpenAI (%s), usando fallbacks.", e)
         return mock_fallback
 
@@ -459,6 +460,6 @@ def _build_openrouter(temperature, format_output, max_tokens, base_fallbacks):
         rest_of_models = list(chat_models[1:]) + list(base_fallbacks)
         return primary_llm.with_fallbacks(rest_of_models)
 
-    except Exception as e:
+    except (ImportError, ValueError, TypeError) as e:
         logging.getLogger(__name__).warning("Error iniciando OpenRouter (%s).", e)
-        raise e
+        raise

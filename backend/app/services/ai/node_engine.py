@@ -22,14 +22,16 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime
+from collections import Counter
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import PendingApproval, Workflow, WorkflowExecution
 from app.services.audit import log_action
-from app.services.ai.condition_evaluator import evaluate_condition
+from app.services.ai.condition_evaluator import evaluate_condition, _resolve_field
+from app.services.workflow.task_dispatch import dispatch_resume_node_engine
 
 _logger = logging.getLogger(__name__)
 
@@ -48,13 +50,9 @@ ADVANCED_NODE_TYPES = {"conditional", "delay", "approval_gate", "parallel"}
 
 def has_advanced_nodes(ui_nodes: list[dict], ui_edges: list[dict] | None = None) -> bool:
     """Returns True if the workflow contains any advanced node types or fan-out topology."""
-    # Check for explicit advanced node types
     if any(n.get("type") in ADVANCED_NODE_TYPES for n in (ui_nodes or [])):
         return True
-    # Fan-out: any node has 2+ outgoing edges (implicit parallelism)
     if ui_edges:
-        from collections import Counter
-
         source_counts = Counter(e.get("source") for e in ui_edges)
         if any(v >= 2 for v in source_counts.values()):
             return True
@@ -328,20 +326,17 @@ class NodeEngine:
 
             return {}
 
-    async def _execute_skill_node(self, node: dict, db: AsyncSession) -> dict:
-        """
-        Ejecuta un nodo skill reutilizando las funciones _dispatch_* del orchestrator.
-        """
-        from app.agents.orchestrator import OrchestratorState, TaskStatus
+    def _build_skill_dispatch(
+        self, node: dict, extra_meta: dict | None = None
+    ) -> tuple[str, str, dict, dict]:
+        """Construye (domain, instruction, subtask, mini_state) para despachar un nodo skill."""
+        from app.agents.orchestrator import TaskStatus
 
         data = node.get("data", {})
         domain = data.get("domain", "billing")
         instruction = data.get("instruction") or data.get("label", "Ejecutar automatización")
 
-        # Build context from previous node outputs
         prev_outputs = self._build_context_for_node(node["id"])
-
-        # Build enriched intent
         ctx_parts = [instruction]
         if prev_outputs:
             ctx_parts.append("\n--- Contexto de nodos anteriores ---")
@@ -356,7 +351,10 @@ class NodeEngine:
                     ctx_parts.append(f"Nodo {nid}: {summary}")
         enriched_intent = "\n".join(ctx_parts)
 
-        # Create a mini orchestrator state for the dispatch
+        meta = {"execution_id": self.execution_id}
+        if extra_meta:
+            meta.update(extra_meta)
+
         subtask = {
             "id": node["id"],
             "agent": domain,
@@ -365,9 +363,8 @@ class NodeEngine:
             "depends_on": [],
             "status": "pending",
         }
-
-        mini_state: OrchestratorState = {
-            "task_id": str(uuid.uuid4()),  # Placeholder for audit
+        mini_state = {
+            "task_id": str(uuid.uuid4()),
             "tenant_id": self.tenant_id,
             "user_id": self.user_id or "",
             "user_intent": instruction,
@@ -381,13 +378,15 @@ class NodeEngine:
             "approval_id": None,
             "error_message": None,
             "iteration_count": 0,
-            "additional_metadata": {"execution_id": self.execution_id},
+            "additional_metadata": meta,
         }
+        return domain, instruction, subtask, mini_state
 
-        # Use the dispatch functions directly
+    async def _execute_skill_node(self, node: dict, db: AsyncSession) -> dict:
+        """Ejecuta un nodo skill reutilizando las funciones _dispatch_* del orchestrator."""
+        domain, instruction, subtask, mini_state = self._build_skill_dispatch(node)
         result = await self._dispatch_agent(domain, mini_state, subtask)
 
-        # Log to audit
         try:
             action_str = (
                 result.get("output", {}).get("action", "execute")
@@ -414,26 +413,19 @@ class NodeEngine:
 
     async def _run_agent_parallel(self, node: dict) -> dict:
         """
-        Runs a skill node's agent dispatch in isolation (no shared DB session).
-        Returns the updated node_state dict.
-        Used for parallel execution with asyncio.gather.
+        Ejecuta un nodo skill sin sesión DB compartida (para asyncio.gather).
+        Devuelve el dict node_state actualizado.
         """
-        from app.agents.orchestrator import TaskStatus
-
-        node_id = node["id"]
         node_type = node.get("type", "skill")
         now = datetime.now(UTC).isoformat()
 
         if node_type not in ("skill", "action", "trigger"):
-            # Only skill/action nodes are safe to parallelize; control-flow nodes need sequential handling
             return {
                 "status": SKIPPED,
                 "started_at": now,
                 "output": {"reason": f"Node type '{node_type}' not parallelizable"},
                 "completed_at": datetime.now(UTC).isoformat(),
             }
-
-        # trigger nodes are already marked completed in run(); skip them here
         if node_type == "trigger":
             return {
                 "status": COMPLETED,
@@ -443,62 +435,16 @@ class NodeEngine:
             }
 
         try:
-            data = node.get("data", {})
-            domain = data.get("domain", "billing")
-            instruction = data.get("instruction") or data.get("label", "Ejecutar automatización")
-
-            prev_outputs = self._build_context_for_node(node_id)
-            ctx_parts = [instruction]
-            if prev_outputs:
-                ctx_parts.append("\n--- Contexto de nodos anteriores ---")
-                for nid, ns in prev_outputs.items():
-                    output = ns.get("output", {})
-                    if isinstance(output, dict):
-                        summary = ", ".join(
-                            f"{k}: {v}"
-                            for k, v in output.items()
-                            if not isinstance(v, (dict, list)) or len(str(v)) < 200
-                        )
-                        ctx_parts.append(f"Nodo {nid}: {summary}")
-            enriched_intent = "\n".join(ctx_parts)
-
-            subtask = {
-                "id": node_id,
-                "agent": domain,
-                "action": "execute_node",
-                "params": {"intent": enriched_intent},
-                "depends_on": [],
-                "status": "pending",
-            }
-
-            mini_state = {
-                "task_id": str(uuid.uuid4()),
-                "tenant_id": self.tenant_id,
-                "user_id": self.user_id or "",
-                "user_intent": instruction,
-                "current_intent": enriched_intent,
-                "classified_domain": domain,
-                "plan": [subtask],
-                "current_step": 0,
-                "agent_results": [],
-                "status": TaskStatus.EXECUTING,
-                "requires_human_approval": False,
-                "approval_id": None,
-                "error_message": None,
-                "iteration_count": 0,
-                "additional_metadata": {"execution_id": self.execution_id, "parallel": True},
-            }
-
+            domain, _instruction, subtask, mini_state = self._build_skill_dispatch(
+                node, extra_meta={"parallel": True}
+            )
             result = await self._dispatch_agent(domain, mini_state, subtask)
-            output = result.get("output", {})
-
             return {
                 "status": COMPLETED if result.get("success", True) else FAILED,
                 "started_at": now,
-                "output": output,
+                "output": result.get("output", {}),
                 "completed_at": datetime.now(UTC).isoformat(),
             }
-
         except Exception as e:
             return {
                 "status": FAILED,
@@ -509,52 +455,38 @@ class NodeEngine:
 
     async def _dispatch_agent(self, domain: str, state: dict, subtask: dict) -> dict:
         """Dispatch to the appropriate agent based on domain."""
+        from app.agents.orchestrator.dispatchers import (
+            _dispatch_banking,
+            _dispatch_billing,
+            _dispatch_compliance,
+            _dispatch_crm,
+            _dispatch_documents,
+            _dispatch_email,
+            _dispatch_excel,
+            _dispatch_hr,
+            _dispatch_rag,
+            _dispatch_skill,
+            _dispatch_workflow,
+        )
+
+        dispatch_map = {
+            "billing": _dispatch_billing,
+            "documents": _dispatch_documents,
+            "hr": _dispatch_hr,
+            "email": _dispatch_email,
+            "crm": _dispatch_crm,
+            "banking": _dispatch_banking,
+            "compliance": _dispatch_compliance,
+            "rag": _dispatch_rag,
+            "excel": _dispatch_excel,
+            "workflow": _dispatch_workflow,
+            "skill": _dispatch_skill,
+        }
+
         try:
-            if domain == "billing":
-                from app.agents.orchestrator import _dispatch_billing
-
-                return await _dispatch_billing(state, subtask)
-            elif domain == "documents":
-                from app.agents.orchestrator import _dispatch_documents
-
-                return await _dispatch_documents(state, subtask)
-            elif domain == "hr":
-                from app.agents.orchestrator import _dispatch_hr
-
-                return await _dispatch_hr(state, subtask)
-            elif domain == "email":
-                from app.agents.orchestrator import _dispatch_email
-
-                return await _dispatch_email(state, subtask)
-            elif domain == "crm":
-                from app.agents.orchestrator import _dispatch_crm
-
-                return await _dispatch_crm(state, subtask)
-            elif domain == "banking":
-                from app.agents.orchestrator import _dispatch_banking
-
-                return await _dispatch_banking(state, subtask)
-            elif domain == "compliance":
-                from app.agents.orchestrator import _dispatch_compliance
-
-                return await _dispatch_compliance(state, subtask)
-            elif domain == "rag":
-                from app.agents.orchestrator import _dispatch_rag
-
-                return await _dispatch_rag(state, subtask)
-            elif domain == "excel":
-                from app.agents.orchestrator import _dispatch_excel
-
-                return await _dispatch_excel(state, subtask)
-            elif domain == "workflow":
-                from app.agents.orchestrator import _dispatch_workflow
-
-                return await _dispatch_workflow(state, subtask)
-            elif domain == "skill" or domain.startswith("skill:"):
-                from app.agents.orchestrator import _dispatch_skill
-
-                return await _dispatch_skill(state, subtask)
-            else:
+            lookup = domain if not domain.startswith("skill:") else "skill"
+            handler = dispatch_map.get(lookup)
+            if not handler:
                 return {
                     "subtask_id": subtask["id"],
                     "agent": domain,
@@ -562,6 +494,7 @@ class NodeEngine:
                     "output": {"message": f"Agente '{domain}' no reconocido"},
                     "error": f"Unknown domain: {domain}",
                 }
+            return await handler(state, subtask)
         except Exception as e:
             return {
                 "subtask_id": subtask["id"],
@@ -586,18 +519,14 @@ class NodeEngine:
             if last_pred in self.node_states:
                 context["prev"] = self.node_states[last_pred]
 
-        import logging
-
-        logging.getLogger("node_engine").info(
+        _logger.info(
             f"[CONDITIONAL] node={node['id']} condition={condition} "
             f"context_keys={list(context.keys())}"
         )
         # Log the resolved field value for debugging
         field = condition.get("field", "")
-        from app.services.ai.condition_evaluator import _resolve_field
-
         resolved = _resolve_field(field, context)
-        logging.getLogger("node_engine").info(
+        _logger.info(
             f"[CONDITIONAL] field='{field}' resolved_to={resolved}"
         )
 
@@ -623,21 +552,18 @@ class NodeEngine:
 
         # Schedule task to resume after delay
         try:
-            from app.services.workflow.task_dispatch import dispatch_resume_node_engine
-
             await dispatch_resume_node_engine(
                 self.execution_id,
                 node_id,
                 delay_seconds=delay_seconds,
             )
         except Exception as e:
-            print(f"[NODE_ENGINE] Error scheduling delay resume: {e}")
+            _logger.error("Error scheduling delay resume: %s", e)
 
         return {"suspend": True}
 
     async def _execute_approval_gate(self, node: dict, db: AsyncSession) -> dict:
         """Crea PendingApproval y pausa la ejecución."""
-        from datetime import timedelta
 
         data = node.get("data", {})
         description = (

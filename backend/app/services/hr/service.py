@@ -15,7 +15,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee, Payroll, Tenant, TenantDocument
+from app.services.event_bus import emit_event
+from app.services.pdf import (
+    generate_finiquito_pdf as _pdf_finiquito,
+    generate_liquidacion_finiquito_pdf as _pdf_liquidacion,
+    generate_payroll_pdf,
+    generate_registro_jornada_pdf as _pdf_registro_jornada,
+)
+from app.services.state_machine import validate_transition
+from app.services.template_service import get_default_theme
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +85,6 @@ async def create_employee(payload, tenant_id, db: AsyncSession) -> Employee:
     await db.refresh(emp)
 
     try:
-        from app.services.event_bus import emit_event
         await emit_event(db, tenant_id, None, "employee_created", {
             "employee_id": str(emp.id), "name": emp.name,
         })
@@ -202,7 +211,6 @@ async def approve_payroll(payroll_id: UUID, tenant_id, user_id, db: AsyncSession
     if not payroll:
         raise ValueError("Nómina no encontrada")
 
-    from app.services.state_machine import InvalidTransitionError, validate_transition
     validate_transition("Payroll", payroll.status, "approved")
 
     payroll.status = "approved"
@@ -279,8 +287,6 @@ def build_payroll_pdf(
     payroll: Payroll, theme_config: dict | None = None, tenant: Tenant | None = None,
 ) -> bytes:
     """Construye datos y llama al generador de PDF de nómina."""
-    from app.services.pdf import generate_payroll_pdf
-
     emp = payroll.employee
     base = float(payroll.base_salary or 0)
     gross = float(getattr(payroll, "gross_salary", None) or base)
@@ -349,7 +355,6 @@ async def generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id
             if not payroll:
                 return
 
-            from app.services.template_service import get_default_theme
             theme_config = await get_default_theme(uuid_mod.UUID(tenant_id), "payroll", db)
             tenant = await db.get(Tenant, uuid_mod.UUID(tenant_id))
 
@@ -483,8 +488,6 @@ async def download_payroll_pdf(
     if not payroll:
         raise ValueError("Nómina no encontrada")
 
-    from app.services.template_service import get_default_theme
-
     theme_config = await get_default_theme(tenant_id, "payroll", db)
     tenant = await db.get(Tenant, tenant_id)
 
@@ -519,8 +522,6 @@ async def load_employee_and_tenant(
 
 
 def generate_finiquito_pdf(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str]:
-    from app.services.pdf import generate_finiquito_pdf as _gen
-
     finiquito_data = {
         "employee": {"name": emp.name, "nif": emp.nif or ""},
         "company": {
@@ -536,14 +537,12 @@ def generate_finiquito_pdf(emp: Employee, tenant: Tenant | None, payload) -> tup
         "liquido": payload.liquido,
         "fecha": datetime.now(UTC).isoformat(),
     }
-    pdf_bytes = _gen(finiquito_data)
+    pdf_bytes = _pdf_finiquito(finiquito_data)
     filename = f"Finiquito_{emp.name.replace(' ', '_')}_{payload.fecha_baja[:10]}.pdf"
     return pdf_bytes, filename
 
 
 def generate_liquidacion_pdf(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str]:
-    from app.services.pdf import generate_liquidacion_finiquito_pdf as _gen
-
     liquidacion_data = {
         "employee": {
             "name": emp.name, "nif": emp.nif or "",
@@ -564,14 +563,12 @@ def generate_liquidacion_pdf(emp: Employee, tenant: Tenant | None, payload) -> t
         "liquido": payload.liquido,
         "fecha": datetime.now(UTC).isoformat(),
     }
-    pdf_bytes = _gen(liquidacion_data)
+    pdf_bytes = _pdf_liquidacion(liquidacion_data)
     filename = f"Liquidacion_{emp.name.replace(' ', '_')}_{payload.fecha_baja[:10]}.pdf"
     return pdf_bytes, filename
 
 
 def generate_registro_jornada(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str]:
-    from app.services.pdf import generate_registro_jornada_pdf as _gen
-
     registro_data = {
         "employee": {"name": emp.name, "nif": emp.nif or ""},
         "company": {
@@ -585,7 +582,7 @@ def generate_registro_jornada(emp: Employee, tenant: Tenant | None, payload) -> 
         "total_horas_ordinarias": payload.total_horas_ordinarias,
         "total_horas_extras": payload.total_horas_extras,
     }
-    pdf_bytes = _gen(registro_data)
+    pdf_bytes = _pdf_registro_jornada(registro_data)
     mes_str = f"{payload.anio}-{payload.mes:02d}"
     filename = f"Registro_Jornada_{emp.name.replace(' ', '_')}_{mes_str}.pdf"
     return pdf_bytes, filename

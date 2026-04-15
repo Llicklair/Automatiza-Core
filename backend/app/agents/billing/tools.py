@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from langchain_core.tools import tool
+from sqlalchemy import desc, func, or_, select
 
 from app.agents.agent_tools.documents import (
     create_document,
@@ -28,6 +29,9 @@ from app.agents.agent_tools.knowledge import (
 )
 from app.agents.validators.billing import validate_invoice_data
 from app.core.config import settings
+from app.db.base import AsyncSessionLocal
+from app.db.models.billing import DeliveryNote, DeliveryNoteLine, DocumentTemplate
+from app.db.models.models import Client, Invoice, InvoiceLine, TenantDocument
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +115,159 @@ async def create_invoice(
     )
 
 
+async def _resolve_client(
+    tenant_id: str, client_name: str, client_nif: str = ""
+) -> "tuple[UUID | None, str, str] | str":
+    """
+    Busca un cliente por nombre (y opcionalmente NIF).
+    Devuelve (client_id, resolved_name, resolved_nif) o un string de error.
+    Si se pasa client_nif, omite la búsqueda y devuelve (None, name, nif).
+    """
+    name = client_name.strip()
+    nif = client_nif.strip()
+    if nif:
+        return None, name, nif
+    if not name:
+        return "Error: Debes indicar el nombre del cliente o su NIF."
+
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(
+            select(Client).where(
+                Client.tenant_id == UUID(tenant_id),
+                func.lower(Client.name) == name.lower(),
+            )
+        )
+        exact = res.scalars().all()
+        if len(exact) == 1:
+            c = exact[0]
+            return c.id, c.name, c.nif or ""
+        if len(exact) > 1:
+            opts = ", ".join(f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in exact)
+            return f"Error: Hay {len(exact)} clientes con el nombre '{client_name}': {opts}. Especifica el NIF."
+
+        res = await db.execute(
+            select(Client)
+            .where(
+                Client.tenant_id == UUID(tenant_id),
+                func.lower(Client.name).contains(name.lower()),
+            )
+            .order_by(Client.name)
+            .limit(5)
+        )
+        partial = res.scalars().all()
+        if len(partial) == 1:
+            c = partial[0]
+            return c.id, c.name, c.nif or ""
+        if len(partial) > 1:
+            opts = ", ".join(f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in partial)
+            return (
+                f"Error: '{client_name}' coincide con {len(partial)} clientes: {opts}. "
+                "Especifica el NIF del cliente para evitar facturar al equivocado."
+            )
+    return (
+        f"Error: No se encontró el cliente '{client_name}'. "
+        "Comprueba el nombre o proporciona el NIF directamente."
+    )
+
+
+async def _load_invoice_template(tenant_id: str) -> tuple[dict | None, str | None]:
+    """Carga la plantilla visual activa del tenant. Devuelve (theme_config, template_name)."""
+    try:
+        async with AsyncSessionLocal() as db:
+            r = await db.execute(
+                select(DocumentTemplate)
+                .where(
+                    DocumentTemplate.tenant_id == UUID(tenant_id),
+                    DocumentTemplate.template_type == "invoice",
+                )
+                .order_by(DocumentTemplate.is_default.desc(), DocumentTemplate.created_at)
+            )
+            tpl = r.scalars().first()
+        if not tpl:
+            return None, None
+        return {
+            "accent_color": tpl.accent_color,
+            "font_family": tpl.font_family,
+            "layout_style": tpl.layout_style,
+            "logo_position": tpl.logo_position,
+            "header_style": tpl.header_style,
+            "table_style": tpl.table_style,
+            "footer_text": tpl.footer_text,
+        }, tpl.name
+    except Exception as e:
+        logger.error("No se pudo cargar plantilla de factura: %s", e)
+        return None, None
+
+
+async def _generate_and_save_invoice_pdf(
+    tenant_id: str,
+    invoice,
+    invoice_line,
+    client,
+    issuer_name: str,
+    issuer_nif: str,
+    issuer_address: str,
+    issuer_email: str,
+    theme_config: dict | None,
+) -> tuple[str | None, str | None]:
+    """Genera el PDF de factura, lo guarda en disco y en BD. Devuelve (document_id, warning)."""
+    from app.services.pdf import generate_invoice_pdf
+
+    try:
+        pdf_data = {
+            "number": invoice.invoice_number,
+            "date": invoice.date.isoformat(),
+            "amount_base": float(invoice.amount_base),
+            "tax_amount": float(invoice.tax_amount),
+            "amount_total": float(invoice.amount_total),
+            "notes": invoice.notes,
+            "client": {"name": client.name, "nif": client.nif},
+            "lines": [{
+                "description": invoice_line.description,
+                "quantity": invoice_line.quantity,
+                "unit_price": invoice_line.unit_price,
+                "tax_percentage": invoice_line.tax_percentage,
+                "total": invoice_line.total,
+            }],
+            "company": {
+                "name": issuer_name or getattr(settings, "APP_NAME", "Empresa"),
+                "nif": issuer_nif or "B-00000000",
+                "address": issuer_address or "",
+                "email": issuer_email or "",
+            },
+        }
+        pdf_bytes = generate_invoice_pdf(pdf_data, theme_config)
+
+        upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
+        if not os.path.exists(upload_dir) and os.name == "nt":
+            upload_dir = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+            )
+        os.makedirs(upload_dir, exist_ok=True)
+
+        file_name = f"Factura_{invoice.invoice_number}.pdf"
+        file_path = os.path.join(upload_dir, file_name)
+        with open(file_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        doc = TenantDocument(
+            tenant_id=UUID(tenant_id),
+            file_name=file_name,
+            file_path=file_path,
+            file_type="application/pdf",
+            file_size=len(pdf_bytes),
+            category="Facturas",
+            status="completed",
+        )
+        async with AsyncSessionLocal() as db_doc:
+            db_doc.add(doc)
+            await db_doc.commit()
+            await db_doc.refresh(doc)
+        return str(doc.id), None
+    except Exception as e:
+        return None, f"Factura creada pero error al generar PDF: {e}"
+
+
 async def _create_invoice_async(
     tenant_id: str,
     client_name: str,
@@ -125,132 +282,53 @@ async def _create_invoice_async(
     issuer_address: str,
     issuer_email: str,
 ) -> str:
-    from sqlalchemy import func, select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, Invoice, InvoiceLine, TenantDocument
-
-    today = date.today().isoformat()
-
-    # ── Parsear importe ──
+    # Parsear importe
     try:
         raw = amount_base_str.strip()
-        if re.search(r"\.\d{3}(?:[,\d]|$)", raw):
-            raw = raw.replace(".", "").replace(",", ".")
-        else:
-            raw = raw.replace(",", ".")
+        raw = raw.replace(".", "").replace(",", ".") if re.search(r"\.\d{3}(?:[,\d]|$)", raw) else raw.replace(",", ".")
         amount = Decimal(raw)
     except (InvalidOperation, Exception):
         return f"Error: Importe no válido: '{amount_base_str}'. Usa formato '1500.00'."
 
-    # ── Parsear fecha ──
-    inv_date_str = invoice_date_str.strip() if invoice_date_str else today
+    # Parsear fecha
+    inv_date_str = invoice_date_str.strip() if invoice_date_str else date.today().isoformat()
     try:
         inv_date = date.fromisoformat(inv_date_str)
     except ValueError:
         return f"Error: Fecha no válida: '{inv_date_str}'. Usa formato YYYY-MM-DD."
 
-    # ── Resolución de cliente ──
-    resolved_nif = client_nif.strip() if client_nif else ""
-    resolved_name = client_name.strip()
-    resolved_client_id = (
-        None  # ID exacto del cliente encontrado, evita ambigüedad por NIF duplicado
-    )
+    # Resolver cliente
+    client_result = await _resolve_client(tenant_id, client_name, client_nif)
+    if isinstance(client_result, str):
+        return client_result
+    resolved_client_id, resolved_name, resolved_nif = client_result
 
-    if not resolved_nif:
-        if not resolved_name:
-            return "Error: Debes indicar el nombre del cliente o su NIF."
-        try:
-            async with AsyncSessionLocal() as db:
-                # 1. Match exacto
-                res = await db.execute(
-                    select(Client).where(
-                        Client.tenant_id == UUID(tenant_id),
-                        func.lower(Client.name) == resolved_name.lower(),
-                    )
-                )
-                exact_clients = res.scalars().all()
-
-                if len(exact_clients) == 1:
-                    resolved_nif = exact_clients[0].nif
-                    resolved_name = exact_clients[0].name
-                    resolved_client_id = exact_clients[0].id
-                elif len(exact_clients) == 0:
-                    # 2. Match parcial — sólo válido si el resultado es único
-                    res = await db.execute(
-                        select(Client)
-                        .where(
-                            Client.tenant_id == UUID(tenant_id),
-                            func.lower(Client.name).contains(resolved_name.lower()),
-                        )
-                        .order_by(Client.name)
-                        .limit(5)
-                    )
-                    partial_clients = res.scalars().all()
-
-                    if len(partial_clients) == 1:
-                        resolved_nif = partial_clients[0].nif
-                        resolved_name = partial_clients[0].name
-                        resolved_client_id = partial_clients[0].id
-                    elif len(partial_clients) > 1:
-                        options = ", ".join(
-                            f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in partial_clients
-                        )
-                        return (
-                            f"Error: '{client_name}' coincide con {len(partial_clients)} clientes: {options}. "
-                            "Especifica el NIF del cliente para evitar facturar al equivocado."
-                        )
-                else:
-                    # Múltiples exactos (nombres duplicados)
-                    options = ", ".join(
-                        f"'{c.name}' (NIF: {c.nif or 'N/A'})" for c in exact_clients
-                    )
-                    return (
-                        f"Error: Hay {len(exact_clients)} clientes con el nombre '{client_name}': {options}. "
-                        "Especifica el NIF del cliente."
-                    )
-        except Exception:
-            logger.debug("Client lookup failed for name '%s'", resolved_name, exc_info=True)
-
-    if not resolved_nif:
-        return (
-            f"Error: No se encontró el cliente '{resolved_name}'. "
-            "Comprueba el nombre o proporciona el NIF directamente."
-        )
-
-    # ── Validación determinista ──
+    # Validar
     validation = validate_invoice_data(
-        client_nif=resolved_nif,
-        amount_base=amount,
-        vat_rate=vat_rate,
-        invoice_date=inv_date,
+        client_nif=resolved_nif, amount_base=amount, vat_rate=vat_rate, invoice_date=inv_date,
     )
     if not validation.is_valid:
         return f"Error de validación: {'; '.join(validation.errors)}"
 
-    # ── Aprobación humana si > 5000€ ──
+    # Aprobación humana si > 5000€
     if amount > Decimal("5000"):
         tax = round(amount * Decimal(str(vat_rate)) / 100, 2)
-        total = amount + tax
         return (
             f"APROBACIÓN REQUERIDA: La factura supera el umbral de 5.000€.\n"
-            f"Cliente: {resolved_name} (NIF: {resolved_nif})\n"
-            f"Concepto: {concept}\n"
-            f"Base: {amount}€ + IVA {vat_rate}% = {total}€\n"
+            f"Cliente: {resolved_name} (NIF: {resolved_nif})\nConcepto: {concept}\n"
+            f"Base: {amount}€ + IVA {vat_rate}% = {amount + tax}€\n"
             f"La factura NO se ha creado. Requiere aprobación humana desde el dashboard."
         )
 
-    # ── Transacción atómica: Client + Invoice + InvoiceLine ──
     tax_amount = round(amount * Decimal(str(vat_rate)) / 100, 2)
     total_amount = amount + tax_amount
     inv_datetime = datetime(inv_date.year, inv_date.month, inv_date.day, tzinfo=UTC)
     invoice_number = f"IA-{uuid.uuid4().hex[:8].upper()}"
-
     warnings = validation.warnings[:]
 
     async with AsyncSessionLocal() as db:
         try:
-            # Upsert cliente — usar ID exacto si lo tenemos (evita ambigüedad por NIF compartido)
+            # Upsert cliente
             if resolved_client_id:
                 result = await db.execute(select(Client).where(Client.id == resolved_client_id))
                 local_client = result.scalars().first()
@@ -264,170 +342,55 @@ async def _create_invoice_async(
                 )
                 local_client = result.scalars().first()
                 if not local_client:
-                    # Fallback: solo por NIF (cliente nuevo que llega por NIF directo)
                     result = await db.execute(
-                        select(Client).where(
-                            Client.tenant_id == UUID(tenant_id),
-                            Client.nif == resolved_nif,
-                        )
+                        select(Client).where(Client.tenant_id == UUID(tenant_id), Client.nif == resolved_nif)
                     )
                     local_client = result.scalars().first()
             if not local_client:
-                local_client = Client(
-                    tenant_id=UUID(tenant_id),
-                    nif=resolved_nif,
-                    name=resolved_name,
-                )
+                local_client = Client(tenant_id=UUID(tenant_id), nif=resolved_nif, name=resolved_name)
                 db.add(local_client)
                 await db.flush()
 
-            # Crear factura
             new_invoice = Invoice(
-                tenant_id=UUID(tenant_id),
-                client_id=local_client.id,
-                invoice_number=invoice_number,
-                date=inv_datetime,
-                amount_base=amount,
-                tax_amount=tax_amount,
-                amount_total=total_amount,
-                notes=notes or None,
-                status="draft",
+                tenant_id=UUID(tenant_id), client_id=local_client.id,
+                invoice_number=invoice_number, date=inv_datetime,
+                amount_base=amount, tax_amount=tax_amount, amount_total=total_amount,
+                notes=notes or None, status="draft",
             )
             db.add(new_invoice)
             await db.flush()
 
-            # Línea de factura
             invoice_line = InvoiceLine(
-                invoice_id=new_invoice.id,
-                description=concept or "Servicio",
-                quantity=1.0,
-                unit_price=float(amount),
-                discount_percentage=0.0,
-                tax_percentage=float(vat_rate),
-                total=float(total_amount),
+                invoice_id=new_invoice.id, description=concept or "Servicio",
+                quantity=1.0, unit_price=float(amount), discount_percentage=0.0,
+                tax_percentage=float(vat_rate), total=float(total_amount),
             )
             db.add(invoice_line)
 
-            # Emitir evento
             try:
                 from app.services.event_bus import emit_event
-
                 await emit_event(
-                    db=db,
-                    tenant_id=UUID(tenant_id),
-                    user_id=None,
-                    event_name="invoice_created",
-                    context={
-                        "invoice_id": str(new_invoice.id),
-                        "invoice_number": invoice_number,
-                        "amount_total": float(total_amount),
-                        "client_name": resolved_name,
-                        "client_nif": resolved_nif,
-                        "concept": concept,
-                    },
+                    db=db, tenant_id=UUID(tenant_id), user_id=None, event_name="invoice_created",
+                    context={"invoice_id": str(new_invoice.id), "invoice_number": invoice_number,
+                             "amount_total": float(total_amount), "client_name": resolved_name,
+                             "client_nif": resolved_nif, "concept": concept},
                 )
             except Exception as ev_err:
                 warnings.append(f"Evento invoice_created no emitido: {ev_err}")
 
             await db.commit()
             await db.refresh(new_invoice)
-
-            # ── Generar PDF ──
-            document_id = None
-            _template_name = None
-            try:
-                from app.services.pdf import generate_invoice_pdf
-
-                inv_pdf_data = {
-                    "number": new_invoice.invoice_number,
-                    "date": new_invoice.date.isoformat(),
-                    "amount_base": float(new_invoice.amount_base),
-                    "tax_amount": float(new_invoice.tax_amount),
-                    "amount_total": float(new_invoice.amount_total),
-                    "notes": new_invoice.notes,
-                    "client": {"name": local_client.name, "nif": local_client.nif},
-                    "lines": [
-                        {
-                            "description": invoice_line.description,
-                            "quantity": invoice_line.quantity,
-                            "unit_price": invoice_line.unit_price,
-                            "tax_percentage": invoice_line.tax_percentage,
-                            "total": invoice_line.total,
-                        }
-                    ],
-                    "company": {
-                        "name": issuer_name or getattr(settings, "APP_NAME", "Empresa"),
-                        "nif": issuer_nif or "B-00000000",
-                        "address": issuer_address or "",
-                        "email": issuer_email or "",
-                    },
-                }
-
-                try:
-                    from sqlalchemy import select as _sel
-
-                    from app.db.models.billing import DocumentTemplate as _DocTpl
-
-                    async with AsyncSessionLocal() as db_tpl:
-                        _r = await db_tpl.execute(
-                            _sel(_DocTpl)
-                            .where(
-                                _DocTpl.tenant_id == UUID(tenant_id),
-                                _DocTpl.template_type == "invoice",
-                            )
-                            .order_by(_DocTpl.is_default.desc(), _DocTpl.created_at)
-                        )
-                        _tpl = _r.scalars().first()
-                    if _tpl:
-                        _template_name = _tpl.name
-                        theme_config = {
-                            "accent_color": _tpl.accent_color,
-                            "font_family": _tpl.font_family,
-                            "layout_style": _tpl.layout_style,
-                            "logo_position": _tpl.logo_position,
-                            "header_style": _tpl.header_style,
-                            "table_style": _tpl.table_style,
-                            "footer_text": _tpl.footer_text,
-                        }
-                    else:
-                        theme_config = None
-                except Exception as _tpl_err:
-                    logger.error("No se pudo cargar plantilla de factura: %s", _tpl_err)
-                    theme_config = None
-                pdf_bytes = generate_invoice_pdf(inv_pdf_data, theme_config)
-
-                upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-                if not os.path.exists(upload_dir) and os.name == "nt":
-                    upload_dir = os.path.abspath(
-                        os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
-                    )
-                os.makedirs(upload_dir, exist_ok=True)
-
-                file_name = f"Factura_{new_invoice.invoice_number}.pdf"
-                file_path = os.path.join(upload_dir, file_name)
-                with open(file_path, "wb") as f:
-                    f.write(pdf_bytes)
-
-                new_doc = TenantDocument(
-                    tenant_id=UUID(tenant_id),
-                    file_name=file_name,
-                    file_path=file_path,
-                    file_type="application/pdf",
-                    file_size=len(pdf_bytes),
-                    category="Facturas",
-                    status="completed",
-                )
-                async with AsyncSessionLocal() as db_doc:
-                    db_doc.add(new_doc)
-                    await db_doc.commit()
-                    await db_doc.refresh(new_doc)
-                    document_id = str(new_doc.id)
-            except Exception as pdf_err:
-                warnings.append(f"Factura creada pero error al generar PDF: {pdf_err}")
-
         except Exception as e:
             await db.rollback()
             return f"Error al guardar la factura en base de datos: {e}"
+
+    theme_config, template_name = await _load_invoice_template(tenant_id)
+    document_id, pdf_warn = await _generate_and_save_invoice_pdf(
+        tenant_id, new_invoice, invoice_line, local_client,
+        issuer_name, issuer_nif, issuer_address, issuer_email, theme_config,
+    )
+    if pdf_warn:
+        warnings.append(pdf_warn)
 
     warn_text = f"\nAvisos: {'; '.join(warnings)}" if warnings else ""
     return (
@@ -439,7 +402,7 @@ async def _create_invoice_async(
         f"Estado: DRAFT (borrador)\n"
         f"ID factura: {new_invoice.id}\n"
         f"Documento PDF: {document_id or 'No generado'}\n"
-        f"Plantilla visual: {_template_name or 'predeterminada del sistema'}"
+        f"Plantilla visual: {template_name or 'predeterminada del sistema'}"
         f"{warn_text}"
     )
 
@@ -458,10 +421,6 @@ async def list_invoices(tenant_id: str, limit: int = 15) -> str:
 
 
 async def _list_invoices_async(tenant_id: str, limit: int) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, Invoice, TenantDocument
 
     try:
         async with AsyncSessionLocal() as db:
@@ -528,10 +487,6 @@ async def search_client(tenant_id: str, query: str = "") -> str:
 
 
 async def _search_client_async(tenant_id: str, query: str) -> str:
-    from sqlalchemy import func, or_, select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client
 
     try:
         async with AsyncSessionLocal() as db:
@@ -579,10 +534,6 @@ async def update_invoice_status(tenant_id: str, invoice_id: str, new_status: str
 
 
 async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_status: str) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice
 
     allowed = {"draft", "pending", "paid", "cancelled"}
     if new_status not in allowed:
@@ -675,10 +626,6 @@ async def _update_invoice_async(
     vat_rate: float,
     notes: str,
 ) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Invoice, InvoiceLine
 
     try:
         async with AsyncSessionLocal() as db:
@@ -781,10 +728,6 @@ async def send_invoice_by_email(tenant_id: str, invoice_id: str, recipient_email
 async def _send_invoice_by_email_async(
     tenant_id: str, invoice_id: str, recipient_email: str
 ) -> str:
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import Client, Invoice, TenantDocument
 
     try:
         async with AsyncSessionLocal() as db:
@@ -857,11 +800,6 @@ async def list_albaranes(tenant_id: str, status: str = "") -> str:
         tenant_id: ID del tenant
         status: Filtro de estado (vacío = todos)
     """
-    from sqlalchemy import desc, select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.billing import DeliveryNote
-
     try:
         async with AsyncSessionLocal() as db:
             q = select(DeliveryNote).where(DeliveryNote.tenant_id == UUID(tenant_id))
@@ -899,56 +837,16 @@ async def create_albaran(
         albaran_date: Fecha del albarán en formato YYYY-MM-DD (opcional, hoy por defecto)
         notes: Observaciones opcionales
     """
-    from decimal import Decimal
-
-    from sqlalchemy import desc, func, select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.billing import DeliveryNote, DeliveryNoteLine
-    from app.db.models.models import Client
-
     try:
         lines_data = json.loads(lines_json)
         entry_date = date.fromisoformat(albaran_date) if albaran_date else date.today()
 
+        client_result = await _resolve_client(tenant_id, client_name)
+        if isinstance(client_result, str):
+            return client_result
+        client_id, _resolved_name, _resolved_nif = client_result
+
         async with AsyncSessionLocal() as db:
-            # Resolución de cliente: exacto → parcial único → error
-            client_id = None
-            if not client_name or not client_name.strip():
-                return "Error: Debes indicar el nombre del cliente."
-
-            res = await db.execute(
-                select(Client).where(
-                    Client.tenant_id == UUID(tenant_id),
-                    func.lower(Client.name) == client_name.strip().lower(),
-                )
-            )
-            exact_clients = res.scalars().all()
-
-            if len(exact_clients) == 1:
-                client_id = exact_clients[0].id
-            elif len(exact_clients) == 0:
-                res = await db.execute(
-                    select(Client)
-                    .where(
-                        Client.tenant_id == UUID(tenant_id),
-                        func.lower(Client.name).contains(client_name.strip().lower()),
-                    )
-                    .order_by(Client.name)
-                    .limit(5)
-                )
-                partial_clients = res.scalars().all()
-                if len(partial_clients) == 1:
-                    client_id = partial_clients[0].id
-                elif len(partial_clients) > 1:
-                    options = ", ".join(f"'{c.name}'" for c in partial_clients)
-                    return f"Error: '{client_name}' coincide con varios clientes: {options}. Especifica el nombre exacto."
-                else:
-                    return f"Error: No se encontró ningún cliente con el nombre '{client_name}'."
-            else:
-                options = ", ".join(f"'{c.name}'" for c in exact_clients)
-                return f"Error: Hay varios clientes con ese nombre: {options}. Especifica el nombre exacto."
-
             # Auto-number
             last_result = await db.execute(
                 select(DeliveryNote)
@@ -957,58 +855,44 @@ async def create_albaran(
                 .limit(1)
             )
             last = last_result.scalar_one_or_none()
-            num = 1
-            if last and last.albaran_number:
-                try:
-                    num = int(last.albaran_number.split("-")[-1]) + 1
-                except (ValueError, IndexError):
-                    num = 1
+            try:
+                num = int(last.albaran_number.split("-")[-1]) + 1 if last and last.albaran_number else 1
+            except (ValueError, IndexError):
+                num = 1
             albaran_number = f"ALB-{num:05d}"
 
             amount_base = Decimal("0")
             tax_amount = Decimal("0")
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(
-                    str(line.get("unit_price", 0))
-                )
-                tax = base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                tax_amount += base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
                 amount_base += base
-                tax_amount += tax
             amount_total = amount_base + tax_amount
 
             note = DeliveryNote(
-                tenant_id=UUID(tenant_id),
-                client_id=client_id,
-                albaran_number=albaran_number,
-                date=entry_date,
-                notes=notes or None,
-                amount_base=amount_base,
-                tax_amount=tax_amount,
-                amount_total=amount_total,
+                tenant_id=UUID(tenant_id), client_id=client_id,
+                albaran_number=albaran_number, date=entry_date,
+                notes=notes or None, amount_base=amount_base,
+                tax_amount=tax_amount, amount_total=amount_total,
             )
             db.add(note)
             await db.flush()
 
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(
-                    str(line.get("unit_price", 0))
-                )
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
                 total = base + base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
-                db.add(
-                    DeliveryNoteLine(
-                        albaran_id=note.id,
-                        description=line.get("description", ""),
-                        quantity=line.get("quantity", 1),
-                        unit_price=line.get("unit_price", 0),
-                        tax_percentage=line.get("tax_percentage", 21),
-                        total=total,
-                    )
-                )
+                db.add(DeliveryNoteLine(
+                    albaran_id=note.id,
+                    description=line.get("description", ""),
+                    quantity=line.get("quantity", 1),
+                    unit_price=line.get("unit_price", 0),
+                    tax_percentage=line.get("tax_percentage", 21),
+                    total=total,
+                ))
 
             await db.commit()
-            client_label = client_name if client_name else "sin cliente"
             return (
-                f"Albarán {albaran_number} creado correctamente para {client_label}. "
+                f"Albarán {albaran_number} creado correctamente para {client_name or 'sin cliente'}. "
                 f"Total: {float(amount_total):.2f}€"
             )
     except Exception as e:

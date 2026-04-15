@@ -3,11 +3,14 @@ Dispatchers misceláneos: RAG, Excel, Email, Workflow, Skill.
 Todos invocan agentes autónomos via LangGraph graph.ainvoke.
 """
 
+import inspect
 import logging
 
 from app.agents.orchestrator.helpers import _save_ai_result_as_document
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.agents.orchestrator.utils import _format_summary
+from app.agents.tool_registry import get_registry
+from app.skills.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -206,8 +209,6 @@ async def _dispatch_marketing(state: OrchestratorState, subtask: dict) -> AgentR
 
 async def _dispatch_team(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Crea un empleado IA a partir de la descripción en lenguaje natural."""
-    from app.agents.tool_registry import get_registry
-
     tenant_id = state["tenant_id"]
     intent = subtask.get("params", {}).get(
         "intent", state.get("current_intent", state["user_intent"])
@@ -243,8 +244,6 @@ async def _dispatch_team(state: OrchestratorState, subtask: dict) -> AgentResult
 
 async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Invoca una Habilidad Modular (Skill) del registro dinámico."""
-    from app.skills.registry import SkillRegistry
-
     agent_name = subtask["agent"]
     skill_name = agent_name
     if skill_name.startswith("skill:"):
@@ -279,8 +278,6 @@ async def _dispatch_skill(state: OrchestratorState, subtask: dict) -> AgentResul
     try:
         payload = subtask.get("params", {})
         tenant_id = state.get("tenant_id")
-
-        import inspect
 
         if inspect.iscoroutinefunction(skill.run):
             result_data = await skill.run(payload, tenant_id=tenant_id)
