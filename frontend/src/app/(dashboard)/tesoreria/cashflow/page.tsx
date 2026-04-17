@@ -1,77 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type Invoice, type Payroll } from "@/lib/api";
-import { AreaChart, Wallet, ArrowUpRight, ArrowDownRight, CalendarDays, Filter } from "lucide-react";
+import { AreaChart, Wallet, ArrowUpRight, ArrowDownRight, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logError } from "@/lib/logger";
+import { useCashflow } from "./_hooks/useCashflow";
 
 export default function CashflowPage() {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [payrolls, setPayrolls] = useState<Payroll[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'in' | 'out'>('all');
-
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            // Cargar facturas (ingresos/gastos) y nóminas (gastos)
-            const [inv, pay] = await Promise.all([
-                api.erp.invoices.list(),
-                api.hr.payrolls.list()
-            ]);
-            setInvoices(inv);
-            setPayrolls(pay);
-        } catch (error) {
-            logError("tesoreria/cashflow/page", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { loadData(); }, []);
-
-    // Construir la línea de tiempo del Cashflow unificando entidades
-    const timelineEvents: { date: Date; type: 'in' | 'out'; amount: number; description: string; ref: string }[] = [];
-
-    invoices.forEach(inv => {
-        if (inv.status === 'draft' || inv.status === 'cancelled') return;
-
-        // Ventas suman (in), Compras restan (out)
-        const isIncome = inv.invoice_type === 'emitida' || inv.invoice_type === 'venta';
-        const dateObj = new Date(inv.due_date || inv.date); // Usar vencimiento si existe
-
-        timelineEvents.push({
-            date: dateObj,
-            type: isIncome ? 'in' : 'out',
-            amount: Number(inv.amount_total) || 0,
-            description: `Factura ${inv.client?.name || 'Cliente'}`,
-            ref: inv.invoice_number || inv.id.substring(0, 8)
-        });
-    });
-
-    payrolls.forEach(pay => {
-        // Las nóminas siempre restan
-        timelineEvents.push({
-            date: new Date(pay.issue_date),
-            type: 'out',
-            amount: Number(pay.net_salary) || 0,
-            description: `Nómina ${pay.employee?.name || 'Empleado'}`,
-            ref: `PAY-${pay.id.substring(0, 5).toUpperCase()}`
-        });
-    });
-
-    // Ordenar cronológicamente (más antiguo a más reciente)
-    timelineEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    // Calcular KPIs
-    const totalIn = timelineEvents.filter(e => e.type === 'in').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalOut = timelineEvents.filter(e => e.type === 'out').reduce((acc, curr) => acc + curr.amount, 0);
-    const netFlow = totalIn - totalOut;
-
-    // Filtrar para la vista
-    const visibleEvents = timelineEvents.filter(e => filter === 'all' || e.type === filter)
-        .sort((a, b) => b.date.getTime() - a.date.getTime()); // Invertir orden para ver lo reciente primero
+    const { loading, filter, setFilter, totalIn, totalOut, netFlow, visibleEvents } = useCashflow();
 
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">

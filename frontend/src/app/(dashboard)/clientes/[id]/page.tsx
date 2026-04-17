@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { api, type Client, type Invoice } from "@/lib/api";
-import { logError } from "@/lib/logger";
+import { useTranslations } from "next-intl";
 import {
     ArrowLeft, User, Mail, MapPin, Hash, FileText, CheckCircle2,
     Clock, XCircle, Loader2, Plus, ExternalLink
 } from "lucide-react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useClienteDetalle } from "./_hooks/useClienteDetalle";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -20,33 +17,25 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
     draft: <FileText className="w-4 h-4 text-muted-foreground" />,
 };
 
-const STATUS_LABELS: Record<string, { labelKey: string; color: string; bg: string; border: string }> = {
-    paid: { labelKey: "paid", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-    pending: { labelKey: "pending", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-    cancelled: { labelKey: "cancelled", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
-    draft: { labelKey: "draft", color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
+const STATUS_LABELS: Record<string, { color: string; bg: string; border: string }> = {
+    paid: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    pending: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    cancelled: { color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+    draft: { color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
 };
 
 export default function ClientDetailPage() {
-    const { id } = useParams<{ id: string }>();
-    const router = useRouter();
     const t = useTranslations("clientes");
-    const [client, setClient] = useState<Client | null>(null);
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!id) return;
-        Promise.all([
-            api.erp.clients.list({ limit: 200 }),
-            api.erp.clients.invoices(id),
-        ]).then(([clients, invs]) => {
-            const found = clients.find(c => c.id === id) || null;
-            setClient(found);
-            setInvoices(invs);
-        }).catch(err => logError("clientes/detalle", err))
-            .finally(() => setLoading(false));
-    }, [id]);
+    const {
+        router,
+        client,
+        invoices,
+        loading,
+        totalFacturado,
+        totalCobrado,
+        pendiente,
+        timeline,
+    } = useClienteDetalle(t);
 
     if (loading) {
         return (
@@ -66,21 +55,6 @@ export default function ClientDetailPage() {
             </div>
         );
     }
-
-    const totalFacturado = invoices.reduce((acc, inv) => acc + inv.amount_total, 0);
-    const totalCobrado = invoices.filter(i => i.status === "paid").reduce((acc, inv) => acc + inv.amount_total, 0);
-    const pendiente = invoices.filter(i => i.status === "pending").reduce((acc, inv) => acc + inv.amount_total, 0);
-
-    // Build timeline combining invoices
-    const timeline = invoices.map(inv => ({
-        date: inv.date,
-        type: "invoice" as const,
-        title: `${t("invoiceLabel")} ${inv.invoice_number || t("invoiceNoNumber")}`,
-        subtitle: STATUS_LABELS[inv.status]?.labelKey ? t(STATUS_LABELS[inv.status].labelKey as any) : inv.status,
-        amount: inv.amount_total,
-        status: inv.status,
-        id: inv.id,
-    })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8">
@@ -178,7 +152,7 @@ export default function ClientDetailPage() {
                                                         </p>
                                                     </div>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${st?.bg} ${st?.border} border ${st?.color}`}>
-                                                        {st?.labelKey ? t(st.labelKey as any) : ""}
+                                                        {event.subtitle}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
