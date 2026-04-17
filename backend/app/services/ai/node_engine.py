@@ -15,6 +15,9 @@ Flujo:
   4. Loop: busca nodos listos → ejecuta → actualiza node_states en BD
   5. Si delay/approval → suspende, programa reanudación/crea PendingApproval
   6. Todos los leaf nodes completados → execution.status = "success"
+
+Graph traversal helpers live in node_graph_helpers.py (pure, sync, no DB).
+Node-type execution handlers live in node_engine_nodes.py.
 """
 
 from __future__ import annotations
@@ -22,41 +25,25 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from collections import Counter
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.models import PendingApproval, Workflow, WorkflowExecution
+from app.db.models.models import Workflow, WorkflowExecution
 from app.services.audit import log_action
-from app.services.ai.condition_evaluator import evaluate_condition, _resolve_field
-from app.services.workflow.task_dispatch import dispatch_resume_node_engine
+from app.services.ai.node_graph_helpers import (
+    COMPLETED, FAILED, RUNNING, SKIPPED,
+    all_leaf_nodes_completed,
+    find_ready_nodes,
+    get_predecessors,
+    get_successors,
+    has_suspended_nodes,
+    skip_discarded_branch,
+)
+from app.services.ai import node_engine_nodes as _nodes
 
 _logger = logging.getLogger(__name__)
-
-# Node statuses
-COMPLETED = "completed"
-FAILED = "failed"
-RUNNING = "running"
-WAITING = "waiting"  # delay
-PAUSED = "paused"  # approval_gate
-SKIPPED = "skipped"
-PENDING = "pending"
-
-# Advanced node types that trigger the NodeEngine
-ADVANCED_NODE_TYPES = {"conditional", "delay", "approval_gate", "parallel"}
-
-
-def has_advanced_nodes(ui_nodes: list[dict], ui_edges: list[dict] | None = None) -> bool:
-    """Returns True if the workflow contains any advanced node types or fan-out topology."""
-    if any(n.get("type") in ADVANCED_NODE_TYPES for n in (ui_nodes or [])):
-        return True
-    if ui_edges:
-        source_counts = Counter(e.get("source") for e in ui_edges)
-        if any(v >= 2 for v in source_counts.values()):
-            return True
-    return False
 
 
 class NodeEngine:
@@ -83,7 +70,6 @@ class NodeEngine:
 
     async def run(self, db: AsyncSession) -> dict:
         """Ejecuta el grafo completo desde el inicio."""
-        # 1. Load workflow definition
         wf = await self._load_workflow(db)
         if not wf:
             return {"status": "failed", "error": "Workflow not found"}
@@ -92,14 +78,12 @@ class NodeEngine:
         self.edges = wf.ui_edges or []
         self.node_map = {n["id"]: n for n in self.nodes}
 
-        # 2. Load execution and existing node_states (for resume)
         execution = await self._load_execution(db)
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
 
         self.node_states = dict(execution.node_states or {})
 
-        # 3. Mark trigger node(s) as completed
         for node in self.nodes:
             if node.get("type") == "trigger" and node["id"] not in self.node_states:
                 self.node_states[node["id"]] = {
@@ -109,12 +93,10 @@ class NodeEngine:
                     "completed_at": datetime.now(UTC).isoformat(),
                 }
 
-        # 4. Update execution status to running
         execution.status = "running"
         execution.node_states = dict(self.node_states)
         await db.flush()
 
-        # 5. Execute the graph loop
         return await self._execute_loop(db, execution)
 
     async def resume(self, db: AsyncSession, from_node_id: str) -> dict:
@@ -133,7 +115,7 @@ class NodeEngine:
 
         self.node_states = dict(execution.node_states or {})
 
-        # Mark the paused/waiting node as completed for resume
+        from app.services.ai.node_graph_helpers import WAITING, PAUSED
         if from_node_id in self.node_states:
             ns = self.node_states[from_node_id]
             if ns["status"] in (WAITING, PAUSED):
@@ -149,14 +131,13 @@ class NodeEngine:
 
     async def _execute_loop(self, db: AsyncSession, execution: WorkflowExecution) -> dict:
         """Main execution loop: find ready nodes, execute, repeat."""
-        max_iterations = 100  # Safety limit
+        max_iterations = 100
 
         for _ in range(max_iterations):
-            ready_nodes = self._find_ready_nodes()
+            ready_nodes = find_ready_nodes(self.nodes, self.edges, self.node_states)
 
             if not ready_nodes:
-                # Check if we're done or stuck
-                if self._all_leaf_nodes_completed():
+                if all_leaf_nodes_completed(self.nodes, self.edges, self.node_states):
                     execution.status = "success"
                     execution.completed_at = datetime.now(UTC)
                     execution.node_states = dict(self.node_states)
@@ -164,13 +145,11 @@ class NodeEngine:
                     await db.commit()
                     return {"status": "success", "node_states": self.node_states}
 
-                # Check if any node is waiting/paused (suspension)
-                if self._has_suspended_nodes():
+                if has_suspended_nodes(self.node_states):
                     execution.node_states = dict(self.node_states)
                     await db.commit()
                     return {"status": execution.status, "node_states": self.node_states}
 
-                # No ready nodes and not all done — something went wrong
                 execution.status = "failed"
                 execution.completed_at = datetime.now(UTC)
                 execution.node_states = dict(self.node_states)
@@ -182,9 +161,7 @@ class NodeEngine:
                     "node_states": self.node_states,
                 }
 
-            # Execute ready nodes: sequential for single, parallel for multiple
             if len(ready_nodes) == 1:
-                # Single node — existing sequential path
                 node = ready_nodes[0]
                 execution.current_node_id = node["id"]
                 execution.node_states = dict(self.node_states)
@@ -193,14 +170,11 @@ class NodeEngine:
                 result = await self._execute_node(node, db)
 
                 if result.get("suspend"):
-                    # Node requested suspension (delay or approval gate)
                     execution.node_states = dict(self.node_states)
                     await db.commit()
                     return {"status": execution.status, "node_states": self.node_states}
             else:
-                # Multiple ready nodes — parallel execution via asyncio.gather
                 now = datetime.now(UTC).isoformat()
-                # Mark all as RUNNING before dispatching
                 for node in ready_nodes:
                     self.node_states[node["id"]] = {
                         "status": RUNNING,
@@ -211,13 +185,11 @@ class NodeEngine:
                 execution.node_states = dict(self.node_states)
                 await db.flush()
 
-                # Run agent work in parallel (each call uses its own DB session internally)
                 parallel_results = await asyncio.gather(
-                    *[self._run_agent_parallel(node) for node in ready_nodes],
+                    *[_nodes.run_agent_parallel(self, node) for node in ready_nodes],
                     return_exceptions=True,
                 )
 
-                # Serialize state updates back to db
                 has_suspend = False
                 for node, res in zip(ready_nodes, parallel_results):
                     nid = node["id"]
@@ -240,7 +212,6 @@ class NodeEngine:
                     await db.commit()
                     return {"status": execution.status, "node_states": self.node_states}
 
-        # Safety limit reached
         execution.status = "failed"
         execution.completed_at = datetime.now(UTC)
         execution.node_states = dict(self.node_states)
@@ -265,39 +236,29 @@ class NodeEngine:
         }
 
         try:
-            if node_type == "skill":
-                output = await self._execute_skill_node(node, db)
+            if node_type == "skill" or node_type not in ("conditional", "delay", "approval_gate", "trigger"):
+                output = await _nodes.execute_skill_node(self, node, db)
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["output"] = output
                 self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
                 return {}
 
             elif node_type == "conditional":
-                branch = self._execute_conditional_node(node)
+                branch = _nodes.execute_conditional_node(self, node)
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["output"] = {"branch": branch}
                 self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
-                # Skip nodes on the discarded branch
-                self._skip_discarded_branch(node_id, branch)
+                skip_discarded_branch(self.edges, self.node_states, node_id, branch)
                 return {}
 
             elif node_type == "delay":
-                return await self._execute_delay_node(node, db)
+                return await _nodes.execute_delay_node(self, node, db)
 
             elif node_type == "approval_gate":
-                return await self._execute_approval_gate(node, db)
+                return await _nodes.execute_approval_gate(self, node, db)
 
             elif node_type == "trigger":
-                # Already marked as completed
                 self.node_states[node_id]["status"] = COMPLETED
-                self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
-                return {}
-
-            else:
-                # Treat unknown types as skill nodes
-                output = await self._execute_skill_node(node, db)
-                self.node_states[node_id]["status"] = COMPLETED
-                self.node_states[node_id]["output"] = output
                 self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
                 return {}
 
@@ -306,7 +267,6 @@ class NodeEngine:
             self.node_states[node_id]["output"] = {"error": str(e)}
             self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
 
-            # Log the failure
             try:
                 await log_action(
                     db,
@@ -326,330 +286,32 @@ class NodeEngine:
 
             return {}
 
-    def _build_skill_dispatch(
-        self, node: dict, extra_meta: dict | None = None
-    ) -> tuple[str, str, dict, dict]:
-        """Construye (domain, instruction, subtask, mini_state) para despachar un nodo skill."""
-        from app.agents.orchestrator import TaskStatus
+    # ── convenience wrappers kept for callers that reference self._ methods ──
 
-        data = node.get("data", {})
-        domain = data.get("domain", "billing")
-        instruction = data.get("instruction") or data.get("label", "Ejecutar automatización")
-
-        prev_outputs = self._build_context_for_node(node["id"])
-        ctx_parts = [instruction]
-        if prev_outputs:
-            ctx_parts.append("\n--- Contexto de nodos anteriores ---")
-            for nid, ns in prev_outputs.items():
-                output = ns.get("output", {})
-                if isinstance(output, dict):
-                    summary = ", ".join(
-                        f"{k}: {v}"
-                        for k, v in output.items()
-                        if not isinstance(v, (dict, list)) or len(str(v)) < 200
-                    )
-                    ctx_parts.append(f"Nodo {nid}: {summary}")
-        enriched_intent = "\n".join(ctx_parts)
-
-        meta = {"execution_id": self.execution_id}
-        if extra_meta:
-            meta.update(extra_meta)
-
-        subtask = {
-            "id": node["id"],
-            "agent": domain,
-            "action": "execute_node",
-            "params": {"intent": enriched_intent},
-            "depends_on": [],
-            "status": "pending",
-        }
-        mini_state = {
-            "task_id": str(uuid.uuid4()),
-            "tenant_id": self.tenant_id,
-            "user_id": self.user_id or "",
-            "user_intent": instruction,
-            "current_intent": enriched_intent,
-            "classified_domain": domain,
-            "plan": [subtask],
-            "current_step": 0,
-            "agent_results": [],
-            "status": TaskStatus.EXECUTING,
-            "requires_human_approval": False,
-            "approval_id": None,
-            "error_message": None,
-            "iteration_count": 0,
-            "additional_metadata": meta,
-        }
-        return domain, instruction, subtask, mini_state
-
-    async def _execute_skill_node(self, node: dict, db: AsyncSession) -> dict:
-        """Ejecuta un nodo skill reutilizando las funciones _dispatch_* del orchestrator."""
-        domain, instruction, subtask, mini_state = self._build_skill_dispatch(node)
-        result = await self._dispatch_agent(domain, mini_state, subtask)
-
-        try:
-            action_str = (
-                result.get("output", {}).get("action", "execute")
-                if isinstance(result.get("output"), dict)
-                else "execute"
-            )
-            await log_action(
-                db,
-                tenant_id=uuid.UUID(self.tenant_id),
-                agent_name=domain,
-                action_type=action_str,
-                status="success" if result.get("success") else "failed",
-                input_data={"node_id": node["id"], "instruction": instruction},
-                output_data=result.get("output"),
-                error_detail=result.get("error"),
-            )
-            await db.flush()
-        except Exception:
-            _logger.warning(
-                "Failed to audit skill node execution for node %s", node["id"], exc_info=True
-            )
-
-        return result.get("output", {})
-
-    async def _run_agent_parallel(self, node: dict) -> dict:
-        """
-        Ejecuta un nodo skill sin sesión DB compartida (para asyncio.gather).
-        Devuelve el dict node_state actualizado.
-        """
-        node_type = node.get("type", "skill")
-        now = datetime.now(UTC).isoformat()
-
-        if node_type not in ("skill", "action", "trigger"):
-            return {
-                "status": SKIPPED,
-                "started_at": now,
-                "output": {"reason": f"Node type '{node_type}' not parallelizable"},
-                "completed_at": datetime.now(UTC).isoformat(),
-            }
-        if node_type == "trigger":
-            return {
-                "status": COMPLETED,
-                "started_at": now,
-                "output": self.trigger_payload,
-                "completed_at": datetime.now(UTC).isoformat(),
-            }
-
-        try:
-            domain, _instruction, subtask, mini_state = self._build_skill_dispatch(
-                node, extra_meta={"parallel": True}
-            )
-            result = await self._dispatch_agent(domain, mini_state, subtask)
-            return {
-                "status": COMPLETED if result.get("success", True) else FAILED,
-                "started_at": now,
-                "output": result.get("output", {}),
-                "completed_at": datetime.now(UTC).isoformat(),
-            }
-        except Exception as e:
-            return {
-                "status": FAILED,
-                "started_at": now,
-                "output": {"error": str(e)},
-                "completed_at": datetime.now(UTC).isoformat(),
-            }
-
-    async def _dispatch_agent(self, domain: str, state: dict, subtask: dict) -> dict:
-        """Dispatch to the appropriate agent based on domain."""
-        from app.services.ai.node_dispatch import dispatch_agent
-        return await dispatch_agent(domain, state, subtask)
-
-    def _execute_conditional_node(self, node: dict) -> str:
-        """Evalúa la condición y devuelve 'true' o 'false'."""
-        data = node.get("data", {})
-        condition = data.get("condition", {})
-
-        # Build context from predecessor outputs
-        context = self._build_context_for_node(node["id"])
-
-        # Add 'prev' shortcut pointing to the most recent predecessor
-        predecessors = self._get_predecessors(node["id"])
-        if predecessors:
-            last_pred = predecessors[-1]
-            if last_pred in self.node_states:
-                context["prev"] = self.node_states[last_pred]
-
-        _logger.info(
-            f"[CONDITIONAL] node={node['id']} condition={condition} "
-            f"context_keys={list(context.keys())}"
+    def _build_skill_dispatch(self, node: dict, extra_meta: dict | None = None):
+        from app.services.ai.node_graph_helpers import build_skill_dispatch
+        return build_skill_dispatch(
+            node, self.edges, self.node_states,
+            self.tenant_id, self.user_id, self.execution_id, extra_meta,
         )
-        # Log the resolved field value for debugging
-        field = condition.get("field", "")
-        resolved = _resolve_field(field, context)
-        _logger.info(
-            f"[CONDITIONAL] field='{field}' resolved_to={resolved}"
-        )
-
-        result = evaluate_condition(condition, context)
-        return "true" if result else "false"
-
-    async def _execute_delay_node(self, node: dict, db: AsyncSession) -> dict:
-        """Programa un resume tras delay_seconds."""
-        data = node.get("data", {})
-        delay_seconds = int(data.get("delay_seconds", 10))
-        node_id = node["id"]
-
-        self.node_states[node_id]["status"] = WAITING
-        self.node_states[node_id]["output"] = {"delay_seconds": delay_seconds}
-
-        # Load execution and update
-        execution = await self._load_execution(db)
-        if execution:
-            execution.status = "running"  # Stays running during delays
-            execution.current_node_id = node_id
-            execution.node_states = dict(self.node_states)
-            await db.flush()
-
-        # Schedule task to resume after delay
-        try:
-            await dispatch_resume_node_engine(
-                self.execution_id,
-                node_id,
-                delay_seconds=delay_seconds,
-            )
-        except Exception as e:
-            _logger.error("Error scheduling delay resume: %s", e)
-
-        return {"suspend": True}
-
-    async def _execute_approval_gate(self, node: dict, db: AsyncSession) -> dict:
-        """Crea PendingApproval y pausa la ejecución."""
-
-        data = node.get("data", {})
-        description = (
-            data.get("description") or data.get("label") or "Aprobación requerida para continuar"
-        )
-        node_id = node["id"]
-
-        self.node_states[node_id]["status"] = PAUSED
-        self.node_states[node_id]["output"] = {"description": description}
-
-        # Create PendingApproval
-        approval = PendingApproval(
-            task_id=uuid.uuid4(),  # Placeholder — no linked task in node engine
-            tenant_id=uuid.UUID(self.tenant_id),
-            execution_id=uuid.UUID(self.execution_id),
-            action_description=description,
-            action_payload={"node_id": node_id, "execution_id": self.execution_id},
-            risk_level="medium",
-            expires_at=datetime.now(UTC) + timedelta(hours=24),
-            status="pending",
-        )
-        db.add(approval)
-        await db.flush()
-
-        # Update execution to paused
-        execution = await self._load_execution(db)
-        if execution:
-            execution.status = "paused"
-            execution.paused_at = datetime.now(UTC)
-            execution.current_node_id = node_id
-            execution.node_states = dict(self.node_states)
-            await db.flush()
-
-        return {"suspend": True}
 
     def _skip_discarded_branch(self, conditional_node_id: str, chosen_branch: str):
-        """Marca recursivamente como skipped los nodos de la rama descartada."""
-        discarded_branch = "false" if chosen_branch == "true" else "true"
-
-        # Find edges from the conditional node for the discarded branch
-        discarded_targets = set()
-        for edge in self.edges:
-            if edge.get("source") == conditional_node_id:
-                edge_branch = (edge.get("data") or {}).get("branch")
-                if edge_branch == discarded_branch:
-                    discarded_targets.add(edge["target"])
-
-        # Recursively skip all descendants on the discarded branch
-        to_skip = list(discarded_targets)
-        visited = set()
-        while to_skip:
-            nid = to_skip.pop()
-            if nid in visited:
-                continue
-            visited.add(nid)
-            self.node_states[nid] = {
-                "status": SKIPPED,
-                "output": {
-                    "reason": f"Skipped: branch '{discarded_branch}' from {conditional_node_id}"
-                },
-                "started_at": datetime.now(UTC).isoformat(),
-                "completed_at": datetime.now(UTC).isoformat(),
-            }
-            # Find children of this node
-            for edge in self.edges:
-                if edge.get("source") == nid:
-                    to_skip.append(edge["target"])
+        skip_discarded_branch(self.edges, self.node_states, conditional_node_id, chosen_branch)
 
     def _find_ready_nodes(self) -> list[dict]:
-        """Encuentra nodos listos para ejecutar: todas sus dependencias están completas."""
-        ready = []
-        for node in self.nodes:
-            nid = node["id"]
-            # Skip already processed nodes
-            if nid in self.node_states and self.node_states[nid]["status"] in (
-                COMPLETED,
-                FAILED,
-                SKIPPED,
-                RUNNING,
-                WAITING,
-                PAUSED,
-            ):
-                continue
-
-            # Check all predecessors are completed or skipped
-            predecessors = self._get_predecessors(nid)
-            if (
-                all(
-                    self.node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED)
-                    for p in predecessors
-                )
-                if predecessors
-                else not predecessors
-            ):
-                # Node with no predecessors and not a trigger (triggers are pre-completed)
-                if not predecessors and node.get("type") != "trigger":
-                    # This could be an orphan node — skip it
-                    continue
-                ready.append(node)
-
-        return ready
+        return find_ready_nodes(self.nodes, self.edges, self.node_states)
 
     def _get_predecessors(self, node_id: str) -> list[str]:
-        """Retorna los IDs de nodos que son fuente de aristas hacia este nodo."""
-        return [e["source"] for e in self.edges if e["target"] == node_id]
+        return get_predecessors(self.edges, node_id)
 
     def _get_successors(self, node_id: str) -> list[str]:
-        """Retorna los IDs de nodos que son target de aristas desde este nodo."""
-        return [e["target"] for e in self.edges if e["source"] == node_id]
+        return get_successors(self.edges, node_id)
 
     def _all_leaf_nodes_completed(self) -> bool:
-        """True si todos los leaf nodes (sin sucesores) están completados o skipped."""
-        leaf_nodes = [n for n in self.nodes if not self._get_successors(n["id"])]
-        if not leaf_nodes:
-            return False
-        return all(
-            self.node_states.get(n["id"], {}).get("status") in (COMPLETED, SKIPPED, FAILED)
-            for n in leaf_nodes
-        )
+        return all_leaf_nodes_completed(self.nodes, self.edges, self.node_states)
 
     def _has_suspended_nodes(self) -> bool:
-        """True si hay algún nodo en estado waiting o paused."""
-        return any(ns.get("status") in (WAITING, PAUSED) for ns in self.node_states.values())
-
-    def _build_context_for_node(self, node_id: str) -> dict:
-        """Construye un dict de contexto con los outputs de nodos predecesores."""
-        context = {}
-        predecessors = self._get_predecessors(node_id)
-        for pid in predecessors:
-            if pid in self.node_states:
-                context[pid] = self.node_states[pid]
-        return context
+        return has_suspended_nodes(self.node_states)
 
     async def _load_workflow(self, db: AsyncSession) -> Workflow | None:
         result = await db.execute(

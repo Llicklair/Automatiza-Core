@@ -1,10 +1,12 @@
 """
-Generación de PDF: Informe Fiscal (IVA + IRPF + IS).
+Generación de PDF: Informe Fiscal (IVA + IRPF + IS) y persistencia en BD.
 """
 
 import io
 import logging
-from datetime import datetime
+import os
+import uuid
+from datetime import UTC, datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -440,3 +442,50 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
 
     doc.build(elements)
     return buffer.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Persist fiscal report PDF as a TenantDocument
+# ---------------------------------------------------------------------------
+
+UPLOAD_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
+)
+
+
+async def save_fiscal_report_to_db(
+    pdf_bytes: bytes,
+    period: str,
+    resumen_ejecutivo: str,
+    tenant_id,
+    uploaded_by,
+    db,
+):
+    """Guarda el PDF del informe fiscal en disco y crea el registro TenantDocument."""
+    from app.db.models.models import TenantDocument
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    safe_period = period.replace("-", "_")
+    file_name = f"fiscal_{safe_period}_{uuid.uuid4().hex[:8]}.pdf"
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+    with open(file_path, "wb") as fh:
+        fh.write(pdf_bytes)
+
+    doc = TenantDocument(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        uploaded_by=uploaded_by,
+        file_name=file_name,
+        file_type="application/pdf",
+        file_path=file_path,
+        file_size=len(pdf_bytes),
+        status="processed",
+        parsed_content=resumen_ejecutivo,
+        category="informes",
+        created_at=datetime.now(UTC),
+        processed_at=datetime.now(UTC),
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    return doc
