@@ -1,0 +1,144 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, WorkflowExecution } from "@/lib/api";
+import { logError } from "@/lib/logger";
+
+export function useAutomatizacionesExecution(
+    showToast: (msg: string, type: "ok" | "err") => void,
+) {
+    const [runningId, setRunningId] = useState<string | null>(null);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [executions, setExecutions] = useState<Record<string, WorkflowExecution[]>>({});
+    const [loadingExec, setLoadingExec] = useState<string | null>(null);
+    const [refreshingExec, setRefreshingExec] = useState<string | null>(null);
+
+    // Context input per workflow
+    const [contextInputId, setContextInputId] = useState<string | null>(null);
+    const [contextText, setContextText] = useState("");
+
+    // Live logs
+    const [liveLogs, setLiveLogs] = useState<Record<string, string[]>>({});
+    const logsRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const loadExecutions = useCallback(async (id: string) => {
+        setLoadingExec(id);
+        try {
+            const data = await api.workflows.executions(id);
+            setExecutions(prev => ({ ...prev, [id]: data }));
+        } catch (e) { logError("automatizaciones/page", e); }
+        finally { setLoadingExec(null); }
+    }, []);
+
+    const loadLogs = useCallback(async (workflowId: string, executionId: string) => {
+        try {
+            const data = await api.workflows.executionLogs(workflowId, executionId);
+            setLiveLogs(prev => ({ ...prev, [executionId]: data.lines }));
+            return data.status;
+        } catch { return "unknown"; }
+    }, []);
+
+    // Auto-refresh polling for active executions
+    useEffect(() => {
+        if (!expandedId) {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            return;
+        }
+        const wfExecs = executions[expandedId] || [];
+        const hasActive = wfExecs.some(e => e.status === "running" || e.status === "paused");
+        if (hasActive) {
+            pollRef.current = setInterval(() => { loadExecutions(expandedId); }, 4000);
+        } else {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        }
+        return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+    }, [expandedId, executions, loadExecutions]);
+
+    // Live logs polling
+    useEffect(() => {
+        if (logsRef.current) { clearInterval(logsRef.current); logsRef.current = null; }
+        if (!expandedId) return;
+        const wfExecs = executions[expandedId] || [];
+        const active = wfExecs.find(e => e.status === "running");
+        if (!active) return;
+        loadLogs(expandedId, active.id);
+        logsRef.current = setInterval(async () => {
+            const status = await loadLogs(expandedId, active.id);
+            if (status !== "running") {
+                clearInterval(logsRef.current!);
+                logsRef.current = null;
+                await loadExecutions(expandedId);
+            }
+        }, 2000);
+        return () => { if (logsRef.current) { clearInterval(logsRef.current); logsRef.current = null; } };
+    }, [expandedId, executions, loadExecutions, loadLogs]);
+
+    const handleRun = async (id: string) => {
+        setRunningId(id);
+        try {
+            await api.workflows.run(id);
+            showToast("Automatización lanzada. El agente IA está procesando la instrucción.", "ok");
+            if (expandedId === id) await loadExecutions(id);
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al ejecutar", "err"); }
+        finally { setRunningId(null); }
+    };
+
+    const handleRunWithContext = async (wfId: string) => {
+        setRunningId(wfId);
+        try {
+            await api.workflows.runWithContext(wfId, contextText);
+            showToast("Automatización lanzada con el contexto indicado.", "ok");
+            setContextInputId(null); setContextText("");
+            if (expandedId === wfId) await loadExecutions(wfId);
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al ejecutar", "err"); }
+        finally { setRunningId(null); }
+    };
+
+    const handleCancel = async (workflowId: string, executionId: string) => {
+        try {
+            await api.workflows.cancelExecution(workflowId, executionId);
+            showToast("Ejecución cancelada.", "ok");
+            await loadExecutions(workflowId);
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al cancelar", "err"); }
+    };
+
+    const handleResume = async (workflowId: string, executionId: string) => {
+        try {
+            await api.workflows.resumeExecution(workflowId, executionId);
+            showToast("Ejecución reanudada. El motor de nodos continúa procesando.", "ok");
+            await loadExecutions(workflowId);
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al reanudar", "err"); }
+    };
+
+    const refreshExecutions = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setRefreshingExec(id);
+        try {
+            const data = await api.workflows.executions(id);
+            setExecutions(prev => ({ ...prev, [id]: data }));
+        } catch (e) { logError("automatizaciones/page", e); }
+        finally { setRefreshingExec(null); }
+    };
+
+    const toggleExpand = async (id: string) => {
+        if (expandedId === id) { setExpandedId(null); }
+        else { setExpandedId(id); if (!executions[id]) await loadExecutions(id); }
+    };
+
+    const toggleContextInput = (id: string) => {
+        if (contextInputId === id) { setContextInputId(null); setContextText(""); }
+        else { setContextInputId(id); setContextText(""); }
+    };
+
+    return {
+        runningId, expandedId, setExpandedId,
+        executions, loadingExec, refreshingExec,
+        contextInputId, contextText, setContextText,
+        liveLogs,
+        loadExecutions,
+        handleRun, handleRunWithContext,
+        handleCancel, handleResume,
+        refreshExecutions, toggleExpand, toggleContextInput,
+    };
+}

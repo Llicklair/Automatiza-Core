@@ -1,73 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
 import { Loader2, Save } from "lucide-react";
+import { useConfiguracionEmpresa } from "./_hooks/useConfiguracionEmpresa";
 
 export default function EmpresaConfigPage() {
-    const [name, setName] = useState("");
-    const [nif, setNif] = useState("");
-    const [address, setAddress] = useState("");
-    const [phone, setPhone] = useState("");
-    const [contactEmail, setContactEmail] = useState("");
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
-
-    useEffect(() => {
-        let mounted = true;
-        api.tenant.me()
-            .then((t) => {
-                if (!mounted) return;
-                setName(t.name);
-                setNif(t.nif);
-                setAddress(t.address || "");
-                setPhone(t.phone || "");
-                setContactEmail(t.contact_email || "");
-            })
-            .catch((e: any) => {
-                if (!mounted) return;
-                setError(e?.message || "Error cargando datos de la empresa");
-            })
-            .finally(() => {
-                if (mounted) setLoading(false);
-            });
-        return () => { mounted = false; };
-    }, []);
-
-    async function handleSave(e: React.FormEvent) {
-        e.preventDefault();
-        setError(null);
-        setSuccess(null);
-        try {
-            setSaving(true);
-            const updated = await api.tenant.updateMe({ 
-                name, 
-                nif,
-                address,
-                phone,
-                contact_email: contactEmail
-            });
-            setName(updated.name);
-            setNif(updated.nif);
-            setAddress(updated.address || "");
-            setPhone(updated.phone || "");
-            setContactEmail(updated.contact_email || "");
-            setSuccess("Datos de empresa guardados correctamente.");
-        } catch (e: any) {
-            setError(e?.message || "No se pudo guardar la empresa");
-        } finally {
-            setSaving(false);
-        }
-    }
+    const {
+        name, setName,
+        nif, setNif,
+        address, setAddress,
+        phone, setPhone,
+        contactEmail, setContactEmail,
+        loading, saving, error, success,
+        handleSave,
+    } = useConfiguracionEmpresa();
 
     return (
         <div className="p-8 max-w-3xl mx-auto space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-foreground mb-1">Datos de mi empresa</h1>
                 <p className="text-muted-foreground text-sm mt-2">
-                    Esta información se usa como emisor en las facturas y PDFs generados. 
+                    Esta información se usa como emisor en las facturas y PDFs generados.
                 </p>
                 <div className="mt-3 p-4 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary">
                     <strong>Nota importante:</strong> El <i>Nombre / Razón social</i> que configures aquí será exactamente el que verán tus clientes en los encabezados de presupuestos, albaranes, facturas y correos electrónicos automatizados. Asegúrate de escribirlo tal cual deseas presentarte comercial y legalmente.
@@ -185,4 +137,3 @@ export default function EmpresaConfigPage() {
         </div>
     );
 }
-

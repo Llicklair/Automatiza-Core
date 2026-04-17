@@ -38,7 +38,7 @@ Full reference: see [GITNEXUS.md](GITNEXUS.md). Key rules:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **atomatizacion de empresas** (3146 symbols, 8226 relationships, 245 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **atomatizacion de empresas** (4028 symbols, 10461 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

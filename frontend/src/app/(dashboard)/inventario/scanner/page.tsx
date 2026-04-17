@@ -1,62 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { api } from "@/lib/api";
 import {
     ScanLine, QrCode, Loader2, Smartphone, Copy, CheckCircle2,
-    AlertTriangle, Wifi, WifiOff, RefreshCw, Timer,
+    AlertTriangle, Wifi, RefreshCw, Timer,
 } from "lucide-react";
+import { useWarehouseScanner } from "./_hooks/useWarehouseScanner";
 
 export default function WarehouseScannerPage() {
-    const [token, setToken] = useState<{ token: string; expires_at: string; scope: string } | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [copied, setCopied] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(0);
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-    const generateToken = async () => {
-        setLoading(true);
-        try {
-            const data = await api.scanner.generateQR();
-            setToken(data);
-        } catch (e: any) {
-            alert(e?.message || "Error generando token");
-        }
-        setLoading(false);
-    };
-
-    // Countdown timer
-    useEffect(() => {
-        if (!token) return;
-        const updateTimer = () => {
-            const exp = new Date(token.expires_at).getTime();
-            const now = Date.now();
-            const remaining = Math.max(0, Math.floor((exp - now) / 1000));
-            setTimeLeft(remaining);
-            if (remaining <= 0 && intervalRef.current) {
-                clearInterval(intervalRef.current);
-                setToken(null);
-            }
-        };
-        updateTimer();
-        intervalRef.current = setInterval(updateTimer, 1000);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-    }, [token]);
-
-    const copyToken = () => {
-        if (!token) return;
-        navigator.clipboard.writeText(token.token);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    const scannerUrl = token
-        ? `${window.location.origin}/mobile-scanner?token=${token.token}`
-        : null;
+    const { token, loading, copied, timeLeft, scannerUrl, generateToken, copyToken } = useWarehouseScanner();
 
     return (
         <div className="p-6 max-w-3xl mx-auto space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
                     <ScanLine className="w-5 h-5 text-cyan-400" />
@@ -67,7 +21,6 @@ export default function WarehouseScannerPage() {
                 </div>
             </div>
 
-            {/* How it works */}
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
                 <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
                     <Smartphone className="w-4 h-4 text-cyan-400" />
@@ -98,7 +51,6 @@ export default function WarehouseScannerPage() {
                 </div>
             </div>
 
-            {/* Security info */}
             <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/10 rounded-xl p-4">
                 <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-amber-300/80 space-y-1">
@@ -110,7 +62,6 @@ export default function WarehouseScannerPage() {
                 </div>
             </div>
 
-            {/* Generate QR / Token display */}
             <div className="bg-card border border-border rounded-xl p-6">
                 {!token ? (
                     <div className="flex flex-col items-center py-8 space-y-4">
@@ -129,7 +80,6 @@ export default function WarehouseScannerPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {/* Timer */}
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Wifi className="w-4 h-4 text-emerald-400" />
@@ -143,7 +93,6 @@ export default function WarehouseScannerPage() {
                             </div>
                         </div>
 
-                        {/* QR Placeholder — in production use a QR library */}
                         <div className="flex flex-col items-center py-6 space-y-3">
                             <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center p-4">
                                 <div className="text-center">
@@ -158,7 +107,6 @@ export default function WarehouseScannerPage() {
                             </p>
                         </div>
 
-                        {/* URL + Copy */}
                         {scannerUrl && (
                             <div className="flex items-center gap-2 bg-background rounded-lg p-3">
                                 <input
@@ -177,7 +125,6 @@ export default function WarehouseScannerPage() {
                             </div>
                         )}
 
-                        {/* Scope info */}
                         <div className="flex flex-wrap gap-1.5">
                             {token.scope.split(",").map((s) => (
                                 <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
@@ -186,7 +133,6 @@ export default function WarehouseScannerPage() {
                             ))}
                         </div>
 
-                        {/* Regenerate */}
                         <button
                             onClick={generateToken}
                             disabled={loading}

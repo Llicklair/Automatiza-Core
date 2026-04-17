@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type Invoice, type Task } from "@/lib/api";
 import {
     TrendingUp, TrendingDown, FileText, Users, Zap,
     ArrowUp, ArrowDown, BrainCircuit, Clock, CheckCircle2,
@@ -11,27 +9,13 @@ import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Legend
 } from "recharts";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { useAnalitica, type CashflowEntry } from "./_hooks/useAnalitica";
 
 interface TooltipPayloadEntry {
     value: number;
     name: string;
     color: string;
 }
-
-interface CashflowEntry {
-    month: string;
-    ingresos: number;
-    gastos: number;
-}
-
-interface BankingAnalyticsResponse {
-    cashflow: CashflowEntry[];
-    insights: unknown[];
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
     return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -74,8 +58,6 @@ function KpiCard({
     );
 }
 
-// ─── Tooltip personalizado ────────────────────────────────────────────────────
-
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
     if (active && payload?.length) {
         return (
@@ -94,64 +76,15 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 
 const COLORS_PIE = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
 export default function AnaliticaPage() {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [cashflow, setCashflow] = useState<CashflowEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        Promise.all([
-            api.erp.invoices.list({ limit: 200 }).catch(() => []),
-            api.tasks.list({ limit: 100 }).catch(() => []),
-            api.banking.analytics().catch(() => ({ cashflow: [], insights: [] })),
-        ]).then(([inv, tsk, analytics]) => {
-            setInvoices(inv);
-            setTasks(tsk);
-            setCashflow((analytics as BankingAnalyticsResponse).cashflow || []);
-        }).finally(() => setLoading(false));
-    }, []);
-
-    // ── Calcular KPIs ─────────────────────────────────────────────────────────
-    const emitidas = invoices.filter(i => i.invoice_type === "issued");
-    const recibidas = invoices.filter(i => i.invoice_type === "received");
-
-    const totalIngresos = emitidas.reduce((s, i) => s + Number(i.amount_total), 0);
-    const totalGastos = recibidas.reduce((s, i) => s + Number(i.amount_total), 0);
-    const beneficio = totalIngresos - totalGastos;
-    const margen = totalIngresos > 0 ? Math.round((beneficio / totalIngresos) * 100) : 0;
-
-    const factPagadas = emitidas.filter(i => i.status === "paid").length;
-    const factPendientes = emitidas.filter(i => i.status === "pending").length;
-    const factBorrador = emitidas.filter(i => i.status === "draft").length;
-
-    // Top clientes por facturación
-    const clientMap: Record<string, number> = {};
-    emitidas.forEach(inv => {
-        const name = inv.client?.name || "Desconocido";
-        clientMap[name] = (clientMap[name] || 0) + Number(inv.amount_total);
-    });
-    const topClientes = Object.entries(clientMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, total]) => ({ name, total }));
-
-    // Distribución por estado
-    const pieData = [
-        { name: "Cobradas", value: emitidas.filter(i => i.status === "paid").reduce((s, i) => s + Number(i.amount_total), 0) },
-        { name: "Pendientes", value: emitidas.filter(i => i.status === "pending").reduce((s, i) => s + Number(i.amount_total), 0) },
-        { name: "Borradores", value: emitidas.filter(i => i.status === "draft").reduce((s, i) => s + Number(i.amount_total), 0) },
-    ].filter(d => d.value > 0);
-
-    // Métricas de IA
-    const tasksDone = tasks.filter(t => t.status === "done").length;
-    const tasksFailed = tasks.filter(t => t.status === "failed").length;
-    const tasksTotal = tasks.length;
-    const tasksSuccessRate = tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0;
-
-    const isDemo = invoices.length === 0;
+    const {
+        loading, cashflow, isDemo,
+        totalIngresos, totalGastos, beneficio, margen,
+        emitidas, recibidas,
+        factPagadas, factPendientes, factBorrador,
+        topClientes, pieData,
+        tasksDone, tasksFailed, tasksSuccessRate, tasksPending,
+    } = useAnalitica();
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-8">
@@ -203,7 +136,6 @@ export default function AnaliticaPage() {
 
             {/* Gráficos principales */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Cashflow evolution */}
                 <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
                         <Activity className="w-4 h-4 text-primary" /> Evolución del Cashflow
@@ -239,7 +171,6 @@ export default function AnaliticaPage() {
                     </div>
                 </div>
 
-                {/* Distribución por estado */}
                 <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" /> Estado de Facturas
@@ -281,8 +212,6 @@ export default function AnaliticaPage() {
 
             {/* Panel inferior */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* Top Clientes */}
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
                         <Users className="w-4 h-4 text-primary" /> Top Clientes
@@ -319,7 +248,6 @@ export default function AnaliticaPage() {
                     )}
                 </div>
 
-                {/* Facturación mensual por tipo */}
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" /> Facturación por Mes
@@ -342,7 +270,6 @@ export default function AnaliticaPage() {
                     </div>
                 </div>
 
-                {/* Métricas de IA */}
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
                         <BrainCircuit className="w-4 h-4 text-primary" /> Rendimiento IA
@@ -366,9 +293,7 @@ export default function AnaliticaPage() {
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock className="w-4 h-4 text-amber-400" /> Pendientes
                             </div>
-                            <span className="text-amber-400 font-bold text-sm">
-                                {tasks.filter(t => t.status === "pending" || t.status === "executing").length}
-                            </span>
+                            <span className="text-amber-400 font-bold text-sm">{tasksPending}</span>
                         </div>
                         <div className="flex items-center justify-between py-3 border-b border-border">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -377,7 +302,6 @@ export default function AnaliticaPage() {
                             <span className="text-primary font-bold text-sm">{tasksSuccessRate}%</span>
                         </div>
 
-                        {/* Barra de progreso */}
                         <div className="pt-2">
                             <div className="flex justify-between text-xs text-muted-foreground mb-2">
                                 <span>Fiabilidad global</span>

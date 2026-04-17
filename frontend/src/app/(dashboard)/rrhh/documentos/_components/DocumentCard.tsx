@@ -1,0 +1,90 @@
+"use client";
+
+import { useState } from "react";
+import { CheckCircle2, Copy, Download, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import type { HRDocument } from "@/lib/api/hr_documents";
+import { DOC_TYPES } from "../_hooks/useHRDocumentos";
+
+function StatusBadge({ status }: { status: HRDocument["status"] }) {
+    return status === "approved" ? (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <CheckCircle2 className="w-3 h-3" /> Aprobado
+        </span>
+    ) : (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            Borrador
+        </span>
+    );
+}
+
+interface Props {
+    doc: HRDocument;
+    onApprove: (id: string) => void;
+    onDelete: (id: string) => void;
+}
+
+export function DocumentCard({ doc, onApprove, onDelete }: Props) {
+    const [expanded, setExpanded] = useState(false);
+    const [copying, setCopying] = useState(false);
+    const docTypeLabel = DOC_TYPES.find(t => t.value === doc.doc_type)?.label ?? doc.doc_type;
+    const date = new Date(doc.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+
+    const handleCopy = async () => {
+        setCopying(true);
+        await navigator.clipboard.writeText(doc.content_html).catch(() => {});
+        setTimeout(() => setCopying(false), 1500);
+    };
+
+    const handleDownloadPdf = () => {
+        const win = window.open("", "_blank");
+        if (!win) return;
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>@media print{body{margin:0}}</style></head><body>${doc.content_html}</body></html>`);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); }, 400);
+    };
+
+    return (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="p-4 flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-medium text-foreground truncate">{doc.title}</h3>
+                        <StatusBadge status={doc.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{docTypeLabel} · {doc.employee_name} · {date}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={handleDownloadPdf} title="Descargar PDF"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        <Download className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleCopy} title="Copiar HTML"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        {copying ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    {doc.status === "draft" && (
+                        <button onClick={() => onApprove(doc.id)} title="Aprobar"
+                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                            <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                    )}
+                    <button onClick={() => onDelete(doc.id)} title="Eliminar"
+                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setExpanded(v => !v)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+                        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                </div>
+            </div>
+            {expanded && (
+                <div className="border-t border-border p-4 bg-background">
+                    <div className="prose prose-invert prose-sm max-w-none text-foreground"
+                        dangerouslySetInnerHTML={{ __html: doc.content_html }} />
+                </div>
+            )}
+        </div>
+    );
+}

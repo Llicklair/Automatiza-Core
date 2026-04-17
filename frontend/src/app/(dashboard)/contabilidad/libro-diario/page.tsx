@@ -1,126 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type JournalEntry, type JournalLine } from "@/lib/api";
-import { FileDown, Plus, PlusCircle, AlertCircle, BookOpen, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToastStore } from "@/stores/toast";
-import { logError } from "@/lib/logger";
+import { FileDown, Plus, BookOpen, Trash2 } from "lucide-react";
+import { useLibroDiario } from "./_hooks/useLibroDiario";
+import { AsientoModal } from "./_components/AsientoModal";
 
 export default function LibroDiarioPage() {
-    const toast = useToastStore();
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    const [isModalOpen, setModalOpen] = useState(false);
-    const [newEntry, setNewEntry] = useState<{
-        date: string;
-        description: string;
-        lines: Partial<JournalLine>[];
-    }>({
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-        lines: [
-            { account_code: '', account_name: '', debit: 0, credit: 0 },
-            { account_code: '', account_name: '', debit: 0, credit: 0 }
-        ]
-    });
-
-    const exportCSV = () => {
-        const rows = [["Fecha", "Concepto", "Cuenta", "Nombre", "Debe", "Haber"]];
-        for (const entry of entries) {
-            for (const line of entry.lines) {
-                rows.push([
-                    new Date(entry.date).toLocaleDateString("es-ES"),
-                    entry.description,
-                    line.account_code,
-                    line.account_name || "",
-                    Number(line.debit) > 0 ? String(Number(line.debit).toFixed(2)) : "",
-                    Number(line.credit) > 0 ? String(Number(line.credit).toFixed(2)) : "",
-                ]);
-            }
-        }
-        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
-        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `libro-diario-${new Date().toISOString().split("T")[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            const data = await api.accounting.journal.list();
-            setEntries(data);
-        } catch (error) {
-            logError("contabilidad/libro-diario/page", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { loadData(); }, []);
-
-    const handleAddLine = () => {
-        setNewEntry(prev => ({
-            ...prev,
-            lines: [...prev.lines, { account_code: '', account_name: '', debit: 0, credit: 0 }]
-        }));
-    };
-
-    const handleRemoveLine = (index: number) => {
-        if (newEntry.lines.length <= 2) return;
-        setNewEntry(prev => ({
-            ...prev,
-            lines: prev.lines.filter((_, i) => i !== index)
-        }));
-    };
-
-    const handleLineChange = (index: number, field: keyof JournalLine, value: any) => {
-        setNewEntry(prev => {
-            const newLines = [...prev.lines];
-            newLines[index] = { ...newLines[index], [field]: value };
-            return { ...prev, lines: newLines };
-        });
-    };
-
-    const totalDebit = newEntry.lines.reduce((acc, curr) => acc + (Number(curr.debit) || 0), 0);
-    const totalCredit = newEntry.lines.reduce((acc, curr) => acc + (Number(curr.credit) || 0), 0);
-    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
-
-    const deleteEntry = async (id: string) => {
-        if (!confirm("¿Eliminar este asiento contable? Esta acción no se puede deshacer.")) return;
-        try {
-            await api.accounting.journal.delete(id);
-            loadData();
-        } catch (err: any) { toast.error("Error eliminando el asiento: " + err.message); }
-    };
-
-    const createEntry = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isBalanced) { toast.warning("El asiento está descuadrado. El Debe debe ser igual al Haber."); return; }
-
-        try {
-            await api.accounting.journal.create(newEntry as any);
-            setModalOpen(false);
-            setNewEntry({
-                date: new Date().toISOString().split('T')[0],
-                description: '',
-                lines: [
-                    { account_code: '', account_name: '', debit: 0, credit: 0 },
-                    { account_code: '', account_name: '', debit: 0, credit: 0 }
-                ]
-            });
-            loadData();
-        } catch (err: any) { toast.error("Error creando el asiento: " + err.message); }
-    };
+    const {
+        entries, loading, isModalOpen, setModalOpen,
+        newEntry, setNewEntry,
+        exportCSV, handleAddLine, handleRemoveLine, handleLineChange,
+        totalDebit, totalCredit, isBalanced,
+        deleteEntry, createEntry,
+    } = useLibroDiario();
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground mb-2">Libro Diario</h1>
@@ -136,7 +30,6 @@ export default function LibroDiarioPage() {
                 </div>
             </div>
 
-            {/* List */}
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
                 {loading ? (
                     <div className="p-12 text-center text-muted-foreground bg-accent/50 animate-pulse">Cargando apuntes contables...</div>
@@ -170,8 +63,6 @@ export default function LibroDiarioPage() {
                                         <td className="px-6 py-4 align-top text-foreground font-medium">
                                             {entry.description}
                                         </td>
-
-                                        {/* Líneas anidadas en las celdas */}
                                         <td className="px-6 py-4 p-0" colSpan={4}>
                                             <table className="w-full">
                                                 <tbody>
@@ -207,102 +98,19 @@ export default function LibroDiarioPage() {
                 )}
             </div>
 
-            {/* Modal de Asiento Manual */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card border border-border rounded-2xl w-full max-w-4xl shadow-2xl p-6 max-h-[90vh] flex flex-col">
-                        <h3 className="text-xl font-bold text-foreground mb-6">Nuevo Asiento Contable</h3>
-
-                        <form onSubmit={createEntry} className="flex-1 overflow-auto flex flex-col">
-                            <div className="grid grid-cols-3 gap-6 mb-8">
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-2">Fecha contable</label>
-                                    <input required type="date" className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-foreground outline-none focus:border-primary transition-colors"
-                                        value={newEntry.date} onChange={e => setNewEntry({ ...newEntry, date: e.target.value })} />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-muted-foreground mb-2">Concepto</label>
-                                    <input required type="text" placeholder="Ej: Nómina Agosto, Factura Venta XYZ..." className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-foreground outline-none focus:border-primary transition-colors"
-                                        value={newEntry.description} onChange={e => setNewEntry({ ...newEntry, description: e.target.value })} />
-                                </div>
-                            </div>
-
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Apuntes (Líneas)</h4>
-                                    <button type="button" onClick={handleAddLine} className="text-xs flex items-center gap-1.5 text-primary hover:text-primary font-medium">
-                                        <PlusCircle className="w-4 h-4" /> Añadir apunte
-                                    </button>
-                                </div>
-
-                                <div className="bg-muted/50 border border-border rounded-xl overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-card text-muted-foreground border-b border-border">
-                                            <tr>
-                                                <th className="px-4 py-3 font-medium text-left w-40">Cuenta</th>
-                                                <th className="px-4 py-3 font-medium text-left">Referencia / Nombre</th>
-                                                <th className="px-4 py-3 font-medium text-right w-36">Debe (€)</th>
-                                                <th className="px-4 py-3 font-medium text-right w-36">Haber (€)</th>
-                                                <th className="px-4 py-3 w-12"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {newEntry.lines.map((line, idx) => (
-                                                <tr key={idx}>
-                                                    <td className="p-2">
-                                                        <input required type="text" placeholder="Ej: 430" className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-3 py-1.5 text-foreground outline-none transition-colors font-mono"
-                                                            value={line.account_code || ''} onChange={e => handleLineChange(idx, 'account_code', e.target.value)} />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <input type="text" placeholder="Opcional..." className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary rounded px-3 py-1.5 text-foreground outline-none transition-colors"
-                                                            value={line.account_name || ''} onChange={e => handleLineChange(idx, 'account_name', e.target.value)} />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <input type="number" step="0.01" min="0" className="w-full bg-transparent border border-transparent hover:border-border focus:border-emerald-500 rounded px-3 py-1.5 text-emerald-400 font-medium text-right outline-none transition-colors"
-                                                            value={line.debit || ''} onChange={e => handleLineChange(idx, 'debit', Number(e.target.value))} />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <input type="number" step="0.01" min="0" className="w-full bg-transparent border border-transparent hover:border-border focus:border-rose-500 rounded px-3 py-1.5 text-rose-400 font-medium text-right outline-none transition-colors"
-                                                            value={line.credit || ''} onChange={e => handleLineChange(idx, 'credit', Number(e.target.value))} />
-                                                    </td>
-                                                    <td className="p-2 text-center">
-                                                        <button type="button" onClick={() => handleRemoveLine(idx)} disabled={newEntry.lines.length <= 2} className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded transition-colors disabled:opacity-30">
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot className="bg-card border-t border-border">
-                                            <tr>
-                                                <td colSpan={2} className="px-4 py-3 text-right font-medium text-muted-foreground">Total:</td>
-                                                <td className={cn("px-4 py-3 text-right font-bold text-lg", isBalanced ? "text-emerald-500" : "text-foreground")}>
-                                                    {totalDebit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className={cn("px-4 py-3 text-right font-bold text-lg", isBalanced ? "text-emerald-500" : "text-foreground")}>
-                                                    {totalCredit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-
-                                {!isBalanced && (
-                                    <div className="mt-4 flex items-center gap-2 text-amber-500 bg-amber-500/10 px-4 py-3 rounded-lg border border-amber-500/20">
-                                        <AlertCircle className="w-5 h-5 shrink-0" />
-                                        <span className="text-sm font-medium">Asiento descuadrado. La diferencia actual es de <strong>{Math.abs(totalDebit - totalCredit).toLocaleString('es-ES')} €</strong>.</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-border">
-                                <button type="button" onClick={() => setModalOpen(false)} className="px-6 py-2.5 text-muted-foreground font-medium hover:bg-accent/50 rounded-xl transition-colors">Cancelar</button>
-                                <button type="submit" disabled={!isBalanced} className="px-6 py-2.5 bg-primary hover:bg-primary disabled:opacity-50 disabled:hover:bg-primary text-foreground rounded-xl font-medium transition-all shadow-lg shadow-primary/20">Registrar Asiento</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <AsientoModal
+                    newEntry={newEntry}
+                    setNewEntry={setNewEntry}
+                    totalDebit={totalDebit}
+                    totalCredit={totalCredit}
+                    isBalanced={isBalanced}
+                    onClose={() => setModalOpen(false)}
+                    onSubmit={createEntry}
+                    onAddLine={handleAddLine}
+                    onRemoveLine={handleRemoveLine}
+                    onLineChange={handleLineChange}
+                />
             )}
         </div>
     );

@@ -8,20 +8,22 @@ import zoneinfo
 from datetime import UTC, date, datetime, timedelta
 
 from croniter import croniter
-from sqlalchemy import select
 
 from app.db.base import AsyncSessionLocal
-from app.db.models.models import (
-    Invoice,
-    InvoiceLine,
-    RecurringInvoice,
-    Task,
-    Workflow,
-    WorkflowExecution,
-)
+from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 from app.services.idempotency import IdempotencyGuard
 from app.services.workflow import execute_deterministic_steps
+from app.services.workflow.scheduler import (
+    create_execution,
+    create_task_for_execution,
+    get_active_scheduled_workflows,
+    get_last_execution,
+    get_stuck_executions,
+    has_active_execution,
+    mark_executions_failed,
+)
 from app.services.workflow.task_dispatch import dispatch_orchestrator
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -99,19 +101,13 @@ async def _dispatch_workflow(
     }
 
     if wf.execution_mode == "deterministic" and wf.compiled_steps:
-        task = Task(
-            tenant_id=wf.tenant_id,
-            created_by=None,
+        task = await create_task_for_execution(
+            db, wf, execution,
             domain="deterministic",
             user_intent=f"[{label}] {wf.name}",
-            status="running",
-            additional_metadata=meta,
+            initial_status="running",
+            meta=meta,
         )
-        db.add(task)
-        await db.flush()
-        execution.task_id = task.id
-        await db.flush()
-
         try:
             results = await execute_deterministic_steps(
                 steps=wf.compiled_steps,
@@ -149,19 +145,13 @@ async def _dispatch_workflow(
         domain = action_config.get("domain") or _infer_domain_from_text(
             f"{wf.name} {wf.description or ''} {instruction}".lower()
         )
-        task = Task(
-            tenant_id=wf.tenant_id,
-            created_by=None,
+        task = await create_task_for_execution(
+            db, wf, execution,
             domain=domain,
             user_intent=f"[{label}] {instruction}",
-            status="pending",
-            additional_metadata=meta,
+            initial_status="pending",
+            meta=meta,
         )
-        db.add(task)
-        await db.flush()
-        execution.task_id = task.id
-        await db.flush()
-
         try:
             await dispatch_orchestrator(str(task.id))
             if guard and idempotency_key:
@@ -191,13 +181,7 @@ async def _check_scheduled_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Workflow).where(
-                Workflow.is_active.is_(True),
-                Workflow.trigger_type == "schedule_based",
-            )
-        )
-        for wf in result.scalars().all():
+        for wf in await get_active_scheduled_workflows(db):
             if not _should_run_now(wf.trigger_config or {}, now_local):
                 continue
 
@@ -207,25 +191,14 @@ async def _check_scheduled_workflows():
                 logger.info("[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name)
                 continue
 
-            active = await db.execute(
-                select(WorkflowExecution).where(
-                    WorkflowExecution.workflow_id == wf.id,
-                    WorkflowExecution.status.in_(["running", "pending"]),
-                )
-            )
-            if active.scalars().first():
+            if await has_active_execution(db, wf.id):
                 logger.info("[BEAT] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
                 continue
 
             logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
-            execution = WorkflowExecution(
-                workflow_id=wf.id,
-                tenant_id=wf.tenant_id,
-                status="running",
-                trigger_payload={"source": "apscheduler", "scheduled_at": now.isoformat()},
+            execution = await create_execution(
+                db, wf, {"source": "apscheduler", "scheduled_at": now.isoformat()}
             )
-            db.add(execution)
-            await db.flush()
             await _dispatch_workflow(db, wf, execution, "schedule_based", guard, idempotency_key)
 
         await db.commit()
@@ -244,24 +217,12 @@ async def _catchup_missed_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Workflow).where(
-                Workflow.is_active.is_(True),
-                Workflow.trigger_type == "schedule_based",
-            )
-        )
-        for wf in result.scalars().all():
+        for wf in await get_active_scheduled_workflows(db):
             cron_expr = (wf.trigger_config or {}).get("cron")
             if not cron_expr:
                 continue
 
-            last_exec_result = await db.execute(
-                select(WorkflowExecution)
-                .where(WorkflowExecution.workflow_id == wf.id)
-                .order_by(WorkflowExecution.started_at.desc())
-                .limit(1)
-            )
-            last_exec = last_exec_result.scalars().first()
+            last_exec = await get_last_execution(db, wf.id)
             since = last_exec.started_at if last_exec else wf.created_at
             if since.tzinfo is None:
                 since = since.replace(tzinfo=UTC)
@@ -283,24 +244,13 @@ async def _catchup_missed_workflows():
                 wf.name, since_local,
             )
 
-            active = await db.execute(
-                select(WorkflowExecution).where(
-                    WorkflowExecution.workflow_id == wf.id,
-                    WorkflowExecution.status.in_(["running", "pending"]),
-                )
-            )
-            if active.scalars().first():
+            if await has_active_execution(db, wf.id):
                 logger.info("[CATCHUP] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
                 continue
 
-            execution = WorkflowExecution(
-                workflow_id=wf.id,
-                tenant_id=wf.tenant_id,
-                status="running",
-                trigger_payload={"source": "catchup", "since": since.isoformat()},
+            execution = await create_execution(
+                db, wf, {"source": "catchup", "since": since.isoformat()}
             )
-            db.add(execution)
-            await db.flush()
             await _dispatch_workflow(db, wf, execution, "catchup")
 
         await db.commit()
@@ -383,21 +333,11 @@ async def _cleanup_stuck_executions():
     cutoff = datetime.now(UTC) - timedelta(minutes=15)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(WorkflowExecution).where(
-                WorkflowExecution.status == "running",
-                WorkflowExecution.started_at < cutoff,
-            )
-        )
-        stuck = result.scalars().all()
+        stuck = await get_stuck_executions(db, cutoff)
         if not stuck:
             return {"cleaned": 0}
 
-        for ex in stuck:
-            ex.status = "failed"
-            ex.completed_at = datetime.now(UTC)
-            ex.result_log = (ex.result_log or "") + " [Auto-cancelado: timeout 15 min]"
-
+        await mark_executions_failed(db, stuck, "[Auto-cancelado: timeout 15 min]")
         await db.commit()
         logger.info("[CLEANUP] %d ejecucion(es) atascada(s) marcadas como failed.", len(stuck))
         return {"cleaned": len(stuck)}

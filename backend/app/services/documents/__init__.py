@@ -32,7 +32,7 @@ from app.services.documents.service import (
 from app.services.documents.smart_chunker import Chunk, smart_chunk
 
 __all__ = [
-    # service
+    # service (includes re-exports from _file_ops, _contracts, _tabular)
     "auto_classify_category",
     "auto_classify_tabular",
     "delete_contract_template",

@@ -1,76 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
 import {
     RefreshCw, CheckCircle2, AlertCircle, Download,
     Server, Database, Cpu, Loader2, Terminal,
 } from "lucide-react";
+import { useActualizaciones } from "./_hooks/useActualizaciones";
 
-interface HealthCheck {
-    status: string;
-    latency_ms?: number;
-    active_tasks?: number;
-    error?: string;
+function StatusRow({ icon, label, status, detail }: {
+    icon: React.ReactNode;
+    label: string;
+    status: "ok" | "error" | "warning" | "loading";
+    detail: string;
+}) {
+    const statusStyles = {
+        ok: "text-emerald-400",
+        error: "text-red-400",
+        warning: "text-amber-400",
+        loading: "text-muted-foreground",
+    };
+    const statusIcons = {
+        ok: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
+        error: <AlertCircle className="w-4 h-4 text-red-400" />,
+        warning: <AlertCircle className="w-4 h-4 text-amber-400" />,
+        loading: <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />,
+    };
+
+    return (
+        <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+                <span className="text-muted-foreground">{icon}</span>
+                <div>
+                    <p className="text-sm text-foreground font-medium">{label}</p>
+                    <p className={`text-xs ${statusStyles[status]}`}>{detail}</p>
+                </div>
+            </div>
+            {statusIcons[status]}
+        </div>
+    );
 }
-
-interface HealthData {
-    status: string;
-    version: string;
-    checks: Record<string, HealthCheck>;
-}
-
-type UpdateStatus = "idle" | "checking" | "available" | "up_to_date" | "error";
 
 export default function ActualizacionesPage() {
-    const [health, setHealth] = useState<HealthData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
-    const [updateError, setUpdateError] = useState("");
-
-    async function loadHealth() {
-        setLoading(true);
-        setError("");
-        try {
-            const data = await api.system.health();
-            setHealth(data);
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "No se pudo conectar al servidor");
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function checkForUpdates() {
-        setUpdateStatus("checking");
-        setUpdateError("");
-        try {
-            // TODO: Conectar con VPS de actualizaciones cuando esté disponible
-            // const res = await fetch("https://updates.automatizapyme.es/api/v1/check", {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ version: health?.version || "0.0.0" }),
-            // });
-            // const data = await res.json();
-            // setUpdateStatus(data.update_available ? "available" : "up_to_date");
-
-            // Placeholder: simular comprobación
-            await new Promise(r => setTimeout(r, 1500));
-            setUpdateStatus("up_to_date");
-        } catch {
-            setUpdateStatus("error");
-            setUpdateError("No se pudo conectar al servidor de actualizaciones. Se habilitará próximamente.");
-        }
-    }
-
-    useEffect(() => { loadHealth(); }, []);
-
-    const checks = health?.checks || {};
+    const { health, loading, error, updateStatus, updateError, checks, loadHealth, checkForUpdates } = useActualizaciones();
 
     return (
         <div className="p-8 max-w-3xl mx-auto space-y-8">
-            {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-foreground">Sistema</h1>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -228,39 +201,6 @@ export default function ActualizacionesPage() {
                     Si el sync incluye nuevas dependencias Python o migraciones de base de datos, el reinicio las aplicará automáticamente.
                 </div>
             </div>
-        </div>
-    );
-}
-
-function StatusRow({ icon, label, status, detail }: {
-    icon: React.ReactNode;
-    label: string;
-    status: "ok" | "error" | "warning" | "loading";
-    detail: string;
-}) {
-    const statusStyles = {
-        ok: "text-emerald-400",
-        error: "text-red-400",
-        warning: "text-amber-400",
-        loading: "text-muted-foreground",
-    };
-    const statusIcons = {
-        ok: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
-        error: <AlertCircle className="w-4 h-4 text-red-400" />,
-        warning: <AlertCircle className="w-4 h-4 text-amber-400" />,
-        loading: <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />,
-    };
-
-    return (
-        <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-3">
-                <span className="text-muted-foreground">{icon}</span>
-                <div>
-                    <p className="text-sm text-foreground font-medium">{label}</p>
-                    <p className={`text-xs ${statusStyles[status]}`}>{detail}</p>
-                </div>
-            </div>
-            {statusIcons[status]}
         </div>
     );
 }

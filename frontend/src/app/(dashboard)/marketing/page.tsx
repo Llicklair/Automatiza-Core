@@ -1,85 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { api } from "@/lib/api";
 import { Megaphone, Loader2, Calendar, Clock, Hash, ImageIcon, Send } from "lucide-react";
-
-type Post = {
-    day: string;
-    platform: string;
-    product: string | null;
-    text: string;
-    hashtags: string[];
-    best_time: string;
-    image_idea: string;
-};
-
-type MarketingPlan = {
-    period: string;
-    focus: string;
-    posts: Post[];
-};
-
-const PLATFORM_COLORS: Record<string, string> = {
-    Instagram: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-    Facebook: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    LinkedIn: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-};
+import { useMarketingPage, PLATFORM_COLORS } from "./_hooks/useMarketingPage";
 
 export default function MarketingPage() {
-    const [plan, setPlan] = useState<MarketingPlan | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [prompt, setPrompt] = useState("");
-
-    const generatePlan = async () => {
-        setLoading(true);
-        setError(null);
-        setPlan(null);
-        try {
-            const intent = prompt.trim() || "Genera un plan de contenidos para redes sociales este mes";
-            const res = await api.tasks.create("marketing", intent);
-            // Poll task until done
-            const taskId = res.id;
-            let attempts = 0;
-            while (attempts < 60) {
-                await new Promise((r) => setTimeout(r, 3000));
-                const task = await api.tasks.get(taskId);
-                if (task.status === "done" || task.status === "completed") {
-                    // Extract marketing plan from agent_results
-                    const result =
-                        task.output_data ??
-                        task.agent_results?.[0]?.output?.response ??
-                        task.agent_results?.[0]?.result;
-                    if (result) {
-                        try {
-                            const parsed = typeof result === "string" ? JSON.parse(result) : result;
-                            setPlan(parsed);
-                        } catch {
-                            // If not valid JSON, show as raw text
-                            setPlan({ period: "Plan generado", focus: "", posts: [] });
-                            setError(typeof result === "string" ? result : JSON.stringify(result, null, 2));
-                        }
-                    }
-                    break;
-                }
-                if (task.status === "failed") {
-                    setError(task.error_message || "Error generando el plan de marketing.");
-                    break;
-                }
-                attempts++;
-            }
-            if (attempts >= 60) setError("Timeout: la tarea tardó demasiado.");
-        } catch (e: any) {
-            setError(e?.message || "Error al crear la tarea de marketing.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { plan, loading, error, prompt, setPrompt, generatePlan } = useMarketingPage();
 
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/20">
                     <Megaphone className="w-5 h-5 text-pink-400" />
@@ -90,7 +18,6 @@ export default function MarketingPage() {
                 </div>
             </div>
 
-            {/* Prompt */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
                 <label className="text-xs font-medium text-muted-foreground">Instrucciones (opcional)</label>
                 <div className="flex gap-2">
@@ -113,14 +40,12 @@ export default function MarketingPage() {
                 </div>
             </div>
 
-            {/* Error */}
             {error && !plan && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm text-red-300">
                     {error}
                 </div>
             )}
 
-            {/* Plan header */}
             {plan && (
                 <div className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center gap-3 mb-1">
@@ -133,12 +58,10 @@ export default function MarketingPage() {
                 </div>
             )}
 
-            {/* Posts grid */}
             {plan && plan.posts.length > 0 && (
                 <div className="grid gap-3">
                     {plan.posts.map((post, i) => (
                         <div key={i} className="bg-card border border-border rounded-xl p-4 space-y-3">
-                            {/* Header row */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-medium text-foreground">{post.day}</span>
@@ -157,10 +80,8 @@ export default function MarketingPage() {
                                 </div>
                             </div>
 
-                            {/* Post text */}
                             <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{post.text}</p>
 
-                            {/* Hashtags */}
                             {post.hashtags?.length > 0 && (
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                     <Hash className="w-3 h-3 text-muted-foreground" />
@@ -170,7 +91,6 @@ export default function MarketingPage() {
                                 </div>
                             )}
 
-                            {/* Image idea */}
                             {post.image_idea && (
                                 <div className="flex items-start gap-2 bg-background rounded-lg p-2.5">
                                     <ImageIcon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -182,14 +102,12 @@ export default function MarketingPage() {
                 </div>
             )}
 
-            {/* Raw response fallback */}
             {plan && plan.posts.length === 0 && error && (
                 <div className="bg-card border border-border rounded-xl p-4">
                     <pre className="text-xs text-muted-foreground whitespace-pre-wrap">{error}</pre>
                 </div>
             )}
 
-            {/* Empty state */}
             {!plan && !loading && !error && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                     <div className="p-4 rounded-2xl bg-pink-500/5 border border-pink-500/10 mb-4">

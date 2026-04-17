@@ -1,83 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, EventItem, Client } from "@/lib/api";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Trash2, MapPin, Clock } from "lucide-react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { format, isSameMonth, isToday } from "date-fns";
 import { es } from "date-fns/locale";
-import { useToastStore } from "@/stores/toast";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
-
-const EVENT_TYPES = [
-    { id: "meeting", label: "Reuni\u00f3n" },
-    { id: "reminder", label: "Recordatorio" },
-    { id: "task_deadline", label: "Vencimiento" },
-];
-
-const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
+import { useCalendario } from "./_hooks/useCalendario";
+import { CreateEventModal } from "./_components/CreateEventModal";
+import { EventDetailModal } from "./_components/EventDetailModal";
 
 export default function CalendarPage() {
-    const toast = useToastStore();
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [events, setEvents] = useState<EventItem[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [showCreate, setShowCreate] = useState(false);
-    const [creating, setCreating] = useState(false);
-    const [form, setForm] = useState({
-        title: "", description: "", type: "meeting", location_or_link: "", client_id: "",
-        start_time: toLocalDatetime(new Date()),
-        end_time: toLocalDatetime(new Date(Date.now() + 3600000)),
-    });
-    const [selected, setSelected] = useState<EventItem | null>(null);
-    const [deleting, setDeleting] = useState(false);
-
-    useEffect(() => { loadData(); }, []);
-
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const [evts, clis] = await Promise.all([api.crm.events.list(), api.erp.clients.list()]);
-            setEvents(evts);
-            setClients(clis);
-        } catch (e) { logError("crm/calendario/page", e); }
-        finally { setIsLoading(false); }
-    };
-
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setCreating(true);
-        try {
-            await api.crm.events.create({
-                ...form,
-                client_id: form.client_id || undefined,
-                description: form.description || undefined,
-                location_or_link: form.location_or_link || undefined,
-            } as any);
-            setShowCreate(false);
-            setForm({ title: "", description: "", type: "meeting", location_or_link: "", client_id: "", start_time: toLocalDatetime(new Date()), end_time: toLocalDatetime(new Date(Date.now() + 3600000)) });
-            await loadData();
-        } catch { toast.error("Error al crear el evento"); }
-        finally { setCreating(false); }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar este evento?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
-        setDeleting(true);
-        try { await api.crm.events.delete(id); setSelected(null); await loadData(); }
-        catch (e) { logError("crm/calendario/page", e); }
-        finally { setDeleting(false); }
-    };
-
-    const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-    const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-    const goToToday = () => setCurrentMonth(new Date());
-    const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
-    const startWeekday = startOfMonth(currentMonth).getDay();
-    const emptyDaysPre = Array(startWeekday === 0 ? 6 : startWeekday - 1).fill(null);
-    const getEventsForDay = (day: Date) => events.filter(e => isSameDay(new Date(e.start_time), day));
-    const clientName = (id: string | null) => id ? (clients.find(c => c.id === id)?.name ?? id.slice(0, 8)) : null;
+    const {
+        currentMonth, clients, isLoading,
+        showCreate, setShowCreate,
+        creating, form, setForm,
+        selected, setSelected,
+        deleting,
+        handleCreate, handleDelete,
+        nextMonth, prevMonth, goToToday,
+        days, emptyDaysPre,
+        getEventsForDay, clientName,
+    } = useCalendario();
 
     return (
         <div className="min-h-screen bg-background text-foreground p-6 md:p-8">
@@ -143,106 +84,24 @@ export default function CalendarPage() {
             </div>
 
             {showCreate && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-                        <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
-                            <h2 className="text-lg font-medium text-foreground flex items-center gap-2"><CalendarIcon className="w-5 h-5 text-primary" /> Agendar Cita</h2>
-                            <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
-                        </div>
-                        <form onSubmit={handleCreate} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">T\u00edtulo *</label>
-                                <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary" placeholder="Ej: Demo con Cliente XYZ" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">Inicio *</label>
-                                    <input required type="datetime-local" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">Fin *</label>
-                                    <input required type="datetime-local" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">Tipo</label>
-                                    <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary">
-                                        {EVENT_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">Cliente</label>
-                                    <select value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary">
-                                        <option value="">Sin cliente</option>
-                                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Enlace / Ubicaci\u00f3n</label>
-                                <input value={form.location_or_link} onChange={e => setForm({ ...form, location_or_link: e.target.value })}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
-                                    placeholder="https://meet.google.com/... o direcci\u00f3n" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Descripci\u00f3n</label>
-                                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary resize-none"
-                                    placeholder="Notas del evento..." />
-                            </div>
-                            <div className="flex justify-end gap-3 pt-2 border-t border-border">
-                                <button type="button" onClick={() => setShowCreate(false)} className="px-5 py-2.5 text-muted-foreground hover:text-foreground">Cancelar</button>
-                                <button type="submit" disabled={creating} className="bg-primary hover:bg-primary text-foreground px-6 py-2.5 rounded-lg font-medium disabled:opacity-50">
-                                    {creating ? "Guardando..." : "Agendar"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <CreateEventModal
+                    clients={clients}
+                    form={form}
+                    setForm={setForm}
+                    creating={creating}
+                    onSubmit={handleCreate}
+                    onClose={() => setShowCreate(false)}
+                />
             )}
 
             {selected && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelected(null)}>
-                    <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="p-5 border-b border-border flex justify-between items-start bg-muted">
-                            <div>
-                                <h2 className="text-lg font-medium text-foreground">{selected.title}</h2>
-                                <span className="text-xs text-primary capitalize">{selected.type}</span>
-                            </div>
-                            <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground ml-4"><X className="w-5 h-5" /></button>
-                        </div>
-                        <div className="p-5 space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Clock className="w-4 h-4 shrink-0" />
-                                {format(new Date(selected.start_time), "dd MMM yyyy, HH:mm", { locale: es })} - {format(new Date(selected.end_time), "HH:mm")}
-                            </div>
-                            {selected.location_or_link && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <MapPin className="w-4 h-4 shrink-0" />
-                                    {selected.location_or_link.startsWith("http")
-                                        ? <a href={selected.location_or_link} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">{selected.location_or_link}</a>
-                                        : selected.location_or_link}
-                                </div>
-                            )}
-                            {clientName(selected.client_id) && (
-                                <div className="text-sm text-muted-foreground">Cliente: <span className="text-foreground">{clientName(selected.client_id)}</span></div>
-                            )}
-                            {selected.description && <p className="text-sm text-muted-foreground pt-2 border-t border-border">{selected.description}</p>}
-                        </div>
-                        <div className="p-5 border-t border-border flex justify-end">
-                            <button onClick={() => handleDelete(selected.id)} disabled={deleting}
-                                className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 disabled:opacity-50">
-                                <Trash2 className="w-4 h-4" /> {deleting ? "Eliminando..." : "Eliminar evento"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <EventDetailModal
+                    event={selected}
+                    clientName={clientName}
+                    deleting={deleting}
+                    onDelete={handleDelete}
+                    onClose={() => setSelected(null)}
+                />
             )}
         </div>
     );

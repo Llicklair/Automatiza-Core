@@ -1,60 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type JournalEntry } from "@/lib/api";
-import { logError } from "@/lib/logger";
+import { useState } from "react";
 import { Wallet, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Loader2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBalanceSituacion, type AccountBalance } from "./_hooks/useBalanceSituacion";
 
-const fmt = (v: number) =>
-    v.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
-
-// ─── Clasificación PGC español ─────────────────────────────────────────────
-// Grupos: 1=PN, 2=Inmovilizado, 3=Existencias, 4=Acreedores/Deudores, 5=Cuentas financieras, 6=Compras, 7=Ventas
-
-function classify(code: string): { section: string; subsection: string; side: "activo" | "pasivo" | "patrimonio" | "result" } {
-    const g = code.charAt(0);
-    const sub2 = code.substring(0, 2);
-
-    // Resultados (cuentas 6 y 7 van al resultado del ejercicio → Patrimonio Neto)
-    if (g === "6" || g === "7") return { section: "Patrimonio Neto", subsection: "Resultado del ejercicio", side: "result" };
-
-    // Patrimonio Neto (grupo 1)
-    if (g === "1") return { section: "Patrimonio Neto", subsection: "Capital y reservas", side: "patrimonio" };
-
-    // Activo no corriente (grupo 2: inmovilizado)
-    if (g === "2") return { section: "Activo No Corriente", subsection: "Inmovilizado", side: "activo" };
-
-    // Existencias (grupo 3)
-    if (g === "3") return { section: "Activo Corriente", subsection: "Existencias", side: "activo" };
-
-    // Grupo 4: Acreedores y Deudores
-    if (sub2 === "43" || sub2 === "44") return { section: "Activo Corriente", subsection: "Deudores comerciales", side: "activo" };
-    if (sub2 === "40" || sub2 === "41") return { section: "Pasivo Corriente", subsection: "Acreedores comerciales", side: "pasivo" };
-    if (g === "4") {
-        // resto del 4: Hacienda Pública, SS...
-        const n = parseInt(sub2);
-        if (n >= 47) return { section: "Pasivo Corriente", subsection: "Administraciones Públicas", side: "pasivo" };
-        return { section: "Activo Corriente", subsection: "Otras cuentas deudoras", side: "activo" };
-    }
-
-    // Grupo 5: Cuentas financieras
-    if (sub2 === "57" || sub2 === "56") return { section: "Activo Corriente", subsection: "Tesorería", side: "activo" };
-    if (sub2 === "52" || sub2 === "53") return { section: "Pasivo Corriente", subsection: "Deudas financieras c/p", side: "pasivo" };
-    if (sub2 === "50" || sub2 === "51") return { section: "Pasivo No Corriente", subsection: "Deudas financieras l/p", side: "pasivo" };
-    if (g === "5") return { section: "Activo Corriente", subsection: "Inversiones financieras", side: "activo" };
-
-    return { section: "Activo Corriente", subsection: "Otros activos", side: "activo" };
-}
-
-interface AccountBalance {
-    code: string;
-    name: string;
-    saldo: number; // positivo = saldo normal
-    side: "activo" | "pasivo" | "patrimonio" | "result";
-    section: string;
-    subsection: string;
-}
+const fmt = (v: number) => v.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
 function SectionBlock({ title, items, totalLabel, total, color }: {
     title: string;
@@ -125,82 +76,15 @@ function SectionBlock({ title, items, totalLabel, total, color }: {
 }
 
 export default function BalanceSituacionPage() {
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        api.accounting.journal.list()
-            .then(setEntries)
-            .catch(err => logError("contabilidad/balance", err))
-            .finally(() => setLoading(false));
-    }, []);
-
-    // ── Calcular saldos por cuenta ──────────────────────────────────────────
-    const accountMap: Record<string, AccountBalance> = {};
-
-    entries.forEach(entry => {
-        entry.lines.forEach(line => {
-            const code3 = line.account_code.substring(0, 3);
-            const cls = classify(line.account_code);
-
-            if (!accountMap[code3]) {
-                accountMap[code3] = {
-                    code: code3,
-                    name: line.account_name || `Cuenta ${code3}`,
-                    saldo: 0,
-                    ...cls,
-                };
-            }
-            // Saldo: Debe - Haber
-            accountMap[code3].saldo += Number(line.debit) - Number(line.credit);
-        });
-    });
-
-    // Invertir signo para cuentas de pasivo/patrimonio (saldo normal = acreedor)
-    Object.values(accountMap).forEach(acc => {
-        if (acc.side === "pasivo" || acc.side === "patrimonio") {
-            acc.saldo = -acc.saldo;
-        }
-        if (acc.side === "result") {
-            // Ingresos (7xx): crédito es positivo → neto = Haber - Debe
-            const g = acc.code.charAt(0);
-            if (g === "7") acc.saldo = -acc.saldo; // ya está Debe-Haber, invertimos para ingreso
-        }
-    });
-
-    const accounts = Object.values(accountMap).filter(a => Math.abs(a.saldo) > 0.005);
-
-    // Resultado del ejercicio = Ingresos (7) - Gastos (6)
-    const ingresosTotal = accounts.filter(a => a.code.charAt(0) === "7").reduce((s, a) => s + a.saldo, 0);
-    const gastosTotal = accounts.filter(a => a.code.charAt(0) === "6").reduce((s, a) => s + Math.abs(a.saldo), 0);
-    const resultadoEjercicio = ingresosTotal - gastosTotal;
-
-    // ── Agrupar por sección ─────────────────────────────────────────────────
-    function groupBySub(filter: (a: AccountBalance) => boolean) {
-        const subs: Record<string, AccountBalance[]> = {};
-        accounts.filter(filter).forEach(acc => {
-            if (!subs[acc.subsection]) subs[acc.subsection] = [];
-            subs[acc.subsection].push(acc);
-        });
-        return Object.entries(subs).map(([subsection, accs]) => ({ subsection, accounts: accs }));
-    }
-
-    const activoItems = groupBySub(a => a.side === "activo");
-    const pasivoItems = groupBySub(a => a.side === "pasivo");
-    const pnItems = [
-        ...groupBySub(a => a.side === "patrimonio"),
-    ];
-
-    const totalActivo = accounts.filter(a => a.side === "activo").reduce((s, a) => s + a.saldo, 0);
-    const totalPasivo = accounts.filter(a => a.side === "pasivo").reduce((s, a) => s + a.saldo, 0);
-    const totalPN = accounts.filter(a => a.side === "patrimonio").reduce((s, a) => s + a.saldo, 0) + resultadoEjercicio;
-    const totalPasivoPN = totalPasivo + totalPN;
-
-    const isEmpty = entries.length === 0;
+    const {
+        loading, isEmpty,
+        activoItems, pasivoItems, pnItems,
+        totalActivo, totalPasivo, totalPN, totalPasivoPN,
+        resultadoEjercicio,
+    } = useBalanceSituacion();
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
@@ -212,7 +96,6 @@ export default function BalanceSituacionPage() {
                     <p className="text-muted-foreground ml-14">Estado patrimonial según PGC español — Activo = Pasivo + Patrimonio Neto</p>
                 </div>
 
-                {/* Equilibrio */}
                 {!loading && !isEmpty && (
                     <div className={cn(
                         "px-5 py-3 rounded-2xl border text-sm font-semibold flex items-center gap-2",
@@ -238,7 +121,6 @@ export default function BalanceSituacionPage() {
                 </div>
             ) : (
                 <>
-                    {/* KPIs */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-card border border-blue-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><TrendingUp className="w-20 h-20 text-blue-400" /></div>
@@ -260,20 +142,10 @@ export default function BalanceSituacionPage() {
                         </div>
                     </div>
 
-                    {/* Columnas */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* ACTIVO */}
                         <div className="space-y-4">
-                            <SectionBlock
-                                title="ACTIVO"
-                                items={activoItems}
-                                totalLabel="Total Activo"
-                                total={totalActivo}
-                                color="blue"
-                            />
+                            <SectionBlock title="ACTIVO" items={activoItems} totalLabel="Total Activo" total={totalActivo} color="blue" />
                         </div>
-
-                        {/* PASIVO + PATRIMONIO NETO */}
                         <div className="space-y-4">
                             <SectionBlock
                                 title="PATRIMONIO NETO"
@@ -295,15 +167,7 @@ export default function BalanceSituacionPage() {
                                 total={totalPN}
                                 color="emerald"
                             />
-                            <SectionBlock
-                                title="PASIVO"
-                                items={pasivoItems}
-                                totalLabel="Total Pasivo"
-                                total={totalPasivo}
-                                color="orange"
-                            />
-
-                            {/* Total Pasivo + PN */}
+                            <SectionBlock title="PASIVO" items={pasivoItems} totalLabel="Total Pasivo" total={totalPasivo} color="orange" />
                             <div className="flex items-center justify-between px-5 py-4 bg-card border border-border rounded-2xl">
                                 <span className="text-sm font-bold text-foreground uppercase tracking-wider">Total Pasivo + Patrimonio Neto</span>
                                 <span className="text-lg font-bold text-foreground">{fmt(totalPasivoPN)}</span>

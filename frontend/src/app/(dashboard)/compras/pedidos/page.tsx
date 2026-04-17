@@ -1,134 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type PurchaseOrder, type Client, type Product, type PurchaseOrderLine } from "@/lib/api";
-import {
-    ShoppingBag, Plus, Search, Loader2, X, Trash2,
-    ChevronDown, Package, Calendar, Check, Truck
-} from "lucide-react";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
+import { ShoppingBag, Plus, Search, Loader2, ChevronDown, Package, Calendar, Check, Truck, Trash2 } from "lucide-react";
+import { usePedidosCompra } from "./_hooks/usePedidosCompra";
+import { NuevoPedidoModal } from "./_components/NuevoPedidoModal";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    draft: { label: "Borrador", color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
-    sent: { label: "Enviado", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-    confirmed: { label: "Confirmado", color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
-    received: { label: "Recibido", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-    cancelled: { label: "Cancelado", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+    draft:     { label: "Borrador",   color: "text-muted-foreground", bg: "bg-muted",          border: "border-border" },
+    sent:      { label: "Enviado",    color: "text-blue-400",         bg: "bg-blue-500/10",     border: "border-blue-500/20" },
+    confirmed: { label: "Confirmado", color: "text-primary",          bg: "bg-primary/10",      border: "border-primary/20" },
+    received:  { label: "Recibido",   color: "text-emerald-400",      bg: "bg-emerald-500/10",  border: "border-emerald-500/20" },
+    cancelled: { label: "Cancelado",  color: "text-rose-400",         bg: "bg-rose-500/10",     border: "border-rose-500/20" },
 };
 
-const STATUS_FLOW: Record<string, string> = {
-    draft: "sent", sent: "confirmed", confirmed: "received"
-};
-
-const EMPTY_LINE: PurchaseOrderLine = { description: "", quantity: 1, unit_price: 0, tax_percentage: 21 };
+const STATUS_FLOW: Record<string, string> = { draft: "sent", sent: "confirmed", confirmed: "received" };
 
 export default function PedidosCompraPage() {
-    const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-    const [suppliers, setSuppliers] = useState<Client[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [showModal, setShowModal] = useState(false);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-
-    const [form, setForm] = useState({
-        supplier_id: "",
-        expected_delivery: "",
-        notes: "",
-        lines: [{ ...EMPTY_LINE }] as PurchaseOrderLine[],
-    });
-
-    const load = async () => {
-        try {
-            const [ordersData, suppliersData, productsData] = await Promise.all([
-                api.erp.purchaseOrders.list(),
-                api.erp.clients.list({ client_type: "supplier", limit: 200 }),
-                api.erp.products.list({ limit: 200 }),
-            ]);
-            setOrders(ordersData);
-            setSuppliers(suppliersData);
-            setProducts(productsData);
-        } catch (err) { logError("compras/pedidos/page", err); }
-        finally { setLoading(false); }
-    };
-
-    useEffect(() => { load(); }, []);
-
-    const openNew = () => {
-        setForm({ supplier_id: "", expected_delivery: "", notes: "", lines: [{ ...EMPTY_LINE }] });
-        setShowModal(true);
-    };
-
-    const setLine = (i: number, field: keyof PurchaseOrderLine, value: any) => {
-        setForm(f => {
-            const lines = [...f.lines];
-            lines[i] = { ...lines[i], [field]: value };
-            if (field === "product_id") {
-                const prod = products.find(p => p.id === value);
-                if (prod) { lines[i].description = prod.name; lines[i].unit_price = prod.price; lines[i].tax_percentage = prod.tax_percentage; }
-            }
-            return { ...f, lines };
-        });
-    };
-
-    const lineTotal = (line: PurchaseOrderLine) => {
-        const base = line.quantity * line.unit_price;
-        return base * (1 + line.tax_percentage / 100);
-    };
-    const orderTotal = form.lines.reduce((acc, l) => acc + lineTotal(l), 0);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!form.supplier_id) return;
-        setSaving(true);
-        try {
-            await api.erp.purchaseOrders.create({
-                supplier_id: form.supplier_id,
-                expected_delivery: form.expected_delivery || undefined,
-                notes: form.notes || undefined,
-                lines: form.lines.filter(l => l.description.trim()),
-            } as any);
-            setShowModal(false);
-            setLoading(true);
-            load();
-        } catch (err) { logError("compras/pedidos/page", err); }
-        finally { setSaving(false); }
-    };
-
-    const handleAdvance = async (order: PurchaseOrder) => {
-        const next = STATUS_FLOW[order.status];
-        if (!next) return;
-        try {
-            const updated = await api.erp.purchaseOrders.update(order.id, { status: next });
-            setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
-        } catch (err) { logError("compras/pedidos/page", err); }
-    };
-
-    const handleCancel = async (order: PurchaseOrder) => {
-        if (!await showConfirm({ message: "¿Cancelar este pedido?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
-        try {
-            const updated = await api.erp.purchaseOrders.update(order.id, { status: "cancelled" });
-            setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
-        } catch (err) { logError("compras/pedidos/page", err); }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar definitivamente?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
-        setDeletingId(id);
-        try {
-            await api.erp.purchaseOrders.delete(id);
-            setOrders(prev => prev.filter(o => o.id !== id));
-        } catch (err) { logError("compras/pedidos/page", err); }
-        finally { setDeletingId(null); }
-    };
-
-    const q = search.toLowerCase();
-    const filtered = orders.filter(o => !q || (o.order_number || "").toLowerCase().includes(q) || (o.supplier?.name || "").toLowerCase().includes(q));
+    const {
+        orders, suppliers, products, loading, search, setSearch,
+        showModal, setShowModal, expandedId, setExpandedId,
+        saving, deletingId, form, setForm, filtered,
+        lineTotal, orderTotal, openNew, setLine,
+        handleSubmit, handleAdvance, handleCancel, handleDelete,
+    } = usePedidosCompra();
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -142,12 +37,11 @@ export default function PedidosCompraPage() {
                 </button>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
                 {[
                     { label: "Pendientes de recibir", value: orders.filter(o => ["sent", "confirmed"].includes(o.status)).length, color: "text-amber-400" },
-                    { label: "Recibidos", value: orders.filter(o => o.status === "received").length, color: "text-emerald-400" },
-                    { label: "Total comprometido", value: fmt(orders.filter(o => o.status !== "cancelled").reduce((a, o) => a + o.amount_total, 0)), color: "text-foreground" },
+                    { label: "Recibidos",             value: orders.filter(o => o.status === "received").length,                  color: "text-emerald-400" },
+                    { label: "Total comprometido",    value: fmt(orders.filter(o => o.status !== "cancelled").reduce((a, o) => a + o.amount_total, 0)), color: "text-foreground" },
                 ].map(stat => (
                     <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</p>
@@ -156,7 +50,6 @@ export default function PedidosCompraPage() {
                 ))}
             </div>
 
-            {/* Search */}
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -166,7 +59,6 @@ export default function PedidosCompraPage() {
                 />
             </div>
 
-            {/* List */}
             {loading ? (
                 <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" /> Cargando pedidos…
@@ -218,7 +110,8 @@ export default function PedidosCompraPage() {
                                         {!["cancelled", "received"].includes(order.status) && (
                                             <button onClick={() => handleCancel(order)} className="text-xs text-muted-foreground hover:text-rose-400 px-2 py-1.5 rounded-lg hover:bg-rose-500/10 transition-colors">Cancelar</button>
                                         )}
-                                        <button onClick={() => handleDelete(order.id)} disabled={deletingId === order.id} className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors">
+                                        <button onClick={() => handleDelete(order.id)} disabled={deletingId === order.id}
+                                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors">
                                             {deletingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                                         </button>
                                     </div>
@@ -250,107 +143,19 @@ export default function PedidosCompraPage() {
                 </div>
             )}
 
-            {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm pt-16 pb-8 overflow-y-auto">
-                    <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-foreground">Nuevo pedido de compra</h2>
-                            <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Proveedor *</label>
-                                    <select required value={form.supplier_id} onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors">
-                                        <option value="">Seleccionar proveedor…</option>
-                                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    {suppliers.length === 0 && <p className="text-xs text-amber-400 mt-1">Crea proveedores en Compras → Proveedores</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Entrega prevista</label>
-                                    <input type="date" value={form.expected_delivery} onChange={e => setForm(f => ({ ...f, expected_delivery: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors" />
-                                </div>
-                            </div>
-
-                            {/* Lines */}
-                            <div>
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-sm font-semibold text-foreground">Líneas del pedido</p>
-                                    <button type="button" onClick={() => setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE }] }))}
-                                        className="text-xs text-primary hover:text-primary flex items-center gap-1 transition-colors">
-                                        <Plus className="w-3 h-3" /> Añadir
-                                    </button>
-                                </div>
-                                <div className="space-y-2">
-                                    {form.lines.map((line, i) => (
-                                        <div key={i} className="grid grid-cols-12 gap-2 items-end bg-muted rounded-xl p-3">
-                                            <div className="col-span-5">
-                                                <label className="block text-xs text-muted-foreground mb-1">Producto / Descripción</label>
-                                                <select value={(line as any).product_id || ""} onChange={e => setLine(i, "product_id" as any, e.target.value || null)}
-                                                    className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary mb-1">
-                                                    <option value="">Seleccionar…</option>
-                                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                </select>
-                                                <input type="text" placeholder="Descripción" value={line.description} onChange={e => setLine(i, "description", e.target.value)}
-                                                    className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="block text-xs text-muted-foreground mb-1">Cant.</label>
-                                                <input type="number" min={0.01} step={0.01} value={line.quantity} onChange={e => setLine(i, "quantity", parseFloat(e.target.value) || 0)}
-                                                    className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="block text-xs text-muted-foreground mb-1">Precio</label>
-                                                <input type="number" min={0} step={0.01} value={line.unit_price} onChange={e => setLine(i, "unit_price", parseFloat(e.target.value) || 0)}
-                                                    className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="block text-xs text-muted-foreground mb-1">IVA %</label>
-                                                <select value={line.tax_percentage} onChange={e => setLine(i, "tax_percentage", parseFloat(e.target.value))}
-                                                    className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary">
-                                                    {[0, 4, 10, 21].map(t => <option key={t} value={t}>{t}%</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="col-span-1 flex items-end justify-end">
-                                                <button type="button" onClick={() => setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))} disabled={form.lines.length === 1}
-                                                    className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30">
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                            <div className="col-span-12 text-right text-xs text-muted-foreground">
-                                                Total: <span className="text-foreground font-mono">{fmt(lineTotal(line))}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="bg-muted rounded-xl p-4 flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground">Total pedido</span>
-                                <span className="text-xl font-bold text-foreground">{fmt(orderTotal)}</span>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Notas</label>
-                                <textarea value={form.notes} rows={2} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                                    className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors resize-none"
-                                    placeholder="Condiciones especiales, instrucciones de entrega..." />
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground text-sm hover:bg-accent/50 transition-colors">Cancelar</button>
-                                <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary text-foreground text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                                    {saving && <Loader2 className="w-4 h-4 animate-spin" />} Crear pedido
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <NuevoPedidoModal
+                open={showModal}
+                onClose={() => setShowModal(false)}
+                form={form}
+                setForm={setForm}
+                suppliers={suppliers}
+                products={products}
+                saving={saving}
+                orderTotal={orderTotal}
+                lineTotal={lineTotal}
+                setLine={setLine}
+                onSubmit={handleSubmit}
+            />
         </div>
     );
 }

@@ -1,228 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { hrDocuments } from "@/lib/api/hr_documents";
-import type { HRDocument } from "@/lib/api/hr_documents";
-import { FileText, Plus, CheckCircle2, Trash2, Copy, Loader2, X, ChevronDown, ChevronUp, Send, Wand2, Download } from "lucide-react";
-
-// Parser de lenguaje natural → campos del documento
-function parseNLIntent(text: string): { doc_type: string; employee_name: string; instructions: string } {
-    const t = text.toLowerCase();
-    let doc_type = "other";
-    if (/contrato|contrataci[oó]n|trabajo/.test(t))  doc_type = "contract";
-    else if (/nda|confidencial|no divulg/.test(t))   doc_type = "nda";
-    else if (/despido|despedido|terminaci[oó]n/.test(t)) doc_type = "termination";
-    else if (/finiquito|liquidaci[oó]n/.test(t))     doc_type = "settlement";
-    else if (/adenda|addendum|modificaci[oó]n/.test(t)) doc_type = "addendum";
-
-    // Extraer nombre: "para [Nombre Apellido]"
-    const nameMatch = text.match(/para\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i);
-    const employee_name = nameMatch ? nameMatch[1] : "";
-
-    // Instrucciones: el resto del texto
-    const instructions = text.replace(/para\s+\S+(\s+\S+)?/i, "").replace(/(contrato|nda|despido|finiquito|adenda|documento|quiero|necesito|genera|crea)/gi, "").trim();
-
-    return { doc_type, employee_name, instructions };
-}
-
-const DOC_TYPES = [
-    { value: "contract", label: "Contrato de trabajo" },
-    { value: "nda", label: "Acuerdo de Confidencialidad (NDA)" },
-    { value: "termination", label: "Carta de despido" },
-    { value: "settlement", label: "Finiquito" },
-    { value: "addendum", label: "Adenda contractual" },
-    { value: "other", label: "Otro documento laboral" },
-];
-
-const DOC_TEMPLATES: Record<string, string> = {
-    contract:
-`Tipo de contrato: indefinido / temporal (indica cuál).
-Jornada: completa 40h/semana / parcial [X]h/semana.
-Salario bruto anual: [X €] / mensual: [X €].
-Puesto: [nombre del puesto].
-Departamento: [departamento].
-Fecha de incorporación: [DD/MM/AAAA].
-Centro de trabajo: [ciudad].
-Período de prueba: [X meses] (máx. 6 meses técnicos, 2 meses resto).`,
-
-    nda:
-`Partes: la empresa y [nombre del trabajador / colaborador].
-Información confidencial que se protege: [describir — código fuente, clientes, estrategia, etc.].
-Duración de la obligación: [X años tras fin de relación laboral].
-Ámbito geográfico: [nacional / internacional].
-Consecuencias de incumplimiento: [indemnización / acciones legales].`,
-
-    termination:
-`Tipo de despido: disciplinario / objetivo / colectivo.
-Motivo: [describir causa concreta].
-Fecha efectiva del despido: [DD/MM/AAAA].
-Preaviso: [X días / no aplica despido disciplinario].
-Indemnización: [según ley: 20 días/año objetivo | 33 días/año improcedente | 0 disciplinario].
-Acumulación de vacaciones pendientes: [X días].`,
-
-    settlement:
-`Fecha de baja: [DD/MM/AAAA].
-Motivo de la baja: [despido / renuncia voluntaria / fin de contrato].
-Salario pendiente del mes en curso (días trabajados): [X €].
-Vacaciones no disfrutadas: [X días = X €].
-Pagas extras proporcionales pendientes: [X €].
-Indemnización (si aplica): [X €].`,
-
-    addendum:
-`Contrato original fecha: [DD/MM/AAAA].
-Cláusula(s) que se modifican: [describir qué cambia].
-Nueva condición: [texto de la nueva cláusula].
-Motivo del cambio: [acuerdo mutuo / cambio de funciones / ascenso / etc.].
-Fecha de entrada en vigor: [DD/MM/AAAA].`,
-
-    other:
-`Describe el documento que necesitas:
-Partes involucradas: [nombres y roles].
-Objeto del documento: [qué regula o certifica].
-Condiciones principales: [listar].
-Fecha: [DD/MM/AAAA].`,
-};
-
-function StatusBadge({ status }: { status: HRDocument["status"] }) {
-    return status === "approved" ? (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-3 h-3" /> Aprobado
-        </span>
-    ) : (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            Borrador
-        </span>
-    );
-}
-
-function DocumentCard({ doc, onApprove, onDelete }: {
-    doc: HRDocument; onApprove: (id: string) => void; onDelete: (id: string) => void;
-}) {
-    const [expanded, setExpanded] = useState(false);
-    const [copying, setCopying] = useState(false);
-    const docTypeLabel = DOC_TYPES.find(t => t.value === doc.doc_type)?.label ?? doc.doc_type;
-    const date = new Date(doc.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
-
-    const handleCopy = async () => {
-        setCopying(true);
-        await navigator.clipboard.writeText(doc.content_html).catch(() => {});
-        setTimeout(() => setCopying(false), 1500);
-    };
-
-    const handleDownloadPdf = () => {
-        const win = window.open("", "_blank");
-        if (!win) return;
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>@media print{body{margin:0}}</style></head><body>${doc.content_html}</body></html>`);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); }, 400);
-    };
-
-    return (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="p-4 flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-medium text-foreground truncate">{doc.title}</h3>
-                        <StatusBadge status={doc.status} />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{docTypeLabel} · {doc.employee_name} · {date}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={handleDownloadPdf} title="Descargar PDF"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        <Download className="w-4 h-4" />
-                    </button>
-                    <button onClick={handleCopy} title="Copiar HTML"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        {copying ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                    {doc.status === "draft" && (
-                        <button onClick={() => onApprove(doc.id)} title="Aprobar"
-                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors">
-                            <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                    )}
-                    <button onClick={() => onDelete(doc.id)} title="Eliminar"
-                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setExpanded(v => !v)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                </div>
-            </div>
-            {expanded && (
-                <div className="border-t border-border p-4 bg-background">
-                    <div className="prose prose-invert prose-sm max-w-none text-foreground"
-                        dangerouslySetInnerHTML={{ __html: doc.content_html }} />
-                </div>
-            )}
-        </div>
-    );
-}
+import { FileText, Plus, Loader2, Send, Wand2 } from "lucide-react";
+import { useHRDocumentos, DOC_TYPES, DOC_TEMPLATES } from "./_hooks/useHRDocumentos";
+import { DocumentCard } from "./_components/DocumentCard";
 
 export default function HRDocumentosPage() {
-    const [docs, setDocs]             = useState<HRDocument[]>([]);
-    const [loading, setLoading]       = useState(true);
-    const [generating, setGenerating] = useState(false);
-    const [error, setError]           = useState<string | null>(null);
-    const [toast, setToast]           = useState<string | null>(null);
-    const [form, setForm]             = useState({ doc_type: "contract", employee_name: "", instructions: DOC_TEMPLATES["contract"] });
-    const [nlText, setNlText]         = useState("");
-    const [nlGenerating, setNlGenerating] = useState(false);
-
-    const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
-
-    const loadDocs = useCallback(async () => {
-        try { setDocs(await hrDocuments.list({ limit: 50 })); } catch {}
-    }, []);
-
-    useEffect(() => { setLoading(true); loadDocs().finally(() => setLoading(false)); }, [loadDocs]);
-
-    const handleNLGenerate = async () => {
-        if (!nlText.trim()) return;
-        setNlGenerating(true); setError(null);
-        try {
-            const parsed = parseNLIntent(nlText.trim());
-            const doc = await hrDocuments.generate({
-                doc_type: parsed.doc_type,
-                employee_name: parsed.employee_name || undefined,
-                instructions: parsed.instructions || nlText.trim(),
-            });
-            setDocs(prev => [doc, ...prev]);
-            setNlText("");
-            showToast("Borrador generado");
-        } catch (e: any) { setError(e?.message ?? "Error al generar"); }
-        finally { setNlGenerating(false); }
-    };
-
-    const handleGenerate = async () => {
-        if (!form.doc_type) { setError("Selecciona el tipo de documento"); return; }
-        setGenerating(true); setError(null);
-        try {
-            const doc = await hrDocuments.generate({
-                doc_type: form.doc_type,
-                employee_name: form.employee_name.trim() || undefined,
-                instructions: form.instructions.trim(),
-            });
-            setDocs(prev => [doc, ...prev]);
-            setForm(f => ({ ...f, employee_name: "", instructions: "" }));
-            showToast("Borrador generado");
-        } catch (e: any) { setError(e?.message ?? "Error al generar"); }
-        finally { setGenerating(false); }
-    };
-
-    const handleApprove = async (id: string) => {
-        try { await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const } : d)); showToast("Documento aprobado"); }
-        catch { showToast("Error al aprobar"); }
-    };
-
-    const handleDelete = async (id: string) => {
-        try { await hrDocuments.delete(id); setDocs(prev => prev.filter(d => d.id !== id)); showToast("Eliminado"); }
-        catch { showToast("Error al eliminar"); }
-    };
+    const {
+        docs, loading, generating, error, toast,
+        form, setForm,
+        nlText, setNlText, nlGenerating,
+        handleNLGenerate, handleGenerate, handleApprove, handleDelete,
+    } = useHRDocumentos();
 
     return (
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -236,7 +24,6 @@ export default function HRDocumentosPage() {
                 <p className="text-xs text-muted-foreground mt-1">Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar.</p>
             </div>
 
-            {/* Barra de lenguaje natural */}
             <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <Wand2 className="w-4 h-4 text-violet-400 shrink-0" />
                 <input
@@ -254,7 +41,6 @@ export default function HRDocumentosPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Formulario */}
                 <div className="lg:col-span-2">
                     <div className="bg-card border border-border rounded-xl p-5 space-y-4 sticky top-6">
                         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -291,7 +77,6 @@ export default function HRDocumentosPage() {
                     </div>
                 </div>
 
-                {/* Lista */}
                 <div className="lg:col-span-3 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documentos ({docs.length})</p>
                     {loading ? (

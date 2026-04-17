@@ -1,69 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, EventItem, Client } from "@/lib/api";
-import { Video, Plus, Search, Clock, MapPin, MoreVertical, ArrowUpRight, VideoOff, X, Trash2 } from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
+import { Video, Plus, Search, Clock, MapPin, ArrowUpRight, VideoOff, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useToastStore } from "@/stores/toast";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
-
-const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
+import { EventItem } from "@/lib/api";
+import { useReuniones } from "./_hooks/useReuniones";
+import { CreateMeetingModal } from "./_components/CreateMeetingModal";
 
 export default function MeetingsPage() {
-    const toast = useToastStore();
-    const [meetings, setMeetings] = useState<EventItem[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [search, setSearch] = useState("");
-
-    const [showCreate, setShowCreate] = useState(false);
-    const [creating, setCreating] = useState(false);
-    const [form, setForm] = useState({
-        title: "", description: "", location_or_link: "", client_id: "",
-        start_time: toLocalDatetime(new Date()),
-        end_time: toLocalDatetime(new Date(Date.now() + 3600000)),
-    });
-
-    useEffect(() => { loadData(); }, []);
-
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const [evts, clis] = await Promise.all([api.crm.events.list(), api.erp.clients.list()]);
-            setMeetings(evts.filter(e => e.type === "meeting"));
-            setClients(clis);
-        } catch (e) { logError("crm/reuniones/page", e); }
-        finally { setIsLoading(false); }
-    };
-
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setCreating(true);
-        try {
-            await api.crm.events.create({
-                ...form, type: "meeting",
-                client_id: form.client_id || undefined,
-                description: form.description || undefined,
-                location_or_link: form.location_or_link || undefined,
-            } as any);
-            setShowCreate(false);
-            setForm({ title: "", description: "", location_or_link: "", client_id: "", start_time: toLocalDatetime(new Date()), end_time: toLocalDatetime(new Date(Date.now() + 3600000)) });
-            await loadData();
-        } catch { toast.error("Error al programar la reunión"); }
-        finally { setCreating(false); }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar esta reunión?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
-        try { await api.crm.events.delete(id); await loadData(); }
-        catch (e) { logError("crm/reuniones/page", e); }
-    };
-
-    const filtered = meetings.filter(m => m.title.toLowerCase().includes(search.toLowerCase()) || (m.description ?? "").toLowerCase().includes(search.toLowerCase()));
-    const upcoming = filtered.filter(m => !isPast(new Date(m.start_time)) || isToday(new Date(m.start_time)));
-    const past = filtered.filter(m => isPast(new Date(m.start_time)) && !isToday(new Date(m.start_time)));
+    const {
+        meetings, clients, isLoading,
+        search, setSearch,
+        showCreate, setShowCreate,
+        creating, form, setForm,
+        handleCreate, handleDelete,
+        upcoming, past,
+    } = useReuniones();
 
     const renderCard = (m: EventItem, isPastMeeting: boolean) => (
         <div key={m.id} className={`p-5 rounded-2xl border transition-all ${isPastMeeting ? "bg-background/40 border-border opacity-70" : "bg-muted border-border hover:border-blue-500/30"}`}>
@@ -88,7 +40,7 @@ export default function MeetingsPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <MapPin className="w-3.5 h-3.5" />
-                    <span className="truncate max-w-[150px]">{m.location_or_link || "Ubicaci\u00f3n no especificada"}</span>
+                    <span className="truncate max-w-[150px]">{m.location_or_link || "Ubicación no especificada"}</span>
                 </div>
                 {!isPastMeeting && m.location_or_link && m.location_or_link.startsWith("http") && (
                     <a href={m.location_or_link} target="_blank" rel="noreferrer"
@@ -111,7 +63,7 @@ export default function MeetingsPage() {
                     <p className="text-muted-foreground mt-2 ml-14 text-sm">Gestiona tus videollamadas con clientes.</p>
                 </div>
                 <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
-                    <Plus className="w-4 h-4" /> Programar Reuni\u00f3n
+                    <Plus className="w-4 h-4" /> Programar Reunión
                 </button>
             </div>
 
@@ -138,7 +90,7 @@ export default function MeetingsPage() {
                             <div>
                                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                                    Pr\u00f3ximas y Hoy ({upcoming.length})
+                                    Próximas y Hoy ({upcoming.length})
                                 </h2>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">{upcoming.map(m => renderCard(m, false))}</div>
                             </div>
@@ -154,60 +106,14 @@ export default function MeetingsPage() {
             </div>
 
             {showCreate && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-                        <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
-                            <h2 className="text-lg font-medium text-foreground flex items-center gap-2"><Video className="w-5 h-5 text-blue-400" /> Programar Reuni\u00f3n</h2>
-                            <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
-                        </div>
-                        <form onSubmit={handleCreate} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">T\u00edtulo *</label>
-                                <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500"
-                                    placeholder="Ej: Llamada de seguimiento con ACME" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">Inicio *</label>
-                                    <input required type="datetime-local" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">Fin *</label>
-                                    <input required type="datetime-local" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Enlace (Meet/Zoom/Teams)</label>
-                                <input value={form.location_or_link} onChange={e => setForm({ ...form, location_or_link: e.target.value })}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500"
-                                    placeholder="https://meet.google.com/..." />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Cliente</label>
-                                <select value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500">
-                                    <option value="">Sin cliente</option>
-                                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Descripci\u00f3n</label>
-                                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-blue-500 resize-none"
-                                    placeholder="Agenda de la reuni\u00f3n..." />
-                            </div>
-                            <div className="flex justify-end gap-3 pt-2 border-t border-border">
-                                <button type="button" onClick={() => setShowCreate(false)} className="px-5 py-2.5 text-muted-foreground hover:text-foreground">Cancelar</button>
-                                <button type="submit" disabled={creating} className="bg-blue-600 hover:bg-blue-500 text-foreground px-6 py-2.5 rounded-lg font-medium disabled:opacity-50">
-                                    {creating ? "Guardando..." : "Programar"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <CreateMeetingModal
+                    clients={clients}
+                    form={form}
+                    setForm={setForm}
+                    creating={creating}
+                    onSubmit={handleCreate}
+                    onClose={() => setShowCreate(false)}
+                />
             )}
         </div>
     );

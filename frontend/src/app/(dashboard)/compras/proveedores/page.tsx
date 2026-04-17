@@ -1,80 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type Client } from "@/lib/api";
-import { Truck, Plus, Search, Pencil, Trash2, Loader2, X, Building2, Mail, MapPin, Hash } from "lucide-react";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
-
-const EMPTY_FORM = { name: "", nif: "", email: "", address: "", city: "", postal_code: "" };
+import { Truck, Plus, Search, Pencil, Trash2, Loader2, Building2, Mail, MapPin } from "lucide-react";
+import { useProveedores } from "./_hooks/useProveedores";
+import { ProveedorModal } from "./_components/ProveedorModal";
 
 export default function ProveedoresPage() {
-    const [suppliers, setSuppliers] = useState<Client[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [form, setForm] = useState(EMPTY_FORM);
-    const [saving, setSaving] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-
-    const load = () =>
-        api.erp.clients.list({ client_type: "supplier", limit: 200 })
-            .then(setSuppliers)
-            .catch(err => logError("compras/proveedores/page", err))
-            .finally(() => setLoading(false));
-
-    useEffect(() => { load(); }, []);
-
-    const openNew = () => {
-        setForm(EMPTY_FORM);
-        setEditingId(null);
-        setShowModal(true);
-    };
-
-    const openEdit = (s: Client) => {
-        setForm({ name: s.name, nif: s.nif || "", email: s.email || "", address: s.address || "", city: s.city || "", postal_code: s.postal_code || "" });
-        setEditingId(s.id);
-        setShowModal(true);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!form.name.trim()) return;
-        setSaving(true);
-        try {
-            if (editingId) {
-                await api.erp.clients.update(editingId, form);
-            } else {
-                await api.erp.clients.create({ ...form, client_type: "supplier" });
-            }
-            setShowModal(false);
-            setLoading(true);
-            load();
-        } catch (err) {
-            logError("compras/proveedores/page", err);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar este proveedor?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
-        setDeletingId(id);
-        try {
-            await api.erp.clients.delete(id);
-            setSuppliers(prev => prev.filter(s => s.id !== id));
-        } catch (err) {
-            logError("compras/proveedores/page", err);
-        } finally {
-            setDeletingId(null);
-        }
-    };
-
-    const q = search.toLowerCase();
-    const filtered = suppliers.filter(s =>
-        !q || s.name.toLowerCase().includes(q) || (s.nif || "").toLowerCase().includes(q) || (s.email || "").toLowerCase().includes(q)
-    );
+    const {
+        suppliers, loading, search, setSearch,
+        showModal, setShowModal,
+        editingId, form, setForm,
+        saving, deletingId,
+        openNew, openEdit, handleSubmit, handleDelete,
+        filtered,
+    } = useProveedores();
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -91,7 +29,6 @@ export default function ProveedoresPage() {
                 </button>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
                 {[
                     { label: "Total proveedores", value: suppliers.length, color: "text-foreground" },
@@ -105,7 +42,6 @@ export default function ProveedoresPage() {
                 ))}
             </div>
 
-            {/* Search */}
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -117,7 +53,6 @@ export default function ProveedoresPage() {
                 />
             </div>
 
-            {/* Table */}
             {loading ? (
                 <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" /> Cargando proveedores…
@@ -190,85 +125,15 @@ export default function ProveedoresPage() {
                 </div>
             )}
 
-            {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-lg shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-foreground">{editingId ? "Editar proveedor" : "Nuevo proveedor"}</h2>
-                            <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Nombre / Razón social *</label>
-                                    <input
-                                        type="text" required value={form.name}
-                                        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                                        placeholder="Proveedor S.L."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">NIF / CIF</label>
-                                    <input
-                                        type="text" value={form.nif}
-                                        onChange={e => setForm(f => ({ ...f, nif: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                                        placeholder="B12345678"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Email</label>
-                                    <input
-                                        type="email" value={form.email}
-                                        onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                                        placeholder="proveedor@empresa.com"
-                                    />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Dirección</label>
-                                    <input
-                                        type="text" value={form.address}
-                                        onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                                        placeholder="Calle Mayor, 1"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Ciudad</label>
-                                    <input
-                                        type="text" value={form.city}
-                                        onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                                        placeholder="Madrid"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Código postal</label>
-                                    <input
-                                        type="text" value={form.postal_code}
-                                        onChange={e => setForm(f => ({ ...f, postal_code: e.target.value }))}
-                                        className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
-                                        placeholder="28001"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground text-sm hover:bg-accent/50 transition-colors">
-                                    Cancelar
-                                </button>
-                                <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary text-foreground text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                                    {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                                    {editingId ? "Guardar cambios" : "Crear proveedor"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <ProveedorModal
+                    editingId={editingId}
+                    form={form}
+                    setForm={setForm}
+                    saving={saving}
+                    onClose={() => setShowModal(false)}
+                    onSubmit={handleSubmit}
+                />
             )}
         </div>
     );
