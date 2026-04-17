@@ -32,6 +32,24 @@ if REPORTLAB_AVAILABLE:
         TableStyle,
     )
 
+    def _kpi_cell(val_str: str, lbl: str, color_hex: str, s: dict) -> list:
+        """Celda de KPI card reutilizable para informes PDF."""
+        return [
+            Paragraph(
+                val_str,
+                ParagraphStyle(
+                    "kv",
+                    parent=s["styles"]["Normal"],
+                    fontSize=14,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(color_hex),
+                    alignment=TA_CENTER,
+                ),
+            ),
+            Spacer(1, 2),
+            Paragraph(lbl, s["kpi_lbl"]),
+        ]
+
 
 # ---------------------------------------------------------------------------
 # Informe de Tesorería (Cash Flow)
@@ -89,29 +107,12 @@ def generate_cashflow_report_pdf(data: dict) -> bytes:
     payments = float(data.get("total_payments", 0))
     final = float(data.get("final_balance", 0))
 
-    def kpi_cell(val_str, lbl, color_hex):
-        return [
-            Paragraph(
-                val_str,
-                ParagraphStyle(
-                    "cfkv",
-                    parent=s["styles"]["Normal"],
-                    fontSize=14,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(color_hex),
-                    alignment=TA_CENTER,
-                ),
-            ),
-            Spacer(1, 2),
-            Paragraph(lbl, s["kpi_lbl"]),
-        ]
-
     kpi_data = [
         [
-            kpi_cell(_fmt_eur(initial), "Saldo inicial", C["GRAY"]),
-            kpi_cell(_fmt_eur(collections), "Cobros previstos", C["EMERALD"]),
-            kpi_cell(_fmt_eur(payments), "Pagos previstos", C["RED"]),
-            kpi_cell(_fmt_eur(final), "Saldo final", C["BLUE"] if final >= 0 else C["RED"]),
+            _kpi_cell(_fmt_eur(initial), "Saldo inicial", C["GRAY"], s),
+            _kpi_cell(_fmt_eur(collections), "Cobros previstos", C["EMERALD"], s),
+            _kpi_cell(_fmt_eur(payments), "Pagos previstos", C["RED"], s),
+            _kpi_cell(_fmt_eur(final), "Saldo final", C["BLUE"] if final >= 0 else C["RED"], s),
         ]
     ]
     kpi_table = Table(kpi_data, colWidths=[43.75 * mm] * 4)
@@ -352,29 +353,12 @@ def generate_delinquency_report_pdf(data: dict) -> bytes:
     avg_days = float(data.get("avg_days_overdue", 0))
     worst = data.get("worst_client", "—")
 
-    def kpi_cell(val_str, lbl, color_hex):
-        return [
-            Paragraph(
-                val_str,
-                ParagraphStyle(
-                    "delkv",
-                    parent=s["styles"]["Normal"],
-                    fontSize=14,
-                    fontName="Helvetica-Bold",
-                    textColor=colors.HexColor(color_hex),
-                    alignment=TA_CENTER,
-                ),
-            ),
-            Spacer(1, 2),
-            Paragraph(lbl, s["kpi_lbl"]),
-        ]
-
     kpi_data = [
         [
-            kpi_cell(_fmt_eur(total_overdue), "Total moroso", C["RED"]),
-            kpi_cell(str(num_overdue), "Facturas vencidas", C["AMBER"]),
-            kpi_cell(f"{avg_days:.0f} días", "Media retraso", C["GRAY"]),
-            kpi_cell(worst[:20], "Cliente + moroso", C["SLATE"]),
+            _kpi_cell(_fmt_eur(total_overdue), "Total moroso", C["RED"], s),
+            _kpi_cell(str(num_overdue), "Facturas vencidas", C["AMBER"], s),
+            _kpi_cell(f"{avg_days:.0f} días", "Media retraso", C["GRAY"], s),
+            _kpi_cell(worst[:20], "Cliente + moroso", C["SLATE"], s),
         ]
     ]
     kpi_table = Table(kpi_data, colWidths=[43.75 * mm] * 4)

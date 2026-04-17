@@ -213,32 +213,7 @@ async def send_email_direct(
             finally:
                 await client.close()
         elif imap_creds:
-            import os
-            import uuid as _uuid
-
-            attachment_paths = []
-            if attachment_ids:
-                from sqlalchemy import select as sa_select
-
-                from app.db.base import AsyncSessionLocal
-                from app.db.models.models import TenantDocument
-
-                async with AsyncSessionLocal() as db:
-                    for doc_id in attachment_ids:
-                        try:
-                            res = await db.execute(
-                                sa_select(TenantDocument.file_path).where(
-                                    TenantDocument.id == _uuid.UUID(doc_id),
-                                    TenantDocument.tenant_id == _uuid.UUID(tenant_id),
-                                )
-                            )
-                            path = res.scalar_one_or_none()
-                            if path and os.path.exists(path):
-                                attachment_paths.append(path)
-                        except Exception as _e:
-                            logger.warning(
-                                "Error resolviendo adjunto smtp doc_id=%s: %s", doc_id, _e
-                            )
+            attachment_paths = await _resolve_smtp_attachments(tenant_id, attachment_ids or [])
             result = send_email_smtp(
                 imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths
             )

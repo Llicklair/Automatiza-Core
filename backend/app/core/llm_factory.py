@@ -21,6 +21,8 @@ from app.core.llm.gemini import GeminiSafeWrapper
 from app.core.llm.mock import MockChatModel
 from app.core.config import settings
 
+_log = logging.getLogger(__name__)
+
 # ContextVar para propagar el LLM del tenant a todos los agentes del mismo request
 _tenant_llm_ctx: ContextVar = ContextVar("_tenant_llm_ctx", default=None)
 
@@ -271,6 +273,72 @@ def get_embedder():
 
 
 # ---------------------------------------------------------------------------
+# Helpers para construir fallbacks individuales
+# ---------------------------------------------------------------------------
+
+
+def _try_openai_fallback(
+    temperature: float, format_output: str | None, max_tokens: int | None = None
+) -> "ChatOpenAI | None":
+    if not settings.OPENAI_API_KEY:
+        return None
+    try:
+        kwargs = {
+            "model_name": settings.OPENAI_MODEL or "gpt-4o-mini",
+            "temperature": temperature,
+            "api_key": settings.OPENAI_API_KEY,
+            "max_tokens": max_tokens or 4096,
+            "timeout": 30,
+        }
+        if format_output == "json":
+            kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
+        return ChatOpenAI(**kwargs)
+    except (ImportError, ValueError, TypeError) as exc:
+        _log.warning("Failed to init OpenAI fallback: %s", exc)
+        return None
+
+
+def _try_groq_fallback(
+    temperature: float, max_tokens: int | None = None
+) -> "BaseChatModel | None":
+    if not settings.GROQ_API_KEY:
+        return None
+    try:
+        from langchain_groq import ChatGroq
+
+        return ChatGroq(
+            model=settings.GROQ_MODEL or "llama-3.3-70b-versatile",
+            api_key=settings.GROQ_API_KEY,
+            temperature=temperature,
+            max_tokens=max_tokens or 20000,
+            timeout=30,
+        )
+    except (ImportError, ValueError, TypeError) as exc:
+        _log.warning("Failed to init Groq fallback: %s", exc)
+        return None
+
+
+def _try_gemini_fallback(
+    temperature: float, max_tokens: int | None = None
+) -> "BaseChatModel | None":
+    if not settings.GEMINI_API_KEY:
+        return None
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(
+            model=settings.GEMINI_MODEL or "gemini-2.5-flash",
+            google_api_key=settings.GEMINI_API_KEY,
+            temperature=temperature,
+            max_output_tokens=max_tokens or 4096,
+            timeout=30,
+        )
+    except (ImportError, ValueError, TypeError) as exc:
+        _log.warning("Failed to init Gemini fallback: %s", exc)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Builders internos por provider (reducen la complejidad ciclomática de get_llm)
 # ---------------------------------------------------------------------------
 
@@ -281,7 +349,6 @@ def _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fal
 
         if not settings.GROQ_API_KEY:
             return mock_fallback
-
         kwargs = {
             "model": settings.GROQ_MODEL or "llama-3.3-70b-versatile",
             "api_key": settings.GROQ_API_KEY,
@@ -292,27 +359,13 @@ def _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fal
         if format_output == "json":
             kwargs["response_format"] = {"type": "json_object"}
         base_llm = ChatGroq(**kwargs)
-
-        groq_fallbacks = list(base_fallbacks)
-        if settings.OPENAI_API_KEY:
-            try:
-                openai_kwargs = {
-                    "model_name": settings.OPENAI_MODEL or "gpt-4o-mini",
-                    "temperature": temperature,
-                    "api_key": settings.OPENAI_API_KEY,
-                    "max_tokens": 4096,
-                    "timeout": 30,
-                }
-                if format_output == "json":
-                    openai_kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
-                groq_fallbacks.insert(0, ChatOpenAI(**openai_kwargs))
-            except (ImportError, ValueError, TypeError) as exc:
-                logging.getLogger(__name__).warning(
-                    "Failed to init OpenAI fallback for Groq: %s", exc
-                )
-        return base_llm.with_fallbacks(groq_fallbacks)
+        fallbacks = list(base_fallbacks)
+        openai_fb = _try_openai_fallback(temperature, format_output)
+        if openai_fb:
+            fallbacks.insert(0, openai_fb)
+        return base_llm.with_fallbacks(fallbacks)
     except (ImportError, ValueError, TypeError) as e:
-        logging.getLogger(__name__).warning("Error iniciando Groq (%s), usando fallbacks.", e)
+        _log.warning("Error iniciando Groq (%s), usando fallbacks.", e)
         return mock_fallback
 
 
@@ -329,26 +382,13 @@ def _build_gemini(temperature, format_output, max_tokens, base_fallbacks, mock_f
             max_output_tokens=max_tokens or 20000,
             timeout=30,
         )
-        fallback_chain = list(base_fallbacks)
-        try:
-            from langchain_groq import ChatGroq
-
-            if settings.GROQ_API_KEY:
-                groq_fallback = ChatGroq(
-                    model=settings.GROQ_MODEL or "llama-3.3-70b-versatile",
-                    api_key=settings.GROQ_API_KEY,
-                    temperature=temperature,
-                    max_tokens=20000,
-                    timeout=30,
-                )
-                fallback_chain.insert(0, groq_fallback)
-        except (ImportError, ValueError, TypeError) as exc:
-            logging.getLogger(__name__).warning(
-                "Failed to init Groq fallback for Gemini: %s", exc
-            )
-        return GeminiSafeWrapper(base_llm.with_fallbacks(fallback_chain))
+        fallbacks = list(base_fallbacks)
+        groq_fb = _try_groq_fallback(temperature)
+        if groq_fb:
+            fallbacks.insert(0, groq_fb)
+        return GeminiSafeWrapper(base_llm.with_fallbacks(fallbacks))
     except (ImportError, ValueError, TypeError) as e:
-        logging.getLogger(__name__).warning("Error iniciando Gemini (%s), usando fallbacks.", e)
+        _log.warning("Error iniciando Gemini (%s), usando fallbacks.", e)
         return mock_fallback
 
 
@@ -365,44 +405,17 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
             max_tokens=max_tokens or 4096,
             timeout=30,
         )
-        anthropic_fallbacks = list(base_fallbacks)
-        if settings.GEMINI_API_KEY:
-            try:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-
-                anthropic_fallbacks.insert(
-                    0,
-                    ChatGoogleGenerativeAI(
-                        model=settings.GEMINI_MODEL or "gemini-2.5-flash",
-                        google_api_key=settings.GEMINI_API_KEY,
-                        temperature=temperature,
-                        max_output_tokens=4096,
-                        timeout=30,
-                    ),
-                )
-            except (ImportError, ValueError, TypeError) as exc:
-                logging.getLogger(__name__).warning(
-                    "Failed to init Gemini fallback for Anthropic: %s", exc
-                )
-        if settings.OPENAI_API_KEY:
-            try:
-                anthropic_fallbacks.insert(
-                    1 if settings.GEMINI_API_KEY else 0,
-                    ChatOpenAI(
-                        model_name=settings.OPENAI_MODEL or "gpt-4o-mini",
-                        temperature=temperature,
-                        api_key=settings.OPENAI_API_KEY,
-                        max_tokens=4096,
-                        timeout=30,
-                    ),
-                )
-            except (ImportError, ValueError, TypeError) as exc:
-                logging.getLogger(__name__).warning(
-                    "Failed to init OpenAI fallback for Anthropic: %s", exc
-                )
-        return base_llm.with_fallbacks(anthropic_fallbacks)
+        fallbacks = list(base_fallbacks)
+        # Preferred order: Gemini first, then OpenAI
+        openai_fb = _try_openai_fallback(temperature, format_output)
+        gemini_fb = _try_gemini_fallback(temperature)
+        if openai_fb:
+            fallbacks.insert(0, openai_fb)
+        if gemini_fb:
+            fallbacks.insert(0, gemini_fb)
+        return base_llm.with_fallbacks(fallbacks)
     except (ImportError, ValueError, TypeError) as e:
-        logging.getLogger(__name__).warning("Error iniciando Anthropic (%s), usando fallbacks.", e)
+        _log.warning("Error iniciando Anthropic (%s), usando fallbacks.", e)
         return mock_fallback
 
 
@@ -422,7 +435,7 @@ def _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_f
         base_llm = ChatOpenAI(**kwargs)
         return base_llm.with_fallbacks(base_fallbacks)
     except (ImportError, ValueError, TypeError) as e:
-        logging.getLogger(__name__).warning("Error iniciando OpenAI (%s), usando fallbacks.", e)
+        _log.warning("Error iniciando OpenAI (%s), usando fallbacks.", e)
         return mock_fallback
 
 
@@ -461,5 +474,5 @@ def _build_openrouter(temperature, format_output, max_tokens, base_fallbacks):
         return primary_llm.with_fallbacks(rest_of_models)
 
     except (ImportError, ValueError, TypeError) as e:
-        logging.getLogger(__name__).warning("Error iniciando OpenRouter (%s).", e)
+        _log.warning("Error iniciando OpenRouter (%s).", e)
         raise

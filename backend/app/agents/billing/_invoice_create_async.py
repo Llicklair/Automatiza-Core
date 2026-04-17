@@ -4,10 +4,9 @@ Called by _invoice_write_tools.py — not exported as an agent tool.
 """
 
 import logging
-import re
 import uuid
 from datetime import UTC, date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -18,6 +17,7 @@ from app.db.models.models import Client, Invoice, InvoiceLine
 
 from ._client_tools import _resolve_client
 from ._invoice_pdf_tools import _generate_and_save_invoice_pdf, _load_invoice_template
+from ._invoice_validators import parse_amount_str
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +36,9 @@ async def _create_invoice_async(
     issuer_address: str,
     issuer_email: str,
 ) -> str:
-    # Parsear importe
-    try:
-        raw = amount_base_str.strip()
-        raw = raw.replace(".", "").replace(",", ".") if re.search(r"\.\d{3}(?:[,\d]|$)", raw) else raw.replace(",", ".")
-        amount = Decimal(raw)
-    except (InvalidOperation, Exception):
-        return f"Error: Importe no válido: '{amount_base_str}'. Usa formato '1500.00'."
+    amount, err = parse_amount_str(amount_base_str)
+    if err:
+        return err
 
     # Parsear fecha
     inv_date_str = invoice_date_str.strip() if invoice_date_str else date.today().isoformat()
