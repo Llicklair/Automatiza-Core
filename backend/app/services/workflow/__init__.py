@@ -3,24 +3,28 @@
 from app.services.workflow.activity import log_activity
 from app.services.workflow.approval import cleanup_all, decide, list_pending
 from app.services.workflow.service import (
-    cancel_execution,
+    # CRUD & queries (native to service.py)
     create_workflow,
     delete_workflow,
-    execute_deterministic_steps,
-    fire_event,
-    generate_preview_nodes,
-    plan_to_ui_graph,
     get_execution,
     get_execution_logs,
     get_workflow,
     list_executions,
     list_workflows,
-    parse_natural_language,
     recent_completions,
+    update_workflow,
+    # Re-exported from _execution.py via service.py
+    cancel_execution,
+    execute_deterministic_steps,
     resume_execution,
     run_workflow,
     run_workflow_with_context,
-    update_workflow,
+    # Re-exported from _nlp.py via service.py
+    fire_event,
+    parse_natural_language,
+    # Re-exported from _ui_graph.py via service.py
+    generate_preview_nodes,
+    plan_to_ui_graph,
 )
 from app.services.workflow.task import (
     cancel_task,
@@ -36,6 +40,15 @@ from app.services.workflow.task_dispatch import (
     dispatch_orchestrator,
     dispatch_resume_node_engine,
     dispatch_resume_orchestrator,
+)
+from app.services.workflow.scheduler import (  # noqa: F401
+    create_execution,
+    create_task_for_execution,
+    get_active_scheduled_workflows,
+    get_last_execution,
+    get_stuck_executions,
+    has_active_execution,
+    mark_executions_failed,
 )
 from app.services.workflow.task_runner import TaskRunner, task_runner
 

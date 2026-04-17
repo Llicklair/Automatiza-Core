@@ -50,7 +50,12 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(echo \"exit:$?\")",
       "Bash(cp pdf_hr.py pdf/hr.py)",
-      "Bash(cp pdf_invoices.py pdf/invoices.py)"
+      "Bash(cp pdf_invoices.py pdf/invoices.py)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(kill 922)",
+      "Bash(xargs -r kill -9)",
+      "Bash(rm -f \"/c/Users/Marcos/Desktop/atomatizacion de empresas/.gitnexus/kuzu/\"*.lock)",
+      "Bash(rm -f \"/c/Users/Marcos/Desktop/atomatizacion de empresas/.gitnexus/kuzu/lock\")"
     ]
   }
 }

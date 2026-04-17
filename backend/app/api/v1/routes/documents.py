@@ -1,6 +1,7 @@
 """Rutas para gestión documental: upload y listado de documentos del tenant."""
 
 import logging
+import os
 import uuid
 import zipfile
 

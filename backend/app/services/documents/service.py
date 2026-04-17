@@ -2,100 +2,56 @@
 
 Encapsula: subida/descarga de archivos, clasificación automática,
 escaneo, procesamiento ZIP, importación de BD tabulares, y plantillas de contrato.
+
+Sub-módulos extraídos:
+- _file_ops: validación, guardado, clasificación por extensión, ZIP
+- _contracts: plantillas de contrato (CRUD, preview, generación)
+- _tabular: parseo e importación de archivos tabulares
 """
 
-import csv
 import io
-import json
 import logging
-import mimetypes
 import os
 import uuid
 import zipfile
 from datetime import UTC, datetime
 
-import openpyxl
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.crm import Client
-from app.db.models.hr import Employee
 from app.db.models.models import Task, Tenant, TenantDocument
-from app.services.crm.contract_generator import (
-    build_context_for_client,
-    build_context_for_employee,
-    generate_contract,
+
+# ── Re-exports desde sub-módulos ─────────────────────────────────────────────
+from app.services.documents._contracts import (
+    delete_contract_template,
+    generate_contract_from_template,
+    get_contract_template,
+    list_contract_templates,
+    preview_contract_html,
+    save_contract_html,
+    save_contract_html_and_update,
+    upload_contract_template,
+    validate_template_on_disk,
 )
-from app.services.documents.docx_html_save import save_html_as_docx
-from app.services.documents.docx_preview import docx_to_preview_html
+from app.services.documents._file_ops import (
+    ALLOWED_EXTENSIONS,
+    MAX_FILE_SIZE,
+    UPLOAD_DIR,
+    auto_classify_category,
+    extract_zip_entries,
+    save_file_to_disk,
+    validate_upload,
+)
+from app.services.documents._tabular import (
+    auto_classify_tabular,
+    import_tabular_file,
+    parse_tabular_file,
+)
+
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
 
-ALLOWED_EXTENSIONS = {
-    ".pdf", ".doc", ".docx", ".odt", ".txt", ".md",
-    ".xlsx", ".xls", ".csv", ".ods", ".json",
-    ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".tif",
-    ".eml", ".msg", ".zip",
-}
-
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-
-# ── Clasificación automática ─────────────────────────────────────────────────
-
-_EXT_CATEGORY_MAP: dict[str, str] = {
-    ".xlsx": "excels", ".xls": "excels", ".csv": "excels", ".ods": "excels",
-    ".pdf": "facturas", ".docx": "otros", ".doc": "otros", ".odt": "otros",
-    ".png": "otros", ".jpg": "otros", ".jpeg": "otros", ".webp": "otros",
-    ".gif": "otros", ".bmp": "otros", ".tiff": "otros", ".tif": "otros",
-    ".txt": "otros", ".md": "otros", ".eml": "correos", ".msg": "correos",
-}
-
-_MIME_CATEGORY_MAP: dict[str, str] = {
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "excels",
-    "application/vnd.ms-excel": "excels",
-    "text/csv": "excels",
-    "application/pdf": "facturas",
-    "message/rfc822": "correos",
-    "application/vnd.ms-outlook": "correos",
-}
-
-
-def auto_classify_category(filename: str, content_type: str | None) -> str:
-    """Clasifica la categoría inicial de un archivo por extensión y MIME."""
-    ext = os.path.splitext(filename)[1].lower()
-    if ext in _EXT_CATEGORY_MAP:
-        return _EXT_CATEGORY_MAP[ext]
-    if content_type and content_type in _MIME_CATEGORY_MAP:
-        return _MIME_CATEGORY_MAP[content_type]
-    if content_type and content_type.startswith("image/"):
-        return "otros"
-    return "otros"
-
-
-# ── Upload y persistencia ────────────────────────────────────────────────────
-
-
-def validate_upload(filename: str, size: int) -> str:
-    """Valida extensión y tamaño. Retorna la extensión. Lanza ValueError si falla."""
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise ValueError(f"Extensión '{ext}' no permitida")
-    if size > MAX_FILE_SIZE:
-        raise ValueError("Archivo demasiado grande (máx. 50MB)")
-    return ext
-
-
-def save_file_to_disk(contents: bytes, ext: str) -> str:
-    """Guarda bytes en disco con nombre único. Retorna la ruta absoluta."""
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
-    with open(file_path, "wb") as f:
-        f.write(contents)
-    return file_path
+# ── Dispatch interno ────────────────────────────────────────────────────────
 
 
 async def _dispatch_task(
@@ -124,6 +80,9 @@ async def _dispatch_task(
         await dispatch_orchestrator(str(task.id))
     except Exception as e:
         logger.warning("Orchestrator dispatch falló para doc %s: %s", doc.id, e)
+
+
+# ── Upload ──────────────────────────────────────────────────────────────────
 
 
 async def upload_single(
@@ -195,25 +154,6 @@ async def scan_single(
         f"Escanear y clasificar documento: {filename}", doc, db,
     )
     return doc, auto_cat
-
-
-def extract_zip_entries(contents: bytes) -> list[tuple[str, bytes, str | None]]:
-    """Extrae archivos de un ZIP. Retorna lista de (filename, data, mime_type).
-
-    Raises zipfile.BadZipFile si el ZIP es inválido.
-    """
-    entries = []
-    with zipfile.ZipFile(io.BytesIO(contents)) as z:
-        for info in z.infolist():
-            if info.is_dir() or info.filename.startswith("__MACOSX") or info.filename.startswith("."):
-                continue
-            original_name = os.path.basename(info.filename)
-            if not original_name:
-                continue
-            extracted_data = z.read(info.filename)
-            mime_type, _ = mimetypes.guess_type(original_name)
-            entries.append((original_name, extracted_data, mime_type))
-    return entries
 
 
 # ── Bulk upload (ZIP) ────────────────────────────────────────────────────────
@@ -502,304 +442,3 @@ async def update_content(
     await db.commit()
     await db.refresh(doc)
     return doc
-
-
-# ── Plantillas de contrato ───────────────────────────────────────────────────
-
-
-async def upload_contract_template(
-    filename: str, contents: bytes, content_type: str | None,
-    tenant_id, user_id, db: AsyncSession,
-) -> TenantDocument:
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in {".docx", ".doc", ".odt"}:
-        raise ValueError("Solo se permiten archivos .docx, .doc u .odt")
-    if len(contents) > 20 * 1024 * 1024:
-        raise ValueError("Archivo demasiado grande (máx. 20MB)")
-
-    file_path = save_file_to_disk(contents, ext)
-    doc = TenantDocument(
-        tenant_id=tenant_id,
-        uploaded_by=user_id,
-        file_name=filename,
-        file_type=content_type,
-        file_path=file_path,
-        file_size=len(contents),
-        category="contract_template",
-        status="uploaded",
-    )
-    db.add(doc)
-    await db.commit()
-    await db.refresh(doc)
-    return doc
-
-
-async def list_contract_templates(tenant_id, db: AsyncSession) -> list[TenantDocument]:
-    result = await db.execute(
-        select(TenantDocument)
-        .where(
-            TenantDocument.tenant_id == tenant_id,
-            TenantDocument.category == "contract_template",
-        )
-        .order_by(desc(TenantDocument.created_at))
-        .limit(50)
-    )
-    return list(result.scalars().all())
-
-
-async def get_contract_template(
-    doc_id: uuid.UUID, tenant_id, db: AsyncSession,
-) -> TenantDocument | None:
-    result = await db.execute(
-        select(TenantDocument).where(
-            TenantDocument.id == doc_id,
-            TenantDocument.tenant_id == tenant_id,
-            TenantDocument.category == "contract_template",
-        )
-    )
-    return result.scalar_one_or_none()
-
-
-async def delete_contract_template(doc_id: uuid.UUID, tenant_id, db: AsyncSession) -> bool:
-    doc = await get_contract_template(doc_id, tenant_id, db)
-    if not doc:
-        return False
-    if doc.file_path and os.path.exists(doc.file_path):
-        try:
-            os.remove(doc.file_path)
-        except OSError:
-            logger.warning("No se pudo eliminar archivo: %s", doc.file_path)
-    await db.delete(doc)
-    await db.commit()
-    return True
-
-
-def validate_template_on_disk(doc: TenantDocument) -> str:
-    """Validates a contract template file exists on disk. Returns the file path.
-
-    Raises FileNotFoundError if the file is not available.
-    """
-    if not doc.file_path or not os.path.exists(doc.file_path):
-        raise FileNotFoundError("Archivo de plantilla no disponible en disco")
-    return doc.file_path
-
-
-def preview_contract_html(file_path: str) -> dict:
-    """Vista previa HTML de un .docx. Lanza ImportError, FileNotFoundError, ValueError."""
-    from app.services.documents.docx_preview import docx_to_preview_html
-    return docx_to_preview_html(file_path)
-
-
-def save_contract_html(html: str, file_path: str) -> int:
-    """Guarda HTML editado como .docx. Retorna nuevo tamaño. Lanza ImportError, ValueError, OSError."""
-    from app.services.documents.docx_html_save import save_html_as_docx
-    save_html_as_docx(html, file_path)
-    return os.path.getsize(file_path)
-
-
-async def save_contract_html_and_update(
-    html: str, doc: TenantDocument, db: AsyncSession,
-) -> int:
-    """Guarda HTML como .docx y actualiza el tamaño en BD. Retorna nuevo tamaño.
-
-    Lanza FileNotFoundError, ImportError, ValueError, OSError.
-    """
-    file_path = validate_template_on_disk(doc)
-    new_size = save_contract_html(html, file_path)
-    doc.file_size = new_size
-    await db.commit()
-    await db.refresh(doc)
-    return new_size
-
-
-async def generate_contract_from_template(
-    tpl_doc: TenantDocument, entity_type: str, entity_id: uuid.UUID,
-    tenant_id, db: AsyncSession,
-) -> tuple[bytes, str]:
-    """Genera contrato rellenando plantilla. Retorna (docx_bytes, filename).
-
-    Lanza ValueError, ImportError, HTTPException-equivalents via ValueError.
-    """
-    from sqlalchemy import select as sa_select
-
-    from app.db.models.auth import Tenant
-    from app.services.crm.contract_generator import (
-        build_context_for_client,
-        build_context_for_employee,
-        generate_contract,
-    )
-
-    tenant_result = await db.execute(sa_select(Tenant).where(Tenant.id == tenant_id))
-    tenant = tenant_result.scalar_one_or_none()
-
-    if entity_type == "client":
-        from app.db.models.crm import Client
-        r = await db.execute(
-            sa_select(Client).where(Client.id == entity_id, Client.tenant_id == tenant_id)
-        )
-        entity = r.scalar_one_or_none()
-        if not entity:
-            raise ValueError("Cliente no encontrado")
-        context = build_context_for_client(entity, tenant)
-    elif entity_type == "employee":
-        from app.db.models.hr import Employee
-        r = await db.execute(
-            sa_select(Employee).where(Employee.id == entity_id, Employee.tenant_id == tenant_id)
-        )
-        entity = r.scalar_one_or_none()
-        if not entity:
-            raise ValueError("Empleado no encontrado")
-        context = build_context_for_employee(entity, tenant)
-    else:
-        raise ValueError("entity_type debe ser 'client' o 'employee'")
-
-    docx_bytes = generate_contract(tpl_doc.file_path, context)
-    base_name = os.path.splitext(tpl_doc.file_name)[0]
-    entity_slug = (entity.name or "contrato").replace(" ", "_")
-    filename = f"{base_name}_{entity_slug}_BORRADOR.docx"
-
-    return docx_bytes, filename
-
-
-# ── Importación de BD tabular ────────────────────────────────────────────────
-
-
-def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[dict], str]:
-    """Parsea archivo tabular. Retorna (columnas, filas, formato). Soporta csv/xlsx/xls/json/ods."""
-    import json as json_mod
-
-    ext = os.path.splitext(file_name)[1].lower()
-
-    if ext == ".csv":
-        import csv
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-            sample = f.read(4096)
-            f.seek(0)
-            try:
-                dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
-            except csv.Error:
-                dialect = csv.excel
-            reader = csv.DictReader(f, dialect=dialect)
-            columns = reader.fieldnames or []
-            rows = [row for row in reader]
-        return columns, rows, "csv"
-
-    elif ext in (".xlsx", ".xls", ".ods"):
-        import openpyxl
-        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-        ws = wb.active
-        rows_raw = list(ws.iter_rows(values_only=True))
-        wb.close()
-        if not rows_raw:
-            return [], [], "excel"
-        columns = [str(c) if c else f"col_{i}" for i, c in enumerate(rows_raw[0])]
-        rows = [
-            {columns[j]: cell for j, cell in enumerate(row) if j < len(columns)}
-            for row in rows_raw[1:]
-        ]
-        return columns, rows, "excel"
-
-    elif ext == ".json":
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json_mod.load(f)
-        if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-            columns = list(data[0].keys())
-            return columns, data, "json"
-        elif isinstance(data, dict):
-            for key, val in data.items():
-                if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
-                    columns = list(val[0].keys())
-                    return columns, val, "json"
-            columns = list(data.keys())
-            return columns, [data], "json"
-        return [], [], "json"
-
-    return [], [], "unknown"
-
-
-def auto_classify_tabular(columns: list[str]) -> str:
-    """Clasifica categoría de un archivo tabular por nombres de columnas."""
-    cols_lower = " ".join(c.lower() for c in columns)
-    if any(k in cols_lower for k in ("factura", "invoice", "importe", "iva", "nif_cliente")):
-        return "facturas"
-    if any(k in cols_lower for k in ("nomina", "salario", "sueldo", "empleado", "payroll")):
-        return "nominas"
-    if any(k in cols_lower for k in ("correo", "email", "asunto", "subject", "inbox", "bandeja")):
-        return "correos"
-    if any(k in cols_lower for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")):
-        return "crm"
-    if any(k in cols_lower for k in ("banco", "iban", "movimiento", "saldo", "transferencia")):
-        return "bancos"
-    if any(k in cols_lower for k in ("producto", "articulo", "precio", "stock", "referencia")):
-        return "crm"
-    if any(k in cols_lower for k in ("contrato", "alta", "baja", "puesto", "departamento")):
-        return "rrhh"
-    if any(k in cols_lower for k in ("impuesto", "modelo", "trimestre", "declaracion")):
-        return "fiscal"
-    return "excels"
-
-
-async def import_tabular_file(
-    filename: str, contents: bytes, content_type: str | None,
-    tenant_id, user_id, db: AsyncSession,
-) -> tuple[TenantDocument, list[str], int, str, uuid.UUID | None]:
-    """Importa un archivo tabular. Retorna (doc, columns, row_count, auto_cat, task_id)."""
-    import json as json_mod
-
-    ext = os.path.splitext(filename)[1].lower()
-    file_path = save_file_to_disk(contents, ext)
-
-    try:
-        columns, rows, fmt = parse_tabular_file(file_path, filename)
-    except Exception:
-        columns, rows, fmt = [], [], "error"
-
-    auto_cat = auto_classify_tabular(columns)
-
-    doc = TenantDocument(
-        tenant_id=tenant_id,
-        uploaded_by=user_id,
-        file_name=filename,
-        file_type=content_type or "application/octet-stream",
-        file_path=file_path,
-        file_size=len(contents),
-        category=auto_cat,
-        status="uploaded",
-        parsed_content=json_mod.dumps(
-            {"format": fmt, "columns": columns, "row_count": len(rows), "sample_rows": rows[:5]},
-            ensure_ascii=False, default=str,
-        ),
-    )
-    db.add(doc)
-    await db.commit()
-    await db.refresh(doc)
-
-    task_id = None
-    try:
-        from app.services.workflow.task_dispatch import dispatch_orchestrator
-
-        intent_summary = (
-            f"Importar base de datos '{filename}' ({len(rows)} filas, "
-            f"columnas: {', '.join(columns[:10])}). "
-            f"Clasificar y crear los registros correspondientes en el sistema "
-            f"(clientes, facturas, empleados, productos, etc. según el contenido)."
-        )
-        task = Task(
-            tenant_id=tenant_id, created_by=user_id,
-            domain="excel", user_intent=intent_summary, status="pending",
-        )
-        db.add(task)
-        await db.commit()
-        await db.refresh(task)
-
-        doc.task_id = task.id
-        doc.status = "processing"
-        await db.commit()
-        await db.refresh(doc)
-        task_id = task.id
-
-        await dispatch_orchestrator(str(task.id))
-    except Exception as e:
-        logger.warning("Orchestrator dispatch falló en import para doc %s: %s", doc.id, e)
-
-    return doc, columns[:20], len(rows), auto_cat, task_id

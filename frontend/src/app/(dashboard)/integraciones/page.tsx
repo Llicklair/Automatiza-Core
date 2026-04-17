@@ -1,47 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive } from "lucide-react";
-import { api, IntegrationStatus } from "@/lib/api";
 import InfoBanner from "@/components/InfoBanner";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
-
-/* ─── OAuth popup helper ─────────────────────────────────────────────────── */
-
-function openOAuthPopup(url: string, onSuccess: () => void) {
-    const w = 500, h = 600;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
-    const popup = window.open(url, "oauth_popup", `width=${w},height=${h},left=${left},top=${top}`);
-
-    const handler = (event: MessageEvent) => {
-        if (event.data?.type === "oauth_success") {
-            window.removeEventListener("message", handler);
-            onSuccess();
-        }
-    };
-    window.addEventListener("message", handler);
-
-    // Fallback: poll for popup close
-    const interval = setInterval(() => {
-        if (popup?.closed) {
-            clearInterval(interval);
-            window.removeEventListener("message", handler);
-            onSuccess();
-        }
-    }, 500);
-}
-
-/* ─── Status badge ───────────────────────────────────────────────────────── */
+import { useIntegraciones } from "./_hooks/useIntegraciones";
 
 function StatusBadge({ loading, connected }: { loading: boolean; connected: boolean }) {
     if (loading) return <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />;
     if (connected) return <div className="flex items-center gap-2 text-emerald-400 text-sm"><CheckCircle2 className="w-4 h-4" /> Conectado</div>;
     return <div className="flex items-center gap-2 text-muted-foreground text-sm"><XCircle className="w-4 h-4" /> No conectado</div>;
 }
-
-/* ─── Card wrapper ───────────────────────────────────────────────────────── */
 
 function IntegrationCard({
     icon, iconBg, title, subtitle, loading, connected, lastSync, children,
@@ -73,131 +40,15 @@ function IntegrationCard({
     );
 }
 
-/* ─── Main Page ──────────────────────────────────────────────────────────── */
-
 export default function IntegracionesPage() {
-    const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-
-    // PSD2
-    const [psd2Id, setPsd2Id] = useState("");
-    const [psd2Key, setPsd2Key] = useState("");
-    const [connectingPsd2, setConnectingPsd2] = useState(false);
-    const [disconnectingPsd2, setDisconnectingPsd2] = useState(false);
-
-    // OAuth loading states
-    const [connectingGoogle, setConnectingGoogle] = useState(false);
-    const [connectingMicrosoft, setConnectingMicrosoft] = useState(false);
-
-    const load = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = await api.integrations.list();
-            setIntegrations(data);
-        } catch (err) {
-            logError("integraciones/page", err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { load(); }, [load]);
-
-    // Check URL params for OAuth redirect fallback
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const connected = params.get("connected");
-        if (connected) {
-            setFeedback({ type: "success", msg: `${connected === "google" ? "Google" : "Microsoft"} conectado correctamente` });
-            window.history.replaceState({}, "", "/integraciones");
-            load();
-        }
-    }, [load]);
-
-    // Statuses
-    const getStatus = (type: string) => integrations.find(i => i.integration_type === type);
-    const isConnected = (type: string) => getStatus(type)?.is_active ?? false;
-
-    // ─── PSD2 Handlers ───────────────────────────────────────────────────────
-
-    async function connectPsd2(e: React.FormEvent) {
-        e.preventDefault();
-        setConnectingPsd2(true); setFeedback(null);
-        try {
-            await api.integrations.connectPsd2(psd2Id, psd2Key);
-            setFeedback({ type: "success", msg: "Banco (PSD2) conectado correctamente" });
-            setPsd2Id(""); setPsd2Key("");
-            load();
-        } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error desconocido" });
-        } finally {
-            setConnectingPsd2(false);
-        }
-    }
-
-    async function disconnectPsd2() {
-        if (!await showConfirm({ message: "¿Desconectar tu Banco?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
-        setDisconnectingPsd2(true); setFeedback(null);
-        try {
-            await api.integrations.disconnectPsd2();
-            setFeedback({ type: "success", msg: "Banco desconectado" });
-            load();
-        } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
-        } finally {
-            setDisconnectingPsd2(false);
-        }
-    }
-
-    // ─── OAuth Handlers ──────────────────────────────────────────────────────
-
-    async function connectOAuth(provider: "google" | "microsoft") {
-        const setConnecting = provider === "google" ? setConnectingGoogle : setConnectingMicrosoft;
-        const statusCheck = provider === "google" ? "gmail" : "outlook";
-        setConnecting(true); setFeedback(null);
-        try {
-            const data = await api.integrations.oauthUrl(provider);
-            // Abrir en nueva ventana (Electron intercepta y abre en navegador externo)
-            window.open(data.auth_url, "_blank");
-            // Polling: esperar a que el OAuth complete y el status cambie
-            let attempts = 0;
-            const poll = setInterval(async () => {
-                attempts++;
-                try {
-                    const list = await api.integrations.list();
-                    const connected = list.some(i => i.integration_type === statusCheck && i.is_active);
-                    if (connected) {
-                        clearInterval(poll);
-                        setConnecting(false);
-                        setFeedback({ type: "success", msg: `${provider === "google" ? "Google" : "Microsoft"} conectado correctamente` });
-                        load();
-                    }
-                } catch {}
-                if (attempts >= 60) { // 2 minutos máximo
-                    clearInterval(poll);
-                    setConnecting(false);
-                }
-            }, 2000);
-        } catch (err: unknown) {
-            setConnecting(false);
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
-        }
-    }
-
-    async function disconnectIntegration(type: string, label: string) {
-        if (!await showConfirm({ message: `¿Desconectar ${label}?`, confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
-        setFeedback(null);
-        try {
-            await api.integrations.disconnect(type);
-            setFeedback({ type: "success", msg: `${label} desconectado` });
-            load();
-        } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
-        }
-    }
-
-    // ─── UI ──────────────────────────────────────────────────────────────────
+    const {
+        loading, feedback,
+        psd2Id, setPsd2Id, psd2Key, setPsd2Key,
+        connectingPsd2, disconnectingPsd2,
+        connectingGoogle, connectingMicrosoft,
+        getStatus, isConnected,
+        connectPsd2, disconnectPsd2, connectOAuth, disconnectIntegration,
+    } = useIntegraciones();
 
     return (
         <div className="p-8 max-w-3xl mx-auto space-y-8">
@@ -225,7 +76,7 @@ export default function IntegracionesPage() {
                 </div>
             )}
 
-            {/* ── Banco PSD2 ─────────────────────────────────────────────────── */}
+            {/* Banco PSD2 */}
             <IntegrationCard
                 icon={<Building2 className="w-5 h-5 text-emerald-400" />}
                 iconBg="bg-emerald-500/10 border border-emerald-500/20"
@@ -264,7 +115,7 @@ export default function IntegracionesPage() {
                 )}
             </IntegrationCard>
 
-            {/* ── Gmail ──────────────────────────────────────────────────────── */}
+            {/* Gmail */}
             <IntegrationCard
                 icon={<Mail className="w-5 h-5 text-red-400" />}
                 iconBg="bg-red-500/10 border border-red-500/20"
@@ -292,7 +143,7 @@ export default function IntegracionesPage() {
                 )}
             </IntegrationCard>
 
-            {/* ── Google Drive ───────────────────────────────────────────────── */}
+            {/* Google Drive */}
             <IntegrationCard
                 icon={<HardDrive className="w-5 h-5 text-yellow-400" />}
                 iconBg="bg-yellow-500/10 border border-yellow-500/20"
@@ -327,7 +178,7 @@ export default function IntegracionesPage() {
                 )}
             </IntegrationCard>
 
-            {/* ── Outlook ────────────────────────────────────────────────────── */}
+            {/* Outlook */}
             <IntegrationCard
                 icon={<Mail className="w-5 h-5 text-blue-400" />}
                 iconBg="bg-blue-500/10 border border-blue-500/20"
@@ -355,7 +206,7 @@ export default function IntegracionesPage() {
                 )}
             </IntegrationCard>
 
-            {/* ── Microsoft 365 / OneDrive ───────────────────────────────────── */}
+            {/* OneDrive */}
             <IntegrationCard
                 icon={<Cloud className="w-5 h-5 text-sky-400" />}
                 iconBg="bg-sky-500/10 border border-sky-500/20"

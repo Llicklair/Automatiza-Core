@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, Opportunity, Client } from "@/lib/api";
-import { Users, Plus, Search, Building2, DollarSign, Sparkles, UserPlus, X, Trash2, GripVertical } from "lucide-react";
+import { Users, Plus, Search, Building2, DollarSign, Sparkles, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useToastStore } from "@/stores/toast";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
-
 import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEmbudoDeVentas } from "./_hooks/useEmbudoDeVentas";
+import { CreateOpportunityModal } from "./_components/CreateOpportunityModal";
 
 const STAGES: { id: string; label: string; variant: "info" | "default" | "success" | "destructive" | "warning" }[] = [
     { id: "new", label: "Nuevos", variant: "info" },
@@ -26,85 +20,19 @@ const STAGES: { id: string; label: string; variant: "info" | "default" | "succes
 ];
 
 export default function CRMPipelinePage() {
-    const toast = useToastStore();
-    const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [search, setSearch] = useState("");
-    const [taskLoading, setTaskLoading] = useState(false);
-
-    const [title, setTitle] = useState("");
-    const [expectedValue, setExpectedValue] = useState("");
-    const [clientId, setClientId] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadData(); }, []);
-
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const [oppRes, cliRes] = await Promise.all([api.crm.opportunities.list(), api.erp.clients.list()]);
-            setOpportunities(oppRes);
-            setClients(cliRes);
-            if (cliRes.length > 0 && !clientId) setClientId(cliRes[0].id);
-        } catch (e) { logError("crm/embudo-de-ventas/page", e); }
-        finally { setIsLoading(false); }
-    };
-
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            await api.crm.opportunities.create({ title, expected_value: parseFloat(expectedValue), client_id: clientId, stage: "new" });
-            setShowModal(false);
-            setTitle(""); setExpectedValue("");
-            await loadData();
-        } catch { toast.error("Error al crear la oportunidad"); }
-        finally { setIsSubmitting(false); }
-    };
-
-    const handleStageChange = async (oppId: string, newStage: string) => {
-        setOpportunities(opps => opps.map(o => o.id === oppId ? { ...o, stage: newStage as any } : o));
-        try { await api.crm.opportunities.update(oppId, { stage: newStage as any }); }
-        catch { await loadData(); }
-    };
-
-    const handleDelete = async (oppId: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!await showConfirm({ message: "¿Eliminar esta oportunidad?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
-        try { await api.crm.opportunities.delete(oppId); await loadData(); }
-        catch (err) { logError("crm/embudo-de-ventas/page", err); }
-    };
-
-    const handleAiQualify = async () => {
-        setTaskLoading(true);
-        try {
-            await api.tasks.create("crm", "Analiza todas mis oportunidades nuevas y cualifícalas según su valor y potencial. Dame un resumen de cuáles debo priorizar esta semana.");
-            toast.info("Tarea de análisis CRM enviada a la IA. Revisa /tareas para ver el resultado.");
-        } catch (e) { logError("crm/embudo-de-ventas/page", e); toast.error("Error al enviar tarea a la IA"); }
-        finally { setTaskLoading(false); }
-    };
-
-    const formatCurrency = (val: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(val);
-
-    const handleDragStart = (e: React.DragEvent, oppId: string) => { e.dataTransfer.setData("oppId", oppId); };
-    const handleDrop = (e: React.DragEvent, stageId: string) => {
-        e.preventDefault();
-        const oppId = e.dataTransfer.getData("oppId");
-        if (oppId) {
-            const opp = opportunities.find(o => o.id === oppId);
-            if (opp && opp.stage !== stageId) handleStageChange(oppId, stageId);
-        }
-    };
-    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
-
-    const filteredOpps = opportunities.filter(o => {
-        if (!search) return true;
-        const clientName = clients.find(c => c.id === o.client_id)?.name ?? "";
-        return o.title.toLowerCase().includes(search.toLowerCase()) || clientName.toLowerCase().includes(search.toLowerCase());
-    });
+    const {
+        clients, isLoading,
+        showModal, setShowModal,
+        search, setSearch,
+        taskLoading,
+        title, setTitle,
+        expectedValue, setExpectedValue,
+        clientId, setClientId,
+        isSubmitting,
+        handleCreate, handleDelete, handleAiQualify,
+        formatCurrency, handleDragStart, handleDrop, handleDragOver,
+        filteredOpps,
+    } = useEmbudoDeVentas();
 
     return (
         <div className="min-h-screen bg-background text-foreground p-8">
@@ -199,71 +127,19 @@ export default function CRMPipelinePage() {
                 })}
             </div>
 
-            {/* Create Opportunity Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-lg overflow-hidden shadow-2xl">
-                        <CardHeader className="p-6 border-b border-border bg-muted/50 flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
-                                <UserPlus className="w-5 h-5 text-primary" /> Nueva Oportunidad
-                            </CardTitle>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModal(false)}>
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </CardHeader>
-                        <form onSubmit={handleCreate} className="p-6 space-y-5">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="deal-title">Nombre del Trato</Label>
-                                <Input
-                                    id="deal-title"
-                                    type="text"
-                                    required
-                                    value={title}
-                                    onChange={e => setTitle(e.target.value)}
-                                    placeholder="Ej: Renovación Licencias Anuales"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="deal-client">Cliente Relacionado</Label>
-                                <select
-                                    id="deal-client"
-                                    required
-                                    value={clientId}
-                                    onChange={e => setClientId(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <option value="" disabled>Selecciona un cliente</option>
-                                    {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.nif || "Sin NIF"})</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="deal-value">Valor Esperado (&euro;)</Label>
-                                <div className="relative">
-                                    <DollarSign className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <Input
-                                        id="deal-value"
-                                        type="number"
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                        value={expectedValue}
-                                        onChange={e => setExpectedValue(e.target.value)}
-                                        placeholder="0.00"
-                                        className="pl-10"
-                                    />
-                                </div>
-                            </div>
-                            <div className="pt-4 flex justify-end gap-3 border-t border-border">
-                                <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>
-                                    Cancelar
-                                </Button>
-                                <Button type="submit" disabled={isSubmitting || !clientId}>
-                                    {isSubmitting ? "Creando..." : "Crear Trato"}
-                                </Button>
-                            </div>
-                        </form>
-                    </Card>
-                </div>
+                <CreateOpportunityModal
+                    clients={clients}
+                    title={title}
+                    setTitle={setTitle}
+                    expectedValue={expectedValue}
+                    setExpectedValue={setExpectedValue}
+                    clientId={clientId}
+                    setClientId={setClientId}
+                    isSubmitting={isSubmitting}
+                    onSubmit={handleCreate}
+                    onClose={() => setShowModal(false)}
+                />
             )}
         </div>
     );

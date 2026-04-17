@@ -1,104 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, Product } from "@/lib/api";
-import {
-    Plus, Search, ShieldCheck, HeartHandshake, X, Loader2, Pencil, Trash2
-} from "lucide-react";
-import { useToastStore } from "@/stores/toast";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
+import { Plus, Search, ShieldCheck, HeartHandshake, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-
-type FormState = {
-    name: string; sku: string; description: string;
-    price: string; tax_percentage: string;
-};
-
-const emptyForm = (): FormState => ({
-    name: "", sku: "", description: "", price: "", tax_percentage: "21"
-});
-
-const fmt = (val: number) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(val);
+import { useServicios, fmt } from "./_hooks/useServicios";
+import { ServiceModal } from "./_components/ServiceModal";
 
 export default function ServicesPage() {
-    const toast = useToastStore();
     const t = useTranslations("ventas");
     const tc = useTranslations("common");
-    const [services, setServices] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [search, setSearch] = useState("");
-
-    const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [form, setForm] = useState<FormState>(emptyForm());
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-
-    useEffect(() => { loadData(); }, []);
-
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const data = await api.erp.products.list({ limit: 200 });
-            setServices(data.filter(p => p.item_type === "service"));
-        } catch (error) {
-            logError("ventas/servicios/page", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const openCreate = () => { setEditingId(null); setForm(emptyForm()); setShowModal(true); };
-    const openEdit = (s: Product) => {
-        setEditingId(s.id);
-        setForm({ name: s.name, sku: s.sku || "", description: s.description || "", price: String(s.price), tax_percentage: String(s.tax_percentage) });
-        setShowModal(true);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        const payload = {
-            name: form.name, sku: form.sku || null, description: form.description || null,
-            price: parseFloat(form.price) || 0,
-            tax_percentage: parseFloat(form.tax_percentage),
-            item_type: "service",
-        };
-        try {
-            if (editingId) {
-                const updated = await api.erp.products.update(editingId, payload);
-                setServices(prev => prev.map(s => s.id === editingId ? updated : s));
-            } else {
-                const created = await api.erp.products.create(payload);
-                setServices(prev => [created, ...prev]);
-            }
-            setShowModal(false);
-        } catch (err: any) {
-            toast.error(err?.message || t("serviceErrorSaving"));
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (id: string, name: string) => {
-        if (!await showConfirm({ message: t("serviceDeleteConfirm", { name }), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
-        setDeletingId(id);
-        try {
-            await api.erp.products.delete(id);
-            setServices(prev => prev.filter(s => s.id !== id));
-        } catch (err: any) {
-            toast.error(err?.message || t("serviceErrorDeleting"));
-        } finally {
-            setDeletingId(null);
-        }
-    };
-
-    const filtered = services.filter(s => {
-        const q = search.toLowerCase();
-        return s.name.toLowerCase().includes(q) || (s.sku || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q);
-    });
+    const {
+        services, isLoading, search, setSearch,
+        showModal, setShowModal,
+        editingId, form, setForm,
+        isSubmitting, deletingId,
+        openCreate, openEdit, handleSubmit, handleDelete,
+        filtered,
+    } = useServicios();
 
     return (
         <div className="min-h-screen bg-background text-foreground p-8">
@@ -204,97 +121,15 @@ export default function ServicesPage() {
                 </div>
             </div>
 
-            {/* Modal crear/editar */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-card border border-border rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl">
-                        <div className="p-5 border-b border-border flex justify-between items-center bg-muted">
-                            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
-                                <HeartHandshake className="w-4 h-4 text-purple-400" />
-                                {editingId ? t("editService") : t("newService")}
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">{t("name")} *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={form.name}
-                                        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">{t("serviceSkuRef")}</label>
-                                    <input
-                                        type="text"
-                                        value={form.sku}
-                                        onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
-                                        placeholder={t("serviceOptional")}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-purple-500 font-mono text-sm"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">{t("descriptionLabel")}</label>
-                                <textarea
-                                    value={form.description}
-                                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-purple-500 resize-none h-20"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">{t("serviceBasePriceEur")} *</label>
-                                    <input
-                                        type="number"
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                        value={form.price}
-                                        onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-muted-foreground mb-1.5">{t("serviceVatPercent")}</label>
-                                    <select
-                                        value={form.tax_percentage}
-                                        onChange={e => setForm(f => ({ ...f, tax_percentage: e.target.value }))}
-                                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="21">21%</option>
-                                        <option value="10">{t("serviceVatReduced")}</option>
-                                        <option value="4">{t("serviceVatSuperReduced")}</option>
-                                        <option value="0">{t("serviceVatExempt")}</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="pt-4 flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="px-5 py-2.5 text-foreground hover:text-foreground transition-colors font-medium border border-border rounded-lg"
-                                >
-                                    {tc("cancel")}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || !form.name || !form.price}
-                                    className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-foreground px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-purple-500/20 disabled:opacity-50"
-                                >
-                                    {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                                    {editingId ? tc("save") : t("createService")}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <ServiceModal
+                    editingId={editingId}
+                    form={form}
+                    setForm={setForm}
+                    isSubmitting={isSubmitting}
+                    onClose={() => setShowModal(false)}
+                    onSubmit={handleSubmit}
+                />
             )}
         </div>
     );

@@ -1,18 +1,16 @@
 """Fiscal snapshot GET + POST generate + modelo 303 + libro registro endpoints."""
 
-import os
-import uuid
-from datetime import UTC, date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_tenant_or_404
 from app.db.base import get_db
-from app.db.models.models import Tenant, TenantDocument, User
+from app.db.models.models import Tenant, User
 from app.services.pdf import generate_modelo_303_pdf
+from app.services.pdf_reports import save_fiscal_report_to_db
 from app.services.reports import (
     aggregate_fiscal,
     build_libro_registro_csv,
@@ -21,10 +19,6 @@ from app.services.reports import (
 )
 
 from ._schemas import FiscalSnapshot, ReportOut
-
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "uploads")
-)
 
 router = APIRouter()
 
@@ -54,6 +48,7 @@ async def generate_fiscal_snapshot_pdf(
     period: str = Query(default=None, description="Periodo: YYYY-MM o YYYY-Q1..Q4"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant_or_404),
 ):
     """Genera el informe fiscal PDF y lo guarda en documentos del tenant."""
     if not period:
@@ -65,9 +60,7 @@ async def generate_fiscal_snapshot_pdf(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    tenant_q = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = tenant_q.scalar_one_or_none()
-    company_name = tenant.name if tenant and tenant.name else "Tu empresa"
+    company_name = tenant.name if tenant.name else "Tu empresa"
 
     snap = await aggregate_fiscal(db, current_user.tenant_id, start, end, period, label)
 
@@ -79,30 +72,14 @@ async def generate_fiscal_snapshot_pdf(
         period=period,
     )
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    safe_period = period.replace("-", "_")
-    file_name = f"fiscal_{safe_period}_{uuid.uuid4().hex[:8]}.pdf"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
-    with open(file_path, "wb") as fh:
-        fh.write(pdf_bytes)
-
-    doc = TenantDocument(
-        id=uuid.uuid4(),
+    doc = await save_fiscal_report_to_db(
+        pdf_bytes=pdf_bytes,
+        period=period,
+        resumen_ejecutivo=snap.resumen_ejecutivo,
         tenant_id=current_user.tenant_id,
         uploaded_by=current_user.id,
-        file_name=file_name,
-        file_type="application/pdf",
-        file_path=file_path,
-        file_size=len(pdf_bytes),
-        status="processed",
-        parsed_content=snap.resumen_ejecutivo,
-        category="informes",
-        created_at=datetime.now(UTC),
-        processed_at=datetime.now(UTC),
+        db=db,
     )
-    db.add(doc)
-    await db.commit()
-    await db.refresh(doc)
     return doc
 
 

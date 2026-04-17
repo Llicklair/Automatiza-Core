@@ -1,94 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, type JournalEntry } from "@/lib/api";
-import { logError } from "@/lib/logger";
 import { FolderTree, Search, ChevronRight, ChevronDown, Loader2, BookOpen } from "lucide-react";
-
-// PGC group names
-const GROUP_NAMES: Record<string, string> = {
-    "1": "Financiación básica",
-    "2": "Activo no corriente",
-    "3": "Existencias",
-    "4": "Acreedores y deudores por operaciones comerciales",
-    "5": "Cuentas financieras",
-    "6": "Compras y gastos",
-    "7": "Ventas e ingresos",
-    "8": "Gastos imputados al patrimonio neto",
-    "9": "Ingresos imputados al patrimonio neto",
-};
+import { useCuadroCuentas } from "./_hooks/useCuadroCuentas";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-interface AccountNode {
-    code: string;
-    name: string;
-    debit: number;
-    credit: number;
-}
-
-interface GroupNode {
-    group: string;
-    name: string;
-    accounts: AccountNode[];
-}
-
 export default function CuadroCuentasPage() {
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(["4", "5", "6", "7"]));
-
-    useEffect(() => {
-        api.accounting.journal.list()
-            .then(setEntries)
-            .catch(err => logError("contabilidad/cuadro-cuentas", err))
-            .finally(() => setLoading(false));
-    }, []);
-
-    // Build account tree
-    const accountMap: Record<string, AccountNode> = {};
-    entries.forEach(entry => {
-        entry.lines.forEach(line => {
-            const code3 = line.account_code.substring(0, 3);
-            if (!accountMap[code3]) {
-                accountMap[code3] = { code: code3, name: line.account_name || `Cuenta ${code3}`, debit: 0, credit: 0 };
-            }
-            accountMap[code3].debit += Number(line.debit);
-            accountMap[code3].credit += Number(line.credit);
-        });
-    });
-
-    // Group by first digit
-    const groupMap: Record<string, GroupNode> = {};
-    Object.values(accountMap).forEach(acct => {
-        const g = acct.code.substring(0, 1);
-        if (!groupMap[g]) {
-            groupMap[g] = { group: g, name: GROUP_NAMES[g] || `Grupo ${g}`, accounts: [] };
-        }
-        groupMap[g].accounts.push(acct);
-    });
-
-    const groups = Object.values(groupMap).sort((a, b) => a.group.localeCompare(b.group));
-
-    const q = search.toLowerCase();
-    const filteredGroups = groups.map(g => ({
-        ...g,
-        accounts: g.accounts.filter(a =>
-            !q || a.code.includes(q) || a.name.toLowerCase().includes(q)
-        ),
-    })).filter(g => !q || g.group.includes(q) || g.name.toLowerCase().includes(q) || g.accounts.length > 0);
-
-    const toggle = (key: string) => {
-        setExpanded(prev => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key);
-            else next.add(key);
-            return next;
-        });
-    };
-
-    const noData = !loading && entries.length === 0;
+    const { loading, noData, search, setSearch, expanded, filteredGroups, toggle, q } = useCuadroCuentas();
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -137,7 +55,6 @@ export default function CuadroCuentasPage() {
                 </div>
             ) : (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl shadow-black/20">
-                    {/* Table header */}
                     <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted">
                         <div className="col-span-5">Cuenta</div>
                         <div className="col-span-3 text-right">Debe</div>
@@ -153,7 +70,6 @@ export default function CuadroCuentasPage() {
 
                         return (
                             <div key={group.group} className="border-b border-border last:border-0">
-                                {/* Group row */}
                                 <button
                                     onClick={() => toggle(group.group)}
                                     className="w-full grid grid-cols-12 gap-4 px-6 py-3.5 hover:bg-accent/50 transition-colors text-left group"
@@ -174,7 +90,6 @@ export default function CuadroCuentasPage() {
                                     </div>
                                 </button>
 
-                                {/* Account rows */}
                                 {isOpen && group.accounts
                                     .sort((a, b) => a.code.localeCompare(b.code))
                                     .map(acct => {

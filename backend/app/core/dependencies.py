@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_token
 from app.db.base import get_db
 from app.db.models.models import Tenant, User
+from app.services import tenant_service
 
 bearer_scheme = HTTPBearer()
 
@@ -38,6 +39,17 @@ async def get_current_user(
 
 async def get_current_tenant(current_user: User = Depends(get_current_user)) -> Tenant:
     return current_user.tenant
+
+
+async def get_tenant_or_404(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Tenant:
+    """FastAPI dependency: resolve current user's tenant or raise 404."""
+    try:
+        return await tenant_service.get_tenant(db, current_user.tenant_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant no encontrado")
 
 
 def require_role(*roles: str):

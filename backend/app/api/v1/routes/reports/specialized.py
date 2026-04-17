@@ -4,10 +4,9 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_tenant_or_404
 from app.db.base import get_db
 from app.db.models.models import Tenant, User
 from app.services.pdf import (
@@ -73,13 +72,11 @@ async def generate_delinquency(
 async def generate_rgpd_registry(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant_or_404),
 ):
     """Genera PDF del registro de actividades de tratamiento RGPD (Art. 30)."""
-    # Tenant
-    tenant_q = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant_obj = tenant_q.scalar_one_or_none()
-    company_name = tenant_obj.name if tenant_obj else "Mi Empresa"
-    company_nif = tenant_obj.nif if tenant_obj else "B00000000"
+    company_name = tenant.name if tenant.name else "Mi Empresa"
+    company_nif = tenant.nif if tenant.nif else "B00000000"
 
     # Actividades de tratamiento predefinidas para un ERP de PYME
     activities = [

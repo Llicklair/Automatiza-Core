@@ -620,6 +620,7 @@ python smoke_tasks_workflows.py   # Lanza tareas IA de ejemplo
 para aplicar cambios sin reinstalar el exe 
 
 cd desktop; npm run sync
+cd desktop && npm run sync
 
 ```
 
@@ -631,7 +632,8 @@ cd desktop; npm run sync
 
 - **Endpoints**: `backend/app/api/v1/routes/<dominio>.py` — un archivo por módulo
 - **Modelos BD**: `backend/app/db/models/<dominio>.py` — siempre crear migración al cambiar
-- **LLM**: llamar siempre via `get_llm()` en `llm_factory.py`. Nunca instanciar `ChatOpenAI` etc. directamente
+- **LLM**: llamar siempre via `get_
+llm()` en `llm_factory.py`. Nunca instanciar `ChatOpenAI` etc. directamente
 - **Embeddings**: llamar siempre via `get_embedder()`. Nunca instanciar `HuggingFaceEmbeddings` directamente
 - **Agentes**: devuelven siempre un dict con `{"success": bool, "output": ..., "summary": str, "error": str|None}`
 - **Tareas async**: despachar via `task_dispatch.dispatch_task()`, nunca llamar directamente

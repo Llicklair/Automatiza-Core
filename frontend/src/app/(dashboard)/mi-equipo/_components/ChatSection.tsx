@@ -1,0 +1,77 @@
+"use client";
+
+import { Bot, Loader2, MessageSquare } from "lucide-react";
+
+interface ChatSectionProps {
+    chatMessages: { role: "user" | "assistant"; content: string }[];
+    setChatMessages: (msgs: { role: "user" | "assistant"; content: string }[]) => void;
+    chatQuery: string;
+    setChatQuery: (v: string) => void;
+    chatLoading: boolean;
+    onSend: () => void;
+}
+
+export function ChatSection({
+    chatMessages, setChatMessages, chatQuery, setChatQuery, chatLoading, onSend,
+}: ChatSectionProps) {
+    return (
+        <div className="mb-8 bg-card border border-primary/20 rounded-2xl overflow-hidden shadow-lg shadow-primary/20">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-primary/20">
+                <div className="flex items-center gap-2 text-primary text-sm font-medium">
+                    <Bot className="w-4 h-4" /> Asistente IA
+                </div>
+                {chatMessages.length > 0 && (
+                    <button onClick={() => setChatMessages([])} className="text-xs text-muted-foreground hover:text-muted-foreground transition">
+                        Limpiar conversación
+                    </button>
+                )}
+            </div>
+            {chatMessages.length > 0 && (
+                <div className="px-5 py-4 space-y-4 max-h-80 overflow-y-auto">
+                    {chatMessages.map((msg, i) => (
+                        msg.role === "user" ? (
+                            <div key={i} className="flex justify-end">
+                                <div className="bg-primary/20 border border-primary/20 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[80%]">
+                                    <p className="text-sm text-primary-foreground leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div key={i} className="flex gap-2.5 items-start">
+                                <div className="p-1.5 rounded-lg bg-primary/20 flex-shrink-0 mt-0.5">
+                                    <Bot className="w-3.5 h-3.5 text-primary" />
+                                </div>
+                                <div className="bg-background border border-border rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[85%]">
+                                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                            </div>
+                        )
+                    ))}
+                    {chatLoading && (
+                        <div className="flex gap-2.5 items-center">
+                            <div className="p-1.5 rounded-lg bg-primary/20 flex-shrink-0">
+                                <Bot className="w-3.5 h-3.5 text-primary" />
+                            </div>
+                            <div className="bg-background border border-border rounded-2xl rounded-tl-sm px-4 py-2.5">
+                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            <div className="px-5 py-4">
+                <div className="flex bg-background border border-border rounded-xl overflow-hidden focus-within:border-primary transition-colors">
+                    <input type="text" value={chatQuery}
+                        onChange={(e) => setChatQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && onSend()}
+                        placeholder="Pregunta lo que quieras... ej: ¿Cuántas facturas pendientes tengo?"
+                        className="flex-1 bg-transparent border-none text-foreground text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-muted-foreground" />
+                    <button onClick={onSend} disabled={chatLoading || !chatQuery.trim()}
+                        className="px-5 bg-primary hover:bg-primary text-foreground font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

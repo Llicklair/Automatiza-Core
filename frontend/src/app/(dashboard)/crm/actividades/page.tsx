@@ -1,99 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, Activity, Client } from "@/lib/api";
-import {
-    Phone, Mail, StickyNote, Bot, Search, Plus,
-    CalendarCheck, UserCircle, Activity as ActivityIcon, Trash2
-} from "lucide-react";
+import { Search, Plus, Bot, UserCircle, Trash2, Activity as ActivityIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { useToastStore } from "@/stores/toast";
-import { showConfirm } from "@/stores/confirm";
-import { logError } from "@/lib/logger";
+import { useActividades } from "./_hooks/useActividades";
+import { CreateActivityModal } from "./_components/CreateActivityModal";
 
 export default function ActivitiesPage() {
-    const toast = useToastStore();
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-
-    // Formulario Nueva Actividad
-    const [selectedClient, setSelectedClient] = useState("");
-    const [type, setType] = useState("note");
-    const [description, setDescription] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const [actRes, cliRes] = await Promise.all([
-                api.crm.activities.list(),
-                api.erp.clients.list()
-            ]);
-            setActivities(actRes);
-            setClients(cliRes);
-        } catch (error) {
-            logError("crm/actividades/page", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            await api.crm.activities.create({
-                client_id: selectedClient || null,
-                type: type,
-                description: description,
-                metadata_json: { source: "manual" }
-            });
-            setShowModal(false);
-            setDescription("");
-            setType("note");
-            setSelectedClient("");
-            await loadData();
-        } catch (error) {
-            logError("crm/actividades/page", error);
-            toast.error("Error al registrar actividad");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const deleteActivity = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar esta actividad del historial?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
-        try {
-            await api.crm.activities.delete(id);
-            setActivities(prev => prev.filter(a => a.id !== id));
-        } catch {
-            toast.error("Error al eliminar la actividad");
-        }
-    };
-
-    const getActivityIcon = (actType: string, source?: string) => {
-        if (source === "ai") return <Bot className="w-5 h-5 text-primary" />;
-
-        switch (actType) {
-            case "call": return <Phone className="w-5 h-5 text-emerald-400" />;
-            case "email": return <Mail className="w-5 h-5 text-blue-400" />;
-            case "meeting_log": return <CalendarCheck className="w-5 h-5 text-purple-400" />;
-            default: return <StickyNote className="w-5 h-5 text-amber-400" />; // note
-        }
-    };
-
-    const getClientName = (clientId: string | null) => {
-        if (!clientId) return "Sin asignar";
-        const c = clients.find(c => c.id === clientId);
-        return c ? c.name : "Cliente Desconocido";
-    };
+    const {
+        activities, clients, isLoading,
+        showModal, setShowModal,
+        selectedClient, setSelectedClient,
+        type, setType,
+        description, setDescription,
+        isSubmitting,
+        handleCreate, deleteActivity,
+        getActivityIcon, getClientName,
+    } = useActividades();
 
     return (
         <div className="min-h-screen bg-background text-foreground p-8">
@@ -153,7 +76,7 @@ export default function ActivitiesPage() {
                     </div>
                 ) : (
                     <div className="relative pl-4 space-y-8 before:absolute before:inset-0 before:ml-[31px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-zinc-800 before:to-transparent">
-                        {activities.map((act, index) => {
+                        {activities.map((act) => {
                             const source = act.metadata_json?.source;
                             return (
                                 <div key={act.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
@@ -195,89 +118,19 @@ export default function ActivitiesPage() {
                 )}
             </div>
 
-            {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-card border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
-                        <div className="p-5 border-b border-border flex justify-between items-center bg-muted">
-                            <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
-                                <Plus className="w-4 h-4 text-pink-400" />
-                                Registrar Actividad
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground">✕</button>
-                        </div>
-
-                        <form onSubmit={handleCreate} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Cliente (Opcional)</label>
-                                <select
-                                    value={selectedClient}
-                                    onChange={e => setSelectedClient(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-pink-500"
-                                >
-                                    <option value="">Ninguno / General</option>
-                                    {clients.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Tipo de interacción</label>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {[
-                                        { id: 'note', icon: StickyNote, label: 'Nota' },
-                                        { id: 'call', icon: Phone, label: 'Llamada' },
-                                        { id: 'email', icon: Mail, label: 'Email' },
-                                        { id: 'meeting_log', icon: CalendarCheck, label: 'Reunión' }
-                                    ].map(t => (
-                                        <button
-                                            key={t.id}
-                                            type="button"
-                                            onClick={() => setType(t.id)}
-                                            className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-colors ${type === t.id
-                                                ? 'bg-pink-500/10 border-pink-500/50 text-pink-400'
-                                                : 'bg-background border-border text-muted-foreground hover:border-border hover:text-foreground'
-                                                }`}
-                                        >
-                                            <t.icon className="w-5 h-5 mb-1.5" />
-                                            <span className="text-xs font-medium">{t.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-muted-foreground mb-1.5">Resumen o Descripción</label>
-                                <textarea
-                                    required
-                                    rows={4}
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                    placeholder="¿De qué hablasteis? ¿Qué se acordó?..."
-                                    className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-pink-500 resize-none"
-                                />
-                            </div>
-
-                            <div className="pt-4 flex justify-end gap-3 mt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="px-5 py-2.5 text-foreground hover:text-foreground transition-colors font-medium border border-transparent hover:border-border rounded-lg"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || !description}
-                                    className="bg-pink-600 hover:bg-pink-500 text-foreground px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-pink-500/20 disabled:opacity-50"
-                                >
-                                    {isSubmitting ? "Guardando..." : "Registrar"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <CreateActivityModal
+                    clients={clients}
+                    selectedClient={selectedClient}
+                    setSelectedClient={setSelectedClient}
+                    type={type}
+                    setType={setType}
+                    description={description}
+                    setDescription={setDescription}
+                    isSubmitting={isSubmitting}
+                    onSubmit={handleCreate}
+                    onClose={() => setShowModal(false)}
+                />
             )}
         </div>
     );
