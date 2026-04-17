@@ -189,84 +189,95 @@ async def _store_embeddings(
         return f"\nEmbeddings no generados: {e}"
 
 
+async def _update_doc_status(document_id: str, raw_text: str) -> None:
+    """Marca el documento como completado y guarda el contenido parseado."""
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(TenantDocument).where(TenantDocument.id == UUID(document_id))
+            )
+            doc = result.scalar_one_or_none()
+            if doc:
+                doc.parsed_content = raw_text[:3000]
+                doc.status = "completed"
+                await db.commit()
+    except Exception:
+        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
+
+
+async def _emit_document_processed(
+    tenant_id: str, document_id: str, classified: ClassifiedDocument
+) -> None:
+    """Emite el evento document_processed al bus de eventos."""
+    try:
+        from app.services.event_bus import emit_event
+        async with AsyncSessionLocal() as db:
+            await emit_event(
+                db=db, tenant_id=UUID(tenant_id), user_id=None,
+                event_name="document_processed",
+                context={
+                    "document_id": document_id,
+                    "document_type": classified.document_type,
+                    "key_entities": classified.key_entities,
+                },
+            )
+    except Exception as e:
+        logger.warning("Error emitiendo evento document_processed: %s", e)
+
+
+async def _classify_with_llm(raw_text: str, rule_result) -> ClassifiedDocument:
+    """Clasifica el documento con LLM, con fallback a reglas si falla."""
+    llm = _get_llm_json()
+    try:
+        response = await llm.ainvoke([
+            SystemMessage(content=CLASSIFICATION_PROMPT),
+            HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
+        ])
+        raw_content = (response.content or "").strip()
+        if raw_content.startswith("```"):
+            raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
+            raw_content = re.sub(r"\s*```$", "", raw_content)
+        if raw_content:
+            return ClassifiedDocument(**json.loads(raw_content))
+        logger.warning("LLM returned empty response for document classification, using rule fallback")
+    except Exception as e:
+        logger.warning("LLM classification failed (%s), falling back to rules", e)
+
+    return ClassifiedDocument(
+        document_type=rule_result.document_type,
+        confidence=max(rule_result.confidence, 0.5),
+        key_entities=rule_result.key_entities,
+        summary=f"Clasificado por reglas (LLM falló): {rule_result.document_type}",
+    )
+
+
 async def _classify_document_async(tenant_id: str, document_id: str) -> str:
-    # Cargar documento y extraer texto
     load_result = await _load_doc_and_extract_text(tenant_id, document_id)
     if isinstance(load_result, str):
         return load_result
     _doc, raw_text, parsed_doc = load_result
 
-    # Clasificar: primero reglas, luego LLM si ambiguo
     rule_result = classify_by_rules(raw_text)
     logger.info("Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
                 rule_result.document_type, rule_result.confidence * 100, rule_result.needs_llm)
 
-    if not rule_result.needs_llm:
+    if rule_result.needs_llm:
+        classified = await _classify_with_llm(raw_text, rule_result)
+    else:
         classified = ClassifiedDocument(
             document_type=rule_result.document_type, confidence=rule_result.confidence,
             key_entities=rule_result.key_entities,
             summary=f"Documento clasificado por reglas como {rule_result.document_type}",
         )
-    else:
-        llm = _get_llm_json()
-        try:
-            response = await llm.ainvoke([
-                SystemMessage(content=CLASSIFICATION_PROMPT),
-                HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
-            ])
-            raw_content = (response.content or "").strip()
-            if raw_content.startswith("```"):
-                raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
-                raw_content = re.sub(r"\s*```$", "", raw_content)
-            if not raw_content:
-                logger.warning("LLM returned empty response for document classification, using rule fallback")
-                classified = ClassifiedDocument(
-                    document_type=rule_result.document_type, confidence=rule_result.confidence,
-                    key_entities=rule_result.key_entities,
-                    summary=f"Clasificado por reglas (LLM sin respuesta): {rule_result.document_type}",
-                )
-            else:
-                classified = ClassifiedDocument(**json.loads(raw_content))
-        except Exception as e:
-            logger.warning("LLM classification failed (%s), falling back to rules", e)
-            classified = ClassifiedDocument(
-                document_type=rule_result.document_type, confidence=max(rule_result.confidence, 0.5),
-                key_entities=rule_result.key_entities,
-                summary=f"Clasificado por reglas (LLM falló): {rule_result.document_type}",
-            )
 
-    # Extraer NIFs y vincular cliente
     nif_pattern = re.compile(r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b")
     raw_nifs = nif_pattern.findall(raw_text.upper())
     nifs_found = list(dict.fromkeys([n.replace("-", "").replace(" ", "") for n in raw_nifs]))
     client_info = await _link_client_from_nif(tenant_id, nifs_found[0], classified.key_entities) if nifs_found else ""
 
-    # Generar embeddings RAG
     embeddings_info = await _store_embeddings(tenant_id, document_id, raw_text, parsed_doc)
-
-    # Actualizar documento en BD
-    try:
-        async with AsyncSessionLocal() as db_upd:
-            result = await db_upd.execute(select(TenantDocument).where(TenantDocument.id == UUID(document_id)))
-            doc = result.scalar_one_or_none()
-            if doc:
-                doc.parsed_content = raw_text[:3000]
-                doc.status = "completed"
-                await db_upd.commit()
-    except Exception:
-        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
-
-    # Emitir evento
-    try:
-        from app.services.event_bus import emit_event
-        async with AsyncSessionLocal() as db_ev:
-            await emit_event(db=db_ev, tenant_id=UUID(tenant_id), user_id=None,
-                             event_name="document_processed",
-                             context={"document_id": document_id,
-                                      "document_type": classified.document_type,
-                                      "key_entities": classified.key_entities})
-    except Exception as e:
-        logger.warning("Error emitiendo evento document_processed: %s", e)
+    await _update_doc_status(document_id, raw_text)
+    await _emit_document_processed(tenant_id, document_id, classified)
 
     conf = classified.confidence if classified.confidence is not None else 0.9
     review_note = " ⚠️ Confianza baja, requiere revisión manual." if conf < 0.7 else ""

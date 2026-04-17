@@ -4,7 +4,7 @@ Heavy creation logic lives in _invoice_create_async.py.
 """
 
 import logging
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from uuid import UUID
 
 from langchain_core.tools import tool
@@ -14,6 +14,7 @@ from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine
 
 from ._invoice_create_async import _create_invoice_async
+from ._invoice_validators import parse_amount_str
 
 logger = logging.getLogger(__name__)
 
@@ -105,13 +106,11 @@ async def _update_invoice_async(
 
             new_base = None
             if amount_base_str.strip():
-                try:
-                    raw = amount_base_str.strip().replace(",", ".")
-                    new_base = Decimal(raw)
-                    invoice.amount_base = new_base
-                    changes.append(f"base={new_base}€")
-                except (InvalidOperation, Exception):
-                    return f"Error: Importe no válido: '{amount_base_str}'."
+                new_base, err = parse_amount_str(amount_base_str)
+                if err:
+                    return err
+                invoice.amount_base = new_base
+                changes.append(f"base={new_base}€")
 
             new_vat = vat_rate if vat_rate >= 0 else None
             if new_vat is not None and new_vat not in (0, 4, 10, 21):

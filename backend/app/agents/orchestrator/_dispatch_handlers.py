@@ -206,6 +206,54 @@ async def _execute_one(
     return idx, subtask, result
 
 
+async def _audit_log_result(
+    state: "OrchestratorState",
+    result: "AgentResult",
+    subtask: dict,
+    agent_name: str,
+    action_str: str,
+) -> None:
+    async with AsyncSessionLocal() as db:
+        await log_action(
+            db,
+            tenant_id=uuid.UUID(state["tenant_id"]),
+            task_id=uuid.UUID(state["task_id"]) if state.get("task_id") else None,
+            agent_name=agent_name,
+            action_type=action_str,
+            status="success" if result["success"] else "failed",
+            input_data={"subtask": subtask},
+            output_data=result.get("output"),
+            error_detail=result.get("error"),
+        )
+        await db.commit()
+
+
+async def _broadcast_progress(
+    state: "OrchestratorState",
+    result: "AgentResult",
+    agent_name: str,
+    step_num: int,
+    total_steps: int,
+) -> None:
+    try:
+        from app.api.ws.notifications import manager as ws_manager
+
+        await ws_manager.broadcast_to_tenant(
+            state["tenant_id"],
+            {
+                "type": "task_progress",
+                "task_id": state["task_id"],
+                "step": step_num,
+                "total_steps": total_steps,
+                "agent": agent_name,
+                "summary": result.get("summary", ""),
+                "success": result["success"],
+            },
+        )
+    except Exception as _ws_err:
+        logger.debug("[WS] No se pudo emitir progreso: %s", _ws_err)
+
+
 def _process_gathered_results(
     gathered: list,
     state: "OrchestratorState",
@@ -236,45 +284,13 @@ def _process_gathered_results(
             else "unknown_action"
         )
 
-        async def _safe_log(
-            _result=result, _subtask=subtask, _agent=agent_name, _action=action_str
-        ):
-            async with AsyncSessionLocal() as db:
-                await log_action(
-                    db,
-                    tenant_id=uuid.UUID(state["tenant_id"]),
-                    task_id=uuid.UUID(state["task_id"]) if state.get("task_id") else None,
-                    agent_name=_agent,
-                    action_type=_action,
-                    status="success" if _result["success"] else "failed",
-                    input_data={"subtask": _subtask},
-                    output_data=_result.get("output"),
-                    error_detail=_result.get("error"),
-                )
-                await db.commit()
+        _audit_tasks.append(asyncio.create_task(
+            _audit_log_result(state, result, subtask, agent_name, action_str)
+        ))
 
-        _audit_tasks.append(asyncio.create_task(_safe_log()))
-
-        async def _broadcast(_result=result, _agent=agent_name, _step_num=idx + 1):
-            try:
-                from app.api.ws.notifications import manager as ws_manager
-
-                await ws_manager.broadcast_to_tenant(
-                    state["tenant_id"],
-                    {
-                        "type": "task_progress",
-                        "task_id": state["task_id"],
-                        "step": _step_num,
-                        "total_steps": len(plan),
-                        "agent": _agent,
-                        "summary": _result.get("summary", ""),
-                        "success": _result["success"],
-                    },
-                )
-            except Exception as _ws_err:
-                logger.debug("[WS] No se pudo emitir progreso: %s", _ws_err)
-
-        _bc_task = asyncio.create_task(_broadcast())
+        _bc_task = asyncio.create_task(
+            _broadcast_progress(state, result, agent_name, idx + 1, len(plan))
+        )
         _bc_task.add_done_callback(
             lambda t: (
                 logger.debug("[WS] Broadcast error: %s", t.exception())
