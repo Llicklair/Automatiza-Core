@@ -19,6 +19,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
 
     if ext == ".csv":
         import csv
+
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             sample = f.read(4096)
             f.seek(0)
@@ -33,6 +34,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
 
     elif ext in (".xlsx", ".xls", ".ods"):
         import openpyxl
+
         wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
         ws = wb.active
         rows_raw = list(ws.iter_rows(values_only=True))
@@ -73,7 +75,9 @@ def auto_classify_tabular(columns: list[str]) -> str:
         return "nominas"
     if any(k in cols_lower for k in ("correo", "email", "asunto", "subject", "inbox", "bandeja")):
         return "correos"
-    if any(k in cols_lower for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")):
+    if any(
+        k in cols_lower for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")
+    ):
         return "crm"
     if any(k in cols_lower for k in ("banco", "iban", "movimiento", "saldo", "transferencia")):
         return "bancos"
@@ -87,8 +91,12 @@ def auto_classify_tabular(columns: list[str]) -> str:
 
 
 async def import_tabular_file(
-    filename: str, contents: bytes, content_type: str | None,
-    tenant_id, user_id, db: AsyncSession,
+    filename: str,
+    contents: bytes,
+    content_type: str | None,
+    tenant_id,
+    user_id,
+    db: AsyncSession,
 ) -> tuple[TenantDocument, list[str], int, str, uuid.UUID | None]:
     """Importa un archivo tabular. Retorna (doc, columns, row_count, auto_cat, task_id)."""
     ext = os.path.splitext(filename)[1].lower()
@@ -112,7 +120,8 @@ async def import_tabular_file(
         status="uploaded",
         parsed_content=json_mod.dumps(
             {"format": fmt, "columns": columns, "row_count": len(rows), "sample_rows": rows[:5]},
-            ensure_ascii=False, default=str,
+            ensure_ascii=False,
+            default=str,
         ),
     )
     db.add(doc)
@@ -130,8 +139,11 @@ async def import_tabular_file(
             f"(clientes, facturas, empleados, productos, etc. según el contenido)."
         )
         task = Task(
-            tenant_id=tenant_id, created_by=user_id,
-            domain="excel", user_intent=intent_summary, status="pending",
+            tenant_id=tenant_id,
+            created_by=user_id,
+            domain="excel",
+            user_intent=intent_summary,
+            status="pending",
         )
         db.add(task)
         await db.commit()

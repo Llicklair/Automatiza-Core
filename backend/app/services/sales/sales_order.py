@@ -8,9 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.db.models.models import SalesOrder, SalesOrderLine
 
 
-async def list_sales_orders(
-    db: AsyncSession, tenant_id: UUID
-) -> list[SalesOrder]:
+async def list_sales_orders(db: AsyncSession, tenant_id: UUID) -> list[SalesOrder]:
     result = await db.execute(
         select(SalesOrder)
         .where(SalesOrder.tenant_id == tenant_id)
@@ -26,7 +24,9 @@ async def list_sales_orders(
 async def create_sales_order(
     db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]
 ) -> SalesOrder:
-    order_number = data.pop("order_number", None) or f"PED-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    order_number = (
+        data.pop("order_number", None) or f"PED-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    )
 
     # Calcular totales
     amount_base = 0.0
@@ -77,9 +77,7 @@ async def update_sales_order(
     db: AsyncSession, tenant_id: UUID, order_id: UUID, data: dict
 ) -> SalesOrder:
     result = await db.execute(
-        select(SalesOrder).where(
-            SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id
-        )
+        select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id)
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -95,13 +93,9 @@ async def update_sales_order(
     return result.unique().scalar_one()
 
 
-async def delete_sales_order(
-    db: AsyncSession, tenant_id: UUID, order_id: UUID
-) -> None:
+async def delete_sales_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) -> None:
     result = await db.execute(
-        select(SalesOrder).where(
-            SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id
-        )
+        select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id)
     )
     order = result.scalar_one_or_none()
     if not order:

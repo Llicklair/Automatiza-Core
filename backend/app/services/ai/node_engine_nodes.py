@@ -122,8 +122,7 @@ def execute_conditional_node(engine: "NodeEngine", node: dict) -> str:
             context["prev"] = engine.node_states[last_pred]
 
     _logger.info(
-        f"[CONDITIONAL] node={node['id']} condition={condition} "
-        f"context_keys={list(context.keys())}"
+        f"[CONDITIONAL] node={node['id']} condition={condition} context_keys={list(context.keys())}"
     )
     field = condition.get("field", "")
     resolved = _resolve_field(field, context)
@@ -198,15 +197,22 @@ async def execute_approval_gate(engine: "NodeEngine", node: dict, db: AsyncSessi
 
 # ── private helpers ───────────────────────────────────────────────────────────
 
+
 def _build_skill_dispatch(
     engine: "NodeEngine", node: dict, extra_meta: dict | None = None
 ) -> tuple[str, str, dict, dict]:
     return build_skill_dispatch(
-        node, engine.edges, engine.node_states,
-        engine.tenant_id, engine.user_id, engine.execution_id, extra_meta,
+        node,
+        engine.edges,
+        engine.node_states,
+        engine.tenant_id,
+        engine.user_id,
+        engine.execution_id,
+        extra_meta,
     )
 
 
 async def _dispatch_agent(engine: "NodeEngine", domain: str, state: dict, subtask: dict) -> dict:
     from app.services.ai.node_dispatch import dispatch_agent
+
     return await dispatch_agent(domain, state, subtask)

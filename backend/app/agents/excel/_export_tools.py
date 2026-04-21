@@ -18,9 +18,7 @@ from ._writer import _write_excel
 
 logger = logging.getLogger(__name__)
 
-UPLOADS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 

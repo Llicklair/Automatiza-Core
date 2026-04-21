@@ -101,12 +101,18 @@ async def _load_doc_and_extract_text(
         if file_bytes and doc.file_type and "pdf" in doc.file_type.lower():
             try:
                 parsed_doc = parse_pdf(
-                    file_path=doc.file_path if doc.file_path and os.path.exists(doc.file_path) else None,
+                    file_path=doc.file_path
+                    if doc.file_path and os.path.exists(doc.file_path)
+                    else None,
                     file_bytes=file_bytes,
                 )
                 raw_text = parsed_doc.markdown
-                logger.info("PDF parseado con %s: %d páginas, %d elementos",
-                            parsed_doc.parser_used, parsed_doc.total_pages, len(parsed_doc.elements))
+                logger.info(
+                    "PDF parseado con %s: %d páginas, %d elementos",
+                    parsed_doc.parser_used,
+                    parsed_doc.total_pages,
+                    len(parsed_doc.elements),
+                )
             except Exception as e:
                 logger.warning("Error parsing PDF: %s", e)
         elif file_bytes:
@@ -124,9 +130,7 @@ async def _load_doc_and_extract_text(
         return f"Error leyendo documento: {e}"
 
 
-async def _link_client_from_nif(
-    tenant_id: str, primary_nif: str, key_entities: dict
-) -> str:
+async def _link_client_from_nif(tenant_id: str, primary_nif: str, key_entities: dict) -> str:
     """Busca o crea un cliente a partir de un NIF extraído del documento. Devuelve client_info string."""
     try:
         async with AsyncSessionLocal() as db:
@@ -149,9 +153,7 @@ async def _link_client_from_nif(
         return f"\nError vinculando cliente: {e}"
 
 
-async def _store_embeddings(
-    tenant_id: str, document_id: str, raw_text: str, parsed_doc
-) -> str:
+async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, parsed_doc) -> str:
     """Genera embeddings y los almacena en BD. Devuelve embeddings_info string."""
     try:
         embedder = get_embedder()
@@ -162,25 +164,32 @@ async def _store_embeddings(
             doc_chunks = smart_chunk(parsed_doc.elements)
         else:
             chunk_size = 1500
-            doc_chunks = [Chunk(text=raw_text[i:i + chunk_size]) for i in range(0, len(raw_text), chunk_size)]
+            doc_chunks = [
+                Chunk(text=raw_text[i : i + chunk_size])
+                for i in range(0, len(raw_text), chunk_size)
+            ]
 
         vectors = await embedder.aembed_documents([c.text for c in doc_chunks])
 
         async with AsyncSessionLocal() as db:
-            j_res = await db.execute(select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id)))
+            j_res = await db.execute(
+                select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id))
+            )
             jurisdiction = j_res.scalar() or "ES_TAX"
             for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
-                db.add(DocumentEmbedding(
-                    document_id=document_id,
-                    tenant_id=UUID(tenant_id),
-                    chunk_index=str(i),
-                    text_content=chunk.text,
-                    page_number=chunk.page_number or None,
-                    element_type=chunk.element_type or None,
-                    bounding_box=chunk.bounding_box or None,
-                    jurisdiction=jurisdiction,
-                    embedding=vector,
-                ))
+                db.add(
+                    DocumentEmbedding(
+                        document_id=document_id,
+                        tenant_id=UUID(tenant_id),
+                        chunk_index=str(i),
+                        text_content=chunk.text,
+                        page_number=chunk.page_number or None,
+                        element_type=chunk.element_type or None,
+                        bounding_box=chunk.bounding_box or None,
+                        jurisdiction=jurisdiction,
+                        embedding=vector,
+                    )
+                )
             await db.commit()
 
         parser_label = f" ({parsed_doc.parser_used})" if parsed_doc else ""
@@ -202,7 +211,9 @@ async def _update_doc_status(document_id: str, raw_text: str) -> None:
                 doc.status = "completed"
                 await db.commit()
     except Exception:
-        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
+        logger.warning(
+            "Failed to update parsed_content for document %s", document_id, exc_info=True
+        )
 
 
 async def _emit_document_processed(
@@ -211,9 +222,12 @@ async def _emit_document_processed(
     """Emite el evento document_processed al bus de eventos."""
     try:
         from app.services.event_bus import emit_event
+
         async with AsyncSessionLocal() as db:
             await emit_event(
-                db=db, tenant_id=UUID(tenant_id), user_id=None,
+                db=db,
+                tenant_id=UUID(tenant_id),
+                user_id=None,
                 event_name="document_processed",
                 context={
                     "document_id": document_id,
@@ -229,17 +243,23 @@ async def _classify_with_llm(raw_text: str, rule_result) -> ClassifiedDocument:
     """Clasifica el documento con LLM, con fallback a reglas si falla."""
     llm = _get_llm_json()
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content=CLASSIFICATION_PROMPT),
-            HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
-        ])
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=CLASSIFICATION_PROMPT),
+                HumanMessage(
+                    content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"
+                ),
+            ]
+        )
         raw_content = (response.content or "").strip()
         if raw_content.startswith("```"):
             raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
             raw_content = re.sub(r"\s*```$", "", raw_content)
         if raw_content:
             return ClassifiedDocument(**json.loads(raw_content))
-        logger.warning("LLM returned empty response for document classification, using rule fallback")
+        logger.warning(
+            "LLM returned empty response for document classification, using rule fallback"
+        )
     except Exception as e:
         logger.warning("LLM classification failed (%s), falling back to rules", e)
 
@@ -258,22 +278,33 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
     _doc, raw_text, parsed_doc = load_result
 
     rule_result = classify_by_rules(raw_text)
-    logger.info("Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
-                rule_result.document_type, rule_result.confidence * 100, rule_result.needs_llm)
+    logger.info(
+        "Clasificación por reglas: %s (confianza=%.0f%%, needs_llm=%s)",
+        rule_result.document_type,
+        rule_result.confidence * 100,
+        rule_result.needs_llm,
+    )
 
     if rule_result.needs_llm:
         classified = await _classify_with_llm(raw_text, rule_result)
     else:
         classified = ClassifiedDocument(
-            document_type=rule_result.document_type, confidence=rule_result.confidence,
+            document_type=rule_result.document_type,
+            confidence=rule_result.confidence,
             key_entities=rule_result.key_entities,
             summary=f"Documento clasificado por reglas como {rule_result.document_type}",
         )
 
-    nif_pattern = re.compile(r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b")
+    nif_pattern = re.compile(
+        r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b"
+    )
     raw_nifs = nif_pattern.findall(raw_text.upper())
     nifs_found = list(dict.fromkeys([n.replace("-", "").replace(" ", "") for n in raw_nifs]))
-    client_info = await _link_client_from_nif(tenant_id, nifs_found[0], classified.key_entities) if nifs_found else ""
+    client_info = (
+        await _link_client_from_nif(tenant_id, nifs_found[0], classified.key_entities)
+        if nifs_found
+        else ""
+    )
 
     embeddings_info = await _store_embeddings(tenant_id, document_id, raw_text, parsed_doc)
     await _update_doc_status(document_id, raw_text)
@@ -290,8 +321,6 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
         f"Acción sugerida: {classified.suggested_action or 'Ninguna'}"
         f"{client_info}{embeddings_info}{review_note}"
     )
-
-
 
 
 @tool

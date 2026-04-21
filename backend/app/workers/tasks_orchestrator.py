@@ -28,9 +28,16 @@ logger = logging.getLogger(__name__)
 def _is_transient_error(exc: Exception) -> bool:
     """Devuelve True si el error es transitorio (red, timeout, rate limit)."""
     err_str = str(exc).lower()
-    return (
-        isinstance(exc, (ConnectionError, OSError, TimeoutError))
-        or any(kw in err_str for kw in ("429", "rate limit", "timeout", "service unavailable", "overloaded", "connection"))
+    return isinstance(exc, (ConnectionError, OSError, TimeoutError)) or any(
+        kw in err_str
+        for kw in (
+            "429",
+            "rate limit",
+            "timeout",
+            "service unavailable",
+            "overloaded",
+            "connection",
+        )
     )
 
 
@@ -41,15 +48,19 @@ async def _retry(label: str, task_id: str, fn, guard, *, attempts: int, backoff_
     """
     exc = None
     for attempt in range(attempts):
-        countdown = backoff_base * (2 ** attempt)
-        logger.warning("[RETRY] %s:%s intento %d/%d en %ds", label, task_id, attempt + 1, attempts, countdown)
+        countdown = backoff_base * (2**attempt)
+        logger.warning(
+            "[RETRY] %s:%s intento %d/%d en %ds", label, task_id, attempt + 1, attempts, countdown
+        )
         await asyncio.sleep(countdown)
         try:
             result = await fn()
             await guard.mark_executed(label, task_id, {"status": "done"})
             return result
         except Exception as retry_exc:
-            logger.warning("[RETRY] %s:%s fallo intento %d: %s", label, task_id, attempt + 1, retry_exc)
+            logger.warning(
+                "[RETRY] %s:%s fallo intento %d: %s", label, task_id, attempt + 1, retry_exc
+            )
             exc = retry_exc
     await _mark_task_failed(task_id, str(exc))
     raise exc
@@ -71,7 +82,14 @@ async def execute_orchestrator(task_id: str):
         logger.exception("Error en run_orchestrator:%s", task_id)
         if _is_transient_error(exc):
             await guard.release("run_orchestrator", task_id)
-            return await _retry("run_orchestrator", task_id, lambda: _execute_orchestrator(task_id), guard, attempts=3, backoff_base=30)
+            return await _retry(
+                "run_orchestrator",
+                task_id,
+                lambda: _execute_orchestrator(task_id),
+                guard,
+                attempts=3,
+                backoff_base=30,
+            )
         await _mark_task_failed(task_id, str(exc))
         raise
 
@@ -91,7 +109,14 @@ async def resume_orchestrator(task_id: str):
     except Exception:
         logger.exception("Error en resume_orchestrator:%s", task_id)
         await guard.release("resume_orchestrator", task_id)
-        return await _retry("resume_orchestrator", task_id, lambda: _resume_orchestrator(task_id), guard, attempts=3, backoff_base=10)
+        return await _retry(
+            "resume_orchestrator",
+            task_id,
+            lambda: _resume_orchestrator(task_id),
+            guard,
+            attempts=3,
+            backoff_base=10,
+        )
 
 
 async def _execute_orchestrator(task_id: str):

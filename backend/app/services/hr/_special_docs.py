@@ -18,7 +18,9 @@ from app.services.pdf import (
 
 
 async def load_employee_and_tenant(
-    employee_id: UUID, tenant_id, db: AsyncSession,
+    employee_id: UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> tuple[Employee, Tenant | None]:
     """Carga empleado y tenant. Lanza ValueError si no existe."""
     emp = await db.get(Employee, employee_id)
@@ -52,7 +54,8 @@ def generate_finiquito_pdf(emp: Employee, tenant: Tenant | None, payload) -> tup
 def generate_liquidacion_pdf(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str]:
     liquidacion_data = {
         "employee": {
-            "name": emp.name, "nif": emp.nif or "",
+            "name": emp.name,
+            "nif": emp.nif or "",
             "naf": getattr(emp, "numero_afiliacion_ss", "") or "",
             "fecha_alta": emp.join_date.isoformat() if emp.join_date else "",
             "categoria": getattr(emp, "categoria_profesional", "") or "",

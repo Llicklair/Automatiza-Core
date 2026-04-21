@@ -9,18 +9,12 @@ from app.db.models.models import Project, ProjectTask
 
 
 async def list_projects(db: AsyncSession, tenant_id: UUID) -> list[Project]:
-    query = (
-        select(Project)
-        .where(Project.tenant_id == tenant_id)
-        .order_by(desc(Project.created_at))
-    )
+    query = select(Project).where(Project.tenant_id == tenant_id).order_by(desc(Project.created_at))
     result = await db.execute(query)
     return list(result.scalars().all())
 
 
-async def create_project(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> Project:
+async def create_project(db: AsyncSession, tenant_id: UUID, data: dict) -> Project:
     project = Project(tenant_id=tenant_id, **data)
     db.add(project)
     await db.commit()
@@ -32,9 +26,7 @@ async def update_project(
     db: AsyncSession, tenant_id: UUID, project_id: UUID, data: dict
 ) -> Project:
     result = await db.execute(
-        select(Project).where(
-            Project.id == project_id, Project.tenant_id == tenant_id
-        )
+        select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id)
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -46,13 +38,9 @@ async def update_project(
     return project
 
 
-async def delete_project(
-    db: AsyncSession, tenant_id: UUID, project_id: UUID
-) -> None:
+async def delete_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> None:
     result = await db.execute(
-        select(Project).where(
-            Project.id == project_id, Project.tenant_id == tenant_id
-        )
+        select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id)
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -77,9 +65,7 @@ async def list_tasks(
     return list(result.scalars().all())
 
 
-async def create_task(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> ProjectTask:
+async def create_task(db: AsyncSession, tenant_id: UUID, data: dict) -> ProjectTask:
     task = ProjectTask(tenant_id=tenant_id, **data)
     db.add(task)
     await db.commit()
@@ -87,13 +73,9 @@ async def create_task(
     return task
 
 
-async def update_task(
-    db: AsyncSession, tenant_id: UUID, task_id: UUID, data: dict
-) -> ProjectTask:
+async def update_task(db: AsyncSession, tenant_id: UUID, task_id: UUID, data: dict) -> ProjectTask:
     result = await db.execute(
-        select(ProjectTask).where(
-            ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id
-        )
+        select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id)
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -105,13 +87,9 @@ async def update_task(
     return task
 
 
-async def delete_task(
-    db: AsyncSession, tenant_id: UUID, task_id: UUID
-) -> None:
+async def delete_task(db: AsyncSession, tenant_id: UUID, task_id: UUID) -> None:
     result = await db.execute(
-        select(ProjectTask).where(
-            ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id
-        )
+        select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id)
     )
     task = result.scalar_one_or_none()
     if not task:

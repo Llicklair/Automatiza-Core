@@ -19,8 +19,14 @@ logger = logging.getLogger(__name__)
 # ── Keyword sets para resolución de contexto ERP ─────────────────────────────
 
 _KW_INVOICES = {
-    "factura", "facturación", "facturacion", "cobro", "pago",
-    "pendiente", "venta", "ingreso",
+    "factura",
+    "facturación",
+    "facturacion",
+    "cobro",
+    "pago",
+    "pendiente",
+    "venta",
+    "ingreso",
 }
 _KW_CLIENTS = {"cliente", "cartera", "crm", "contacto"}
 _KW_EMPLOYEES = {"empleado", "plantilla", "rrhh", "personal", "equipo", "trabajador"}
@@ -183,10 +189,12 @@ async def generate_ui(
         tenant_id,
     )
     response = await asyncio.wait_for(
-        llm.ainvoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_message),
-        ]),
+        llm.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_message),
+            ]
+        ),
         timeout=120,
     )
 
@@ -194,9 +202,7 @@ async def generate_ui(
     if not content_html or not content_html.strip():
         raise ValueError("El LLM devolvió una respuesta vacía")
 
-    resolved_title = (
-        title or f"Interfaz — {prompt[:60]}{'...' if len(prompt) > 60 else ''}"
-    )
+    resolved_title = title or f"Interfaz — {prompt[:60]}{'...' if len(prompt) > 60 else ''}"
 
     ui = GeneratedUI(
         id=uuid.uuid4(),

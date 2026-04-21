@@ -87,8 +87,18 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
     try:
         y, mo = month.split("-")
         meses = [
-            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+            "Enero",
+            "Febrero",
+            "Marzo",
+            "Abril",
+            "Mayo",
+            "Junio",
+            "Julio",
+            "Agosto",
+            "Septiembre",
+            "Octubre",
+            "Noviembre",
+            "Diciembre",
         ]
         month_label = f"{meses[int(mo) - 1]} {y}"
     except Exception:
@@ -111,18 +121,35 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
 
     s_company = sty("Co", fontSize=20, fontName="Helvetica-Bold", textColor=C_SLATE)
     s_badge = sty("Ba", fontSize=9, fontName="Helvetica-Bold", textColor=C_INDIGO)
-    s_month = sty("Mo", fontSize=13, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT)
-    s_generated = sty("Ge", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_RIGHT)
-    s_section = sty("Se", fontSize=10, fontName="Helvetica-Bold", textColor=C_GRAY, spaceBefore=8, spaceAfter=4)
+    s_month = sty(
+        "Mo", fontSize=13, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT
+    )
+    s_generated = sty(
+        "Ge", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_RIGHT
+    )
+    s_section = sty(
+        "Se", fontSize=10, fontName="Helvetica-Bold", textColor=C_GRAY, spaceBefore=8, spaceAfter=4
+    )
     s_body = sty("Bo", fontSize=9, fontName="Helvetica", textColor=C_SLATE, leading=13)
-    s_resumen = sty("Re", fontSize=9, fontName="Helvetica", textColor=colors.HexColor("#334155"),
-                    leading=14, leftIndent=4 * mm, rightIndent=4 * mm)
+    s_resumen = sty(
+        "Re",
+        fontSize=9,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#334155"),
+        leading=14,
+        leftIndent=4 * mm,
+        rightIndent=4 * mm,
+    )
     sty("Kv", fontSize=16, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_CENTER)
     s_kpi_lbl = sty("Kl", fontSize=7, fontName="Helvetica", textColor=C_GRAY, alignment=TA_CENTER)
     s_footer = sty("Fo", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_CENTER)
     s_row_lbl = sty("Rl", fontSize=8, fontName="Helvetica", textColor=C_GRAY)
-    s_row_val = sty("Rv", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT)
-    s_row_val_em = sty("Rve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT)
+    s_row_val = sty(
+        "Rv", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT
+    )
+    s_row_val_em = sty(
+        "Rve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT
+    )
 
     def fmt_eur(v):
         return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -185,7 +212,13 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
         return [
             Paragraph(
                 val,
-                sty("kv2", fontSize=14, fontName="Helvetica-Bold", textColor=color, alignment=TA_CENTER),
+                sty(
+                    "kv2",
+                    fontSize=14,
+                    fontName="Helvetica-Bold",
+                    textColor=color,
+                    alignment=TA_CENTER,
+                ),
             ),
             Spacer(1, 2),
             Paragraph(lbl, s_kpi_lbl),
@@ -264,7 +297,10 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
         [Paragraph("Concepto", s_row_lbl), Paragraph("Valor", s_row_val)],
         [Paragraph("Facturas emitidas", s_row_lbl), Paragraph(fmt_int(n_emitidas), s_row_val)],
         [Paragraph("Facturas recibidas", s_row_lbl), Paragraph(fmt_int(n_recibidas), s_row_val)],
-        [Paragraph("Pend. de cobro", s_row_lbl), Paragraph(f"{n_pend} · {fmt_eur(pendiente)}", s_row_val)],
+        [
+            Paragraph("Pend. de cobro", s_row_lbl),
+            Paragraph(f"{n_pend} · {fmt_eur(pendiente)}", s_row_val),
+        ],
         [Paragraph("Margen bruto", s_row_lbl), Paragraph(fmt_eur(margen), s_row_val_em)],
     ]
     fac_tbl = Table(fac_detail, colWidths=[35 * mm, 25 * mm])
@@ -337,19 +373,43 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
 
         right_sections = []
         right_sections.append(
-            [Paragraph("BANCA", sty("bs", fontSize=8, fontName="Helvetica-Bold", textColor=C_BLUE)), ""]
+            [
+                Paragraph(
+                    "BANCA", sty("bs", fontSize=8, fontName="Helvetica-Bold", textColor=C_BLUE)
+                ),
+                "",
+            ]
         )
-        right_sections.append([Paragraph("Entradas", s_row_lbl), Paragraph(fmt_eur(bank_in), s_row_val)])
-        right_sections.append([Paragraph("Salidas", s_row_lbl), Paragraph(fmt_eur(bank_out), s_row_val)])
-        right_sections.append([Paragraph("Saldo neto", s_row_lbl), Paragraph(fmt_eur(bank_neto), s_row_val_em)])
-        right_sections.append([Paragraph(f"Movimientos: {n_tx}  Reconciliados: {n_rec}", s_row_lbl), ""])
+        right_sections.append(
+            [Paragraph("Entradas", s_row_lbl), Paragraph(fmt_eur(bank_in), s_row_val)]
+        )
+        right_sections.append(
+            [Paragraph("Salidas", s_row_lbl), Paragraph(fmt_eur(bank_out), s_row_val)]
+        )
+        right_sections.append(
+            [Paragraph("Saldo neto", s_row_lbl), Paragraph(fmt_eur(bank_neto), s_row_val_em)]
+        )
+        right_sections.append(
+            [Paragraph(f"Movimientos: {n_tx}  Reconciliados: {n_rec}", s_row_lbl), ""]
+        )
         right_sections.append(["", ""])
         right_sections.append(
-            [Paragraph("RRHH", sty("rs", fontSize=8, fontName="Helvetica-Bold", textColor=C_AMBER)), ""]
+            [
+                Paragraph(
+                    "RRHH", sty("rs", fontSize=8, fontName="Helvetica-Bold", textColor=C_AMBER)
+                ),
+                "",
+            ]
         )
-        right_sections.append([Paragraph("Empleados activos", s_row_lbl), Paragraph(fmt_int(empleados), s_row_val)])
-        right_sections.append([Paragraph("Coste nóminas", s_row_lbl), Paragraph(fmt_eur(nominas), s_row_val)])
-        right_sections.append([Paragraph(f"Pagadas: {nom_pagadas}  Pendientes: {nom_pend}", s_row_lbl), ""])
+        right_sections.append(
+            [Paragraph("Empleados activos", s_row_lbl), Paragraph(fmt_int(empleados), s_row_val)]
+        )
+        right_sections.append(
+            [Paragraph("Coste nóminas", s_row_lbl), Paragraph(fmt_eur(nominas), s_row_val)]
+        )
+        right_sections.append(
+            [Paragraph(f"Pagadas: {nom_pagadas}  Pendientes: {nom_pend}", s_row_lbl), ""]
+        )
 
         right_tbl = Table(right_sections, colWidths=[50 * mm, 30 * mm])
         right_tbl.setStyle(

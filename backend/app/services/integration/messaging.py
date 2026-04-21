@@ -149,9 +149,7 @@ async def process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: i
         for _ in range(60):
             await asyncio.sleep(2)
             async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    select(Task).where(Task.id == _UUID(task_id))
-                )
+                result = await db.execute(select(Task).where(Task.id == _UUID(task_id)))
                 task = result.scalar_one_or_none()
                 if not task:
                     break
@@ -163,9 +161,7 @@ async def process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: i
                             agent_results = output.get("agent_results", [])
                             if agent_results:
                                 last = agent_results[-1]
-                                resp = last.get("action_taken", "") or last.get(
-                                    "description", ""
-                                )
+                                resp = last.get("action_taken", "") or last.get("description", "")
                         if resp:
                             response_text = resp
                         elif task.status == "failed":
@@ -180,9 +176,7 @@ async def process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: i
 
     except Exception as e:
         logger.exception("Error procesando mensaje Telegram para tenant %s: %s", tenant_id, e)
-        await send_reply(
-            chat_id, "Ha ocurrido un error procesando tu mensaje. Inténtalo de nuevo."
-        )
+        await send_reply(chat_id, "Ha ocurrido un error procesando tu mensaje. Inténtalo de nuevo.")
 
 
 # ─── Connection management ─────────────────────────────────────────────────

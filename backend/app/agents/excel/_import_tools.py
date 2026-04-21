@@ -210,7 +210,9 @@ async def _import_excel_async(
             )
 
         sheet_title = ws.title
-        created, skipped, errors = await _import_rows_to_db(rows, col_mapping, config, model_cls, tenant_id)
+        created, skipped, errors = await _import_rows_to_db(
+            rows, col_mapping, config, model_cls, tenant_id
+        )
 
         result_lines = [
             f"Importación completada desde '{sheet_title}'.",

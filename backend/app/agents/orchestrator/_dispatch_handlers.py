@@ -36,7 +36,9 @@ async def _invoke_dynamic_employee(
     from app.services.workflow.activity import log_activity
 
     async with AsyncSessionLocal() as db:
-        addressed_id = (enriched_state.get("additional_metadata") or {}).get("addressed_employee_id")
+        addressed_id = (enriched_state.get("additional_metadata") or {}).get(
+            "addressed_employee_id"
+        )
         if addressed_id and agent_name == "custom":
             try:
                 emp_result = await db.execute(
@@ -67,7 +69,9 @@ async def _invoke_dynamic_employee(
         has_budget = await check_agent_budget(str(employee.id), db)
         if not has_budget:
             return {
-                "subtask_id": subtask["id"], "agent": agent_name, "success": False,
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": False,
                 "output": {"action": "budget_exceeded"},
                 "error": f"Empleado IA '{employee.name}' pausado por presupuesto agotado.",
             }
@@ -83,31 +87,48 @@ async def _invoke_dynamic_employee(
                 or enriched_state.get("user_intent", "")
             )
             result_state = await asyncio.wait_for(
-                graph.ainvoke({
-                    "tenant_id": tenant_id,
-                    "task_id": enriched_state.get("task_id"),
-                    "user_id": enriched_state.get("user_id"),
-                    "user_intent": intent, "current_intent": intent,
-                    "messages": [], "agent_results": [], "status": "running",
-                }),
+                graph.ainvoke(
+                    {
+                        "tenant_id": tenant_id,
+                        "task_id": enriched_state.get("task_id"),
+                        "user_id": enriched_state.get("user_id"),
+                        "user_intent": intent,
+                        "current_intent": intent,
+                        "messages": [],
+                        "agent_results": [],
+                        "status": "running",
+                    }
+                ),
                 timeout=120,
             )
             messages = result_state.get("messages", [])
             final_text = next(
-                (msg.content for msg in reversed(messages)
-                 if hasattr(msg, "content") and isinstance(msg.content, str) and msg.content.strip()),
-                ""
+                (
+                    msg.content
+                    for msg in reversed(messages)
+                    if hasattr(msg, "content")
+                    and isinstance(msg.content, str)
+                    and msg.content.strip()
+                ),
+                "",
             )
             success = not final_text.lower().startswith("error")
             try:
-                await log_activity(db=db, tenant_id=tenant_id, employee_id=str(employee.id),
-                                   category=agent_name, message=f"Ejecutó tarea: {final_text[:200]}")
+                await log_activity(
+                    db=db,
+                    tenant_id=tenant_id,
+                    employee_id=str(employee.id),
+                    category=agent_name,
+                    message=f"Ejecutó tarea: {final_text[:200]}",
+                )
             except Exception:
                 pass
             employee.status = "idle"
             await db.commit()
             return {
-                "subtask_id": subtask["id"], "agent": agent_name, "success": success,
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": success,
                 "output": {"action": "completed" if success else "failed", "response": final_text},
                 "error": None if success else final_text,
             }
@@ -116,8 +137,11 @@ async def _invoke_dynamic_employee(
             await db.commit()
             logger.exception("Error en dynamic employee '%s'", employee.name)
             return {
-                "subtask_id": subtask["id"], "agent": agent_name, "success": False,
-                "output": {"action": "failed", "error": str(e)}, "error": str(e),
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": False,
+                "output": {"action": "failed", "error": str(e)},
+                "error": str(e),
             }
 
 
@@ -140,7 +164,9 @@ async def _invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: st
             logger.warning("Error en dynamic employee routing para '%s': %s", agent_name, e)
 
     return {
-        "subtask_id": subtask["id"], "agent": agent_name, "success": True,
+        "subtask_id": subtask["id"],
+        "agent": agent_name,
+        "success": True,
         "output": {"message": f"[PENDIENTE] Agente '{agent_name}' no implementado aún"},
         "error": None,
     }
@@ -169,26 +195,41 @@ async def _execute_one(
             return idx, subtask, result
         except asyncio.TimeoutError:
             if attempt == 0:
-                logger.warning("[ORCHESTRATOR] Timeout en agente '%s', reintentando (1/1)...", agent_name)
+                logger.warning(
+                    "[ORCHESTRATOR] Timeout en agente '%s', reintentando (1/1)...", agent_name
+                )
                 await asyncio.sleep(2)
                 continue
             result = {
-                "subtask_id": subtask["id"], "agent": agent_name, "success": False,
-                "output": {"action": "timeout", "error": f"El agente '{agent_name}' no respondió en 120s (2 intentos)"},
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": False,
+                "output": {
+                    "action": "timeout",
+                    "error": f"El agente '{agent_name}' no respondió en 120s (2 intentos)",
+                },
                 "summary": f"Timeout: agente {agent_name} excedió 120s tras 2 intentos",
                 "error": f"Timeout: el agente '{agent_name}' no respondió en 120s (2 intentos)",
             }
         except _TRANSIENT_ERRORS as e:
             err_str = str(e)
-            is_rate_limit = "429" in err_str or "rate" in err_str.lower() or "quota" in err_str.lower()
+            is_rate_limit = (
+                "429" in err_str or "rate" in err_str.lower() or "quota" in err_str.lower()
+            )
             if attempt == 0 and (isinstance(e, (ConnectionError, OSError)) or is_rate_limit):
                 wait = 5 if is_rate_limit else 2
-                logger.warning("[ORCHESTRATOR] Error transitorio en '%s': %s. Reintentando en %ds...",
-                               agent_name, type(e).__name__, wait)
+                logger.warning(
+                    "[ORCHESTRATOR] Error transitorio en '%s': %s. Reintentando en %ds...",
+                    agent_name,
+                    type(e).__name__,
+                    wait,
+                )
                 await asyncio.sleep(wait)
                 continue
             result = {
-                "subtask_id": subtask["id"], "agent": agent_name, "success": False,
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": False,
                 "output": {"action": "failed", "error": f"{type(e).__name__}: {e}"},
                 "summary": f"Error transitorio en agente {agent_name} tras retry: {e}",
                 "error": str(e),
@@ -196,7 +237,9 @@ async def _execute_one(
         except Exception as e:
             logger.exception("Excepción no controlada en dispatcher '%s'", agent_name)
             result = {
-                "subtask_id": subtask["id"], "agent": agent_name, "success": False,
+                "subtask_id": subtask["id"],
+                "agent": agent_name,
+                "success": False,
                 "output": {"action": "failed", "error": f"{type(e).__name__}: {e}"},
                 "summary": f"Error inesperado en agente {agent_name}: {e}",
                 "error": str(e),
@@ -284,9 +327,9 @@ def _process_gathered_results(
             else "unknown_action"
         )
 
-        _audit_tasks.append(asyncio.create_task(
-            _audit_log_result(state, result, subtask, agent_name, action_str)
-        ))
+        _audit_tasks.append(
+            asyncio.create_task(_audit_log_result(state, result, subtask, agent_name, action_str))
+        )
 
         _bc_task = asyncio.create_task(
             _broadcast_progress(state, result, agent_name, idx + 1, len(plan))
@@ -344,9 +387,14 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
         try:
             _elapsed = (datetime.now(UTC) - datetime.fromisoformat(_started_at)).total_seconds()
             if _elapsed > _MAX_TASK_SECONDS:
-                logger.error("[ORCHESTRATOR] Tarea cancelada por timeout global: %.0fs > %ds", _elapsed, _MAX_TASK_SECONDS)
+                logger.error(
+                    "[ORCHESTRATOR] Tarea cancelada por timeout global: %.0fs > %ds",
+                    _elapsed,
+                    _MAX_TASK_SECONDS,
+                )
                 return {
-                    **state, "status": TaskStatus.FAILED,
+                    **state,
+                    "status": TaskStatus.FAILED,
                     "error_message": f"Tarea cancelada: superó el tiempo máximo de {_MAX_TASK_SECONDS}s (transcurridos {_elapsed:.0f}s)",
                 }
         except Exception as _e:
@@ -365,15 +413,26 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
         deps = step.get("depends_on", [])
         dep_failed = [d for d in deps if d in failed_ids]
         if dep_failed:
-            logger.warning("[ORCHESTRATOR] Omitiendo paso '%s' (%s): dependencias fallidas %s",
-                           step["id"], step["agent"], dep_failed)
+            logger.warning(
+                "[ORCHESTRATOR] Omitiendo paso '%s' (%s): dependencias fallidas %s",
+                step["id"],
+                step["agent"],
+                dep_failed,
+            )
             updated_plan[idx] = {**step, "status": "failed"}
-            new_results.append({
-                "subtask_id": step["id"], "agent": step["agent"], "success": False,
-                "output": {"action": "skipped", "message": f"Paso omitido: dependencias fallidas ({', '.join(dep_failed)})"},
-                "summary": "Paso omitido por dependencias fallidas",
-                "error": f"Dependencias fallidas: {', '.join(dep_failed)}",
-            })
+            new_results.append(
+                {
+                    "subtask_id": step["id"],
+                    "agent": step["agent"],
+                    "success": False,
+                    "output": {
+                        "action": "skipped",
+                        "message": f"Paso omitido: dependencias fallidas ({', '.join(dep_failed)})",
+                    },
+                    "summary": "Paso omitido por dependencias fallidas",
+                    "error": f"Dependencias fallidas: {', '.join(dep_failed)}",
+                }
+            )
             continue
         if all(d in resolved_ids for d in deps):
             ready.append((idx, step))
@@ -381,12 +440,21 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     if not ready:
         pending = [s for s in updated_plan if s.get("status") == "pending"]
         if pending:
-            return {**state, "plan": updated_plan, "agent_results": new_results,
-                    "status": TaskStatus.FAILED,
-                    "error_message": "Deadlock: pasos pendientes con dependencias no resolubles",
-                    "iteration_count": state["iteration_count"] + 1}
-        return {**state, "plan": updated_plan, "agent_results": new_results,
-                "status": TaskStatus.DONE, "iteration_count": state["iteration_count"] + 1}
+            return {
+                **state,
+                "plan": updated_plan,
+                "agent_results": new_results,
+                "status": TaskStatus.FAILED,
+                "error_message": "Deadlock: pasos pendientes con dependencias no resolubles",
+                "iteration_count": state["iteration_count"] + 1,
+            }
+        return {
+            **state,
+            "plan": updated_plan,
+            "agent_results": new_results,
+            "status": TaskStatus.DONE,
+            "iteration_count": state["iteration_count"] + 1,
+        }
 
     try:
         exec_ctx = ExecutionContext.from_state(state)
@@ -397,9 +465,14 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     if len(ready) == 1:
         gathered = [await _execute_one(*ready[0], state, exec_ctx)]
     else:
-        logger.info("[ORCHESTRATOR] Ejecutando %d pasos en paralelo: %s",
-                    len(ready), [s["id"] for _, s in ready])
-        gathered = list(await asyncio.gather(*[_execute_one(idx, step, state, exec_ctx) for idx, step in ready]))
+        logger.info(
+            "[ORCHESTRATOR] Ejecutando %d pasos en paralelo: %s",
+            len(ready),
+            [s["id"] for _, s in ready],
+        )
+        gathered = list(
+            await asyncio.gather(*[_execute_one(idx, step, state, exec_ctx) for idx, step in ready])
+        )
 
     # Procesar resultados, emitir audit/broadcast, y recopilar tareas de audit
     _audit_tasks: list[asyncio.Task] = []

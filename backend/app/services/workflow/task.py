@@ -130,9 +130,7 @@ async def list_tasks(
 
 
 async def get_task(db: AsyncSession, *, task_id: UUID, tenant_id: UUID) -> Task:
-    result = await db.execute(
-        select(Task).where(Task.id == task_id, Task.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Task).where(Task.id == task_id, Task.tenant_id == tenant_id))
     task = result.scalar_one_or_none()
     if not task:
         raise LookupError("Tarea no encontrada")
@@ -157,9 +155,7 @@ async def cancel_task(db: AsyncSession, *, task_id: UUID, tenant_id: UUID) -> No
 
 
 async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
-    ids_result = await db.execute(
-        select(Task.id, Task.status).where(Task.tenant_id == tenant_id)
-    )
+    ids_result = await db.execute(select(Task.id, Task.status).where(Task.tenant_id == tenant_id))
     rows = ids_result.fetchall()
     if not rows:
         return {"deleted": 0, "cancelled": 0}
@@ -176,9 +172,7 @@ async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
                 await cancel_task_dispatch(str(tid))
         except Exception as e:
             logger.error("Error al revocar tareas: %s", e)
-        await db.execute(
-            sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled")
-        )
+        await db.execute(sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled"))
         cancelled = len(active_ids)
 
     await db.execute(

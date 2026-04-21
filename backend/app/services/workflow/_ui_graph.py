@@ -64,15 +64,17 @@ def plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
     edges: list[dict] = []
 
     # Nodo trigger
-    nodes.append({
-        "id": "trigger",
-        "type": "trigger",
-        "position": {"x": 250, "y": 0},
-        "data": {
-            "label": _TRIGGER_LABELS.get(trigger_type, "Trigger"),
-            "trigger_type": trigger_type,
-        },
-    })
+    nodes.append(
+        {
+            "id": "trigger",
+            "type": "trigger",
+            "position": {"x": 250, "y": 0},
+            "data": {
+                "label": _TRIGGER_LABELS.get(trigger_type, "Trigger"),
+                "trigger_type": trigger_type,
+            },
+        }
+    )
 
     # Indice id -> posicion
     step_id_to_index: dict[str, int] = {}
@@ -102,20 +104,24 @@ def plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
         start_x = 250 - total_w // 2 + COL_W // 2
         for col_idx, (_original_idx, step_id, step) in enumerate(items):
             agent = step.get("agent", step.get("domain", "skill"))
-            nodes.append({
-                "id": step_id,
-                "type": _AGENT_TYPES.get(agent, "skill"),
-                "position": {"x": start_x + col_idx * COL_W, "y": 150 + layer_idx * ROW_H},
-                "data": {
-                    "label": _AGENT_LABELS.get(agent, agent.title()),
-                    "domain": agent,
-                    "description": step.get("action", step.get("instruction", ""))[:120],
-                },
-            })
+            nodes.append(
+                {
+                    "id": step_id,
+                    "type": _AGENT_TYPES.get(agent, "skill"),
+                    "position": {"x": start_x + col_idx * COL_W, "y": 150 + layer_idx * ROW_H},
+                    "data": {
+                        "label": _AGENT_LABELS.get(agent, agent.title()),
+                        "domain": agent,
+                        "description": step.get("action", step.get("instruction", ""))[:120],
+                    },
+                }
+            )
             deps = step.get("depends_on", [])
             if deps:
                 for dep_id in deps:
-                    edges.append({"id": f"e-{dep_id}-{step_id}", "source": dep_id, "target": step_id})
+                    edges.append(
+                        {"id": f"e-{dep_id}-{step_id}", "source": dep_id, "target": step_id}
+                    )
             else:
                 edges.append({"id": f"e-trigger-{step_id}", "source": "trigger", "target": step_id})
 
@@ -137,21 +143,30 @@ def generate_preview_nodes(payload: dict) -> tuple[list, list]:
         detected = [("skill", "Agente IA")]
 
     CENTER_X = 300
-    nodes = [{
-        "id": "trigger", "type": "trigger",
-        "position": {"x": CENTER_X, "y": 0},
-        "data": {"label": _TRIGGER_LABELS.get(trigger_type, "Trigger"), "trigger_type": trigger_type},
-    }]
+    nodes = [
+        {
+            "id": "trigger",
+            "type": "trigger",
+            "position": {"x": CENTER_X, "y": 0},
+            "data": {
+                "label": _TRIGGER_LABELS.get(trigger_type, "Trigger"),
+                "trigger_type": trigger_type,
+            },
+        }
+    ]
     edges = []
 
     if len(detected) <= 1:
         agent, label = detected[0]
         node_id = "preview_agent_0"
-        nodes.append({
-            "id": node_id, "type": "skill",
-            "position": {"x": CENTER_X, "y": 160},
-            "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
-        })
+        nodes.append(
+            {
+                "id": node_id,
+                "type": "skill",
+                "position": {"x": CENTER_X, "y": 160},
+                "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
+            }
+        )
         edges.append({"id": f"e-trigger-{node_id}", "source": "trigger", "target": node_id})
     else:
         SPACING = 280
@@ -162,22 +177,29 @@ def generate_preview_nodes(payload: dict) -> tuple[list, list]:
         for i, (agent, label) in enumerate(detected):
             node_id = f"preview_{agent}_{i}"
             branch_ids.append(node_id)
-            nodes.append({
-                "id": node_id, "type": "skill",
-                "position": {"x": int(start_x + i * SPACING), "y": 170},
-                "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
-            })
+            nodes.append(
+                {
+                    "id": node_id,
+                    "type": "skill",
+                    "position": {"x": int(start_x + i * SPACING), "y": 170},
+                    "data": {"label": label, "domain": agent, "instruction": instruction[:200]},
+                }
+            )
             edges.append({"id": f"e-trigger-{node_id}", "source": "trigger", "target": node_id})
 
         join_id = "preview_consolidar"
-        nodes.append({
-            "id": join_id, "type": "skill",
-            "position": {"x": CENTER_X, "y": 330},
-            "data": {
-                "label": "Informe de resumen", "domain": "billing",
-                "instruction": f"Genera un informe ejecutivo resumiendo el estado actual del negocio: {instruction[:150]}. Incluye totales, alertas y proximos pasos.",
-            },
-        })
+        nodes.append(
+            {
+                "id": join_id,
+                "type": "skill",
+                "position": {"x": CENTER_X, "y": 330},
+                "data": {
+                    "label": "Informe de resumen",
+                    "domain": "billing",
+                    "instruction": f"Genera un informe ejecutivo resumiendo el estado actual del negocio: {instruction[:150]}. Incluye totales, alertas y proximos pasos.",
+                },
+            }
+        )
         for bid in branch_ids:
             edges.append({"id": f"e-{bid}-{join_id}", "source": bid, "target": join_id})
 

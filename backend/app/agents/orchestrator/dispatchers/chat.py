@@ -358,7 +358,6 @@ async def _load_hr_context(tenant_id: str) -> str:
 async def _load_crm_context(tenant_id: str) -> str:
     """Carga detalle de clientes y oportunidades CRM."""
     try:
-
         async with AsyncSessionLocal() as db:
             clients = await db.execute(
                 select(Client)

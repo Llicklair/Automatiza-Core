@@ -144,9 +144,7 @@ async def delete_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) ->
     await db.commit()
 
 
-async def get_albaran_pdf_data(
-    albaran_id: UUID, tenant_id: UUID, db: AsyncSession
-) -> tuple:
+async def get_albaran_pdf_data(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) -> tuple:
     """Return (albaran_data dict, theme, albaran_number) for PDF generation."""
     note = await get_albaran(albaran_id, tenant_id, db)
 

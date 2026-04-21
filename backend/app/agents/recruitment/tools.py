@@ -148,7 +148,9 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
             "name": candidate.name,
             "email": candidate.email,
             "skills": candidate.skills,
-            "experience_years": float(candidate.experience_years) if candidate.experience_years else None,
+            "experience_years": float(candidate.experience_years)
+            if candidate.experience_years
+            else None,
             "score": float(candidate.score) if candidate.score else 0,
             "score_breakdown": scoring.get("breakdown", {}),
             "strengths": scoring.get("strengths", []),

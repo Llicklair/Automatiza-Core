@@ -1,4 +1,5 @@
 """Shared parsing helpers for invoice agent tools."""
+
 import re
 from decimal import Decimal, InvalidOperation
 

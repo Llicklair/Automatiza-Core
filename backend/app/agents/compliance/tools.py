@@ -50,8 +50,16 @@ async def check_fiscal_deadlines(days_ahead: int = 90) -> str:
     except Exception as e:
         logger.warning("Error obteniendo vencimientos fiscales, usando fallback: %s", e)
         vencimientos = [
-            {"nombre": "Modelo 303 (IVA Trimestral)", "fecha_limite": "2026-04-20", "dias_restantes": 32},
-            {"nombre": "Modelo 111 (Retenciones)", "fecha_limite": "2026-04-20", "dias_restantes": 32},
+            {
+                "nombre": "Modelo 303 (IVA Trimestral)",
+                "fecha_limite": "2026-04-20",
+                "dias_restantes": 32,
+            },
+            {
+                "nombre": "Modelo 111 (Retenciones)",
+                "fecha_limite": "2026-04-20",
+                "dias_restantes": 32,
+            },
         ]
 
     if not vencimientos:
@@ -166,7 +174,9 @@ async def _search_tenant_docs(tenant_id: str, question: str) -> str:
             )
             result = await db.execute(stmt)
             fragments = result.scalars().all()
-        return "".join(f"\n--- Fragmento {i} ---\n{m.text_content}\n" for i, m in enumerate(fragments, 1))
+        return "".join(
+            f"\n--- Fragmento {i} ---\n{m.text_content}\n" for i, m in enumerate(fragments, 1)
+        )
     except Exception as e:
         logger.warning("Error buscando embeddings en compliance: %s", e)
         return ""

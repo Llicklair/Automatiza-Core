@@ -151,6 +151,7 @@ async def _financial_summary_async(tenant_id: str, days_back: int) -> str:
         )
 
     from app.agents.banking._account_tools import _check_balances_async
+
     tx_text = await _list_transactions_async(tenant_id, days_back)
     balance_text = await _check_balances_async(tenant_id)
 

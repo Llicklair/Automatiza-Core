@@ -142,15 +142,20 @@ async def update_payroll(payroll_id: UUID, payload, tenant_id, db: AsyncSession)
         emp = payroll.employee
         irpf_rate = float(emp.irpf_rate or 15.0) if emp else 15.0
         calc = calc_payroll(data["base_salary"], irpf_rate)
-        data.update({
-            "ss_contingencias_comunes": calc["ss_contingencias_comunes"],
-            "ss_desempleo": calc["ss_desempleo"],
-            "ss_formacion_profesional": calc["ss_formacion_profesional"],
-            "ss_mei": calc["ss_mei"],
-            "irpf": calc["irpf"],
-            "deductions": round(calc["deductions"] + float(payroll.other_deductions or 0), 2),
-            "net_salary": round(data["base_salary"] - calc["deductions"] - float(payroll.other_deductions or 0), 2),
-        })
+        data.update(
+            {
+                "ss_contingencias_comunes": calc["ss_contingencias_comunes"],
+                "ss_desempleo": calc["ss_desempleo"],
+                "ss_formacion_profesional": calc["ss_formacion_profesional"],
+                "ss_mei": calc["ss_mei"],
+                "irpf": calc["irpf"],
+                "deductions": round(calc["deductions"] + float(payroll.other_deductions or 0), 2),
+                "net_salary": round(
+                    data["base_salary"] - calc["deductions"] - float(payroll.other_deductions or 0),
+                    2,
+                ),
+            }
+        )
 
     if "other_deductions" in data and "base_salary" not in data:
         base = float(payroll.base_salary)
@@ -188,7 +193,9 @@ async def delete_payroll(payroll_id: UUID, tenant_id, db: AsyncSession) -> bool:
 
 
 def build_payroll_pdf(
-    payroll: Payroll, theme_config: dict | None = None, tenant: Tenant | None = None,
+    payroll: Payroll,
+    theme_config: dict | None = None,
+    tenant: Tenant | None = None,
 ) -> bytes:
     """Construye datos y llama al generador de PDF de nomina."""
     emp = payroll.employee
@@ -294,7 +301,9 @@ async def generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id
 
 
 async def download_payroll_pdf(
-    payroll_id: UUID, tenant_id, db: AsyncSession,
+    payroll_id: UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> tuple[bytes, str]:
     """Genera PDF de nomina para descarga. Lanza ValueError si no existe."""
     result = await db.execute(

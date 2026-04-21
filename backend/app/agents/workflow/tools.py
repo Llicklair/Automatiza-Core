@@ -59,9 +59,7 @@ async def compile_deterministic_steps(
                 step["type"] = "deterministic" if step.get("tool") else "reasoning"
         return steps
     except Exception as e:
-        logger.warning(
-            "Error parseando pasos de workflow del LLM, usando fallback genérico: %s", e
-        )
+        logger.warning("Error parseando pasos de workflow del LLM, usando fallback genérico: %s", e)
         return [
             {
                 "type": "reasoning",

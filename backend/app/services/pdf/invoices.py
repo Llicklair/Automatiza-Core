@@ -67,24 +67,41 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
     styles = getSampleStyleSheet()
 
     title_sty = ParagraphStyle(
-        "T_title", parent=styles["Normal"], fontSize=20, fontName=bold,
+        "T_title",
+        parent=styles["Normal"],
+        fontSize=20,
+        fontName=bold,
         textColor=colors.HexColor("#1e293b"),
     )
     header_sty = ParagraphStyle(
-        "T_header", parent=styles["Normal"], fontSize=9, fontName=bold,
+        "T_header",
+        parent=styles["Normal"],
+        fontSize=9,
+        fontName=bold,
         textColor=colors.HexColor("#64748b"),
     )
     body_sty = ParagraphStyle(
-        "T_body", parent=styles["Normal"], fontSize=9, fontName=font,
+        "T_body",
+        parent=styles["Normal"],
+        fontSize=9,
+        fontName=font,
         textColor=colors.HexColor("#1e293b"),
     )
     right_sty = ParagraphStyle(
-        "T_right", parent=styles["Normal"], fontSize=9, fontName=font,
-        textColor=colors.HexColor("#1e293b"), alignment=TA_RIGHT,
+        "T_right",
+        parent=styles["Normal"],
+        fontSize=9,
+        fontName=font,
+        textColor=colors.HexColor("#1e293b"),
+        alignment=TA_RIGHT,
     )
     total_sty = ParagraphStyle(
-        "T_total", parent=styles["Normal"], fontSize=14, fontName=bold,
-        textColor=colors.HexColor(acc), alignment=TA_RIGHT,
+        "T_total",
+        parent=styles["Normal"],
+        fontSize=14,
+        fontName=bold,
+        textColor=colors.HexColor(acc),
+        alignment=TA_RIGHT,
     )
 
     elements = []
@@ -93,7 +110,9 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
 
     # ── CABECERA según header_style ──
     elements.extend(
-        _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc)
+        _themed_header(
+            invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc
+        )
     )
 
     # ── CLIENTE ──
@@ -118,8 +137,12 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             Paragraph(
                 "TOTAL:",
                 ParagraphStyle(
-                    "T_tlbl", parent=styles["Normal"], fontSize=12, fontName=bold,
-                    textColor=colors.HexColor(acc), alignment=TA_RIGHT,
+                    "T_tlbl",
+                    parent=styles["Normal"],
+                    fontSize=12,
+                    fontName=bold,
+                    textColor=colors.HexColor(acc),
+                    alignment=TA_RIGHT,
                 ),
             ),
             Paragraph(f"{total:.2f} €", total_sty),
@@ -213,8 +236,11 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
             Paragraph(
                 f"{float(original.get('amount_total', 0)):.2f} €",
                 ParagraphStyle(
-                    "OrigTotal", parent=s["styles"]["Normal"], fontSize=10,
-                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["SLATE"]),
+                    "OrigTotal",
+                    parent=s["styles"]["Normal"],
+                    fontSize=10,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["SLATE"]),
                 ),
             ),
             Paragraph("", s["body"]),
@@ -262,8 +288,11 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
                     Paragraph(
                         f"{float(ln.get('corrected_amount', 0)):.2f} €",
                         ParagraphStyle(
-                            "CorrAmt", parent=s["styles"]["Normal"], fontSize=9,
-                            fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
+                            "CorrAmt",
+                            parent=s["styles"]["Normal"],
+                            fontSize=9,
+                            fontName="Helvetica-Bold",
+                            textColor=colors.HexColor(C["RED"]),
                             alignment=TA_RIGHT,
                         ),
                     ),
@@ -282,22 +311,31 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
     corrected_total = float(data.get("corrected_total", 0))
 
     totals_data = [
-        [Paragraph("Base corregida:", s["right"]), Paragraph(f"{corrected_base:.2f} €", s["right"])],
+        [
+            Paragraph("Base corregida:", s["right"]),
+            Paragraph(f"{corrected_base:.2f} €", s["right"]),
+        ],
         [Paragraph("IVA corregido:", s["right"]), Paragraph(f"{corrected_tax:.2f} €", s["right"])],
         [
             Paragraph(
                 "TOTAL CORREGIDO:",
                 ParagraphStyle(
-                    "RectTotalLabel", parent=s["styles"]["Normal"], fontSize=12,
-                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
+                    "RectTotalLabel",
+                    parent=s["styles"]["Normal"],
+                    fontSize=12,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["RED"]),
                     alignment=TA_RIGHT,
                 ),
             ),
             Paragraph(
                 f"{corrected_total:.2f} €",
                 ParagraphStyle(
-                    "RectTotalVal", parent=s["styles"]["Normal"], fontSize=14,
-                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
+                    "RectTotalVal",
+                    parent=s["styles"]["Normal"],
+                    fontSize=14,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["RED"]),
                     alignment=TA_RIGHT,
                 ),
             ),
@@ -377,8 +415,11 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
             Paragraph(
                 f"-{ret_amount:.2f} €",
                 ParagraphStyle(
-                    "RetAmt", parent=s["styles"]["Normal"], fontSize=9,
-                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
+                    "RetAmt",
+                    parent=s["styles"]["Normal"],
+                    fontSize=9,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["RED"]),
                     alignment=TA_RIGHT,
                 ),
             ),
@@ -387,16 +428,22 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
             Paragraph(
                 "TOTAL A PAGAR:",
                 ParagraphStyle(
-                    "RetTotalLabel", parent=s["styles"]["Normal"], fontSize=12,
-                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["INDIGO"]),
+                    "RetTotalLabel",
+                    parent=s["styles"]["Normal"],
+                    fontSize=12,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["INDIGO"]),
                     alignment=TA_RIGHT,
                 ),
             ),
             Paragraph(
                 f"{total:.2f} €",
                 ParagraphStyle(
-                    "RetTotalVal", parent=s["styles"]["Normal"], fontSize=14,
-                    fontName="Helvetica-Bold", textColor=colors.HexColor(C["INDIGO"]),
+                    "RetTotalVal",
+                    parent=s["styles"]["Normal"],
+                    fontSize=14,
+                    fontName="Helvetica-Bold",
+                    textColor=colors.HexColor(C["INDIGO"]),
                     alignment=TA_RIGHT,
                 ),
             ),

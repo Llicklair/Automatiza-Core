@@ -118,6 +118,7 @@ class NodeEngine:
         self.node_states = dict(execution.node_states or {})
 
         from app.services.ai.node_graph_helpers import PAUSED, WAITING
+
         if from_node_id in self.node_states:
             ns = self.node_states[from_node_id]
             if ns["status"] in (WAITING, PAUSED):
@@ -238,7 +239,12 @@ class NodeEngine:
         }
 
         try:
-            if node_type == "skill" or node_type not in ("conditional", "delay", "approval_gate", "trigger"):
+            if node_type == "skill" or node_type not in (
+                "conditional",
+                "delay",
+                "approval_gate",
+                "trigger",
+            ):
                 output = await _nodes.execute_skill_node(self, node, db)
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["output"] = output
@@ -292,9 +298,15 @@ class NodeEngine:
 
     def _build_skill_dispatch(self, node: dict, extra_meta: dict | None = None):
         from app.services.ai.node_graph_helpers import build_skill_dispatch
+
         return build_skill_dispatch(
-            node, self.edges, self.node_states,
-            self.tenant_id, self.user_id, self.execution_id, extra_meta,
+            node,
+            self.edges,
+            self.node_states,
+            self.tenant_id,
+            self.user_id,
+            self.execution_id,
+            extra_meta,
         )
 
     def _skip_discarded_branch(self, conditional_node_id: str, chosen_branch: str):

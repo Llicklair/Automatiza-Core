@@ -60,19 +60,43 @@ def get_snapshot_styles() -> dict:
     return {
         "s_company": sty("Co", fontSize=20, fontName="Helvetica-Bold", textColor=C_SLATE),
         "s_badge": sty("Ba", fontSize=9, fontName="Helvetica-Bold", textColor=C_INDIGO),
-        "s_month": sty("Mo", fontSize=13, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT),
-        "s_generated": sty("Ge", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_RIGHT),
-        "s_section": sty("Se", fontSize=10, fontName="Helvetica-Bold", textColor=C_GRAY, spaceBefore=8, spaceAfter=4),
+        "s_month": sty(
+            "Mo", fontSize=13, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT
+        ),
+        "s_generated": sty(
+            "Ge", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_RIGHT
+        ),
+        "s_section": sty(
+            "Se",
+            fontSize=10,
+            fontName="Helvetica-Bold",
+            textColor=C_GRAY,
+            spaceBefore=8,
+            spaceAfter=4,
+        ),
         "s_body": sty("Bo", fontSize=9, fontName="Helvetica", textColor=C_SLATE, leading=13),
         "s_resumen": sty(
-            "Re", fontSize=9, fontName="Helvetica", textColor=colors.HexColor("#334155"),
-            leading=14, leftIndent=4 * mm, rightIndent=4 * mm,
+            "Re",
+            fontSize=9,
+            fontName="Helvetica",
+            textColor=colors.HexColor("#334155"),
+            leading=14,
+            leftIndent=4 * mm,
+            rightIndent=4 * mm,
         ),
-        "s_kpi_lbl": sty("Kl", fontSize=7, fontName="Helvetica", textColor=C_GRAY, alignment=TA_CENTER),
-        "s_footer": sty("Fo", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_CENTER),
+        "s_kpi_lbl": sty(
+            "Kl", fontSize=7, fontName="Helvetica", textColor=C_GRAY, alignment=TA_CENTER
+        ),
+        "s_footer": sty(
+            "Fo", fontSize=7, fontName="Helvetica", textColor=C_FOOTER, alignment=TA_CENTER
+        ),
         "s_row_lbl": sty("Rl", fontSize=8, fontName="Helvetica", textColor=C_GRAY),
-        "s_row_val": sty("Rv", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT),
-        "s_row_val_em": sty("Rve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT),
+        "s_row_val": sty(
+            "Rv", fontSize=8, fontName="Helvetica-Bold", textColor=C_SLATE, alignment=TA_RIGHT
+        ),
+        "s_row_val_em": sty(
+            "Rve", fontSize=8, fontName="Helvetica-Bold", textColor=C_INDIGO, alignment=TA_RIGHT
+        ),
     }
 
 
@@ -82,8 +106,11 @@ def kpi_cell(val: str, lbl: str, color, s_kpi_lbl) -> list:
         Paragraph(
             val,
             sty(
-                "kv2", fontSize=14, fontName="Helvetica-Bold",
-                textColor=color, alignment=TA_CENTER,
+                "kv2",
+                fontSize=14,
+                fontName="Helvetica-Bold",
+                textColor=color,
+                alignment=TA_CENTER,
             ),
         ),
         Spacer(1, 2),

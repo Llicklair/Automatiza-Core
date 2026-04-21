@@ -31,6 +31,7 @@ async def _generate_and_save_payroll_pdf(
             tenant_obj = res_t.scalar_one_or_none()
             try:
                 from app.services.template_service import get_default_theme
+
                 payroll_theme = await get_default_theme(UUID(tenant_id), "payroll", db)
             except Exception as _e:
                 logger.warning("Error cargando tema nómina para tenant %s: %s", tenant_id, _e)

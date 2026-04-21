@@ -27,6 +27,7 @@ ADVANCED_NODE_TYPES = {"conditional", "delay", "approval_gate", "parallel"}
 def has_advanced_nodes(ui_nodes: list[dict], ui_edges: list[dict] | None = None) -> bool:
     """Returns True if the workflow contains any advanced node types or fan-out topology."""
     from collections import Counter
+
     if any(n.get("type") in ADVANCED_NODE_TYPES for n in (ui_nodes or [])):
         return True
     if ui_edges:
@@ -56,15 +57,19 @@ def find_ready_nodes(
     for node in nodes:
         nid = node["id"]
         if nid in node_states and node_states[nid]["status"] in (
-            COMPLETED, FAILED, SKIPPED, RUNNING, WAITING, PAUSED,
+            COMPLETED,
+            FAILED,
+            SKIPPED,
+            RUNNING,
+            WAITING,
+            PAUSED,
         ):
             continue
 
         predecessors = get_predecessors(edges, nid)
         if predecessors:
             if all(
-                node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED)
-                for p in predecessors
+                node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED) for p in predecessors
             ):
                 ready.append(node)
         else:

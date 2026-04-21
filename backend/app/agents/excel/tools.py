@@ -22,9 +22,7 @@ from ._export_tools import export_erp_data, list_available_datasets
 from ._import_tools import import_excel
 from ._modify_tools import modify_excel, read_excel
 
-UPLOADS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 __all__ = [

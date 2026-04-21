@@ -55,7 +55,10 @@ async def _create_invoice_async(
 
     # Validar
     validation = validate_invoice_data(
-        client_nif=resolved_nif, amount_base=amount, vat_rate=vat_rate, invoice_date=inv_date,
+        client_nif=resolved_nif,
+        amount_base=amount,
+        vat_rate=vat_rate,
+        invoice_date=inv_date,
     )
     if not validation.is_valid:
         return f"Error de validación: {'; '.join(validation.errors)}"
@@ -93,37 +96,59 @@ async def _create_invoice_async(
                 local_client = result.scalars().first()
                 if not local_client:
                     result = await db.execute(
-                        select(Client).where(Client.tenant_id == UUID(tenant_id), Client.nif == resolved_nif)
+                        select(Client).where(
+                            Client.tenant_id == UUID(tenant_id), Client.nif == resolved_nif
+                        )
                     )
                     local_client = result.scalars().first()
             if not local_client:
-                local_client = Client(tenant_id=UUID(tenant_id), nif=resolved_nif, name=resolved_name)
+                local_client = Client(
+                    tenant_id=UUID(tenant_id), nif=resolved_nif, name=resolved_name
+                )
                 db.add(local_client)
                 await db.flush()
 
             new_invoice = Invoice(
-                tenant_id=UUID(tenant_id), client_id=local_client.id,
-                invoice_number=invoice_number, date=inv_datetime,
-                amount_base=amount, tax_amount=tax_amount, amount_total=total_amount,
-                notes=notes or None, status="draft",
+                tenant_id=UUID(tenant_id),
+                client_id=local_client.id,
+                invoice_number=invoice_number,
+                date=inv_datetime,
+                amount_base=amount,
+                tax_amount=tax_amount,
+                amount_total=total_amount,
+                notes=notes or None,
+                status="draft",
             )
             db.add(new_invoice)
             await db.flush()
 
             invoice_line = InvoiceLine(
-                invoice_id=new_invoice.id, description=concept or "Servicio",
-                quantity=1.0, unit_price=float(amount), discount_percentage=0.0,
-                tax_percentage=float(vat_rate), total=float(total_amount),
+                invoice_id=new_invoice.id,
+                description=concept or "Servicio",
+                quantity=1.0,
+                unit_price=float(amount),
+                discount_percentage=0.0,
+                tax_percentage=float(vat_rate),
+                total=float(total_amount),
             )
             db.add(invoice_line)
 
             try:
                 from app.services.event_bus import emit_event
+
                 await emit_event(
-                    db=db, tenant_id=UUID(tenant_id), user_id=None, event_name="invoice_created",
-                    context={"invoice_id": str(new_invoice.id), "invoice_number": invoice_number,
-                             "amount_total": float(total_amount), "client_name": resolved_name,
-                             "client_nif": resolved_nif, "concept": concept},
+                    db=db,
+                    tenant_id=UUID(tenant_id),
+                    user_id=None,
+                    event_name="invoice_created",
+                    context={
+                        "invoice_id": str(new_invoice.id),
+                        "invoice_number": invoice_number,
+                        "amount_total": float(total_amount),
+                        "client_name": resolved_name,
+                        "client_nif": resolved_nif,
+                        "concept": concept,
+                    },
                 )
             except Exception as ev_err:
                 warnings.append(f"Evento invoice_created no emitido: {ev_err}")
@@ -136,8 +161,15 @@ async def _create_invoice_async(
 
     theme_config, template_name = await _load_invoice_template(tenant_id)
     document_id, pdf_warn = await _generate_and_save_invoice_pdf(
-        tenant_id, new_invoice, invoice_line, local_client,
-        issuer_name, issuer_nif, issuer_address, issuer_email, theme_config,
+        tenant_id,
+        new_invoice,
+        invoice_line,
+        local_client,
+        issuer_name,
+        issuer_nif,
+        issuer_address,
+        issuer_email,
+        theme_config,
     )
     if pdf_warn:
         warnings.append(pdf_warn)

@@ -16,9 +16,7 @@ from app.services.event_bus import emit_event
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 
 # Tasas SS empleado 2024/2025 — Regimen General (trabajador)
 _SS_CONTINGENCIAS = 0.0470
@@ -57,9 +55,7 @@ def calc_payroll(base_salary: float, irpf_rate: float) -> dict:
 
 async def list_employees(tenant_id, db: AsyncSession) -> list[Employee]:
     result = await db.execute(
-        select(Employee)
-        .where(Employee.tenant_id == tenant_id)
-        .order_by(desc(Employee.created_at))
+        select(Employee).where(Employee.tenant_id == tenant_id).order_by(desc(Employee.created_at))
     )
     return list(result.scalars().all())
 
@@ -72,9 +68,16 @@ async def create_employee(payload, tenant_id, db: AsyncSession) -> Employee:
     await db.refresh(emp)
 
     try:
-        await emit_event(db, tenant_id, None, "employee_created", {
-            "employee_id": str(emp.id), "name": emp.name,
-        })
+        await emit_event(
+            db,
+            tenant_id,
+            None,
+            "employee_created",
+            {
+                "employee_id": str(emp.id),
+                "name": emp.name,
+            },
+        )
     except Exception:
         logger.warning("emit_event employee_created fallo — no es critico")
 
@@ -88,7 +91,9 @@ async def get_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> Employ
     return result.scalar_one_or_none()
 
 
-async def update_employee(employee_id: UUID, payload, tenant_id, db: AsyncSession) -> Employee | None:
+async def update_employee(
+    employee_id: UUID, payload, tenant_id, db: AsyncSession
+) -> Employee | None:
     emp = await get_employee(employee_id, tenant_id, db)
     if not emp:
         return None

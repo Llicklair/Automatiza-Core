@@ -37,7 +37,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _dispatch_task(
-    tenant_id, user_id, domain: str, intent: str, doc: TenantDocument, db: AsyncSession,
+    tenant_id,
+    user_id,
+    domain: str,
+    intent: str,
+    doc: TenantDocument,
+    db: AsyncSession,
 ) -> None:
     """Crea Task + lanza orchestrator. No falla si el dispatch falla."""
     try:
@@ -95,8 +100,12 @@ async def upload_single(
     await db.refresh(doc)
 
     await _dispatch_task(
-        tenant_id, user_id, "documents",
-        f"Procesar documento adjunto: {filename}", doc, db,
+        tenant_id,
+        user_id,
+        "documents",
+        f"Procesar documento adjunto: {filename}",
+        doc,
+        db,
     )
     return doc
 
@@ -132,8 +141,12 @@ async def scan_single(
     await db.refresh(doc)
 
     await _dispatch_task(
-        tenant_id, user_id, "documents",
-        f"Escanear y clasificar documento: {filename}", doc, db,
+        tenant_id,
+        user_id,
+        "documents",
+        f"Escanear y clasificar documento: {filename}",
+        doc,
+        db,
     )
     return doc, auto_cat
 
@@ -170,8 +183,12 @@ async def upload_bulk(
         await db.refresh(doc)
 
         await _dispatch_task(
-            tenant_id, user_id, "documents",
-            f"Procesar documento masivo: {original_name}", doc, db,
+            tenant_id,
+            user_id,
+            "documents",
+            f"Procesar documento masivo: {original_name}",
+            doc,
+            db,
         )
         docs.append(doc)
     return docs
@@ -216,7 +233,9 @@ async def export_all(tenant_id, db: AsyncSession) -> bytes:
 
 
 async def list_documents(
-    tenant_id, db: AsyncSession, category: str | None = None,
+    tenant_id,
+    db: AsyncSession,
+    category: str | None = None,
 ) -> list[TenantDocument]:
     query = (
         select(TenantDocument)
@@ -307,7 +326,10 @@ async def prepare_download(doc: TenantDocument, tenant_id, db: AsyncSession) -> 
 
 
 async def _regenerate_ai_invoice_pdf(
-    doc: TenantDocument, file_path: str, tenant_id, db: AsyncSession,
+    doc: TenantDocument,
+    file_path: str,
+    tenant_id,
+    db: AsyncSession,
 ) -> None:
     """Regenera un PDF de factura IA a partir de los datos de la Task asociada."""
     extracted_data = None
@@ -357,22 +379,32 @@ async def _regenerate_ai_invoice_pdf(
         "client": {
             "name": extracted_data.get("client_name") or "Cliente",
             "nif": extracted_data.get("client_nif") or "",
-            "email": "", "address": "",
+            "email": "",
+            "address": "",
         },
         "company": {
-            "name": company_name, "nif": company_nif,
-            "address": company_address, "phone": "", "email": company_email,
+            "name": company_name,
+            "nif": company_nif,
+            "address": company_address,
+            "phone": "",
+            "email": company_email,
         },
-        "lines": [{
-            "description": extracted_data.get("concept") or "Servicio",
-            "quantity": 1.0, "unit_price": base,
-            "tax_percentage": vat_rate, "total": total,
-        }],
+        "lines": [
+            {
+                "description": extracted_data.get("concept") or "Servicio",
+                "quantity": 1.0,
+                "unit_price": base,
+                "tax_percentage": vat_rate,
+                "total": total,
+            }
+        ],
     }
     if extracted_data.get("notes"):
         invoice_data["notes"] = extracted_data["notes"]
     if extracted_data.get("payment_terms") or extracted_data.get("payment_method"):
-        invoice_data["payment_terms"] = extracted_data.get("payment_terms") or extracted_data.get("payment_method")
+        invoice_data["payment_terms"] = extracted_data.get("payment_terms") or extracted_data.get(
+            "payment_method"
+        )
 
     pdf_bytes = generate_invoice_pdf(invoice_data)
     if not pdf_bytes.startswith(b"%PDF-"):
@@ -391,7 +423,10 @@ async def _regenerate_ai_invoice_pdf(
 
 
 async def update_content(
-    doc: TenantDocument, new_content: str, append: bool, db: AsyncSession,
+    doc: TenantDocument,
+    new_content: str,
+    append: bool,
+    db: AsyncSession,
 ) -> TenantDocument:
     """Actualiza el contenido textual de un documento. Lanza ValueError si es PDF."""
     if doc.file_type and "pdf" in doc.file_type.lower():
@@ -403,7 +438,9 @@ async def update_content(
         mode = "a" if append else "w"
         with open(doc.file_path, mode, encoding="utf-8") as f:
             if append:
-                f.write(f"\n\n--- Modificacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} ---\n")
+                f.write(
+                    f"\n\n--- Modificacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} ---\n"
+                )
             f.write(new_content)
         doc.file_size = os.path.getsize(doc.file_path)
     else:

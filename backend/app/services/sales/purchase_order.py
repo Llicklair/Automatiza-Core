@@ -8,9 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.db.models.models import PurchaseOrder, PurchaseOrderLine
 
 
-async def list_purchase_orders(
-    db: AsyncSession, tenant_id: UUID
-) -> list[PurchaseOrder]:
+async def list_purchase_orders(db: AsyncSession, tenant_id: UUID) -> list[PurchaseOrder]:
     result = await db.execute(
         select(PurchaseOrder)
         .where(PurchaseOrder.tenant_id == tenant_id)
@@ -90,9 +88,7 @@ async def update_purchase_order(
     return result.unique().scalar_one()
 
 
-async def delete_purchase_order(
-    db: AsyncSession, tenant_id: UUID, order_id: UUID
-) -> None:
+async def delete_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) -> None:
     result = await db.execute(
         select(PurchaseOrder).where(
             PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == tenant_id

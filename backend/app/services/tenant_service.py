@@ -93,9 +93,7 @@ def _build_providers_out(keys: dict) -> dict[str, Any]:
 
 
 async def get_llm_config(db: AsyncSession, tenant_id: UUID) -> dict[str, Any]:
-    result = await db.execute(
-        select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id))
     cfg = result.scalar_one_or_none()
     keys = _decrypt_keys(cfg)
 
@@ -116,12 +114,13 @@ async def update_llm_config(
 ) -> dict[str, Any]:
     if active_llm_provider and active_llm_provider not in ALLOWED_LLM_PROVIDERS:
         raise ValueError(f"Provider LLM no válido: {active_llm_provider}")
-    if active_embeddings_provider and active_embeddings_provider not in ALLOWED_EMBEDDINGS_PROVIDERS:
+    if (
+        active_embeddings_provider
+        and active_embeddings_provider not in ALLOWED_EMBEDDINGS_PROVIDERS
+    ):
         raise ValueError(f"Provider embeddings no válido: {active_embeddings_provider}")
 
-    result = await db.execute(
-        select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id))
     cfg = result.scalar_one_or_none()
     existing_keys = _decrypt_keys(cfg)
 
