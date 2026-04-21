@@ -29,6 +29,7 @@ from app.services.documents._file_ops import (
     save_file_to_disk,
     validate_upload,
 )
+from app.services.documents._tabular import auto_classify_tabular  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
