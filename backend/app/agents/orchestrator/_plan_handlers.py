@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field

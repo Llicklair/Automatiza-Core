@@ -144,8 +144,9 @@ async def export_documents(
     """Exporta todos los documentos del tenant como un archivo ZIP."""
     zip_bytes = await svc.export_all(current_user.tenant_id, db)
 
-    from fastapi.responses import StreamingResponse
     import io
+
+    from fastapi.responses import StreamingResponse
     return StreamingResponse(
         io.BytesIO(zip_bytes),
         media_type="application/zip",

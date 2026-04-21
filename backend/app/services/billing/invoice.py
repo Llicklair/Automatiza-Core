@@ -251,9 +251,9 @@ async def create_invoice(
 
 async def generate_and_save_invoice_pdf(invoice, tenant_id, user_id) -> None:
     """Genera el PDF de la factura y lo registra como TenantDocument (background)."""
-    from app.services.template_service import get_default_theme
     from app.db.base import AsyncSessionLocal
     from app.services.pdf import generate_invoice_pdf
+    from app.services.template_service import get_default_theme
 
     try:
         async with AsyncSessionLocal() as session:
@@ -292,8 +292,8 @@ async def generate_and_save_invoice_pdf(invoice, tenant_id, user_id) -> None:
 
 async def build_invoice_pdf(invoice_id: UUID, tenant_id, db: AsyncSession) -> tuple[bytes, str]:
     """Genera PDF al vuelo. Lanza ValueError si no existe."""
-    from app.services.template_service import get_default_theme
     from app.services.pdf import generate_invoice_pdf
+    from app.services.template_service import get_default_theme
 
     invoice = await _load_invoice(invoice_id, tenant_id, db)
     if not invoice:
@@ -311,8 +311,8 @@ async def build_rectificative_pdf(
     invoice_id: UUID, tenant_id, reason: str, db: AsyncSession,
 ) -> tuple[bytes, str]:
     """Genera PDF rectificativa al vuelo. Lanza ValueError si no existe."""
-    from app.services.template_service import get_default_theme
     from app.services.pdf import generate_rectificative_invoice_pdf
+    from app.services.template_service import get_default_theme
 
     invoice = await _load_invoice(invoice_id, tenant_id, db)
     if not invoice:
@@ -367,8 +367,8 @@ async def build_retention_pdf(
     invoice_id: UUID, tenant_id, retention_pct: float, db: AsyncSession,
 ) -> tuple[bytes, str]:
     """Genera PDF con retención IRPF al vuelo. Lanza ValueError si no existe."""
-    from app.services.template_service import get_default_theme
     from app.services.pdf import generate_retention_invoice_pdf
+    from app.services.template_service import get_default_theme
 
     invoice = await _load_invoice(invoice_id, tenant_id, db)
     if not invoice:
@@ -378,7 +378,6 @@ async def build_retention_pdf(
     theme_config = await get_default_theme(tenant_id, "invoice", db)
 
     base = float(invoice.amount_base or 0)
-    tax = float(invoice.tax_amount or 0)
     retention_amount = round(base * retention_pct / 100, 2)
 
     data = _build_invoice_data(invoice, company_name, company_nif)

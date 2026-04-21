@@ -8,7 +8,6 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.models import FixedAsset, JournalEntry, JournalLine
 
-
 # ─── Journal Entries ──────────────────────────────────────────────────────────
 
 
@@ -32,8 +31,8 @@ async def create_journal_entry(
     reference_id: str | None,
     lines: list[dict],
 ) -> JournalEntry:
-    total_debit = sum(l["debit"] for l in lines)
-    total_credit = sum(l["credit"] for l in lines)
+    total_debit = sum(line["debit"] for line in lines)
+    total_credit = sum(line["credit"] for line in lines)
 
     if abs(total_debit - total_credit) > 0.01:
         raise ValueError(

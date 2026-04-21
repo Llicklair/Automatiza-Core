@@ -19,7 +19,6 @@ from app.agents.agent_tools.documents import (
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Opportunity
 
-
 # ─── Herramientas ────────────────────────────────────────────────────────────
 
 

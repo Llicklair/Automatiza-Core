@@ -28,9 +28,6 @@ from .tools import (
     _get_oauth_token,
     _load_attachments,
     build_tools_list,
-    check_inbox,
-    check_unread,
-    send_email,
 )
 
 logger = logging.getLogger(__name__)

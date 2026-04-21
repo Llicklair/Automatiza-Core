@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from app.agents.orchestrator.state import OrchestratorState, VALID_DOMAINS, TaskStatus
+from app.agents.orchestrator.state import VALID_DOMAINS, OrchestratorState, TaskStatus
 from app.services.llm_cache import llm_cache
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,8 @@ import logging
 from langchain_core.tools import tool
 
 from app.agents.banking._psd2_helpers import (
-    ALERT_THRESHOLDS,
     _DEMO_SALDOS,
+    ALERT_THRESHOLDS,
     _get_psd2_credentials,
 )
 
