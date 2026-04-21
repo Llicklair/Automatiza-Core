@@ -8,8 +8,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 
 from app.agents.banking._psd2_helpers import (
-    ALERT_THRESHOLDS,
     _DEMO_TXS,
+    ALERT_THRESHOLDS,
     _get_psd2_credentials,
 )
 from app.core.llm_factory import get_llm

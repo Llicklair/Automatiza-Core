@@ -8,9 +8,9 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import select
 
+from app.agents.hr._payroll_pdf import _generate_and_save_payroll_pdf
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee, Payroll
-from app.agents.hr._payroll_pdf import _generate_and_save_payroll_pdf
 
 logger = logging.getLogger(__name__)
 

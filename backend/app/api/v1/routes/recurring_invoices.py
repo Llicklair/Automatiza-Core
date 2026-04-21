@@ -1,10 +1,10 @@
 """Rutas para facturas recurrentes — thin controller."""
 
 import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from app.api.v1.schemas.erp import (
     InvoiceResponse,

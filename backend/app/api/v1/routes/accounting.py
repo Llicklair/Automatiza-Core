@@ -51,7 +51,7 @@ async def create_journal_entry(
             date=payload.date,
             description=payload.description,
             reference_id=payload.reference_id,
-            lines=[l.model_dump() for l in payload.lines],
+            lines=[line.model_dump() for line in payload.lines],
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

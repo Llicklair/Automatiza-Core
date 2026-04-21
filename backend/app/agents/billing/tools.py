@@ -20,7 +20,10 @@ from app.agents.agent_tools.knowledge import (
 )
 
 from ._albaran_tools import create_albaran, list_albaranes
-from ._client_tools import _resolve_client, search_client  # noqa: F401 (_resolve_client used by sub-modules)
+from ._client_tools import (  # noqa: F401 (_resolve_client used by sub-modules)
+    _resolve_client,
+    search_client,
+)
 from ._invoice_tools import (
     create_invoice,
     list_invoices,

@@ -9,19 +9,17 @@ import logging
 from app.db.base import AsyncSessionLocal
 from app.services.exec_log_store import push as log_push
 from app.services.idempotency import IdempotencyGuard
-
-from app.workers._orchestrator_state import (
-    _mark_task_failed,
-    _save_final_state,
-    _sync_workflow_artifacts,
-)
 from app.workers._orchestrator_context import (
     _build_initial_state,
-    _build_tenant_context,
     _create_invoice_from_approval,
     _load_and_start_task,
     _load_task_and_approval,
     _stream_and_log,
+)
+from app.workers._orchestrator_state import (
+    _mark_task_failed,
+    _save_final_state,
+    _sync_workflow_artifacts,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,7 +88,7 @@ async def resume_orchestrator(task_id: str):
         result = await _resume_orchestrator(task_id)
         await guard.mark_executed("resume_orchestrator", task_id, {"status": "done"})
         return result
-    except Exception as exc:
+    except Exception:
         logger.exception("Error en resume_orchestrator:%s", task_id)
         await guard.release("resume_orchestrator", task_id)
         return await _retry("resume_orchestrator", task_id, lambda: _resume_orchestrator(task_id), guard, attempts=3, backoff_base=10)

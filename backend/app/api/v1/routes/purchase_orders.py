@@ -46,7 +46,7 @@ async def create_purchase_order(
     current_user: User = Depends(get_current_user),
 ):
     data = payload.model_dump(exclude={"lines"})
-    lines_data = [l.model_dump() for l in payload.lines]
+    lines_data = [line.model_dump() for line in payload.lines]
     return await svc.create_purchase_order(db, current_user.tenant_id, data, lines_data)
 
 
