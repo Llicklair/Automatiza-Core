@@ -35,6 +35,9 @@ exit /b 1
 
 :env_ok
 
+:: Configurar git hooks
+git -C "%~dp0" config core.hooksPath .githooks >nul 2>nul
+
 :: Ir a la carpeta desktop relative al script
 cd /d "%~dp0desktop"
 if %errorlevel% neq 0 (
