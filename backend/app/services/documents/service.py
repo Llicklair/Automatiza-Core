@@ -20,6 +20,16 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import Task, Tenant, TenantDocument
+from app.services.documents._contracts import (  # noqa: F401
+    delete_contract_template,
+    generate_contract_from_template,
+    get_contract_template,
+    list_contract_templates,
+    preview_contract_html,
+    save_contract_html,
+    save_contract_html_and_update,
+    upload_contract_template,
+)
 
 # ── Re-exports desde sub-módulos ─────────────────────────────────────────────
 from app.services.documents._file_ops import (
@@ -33,16 +43,6 @@ from app.services.documents._tabular import (  # noqa: F401
     auto_classify_tabular,
     import_tabular_file,
     parse_tabular_file,
-)
-from app.services.documents._contracts import (  # noqa: F401
-    delete_contract_template,
-    generate_contract_from_template,
-    get_contract_template,
-    list_contract_templates,
-    preview_contract_html,
-    save_contract_html,
-    save_contract_html_and_update,
-    upload_contract_template,
 )
 
 logger = logging.getLogger(__name__)
