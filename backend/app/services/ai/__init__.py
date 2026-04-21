@@ -3,7 +3,7 @@
 Re-exports de los módulos del dominio para importación conveniente.
 """
 
-from app.services.ai.condition_evaluator import evaluate_condition, _resolve_field
+from app.services.ai.condition_evaluator import _resolve_field, evaluate_condition
 from app.services.ai.cv_parser import extract_cv_data, parse_cv_file, score_candidate
 from app.services.ai.employee import (
     AVAILABLE_SKILLS,

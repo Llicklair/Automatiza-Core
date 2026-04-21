@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.models import Employee, Tenant
 from app.services.pdf import (
     generate_finiquito_pdf as _pdf_finiquito,
+)
+from app.services.pdf import (
     generate_liquidacion_finiquito_pdf as _pdf_liquidacion,
+)
+from app.services.pdf import (
     generate_registro_jornada_pdf as _pdf_registro_jornada,
 )
 

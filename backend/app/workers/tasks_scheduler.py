@@ -8,6 +8,7 @@ import zoneinfo
 from datetime import UTC, date, datetime, timedelta
 
 from croniter import croniter
+from sqlalchemy import select
 
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
@@ -23,7 +24,6 @@ from app.services.workflow.scheduler import (
     mark_executions_failed,
 )
 from app.services.workflow.task_dispatch import dispatch_orchestrator
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 

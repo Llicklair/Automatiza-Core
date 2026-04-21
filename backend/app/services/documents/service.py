@@ -22,30 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.models import Task, Tenant, TenantDocument
 
 # ── Re-exports desde sub-módulos ─────────────────────────────────────────────
-from app.services.documents._contracts import (
-    delete_contract_template,
-    generate_contract_from_template,
-    get_contract_template,
-    list_contract_templates,
-    preview_contract_html,
-    save_contract_html,
-    save_contract_html_and_update,
-    upload_contract_template,
-    validate_template_on_disk,
-)
 from app.services.documents._file_ops import (
-    ALLOWED_EXTENSIONS,
-    MAX_FILE_SIZE,
     UPLOAD_DIR,
     auto_classify_category,
     extract_zip_entries,
     save_file_to_disk,
     validate_upload,
-)
-from app.services.documents._tabular import (
-    auto_classify_tabular,
-    import_tabular_file,
-    parse_tabular_file,
 )
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 
 from datetime import date as date_type
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from sqlalchemy import desc, select

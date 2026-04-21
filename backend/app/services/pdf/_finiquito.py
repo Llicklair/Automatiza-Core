@@ -6,7 +6,6 @@ from app.services.documents._pdf_base import (
     _TRAD_BORDER,
     REPORTLAB_AVAILABLE,
     _format_date,
-    _signature_block,
     _trad_table_style,
     _traditional_styles,
 )

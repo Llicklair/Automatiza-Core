@@ -10,8 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
-from app.services.pdf import generate_snapshot_pdf
-from app.services.reports import aggregate, parse_month
 from app.services.documents.snapshot import (
     delete_snapshot_report,
     get_snapshot_report,
@@ -20,6 +18,8 @@ from app.services.documents.snapshot import (
     resolve_report_file_path,
     save_snapshot_report,
 )
+from app.services.pdf import generate_snapshot_pdf
+from app.services.reports import aggregate, parse_month
 
 from ._schemas import CompanySnapshot, ReportOut
 

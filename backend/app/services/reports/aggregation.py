@@ -12,20 +12,19 @@ from datetime import UTC, date, datetime
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.models import (
-    BankTransaction,
-    Client,
-    Employee,
-    Invoice,
-    Payroll,
-)
-
 from app.api.v1.routes.reports._schemas import (
     CompanySnapshot,
     SnapshotSectionBanking,
     SnapshotSectionClients,
     SnapshotSectionHR,
     SnapshotSectionInvoices,
+)
+from app.db.models.models import (
+    BankTransaction,
+    Client,
+    Employee,
+    Invoice,
+    Payroll,
 )
 
 _logger = logging.getLogger(__name__)

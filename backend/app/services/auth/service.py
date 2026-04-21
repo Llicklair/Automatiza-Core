@@ -20,7 +20,6 @@ from app.db.models.models import PasswordResetToken, Tenant, User
 from app.services.audit import log_action
 from app.services.auth.email_reset import send_password_reset_email
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 

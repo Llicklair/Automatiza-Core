@@ -31,9 +31,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import Workflow, WorkflowExecution
-from app.services.audit import log_action
+from app.services.ai import node_engine_nodes as _nodes
 from app.services.ai.node_graph_helpers import (
-    COMPLETED, FAILED, RUNNING, SKIPPED,
+    COMPLETED,
+    FAILED,
+    RUNNING,
     all_leaf_nodes_completed,
     find_ready_nodes,
     get_predecessors,
@@ -41,7 +43,7 @@ from app.services.ai.node_graph_helpers import (
     has_suspended_nodes,
     skip_discarded_branch,
 )
-from app.services.ai import node_engine_nodes as _nodes
+from app.services.audit import log_action
 
 _logger = logging.getLogger(__name__)
 
@@ -115,7 +117,7 @@ class NodeEngine:
 
         self.node_states = dict(execution.node_states or {})
 
-        from app.services.ai.node_graph_helpers import WAITING, PAUSED
+        from app.services.ai.node_graph_helpers import PAUSED, WAITING
         if from_node_id in self.node_states:
             ns = self.node_states[from_node_id]
             if ns["status"] in (WAITING, PAUSED):

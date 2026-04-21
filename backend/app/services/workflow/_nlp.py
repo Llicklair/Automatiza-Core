@@ -2,7 +2,6 @@
 
 import json
 import logging
-from uuid import UUID
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy.ext.asyncio import AsyncSession

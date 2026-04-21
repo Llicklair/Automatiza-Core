@@ -1,16 +1,9 @@
 """Helpers compartidos por los generadores de PDF de RRHH."""
 
-import io
 from datetime import datetime
 
 from app.services.documents._pdf_base import (
-    _TRAD_BORDER,
     REPORTLAB_AVAILABLE,
-    _format_date,
-    _month_name_es,
-    _signature_block,
-    _trad_table_style,
-    _traditional_styles,
 )
 
 if REPORTLAB_AVAILABLE:

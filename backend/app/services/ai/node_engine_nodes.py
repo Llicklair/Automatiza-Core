@@ -15,14 +15,18 @@ from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import PendingApproval
-from app.services.audit import log_action
-from app.services.ai.condition_evaluator import evaluate_condition, _resolve_field
+from app.services.ai.condition_evaluator import _resolve_field, evaluate_condition
 from app.services.ai.node_graph_helpers import (
-    COMPLETED, FAILED, PAUSED, SKIPPED, WAITING,
+    COMPLETED,
+    FAILED,
+    PAUSED,
+    SKIPPED,
+    WAITING,
     build_context_for_node,
     build_skill_dispatch,
     get_predecessors,
 )
+from app.services.audit import log_action
 from app.services.workflow.task_dispatch import dispatch_resume_node_engine
 
 if TYPE_CHECKING:
