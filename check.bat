@@ -1,5 +1,4 @@
 @echo off
-setlocal
 chcp 65001 >nul
 
 set ROOT=%~dp0
@@ -11,7 +10,6 @@ echo   AutomatizaPyme -- Pre-push checks
 echo ==================================================
 echo.
 
-:: ── Backend: ruff lint ──────────────────────────────
 echo [1/4] Ruff lint (backend)...
 "%RUFF%" check "%ROOT%backend\app" --select E,W,F,I --ignore E501,E402,E701,E702,E731,W293 --quiet
 if %errorlevel% neq 0 (
@@ -22,7 +20,6 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-:: ── Backend: ruff format ────────────────────────────
 echo [2/4] Ruff format check (backend)...
 "%RUFF%" format "%ROOT%backend\app" --check --quiet
 if %errorlevel% neq 0 (
@@ -35,7 +32,6 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-:: ── Frontend: next build ────────────────────────────
 echo [3/4] Next.js build (puede tardar 1-2 min)...
 cd /d "%ROOT%frontend"
 call npm.cmd run build
@@ -48,7 +44,6 @@ if %errorlevel% neq 0 (
 cd /d "%ROOT%"
 echo.
 
-:: ── Resultado ───────────────────────────────────────
 echo ==================================================
 if %ERRORS% neq 0 (
     echo [FAIL] Corrige los errores antes de hacer push
