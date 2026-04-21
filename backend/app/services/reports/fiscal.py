@@ -14,14 +14,13 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload as jl
 
-from app.db.models.models import Invoice, Payroll, Tenant
-
 from app.api.v1.routes.reports._schemas import (
     FiscalIRPF,
     FiscalIS,
     FiscalIVA,
     FiscalSnapshot,
 )
+from app.db.models.models import Invoice, Payroll, Tenant
 
 _logger = logging.getLogger(__name__)
 

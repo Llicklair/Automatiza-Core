@@ -13,7 +13,6 @@ from app.services.documents._pdf_base import (
     _make_doc,
     _table_header_style,
     build_theme,
-    table_style_commands,
 )
 from app.services.pdf._invoice_sections import (
     _generate_simple_text_pdf,

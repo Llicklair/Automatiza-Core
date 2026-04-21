@@ -17,7 +17,7 @@ if REPORTLAB_AVAILABLE:
     from reportlab.lib.enums import TA_RIGHT
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
 
 def _period_label(start_str: str, end_str: str) -> str:

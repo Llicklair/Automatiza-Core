@@ -16,10 +16,10 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.config import settings
 from app.core.llm.claude_code import ClaudeCodeChatModel
 from app.core.llm.gemini import GeminiSafeWrapper
 from app.core.llm.mock import MockChatModel
-from app.core.config import settings
 
 _log = logging.getLogger(__name__)
 

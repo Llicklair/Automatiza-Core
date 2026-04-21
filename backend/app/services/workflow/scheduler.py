@@ -8,7 +8,7 @@ so the worker (tasks_scheduler.py) stays free of sqlalchemy calls.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -111,6 +111,13 @@ async def delete_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> boo
 # ── Re-exports from sub-modules ─────────────────────────────────────────────
 # Keep `svc.X` working for all callers without changing imports.
 
+from app.services.hr._employee_docs import (  # noqa: E402, F401
+    delete_employee_document,
+    get_employee_document,
+    list_employee_documents,
+    read_document_file,
+    upload_employee_document,
+)
 from app.services.hr._payroll import (  # noqa: E402, F401
     approve_payroll,
     build_payroll_pdf,
@@ -122,13 +129,6 @@ from app.services.hr._payroll import (  # noqa: E402, F401
     list_payrolls,
     preview_payroll,
     update_payroll,
-)
-from app.services.hr._employee_docs import (  # noqa: E402, F401
-    delete_employee_document,
-    get_employee_document,
-    list_employee_documents,
-    read_document_file,
-    upload_employee_document,
 )
 from app.services.hr._special_docs import (  # noqa: E402, F401
     generate_finiquito_pdf,
