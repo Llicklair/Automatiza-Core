@@ -29,7 +29,21 @@ from app.services.documents._file_ops import (
     save_file_to_disk,
     validate_upload,
 )
-from app.services.documents._tabular import auto_classify_tabular  # noqa: F401
+from app.services.documents._tabular import (  # noqa: F401
+    auto_classify_tabular,
+    import_tabular_file,
+    parse_tabular_file,
+)
+from app.services.documents._contracts import (  # noqa: F401
+    delete_contract_template,
+    generate_contract_from_template,
+    get_contract_template,
+    list_contract_templates,
+    preview_contract_html,
+    save_contract_html,
+    save_contract_html_and_update,
+    upload_contract_template,
+)
 
 logger = logging.getLogger(__name__)
 
