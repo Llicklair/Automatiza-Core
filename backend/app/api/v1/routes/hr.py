@@ -219,7 +219,9 @@ async def download_payroll_pdf(
 ):
     try:
         pdf_bytes, filename = await svc.download_payroll_pdf(
-            payroll_id, current_user.tenant_id, db,
+            payroll_id,
+            current_user.tenant_id,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -253,8 +255,13 @@ async def upload_employee_document_file(
     content = await file.read()
     try:
         return await svc.upload_employee_document(
-            employee_id, file.filename, content, file.content_type,
-            current_user.tenant_id, current_user.id, db,
+            employee_id,
+            file.filename,
+            content,
+            file.content_type,
+            current_user.tenant_id,
+            current_user.id,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -306,7 +313,9 @@ async def generate_finiquito_pdf_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        emp, tenant = await svc.load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
+        emp, tenant = await svc.load_employee_and_tenant(
+            payload.employee_id, current_user.tenant_id, db
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -327,7 +336,9 @@ async def generate_liquidacion_finiquito_pdf_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        emp, tenant = await svc.load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
+        emp, tenant = await svc.load_employee_and_tenant(
+            payload.employee_id, current_user.tenant_id, db
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -348,7 +359,9 @@ async def generate_registro_jornada_pdf_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        emp, tenant = await svc.load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
+        emp, tenant = await svc.load_employee_and_tenant(
+            payload.employee_id, current_user.tenant_id, db
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

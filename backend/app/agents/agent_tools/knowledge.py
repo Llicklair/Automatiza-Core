@@ -63,7 +63,9 @@ async def delete_tenant_knowledge(tenant_id: str, key: str) -> str:
 
 
 @tool
-async def upsert_tenant_knowledge(tenant_id: str, key: str, value: str, category: str = "general") -> str:
+async def upsert_tenant_knowledge(
+    tenant_id: str, key: str, value: str, category: str = "general"
+) -> str:
     """
     Guarda o actualiza un hecho o preferencia en la memoria del tenant.
     Args:

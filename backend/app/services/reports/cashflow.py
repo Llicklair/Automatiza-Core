@@ -15,7 +15,10 @@ from app.db.models.models import Invoice, Payroll, Tenant
 
 
 async def build_cashflow_data(
-    db: AsyncSession, tenant_id: uuid.UUID, start_date: date, end_date: date,
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    start_date: date,
+    end_date: date,
 ) -> dict:
     """Agrega datos de tesoreria / cash flow.
 

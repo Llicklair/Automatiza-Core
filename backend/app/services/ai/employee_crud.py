@@ -51,9 +51,7 @@ _SKILL_LABELS = {
     "excel.export": "Exportar a Excel",
 }
 
-AVAILABLE_SKILLS = [
-    {"module": k, "label": v} for k, v in _SKILL_LABELS.items()
-]
+AVAILABLE_SKILLS = [{"module": k, "label": v} for k, v in _SKILL_LABELS.items()]
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -90,15 +88,17 @@ async def _get_employee(employee_id: str, tenant_id, db: AsyncSession) -> AIEmpl
 
 async def list_employees(tenant_id, db: AsyncSession) -> list[dict]:
     result = await db.execute(
-        select(AIEmployee)
-        .where(AIEmployee.tenant_id == tenant_id)
-        .order_by(AIEmployee.created_at)
+        select(AIEmployee).where(AIEmployee.tenant_id == tenant_id).order_by(AIEmployee.created_at)
     )
     return [to_out(e) for e in result.scalars().all()]
 
 
 async def create_employee(
-    name: str, role_description: str, budget_limit_usd: float, tenant_id, db: AsyncSession,
+    name: str,
+    role_description: str,
+    budget_limit_usd: float,
+    tenant_id,
+    db: AsyncSession,
 ) -> tuple[dict, str]:
     """Crea empleado. Retorna (out_dict, employee_id) para que la ruta lance el BG task."""
     name_slug = name.lower().replace(" ", "-")
@@ -125,8 +125,13 @@ async def create_employee(
 
 
 async def provision_employee(
-    employee_id: str, tenant_id, domain: str | None, role: str | None,
-    system_prompt: str | None, doc_folder: str | None, skills: list[str],
+    employee_id: str,
+    tenant_id,
+    domain: str | None,
+    role: str | None,
+    system_prompt: str | None,
+    doc_folder: str | None,
+    skills: list[str],
     db: AsyncSession,
 ) -> dict | None:
     """Provisiona un empleado (llamado por coordinador). Retorna None si no existe."""
@@ -147,6 +152,7 @@ async def provision_employee(
 
     if skills:
         from sqlalchemy import delete as sa_delete
+
         await db.execute(sa_delete(AgentSkill).where(AgentSkill.employee_id == employee.id))
         for tool_module in skills:
             db.add(AgentSkill(employee_id=employee.id, tool_module=tool_module))
@@ -167,7 +173,11 @@ async def update_icon(employee_id: str, tenant_id, icon: str, db: AsyncSession) 
 
 
 async def update_appearance(
-    employee_id: str, tenant_id, icon: str | None, avatar_color: str | None, db: AsyncSession,
+    employee_id: str,
+    tenant_id,
+    icon: str | None,
+    avatar_color: str | None,
+    db: AsyncSession,
 ) -> dict | None:
     employee = await _get_employee(employee_id, tenant_id, db)
     if not employee:
@@ -182,7 +192,10 @@ async def update_appearance(
 
 
 async def update_status(
-    employee_id: str, tenant_id, new_status: str, db: AsyncSession,
+    employee_id: str,
+    tenant_id,
+    new_status: str,
+    db: AsyncSession,
 ) -> dict | None:
     employee = await _get_employee(employee_id, tenant_id, db)
     if not employee:
@@ -197,6 +210,7 @@ async def update_status(
             register_employee_heartbeat,
             unregister_employee_heartbeat,
         )
+
         if new_status == "idle":
             register_employee_heartbeat(str(employee.id), str(employee.tenant_id))
         else:
@@ -217,7 +231,11 @@ async def delete_employee(employee_id: str, tenant_id, db: AsyncSession) -> bool
 
 
 async def instruct_employee(
-    employee_id: str, message: str, tenant_id, user_id, db: AsyncSession,
+    employee_id: str,
+    message: str,
+    tenant_id,
+    user_id,
+    db: AsyncSession,
 ) -> dict:
     """Envía instrucción directa. Lanza ValueError si no existe o está pausado."""
     employee = await _get_employee(employee_id, tenant_id, db)
@@ -243,6 +261,7 @@ async def instruct_employee(
     await db.flush()
 
     from app.services.workflow.activity import log_activity
+
     await log_activity(
         db=db,
         tenant_id=str(tenant_id),
@@ -261,7 +280,8 @@ async def instruct_employee(
 
 
 async def list_activity(
-    tenant_id, db: AsyncSession,
+    tenant_id,
+    db: AsyncSession,
     employee_id: str | None = None,
     category: str | None = None,
     limit: int = 50,
@@ -295,8 +315,13 @@ async def list_activity(
 
 
 async def create_activity(
-    tenant_id, category: str, message: str, icon: str,
-    employee_id: str | None, task_id: str | None, metadata: dict | None,
+    tenant_id,
+    category: str,
+    message: str,
+    icon: str,
+    employee_id: str | None,
+    task_id: str | None,
+    metadata: dict | None,
     db: AsyncSession,
 ) -> dict:
     from app.services.workflow.activity import log_activity

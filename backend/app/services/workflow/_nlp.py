@@ -37,10 +37,12 @@ async def parse_natural_language(text: str) -> dict:
     try:
         instruction = payload.get("action_config", {}).get("instruction", text)
         det_prompt = load_prompt("workflow_determinism_check")
-        det_response = llm_plain.invoke([
-            SystemMessage(content=det_prompt),
-            HumanMessage(content=instruction),
-        ])
+        det_response = llm_plain.invoke(
+            [
+                SystemMessage(content=det_prompt),
+                HumanMessage(content=instruction),
+            ]
+        )
         can_det = det_response.content.strip().lower().startswith("true")
     except Exception as det_err:
         logger.warning("Fallo deteccion determinismo: %s", det_err)
@@ -53,7 +55,11 @@ async def parse_natural_language(text: str) -> dict:
 
 
 async def fire_event(
-    event_name: str, context: dict, tenant_id, user_id, db: AsyncSession,
+    event_name: str,
+    context: dict,
+    tenant_id,
+    user_id,
+    db: AsyncSession,
 ) -> list[str]:
     """Dispara todos los workflows activos que coincidan con el evento. Retorna IDs disparados."""
     from app.services.workflow._execution import (
@@ -89,8 +95,13 @@ async def fire_event(
         extra_meta = {"event": event_name}
         if wf.execution_mode == "deterministic" and wf.compiled_steps:
             await _dispatch_deterministic(
-                db, wf, execution, tenant_id, user_id,
-                f"[Determinista] ({event_name})", extra_meta,
+                db,
+                wf,
+                execution,
+                tenant_id,
+                user_id,
+                f"[Determinista] ({event_name})",
+                extra_meta,
             )
             if execution.status == "success":
                 triggered.append(str(wf.id))

@@ -47,8 +47,13 @@ async def upload_document(
     contents = await file.read()
     try:
         doc = await svc.upload_single(
-            file.filename, contents, file.content_type,
-            current_user.tenant_id, current_user.id, db, category,
+            file.filename,
+            contents,
+            file.content_type,
+            current_user.tenant_id,
+            current_user.id,
+            db,
+            category,
         )
     except ValueError as e:
         code = 413 if "grande" in str(e) else 400
@@ -77,37 +82,59 @@ async def scan_documents(
             try:
                 entries = svc.extract_zip_entries(contents)
             except zipfile.BadZipFile:
-                results.append(ScanResultOut(
-                    document=DocumentOut(
-                        id=uuid.uuid4(), file_name=file.filename, file_type=None,
-                        file_size=len(contents), status="failed", parsed_content=None,
-                        category="otros", created_at=__import__("datetime").datetime.now(
-                            __import__("datetime").UTC),
-                        processed_at=None, task_id=None,
-                    ),
-                    auto_category="otros",
-                    message=f"Error al descomprimir '{file.filename}'. Verifica que sea un ZIP valido.",
-                ))
+                results.append(
+                    ScanResultOut(
+                        document=DocumentOut(
+                            id=uuid.uuid4(),
+                            file_name=file.filename,
+                            file_type=None,
+                            file_size=len(contents),
+                            status="failed",
+                            parsed_content=None,
+                            category="otros",
+                            created_at=__import__("datetime").datetime.now(
+                                __import__("datetime").UTC
+                            ),
+                            processed_at=None,
+                            task_id=None,
+                        ),
+                        auto_category="otros",
+                        message=f"Error al descomprimir '{file.filename}'. Verifica que sea un ZIP valido.",
+                    )
+                )
                 continue
             for name, data, mime in entries:
                 doc, cat = await svc.scan_single(
-                    name, data, mime, current_user.tenant_id, current_user.id, db,
+                    name,
+                    data,
+                    mime,
+                    current_user.tenant_id,
+                    current_user.id,
+                    db,
                 )
-                results.append(ScanResultOut(
+                results.append(
+                    ScanResultOut(
+                        document=DocumentOut.model_validate(doc),
+                        auto_category=cat,
+                        message=f"Clasificado como '{cat}'. La IA refinara la categoria.",
+                    )
+                )
+        else:
+            doc, cat = await svc.scan_single(
+                file.filename,
+                contents,
+                file.content_type,
+                current_user.tenant_id,
+                current_user.id,
+                db,
+            )
+            results.append(
+                ScanResultOut(
                     document=DocumentOut.model_validate(doc),
                     auto_category=cat,
                     message=f"Clasificado como '{cat}'. La IA refinara la categoria.",
-                ))
-        else:
-            doc, cat = await svc.scan_single(
-                file.filename, contents, file.content_type,
-                current_user.tenant_id, current_user.id, db,
+                )
             )
-            results.append(ScanResultOut(
-                document=DocumentOut.model_validate(doc),
-                auto_category=cat,
-                message=f"Clasificado como '{cat}'. La IA refinara la categoria.",
-            ))
     return results
 
 
@@ -127,7 +154,11 @@ async def upload_bulk_documents(
     contents = await file.read()
     try:
         docs = await svc.upload_bulk(
-            contents, current_user.tenant_id, current_user.id, db, category,
+            contents,
+            current_user.tenant_id,
+            current_user.id,
+            db,
+            category,
         )
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="El archivo ZIP esta corrupto")
@@ -147,6 +178,7 @@ async def export_documents(
     import io
 
     from fastapi.responses import StreamingResponse
+
     return StreamingResponse(
         io.BytesIO(zip_bytes),
         media_type="application/zip",
@@ -279,8 +311,12 @@ async def upload_contract_template(
     contents = await file.read()
     try:
         doc = await svc.upload_contract_template(
-            file.filename, contents, file.content_type,
-            current_user.tenant_id, current_user.id, db,
+            file.filename,
+            contents,
+            file.content_type,
+            current_user.tenant_id,
+            current_user.id,
+            db,
         )
     except ValueError as e:
         code = 413 if "grande" in str(e) else 400
@@ -319,7 +355,9 @@ async def preview_contract_template_html(
     try:
         data = svc.preview_contract_html(file_path)
     except ImportError:
-        raise HTTPException(status_code=501, detail="mammoth no instalado. Ejecuta: pip install mammoth")
+        raise HTTPException(
+            status_code=501, detail="mammoth no instalado. Ejecuta: pip install mammoth"
+        )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Archivo de plantilla no encontrado")
     except ValueError as e:
@@ -349,7 +387,9 @@ async def save_contract_template_body_html(
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ImportError:
-        raise HTTPException(status_code=501, detail="htmldocx no instalado. Ejecuta: pip install htmldocx")
+        raise HTTPException(
+            status_code=501, detail="htmldocx no instalado. Ejecuta: pip install htmldocx"
+        )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except OSError as e:
@@ -380,12 +420,18 @@ async def generate_contract(
 
     try:
         docx_bytes, filename = await svc.generate_contract_from_template(
-            doc, entity_type, entity_id, current_user.tenant_id, db,
+            doc,
+            entity_type,
+            entity_id,
+            current_user.tenant_id,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ImportError:
-        raise HTTPException(status_code=501, detail="docxtpl no instalado. Ejecuta: pip install docxtpl")
+        raise HTTPException(
+            status_code=501, detail="docxtpl no instalado. Ejecuta: pip install docxtpl"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando contrato: {e}")
 
@@ -434,23 +480,38 @@ async def import_database(
 
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in (".csv", ".xlsx", ".xls", ".json", ".ods"):
-            results.append(ImportDBOut(
-                document_id=uuid.uuid4(), file_name=file.filename,
-                rows_detected=0, columns=[], category="otros", task_id=None,
-                message=f"Formato '{ext}' no soportado. Usa CSV, XLSX, JSON u ODS.",
-            ))
+            results.append(
+                ImportDBOut(
+                    document_id=uuid.uuid4(),
+                    file_name=file.filename,
+                    rows_detected=0,
+                    columns=[],
+                    category="otros",
+                    task_id=None,
+                    message=f"Formato '{ext}' no soportado. Usa CSV, XLSX, JSON u ODS.",
+                )
+            )
             continue
 
         contents = await file.read()
         doc, columns, row_count, auto_cat, task_id = await svc.import_tabular_file(
-            file.filename, contents, file.content_type,
-            current_user.tenant_id, current_user.id, db,
+            file.filename,
+            contents,
+            file.content_type,
+            current_user.tenant_id,
+            current_user.id,
+            db,
         )
-        results.append(ImportDBOut(
-            document_id=doc.id, file_name=file.filename,
-            rows_detected=row_count, columns=columns[:20],
-            category=auto_cat, task_id=task_id,
-            message=f"{row_count} filas detectadas -> carpeta '{auto_cat}'. La IA esta procesando los datos.",
-        ))
+        results.append(
+            ImportDBOut(
+                document_id=doc.id,
+                file_name=file.filename,
+                rows_detected=row_count,
+                columns=columns[:20],
+                category=auto_cat,
+                task_id=task_id,
+                message=f"{row_count} filas detectadas -> carpeta '{auto_cat}'. La IA esta procesando los datos.",
+            )
+        )
 
     return results

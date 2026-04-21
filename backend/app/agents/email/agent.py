@@ -256,7 +256,10 @@ def _build_real_tools(
                     msgs = await client.list_messages(max_results=max_results)
                     if not msgs:
                         return "Bandeja de entrada de Gmail vacía."
-                    lines = [f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                    lines = [
+                        f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                        for m in msgs
+                    ]
                     return f"Correos en Gmail ({len(msgs)}):\n\n" + "\n\n".join(lines)
                 finally:
                     await client.close()
@@ -266,7 +269,10 @@ def _build_real_tools(
                     msgs = await client.list_messages(top=max_results)
                     if not msgs:
                         return "Bandeja de entrada de Outlook vacía."
-                    lines = [f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                    lines = [
+                        f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                        for m in msgs
+                    ]
                     return f"Correos en Outlook ({len(msgs)}):\n\n" + "\n\n".join(lines)
                 finally:
                     await client.close()
@@ -274,7 +280,10 @@ def _build_real_tools(
                 msgs = read_inbox(imap_creds, max_results=max_results)
                 if not msgs:
                     return "Bandeja de entrada IMAP vacía."
-                lines = [f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}" for m in msgs]
+                lines = [
+                    f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}"
+                    for m in msgs
+                ]
                 return f"Correos IMAP ({len(msgs)}):\n\n" + "\n\n".join(lines)
         except Exception as e:
             return f"Error al leer bandeja ({provider}): {e}"
@@ -298,7 +307,10 @@ def _build_real_tools(
                     msgs = await client.list_messages(query="is:unread", max_results=max_results)
                     if not msgs:
                         return "No hay correos no leídos en Gmail."
-                    lines = [f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                    lines = [
+                        f"- De: {m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                        for m in msgs
+                    ]
                     return f"Correos no leídos en Gmail ({len(msgs)}):\n\n" + "\n\n".join(lines)
                 finally:
                     await client.close()
@@ -308,7 +320,10 @@ def _build_real_tools(
                     msgs = await client.list_messages(top=max_results, search="isRead:false")
                     if not msgs:
                         return "No hay correos no leídos en Outlook."
-                    lines = [f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}" for m in msgs]
+                    lines = [
+                        f"- De: {m['from_name'] or m['from']}\n  Fecha: {m['date']}\n  Asunto: {m['subject']}\n  Resumen: {m['snippet']}"
+                        for m in msgs
+                    ]
                     return f"Correos no leídos en Outlook ({len(msgs)}):\n\n" + "\n\n".join(lines)
                 finally:
                     await client.close()
@@ -316,7 +331,10 @@ def _build_real_tools(
                 msgs = read_unread(imap_creds, max_results=max_results)
                 if not msgs:
                     return "No hay correos no leídos (IMAP)."
-                lines = [f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}" for m in msgs]
+                lines = [
+                    f"- De: {m.from_address}\n  Fecha: {m.date}\n  Asunto: {m.subject}\n  Cuerpo: {m.body[:500]}"
+                    for m in msgs
+                ]
                 return f"Correos no leídos IMAP ({len(msgs)}):\n\n" + "\n\n".join(lines)
         except Exception as e:
             return f"Error al leer no leídos ({provider}): {e}"
@@ -349,22 +367,30 @@ def _build_real_tools(
             if provider == "gmail":
                 client = GmailClient(providers["gmail"])
                 try:
-                    await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
+                    await client.send_message(
+                        to=to, subject=subject, body=body, attachments=attachments or None
+                    )
                     return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
                 finally:
                     await client.close()
             elif provider == "outlook":
                 client = OutlookClient(providers["outlook"])
                 try:
-                    await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
+                    await client.send_message(
+                        to=to, subject=subject, body=body, attachments=attachments or None
+                    )
                     return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
                 finally:
                     await client.close()
             else:  # imap/smtp
                 attachment_paths = await _resolve_smtp_attachments(tenant_id, attachment_ids or [])
-                result = send_email_smtp(imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths)
+                result = send_email_smtp(
+                    imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths
+                )
                 if result["success"]:
-                    return f"Correo enviado via IMAP/SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
+                    return (
+                        f"Correo enviado via IMAP/SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
+                    )
                 else:
                     return f"Error SMTP: {result['message']}"
         except Exception as e:
@@ -430,7 +456,12 @@ async def run_email_agent(
         result_state = await graph.ainvoke(state, config={"recursion_limit": 50})
     except Exception as e:
         logger.exception("Error ejecutando grafo del email agent")
-        return EmailAgentResult(action=f"Error interno del agente de email: {e}", success=False, messages=[], error=str(e))
+        return EmailAgentResult(
+            action=f"Error interno del agente de email: {e}",
+            success=False,
+            messages=[],
+            error=str(e),
+        )
 
     agent_results = result_state.get("agent_results", [])
     final_action = agent_results[-1]["action_taken"] if agent_results else "Sin resultado"
@@ -438,5 +469,7 @@ async def run_email_agent(
         action=final_action,
         success=True,
         messages=agent_results,
-        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración." if is_mock else None,
+        error="[DEMO] No hay credenciales de email configuradas. Los correos mostrados son de demostración."
+        if is_mock
+        else None,
     )

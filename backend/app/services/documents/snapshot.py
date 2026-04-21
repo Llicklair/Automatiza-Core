@@ -97,9 +97,7 @@ def resolve_report_file_path(doc: TenantDocument) -> str | None:
     return None
 
 
-async def delete_snapshot_report(
-    report_id: uuid.UUID, tenant_id, db: AsyncSession
-) -> bool:
+async def delete_snapshot_report(report_id: uuid.UUID, tenant_id, db: AsyncSession) -> bool:
     """Elimina un informe de BD y disco. Retorna False si no existe."""
     doc = await get_snapshot_report(report_id, tenant_id, db)
     if not doc:
@@ -113,7 +111,9 @@ async def delete_snapshot_report(
             try:
                 os.remove(path_candidate)
             except OSError:
-                logger.debug("Failed to delete report file from disk: %s", path_candidate, exc_info=True)
+                logger.debug(
+                    "Failed to delete report file from disk: %s", path_candidate, exc_info=True
+                )
             break
 
     await db.delete(doc)

@@ -21,9 +21,7 @@ async def list_products(
     return list(result.scalars().all())
 
 
-async def create_product(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> Product:
+async def create_product(db: AsyncSession, tenant_id: UUID, data: dict) -> Product:
     product = Product(tenant_id=tenant_id, **data)
     db.add(product)
     await db.commit()
@@ -47,9 +45,7 @@ async def update_product(
     return product
 
 
-async def delete_product(
-    db: AsyncSession, tenant_id: UUID, product_id: UUID
-) -> None:
+async def delete_product(db: AsyncSession, tenant_id: UUID, product_id: UUID) -> None:
     result = await db.execute(
         select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)
     )

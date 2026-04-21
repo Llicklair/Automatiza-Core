@@ -100,9 +100,7 @@ async def record_movement(
     }
 
 
-async def confirm_delivery(
-    db: AsyncSession, tenant_id: UUID, albaran_number: str
-) -> dict:
+async def confirm_delivery(db: AsyncSession, tenant_id: UUID, albaran_number: str) -> dict:
     """Confirm delivery of an albaran."""
     result = await db.execute(
         select(DeliveryNote).where(

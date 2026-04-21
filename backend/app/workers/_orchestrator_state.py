@@ -42,6 +42,7 @@ async def _mark_task_failed(task_id: str, error_msg: str):
 def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
     """Delegated to services/workflow — kept as thin wrapper for internal use."""
     from app.services.workflow import plan_to_ui_graph
+
     return plan_to_ui_graph(plan, trigger_type)
 
 

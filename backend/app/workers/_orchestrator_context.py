@@ -125,9 +125,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
     async def _run():
         nonlocal final_state
         try:
-            async for chunk in orchestrator.astream(
-                initial_state, config={"recursion_limit": 50}
-            ):
+            async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
                 for node_name, state_update in chunk.items():
                     if node_name == "__end__":
                         final_state = state_update
@@ -135,7 +133,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
                     if state_update is None:
                         continue
 
-                    for r in (state_update.get("agent_results") or []):
+                    for r in state_update.get("agent_results") or []:
                         rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))
                         if rid not in seen_results:
                             seen_results.add(rid)
@@ -168,7 +166,9 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
     status_val = result.get("status")
     if hasattr(status_val, "value"):
         status_val = status_val.value
-    log_push(task_id, f"[{'OK' if status_val == 'done' else 'FAIL'}] Ejecucion finalizada ({status_val})")
+    log_push(
+        task_id, f"[{'OK' if status_val == 'done' else 'FAIL'}] Ejecucion finalizada ({status_val})"
+    )
     logger.info("FINAL STATE RETURNED BY LANGGRAPH: %s", result)
     return result
 
@@ -285,27 +285,31 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
     db.add(new_invoice)
     await db.flush()
 
-    db.add(InvoiceLine(
-        invoice_id=new_invoice.id,
-        description=concept,
-        quantity=Decimal("1"),
-        unit_price=amount_base,
-        tax_percentage=vat_rate,
-        total=total_amount,
-    ))
+    db.add(
+        InvoiceLine(
+            invoice_id=new_invoice.id,
+            description=concept,
+            quantity=Decimal("1"),
+            unit_price=amount_base,
+            tax_percentage=vat_rate,
+            total=total_amount,
+        )
+    )
     await db.flush()
 
     # Actualizar tarea
     existing_results = list(task.agent_results or [])
-    existing_results.append({
-        "agent": "billing",
-        "success": True,
-        "output": {
-            "action": "draft_created",
-            "local_invoice_id": str(new_invoice.id),
-            "note": "Factura creada tras aprobacion manual.",
-        },
-    })
+    existing_results.append(
+        {
+            "agent": "billing",
+            "success": True,
+            "output": {
+                "action": "draft_created",
+                "local_invoice_id": str(new_invoice.id),
+                "note": "Factura creada tras aprobacion manual.",
+            },
+        }
+    )
     task.agent_results = existing_results
     task.current_step = task.current_step + 1
     task.status = "executing"

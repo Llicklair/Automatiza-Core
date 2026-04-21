@@ -68,13 +68,15 @@ async def _generate_and_save_invoice_pdf(
             "amount_total": float(invoice.amount_total),
             "notes": invoice.notes,
             "client": {"name": client.name, "nif": client.nif},
-            "lines": [{
-                "description": invoice_line.description,
-                "quantity": invoice_line.quantity,
-                "unit_price": invoice_line.unit_price,
-                "tax_percentage": invoice_line.tax_percentage,
-                "total": invoice_line.total,
-            }],
+            "lines": [
+                {
+                    "description": invoice_line.description,
+                    "quantity": invoice_line.quantity,
+                    "unit_price": invoice_line.unit_price,
+                    "tax_percentage": invoice_line.tax_percentage,
+                    "total": invoice_line.total,
+                }
+            ],
             "company": {
                 "name": issuer_name or getattr(settings, "APP_NAME", "Empresa"),
                 "nif": issuer_nif or "B-00000000",

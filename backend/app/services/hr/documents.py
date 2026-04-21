@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 def _load_sepe_logo_b64() -> str:
     """Load SEPE logo as a data URI PNG for embedding in HTML."""
     candidates = [
-        os.path.join(
-            os.path.dirname(__file__), "assets", "sepe_logo.png"
-        ),
+        os.path.join(os.path.dirname(__file__), "assets", "sepe_logo.png"),
         os.path.join(
             os.path.dirname(__file__), "..", "api", "v1", "routes", "assets", "sepe_logo.png"
         ),
@@ -138,9 +136,7 @@ def _get_system_prompt(doc_type: str) -> str:
 # ── Employee context builder ──────────────────────────────────────────────────
 
 
-async def _build_employee_context(
-    employee_id: str, tenant_id, db: AsyncSession
-) -> str:
+async def _build_employee_context(employee_id: str, tenant_id, db: AsyncSession) -> str:
     """Fetch employee data and format as LLM context string."""
     try:
         from app.db.models.hr import Employee

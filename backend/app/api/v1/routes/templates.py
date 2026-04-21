@@ -64,7 +64,9 @@ async def update_template(
 ):
     try:
         return await svc.update_template(
-            db, template_id, current_user.tenant_id,
+            db,
+            template_id,
+            current_user.tenant_id,
             payload.model_dump(exclude_unset=True),
         )
     except LookupError as e:

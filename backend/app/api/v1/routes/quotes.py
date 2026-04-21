@@ -82,9 +82,7 @@ async def convert_quote_to_invoice(
     Convierte un presupuesto en una factura real.
     """
     try:
-        return await svc.convert_to_invoice(
-            db, quote_id, current_user.tenant_id, current_user.id
-        )
+        return await svc.convert_to_invoice(db, quote_id, current_user.tenant_id, current_user.id)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:

@@ -58,9 +58,7 @@ _PRESET_TEMPLATES = [
 # ── Internal helpers ────────────────────────────────────────────────────────
 
 
-async def _get_or_raise(
-    db: AsyncSession, template_id: UUID, tenant_id
-) -> DocumentTemplate:
+async def _get_or_raise(db: AsyncSession, template_id: UUID, tenant_id) -> DocumentTemplate:
     result = await db.execute(
         select(DocumentTemplate).where(
             DocumentTemplate.id == template_id,
@@ -98,9 +96,7 @@ async def list_templates(
     return list(result.scalars().all())
 
 
-async def create_template(
-    db: AsyncSession, tenant_id, data: dict
-) -> DocumentTemplate:
+async def create_template(db: AsyncSession, tenant_id, data: dict) -> DocumentTemplate:
     if data.get("is_default"):
         await _clear_default(db, tenant_id, data.get("template_type", "invoice"))
 
@@ -128,17 +124,13 @@ async def update_template(
     return tpl
 
 
-async def delete_template(
-    db: AsyncSession, template_id: UUID, tenant_id
-) -> None:
+async def delete_template(db: AsyncSession, template_id: UUID, tenant_id) -> None:
     tpl = await _get_or_raise(db, template_id, tenant_id)
     await db.delete(tpl)
     await db.commit()
 
 
-async def set_default(
-    db: AsyncSession, template_id: UUID, tenant_id
-) -> DocumentTemplate:
+async def set_default(db: AsyncSession, template_id: UUID, tenant_id) -> DocumentTemplate:
     tpl = await _get_or_raise(db, template_id, tenant_id)
     await _clear_default(db, tenant_id, tpl.template_type)
     tpl.is_default = True
@@ -381,9 +373,7 @@ def _generate_excel_sample(theme_config: dict) -> bytes:
 # ── Shared utility (used by agents and other services) ──────────────────────
 
 
-async def get_default_theme(
-    tenant_id, template_type: str, db: AsyncSession
-) -> dict | None:
+async def get_default_theme(tenant_id, template_type: str, db: AsyncSession) -> dict | None:
     """Return theme config for the default template of a type.
     Falls back to the first available template if none is marked default."""
     result = await db.execute(

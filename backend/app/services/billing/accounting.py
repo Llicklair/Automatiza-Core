@@ -73,9 +73,7 @@ async def create_journal_entry(
 
 async def delete_journal_entry(db: AsyncSession, tenant_id: UUID, entry_id: UUID) -> None:
     result = await db.execute(
-        select(JournalEntry).where(
-            JournalEntry.id == entry_id, JournalEntry.tenant_id == tenant_id
-        )
+        select(JournalEntry).where(JournalEntry.id == entry_id, JournalEntry.tenant_id == tenant_id)
     )
     entry = result.scalar_one_or_none()
     if not entry:
@@ -96,9 +94,7 @@ async def list_fixed_assets(db: AsyncSession, tenant_id: UUID) -> list[FixedAsse
     return list(result.scalars().all())
 
 
-async def create_fixed_asset(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> FixedAsset:
+async def create_fixed_asset(db: AsyncSession, tenant_id: UUID, data: dict) -> FixedAsset:
     asset = FixedAsset(tenant_id=tenant_id, **data)
     db.add(asset)
     await db.commit()
@@ -110,9 +106,7 @@ async def update_fixed_asset(
     db: AsyncSession, tenant_id: UUID, asset_id: UUID, data: dict
 ) -> FixedAsset:
     result = await db.execute(
-        select(FixedAsset).where(
-            FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id
-        )
+        select(FixedAsset).where(FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id)
     )
     asset = result.scalar_one_or_none()
     if not asset:
@@ -126,9 +120,7 @@ async def update_fixed_asset(
 
 async def delete_fixed_asset(db: AsyncSession, tenant_id: UUID, asset_id: UUID) -> None:
     result = await db.execute(
-        select(FixedAsset).where(
-            FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id
-        )
+        select(FixedAsset).where(FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id)
     )
     asset = result.scalar_one_or_none()
     if not asset:

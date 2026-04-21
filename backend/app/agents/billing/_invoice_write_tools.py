@@ -55,8 +55,11 @@ async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_stat
 
             try:
                 from app.services.event_bus import emit_event
+
                 await emit_event(
-                    db=db, tenant_id=UUID(tenant_id), user_id=None,
+                    db=db,
+                    tenant_id=UUID(tenant_id),
+                    user_id=None,
                     event_name=f"invoice_{new_status}",
                     context={
                         "invoice_id": invoice_id,
@@ -217,14 +220,25 @@ async def create_invoice(
     if invoice_date:
         try:
             from datetime import date as _date
+
             if isinstance(invoice_date, str):
                 _date.fromisoformat(invoice_date)
         except ValueError:
             return f"Error: fecha de factura inválida '{invoice_date}'. Usa formato YYYY-MM-DD."
 
     return await _create_invoice_async(
-        tenant_id, client_name, concept, amount_base, vat_rate,
-        invoice_date, client_nif, notes, issuer_name, issuer_nif, issuer_address, issuer_email,
+        tenant_id,
+        client_name,
+        concept,
+        amount_base,
+        vat_rate,
+        invoice_date,
+        client_nif,
+        notes,
+        issuer_name,
+        issuer_nif,
+        issuer_address,
+        issuer_email,
     )
 
 

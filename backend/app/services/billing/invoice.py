@@ -23,9 +23,7 @@ from app.db.models.models import (
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 
 VALID_IVA = {0.0, 4.0, 10.0, 21.0}
 
@@ -86,7 +84,10 @@ def _build_invoice_data(invoice, company_name: str, company_nif: str) -> dict:
 
 
 async def list_invoices(
-    tenant_id, db: AsyncSession, skip: int = 0, limit: int = 50,
+    tenant_id,
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 50,
 ):
     query = (
         select(Invoice)
@@ -105,7 +106,10 @@ async def get_invoice(invoice_id: UUID, tenant_id, db: AsyncSession):
 
 
 async def update_status(
-    invoice_id: UUID, tenant_id, new_status: str, db: AsyncSession,
+    invoice_id: UUID,
+    tenant_id,
+    new_status: str,
+    db: AsyncSession,
 ):
     """Cambia estado. Lanza ValueError si no existe o estado inválido."""
     allowed = {"draft", "pending", "paid", "cancelled"}
@@ -137,8 +141,12 @@ async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
 
 
 async def create_invoice(
-    client_id: UUID, payload_dict: dict, lines_data: list[dict],
-    tenant_id, user_id, db: AsyncSession,
+    client_id: UUID,
+    payload_dict: dict,
+    lines_data: list[dict],
+    tenant_id,
+    user_id,
+    db: AsyncSession,
 ):
     """Crea factura con líneas. Lanza ValueError si IVA inválido o total negativo.
     Retorna la factura con joins para la response."""
@@ -215,16 +223,18 @@ async def create_invoice(
         total_base += line_base
         total_tax += line_tax
 
-        db.add(InvoiceLine(
-            invoice_id=new_invoice.id,
-            product_id=line_data.get("product_id"),
-            description=line_data.get("description"),
-            quantity=qty,
-            unit_price=uprice,
-            discount_percentage=discount_perc,
-            tax_percentage=tax_perc,
-            total=line_total,
-        ))
+        db.add(
+            InvoiceLine(
+                invoice_id=new_invoice.id,
+                product_id=line_data.get("product_id"),
+                description=line_data.get("description"),
+                quantity=qty,
+                unit_price=uprice,
+                discount_percentage=discount_perc,
+                tax_percentage=tax_perc,
+                total=line_total,
+            )
+        )
 
     new_invoice.amount_base = round(total_base, 2)
     new_invoice.tax_amount = round(total_tax, 2)
@@ -308,7 +318,10 @@ async def build_invoice_pdf(invoice_id: UUID, tenant_id, db: AsyncSession) -> tu
 
 
 async def build_rectificative_pdf(
-    invoice_id: UUID, tenant_id, reason: str, db: AsyncSession,
+    invoice_id: UUID,
+    tenant_id,
+    reason: str,
+    db: AsyncSession,
 ) -> tuple[bytes, str]:
     """Genera PDF rectificativa al vuelo. Lanza ValueError si no existe."""
     from app.services.pdf import generate_rectificative_invoice_pdf
@@ -364,7 +377,10 @@ async def build_rectificative_pdf(
 
 
 async def build_retention_pdf(
-    invoice_id: UUID, tenant_id, retention_pct: float, db: AsyncSession,
+    invoice_id: UUID,
+    tenant_id,
+    retention_pct: float,
+    db: AsyncSession,
 ) -> tuple[bytes, str]:
     """Genera PDF con retención IRPF al vuelo. Lanza ValueError si no existe."""
     from app.services.pdf import generate_retention_invoice_pdf

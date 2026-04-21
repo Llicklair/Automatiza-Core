@@ -93,10 +93,15 @@ async def _create_payroll_async(
             await db.refresh(payroll)
 
         payroll_numbers = {
-            "base_salary": base_salary, "ss_contingencias_comunes": ss_cc,
-            "ss_desempleo": ss_des, "ss_formacion_profesional": ss_fp,
-            "ss_mei": ss_mei, "irpf": irpf, "irpf_rate": irpf_rate,
-            "other_deductions": deductions, "net_salary": net_salary,
+            "base_salary": base_salary,
+            "ss_contingencias_comunes": ss_cc,
+            "ss_desempleo": ss_des,
+            "ss_formacion_profesional": ss_fp,
+            "ss_mei": ss_mei,
+            "irpf": irpf,
+            "irpf_rate": irpf_rate,
+            "other_deductions": deductions,
+            "net_salary": net_salary,
         }
         document_id, pdf_err = await _generate_and_save_payroll_pdf(
             tenant_id, employee, payroll_numbers, start_date, end_date, month, year
@@ -106,13 +111,18 @@ async def _create_payroll_async(
 
         try:
             from app.services.event_bus import emit_event
+
             async with AsyncSessionLocal() as db_ev:
                 await emit_event(
-                    db=db_ev, tenant_id=UUID(tenant_id), user_id=None,
+                    db=db_ev,
+                    tenant_id=UUID(tenant_id),
+                    user_id=None,
                     event_name="payroll_created",
                     context={
-                        "payroll_id": str(payroll.id), "employee_name": employee.name,
-                        "employee_nif": employee.nif, "net_salary": float(net_salary),
+                        "payroll_id": str(payroll.id),
+                        "employee_name": employee.name,
+                        "employee_nif": employee.nif,
+                        "net_salary": float(net_salary),
                         "document_id": document_id,
                     },
                 )
@@ -170,29 +180,36 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf
                 net_salary = max(0.0, base_salary - total_ded)
 
-                db.add(Payroll(
-                    tenant_id=UUID(tenant_id),
-                    employee_id=emp.id,
-                    period_start=start_date,
-                    period_end=end_date,
-                    issue_date=datetime.now(UTC),
-                    base_salary=base_salary,
-                    ss_contingencias_comunes=ss_cc,
-                    ss_desempleo=ss_des,
-                    ss_formacion_profesional=ss_fp,
-                    ss_mei=ss_mei,
-                    irpf=irpf,
-                    other_deductions=0,
-                    deductions=total_ded,
-                    net_salary=net_salary,
-                    status="draft",
-                ))
+                db.add(
+                    Payroll(
+                        tenant_id=UUID(tenant_id),
+                        employee_id=emp.id,
+                        period_start=start_date,
+                        period_end=end_date,
+                        issue_date=datetime.now(UTC),
+                        base_salary=base_salary,
+                        ss_contingencias_comunes=ss_cc,
+                        ss_desempleo=ss_des,
+                        ss_formacion_profesional=ss_fp,
+                        ss_mei=ss_mei,
+                        irpf=irpf,
+                        other_deductions=0,
+                        deductions=total_ded,
+                        net_salary=net_salary,
+                        status="draft",
+                    )
+                )
 
                 payroll_numbers = {
-                    "base_salary": base_salary, "ss_contingencias_comunes": ss_cc,
-                    "ss_desempleo": ss_des, "ss_formacion_profesional": ss_fp,
-                    "ss_mei": ss_mei, "irpf": irpf, "irpf_rate": irpf_rate,
-                    "other_deductions": 0.0, "net_salary": net_salary,
+                    "base_salary": base_salary,
+                    "ss_contingencias_comunes": ss_cc,
+                    "ss_desempleo": ss_des,
+                    "ss_formacion_profesional": ss_fp,
+                    "ss_mei": ss_mei,
+                    "irpf": irpf,
+                    "irpf_rate": irpf_rate,
+                    "other_deductions": 0.0,
+                    "net_salary": net_salary,
                 }
                 _, pdf_err = await _generate_and_save_payroll_pdf(
                     tenant_id, emp, payroll_numbers, start_date, end_date, month, year
@@ -208,14 +225,19 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
 
         try:
             from app.services.event_bus import emit_event
+
             async with AsyncSessionLocal() as db_ev:
                 await emit_event(
-                    db=db_ev, tenant_id=UUID(tenant_id), user_id=None,
+                    db=db_ev,
+                    tenant_id=UUID(tenant_id),
+                    user_id=None,
                     event_name="payrolls_bulk_created",
                     context={"count": len(employees), "month": month, "year": year},
                 )
         except Exception as e:
-            logger.warning("Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e)
+            logger.warning(
+                "Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e
+            )
 
         return (
             f"Nóminas de {month}/{year} generadas en modo DRAFT para {len(employees)} empleados:\n"

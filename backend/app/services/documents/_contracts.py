@@ -14,8 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 async def upload_contract_template(
-    filename: str, contents: bytes, content_type: str | None,
-    tenant_id, user_id, db: AsyncSession,
+    filename: str,
+    contents: bytes,
+    content_type: str | None,
+    tenant_id,
+    user_id,
+    db: AsyncSession,
 ) -> TenantDocument:
     ext = os.path.splitext(filename)[1].lower()
     if ext not in {".docx", ".doc", ".odt"}:
@@ -54,7 +58,9 @@ async def list_contract_templates(tenant_id, db: AsyncSession) -> list[TenantDoc
 
 
 async def get_contract_template(
-    doc_id: uuid.UUID, tenant_id, db: AsyncSession,
+    doc_id: uuid.UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> TenantDocument | None:
     result = await db.execute(
         select(TenantDocument).where(
@@ -93,18 +99,22 @@ def validate_template_on_disk(doc: TenantDocument) -> str:
 def preview_contract_html(file_path: str) -> dict:
     """Vista previa HTML de un .docx. Lanza ImportError, FileNotFoundError, ValueError."""
     from app.services.documents.docx_preview import docx_to_preview_html
+
     return docx_to_preview_html(file_path)
 
 
 def save_contract_html(html: str, file_path: str) -> int:
     """Guarda HTML editado como .docx. Retorna nuevo tamaño. Lanza ImportError, ValueError, OSError."""
     from app.services.documents.docx_html_save import save_html_as_docx
+
     save_html_as_docx(html, file_path)
     return os.path.getsize(file_path)
 
 
 async def save_contract_html_and_update(
-    html: str, doc: TenantDocument, db: AsyncSession,
+    html: str,
+    doc: TenantDocument,
+    db: AsyncSession,
 ) -> int:
     """Guarda HTML como .docx y actualiza el tamaño en BD. Retorna nuevo tamaño.
 
@@ -119,8 +129,11 @@ async def save_contract_html_and_update(
 
 
 async def generate_contract_from_template(
-    tpl_doc: TenantDocument, entity_type: str, entity_id: uuid.UUID,
-    tenant_id, db: AsyncSession,
+    tpl_doc: TenantDocument,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> tuple[bytes, str]:
     """Genera contrato rellenando plantilla. Retorna (docx_bytes, filename).
 
@@ -140,6 +153,7 @@ async def generate_contract_from_template(
 
     if entity_type == "client":
         from app.db.models.crm import Client
+
         r = await db.execute(
             sa_select(Client).where(Client.id == entity_id, Client.tenant_id == tenant_id)
         )
@@ -149,6 +163,7 @@ async def generate_contract_from_template(
         context = build_context_for_client(entity, tenant)
     elif entity_type == "employee":
         from app.db.models.hr import Employee
+
         r = await db.execute(
             sa_select(Employee).where(Employee.id == entity_id, Employee.tenant_id == tenant_id)
         )

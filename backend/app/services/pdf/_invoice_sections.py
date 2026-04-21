@@ -54,11 +54,7 @@ def _invoice_lines_table(lines: list, header_sty, body_sty, right_sty, theme: di
             )
         )
     else:
-        tbl.setStyle(
-            TableStyle(
-                _table_header_style() + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
-            )
-        )
+        tbl.setStyle(TableStyle(_table_header_style() + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]))
     return tbl
 
 
@@ -122,7 +118,9 @@ Total: {invoice_data.get("amount_total", 0):.2f} EUR
     return content.encode("utf-8")
 
 
-def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc):
+def _themed_header(
+    invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc
+):
     """Genera la cabecera según el header_style del theme (color_band, dark_band, line_only)."""
     h_style = th["header_style"]
     elements = []
@@ -132,16 +130,27 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
             "T_band", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white
         )
         band_sub = ParagraphStyle(
-            "T_bandsub", parent=styles["Normal"], fontSize=8, fontName=font,
+            "T_bandsub",
+            parent=styles["Normal"],
+            fontSize=8,
+            fontName=font,
             textColor=colors.HexColor("#e0e7ff"),
         )
         band_right = ParagraphStyle(
-            "T_bandr", parent=styles["Normal"], fontSize=20, fontName=bold,
-            textColor=colors.white, alignment=TA_RIGHT,
+            "T_bandr",
+            parent=styles["Normal"],
+            fontSize=20,
+            fontName=bold,
+            textColor=colors.white,
+            alignment=TA_RIGHT,
         )
         band_rsub = ParagraphStyle(
-            "T_bandrs", parent=styles["Normal"], fontSize=9, fontName=font,
-            textColor=colors.HexColor("#e0e7ff"), alignment=TA_RIGHT,
+            "T_bandrs",
+            parent=styles["Normal"],
+            fontSize=9,
+            fontName=font,
+            textColor=colors.HexColor("#e0e7ff"),
+            alignment=TA_RIGHT,
         )
 
         logo_col = [
@@ -183,16 +192,27 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
             "T_dark", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white
         )
         dark_sub = ParagraphStyle(
-            "T_darks", parent=styles["Normal"], fontSize=8, fontName=font,
+            "T_darks",
+            parent=styles["Normal"],
+            fontSize=8,
+            fontName=font,
             textColor=colors.HexColor("#94a3b8"),
         )
         dark_r = ParagraphStyle(
-            "T_darkr", parent=styles["Normal"], fontSize=20, fontName=bold,
-            textColor=colors.HexColor(acc), alignment=TA_RIGHT,
+            "T_darkr",
+            parent=styles["Normal"],
+            fontSize=20,
+            fontName=bold,
+            textColor=colors.HexColor(acc),
+            alignment=TA_RIGHT,
         )
         dark_rsub = ParagraphStyle(
-            "T_darkrs", parent=styles["Normal"], fontSize=9, fontName=font,
-            textColor=colors.HexColor("#94a3b8"), alignment=TA_RIGHT,
+            "T_darkrs",
+            parent=styles["Normal"],
+            fontSize=9,
+            fontName=font,
+            textColor=colors.HexColor("#94a3b8"),
+            alignment=TA_RIGHT,
         )
         logo_col = [
             Paragraph(company.get("name") or "Mi Empresa S.L.", dark_sty),
@@ -239,8 +259,12 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
             Paragraph(
                 invoice_data.get("doc_title", "FACTURA"),
                 ParagraphStyle(
-                    "T_ftitle", parent=styles["Normal"], fontSize=18, fontName=bold,
-                    textColor=colors.HexColor(acc), alignment=TA_RIGHT,
+                    "T_ftitle",
+                    parent=styles["Normal"],
+                    fontSize=18,
+                    fontName=bold,
+                    textColor=colors.HexColor(acc),
+                    alignment=TA_RIGHT,
                 ),
             ),
             Spacer(1, 6),
@@ -252,12 +276,20 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
             widths = [80 * mm, 100 * mm]
         elif logo_pos == "center":
             center_sty = ParagraphStyle(
-                "T_ccenter", parent=styles["Normal"], fontSize=20, fontName=bold,
-                textColor=colors.HexColor("#1e293b"), alignment=TA_CENTER,
+                "T_ccenter",
+                parent=styles["Normal"],
+                fontSize=20,
+                fontName=bold,
+                textColor=colors.HexColor("#1e293b"),
+                alignment=TA_CENTER,
             )
             center_sub = ParagraphStyle(
-                "T_ccsub", parent=styles["Normal"], fontSize=9, fontName=font,
-                textColor=colors.HexColor("#64748b"), alignment=TA_CENTER,
+                "T_ccsub",
+                parent=styles["Normal"],
+                fontSize=9,
+                fontName=font,
+                textColor=colors.HexColor("#64748b"),
+                alignment=TA_CENTER,
             )
             center_block = [
                 Paragraph(company.get("name") or "Mi Empresa S.L.", center_sty),

@@ -298,9 +298,7 @@ def _try_openai_fallback(
         return None
 
 
-def _try_groq_fallback(
-    temperature: float, max_tokens: int | None = None
-) -> "BaseChatModel | None":
+def _try_groq_fallback(temperature: float, max_tokens: int | None = None) -> "BaseChatModel | None":
     if not settings.GROQ_API_KEY:
         return None
     try:

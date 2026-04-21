@@ -122,7 +122,9 @@ async def cancel_execution(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        execution = await svc.cancel_execution(execution_id, workflow_id, current_user.tenant_id, db)
+        execution = await svc.cancel_execution(
+            execution_id, workflow_id, current_user.tenant_id, db
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not execution:
@@ -143,7 +145,11 @@ async def run_workflow_with_context(
     context_msg = (body.get("context") or "").strip()
     try:
         return await svc.run_workflow_with_context(
-            workflow_id, context_msg, current_user.tenant_id, current_user.id, db,
+            workflow_id,
+            context_msg,
+            current_user.tenant_id,
+            current_user.id,
+            db,
         )
     except ValueError as e:
         status = 400 if "desactivado" in str(e) else 404
@@ -163,7 +169,9 @@ async def resume_execution(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        execution = await svc.resume_execution(execution_id, workflow_id, current_user.tenant_id, db)
+        execution = await svc.resume_execution(
+            execution_id, workflow_id, current_user.tenant_id, db
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -224,6 +232,10 @@ async def fire_workflow_event(
     event_name = body.get("event", "")
     context = body.get("context", {})
     triggered = await svc.fire_event(
-        event_name, context, current_user.tenant_id, current_user.id, db,
+        event_name,
+        context,
+        current_user.tenant_id,
+        current_user.id,
+        db,
     )
     return {"triggered_workflows": triggered, "event": event_name, "count": len(triggered)}

@@ -94,8 +94,12 @@ async def create_invoice(
 
     try:
         final_invoice = await svc.create_invoice(
-            client_id, payload_dict, lines_data,
-            current_user.tenant_id, current_user.id, db,
+            client_id,
+            payload_dict,
+            lines_data,
+            current_user.tenant_id,
+            current_user.id,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -134,7 +138,9 @@ async def download_invoice_pdf(
 ):
     try:
         pdf_bytes, file_name = await svc.build_invoice_pdf(
-            invoice_id, current_user.tenant_id, db,
+            invoice_id,
+            current_user.tenant_id,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -156,7 +162,10 @@ async def download_rectificative_invoice_pdf(
 ):
     try:
         pdf_bytes, file_name = await svc.build_rectificative_pdf(
-            invoice_id, current_user.tenant_id, reason, db,
+            invoice_id,
+            current_user.tenant_id,
+            reason,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -178,7 +187,10 @@ async def download_retention_invoice_pdf(
 ):
     try:
         pdf_bytes, file_name = await svc.build_retention_pdf(
-            invoice_id, current_user.tenant_id, retention_pct, db,
+            invoice_id,
+            current_user.tenant_id,
+            retention_pct,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

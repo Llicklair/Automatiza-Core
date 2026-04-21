@@ -14,7 +14,8 @@ from app.db.models.models import Invoice, Tenant
 
 
 async def build_delinquency_data(
-    db: AsyncSession, tenant_id: uuid.UUID,
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
 ) -> dict:
     """Agrega datos de morosidad (facturas vencidas impagadas).
 

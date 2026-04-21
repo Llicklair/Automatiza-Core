@@ -83,7 +83,11 @@ async def create_albaran(
             )
             last = last_result.scalar_one_or_none()
             try:
-                num = int(last.albaran_number.split("-")[-1]) + 1 if last and last.albaran_number else 1
+                num = (
+                    int(last.albaran_number.split("-")[-1]) + 1
+                    if last and last.albaran_number
+                    else 1
+                )
             except (ValueError, IndexError):
                 num = 1
             albaran_number = f"ALB-{num:05d}"
@@ -91,31 +95,41 @@ async def create_albaran(
             amount_base = Decimal("0")
             tax_amount = Decimal("0")
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(
+                    str(line.get("unit_price", 0))
+                )
                 tax_amount += base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
                 amount_base += base
             amount_total = amount_base + tax_amount
 
             note = DeliveryNote(
-                tenant_id=UUID(tenant_id), client_id=client_id,
-                albaran_number=albaran_number, date=entry_date,
-                notes=notes or None, amount_base=amount_base,
-                tax_amount=tax_amount, amount_total=amount_total,
+                tenant_id=UUID(tenant_id),
+                client_id=client_id,
+                albaran_number=albaran_number,
+                date=entry_date,
+                notes=notes or None,
+                amount_base=amount_base,
+                tax_amount=tax_amount,
+                amount_total=amount_total,
             )
             db.add(note)
             await db.flush()
 
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(
+                    str(line.get("unit_price", 0))
+                )
                 total = base + base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
-                db.add(DeliveryNoteLine(
-                    albaran_id=note.id,
-                    description=line.get("description", ""),
-                    quantity=line.get("quantity", 1),
-                    unit_price=line.get("unit_price", 0),
-                    tax_percentage=line.get("tax_percentage", 21),
-                    total=total,
-                ))
+                db.add(
+                    DeliveryNoteLine(
+                        albaran_id=note.id,
+                        description=line.get("description", ""),
+                        quantity=line.get("quantity", 1),
+                        unit_price=line.get("unit_price", 0),
+                        tax_percentage=line.get("tax_percentage", 21),
+                        total=total,
+                    )
+                )
 
             await db.commit()
             return (

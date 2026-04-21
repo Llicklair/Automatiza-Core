@@ -80,7 +80,15 @@ async def _fetch_employees(tenant_id: str) -> pd.DataFrame:
         employees = result.scalars().all()
     if not employees:
         return pd.DataFrame(
-            columns=["Nombre", "NIF", "Departamento", "Puesto", "Salario Base (€)", "IRPF (%)", "Estado"]
+            columns=[
+                "Nombre",
+                "NIF",
+                "Departamento",
+                "Puesto",
+                "Salario Base (€)",
+                "IRPF (%)",
+                "Estado",
+            ]
         )
     return pd.DataFrame(
         [
@@ -110,7 +118,15 @@ async def _fetch_payrolls(tenant_id: str) -> pd.DataFrame:
         rows = result.all()
     if not rows:
         return pd.DataFrame(
-            columns=["Empleado", "Período", "Salario Base (€)", "SS (€)", "IRPF (€)", "Neto (€)", "Estado"]
+            columns=[
+                "Empleado",
+                "Período",
+                "Salario Base (€)",
+                "SS (€)",
+                "IRPF (€)",
+                "Neto (€)",
+                "Estado",
+            ]
         )
     return pd.DataFrame(
         [

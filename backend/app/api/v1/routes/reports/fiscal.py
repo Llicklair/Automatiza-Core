@@ -110,7 +110,10 @@ async def export_libro_registro(
 ):
     """Exporta el libro de registro de facturas emitidas/recibidas en formato CSV (AEAT)."""
     csv_content, file_name = await build_libro_registro_csv(
-        db, current_user.tenant_id, year, type,
+        db,
+        current_user.tenant_id,
+        year,
+        type,
     )
     return StreamingResponse(
         iter([csv_content]),

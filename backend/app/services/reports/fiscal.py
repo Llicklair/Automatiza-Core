@@ -159,7 +159,10 @@ async def aggregate_fiscal(
 
 
 async def build_modelo_303_data(
-    db: AsyncSession, tenant_id: uuid.UUID, quarter: int, year: int,
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    quarter: int,
+    year: int,
 ) -> dict:
     """Agrega datos para el Modelo 303 (liquidacion trimestral IVA).
 
@@ -253,7 +256,10 @@ async def build_modelo_303_data(
 
 
 async def build_libro_registro_csv(
-    db: AsyncSession, tenant_id: uuid.UUID, year: int, invoice_type_label: str,
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    year: int,
+    invoice_type_label: str,
 ) -> tuple[str, str]:
     """Genera CSV del libro de registro de facturas (emitidas/recibidas).
 

@@ -105,7 +105,9 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
     if not retrieved_chunks:
         return f"No se encontraron documentos relevantes para: '{query}'"
 
-    result = f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
+    result = (
+        f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
+    )
     result += f"Fuentes: {', '.join(source_names)}\n\n"
     for idx, chunk in enumerate(retrieved_chunks, 1):
         result += f"--- Fragmento {idx} ---\n{chunk[:500]}\n\n"
@@ -184,7 +186,10 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
                         source_names.add(doc_name)
                     page_ref = f" [Página {match.page_number}]" if match.page_number else ""
                     retrieved_chunks.append(
-                        {"doc_id": str(match.document_id), "text": f"{match.text_content}{page_ref}"}
+                        {
+                            "doc_id": str(match.document_id),
+                            "text": f"{match.text_content}{page_ref}",
+                        }
                     )
     except Exception as e:
         return f"Error buscando documentos: {e}"

@@ -18,9 +18,7 @@ async def list_opportunities(db: AsyncSession, tenant_id: UUID) -> list[Opportun
     return list(result.scalars().all())
 
 
-async def create_opportunity(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> Opportunity:
+async def create_opportunity(db: AsyncSession, tenant_id: UUID, data: dict) -> Opportunity:
     opp = Opportunity(tenant_id=tenant_id, **data)
     db.add(opp)
     await db.commit()
@@ -32,9 +30,7 @@ async def update_opportunity(
     db: AsyncSession, tenant_id: UUID, opp_id: UUID, data: dict
 ) -> Opportunity:
     result = await db.execute(
-        select(Opportunity).where(
-            Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id
-        )
+        select(Opportunity).where(Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id)
     )
     opp = result.scalar_one_or_none()
     if not opp:
@@ -46,13 +42,9 @@ async def update_opportunity(
     return opp
 
 
-async def delete_opportunity(
-    db: AsyncSession, tenant_id: UUID, opp_id: UUID
-) -> None:
+async def delete_opportunity(db: AsyncSession, tenant_id: UUID, opp_id: UUID) -> None:
     result = await db.execute(
-        select(Opportunity).where(
-            Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id
-        )
+        select(Opportunity).where(Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id)
     )
     opp = result.scalar_one_or_none()
     if not opp:
@@ -80,9 +72,7 @@ async def list_activities(
     return list(result.scalars().all())
 
 
-async def create_activity(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> Activity:
+async def create_activity(db: AsyncSession, tenant_id: UUID, data: dict) -> Activity:
     act = Activity(tenant_id=tenant_id, **data)
     db.add(act)
     await db.commit()
@@ -90,13 +80,9 @@ async def create_activity(
     return act
 
 
-async def delete_activity(
-    db: AsyncSession, tenant_id: UUID, activity_id: UUID
-) -> None:
+async def delete_activity(db: AsyncSession, tenant_id: UUID, activity_id: UUID) -> None:
     result = await db.execute(
-        select(Activity).where(
-            Activity.id == activity_id, Activity.tenant_id == tenant_id
-        )
+        select(Activity).where(Activity.id == activity_id, Activity.tenant_id == tenant_id)
     )
     activity = result.scalar_one_or_none()
     if not activity:
@@ -109,11 +95,7 @@ async def delete_activity(
 
 
 async def list_events(db: AsyncSession, tenant_id: UUID) -> list[Event]:
-    query = (
-        select(Event)
-        .where(Event.tenant_id == tenant_id)
-        .order_by(Event.start_time)
-    )
+    query = select(Event).where(Event.tenant_id == tenant_id).order_by(Event.start_time)
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -126,13 +108,9 @@ async def create_event(db: AsyncSession, tenant_id: UUID, data: dict) -> Event:
     return evt
 
 
-async def update_event(
-    db: AsyncSession, tenant_id: UUID, event_id: UUID, data: dict
-) -> Event:
+async def update_event(db: AsyncSession, tenant_id: UUID, event_id: UUID, data: dict) -> Event:
     result = await db.execute(
-        select(Event).where(
-            Event.id == event_id, Event.tenant_id == tenant_id
-        )
+        select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id)
     )
     evt = result.scalar_one_or_none()
     if not evt:
@@ -144,13 +122,9 @@ async def update_event(
     return evt
 
 
-async def delete_event(
-    db: AsyncSession, tenant_id: UUID, event_id: UUID
-) -> None:
+async def delete_event(db: AsyncSession, tenant_id: UUID, event_id: UUID) -> None:
     result = await db.execute(
-        select(Event).where(
-            Event.id == event_id, Event.tenant_id == tenant_id
-        )
+        select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id)
     )
     evt = result.scalar_one_or_none()
     if not evt:
@@ -162,9 +136,7 @@ async def delete_event(
 # ---- Reservations ----
 
 
-async def list_reservations(
-    db: AsyncSession, tenant_id: UUID
-) -> list[Reservation]:
+async def list_reservations(db: AsyncSession, tenant_id: UUID) -> list[Reservation]:
     query = (
         select(Reservation)
         .where(Reservation.tenant_id == tenant_id)
@@ -174,9 +146,7 @@ async def list_reservations(
     return list(result.scalars().all())
 
 
-async def create_reservation(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> Reservation:
+async def create_reservation(db: AsyncSession, tenant_id: UUID, data: dict) -> Reservation:
     res = Reservation(tenant_id=tenant_id, **data)
     db.add(res)
     await db.commit()
@@ -188,9 +158,7 @@ async def update_reservation(
     db: AsyncSession, tenant_id: UUID, res_id: UUID, data: dict
 ) -> Reservation:
     result = await db.execute(
-        select(Reservation).where(
-            Reservation.id == res_id, Reservation.tenant_id == tenant_id
-        )
+        select(Reservation).where(Reservation.id == res_id, Reservation.tenant_id == tenant_id)
     )
     res = result.scalar_one_or_none()
     if not res:
@@ -202,13 +170,9 @@ async def update_reservation(
     return res
 
 
-async def delete_reservation(
-    db: AsyncSession, tenant_id: UUID, res_id: UUID
-) -> None:
+async def delete_reservation(db: AsyncSession, tenant_id: UUID, res_id: UUID) -> None:
     result = await db.execute(
-        select(Reservation).where(
-            Reservation.id == res_id, Reservation.tenant_id == tenant_id
-        )
+        select(Reservation).where(Reservation.id == res_id, Reservation.tenant_id == tenant_id)
     )
     res = result.scalar_one_or_none()
     if not res:

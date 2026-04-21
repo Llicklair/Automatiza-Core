@@ -45,8 +45,11 @@ async def create_ai_employee(
     current_user: User = Depends(get_current_user),
 ):
     out, employee_id = await svc.create_employee(
-        payload.name, payload.role_description, payload.budget_limit_usd,
-        current_user.tenant_id, db,
+        payload.name,
+        payload.role_description,
+        payload.budget_limit_usd,
+        current_user.tenant_id,
+        db,
     )
     background_tasks.add_task(
         svc.provision_employee_bg,
@@ -66,9 +69,14 @@ async def provision_ai_employee(
     current_user: User = Depends(get_current_user),
 ):
     result = await svc.provision_employee(
-        employee_id, current_user.tenant_id,
-        payload.domain, payload.role, payload.system_prompt,
-        payload.doc_folder, payload.skills, db,
+        employee_id,
+        current_user.tenant_id,
+        payload.domain,
+        payload.role,
+        payload.system_prompt,
+        payload.doc_folder,
+        payload.skills,
+        db,
     )
     if not result:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -96,7 +104,11 @@ async def update_employee_appearance(
     current_user: User = Depends(get_current_user),
 ):
     result = await svc.update_appearance(
-        employee_id, current_user.tenant_id, payload.icon, payload.avatar_color, db,
+        employee_id,
+        current_user.tenant_id,
+        payload.icon,
+        payload.avatar_color,
+        db,
     )
     if not result:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -132,7 +144,11 @@ async def instruct_employee(
 ):
     try:
         return await svc.instruct_employee(
-            employee_id, payload.message, current_user.tenant_id, current_user.id, db,
+            employee_id,
+            payload.message,
+            current_user.tenant_id,
+            current_user.id,
+            db,
         )
     except ValueError as e:
         if "pausado" in str(e) or "paused" in str(e):
@@ -172,7 +188,12 @@ async def get_activity_feed(
     current_user: User = Depends(get_current_user),
 ):
     return await svc.list_activity(
-        current_user.tenant_id, db, employee_id, category, limit, offset,
+        current_user.tenant_id,
+        db,
+        employee_id,
+        category,
+        limit,
+        offset,
     )
 
 
@@ -183,6 +204,12 @@ async def create_activity_entry(
     current_user: User = Depends(get_current_user),
 ):
     return await svc.create_activity(
-        current_user.tenant_id, payload.category, payload.message, payload.icon,
-        payload.employee_id, payload.task_id, payload.metadata, db,
+        current_user.tenant_id,
+        payload.category,
+        payload.message,
+        payload.icon,
+        payload.employee_id,
+        payload.task_id,
+        payload.metadata,
+        db,
     )

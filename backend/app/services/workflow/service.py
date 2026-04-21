@@ -38,9 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 async def list_workflows(tenant_id, db: AsyncSession) -> list[models.Workflow]:
-    result = await db.execute(
-        select(models.Workflow).where(models.Workflow.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(models.Workflow).where(models.Workflow.tenant_id == tenant_id))
     return list(result.scalars().all())
 
 
@@ -56,7 +54,9 @@ async def create_workflow(workflow_in, tenant_id, user_id, db: AsyncSession) -> 
         action_type=workflow_in.action_type,
         action_config=workflow_in.action_config,
         execution_mode=workflow_in.execution_mode,
-        compiled_steps=workflow_in.compiled_steps if hasattr(workflow_in, "compiled_steps") else None,
+        compiled_steps=workflow_in.compiled_steps
+        if hasattr(workflow_in, "compiled_steps")
+        else None,
         ui_nodes=workflow_in.ui_nodes or [],
         ui_edges=workflow_in.ui_edges or [],
     )
@@ -76,7 +76,10 @@ async def get_workflow(workflow_id: UUID, tenant_id, db: AsyncSession) -> models
 
 
 async def update_workflow(
-    workflow_id: UUID, workflow_in, tenant_id, db: AsyncSession,
+    workflow_id: UUID,
+    workflow_in,
+    tenant_id,
+    db: AsyncSession,
 ) -> models.Workflow | None:
     wf = await get_workflow(workflow_id, tenant_id, db)
     if not wf:
@@ -102,9 +105,7 @@ async def delete_workflow(workflow_id: UUID, tenant_id, db: AsyncSession) -> boo
 
 
 async def recent_completions(tenant_id, since: float, db: AsyncSession) -> list[dict]:
-    since_dt = (
-        datetime.fromtimestamp(since, tz=UTC) if since > 0 else datetime.now(UTC)
-    )
+    since_dt = datetime.fromtimestamp(since, tz=UTC) if since > 0 else datetime.now(UTC)
     stmt = (
         select(
             models.WorkflowExecution.id,
@@ -138,7 +139,10 @@ async def recent_completions(tenant_id, since: float, db: AsyncSession) -> list[
 
 
 async def get_execution(
-    execution_id: UUID, workflow_id: UUID, tenant_id, db: AsyncSession,
+    execution_id: UUID,
+    workflow_id: UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> models.WorkflowExecution | None:
     result = await db.execute(
         select(models.WorkflowExecution).where(
@@ -151,7 +155,9 @@ async def get_execution(
 
 
 async def list_executions(
-    workflow_id: UUID, tenant_id, db: AsyncSession,
+    workflow_id: UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> list[models.WorkflowExecution]:
     result = await db.execute(
         select(models.WorkflowExecution)
@@ -166,7 +172,10 @@ async def list_executions(
 
 
 async def get_execution_logs(
-    execution_id: UUID, workflow_id: UUID, tenant_id, db: AsyncSession,
+    execution_id: UUID,
+    workflow_id: UUID,
+    tenant_id,
+    db: AsyncSession,
 ) -> dict:
     execution = await get_execution(execution_id, workflow_id, tenant_id, db)
     if not execution:
@@ -176,6 +185,7 @@ async def get_execution_logs(
     if execution.task_id:
         try:
             from app.services.exec_log_store import get_all
+
             stored_lines = get_all(str(execution.task_id))
             if stored_lines:
                 lines = stored_lines

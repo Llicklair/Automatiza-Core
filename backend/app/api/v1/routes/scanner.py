@@ -138,8 +138,6 @@ async def confirm_delivery(
 ):
     """Confirma la recepción de un albarán desde el escáner móvil."""
     try:
-        return await svc.confirm_delivery(
-            db, UUID(scanner["tenant_id"]), payload.albaran_number
-        )
+        return await svc.confirm_delivery(db, UUID(scanner["tenant_id"]), payload.albaran_number)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

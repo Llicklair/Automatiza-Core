@@ -19,17 +19,14 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _quote_query_with_rels():
     return select(Quote).options(selectinload(Quote.lines), selectinload(Quote.client))
 
 
-async def _get_quote_or_raise(
-    db: AsyncSession, quote_id: UUID, tenant_id: UUID
-) -> Quote:
+async def _get_quote_or_raise(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> Quote:
     result = await db.execute(
-        _quote_query_with_rels().where(
-            Quote.id == quote_id, Quote.tenant_id == tenant_id
-        )
+        _quote_query_with_rels().where(Quote.id == quote_id, Quote.tenant_id == tenant_id)
     )
     quote = result.scalar_one_or_none()
     if not quote:
@@ -41,9 +38,8 @@ async def _get_quote_or_raise(
 # CRUD
 # ---------------------------------------------------------------------------
 
-async def create_quote(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> Quote:
+
+async def create_quote(db: AsyncSession, tenant_id: UUID, data: dict) -> Quote:
     lines_data = data.pop("lines", [])
 
     amount_base = 0.0
@@ -80,9 +76,7 @@ async def create_quote(
 
     await db.commit()
 
-    result = await db.execute(
-        _quote_query_with_rels().where(Quote.id == db_quote.id)
-    )
+    result = await db.execute(_quote_query_with_rels().where(Quote.id == db_quote.id))
     return result.scalar_one()
 
 
@@ -99,9 +93,7 @@ async def list_quotes(
     return list(result.scalars().all())
 
 
-async def get_quote(
-    db: AsyncSession, quote_id: UUID, tenant_id: UUID
-) -> Quote:
+async def get_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> Quote:
     return await _get_quote_or_raise(db, quote_id, tenant_id)
 
 
@@ -119,9 +111,7 @@ async def update_quote(
     return quote
 
 
-async def delete_quote(
-    db: AsyncSession, quote_id: UUID, tenant_id: UUID
-) -> None:
+async def delete_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> None:
     result = await db.execute(
         select(Quote).where(Quote.id == quote_id, Quote.tenant_id == tenant_id)
     )
@@ -135,6 +125,7 @@ async def delete_quote(
 # ---------------------------------------------------------------------------
 # Convert quote -> invoice
 # ---------------------------------------------------------------------------
+
 
 async def convert_to_invoice(
     db: AsyncSession,

@@ -147,7 +147,10 @@ async def seed_builtin(tenant_id, db: AsyncSession) -> list[str]:
 
 
 async def provision_employee_bg(
-    employee_id: str, tenant_id: str, name: str, role_description: str,
+    employee_id: str,
+    tenant_id: str,
+    name: str,
+    role_description: str,
 ) -> None:
     """Llama al LLM para configurar el agente (ejecutar en background task)."""
     from langchain_core.messages import HumanMessage
@@ -241,7 +244,9 @@ async def provision_employee_bg(
             await session.commit()
             logger.info(
                 "Agente '%s' provisionado (domain=%s, skills=%d)",
-                name, emp.domain, len(assigned_skills),
+                name,
+                emp.domain,
+                len(assigned_skills),
             )
 
     except Exception as exc:

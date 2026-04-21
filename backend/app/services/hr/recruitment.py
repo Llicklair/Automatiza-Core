@@ -48,12 +48,8 @@ async def list_positions(
                 "experience_min_years": float(p.experience_min_years)
                 if p.experience_min_years
                 else 0,
-                "salary_range_min": float(p.salary_range_min)
-                if p.salary_range_min
-                else None,
-                "salary_range_max": float(p.salary_range_max)
-                if p.salary_range_max
-                else None,
+                "salary_range_min": float(p.salary_range_min) if p.salary_range_min else None,
+                "salary_range_max": float(p.salary_range_max) if p.salary_range_max else None,
                 "status": p.status,
                 "candidate_count": counts.get(p.id, 0),
             }
@@ -61,25 +57,19 @@ async def list_positions(
     return out
 
 
-async def create_position(
-    db: AsyncSession, tenant_id: UUID, payload: dict
-) -> dict:
+async def create_position(db: AsyncSession, tenant_id: UUID, payload: dict) -> dict:
     pos = RecruitmentPosition(tenant_id=tenant_id, **payload)
     db.add(pos)
     await db.commit()
     await db.refresh(pos)
     return {
         **{c.name: getattr(pos, c.name) for c in pos.__table__.columns},
-        "experience_min_years": float(pos.experience_min_years)
-        if pos.experience_min_years
-        else 0,
+        "experience_min_years": float(pos.experience_min_years) if pos.experience_min_years else 0,
         "candidate_count": 0,
     }
 
 
-async def list_candidates(
-    db: AsyncSession, tenant_id: UUID, position_id: UUID
-) -> list:
+async def list_candidates(db: AsyncSession, tenant_id: UUID, position_id: UUID) -> list:
     result = await db.execute(
         select(Candidate)
         .where(
@@ -162,9 +152,7 @@ async def update_candidate_status(
     db: AsyncSession, tenant_id: UUID, candidate_id: UUID, new_status: str
 ) -> Candidate:
     if new_status not in VALID_CANDIDATE_STATUSES:
-        raise ValueError(
-            f"Estado invalido. Opciones: {', '.join(VALID_CANDIDATE_STATUSES)}"
-        )
+        raise ValueError(f"Estado invalido. Opciones: {', '.join(VALID_CANDIDATE_STATUSES)}")
 
     result = await db.execute(
         select(Candidate).where(

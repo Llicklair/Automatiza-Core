@@ -35,7 +35,9 @@ def pop_oauth_state(state: str) -> str | None:
 
 
 async def get_integration(
-    tenant_id, integration_type: str, db: AsyncSession,
+    tenant_id,
+    integration_type: str,
+    db: AsyncSession,
 ) -> TenantIntegration | None:
     result = await db.execute(
         select(TenantIntegration).where(
@@ -61,7 +63,10 @@ async def list_integrations(tenant_id, db: AsyncSession) -> list[dict]:
 
 
 async def upsert_integration(
-    tenant_id, integration_type: str, encrypted_creds: str, db: AsyncSession,
+    tenant_id,
+    integration_type: str,
+    encrypted_creds: str,
+    db: AsyncSession,
 ) -> None:
     """Crea o actualiza una integración con credenciales cifradas."""
     existing = await get_integration(tenant_id, integration_type, db)
@@ -69,16 +74,20 @@ async def upsert_integration(
         existing.encrypted_credentials = encrypted_creds
         existing.is_active = True
     else:
-        db.add(TenantIntegration(
-            tenant_id=tenant_id,
-            integration_type=integration_type,
-            encrypted_credentials=encrypted_creds,
-            is_active=True,
-        ))
+        db.add(
+            TenantIntegration(
+                tenant_id=tenant_id,
+                integration_type=integration_type,
+                encrypted_credentials=encrypted_creds,
+                is_active=True,
+            )
+        )
 
 
 async def disconnect_integration(
-    tenant_id, integration_type: str, db: AsyncSession,
+    tenant_id,
+    integration_type: str,
+    db: AsyncSession,
 ) -> bool:
     """Desactiva una integración. Retorna False si no existe."""
     integration = await get_integration(tenant_id, integration_type, db)
@@ -103,6 +112,7 @@ async def connect_psd2(secret_id: str, secret_key: str, tenant_id, db: AsyncSess
         raise ValueError("El secret_id y secret_key no pueden estar vacíos")
 
     from app.integrations.psd2 import NordigenClient
+
     client = NordigenClient(secret_id=secret_id, secret_key=secret_key)
     try:
         await client._get_access_token()
@@ -120,10 +130,15 @@ async def connect_psd2(secret_id: str, secret_key: str, tenant_id, db: AsyncSess
 
 
 async def connect_email(
-    email_address: str, password: str, provider: str,
-    imap_host: str | None, imap_port: int | None,
-    smtp_host: str | None, smtp_port: int | None,
-    tenant_id, db: AsyncSession,
+    email_address: str,
+    password: str,
+    provider: str,
+    imap_host: str | None,
+    imap_port: int | None,
+    smtp_host: str | None,
+    smtp_port: int | None,
+    tenant_id,
+    db: AsyncSession,
 ) -> dict:
     """Conecta email via IMAP/SMTP. Lanza ValueError si falla."""
     import asyncio
@@ -151,15 +166,17 @@ async def connect_email(
             "Verifica el email, la contraseña de aplicación y que IMAP esté habilitado."
         )
 
-    encrypted = encrypt_credentials({
-        "email_address": creds.email_address,
-        "password": creds.password,
-        "provider": creds.provider,
-        "imap_host": creds.imap_host,
-        "imap_port": creds.imap_port,
-        "smtp_host": creds.smtp_host,
-        "smtp_port": creds.smtp_port,
-    })
+    encrypted = encrypt_credentials(
+        {
+            "email_address": creds.email_address,
+            "password": creds.password,
+            "provider": creds.provider,
+            "imap_host": creds.imap_host,
+            "imap_port": creds.imap_port,
+            "smtp_host": creds.smtp_host,
+            "smtp_port": creds.smtp_port,
+        }
+    )
     await upsert_integration(tenant_id, "email", encrypted, db)
     await db.commit()
     return {"provider": provider, "email": email_address}
@@ -184,7 +201,10 @@ async def email_status(tenant_id, db: AsyncSession) -> dict:
 
 
 async def handle_oauth_callback(
-    code: str, state: str, provider: str, db: AsyncSession,
+    code: str,
+    state: str,
+    provider: str,
+    db: AsyncSession,
 ) -> str | None:
     """Procesa OAuth callback. Retorna tenant_id o None si state inválido."""
     tenant_id = pop_oauth_state(state)
@@ -193,9 +213,11 @@ async def handle_oauth_callback(
 
     if provider == "google":
         from app.integrations.google_oauth import exchange_code
+
         integration_types = ("gmail", "gdrive")
     else:
         from app.integrations.microsoft_oauth import exchange_code
+
         integration_types = ("outlook", "onedrive")
 
     try:
@@ -203,12 +225,14 @@ async def handle_oauth_callback(
     except Exception:
         logger.exception("OAuth token exchange failed for provider=%s", provider)
         return None
-    encrypted = encrypt_credentials({
-        "access_token": tokens.get("access_token"),
-        "refresh_token": tokens.get("refresh_token"),
-        "token_type": tokens.get("token_type", "Bearer"),
-        "expires_in": tokens.get("expires_in"),
-    })
+    encrypted = encrypt_credentials(
+        {
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "token_type": tokens.get("token_type", "Bearer"),
+            "expires_in": tokens.get("expires_in"),
+        }
+    )
 
     for itype in integration_types:
         await upsert_integration(tenant_id, itype, encrypted, db)
@@ -217,7 +241,9 @@ async def handle_oauth_callback(
 
 
 async def get_oauth_access_token(
-    db: AsyncSession, tenant_id, integration_type: str = "gmail",
+    db: AsyncSession,
+    tenant_id,
+    integration_type: str = "gmail",
 ) -> str | None:
     """Carga y auto-refresca OAuth access token para un tenant."""
     integration = await get_integration(tenant_id, integration_type, db)
@@ -240,6 +266,7 @@ async def get_oauth_access_token(
     )
 
     import httpx
+
     async with httpx.AsyncClient() as client:
         test = await client.get(test_url, headers={"Authorization": f"Bearer {access_token}"})
 
@@ -262,7 +289,9 @@ async def get_oauth_access_token(
 
 
 async def get_recent_messages(
-    tenant_id, integration_type: str, db: AsyncSession,
+    tenant_id,
+    integration_type: str,
+    db: AsyncSession,
 ) -> list:
     """Obtiene mensajes recientes de Gmail u Outlook."""
     token = await get_oauth_access_token(db, tenant_id, integration_type)
@@ -271,6 +300,7 @@ async def get_recent_messages(
 
     if integration_type == "outlook":
         from app.integrations.outlook_client import OutlookClient
+
         client = OutlookClient(token)
         try:
             return await client.list_messages(top=5)
@@ -280,6 +310,7 @@ async def get_recent_messages(
             await client.close()
     else:
         from app.integrations.gmail_client import GmailClient
+
         client = GmailClient(token)
         try:
             return await client.list_messages(max_results=5)
@@ -290,7 +321,9 @@ async def get_recent_messages(
 
 
 async def get_recent_files(
-    tenant_id, integration_type: str, db: AsyncSession,
+    tenant_id,
+    integration_type: str,
+    db: AsyncSession,
 ) -> list:
     """Obtiene archivos recientes de Google Drive u OneDrive."""
     token = await get_oauth_access_token(db, tenant_id, integration_type)
@@ -299,13 +332,19 @@ async def get_recent_files(
 
     if integration_type == "onedrive":
         from app.integrations.onedrive_client import OneDriveClient
+
         client = OneDriveClient(token)
     else:
         from app.integrations.google_drive_client import GoogleDriveClient
+
         client = GoogleDriveClient(token)
 
     try:
-        files = await client.list_files(top=5) if integration_type == "onedrive" else await client.list_files(page_size=5)
+        files = (
+            await client.list_files(top=5)
+            if integration_type == "onedrive"
+            else await client.list_files(page_size=5)
+        )
         logger.info("%s/recent returned %d files", integration_type, len(files))
         return files
     except Exception as e:

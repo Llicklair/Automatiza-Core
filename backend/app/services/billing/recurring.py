@@ -45,12 +45,16 @@ async def create_recurring(payload, tenant_id: UUID, db: AsyncSession) -> Recurr
 
 
 async def update_recurring(
-    rec_id: UUID, payload, tenant_id: UUID, db: AsyncSession,
+    rec_id: UUID,
+    payload,
+    tenant_id: UUID,
+    db: AsyncSession,
 ) -> RecurringInvoice | None:
     """Returns updated record or None if not found."""
     result = await db.execute(
         select(RecurringInvoice).where(
-            RecurringInvoice.id == rec_id, RecurringInvoice.tenant_id == tenant_id,
+            RecurringInvoice.id == rec_id,
+            RecurringInvoice.tenant_id == tenant_id,
         )
     )
     rec = result.scalar_one_or_none()
@@ -76,7 +80,8 @@ async def delete_recurring(rec_id: UUID, tenant_id: UUID, db: AsyncSession) -> b
     """Returns False if not found."""
     result = await db.execute(
         select(RecurringInvoice).where(
-            RecurringInvoice.id == rec_id, RecurringInvoice.tenant_id == tenant_id,
+            RecurringInvoice.id == rec_id,
+            RecurringInvoice.tenant_id == tenant_id,
         )
     )
     rec = result.scalar_one_or_none()

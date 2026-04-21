@@ -69,16 +69,44 @@ def _fiscal_styles() -> dict:
     return {
         "company": sty("FCo", fontSize=20, fontName="Helvetica-Bold", textColor=C["SLATE"]),
         "badge": sty("FBa", fontSize=9, fontName="Helvetica-Bold", textColor=C["RED"]),
-        "period": sty("FPe", fontSize=13, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT),
-        "generated": sty("FGe", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_RIGHT),
-        "section": sty("FSe", fontSize=10, fontName="Helvetica-Bold", textColor=C["GRAY"], spaceBefore=6, spaceAfter=4),
-        "resumen": sty("FRe", fontSize=9, fontName="Helvetica", textColor=colors.HexColor("#334155"), leading=13, spaceBefore=4),
-        "kpi_lbl": sty("FKl", fontSize=7, fontName="Helvetica", textColor=C["GRAY"], alignment=TA_CENTER),
-        "footer": sty("FFo", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_CENTER),
+        "period": sty(
+            "FPe", fontSize=13, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT
+        ),
+        "generated": sty(
+            "FGe", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_RIGHT
+        ),
+        "section": sty(
+            "FSe",
+            fontSize=10,
+            fontName="Helvetica-Bold",
+            textColor=C["GRAY"],
+            spaceBefore=6,
+            spaceAfter=4,
+        ),
+        "resumen": sty(
+            "FRe",
+            fontSize=9,
+            fontName="Helvetica",
+            textColor=colors.HexColor("#334155"),
+            leading=13,
+            spaceBefore=4,
+        ),
+        "kpi_lbl": sty(
+            "FKl", fontSize=7, fontName="Helvetica", textColor=C["GRAY"], alignment=TA_CENTER
+        ),
+        "footer": sty(
+            "FFo", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_CENTER
+        ),
         "row_lbl": sty("FRl", fontSize=8, fontName="Helvetica", textColor=C["GRAY"]),
-        "row_val": sty("FRv", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT),
-        "row_val_em": sty("FRve", fontSize=8, fontName="Helvetica-Bold", textColor=C["INDIGO"], alignment=TA_RIGHT),
-        "row_val_red": sty("FRvr", fontSize=8, fontName="Helvetica-Bold", textColor=C["RED"], alignment=TA_RIGHT),
+        "row_val": sty(
+            "FRv", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT
+        ),
+        "row_val_em": sty(
+            "FRve", fontSize=8, fontName="Helvetica-Bold", textColor=C["INDIGO"], alignment=TA_RIGHT
+        ),
+        "row_val_red": sty(
+            "FRvr", fontSize=8, fontName="Helvetica-Bold", textColor=C["RED"], alignment=TA_RIGHT
+        ),
         "_sty": sty,  # factory para estilos one-off
     }
 
@@ -101,7 +129,9 @@ def _fiscal_header(company_name: str, period_label: str, st: dict) -> list:
             [
                 Paragraph(period_label, st["period"]),
                 Spacer(1, 5),
-                Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", st["generated"]),
+                Paragraph(
+                    f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", st["generated"]
+                ),
             ],
         ]
     ]
@@ -160,19 +190,55 @@ def _fiscal_kpis(iva: dict, irpf: dict, is_: dict, st: dict) -> list:
     kpi_data = [
         [
             [
-                Paragraph(_fmt_eur(resultado_iva), sty("fkv1", fontSize=14, fontName="Helvetica-Bold", textColor=iva_color, alignment=TA_CENTER)),
+                Paragraph(
+                    _fmt_eur(resultado_iva),
+                    sty(
+                        "fkv1",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=iva_color,
+                        alignment=TA_CENTER,
+                    ),
+                ),
                 Paragraph("Resultado IVA", st["kpi_lbl"]),
             ],
             [
-                Paragraph(_fmt_eur(total_irpf), sty("fkv2", fontSize=14, fontName="Helvetica-Bold", textColor=C["AMBER"], alignment=TA_CENTER)),
+                Paragraph(
+                    _fmt_eur(total_irpf),
+                    sty(
+                        "fkv2",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=C["AMBER"],
+                        alignment=TA_CENTER,
+                    ),
+                ),
                 Paragraph("IRPF Retenciones", st["kpi_lbl"]),
             ],
             [
-                Paragraph(_fmt_eur(cuota_is), sty("fkv3", fontSize=14, fontName="Helvetica-Bold", textColor=C["BLUE"], alignment=TA_CENTER)),
+                Paragraph(
+                    _fmt_eur(cuota_is),
+                    sty(
+                        "fkv3",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=C["BLUE"],
+                        alignment=TA_CENTER,
+                    ),
+                ),
                 Paragraph("IS Estimado", st["kpi_lbl"]),
             ],
             [
-                Paragraph(_fmt_eur(saldo_fiscal), sty("fkv4", fontSize=14, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_CENTER)),
+                Paragraph(
+                    _fmt_eur(saldo_fiscal),
+                    sty(
+                        "fkv4",
+                        fontSize=14,
+                        fontName="Helvetica-Bold",
+                        textColor=C["SLATE"],
+                        alignment=TA_CENTER,
+                    ),
+                ),
                 Paragraph("Total obligaciones", st["kpi_lbl"]),
             ],
         ]
@@ -185,7 +251,12 @@ def _fiscal_kpis(iva: dict, irpf: dict, is_: dict, st: dict) -> list:
                 ("BOX", (1, 0), (1, 0), 0.5, C["AMBER"]),
                 ("BOX", (2, 0), (2, 0), 0.5, C["BLUE"]),
                 ("BOX", (3, 0), (3, 0), 0.5, C["SLATE"]),
-                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4")),
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (0, 0),
+                    colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4"),
+                ),
                 ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#fffbeb")),
                 ("BACKGROUND", (2, 0), (2, 0), colors.HexColor("#eff6ff")),
                 ("BACKGROUND", (3, 0), (3, 0), C["LIGHT"]),
@@ -216,15 +287,46 @@ def _fiscal_iva_section(iva: dict, st: dict) -> list:
     resultado_iva = float(iva.get("resultado_iva", 0))
 
     iva_detail = [
-        [Paragraph("Tipo", st["row_lbl"]), Paragraph("Repercutido", st["row_val"]), Paragraph("Soportado", st["row_val"]), Paragraph("Diferencia", st["row_val"])],
-        [Paragraph("General (21%)", st["row_lbl"]), Paragraph(_fmt_eur(rep_21), st["row_val"]), Paragraph(_fmt_eur(sop_21), st["row_val"]), Paragraph(_fmt_eur(rep_21 - sop_21), st["row_val"])],
-        [Paragraph("Reducido (10%)", st["row_lbl"]), Paragraph(_fmt_eur(rep_10), st["row_val"]), Paragraph(_fmt_eur(sop_10), st["row_val"]), Paragraph(_fmt_eur(rep_10 - sop_10), st["row_val"])],
-        [Paragraph("Superreducido (4%)", st["row_lbl"]), Paragraph(_fmt_eur(rep_4), st["row_val"]), Paragraph(_fmt_eur(sop_4), st["row_val"]), Paragraph(_fmt_eur(rep_4 - sop_4), st["row_val"])],
         [
-            Paragraph("TOTAL", sty("FTot", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"])),
+            Paragraph("Tipo", st["row_lbl"]),
+            Paragraph("Repercutido", st["row_val"]),
+            Paragraph("Soportado", st["row_val"]),
+            Paragraph("Diferencia", st["row_val"]),
+        ],
+        [
+            Paragraph("General (21%)", st["row_lbl"]),
+            Paragraph(_fmt_eur(rep_21), st["row_val"]),
+            Paragraph(_fmt_eur(sop_21), st["row_val"]),
+            Paragraph(_fmt_eur(rep_21 - sop_21), st["row_val"]),
+        ],
+        [
+            Paragraph("Reducido (10%)", st["row_lbl"]),
+            Paragraph(_fmt_eur(rep_10), st["row_val"]),
+            Paragraph(_fmt_eur(sop_10), st["row_val"]),
+            Paragraph(_fmt_eur(rep_10 - sop_10), st["row_val"]),
+        ],
+        [
+            Paragraph("Superreducido (4%)", st["row_lbl"]),
+            Paragraph(_fmt_eur(rep_4), st["row_val"]),
+            Paragraph(_fmt_eur(sop_4), st["row_val"]),
+            Paragraph(_fmt_eur(rep_4 - sop_4), st["row_val"]),
+        ],
+        [
+            Paragraph(
+                "TOTAL", sty("FTot", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"])
+            ),
             Paragraph(_fmt_eur(total_rep), st["row_val_em"]),
             Paragraph(_fmt_eur(total_sop), st["row_val_red"]),
-            Paragraph(_fmt_eur(resultado_iva), sty("FResV", fontSize=8, fontName="Helvetica-Bold", textColor=C["RED"] if resultado_iva > 0 else C["EMERALD"], alignment=TA_RIGHT)),
+            Paragraph(
+                _fmt_eur(resultado_iva),
+                sty(
+                    "FResV",
+                    fontSize=8,
+                    fontName="Helvetica-Bold",
+                    textColor=C["RED"] if resultado_iva > 0 else C["EMERALD"],
+                    alignment=TA_RIGHT,
+                ),
+            ),
         ],
     ]
     iva_tbl = Table(iva_detail, colWidths=[45 * mm, 38 * mm, 38 * mm, 38 * mm])
@@ -239,7 +341,12 @@ def _fiscal_iva_section(iva: dict, st: dict) -> list:
                 ("LINEBELOW", (0, 0), (-1, 0), 0.5, C["LINE"]),
                 ("LINEBELOW", (0, -2), (-1, -2), 0.3, colors.HexColor("#f1f5f9")),
                 ("BACKGROUND", (0, 0), (-1, 0), C["LIGHT"]),
-                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4")),
+                (
+                    "BACKGROUND",
+                    (0, -1),
+                    (-1, -1),
+                    colors.HexColor("#fef2f2") if resultado_iva > 0 else colors.HexColor("#f0fdf4"),
+                ),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ]
         )
@@ -276,11 +383,13 @@ def _fiscal_iva_section(iva: dict, st: dict) -> list:
         d.add(chart)
         elems.extend([Spacer(1, 3 * mm), d])
 
-    elems.extend([
-        Spacer(1, 5 * mm),
-        HRFlowable(width="100%", thickness=0.5, color=C["LINE"]),
-        Spacer(1, 3 * mm),
-    ])
+    elems.extend(
+        [
+            Spacer(1, 5 * mm),
+            HRFlowable(width="100%", thickness=0.5, color=C["LINE"]),
+            Spacer(1, 3 * mm),
+        ]
+    )
     return elems
 
 
@@ -295,10 +404,19 @@ def _fiscal_irpf_section(irpf: dict, st: dict) -> list:
 
     irpf_detail = [
         [Paragraph("Concepto", st["row_lbl"]), Paragraph("Importe", st["row_val"])],
-        [Paragraph("Retenciones en nominas", st["row_lbl"]), Paragraph(_fmt_eur(irpf_nominas), st["row_val"])],
-        [Paragraph("Retenciones en facturas profesionales", st["row_lbl"]), Paragraph(_fmt_eur(irpf_facturas), st["row_val"])],
         [
-            Paragraph("TOTAL RETENCIONES", sty("FIrpfT", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"])),
+            Paragraph("Retenciones en nominas", st["row_lbl"]),
+            Paragraph(_fmt_eur(irpf_nominas), st["row_val"]),
+        ],
+        [
+            Paragraph("Retenciones en facturas profesionales", st["row_lbl"]),
+            Paragraph(_fmt_eur(irpf_facturas), st["row_val"]),
+        ],
+        [
+            Paragraph(
+                "TOTAL RETENCIONES",
+                sty("FIrpfT", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"]),
+            ),
             Paragraph(_fmt_eur(total_irpf), st["row_val_em"]),
         ],
     ]
@@ -341,16 +459,40 @@ def _fiscal_is_section(is_: dict, st: dict) -> list:
 
     is_detail = [
         [Paragraph("Concepto", st["row_lbl"]), Paragraph("Importe", st["row_val"])],
-        [Paragraph("Ingresos brutos (base imponible ventas)", st["row_lbl"]), Paragraph(_fmt_eur(ingresos_b), st["row_val"])],
-        [Paragraph("Gastos deducibles (compras + nominas)", st["row_lbl"]), Paragraph(_fmt_eur(gastos_d), st["row_val_red"])],
         [
-            Paragraph("Base imponible", sty("FIsBI", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"])),
+            Paragraph("Ingresos brutos (base imponible ventas)", st["row_lbl"]),
+            Paragraph(_fmt_eur(ingresos_b), st["row_val"]),
+        ],
+        [
+            Paragraph("Gastos deducibles (compras + nominas)", st["row_lbl"]),
+            Paragraph(_fmt_eur(gastos_d), st["row_val_red"]),
+        ],
+        [
+            Paragraph(
+                "Base imponible",
+                sty("FIsBI", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"]),
+            ),
             Paragraph(_fmt_eur(base_imp), st["row_val_em"]),
         ],
-        [Paragraph(f"Tipo impositivo ({tipo_is:.0f}%)", st["row_lbl"]), Paragraph(f"{tipo_is:.0f}%", st["row_val"])],
         [
-            Paragraph("CUOTA ESTIMADA IS", sty("FIsQ", fontSize=9, fontName="Helvetica-Bold", textColor=C["SLATE"])),
-            Paragraph(_fmt_eur(cuota_is), sty("FIsQV", fontSize=9, fontName="Helvetica-Bold", textColor=C["BLUE"], alignment=TA_RIGHT)),
+            Paragraph(f"Tipo impositivo ({tipo_is:.0f}%)", st["row_lbl"]),
+            Paragraph(f"{tipo_is:.0f}%", st["row_val"]),
+        ],
+        [
+            Paragraph(
+                "CUOTA ESTIMADA IS",
+                sty("FIsQ", fontSize=9, fontName="Helvetica-Bold", textColor=C["SLATE"]),
+            ),
+            Paragraph(
+                _fmt_eur(cuota_is),
+                sty(
+                    "FIsQV",
+                    fontSize=9,
+                    fontName="Helvetica-Bold",
+                    textColor=C["BLUE"],
+                    alignment=TA_RIGHT,
+                ),
+            ),
         ],
     ]
     is_tbl = Table(is_detail, colWidths=[120 * mm, 45 * mm])
@@ -448,9 +590,7 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
 # Persist fiscal report PDF as a TenantDocument
 # ---------------------------------------------------------------------------
 
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 
 
 async def save_fiscal_report_to_db(

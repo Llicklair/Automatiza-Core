@@ -6,15 +6,31 @@ import os
 import uuid
 import zipfile
 
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 
 ALLOWED_EXTENSIONS = {
-    ".pdf", ".doc", ".docx", ".odt", ".txt", ".md",
-    ".xlsx", ".xls", ".csv", ".ods", ".json",
-    ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".tif",
-    ".eml", ".msg", ".zip",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".odt",
+    ".txt",
+    ".md",
+    ".xlsx",
+    ".xls",
+    ".csv",
+    ".ods",
+    ".json",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".tif",
+    ".eml",
+    ".msg",
+    ".zip",
 }
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
@@ -22,11 +38,26 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 # ── Clasificación automática ─────────────────────────────────────────────────
 
 _EXT_CATEGORY_MAP: dict[str, str] = {
-    ".xlsx": "excels", ".xls": "excels", ".csv": "excels", ".ods": "excels",
-    ".pdf": "facturas", ".docx": "otros", ".doc": "otros", ".odt": "otros",
-    ".png": "otros", ".jpg": "otros", ".jpeg": "otros", ".webp": "otros",
-    ".gif": "otros", ".bmp": "otros", ".tiff": "otros", ".tif": "otros",
-    ".txt": "otros", ".md": "otros", ".eml": "correos", ".msg": "correos",
+    ".xlsx": "excels",
+    ".xls": "excels",
+    ".csv": "excels",
+    ".ods": "excels",
+    ".pdf": "facturas",
+    ".docx": "otros",
+    ".doc": "otros",
+    ".odt": "otros",
+    ".png": "otros",
+    ".jpg": "otros",
+    ".jpeg": "otros",
+    ".webp": "otros",
+    ".gif": "otros",
+    ".bmp": "otros",
+    ".tiff": "otros",
+    ".tif": "otros",
+    ".txt": "otros",
+    ".md": "otros",
+    ".eml": "correos",
+    ".msg": "correos",
 }
 
 _MIME_CATEGORY_MAP: dict[str, str] = {
@@ -79,7 +110,11 @@ def extract_zip_entries(contents: bytes) -> list[tuple[str, bytes, str | None]]:
     entries = []
     with zipfile.ZipFile(io.BytesIO(contents)) as z:
         for info in z.infolist():
-            if info.is_dir() or info.filename.startswith("__MACOSX") or info.filename.startswith("."):
+            if (
+                info.is_dir()
+                or info.filename.startswith("__MACOSX")
+                or info.filename.startswith(".")
+            ):
                 continue
             original_name = os.path.basename(info.filename)
             if not original_name:

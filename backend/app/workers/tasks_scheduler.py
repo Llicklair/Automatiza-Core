@@ -102,7 +102,9 @@ async def _dispatch_workflow(
 
     if wf.execution_mode == "deterministic" and wf.compiled_steps:
         task = await create_task_for_execution(
-            db, wf, execution,
+            db,
+            wf,
+            execution,
             domain="deterministic",
             user_intent=f"[{label}] {wf.name}",
             initial_status="running",
@@ -116,12 +118,9 @@ async def _dispatch_workflow(
                 task_id=str(task.id),
             )
             execution.status = "success"
-            execution.result_log = (
-                f"{len(results)} paso(s). "
-                + " | ".join(
-                    f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
-                    for r in results
-                )
+            execution.result_log = f"{len(results)} paso(s). " + " | ".join(
+                f"[{r.get('agent', '?')}] {'OK' if r.get('success') else 'ERROR: ' + str(r.get('error', ''))[:60]}"
+                for r in results
             )
             task.status = "done"
             if guard and idempotency_key:
@@ -146,7 +145,9 @@ async def _dispatch_workflow(
             f"{wf.name} {wf.description or ''} {instruction}".lower()
         )
         task = await create_task_for_execution(
-            db, wf, execution,
+            db,
+            wf,
+            execution,
             domain=domain,
             user_intent=f"[{label}] {instruction}",
             initial_status="pending",
@@ -241,7 +242,8 @@ async def _catchup_missed_workflows():
 
             logger.info(
                 "[CATCHUP] Workflow '%s' perdio ejecucion(es) desde %s. Disparando una vez.",
-                wf.name, since_local,
+                wf.name,
+                since_local,
             )
 
             if await has_active_execution(db, wf.id):
@@ -300,15 +302,17 @@ async def _process_recurring_invoices():
                 await db.flush()
 
                 for line, (base, tax) in zip(rec.lines_json or [], line_totals):
-                    db.add(InvoiceLine(
-                        invoice_id=invoice.id,
-                        description=line.get("description", ""),
-                        quantity=line.get("quantity", 1),
-                        unit_price=line.get("unit_price", 0),
-                        discount_percentage=0,
-                        tax_percentage=line.get("tax_percentage", 21),
-                        total=round(base + tax, 2),
-                    ))
+                    db.add(
+                        InvoiceLine(
+                            invoice_id=invoice.id,
+                            description=line.get("description", ""),
+                            quantity=line.get("quantity", 1),
+                            unit_price=line.get("unit_price", 0),
+                            discount_percentage=0,
+                            tax_percentage=line.get("tax_percentage", 21),
+                            total=round(base + tax, 2),
+                        )
+                    )
 
                 rec.last_run_date = today
                 rec.next_run_date = today + timedelta(days=interval_map.get(rec.interval_type, 30))

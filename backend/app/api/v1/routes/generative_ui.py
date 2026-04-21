@@ -48,7 +48,10 @@ async def generate_ui(
     """Genera una interfaz HTML a partir del prompt del usuario."""
     try:
         ui = await svc.generate_ui(
-            payload.prompt, current_user.tenant_id, db, title=payload.title,
+            payload.prompt,
+            current_user.tenant_id,
+            db,
+            title=payload.title,
         )
     except asyncio.TimeoutError:
         raise HTTPException(
@@ -84,7 +87,11 @@ async def list_generated_uis(
     current_user: User = Depends(get_current_user),
 ):
     uis = await svc.list_uis(
-        current_user.tenant_id, db, pinned_only=pinned_only, limit=limit, offset=offset,
+        current_user.tenant_id,
+        db,
+        pinned_only=pinned_only,
+        limit=limit,
+        offset=offset,
     )
     return [
         GeneratedUIOut(
@@ -130,8 +137,12 @@ async def update_generated_ui(
     current_user: User = Depends(get_current_user),
 ):
     ui = await svc.update_ui(
-        ui_id, current_user.tenant_id, db,
-        title=payload.title, description=payload.description, is_pinned=payload.is_pinned,
+        ui_id,
+        current_user.tenant_id,
+        db,
+        title=payload.title,
+        description=payload.description,
+        is_pinned=payload.is_pinned,
     )
     if not ui:
         raise HTTPException(status_code=404, detail="Interfaz no encontrada")

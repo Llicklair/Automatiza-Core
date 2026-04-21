@@ -40,9 +40,7 @@ async def has_active_execution(db: AsyncSession, workflow_id) -> bool:
     return result.scalars().first() is not None
 
 
-async def get_last_execution(
-    db: AsyncSession, workflow_id
-) -> WorkflowExecution | None:
+async def get_last_execution(db: AsyncSession, workflow_id) -> WorkflowExecution | None:
     """Return the most recent execution for a workflow, or None."""
     result = await db.execute(
         select(WorkflowExecution)
@@ -93,9 +91,7 @@ async def create_task_for_execution(
     return task
 
 
-async def get_stuck_executions(
-    db: AsyncSession, cutoff: datetime
-) -> list[WorkflowExecution]:
+async def get_stuck_executions(db: AsyncSession, cutoff: datetime) -> list[WorkflowExecution]:
     """Return executions stuck in 'running' state older than *cutoff*."""
     result = await db.execute(
         select(WorkflowExecution).where(

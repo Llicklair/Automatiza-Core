@@ -47,9 +47,7 @@ async def list_transactions(db: AsyncSession, tenant_id: uuid.UUID) -> list:
     return list(result.scalars().all())
 
 
-async def sync_transactions(
-    db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID
-) -> dict:
+async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> dict:
     """Generate demo bank transactions simulating a PSD2 sync."""
     descriptions = [
         "Recibo Luz Gesternova",

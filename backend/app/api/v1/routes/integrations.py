@@ -75,10 +75,15 @@ async def connect_email(
 ):
     try:
         result = await svc.connect_email(
-            payload.email_address, payload.password, payload.provider,
-            payload.imap_host, payload.imap_port,
-            payload.smtp_host, payload.smtp_port,
-            current_user.tenant_id, db,
+            payload.email_address,
+            payload.password,
+            payload.provider,
+            payload.imap_host,
+            payload.imap_port,
+            payload.smtp_host,
+            payload.smtp_port,
+            current_user.tenant_id,
+            db,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -123,7 +128,10 @@ async def google_auth_url(request: Request, current_user: User = Depends(get_cur
 @limiter.limit("10/minute")
 @router.get("/google/callback", response_class=HTMLResponse)
 async def google_callback(
-    request: Request, code: str, state: str, db: AsyncSession = Depends(get_db),
+    request: Request,
+    code: str,
+    state: str,
+    db: AsyncSession = Depends(get_db),
 ):
     tenant_id = await svc.handle_oauth_callback(code, state, "google", db)
     if not tenant_id:
@@ -219,7 +227,10 @@ async def microsoft_auth_url(request: Request, current_user: User = Depends(get_
 @limiter.limit("10/minute")
 @router.get("/microsoft/callback", response_class=HTMLResponse)
 async def microsoft_callback(
-    request: Request, code: str, state: str, db: AsyncSession = Depends(get_db),
+    request: Request,
+    code: str,
+    state: str,
+    db: AsyncSession = Depends(get_db),
 ):
     tenant_id = await svc.handle_oauth_callback(code, state, "microsoft", db)
     if not tenant_id:
@@ -230,7 +241,9 @@ async def microsoft_callback(
     return HTMLResponse(
         "<html><body><script>"
         "if(window.opener){window.opener.postMessage({type:'oauth_success',provider:'microsoft'},'*');window.close();}"
-        "else{window.location.href='" + settings.FRONTEND_URL + "/integraciones?connected=microsoft';}"
+        "else{window.location.href='"
+        + settings.FRONTEND_URL
+        + "/integraciones?connected=microsoft';}"
         "</script><p>Conectado con Microsoft. Puedes cerrar esta ventana.</p></body></html>"
     )
 
