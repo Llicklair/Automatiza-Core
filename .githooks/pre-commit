@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -e
+
+RUFF="C:/Users/Marcos/AppData/Local/Programs/Python/Python314/Scripts/ruff.exe"
+
+if [ -f "$RUFF" ]; then
+    echo "[pre-commit] ruff format backend..."
+    "$RUFF" format backend/app/ --quiet
+    git add backend/app/
+fi
