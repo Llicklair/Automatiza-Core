@@ -30,7 +30,8 @@ from app.services.ai.generative_ui import (
     list_uis,
     update_ui,
 )
-from app.services.ai.node_engine import NodeEngine, has_advanced_nodes
+from app.services.ai.node_engine import NodeEngine
+from app.services.ai.node_graph_helpers import has_advanced_nodes  # noqa: F401
 
 __all__ = [
     # condition_evaluator
