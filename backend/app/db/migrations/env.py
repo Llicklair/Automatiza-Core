@@ -1,9 +1,10 @@
 import os
+import sys
 from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy import create_engine, pool
+from sqlalchemy import create_engine, pool, text
 
 # ── Cargar .env automáticamente (para migraciones CLI sin variables de entorno) ──
 try:
@@ -58,9 +59,6 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    import sys
-    from sqlalchemy import text
-
     sync_url = _database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
     connectable = create_engine(sync_url, poolclass=pool.NullPool, echo=True)
     with connectable.connect() as connection:
