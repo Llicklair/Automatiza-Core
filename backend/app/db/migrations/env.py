@@ -20,13 +20,9 @@ try:
 except ImportError:
     pass  # python-dotenv no instalado — se asume que DATABASE_URL ya está en el entorno
 
-import sys
-
 import app.db.models.embeddings  # noqa — registra modelos en Base.metadata
 import app.db.models.generative_ui  # noqa — registra GeneratedUI en Base.metadata
 import app.db.models.models  # noqa — registra modelos en Base.metadata
-
-print("[env] models imported", flush=True, file=sys.stderr)
 
 from app.db.base import Base
 
@@ -64,21 +60,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    # Use synchronous psycopg2 for migrations — more reliable than asyncpg+run_sync
     sync_url = _database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-    import sys
-
-    print("[env] creating engine", flush=True, file=sys.stderr)
-    connectable = create_engine(sync_url, poolclass=pool.NullPool, echo=True)
-    print("[env] connecting", flush=True, file=sys.stderr)
+    connectable = create_engine(sync_url, poolclass=pool.NullPool)
     with connectable.connect() as connection:
-        print("[env] configuring context", flush=True, file=sys.stderr)
+        connection = connection.execution_options(isolation_level="AUTOCOMMIT")
         context.configure(connection=connection, target_metadata=target_metadata)
-        print("[env] beginning transaction", flush=True, file=sys.stderr)
-        with context.begin_transaction():
-            print("[env] running migrations", flush=True, file=sys.stderr)
-            context.run_migrations()
-            print("[env] migrations done", flush=True, file=sys.stderr)
+        context.run_migrations()
 
 
 if context.is_offline_mode():
