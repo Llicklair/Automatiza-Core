@@ -1,12 +1,9 @@
-import asyncio
 import os
 from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import create_engine, pool
 
 # ── Cargar .env automáticamente (para migraciones CLI sin variables de entorno) ──
 try:
@@ -62,25 +59,14 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-async def run_async_migrations() -> None:
-    # Crear el engine directamente con la URL (evita el bug de get_section sin URL)
-    connectable = create_async_engine(
-        _database_url,
-        poolclass=pool.NullPool,
-    )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
-
-
 def run_migrations_online() -> None:
-    asyncio.run(run_async_migrations())
+    # Use synchronous psycopg2 for migrations — more reliable than asyncpg+run_sync
+    sync_url = _database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    connectable = create_engine(sync_url, poolclass=pool.NullPool)
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
