@@ -1,5 +1,4 @@
 @echo off
-
 set ROOT=%~dp0
 set RUFF=C:\Users\Marcos\AppData\Local\Programs\Python\Python314\Scripts\ruff.exe
 set POETRY=C:\Users\Marcos\AppData\Roaming\Python\Scripts\poetry.exe
@@ -22,15 +21,17 @@ echo.
 
 echo [3/5] Import check - cadena alembic (backend)...
 cd /d "%ROOT%backend"
-"%POETRY%" run python -c "import app.api.v1.routes.generative_ui; print(chr(79)+chr(75))" 2>&1 | findstr /i "OK Error Traceback ImportError" | findstr /v "UserWarning underscore"
-if %errorlevel% neq 0 ( echo [FAIL] import check & set ERRORS=1 ) else ( echo [OK]   import check )
+"%POETRY%" run python -c "import app.api.v1.routes.generative_ui; print(chr(79)+chr(75))" > "%TEMP%\import_check.txt" 2>&1
+findstr /i "OK" "%TEMP%\import_check.txt" > nul
+if %errorlevel% neq 0 ( echo [FAIL] import check - ver %TEMP%\import_check.txt & set ERRORS=1 ) else ( echo [OK]   import check )
 cd /d "%ROOT%"
 echo.
 
 echo [4/5] Mypy (backend)...
 cd /d "%ROOT%backend"
-"%POETRY%" run mypy app/ --ignore-missing-imports --quiet 2>&1 | findstr /i "error:" | head
-if %errorlevel% neq 0 ( echo [FAIL] mypy & set ERRORS=1 ) else ( echo [OK]   mypy )
+"%POETRY%" run mypy app/ --ignore-missing-imports > "%TEMP%\mypy_out.txt" 2>&1
+findstr /i "error:" "%TEMP%\mypy_out.txt"
+if %errorlevel% equ 0 ( echo [FAIL] mypy - ver arriba & set ERRORS=1 ) else ( echo [OK]   mypy )
 cd /d "%ROOT%"
 echo.
 
