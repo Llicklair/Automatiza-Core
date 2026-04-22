@@ -20,12 +20,6 @@ try:
 except ImportError:
     pass  # python-dotenv no instalado — se asume que DATABASE_URL ya está en el entorno
 
-import app.db.models.embeddings  # noqa — registra modelos en Base.metadata
-import app.db.models.generative_ui  # noqa — registra GeneratedUI en Base.metadata
-import app.db.models.models  # noqa — registra modelos en Base.metadata
-
-from app.db.base import Base
-
 config = context.config
 
 if config.config_file_name is not None:
@@ -44,7 +38,11 @@ if not _database_url:
 # Guardar en el config para que offline mode también la use
 config.set_main_option("sqlalchemy.url", _database_url)
 
-target_metadata = Base.metadata
+# target_metadata se usa sólo para autogenerate (alembic revision --autogenerate).
+# Para upgrade/check no es necesario y cargarlo aquí provoca que app.db.base
+# cree un async engine con asyncpg a nivel de módulo, lo que cuelga las migraciones en CI.
+# Para usar autogenerate localmente, importa los modelos manualmente aquí.
+target_metadata = None
 
 
 def run_migrations_offline() -> None:
