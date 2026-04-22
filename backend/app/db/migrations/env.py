@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy import create_engine, pool, text
+from sqlalchemy import create_engine, pool
 
 # ── Cargar .env automáticamente (para migraciones CLI sin variables de entorno) ──
 try:
@@ -59,16 +59,18 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    import faulthandler
+
+    faulthandler.dump_traceback_later(45, file=sys.stderr)  # dump stack if hung >45s
     sync_url = _database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-    connectable = create_engine(sync_url, poolclass=pool.NullPool, echo=True)
+    connectable = create_engine(sync_url, poolclass=pool.NullPool)
     with connectable.connect() as connection:
         connection = connection.execution_options(isolation_level="AUTOCOMMIT")
-        connection.execute(text("SET statement_timeout = '30s'"))
-        print("[env] statement_timeout=30s set, configuring context", flush=True, file=sys.stderr)
         context.configure(connection=connection, target_metadata=target_metadata)
         print("[env] running migrations", flush=True, file=sys.stderr)
         context.run_migrations()
         print("[env] done", flush=True, file=sys.stderr)
+    faulthandler.cancel_dump_traceback_later()
 
 
 if context.is_offline_mode():
