@@ -86,6 +86,7 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Run migrations
+        timeout-minutes: 3
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
           SECRET_KEY: ci-test-secret-key-not-for-production
