@@ -24,8 +24,8 @@ except ImportError:
     pass  # python-dotenv no instalado — se asume que DATABASE_URL ya está en el entorno
 
 import app.db.models.embeddings  # noqa — registra modelos en Base.metadata
+import app.db.models.generative_ui  # noqa — registra GeneratedUI en Base.metadata
 import app.db.models.models  # noqa — registra modelos en Base.metadata
-import app.api.v1.routes.generative_ui  # noqa — registra GeneratedUI en Base.metadata
 
 from app.db.base import Base
 
