@@ -69,7 +69,7 @@ def run_migrations_online() -> None:
     import sys
 
     print("[env] creating engine", flush=True, file=sys.stderr)
-    connectable = create_engine(sync_url, poolclass=pool.NullPool)
+    connectable = create_engine(sync_url, poolclass=pool.NullPool, echo=True)
     print("[env] connecting", flush=True, file=sys.stderr)
     with connectable.connect() as connection:
         print("[env] configuring context", flush=True, file=sys.stderr)
