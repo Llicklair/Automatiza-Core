@@ -14,10 +14,10 @@ from app.services.pdf_reports._operational import (
     generate_rgpd_registry_pdf,
 )
 from app.services.pdf_reports._snapshot import (
-    _snapshot_text_fallback,
     generate_snapshot_pdf,
     generate_text_report_pdf,
 )
+from app.services.pdf_reports._snapshot_monthly import _snapshot_text_fallback  # noqa: F401
 
 __all__ = [
     "generate_text_report_pdf",
