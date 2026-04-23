@@ -382,6 +382,82 @@ def upgrade() -> None:
         unique=False,
     )
 
+    # --- products & opportunities (moved before quotes/invoice_lines for FK order) ---
+    op.create_table(
+        "products",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("tenant_id", sa.UUID(), nullable=False),
+        sa.Column("item_type", sa.String(length=50), nullable=True),
+        sa.Column("sku", sa.String(length=100), nullable=True),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("tax_percentage", sa.Numeric(precision=5, scale=2), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["tenant_id"],
+            ["tenants.id"],
+        ),
+        sa.Column("stock_quantity", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("stock_min_alert", sa.Integer(), nullable=False, server_default="0"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_products_sku"), "products", ["sku"], unique=False)
+    op.create_index(op.f("ix_products_tenant_id"), "products", ["tenant_id"], unique=False)
+    op.create_table(
+        "opportunities",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("tenant_id", sa.UUID(), nullable=False),
+        sa.Column("client_id", sa.UUID(), nullable=False),
+        sa.Column("title", sa.String(length=255), nullable=False),
+        sa.Column(
+            "expected_value", sa.Numeric(precision=10, scale=2), nullable=False, server_default="0"
+        ),
+        sa.Column("stage", sa.String(length=50), nullable=False, server_default="new"),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["client_id"],
+            ["clients.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["tenant_id"],
+            ["tenants.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_opportunities_tenant_id"), "opportunities", ["tenant_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_opportunities_client_id"), "opportunities", ["client_id"], unique=False
+    )
+    op.create_table(
+        "invoice_lines",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("invoice_id", sa.UUID(), nullable=False),
+        sa.Column("product_id", sa.UUID(), nullable=True),
+        sa.Column("description", sa.String(length=500), nullable=False),
+        sa.Column("quantity", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("unit_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("discount_percentage", sa.Numeric(precision=5, scale=2), nullable=True),
+        sa.Column("tax_percentage", sa.Numeric(precision=5, scale=2), nullable=True),
+        sa.Column("total", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["invoice_id"],
+            ["invoices.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["product_id"],
+            ["products.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_invoice_lines_invoice_id"), "invoice_lines", ["invoice_id"], unique=False
+    )
+
     # --- cf7da4c31523_add_quote_models ---
     op.create_table(
         "quotes",
@@ -983,84 +1059,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["albaran_id"], ["delivery_notes.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["product_id"], ["products.id"]),
         sa.PrimaryKeyConstraint("id"),
-    )
-
-    # --- 4ce2419ccd96_add_products_and_invoice_lines ---
-    op.create_table(
-        "products",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("tenant_id", sa.UUID(), nullable=False),
-        sa.Column("item_type", sa.String(length=50), nullable=True),
-        sa.Column("sku", sa.String(length=100), nullable=True),
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("price", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.Column("tax_percentage", sa.Numeric(precision=5, scale=2), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["tenant_id"],
-            ["tenants.id"],
-        ),
-        sa.Column("stock_quantity", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("stock_min_alert", sa.Integer(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_products_sku"), "products", ["sku"], unique=False)
-    op.create_index(op.f("ix_products_tenant_id"), "products", ["tenant_id"], unique=False)
-    op.create_table(
-        "invoice_lines",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("invoice_id", sa.UUID(), nullable=False),
-        sa.Column("product_id", sa.UUID(), nullable=True),
-        sa.Column("description", sa.String(length=500), nullable=False),
-        sa.Column("quantity", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.Column("unit_price", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.Column("discount_percentage", sa.Numeric(precision=5, scale=2), nullable=True),
-        sa.Column("tax_percentage", sa.Numeric(precision=5, scale=2), nullable=True),
-        sa.Column("total", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["invoice_id"],
-            ["invoices.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["product_id"],
-            ["products.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_invoice_lines_invoice_id"), "invoice_lines", ["invoice_id"], unique=False
-    )
-
-    # --- a0b1c2d3e4f5_add_opportunities_table ---
-    op.create_table(
-        "opportunities",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("tenant_id", sa.UUID(), nullable=False),
-        sa.Column("client_id", sa.UUID(), nullable=False),
-        sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column(
-            "expected_value", sa.Numeric(precision=10, scale=2), nullable=False, server_default="0"
-        ),
-        sa.Column("stage", sa.String(length=50), nullable=False, server_default="new"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["client_id"],
-            ["clients.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["tenant_id"],
-            ["tenants.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_opportunities_tenant_id"), "opportunities", ["tenant_id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_opportunities_client_id"), "opportunities", ["client_id"], unique=False
     )
 
     # --- c1d2e3f4a5b6_add_tenant_llm_config ---
