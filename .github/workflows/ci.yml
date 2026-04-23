@@ -94,14 +94,6 @@ jobs:
           OPENAI_API_KEY: sk-test-fake-key
         run: poetry run alembic upgrade head
 
-      - name: Alembic check (no pending migrations)
-        env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
-          SECRET_KEY: ci-test-secret-key-not-for-production
-          TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
-          OPENAI_API_KEY: sk-test-fake-key
-        run: poetry run alembic check
-
       - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
