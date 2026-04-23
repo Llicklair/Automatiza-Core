@@ -55,7 +55,8 @@
       "Bash(kill 922)",
       "Bash(xargs -r kill -9)",
       "Bash(rm -f \"/c/Users/Marcos/Desktop/atomatizacion de empresas/.gitnexus/kuzu/\"*.lock)",
-      "Bash(rm -f \"/c/Users/Marcos/Desktop/atomatizacion de empresas/.gitnexus/kuzu/lock\")"
+      "Bash(rm -f \"/c/Users/Marcos/Desktop/atomatizacion de empresas/.gitnexus/kuzu/lock\")",
+      "Bash(C:/Users/Marcos/AppData/Local/Programs/Python/Python311/python.exe:*)"
     ]
   }
 }
