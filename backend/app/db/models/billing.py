@@ -150,6 +150,7 @@ class RecurringInvoice(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     tenant = relationship("Tenant")
+    client = relationship("Client", foreign_keys=[client_id])
 
 
 class DocumentTemplate(Base):

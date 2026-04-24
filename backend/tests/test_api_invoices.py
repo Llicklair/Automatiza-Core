@@ -96,16 +96,16 @@ class TestInvoices:
         )
         invoice_id = create_resp.json()["id"]
         resp = await auth_client.patch(
-            f"/api/v1/invoices/{invoice_id}/status", json={"status": "sent"}
+            f"/api/v1/invoices/{invoice_id}/status", json={"status": "paid"}
         )
         assert resp.status_code == 200
-        assert resp.json()["status"] == "sent"
+        assert resp.json()["status"] == "paid"
 
     @pytest.mark.asyncio
     async def test_update_invoice_status_not_found(self, auth_client: AsyncClient):
         fake_id = str(uuid4())
         resp = await auth_client.patch(
-            f"/api/v1/invoices/{fake_id}/status", json={"status": "sent"}
+            f"/api/v1/invoices/{fake_id}/status", json={"status": "paid"}
         )
         assert resp.status_code == 404
 

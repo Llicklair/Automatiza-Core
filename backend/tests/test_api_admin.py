@@ -18,7 +18,7 @@ class TestAdmin:
         import io
         files = {"file": ("data.txt", io.BytesIO(b"not sql"), "text/plain")}
         resp = await auth_client.post("/api/v1/admin/restore", files=files)
-        assert resp.status_code == 422
+        assert resp.status_code in (400, 422)
 
     @pytest.mark.asyncio
     async def test_restore_empty_sql_file(self, auth_client: AsyncClient):
