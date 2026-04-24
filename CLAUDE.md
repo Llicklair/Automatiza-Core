@@ -27,13 +27,40 @@ Plan → `tasks/todo.md` | Lessons → `tasks/lessons.md` | Track progress as yo
 
 ---
 
-## GitNexus — Code Intelligence
+## Architecture Rules (enforced — see ARCHITECTURE.md for full details)
 
-Full reference: see [GITNEXUS.md](GITNEXUS.md). Key rules:
-- **MUST** run `gitnexus_impact` before editing any symbol. Warn on HIGH/CRITICAL risk.
-- **MUST** run `gitnexus_detect_changes()` before committing.
-- Use `gitnexus_query` for code exploration, `gitnexus_rename` for renames (never find-replace).
-- CLI: `npx gitnexus analyze` (re-index) | `npx gitnexus status` (freshness)
+### Layer boundaries
+- **Routes** (`api/v1/routes/`): validate input + return HTTP. ZERO business logic. Delegate to services or agents.
+- **Services** (`services/`): reusable business logic that doesn't belong to an agent. Receive `db: AsyncSession` as param.
+- **Agents** (`agents/<domain>/`): all AI lives here. Only public export is `run_agent()`.
+- **DB Models** (`db/models/`): SQLAlchemy ORM only. No business logic in models.
+
+### Agent structure (mandatory)
+```
+agents/<domain>/
+├── __init__.py       ← exports only: run_agent()
+├── agent.py          ← LangGraph graph + run_agent()
+├── tools.py          ← @tool + docstring (declared to LLM)
+├── prompts.py        ← system prompt strings, no logic
+└── _*.py             ← private implementation (never import from outside)
+```
+
+### Frontend rules
+- Components NEVER call `fetch()` directly — always use `lib/api/*.ts`
+- `lib/api/client.ts` is the single HTTP base (handles JWT, 401 refresh, errors)
+- Each domain has its API module: `billing.ts`, `hr.ts`, `documents.ts`, etc.
+- For file uploads use `requestUpload()` from client.ts (not raw fetch)
+
+### Agent communication
+- Agents NEVER import other agents. Communication goes through the orchestrator or shared services.
+- Agents return `AgentResult(success=False)` on errors, never throw exceptions to the orchestrator.
+
+### Commit discipline
+- Descriptive commit messages (no more "test N"). Format: `type: short description`
+- Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
+- Run `tsc --noEmit` (frontend) before committing TS changes
+
+---
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
