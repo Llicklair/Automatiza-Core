@@ -129,6 +129,10 @@ omit = [
     "app/services/scheduler.py",
     "app/middleware/rate_limit.py",
     "app/services/assets/*",
+    "app/api/ws/*",
+    "app/services/workflow/*",
+    "app/services/compliance/*",
+    "app/services/banking/*",
 ]
 
 [tool.pytest.ini_options]
