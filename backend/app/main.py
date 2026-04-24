@@ -55,7 +55,7 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # CORS — acepta peticiones de los orígenes configurados en FRONTEND_URL (separados por coma)
 _cors_origins = [u.strip() for u in settings.FRONTEND_URL.split(",") if u.strip()]

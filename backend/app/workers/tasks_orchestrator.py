@@ -160,6 +160,7 @@ async def _resume_orchestrator(task_id: str):
             "tenant_id": str(task.tenant_id),
             "user_id": str(task.created_by) if task.created_by else "",
             "user_intent": task.user_intent or "",
+            "current_intent": None,
             "classified_domain": task.domain if task.domain else None,
             "plan": task.plan,
             "current_step": task.current_step,
@@ -169,6 +170,7 @@ async def _resume_orchestrator(task_id: str):
             "approval_id": None,
             "error_message": task.error_message,
             "iteration_count": 0,
+            "tenant_knowledge": [],
             "additional_metadata": task.additional_metadata or {},
         }
 

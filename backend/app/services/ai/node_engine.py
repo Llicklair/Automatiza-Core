@@ -294,6 +294,8 @@ class NodeEngine:
 
             return {}
 
+        return {}  # unreachable but satisfies mypy
+
     # ── convenience wrappers kept for callers that reference self._ methods ──
 
     def _build_skill_dispatch(self, node: dict, extra_meta: dict | None = None):
