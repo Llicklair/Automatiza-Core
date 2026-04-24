@@ -1,6 +1,7 @@
 """Pydantic schemas for albaranes (delivery notes)."""
 
-from datetime import date as date_type, datetime
+from datetime import date as date_type
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
