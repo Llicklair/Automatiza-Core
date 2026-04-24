@@ -121,12 +121,13 @@ export async function requestUpload<T>(path: string, formData: FormData): Promis
 export async function fetchBlob(path: string, init?: RequestInit): Promise<Blob> {
     let token = getToken();
     const auth = (): Record<string, string> => token ? { Authorization: `Bearer ${token}` } : {};
-    let res = await fetch(`${BASE}${path}`, { ...init, headers: auth() });
+    const headers = () => ({ ...(init?.headers as Record<string, string>), ...auth() });
+    let res = await fetch(`${BASE}${path}`, { ...init, headers: headers() });
     if (res.status === 401) {
         const refreshed = await tryRefresh();
         if (refreshed) {
             token = getToken();
-            res = await fetch(`${BASE}${path}`, { ...init, headers: auth() });
+            res = await fetch(`${BASE}${path}`, { ...init, headers: headers() });
         }
     }
     if (!res.ok) {

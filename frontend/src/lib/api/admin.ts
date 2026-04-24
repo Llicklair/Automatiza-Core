@@ -1,4 +1,4 @@
-import { getToken, BASE } from "./client";
+import { getToken, BASE, requestUpload } from "./client";
 
 export const admin = {
     downloadBackup: async () => {
@@ -16,16 +16,9 @@ export const admin = {
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
     },
-    restoreBackup: async (file: File) => {
-        const token = getToken();
+    restoreBackup: (file: File): Promise<{ ok: boolean; message: string }> => {
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch(`${BASE}/api/v1/admin/restore`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: form,
-        });
-        if (!res.ok) throw new Error(await res.text());
-        return res.json() as Promise<{ ok: boolean; message: string }>;
+        return requestUpload("/api/v1/admin/restore", form);
     },
 };

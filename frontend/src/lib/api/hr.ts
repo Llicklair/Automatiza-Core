@@ -1,4 +1,4 @@
-import { request, downloadBlob, BASE, getToken } from "./client";
+import { request, requestUpload, downloadBlob } from "./client";
 
 export interface EmployeeDocument {
     id: string;
@@ -69,17 +69,10 @@ export const hr = {
         documents: {
             list: (employeeId: string) =>
                 request<EmployeeDocument[]>(`/api/v1/hr/employees/${employeeId}/documents`),
-            upload: async (employeeId: string, file: File): Promise<EmployeeDocument> => {
+            upload: (employeeId: string, file: File): Promise<EmployeeDocument> => {
                 const formData = new FormData();
                 formData.append("file", file);
-                const token = getToken();
-                const res = await fetch(`${BASE}/api/v1/hr/employees/${employeeId}/documents/upload`, {
-                    method: "POST",
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                    body: formData,
-                });
-                if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail ?? "Error al subir"); }
-                return res.json();
+                return requestUpload<EmployeeDocument>(`/api/v1/hr/employees/${employeeId}/documents/upload`, formData);
             },
             download: (employeeId: string, docId: string, fileName: string) =>
                 downloadBlob(`/api/v1/hr/employees/${employeeId}/documents/${docId}/download`, fileName),
