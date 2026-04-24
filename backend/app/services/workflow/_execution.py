@@ -8,17 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.agents.orchestrator import (
-    _dispatch_banking,
-    _dispatch_billing,
-    _dispatch_compliance,
-    _dispatch_crm,
-    _dispatch_documents,
-    _dispatch_email,
-    _dispatch_excel,
-    _dispatch_hr,
-    _dispatch_rag,
-)
+from app.agents.orchestrator.dispatchers import DISPATCHER_MAP
 from app.agents.tool_registry import call_tool
 from app.db.models import models
 from app.services.workflow.task_dispatch import (
@@ -28,18 +18,6 @@ from app.services.workflow.task_dispatch import (
 )
 
 logger = logging.getLogger(__name__)
-
-_DISPATCH_MAP = {
-    "billing": _dispatch_billing,
-    "crm": _dispatch_crm,
-    "documents": _dispatch_documents,
-    "email": _dispatch_email,
-    "excel": _dispatch_excel,
-    "banking": _dispatch_banking,
-    "hr": _dispatch_hr,
-    "rag": _dispatch_rag,
-    "compliance": _dispatch_compliance,
-}
 
 
 # ── Helpers internos ─────────────────────────────────────────────────────────
@@ -360,7 +338,7 @@ async def _run_reasoning_step(
     base_state["user_intent"] = intent
     base_state["current_intent"] = intent
 
-    dispatch_fn = _DISPATCH_MAP.get(agent_name)
+    dispatch_fn = DISPATCHER_MAP.get(agent_name)
     if dispatch_fn is None:
         return (
             {

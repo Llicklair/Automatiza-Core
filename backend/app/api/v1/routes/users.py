@@ -6,13 +6,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
-from app.core.security import get_password_hash
 from app.db.base import get_db
 from app.db.models.auth import User
+from app.services import user_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
@@ -54,8 +53,8 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(User).where(User.tenant_id == current_user.tenant_id))
-    return [_user_out(u) for u in result.scalars().all()]
+    users = await user_service.list_users(current_user.tenant_id, db)
+    return [_user_out(u) for u in users]
 
 
 @router.get("/me", response_model=UserOut)
@@ -69,18 +68,15 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    full_name = " ".join(filter(None, [payload.first_name, payload.last_name])) or None
-    user = User(
-        id=uuid.uuid4(),
+    user = await user_service.create_user(
         tenant_id=current_user.tenant_id,
         email=payload.email,
-        hashed_password=get_password_hash(payload.password),
-        full_name=full_name,
+        password=payload.password,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
         role=payload.role,
+        db=db,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
     return _user_out(user)
 
 
@@ -90,10 +86,7 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id), User.tenant_id == current_user.tenant_id)
-    )
-    user = result.scalar_one_or_none()
+    user = await user_service.get_user(uuid.UUID(user_id), current_user.tenant_id, db)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return _user_out(user)
@@ -106,21 +99,17 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id), User.tenant_id == current_user.tenant_id)
-    )
-    user = result.scalar_one_or_none()
+    user = await user_service.get_user(uuid.UUID(user_id), current_user.tenant_id, db)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    parts = [payload.first_name, payload.last_name]
-    if any(p is not None for p in parts):
-        user.full_name = " ".join(filter(None, parts)) or user.full_name
-    if payload.role is not None:
-        user.role = payload.role
-    if payload.is_active is not None:
-        user.is_active = payload.is_active
-    await db.commit()
-    await db.refresh(user)
+    user = await user_service.update_user(
+        user=user,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        role=payload.role,
+        is_active=payload.is_active,
+        db=db,
+    )
     return _user_out(user)
 
 
@@ -130,11 +119,7 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id), User.tenant_id == current_user.tenant_id)
-    )
-    user = result.scalar_one_or_none()
+    user = await user_service.get_user(uuid.UUID(user_id), current_user.tenant_id, db)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    await db.delete(user)
-    await db.commit()
+    await user_service.delete_user(user, db)

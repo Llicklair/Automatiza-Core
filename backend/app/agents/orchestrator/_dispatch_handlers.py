@@ -24,6 +24,19 @@ logger = logging.getLogger(__name__)
 _TRANSIENT_ERRORS = (asyncio.TimeoutError, ConnectionError, OSError)
 
 
+def _make_error_result(
+    subtask: dict, agent_name: str, action: str, error: str, summary: str | None = None
+) -> dict:
+    return {
+        "subtask_id": subtask["id"],
+        "agent": agent_name,
+        "success": False,
+        "output": {"action": action, "error": error},
+        "summary": summary or f"Error en {agent_name}: {error}",
+        "error": error,
+    }
+
+
 async def _invoke_dynamic_employee(
     enriched_state: dict,
     subtask: dict,
@@ -136,13 +149,7 @@ async def _invoke_dynamic_employee(
             employee.status = "idle"
             await db.commit()
             logger.exception("Error en dynamic employee '%s'", employee.name)
-            return {
-                "subtask_id": subtask["id"],
-                "agent": agent_name,
-                "success": False,
-                "output": {"action": "failed", "error": str(e)},
-                "error": str(e),
-            }
+            return _make_error_result(subtask, agent_name, action="failed", error=str(e))
 
 
 async def _invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: str) -> AgentResult:
@@ -200,17 +207,13 @@ async def _execute_one(
                 )
                 await asyncio.sleep(2)
                 continue
-            result = {
-                "subtask_id": subtask["id"],
-                "agent": agent_name,
-                "success": False,
-                "output": {
-                    "action": "timeout",
-                    "error": f"El agente '{agent_name}' no respondió en 120s (2 intentos)",
-                },
-                "summary": f"Timeout: agente {agent_name} excedió 120s tras 2 intentos",
-                "error": f"Timeout: el agente '{agent_name}' no respondió en 120s (2 intentos)",
-            }
+            result = _make_error_result(
+                subtask,
+                agent_name,
+                action="timeout",
+                error=f"Timeout: el agente '{agent_name}' no respondió en 120s (2 intentos)",
+                summary=f"Timeout: agente {agent_name} excedió 120s tras 2 intentos",
+            )
         except _TRANSIENT_ERRORS as e:
             err_str = str(e)
             is_rate_limit = (
@@ -226,24 +229,22 @@ async def _execute_one(
                 )
                 await asyncio.sleep(wait)
                 continue
-            result = {
-                "subtask_id": subtask["id"],
-                "agent": agent_name,
-                "success": False,
-                "output": {"action": "failed", "error": f"{type(e).__name__}: {e}"},
-                "summary": f"Error transitorio en agente {agent_name} tras retry: {e}",
-                "error": str(e),
-            }
+            result = _make_error_result(
+                subtask,
+                agent_name,
+                action="failed",
+                error=str(e),
+                summary=f"Error transitorio en agente {agent_name} tras retry: {e}",
+            )
         except Exception as e:
             logger.exception("Excepción no controlada en dispatcher '%s'", agent_name)
-            result = {
-                "subtask_id": subtask["id"],
-                "agent": agent_name,
-                "success": False,
-                "output": {"action": "failed", "error": f"{type(e).__name__}: {e}"},
-                "summary": f"Error inesperado en agente {agent_name}: {e}",
-                "error": str(e),
-            }
+            result = _make_error_result(
+                subtask,
+                agent_name,
+                action="failed",
+                error=str(e),
+                summary=f"Error inesperado en agente {agent_name}: {e}",
+            )
             break
 
     return idx, subtask, result
@@ -421,17 +422,13 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
             )
             updated_plan[idx] = {**step, "status": "failed"}
             new_results.append(
-                {
-                    "subtask_id": step["id"],
-                    "agent": step["agent"],
-                    "success": False,
-                    "output": {
-                        "action": "skipped",
-                        "message": f"Paso omitido: dependencias fallidas ({', '.join(dep_failed)})",
-                    },
-                    "summary": "Paso omitido por dependencias fallidas",
-                    "error": f"Dependencias fallidas: {', '.join(dep_failed)}",
-                }
+                _make_error_result(
+                    step,
+                    step["agent"],
+                    action="skipped",
+                    error=f"Dependencias fallidas: {', '.join(dep_failed)}",
+                    summary="Paso omitido por dependencias fallidas",
+                )
             )
             continue
         if all(d in resolved_ids for d in deps):

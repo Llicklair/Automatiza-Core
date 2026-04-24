@@ -1,4 +1,4 @@
-import { request, getToken, downloadBlob, BASE } from "./client";
+import { request, requestUpload, downloadBlob, fetchBlob } from "./client";
 
 export interface Document {
     id: string;
@@ -35,82 +35,33 @@ export const documents = {
         const q = new URLSearchParams(params as Record<string, string>).toString();
         return request<Document[]>(`/api/v1/documents${q ? "?" + q : ""}`);
     },
-    upload: async (file: File, category?: string): Promise<Document> => {
-        const token = getToken();
+    upload: (file: File, category?: string): Promise<Document> => {
         const form = new FormData();
         form.append("file", file);
         if (category) form.append("category", category);
-
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${BASE}/api/v1/documents/upload`, {
-            method: "POST",
-            headers,
-            body: form,
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail ?? "Error al subir archivo");
-        }
-        return res.json();
+        return requestUpload<Document>("/api/v1/documents/upload", form);
     },
-    importDB: async (files: File[]): Promise<{ document_id: string; file_name: string; rows_detected: number; columns: string[]; category: string; task_id: string | null; message: string }[]> => {
-        const token = getToken();
+    importDB: (files: File[]): Promise<{ document_id: string; file_name: string; rows_detected: number; columns: string[]; category: string; task_id: string | null; message: string }[]> => {
         const form = new FormData();
         for (const f of files) form.append("files", f);
-
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${BASE}/api/v1/documents/import-db`, {
-            method: "POST",
-            headers,
-            body: form,
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail ?? "Error al importar base de datos");
-        }
-        return res.json();
+        return requestUpload("/api/v1/documents/import-db", form);
     },
-    scan: async (files: File[]): Promise<{ document: Document; auto_category: string; message: string }[]> => {
-        const token = getToken();
+    scan: (files: File[]): Promise<{ document: Document; auto_category: string; message: string }[]> => {
         const form = new FormData();
         for (const f of files) form.append("files", f);
-
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${BASE}/api/v1/documents/scan`, {
-            method: "POST",
-            headers,
-            body: form,
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail ?? "Error al escanear archivos");
-        }
-        return res.json();
+        return requestUpload("/api/v1/documents/scan", form);
     },
+    download: (id: string, filename: string) => downloadBlob(`/api/v1/documents/${id}/download`, filename),
+    previewBlob: (id: string) => fetchBlob(`/api/v1/documents/${id}/download`),
     delete: (id: string) => request(`/api/v1/documents/${id}`, { method: "DELETE" }),
     exportZip: () => downloadBlob("/api/v1/documents/export", "documentos_backup.zip"),
     contractTemplates: {
         list: (): Promise<ContractTemplate[]> =>
             request<ContractTemplate[]>("/api/v1/documents/contract-templates"),
-        upload: async (file: File): Promise<ContractTemplate> => {
-            const token = getToken();
+        upload: (file: File): Promise<ContractTemplate> => {
             const form = new FormData();
             form.append("file", file);
-            const headers: Record<string, string> = {};
-            if (token) headers["Authorization"] = `Bearer ${token}`;
-            const res = await fetch(`${BASE}/api/v1/documents/contract-templates/upload`, {
-                method: "POST",
-                headers,
-                body: form,
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ detail: res.statusText }));
-                throw new Error(err.detail ?? "Error al subir plantilla");
-            }
-            return res.json();
+            return requestUpload<ContractTemplate>("/api/v1/documents/contract-templates/upload", form);
         },
         delete: (id: string) =>
             request(`/api/v1/documents/contract-templates/${id}`, { method: "DELETE" }),
@@ -123,39 +74,15 @@ export const documents = {
                 method: "PUT",
                 body: JSON.stringify({ html }),
             }),
-        generate: async (templateId: string, entityType: "client" | "employee", entityId: string): Promise<Blob> => {
-            const token = getToken();
-            const headers: Record<string, string> = {};
-            if (token) headers["Authorization"] = `Bearer ${token}`;
+        generate: (templateId: string, entityType: "client" | "employee", entityId: string): Promise<Blob> => {
             const params = new URLSearchParams({ entity_type: entityType, entity_id: entityId });
-            const res = await fetch(
-                `${BASE}/api/v1/documents/contract-templates/${templateId}/generate?${params}`,
-                { method: "POST", headers }
-            );
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ detail: res.statusText }));
-                throw new Error(err.detail ?? "Error generando contrato");
-            }
-            return res.blob();
+            return fetchBlob(`/api/v1/documents/contract-templates/${templateId}/generate?${params}`, { method: "POST" });
         },
     },
-    uploadBulk: async (file: File, category?: string): Promise<Document[]> => {
-        const token = getToken();
+    uploadBulk: (file: File, category?: string): Promise<Document[]> => {
         const form = new FormData();
         form.append("file", file);
         if (category) form.append("category", category);
-
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${BASE}/api/v1/documents/bulk`, {
-            method: "POST",
-            headers,
-            body: form,
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail ?? "Error al subir archivo ZIP");
-        }
-        return res.json();
+        return requestUpload<Document[]>("/api/v1/documents/bulk", form);
     },
 };
