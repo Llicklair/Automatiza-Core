@@ -31,7 +31,7 @@ El usuario puede subir contratos, facturas en PDF o cualquier documento. El sist
 Si el tenant configura Gmail, Outlook o SMTP, el sistema puede enviar correos, leer la bandeja de entrada y ejecutar instrucciones como "envía un resumen de facturas pendientes a contabilidad@empresa.com". Sin credenciales configuradas, funciona en modo demo.
 
 **Automatizaciones (workflows)**
-El usuario puede programar tareas recurrentes con lenguaje natural: "cada lunes, envíame un resumen de facturas pendientes". El sistema guarda el workflow, lo ejecuta automáticamente según el cron definido, y registra cada ejecución. Desde esta versión, los workflows también soportan condiciones lógicas: AND, OR, NOT y umbrales numéricos (ej: "solo si el total de facturas vencidas supera 5.000€").
+El usuario puede programar tareas recurrentes con lenguaje natural: "cada lunes, envíame un resumen de facturas pendientes". El sistema guarda el workflow, lo ejecuta automáticamente según el cron definido, y registra cada ejecución. Los workflows soportan condiciones lógicas (AND, OR, NOT, umbrales) y condiciones basadas en datos en tiempo real: al momento del disparo, pueden consultar la BD ("ejecutar solo si hay más de 10 facturas pendientes" o "solo si el total impagado supera 5.000€"). Los providers disponibles cubren billing y RRHH, y son extensibles.
 
 **Reclutamiento**
 Gestiona posiciones abiertas, recibe CVs, hace seguimiento de candidatos y permite al agente analizar perfiles.
@@ -57,9 +57,6 @@ La versión de escritorio está diseñada para que cada empresa instale su propi
 
 **Los datos no salen del ordenador del cliente**
 Por diseño, todos los datos del ERP (facturas, empleados, clientes) se almacenan en la base de datos PostgreSQL local. No hay sincronización con ningún servidor externo. Esto es una decisión deliberada de privacidad, no una limitación técnica.
-
-**Sin condiciones de workflow basadas en datos en tiempo real**
-Los workflows pueden usar condiciones lógicas simples (AND/OR/NOT, umbrales), pero esas condiciones se evalúan contra el contexto del evento o contra variables temporales (hora, día, etc.). No pueden hacer una consulta a la base de datos en el momento del disparo ("ejecutar solo si hay más de 10 facturas pendientes ahora mismo") — eso requeriría un evaluador con acceso a BD, que está en la hoja de ruta de Fase 3.
 
 ---
 
@@ -131,7 +128,7 @@ Los workflows pueden usar condiciones lógicas simples (AND/OR/NOT, umbrales), p
 | **Presentación automática AEAT** | Sin integración con APIs fiscales oficiales |
 | **Multi-empresa por instalación** | Local-first: una empresa = una instalación |
 | **Sincronización cloud de datos ERP** | Por diseño: datos nunca salen del cliente |
-| **Flujos de workflow con condiciones complejas** | APScheduler registra jobs time-based; las condiciones de ejecución son simples (tiempo + estado). No hay evaluador de condiciones lógicas (AND/OR/IF/threshold) |
+| **Flujos de workflow con condiciones complejas** | ✅ Resuelto: evaluador de condiciones lógicas (AND/OR/NOT/threshold) + consultas a BD en tiempo real via query providers |
 
 ---
 

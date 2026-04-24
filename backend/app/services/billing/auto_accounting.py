@@ -1,0 +1,172 @@
+"""
+Contabilidad automatica PGC — genera asientos contables deterministas
+para facturas y nominas segun el Plan General de Contabilidad español.
+
+Todas las funciones son idempotentes: si ya existe un asiento para la
+entidad, retornan None sin crear duplicados.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models.models import JournalEntry
+from app.services.billing.accounting import create_journal_entry
+
+logger = logging.getLogger(__name__)
+
+PGC = {
+    "clientes": ("430", "Clientes"),
+    "ventas": ("700", "Ventas de mercaderías"),
+    "iva_repercutido": ("477", "Hacienda Pública, IVA repercutido"),
+    "iva_soportado": ("472", "Hacienda Pública, IVA soportado"),
+    "proveedores": ("400", "Proveedores"),
+    "compras": ("600", "Compras de mercaderías"),
+    "bancos": ("572", "Bancos c/c vista"),
+    "sueldos": ("640", "Sueldos y salarios"),
+    "ss_acreedora": ("476", "Organismos de la Seguridad Social, acreedores"),
+    "irpf_retenido": ("4751", "Hacienda Pública, acreedora por retenciones"),
+    "remuneraciones_ptes": ("465", "Remuneraciones pendientes de pago"),
+}
+
+
+def _line(key: str, debit: float = 0, credit: float = 0) -> dict:
+    code, name = PGC[key]
+    return {"account_code": code, "account_name": name, "debit": debit, "credit": credit}
+
+
+async def _has_entry(db: AsyncSession, tenant_id: UUID, **kwargs) -> bool:
+    q = select(JournalEntry.id).where(JournalEntry.tenant_id == tenant_id)
+    for k, v in kwargs.items():
+        q = q.where(getattr(JournalEntry, k) == v)
+    result = await db.execute(q.limit(1))
+    return result.scalar_one_or_none() is not None
+
+
+# ---------------------------------------------------------------------------
+# Facturas
+# ---------------------------------------------------------------------------
+
+
+async def create_invoice_journal_entry(db, tenant_id, invoice) -> JournalEntry | None:
+    if await _has_entry(db, tenant_id, invoice_id=invoice.id):
+        return None
+
+    total = float(invoice.amount_total)
+    base = float(invoice.amount_base)
+    tax = float(invoice.tax_amount or 0)
+
+    if invoice.invoice_type == "issued":
+        lines = [_line("clientes", debit=total)]
+        if base:
+            lines.append(_line("ventas", credit=base))
+        if tax:
+            lines.append(_line("iva_repercutido", credit=tax))
+        desc = f"Factura emitida {invoice.invoice_number}"
+    else:
+        lines = []
+        if base:
+            lines.append(_line("compras", debit=base))
+        if tax:
+            lines.append(_line("iva_soportado", debit=tax))
+        lines.append(_line("proveedores", credit=total))
+        desc = f"Factura recibida {invoice.invoice_number}"
+
+    return await create_journal_entry(
+        db,
+        tenant_id,
+        date=invoice.date or datetime.utcnow(),
+        description=desc,
+        reference_id=f"INV-{invoice.id}",
+        lines=lines,
+        invoice_id=invoice.id,
+    )
+
+
+async def create_invoice_payment_entry(db, tenant_id, invoice) -> JournalEntry | None:
+    total = float(invoice.amount_total)
+
+    if invoice.invoice_type == "issued":
+        lines = [
+            _line("bancos", debit=total),
+            _line("clientes", credit=total),
+        ]
+        desc = f"Cobro factura {invoice.invoice_number}"
+    else:
+        lines = [
+            _line("proveedores", debit=total),
+            _line("bancos", credit=total),
+        ]
+        desc = f"Pago factura {invoice.invoice_number}"
+
+    return await create_journal_entry(
+        db,
+        tenant_id,
+        date=datetime.utcnow(),
+        description=desc,
+        reference_id=f"PAY-INV-{invoice.id}",
+        lines=lines,
+        invoice_id=invoice.id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Nominas
+# ---------------------------------------------------------------------------
+
+
+async def create_payroll_journal_entry(db, tenant_id, payroll) -> JournalEntry | None:
+    if await _has_entry(db, tenant_id, payroll_id=payroll.id):
+        return None
+
+    gross = float(payroll.gross_salary or payroll.base_salary or 0)
+    ss_total = sum(
+        float(getattr(payroll, f, 0) or 0)
+        for f in ("ss_contingencias_comunes", "ss_desempleo", "ss_formacion_profesional", "ss_mei")
+    )
+    irpf = float(payroll.irpf or 0)
+    net = float(payroll.net_salary or 0)
+
+    lines = [_line("sueldos", debit=gross)]
+    if ss_total > 0:
+        lines.append(_line("ss_acreedora", credit=ss_total))
+    if irpf > 0:
+        lines.append(_line("irpf_retenido", credit=irpf))
+    lines.append(_line("remuneraciones_ptes", credit=net))
+
+    emp_name = payroll.employee.name if payroll.employee else "Empleado"
+    period = payroll.period_start.strftime("%m/%Y") if payroll.period_start else ""
+
+    return await create_journal_entry(
+        db,
+        tenant_id,
+        date=payroll.issue_date or datetime.utcnow(),
+        description=f"Nómina {emp_name} {period}",
+        reference_id=f"PAY-{payroll.id}",
+        lines=lines,
+        payroll_id=payroll.id,
+    )
+
+
+async def create_payroll_payment_entry(db, tenant_id, payroll) -> JournalEntry | None:
+    net = float(payroll.net_salary or 0)
+    emp_name = payroll.employee.name if payroll.employee else "Empleado"
+    period = payroll.period_start.strftime("%m/%Y") if payroll.period_start else ""
+
+    return await create_journal_entry(
+        db,
+        tenant_id,
+        date=datetime.utcnow(),
+        description=f"Pago nómina {emp_name} {period}",
+        reference_id=f"PAY-NOM-{payroll.id}",
+        lines=[
+            _line("remuneraciones_ptes", debit=net),
+            _line("bancos", credit=net),
+        ],
+        payroll_id=payroll.id,
+    )

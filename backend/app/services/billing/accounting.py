@@ -30,6 +30,8 @@ async def create_journal_entry(
     description: str,
     reference_id: str | None,
     lines: list[dict],
+    invoice_id: UUID | None = None,
+    payroll_id: UUID | None = None,
 ) -> JournalEntry:
     total_debit = sum(line["debit"] for line in lines)
     total_credit = sum(line["credit"] for line in lines)
@@ -44,6 +46,8 @@ async def create_journal_entry(
         date=date,
         description=description,
         reference_id=reference_id,
+        invoice_id=invoice_id,
+        payroll_id=payroll_id,
     )
     db.add(new_entry)
     await db.flush()

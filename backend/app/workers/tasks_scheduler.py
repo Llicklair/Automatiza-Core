@@ -15,6 +15,7 @@ from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 from app.services.idempotency import IdempotencyGuard
 from app.services.workflow import execute_deterministic_steps
 from app.services.workflow.conditions import evaluate_conditions
+from app.services.workflow.db_conditions import resolve_db_conditions
 from app.services.workflow.scheduler import (
     create_execution,
     create_task_for_execution,
@@ -204,7 +205,10 @@ async def _check_scheduled_workflows():
                 "now_day": now_local.day,
                 "now_month": now_local.month,
             }
-            if not evaluate_conditions(wf.trigger_config.get("conditions"), temporal_context):
+            eval_context = await resolve_db_conditions(
+                wf.trigger_config.get("conditions"), wf.tenant_id, db, temporal_context
+            )
+            if not evaluate_conditions(wf.trigger_config.get("conditions"), eval_context):
                 logger.debug(
                     "[BEAT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name
                 )

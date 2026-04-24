@@ -25,10 +25,14 @@ class JournalEntry(Base):
     date = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     description = Column(String(500), nullable=False)
     reference_id = Column(String(255), nullable=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True)
+    payroll_id = Column(UUID(as_uuid=True), ForeignKey("payrolls.id"), nullable=True, index=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     tenant = relationship("Tenant")
+    invoice = relationship("Invoice", foreign_keys=[invoice_id])
+    payroll = relationship("Payroll", foreign_keys=[payroll_id])
     lines = relationship("JournalLine", back_populates="entry", cascade="all, delete-orphan")
 
 
@@ -63,11 +67,13 @@ class BankTransaction(Base):
     balance = Column(Numeric(10, 2))
     status = Column(String(50), default="unreconciled")
     invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True)
+    journal_entry_id = Column(UUID(as_uuid=True), ForeignKey("journal_entries.id"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     tenant = relationship("Tenant")
     invoice = relationship("Invoice")
+    journal_entry = relationship("JournalEntry", foreign_keys=[journal_entry_id])
 
 
 class FixedAsset(Base):

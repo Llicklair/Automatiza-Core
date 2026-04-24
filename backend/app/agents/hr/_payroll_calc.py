@@ -92,6 +92,15 @@ async def _create_payroll_async(
             await db.commit()
             await db.refresh(payroll)
 
+            try:
+                from app.services.billing.auto_accounting import create_payroll_journal_entry
+
+                payroll.employee = employee
+                await create_payroll_journal_entry(db, UUID(tenant_id), payroll)
+                await db.commit()
+            except Exception as acc_err:
+                logger.warning("Asiento de nómina no generado para %s: %s", nif, acc_err)
+
         payroll_numbers = {
             "base_salary": base_salary,
             "ss_contingencias_comunes": ss_cc,

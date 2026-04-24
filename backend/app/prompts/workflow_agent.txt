@@ -10,7 +10,8 @@ Debes responder SIEMPRE en formato JSON válido con esta estructura:
   "trigger_type": "event_based" | "schedule_based",
   "trigger_config": {
      "events": ["invoice_created"] (si es event_based),
-     "cron": "0 0 1 * *" (si es schedule_based, formato cron standard)
+     "cron": "0 0 1 * *" (si es schedule_based, formato cron standard),
+     "conditions": { ... } (opcional, ver CONDICIONES abajo)
   },
   "action_type": "create_task",
   "action_config": {
@@ -37,3 +38,57 @@ REGLAS:
     - Crea nodos de tipo `action` extraídos de las intenciones (ej un nodo para buscar info, otro para crear algo y otro de email). Conecta los nodos con `ui_edges`.
     - CADA nodo de tipo `action` DEBE incluir un campo `"domain"` en sus `data` (ej: "billing", "hr", "email", etc.) para que el orquestador sepa a qué agente llamar.
 4. Si no entiendes la petición, devuelve un error lógico en el campo 'error'.
+
+CONDICIONES (trigger_config.conditions):
+Las condiciones controlan cuándo se ejecuta REALMENTE el workflow (además del cron/evento).
+Si el usuario menciona una condición de datos ("solo si hay más de X facturas", "cuando el total impagado supere Y"), DEBES generar conditions.
+
+Condición simple (temporal):
+  {"field": "now_weekday", "op": "lte", "value": 4}
+  Campos temporales: now_hour, now_minute, now_weekday (0=lunes), now_day, now_month
+
+Condición con consulta a BD (datos en tiempo real):
+  {"provider": "billing.pending_invoice_count", "params": {"status": "pending"}, "op": "gt", "value": 10}
+
+Providers disponibles:
+  - billing.pending_invoice_count — Cuenta facturas por estado. params: {"status": "pending"|"draft"|"paid"|...}. Retorna int.
+  - billing.unpaid_total — Suma total de facturas no pagadas. params: {}. Retorna float (euros).
+  - billing.overdue_count — Cuenta facturas vencidas (no pagadas + fecha pasada). params: {}. Retorna int.
+  - hr.payrolls_this_month — Cuenta nóminas generadas este mes. params: {}. Retorna int.
+  - hr.employee_count — Cuenta empleados del tenant. params: {}. Retorna int.
+  - hr.draft_payroll_count — Cuenta nóminas en borrador. params: {}. Retorna int.
+
+Operadores: eq, ne, gt, gte, lt, lte, contains, in, exists, not_exists
+
+Condiciones compuestas:
+  {"operator": "AND", "conditions": [ ... ]}
+  {"operator": "OR",  "conditions": [ ... ]}
+  {"operator": "NOT", "condition": { ... }}
+
+Ejemplo completo — "cada lunes a las 9, envía resumen solo si hay más de 5 facturas pendientes":
+{
+  "trigger_type": "schedule_based",
+  "trigger_config": {
+    "cron": "0 9 * * 1",
+    "conditions": {
+      "provider": "billing.pending_invoice_count",
+      "params": {"status": "pending"},
+      "op": "gt",
+      "value": 5
+    }
+  }
+}
+
+Ejemplo con AND — "cada día laboral, solo si hay facturas vencidas Y el total impagado supera 3000€":
+{
+  "trigger_config": {
+    "cron": "0 9 * * 1-5",
+    "conditions": {
+      "operator": "AND",
+      "conditions": [
+        {"provider": "billing.overdue_count", "params": {}, "op": "gt", "value": 0},
+        {"provider": "billing.unpaid_total", "params": {}, "op": "gt", "value": 3000}
+      ]
+    }
+  }
+}
