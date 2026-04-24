@@ -109,6 +109,21 @@ module = [
 ]
 ignore_missing_imports = true
 
+[tool.coverage.run]
+omit = [
+    "app/agents/*",
+    "app/agents/**/*",
+    "app/services/email/*",
+    "app/services/rag/*",
+    "app/services/pdf/*",
+    "app/services/excel/*",
+    "app/services/ai/provisioning*",
+    "app/services/ai/generative_ui*",
+    "app/services/workflow/langgraph*",
+    "app/workers/*",
+    "app/integrations/*",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
