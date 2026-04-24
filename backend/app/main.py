@@ -29,26 +29,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _run_migrations() -> None:
-    """Aplica migraciones Alembic pendientes al arrancar (safe en Electron/prod)."""
-    try:
-        from alembic import command
-        from alembic.config import Config
-        import os
+async def _ensure_schema() -> None:
+    """Aplica columnas nuevas con IF NOT EXISTS — idempotente, sin dependencia de rutas."""
+    from sqlalchemy import text
+    from app.db.base import engine
 
-        ini = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
-        cfg = Config(os.path.abspath(ini))
-        command.upgrade(cfg, "head")
-        logger.info("[MIGRATIONS] alembic upgrade head — OK")
+    statements = [
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS document_id UUID REFERENCES tenant_documents(id)",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES invoices(id)",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS payroll_id UUID REFERENCES payrolls(id)",
+        "ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS journal_entry_id UUID REFERENCES journal_entries(id)",
+        "CREATE INDEX IF NOT EXISTS ix_journal_entries_invoice_id ON journal_entries(invoice_id)",
+        "CREATE INDEX IF NOT EXISTS ix_journal_entries_payroll_id ON journal_entries(payroll_id)",
+    ]
+    try:
+        async with engine.begin() as conn:
+            for stmt in statements:
+                await conn.execute(text(stmt))
+        logger.info("[SCHEMA] Columnas cross-domain verificadas/creadas OK")
     except Exception as e:
-        logger.warning("[MIGRATIONS] No se pudo aplicar migraciones: %s", e)
+        logger.warning("[SCHEMA] Error aplicando schema: %s", e)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("%s v%s arrancando", settings.APP_NAME, settings.APP_VERSION)
-    # Aplicar migraciones pendientes
-    _run_migrations()
+    # Aplicar columnas nuevas (idempotente)
+    await _ensure_schema()
     # Arrancar scheduler
     from app.services.scheduler import start_scheduler, stop_scheduler
 
