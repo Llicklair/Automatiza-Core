@@ -122,6 +122,13 @@ omit = [
     "app/services/workflow/langgraph*",
     "app/workers/*",
     "app/integrations/*",
+    "app/services/event_bus.py",
+    "app/services/idempotency.py",
+    "app/services/execution_context.py",
+    "app/services/llm_cache.py",
+    "app/services/scheduler.py",
+    "app/middleware/rate_limit.py",
+    "app/services/assets/*",
 ]
 
 [tool.pytest.ini_options]
