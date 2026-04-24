@@ -117,6 +117,17 @@ async def reconcile_transaction(
             f"Emitela primero antes de conciliarla."
         )
 
+    try:
+        from app.services.billing.auto_accounting import create_invoice_payment_entry
+
+        entry = await create_invoice_payment_entry(db, tenant_id, invoice)
+        if entry:
+            tx.journal_entry_id = entry.id
+    except Exception as acc_err:
+        import logging
+
+        logging.getLogger(__name__).warning("Asiento de cobro no generado: %s", acc_err)
+
     await db.commit()
     await emit_event(
         db,

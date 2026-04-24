@@ -172,27 +172,48 @@ async def _create_invoice(...):
 
 ---
 
-## 8. Motor de condiciones para Workflows (diseño target)
+## 8. Motor de condiciones para Workflows
 
-El scheduler actual solo dispara por tiempo. Para condiciones complejas, el evaluador debe ser un módulo separado y declarativo:
+El motor de condiciones evalúa reglas declarativas (JSON dicts) para decidir si un workflow se dispara. Consta de tres módulos en `services/workflow/`:
 
-```python
-# services/workflow_condition_engine.py
-
-class Condition(BaseModel):
-    field: str          # "billing.total_pending" | "hr.employees_count"
-    operator: str       # "gt" | "lt" | "eq" | "gte" | "lte" | "contains"
-    value: Any
-
-class ConditionGroup(BaseModel):
-    logic: Literal["AND", "OR"]
-    conditions: list[Condition | "ConditionGroup"]
-
-async def evaluate(group: ConditionGroup, tenant_id: int, db: AsyncSession) -> bool:
-    ...
+```
+services/workflow/
+├── conditions.py          ← evaluador puro/síncrono: AND/OR/NOT + hojas (field/op/value)
+├── db_conditions.py       ← pre-fetch: resuelve hojas "provider" consultando BD
+└── db_query_providers.py  ← registro de queries seguras por dominio
 ```
 
-**Regla**: El evaluador no sabe nada de APScheduler ni de agentes. Solo recibe un `ConditionGroup` y devuelve `bool`. Los jobs de APScheduler lo llaman; ellos no contienen lógica condicional.
+**Condición hoja estándar** (contra contexto temporal o de evento):
+```json
+{"field": "now_weekday", "op": "lte", "value": 4}
+```
+
+**Condición hoja con provider** (consulta BD en tiempo real):
+```json
+{"provider": "billing.pending_invoice_count", "params": {"status": "pending"}, "op": "gt", "value": 10}
+```
+
+**Condición compuesta** (mezcla temporal + BD):
+```json
+{
+  "operator": "AND",
+  "conditions": [
+    {"field": "now_weekday", "op": "lte", "value": 4},
+    {"provider": "billing.pending_invoice_count", "params": {}, "op": "gt", "value": 10}
+  ]
+}
+```
+
+**Flujo de evaluación**:
+1. `resolve_db_conditions()` recorre el árbol, ejecuta los providers, inyecta resultados en `context["db"]`
+2. `evaluate_conditions()` evalúa el árbol completo contra el contexto enriquecido (síncrono, sin saber de BD)
+
+**Añadir un nuevo provider**: definir la función en `db_query_providers.py` y registrarla en `QUERY_PROVIDERS`. Firma: `async def fn(tenant_id: UUID, db: AsyncSession, params: dict) -> int | float | bool`.
+
+**Reglas**:
+- El evaluador (`conditions.py`) es puro — no sabe de BD, agentes ni APScheduler
+- Los providers siempre filtran por `tenant_id` y retornan escalares (nunca filas)
+- El scheduler solo llama `resolve_db_conditions()` + `evaluate_conditions()` — no contiene lógica condicional propia
 
 ---
 
@@ -294,7 +315,7 @@ except Exception as e:
 | Sesión de BD creada dentro de un tool | Recibir `db: AsyncSession` como parámetro |
 | `except Exception: pass` o log sin re-raise | `AgentResult(success=False, error=...)` |
 | Un modelo ORM con FK a un modelo de otro dominio (cross-import) | Relación por `tenant_id` + `foreign_key` declarado en el modelo hijo |
-| Condiciones de workflow en el job de APScheduler | Delegar al `ConditionEngine` separado |
+| Condiciones de workflow en el job de APScheduler | Delegar a `conditions.py` + `db_conditions.py` (servicios separados) |
 
 ---
 

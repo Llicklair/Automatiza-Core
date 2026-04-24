@@ -159,6 +159,13 @@ async def _create_invoice_async(
             await db.rollback()
             return f"Error al guardar la factura en base de datos: {e}"
 
+        try:
+            from app.services.billing.auto_accounting import create_invoice_journal_entry
+
+            await create_invoice_journal_entry(db, UUID(tenant_id), new_invoice)
+        except Exception as acc_err:
+            warnings.append(f"Asiento contable no generado: {acc_err}")
+
     theme_config, template_name = await _load_invoice_template(tenant_id)
     document_id, pdf_warn = await _generate_and_save_invoice_pdf(
         tenant_id,
@@ -173,6 +180,16 @@ async def _create_invoice_async(
     )
     if pdf_warn:
         warnings.append(pdf_warn)
+
+    if document_id:
+        try:
+            async with AsyncSessionLocal() as db_doc:
+                result = await db_doc.execute(select(Invoice).where(Invoice.id == new_invoice.id))
+                inv = result.scalar_one()
+                inv.document_id = UUID(str(document_id))
+                await db_doc.commit()
+        except Exception as doc_err:
+            warnings.append(f"No se vinculó documento a factura: {doc_err}")
 
     warn_text = f"\nAvisos: {'; '.join(warnings)}" if warnings else ""
     return (
