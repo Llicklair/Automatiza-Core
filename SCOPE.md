@@ -6,6 +6,63 @@
 
 ---
 
+## 0. Qué es y qué puede hacer este sistema
+
+AutomatizaPyme es un ERP con inteligencia artificial integrada para pequeñas y medianas empresas españolas. En lugar de navegar por menús y formularios, el usuario escribe en lenguaje natural — "crea una factura para García S.L. por 1.200€" — y el sistema lo ejecuta.
+
+### Lo que SÍ puede hacer hoy
+
+**Facturación y ventas**
+El sistema puede crear facturas, albaranes, presupuestos y pedidos a partir de una instrucción de texto. Calcula totales con IVA, asigna número correlativo, vincula al cliente en base de datos y deja la factura visible en la UI sin intervención manual. También genera facturas recurrentes de forma automática según la periodicidad configurada.
+
+**Recursos Humanos**
+Puede dar de alta empleados, calcular nóminas, registrar jornadas y generar liquidaciones. Entiende instrucciones como "calcula la nómina de marzo de todos los empleados" y escribe los resultados en la base de datos.
+
+**CRM y clientes**
+Gestiona el ciclo de ventas: crea clientes, registra oportunidades, anota actividades y lleva el pipeline. También gestiona reservas y reuniones.
+
+**Banca y contabilidad**
+Permite cargar extractos bancarios, ver saldos, listar movimientos y hacer conciliación. Genera informes financieros (pérdidas y ganancias, balance, cashflow) consultando directamente la base de datos.
+
+**Documentos e inteligencia documental (RAG)**
+El usuario puede subir contratos, facturas en PDF o cualquier documento. El sistema los indexa con embeddings vectoriales (pgvector) y después puede responder preguntas sobre su contenido: "¿cuándo vence el contrato con Telefónica?" extrae la fecha directamente del PDF.
+
+**Correo electrónico**
+Si el tenant configura Gmail, Outlook o SMTP, el sistema puede enviar correos, leer la bandeja de entrada y ejecutar instrucciones como "envía un resumen de facturas pendientes a contabilidad@empresa.com". Sin credenciales configuradas, funciona en modo demo.
+
+**Automatizaciones (workflows)**
+El usuario puede programar tareas recurrentes con lenguaje natural: "cada lunes, envíame un resumen de facturas pendientes". El sistema guarda el workflow, lo ejecuta automáticamente según el cron definido, y registra cada ejecución. Desde esta versión, los workflows también soportan condiciones lógicas: AND, OR, NOT y umbrales numéricos (ej: "solo si el total de facturas vencidas supera 5.000€").
+
+**Reclutamiento**
+Gestiona posiciones abiertas, recibe CVs, hace seguimiento de candidatos y permite al agente analizar perfiles.
+
+**Compliance y asesoría fiscal**
+Consulta el BOE automáticamente, avisa de vencimientos fiscales (IVA, IRPF, etc.) y responde preguntas de asesoría basándose en documentos indexados.
+
+---
+
+### Lo que NO puede hacer (limitaciones reales)
+
+**Sin integración bancaria real (Open Banking / PSD2)**
+Los saldos y movimientos bancarios se alimentan de extractos importados manualmente (.csv, .ofx). No hay conexión directa con ningún banco español. Para eso se necesitaría integrar la API de un proveedor como Belvo o Salt Edge, que está fuera del scope v1.
+
+**Sin firma electrónica**
+Los contratos y documentos generados no pueden firmarse digitalmente desde la plataforma. No hay integración con DocuSign, Autofirma ni similar.
+
+**Sin presentación automática a la AEAT**
+El sistema calcula el IVA, el IRPF y genera los modelos fiscales, pero no los envía a la Agencia Tributaria. Eso requeriría certificado digital del contribuyente e integración con la sede electrónica de la AEAT.
+
+**Una empresa por instalación**
+La versión de escritorio está diseñada para que cada empresa instale su propia copia con su propia base de datos local. No hay un modo "multitenant en la nube" donde una empresa pueda gestionar múltiples sociedades desde una sola cuenta.
+
+**Los datos no salen del ordenador del cliente**
+Por diseño, todos los datos del ERP (facturas, empleados, clientes) se almacenan en la base de datos PostgreSQL local. No hay sincronización con ningún servidor externo. Esto es una decisión deliberada de privacidad, no una limitación técnica.
+
+**Sin condiciones de workflow basadas en datos en tiempo real**
+Los workflows pueden usar condiciones lógicas simples (AND/OR/NOT, umbrales), pero esas condiciones se evalúan contra el contexto del evento o contra variables temporales (hora, día, etc.). No pueden hacer una consulta a la base de datos en el momento del disparo ("ejecutar solo si hay más de 10 facturas pendientes ahora mismo") — eso requeriría un evaluador con acceso a BD, que está en la hoja de ruta de Fase 3.
+
+---
+
 ## 1. Qué existe REALMENTE en el código
 
 ### Agentes completamente implementados
