@@ -118,6 +118,25 @@ export async function requestUpload<T>(path: string, formData: FormData): Promis
     return res.json();
 }
 
+export async function fetchBlob(path: string, init?: RequestInit): Promise<Blob> {
+    let token = getToken();
+    const auth = (): Record<string, string> => token ? { Authorization: `Bearer ${token}` } : {};
+    let res = await fetch(`${BASE}${path}`, { ...init, headers: auth() });
+    if (res.status === 401) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+            token = getToken();
+            res = await fetch(`${BASE}${path}`, { ...init, headers: auth() });
+        }
+    }
+    if (!res.ok) {
+        let detail = "Error al obtener el archivo";
+        try { const err = await res.json(); detail = err.detail || detail; } catch { /* no json body */ }
+        throw new Error(detail);
+    }
+    return res.blob();
+}
+
 export async function downloadBlob(path: string, filename: string): Promise<void> {
     let token = getToken();
     let res = await fetch(`${BASE}${path}`, {

@@ -5,7 +5,7 @@ import { Loader2, CheckCircle2, ChevronLeft, X, Download, Trash2 } from "lucide-
 import { api, type Document as DocType } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
-import { fileIcon, formatSize, STATUS_STYLE, API_URL, authHeaders } from "./shared";
+import { fileIcon, formatSize, STATUS_STYLE } from "./shared";
 
 interface DocRowProps {
     doc: DocType;
@@ -25,21 +25,8 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
     async function handleDownload(e: React.MouseEvent) {
         e.stopPropagation();
         try {
-            const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
-            const res = await fetch(`${API_URL}/api/v1/documents/${doc.id}/download`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error("Error descargando");
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = doc.file_name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (e) {
+            await api.documents.download(doc.id, doc.file_name);
+        } catch {
             toast.error("No se pudo descargar el archivo");
         }
     }
@@ -49,10 +36,7 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
         if (!await showConfirm({ message: "Cancelar el procesamiento de este documento?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
         setCancelling(true);
         try {
-            await fetch(`${API_URL}/api/v1/documents/${doc.id}`, {
-                method: "DELETE",
-                headers: authHeaders(),
-            });
+            await api.documents.delete(doc.id);
             onReload();
         } finally {
             setCancelling(false);

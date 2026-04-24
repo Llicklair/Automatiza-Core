@@ -14,31 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Download, Copy, Trash2, FileText } from "lucide-react";
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
-
-function getToken(): string {
-    return typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
-}
-
-export async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string | null) {
-    try {
-        const res = await fetch(`${API_BASE}/api/v1/invoices/${invoiceId}/pdf`, {
-            headers: { Authorization: `Bearer ${getToken()}` },
-        });
-        if (!res.ok) throw new Error("Error al descargar el PDF");
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Factura_${invoiceNumber || invoiceId.slice(0, 8)}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    } catch {
-        useToastStore.getState().error("Error al descargar el PDF");
-    }
-}
 
 export function useFacturas() {
     const t = useTranslations("ventas");
@@ -183,7 +158,7 @@ export function useFacturas() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => downloadInvoicePdf(inv.id, inv.invoice_number)}
+                            onClick={() => api.erp.invoices.downloadPdf(inv.id, inv.invoice_number)}
                             title={t("downloadPdf")}
                         >
                             <Download className="h-4 w-4" />

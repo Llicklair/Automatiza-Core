@@ -7,27 +7,6 @@ import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { useTranslations } from "next-intl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
-
-function getToken(): string {
-    return typeof window !== "undefined" ? (localStorage.getItem("access_token") ?? "") : "";
-}
-
-async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string | null) {
-    const res = await fetch(`${API_BASE}/api/v1/invoices/${invoiceId}/pdf`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    if (!res.ok) throw new Error("Error al descargar el PDF");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Factura_${invoiceNumber || invoiceId.slice(0, 8)}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
 
 export function useFacturaDetalle() {
     const t = useTranslations("ventas");
@@ -85,7 +64,7 @@ export function useFacturaDetalle() {
         if (!invoice) return;
         try {
             setDownloading(true);
-            await downloadInvoicePdf(invoice.id, invoice.invoice_number);
+            await api.erp.invoices.downloadPdf(invoice.id, invoice.invoice_number);
         } catch (e: any) {
             toast.error(e?.message || t("errorDownloadPdf"));
         } finally {

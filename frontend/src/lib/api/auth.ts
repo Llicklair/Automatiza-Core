@@ -26,4 +26,5 @@ export const auth = {
             method: "POST",
             body: JSON.stringify({ token, new_password }),
         }),
+    me: () => request<{ full_name: string; email: string }>("/api/v1/auth/me"),
 };

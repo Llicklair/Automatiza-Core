@@ -6,10 +6,9 @@ import Link from "next/link";
 import {
     User, Building, Mail, KeyRound, LogOut, ChevronDown, RefreshCw,
 } from "lucide-react";
+import { api } from "@/lib/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
 function readJwt(): { name: string; email: string } {
     try {
@@ -42,14 +41,9 @@ export default function ProfileMenu() {
 
         // 2. Si falta el nombre en el JWT (token antiguo), pide /auth/me
         if (!jwtName) {
-            const token = localStorage.getItem("access_token");
-            if (!token) return;
-            fetch(`${API}/api/v1/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-                .then(r => r.ok ? r.json() : null)
+            if (!localStorage.getItem("access_token")) return;
+            api.auth.me()
                 .then(data => {
-                    if (!data) return;
                     setName(data.full_name || data.email?.split("@")[0] || "");
                     if (!jwtEmail) setEmail(data.email || "");
                 })
