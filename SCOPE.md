@@ -2,7 +2,7 @@
 
 > Documento de alineación basado en análisis exhaustivo del código fuente. Define honestamente qué existe implementado, qué está incompleto, y qué debe funcionar impecablemente end-to-end.
 >
-> _Última revisión: 2026-04-24 — basada en inspección directa de código, no en documentación._
+> _Última revisión: 2026-04-24 (v2) — actualizado tras refactorización arquitectural + audit frontend completo._
 
 ---
 
@@ -56,10 +56,10 @@
 
 | Componente | Estado real |
 |-----------|------------|
-| **Email agent** | Código completo con IMAP/SMTP real + fallback mock. **Sin ruta API propia** (solo Telegram en `/api/v1/messaging/`) |
+| **Email agent** | ✅ Rutas expuestas: `POST /messaging/email/send`, `POST /messaging/email/instruct`, `GET /messaging/email/status` |
 | **Excel agent** | Herramientas completas (`export_erp_data`, `import_excel`, `modify_excel`). **Sin ruta API wired** |
 | **Marketing agent** | Código existe (campañas, contenido). **Sin ruta API encontrada** |
-| **Frontend pages** | 261 archivos TSX — algunas secciones sin conectar al backend real (`/facturas/`, `/ai-employees/`, `/email/`, `/excel/`) |
+| **Frontend pages** | `/ventas/facturas`, `/rrhh/empleados`, `/rrhh/documentos` — ✅ conectadas al API. Sin conectar: `/ai-employees/`, `/email/`, `/excel/` (Fase 1.5) |
 
 ---
 
@@ -69,8 +69,8 @@
 |-----------|-----------|
 | **Integración bancaria real (PSD2/Open Banking)** | Solo carga manual de extractos — no hay OAuth bancario |
 | **Firma electrónica** | No implementado |
-| **Envío/recepción de email desde UI** | El agente email existe en código pero no tiene ruta API expuesta |
-| **Exportación Excel desde chat** | El agente excel existe pero sin ruta wired |
+| **Envío/recepción de email desde UI** | Ruta API expuesta; falta página frontend `/email/` (Fase 1.5) |
+| **Exportación Excel desde chat** | El agente excel existe pero sin ruta wired ni página frontend |
 | **Presentación automática AEAT** | Sin integración con APIs fiscales oficiales |
 | **Multi-empresa por instalación** | Local-first: una empresa = una instalación |
 | **Sincronización cloud de datos ERP** | Por diseño: datos nunca salen del cliente |
@@ -135,26 +135,26 @@ Usuario sube contrato PDF → "¿Cuándo vence el contrato con Proveedor X?"
 
 ## 5. Deuda técnica bloqueante (para los 5 flujos)
 
-| Deuda | Impacto | Flujo afectado |
-|------|---------|---------------|
-| Email agent sin ruta API | Workflows que envían emails no completan el ciclo | Flujo 4 |
-| Excel agent sin ruta API | Exportación no accesible desde chat | — |
-| Frontend pages desconectadas | Usuario ve UI vacía aunque BD tiene datos | Flujos 1, 3 |
-| Condiciones de workflow solo time-based | Automatizaciones complejas (umbral de facturación, etc.) imposibles | Flujo 4 (extendido) |
+| Deuda | Impacto | Flujo afectado | Estado |
+|------|---------|---------------|--------|
+| Email agent sin ruta API | Workflows que envían emails no completan el ciclo | Flujo 4 | ✅ Resuelto |
+| Frontend pages desconectadas | Usuario ve UI vacía aunque BD tiene datos | Flujos 1, 3 | ✅ Resuelto (audit confirmó conexión) |
+| Excel agent sin ruta API | Exportación no accesible desde chat | — | ⚠️ Fase 1.5 |
+| Condiciones de workflow solo time-based | Automatizaciones complejas (umbral de facturación, etc.) imposibles | Flujo 4 (extendido) | ⚠️ Fase 2 |
 
 ---
 
 ## 6. Estado: real vs. objetivo
 
-| Flujo | Estado código | Estado e2e verificado | Objetivo |
-|-------|--------------|----------------------|----------|
-| Factura desde chat | ✅ Implementado | ⚠️ CI parcial (49%) | ✅ Impecable |
-| Consulta financiera | ✅ Implementado | ⚠️ Sin test e2e | ✅ Impecable |
-| Alta de empleado | ✅ Implementado | ⚠️ Sin test e2e | ✅ Impecable |
-| Workflow recurrente | ⚠️ Parcial (email sin ruta) | ❌ Sin test e2e | ✅ Impecable |
-| RAG documental | ✅ Implementado | ⚠️ Sin test e2e | ✅ Impecable |
-| Email desde chat | ⚠️ Agente ok, ruta falta | ❌ | Fase 1.5 |
-| Excel desde chat | ⚠️ Agente ok, ruta falta | ❌ | Fase 1.5 |
+| Flujo | Estado código | Frontend | Objetivo |
+|-------|--------------|----------|----------|
+| Factura desde chat | ✅ Implementado | ✅ /ventas/facturas conectado | ✅ Impecable |
+| Consulta financiera | ✅ Implementado | ✅ N/A (respuesta en chat) | ✅ Impecable |
+| Alta de empleado | ✅ Implementado | ✅ /rrhh/empleados conectado | ✅ Impecable |
+| Workflow recurrente | ✅ Email ruta expuesta | N/A | ✅ Impecable |
+| RAG documental | ✅ Implementado | ✅ /documentos conectado | ✅ Impecable (requiere pgvector en prod) |
+| Email desde chat | ✅ Agente + ruta ok | ❌ Página /email sin conectar | Fase 1.5 |
+| Excel desde chat | ⚠️ Agente ok, ruta falta | ❌ Página /excel sin conectar | Fase 1.5 |
 | Workflows con condiciones complejas | ❌ Solo time-based | ❌ | Fase 2 |
 | Integración bancaria PSD2 | ❌ Solo manual | ❌ | Fuera de scope v1 |
 | Presentación AEAT | ❌ | ❌ | Fuera de scope v1 |
