@@ -29,9 +29,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _run_migrations() -> None:
+    """Aplica migraciones Alembic pendientes al arrancar (safe en Electron/prod)."""
+    try:
+        from alembic import command
+        from alembic.config import Config
+        import os
+
+        ini = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+        cfg = Config(os.path.abspath(ini))
+        command.upgrade(cfg, "head")
+        logger.info("[MIGRATIONS] alembic upgrade head — OK")
+    except Exception as e:
+        logger.warning("[MIGRATIONS] No se pudo aplicar migraciones: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("%s v%s arrancando", settings.APP_NAME, settings.APP_VERSION)
+    # Aplicar migraciones pendientes
+    _run_migrations()
     # Arrancar scheduler
     from app.services.scheduler import start_scheduler, stop_scheduler
 
