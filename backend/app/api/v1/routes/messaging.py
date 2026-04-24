@@ -1,14 +1,12 @@
 """
-Rutas de mensajería externa — Telegram webhook + gestión de conexión.
-
-El webhook recibe mensajes de Telegram, busca el tenant vinculado al chat_id,
-y enruta el mensaje al orquestador de agentes IA.
+Rutas de mensajería externa — Telegram webhook + Email + gestión de conexión.
 """
 
 import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.messaging import TelegramConnectResponse
@@ -147,3 +145,83 @@ async def setup_telegram_webhook(
         return await svc.setup_webhook()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ─── Email ───────────────────────────────────────────────────────────────────
+
+
+class EmailSendPayload(BaseModel):
+    to: EmailStr
+    subject: str
+    body: str
+    attachment_ids: list[str] | None = None
+
+
+class EmailInstructPayload(BaseModel):
+    message: str
+    task_id: str | None = None
+
+
+@limiter.limit("30/minute")
+@router.post("/email/send")
+async def send_email(
+    request: Request,
+    payload: EmailSendPayload,
+    current_user: User = Depends(get_current_user),
+):
+    """Envía un email usando las credenciales del tenant (Gmail > Outlook > SMTP)."""
+    from app.agents.email.agent import send_email_direct
+
+    result = await send_email_direct(
+        tenant_id=str(current_user.tenant_id),
+        to=payload.to,
+        subject=payload.subject,
+        body=payload.body,
+        attachment_ids=payload.attachment_ids,
+    )
+    return {"result": result}
+
+
+@limiter.limit("20/minute")
+@router.post("/email/instruct")
+async def instruct_email_agent(
+    request: Request,
+    payload: EmailInstructPayload,
+    current_user: User = Depends(get_current_user),
+):
+    """Ejecuta el email agent con una instrucción en lenguaje natural."""
+    from app.agents.email.agent import run_email_agent
+
+    result = await run_email_agent(
+        user_intent=payload.message,
+        tenant_id=str(current_user.tenant_id),
+        task_id=payload.task_id,
+    )
+    return {
+        "success": result.success,
+        "action": result.action,
+        "messages": result.extracted_data.get("messages_processed", []),
+        "error": result.error,
+    }
+
+
+@router.get("/email/status")
+async def email_status(
+    current_user: User = Depends(get_current_user),
+):
+    """Devuelve qué proveedores de email están configurados para el tenant."""
+    from app.agents.email.tools import _get_email_credentials, _get_oauth_token
+
+    tenant_id = str(current_user.tenant_id)
+    gmail = bool(await _get_oauth_token(tenant_id, "gmail"))
+    outlook = bool(await _get_oauth_token(tenant_id, "outlook"))
+    smtp = bool(await _get_email_credentials(tenant_id))
+    configured = gmail or outlook or smtp
+    return {
+        "configured": configured,
+        "providers": {
+            "gmail": gmail,
+            "outlook": outlook,
+            "smtp": smtp,
+        },
+    }
