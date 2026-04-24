@@ -1,4 +1,4 @@
-import { request, getToken, BASE } from "./client";
+import { request, requestUpload } from "./client";
 
 export interface RecruitmentPosition {
     id: string;
@@ -50,20 +50,10 @@ export const recruitment = {
     listCandidates: (positionId: string) =>
         request<Candidate[]>(`/api/v1/recruitment/positions/${positionId}/candidates`),
 
-    uploadCV: async (positionId: string, file: File): Promise<Candidate> => {
-        const token = getToken();
+    uploadCV: (positionId: string, file: File): Promise<Candidate> => {
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch(`${BASE}/api/v1/recruitment/positions/${positionId}/upload-cv`, {
-            method: "POST",
-            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-            body: form,
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail || res.statusText);
-        }
-        return res.json();
+        return requestUpload<Candidate>(`/api/v1/recruitment/positions/${positionId}/upload-cv`, form);
     },
 
     updateCandidateStatus: (candidateId: string, status: string) =>

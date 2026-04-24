@@ -1,4 +1,4 @@
-import { request, BASE, getToken } from "./client";
+import { request, fetchBlob } from "./client";
 
 export interface DocumentTemplate {
     id: string;
@@ -50,17 +50,11 @@ export const templatesApi = {
         request(`/api/v1/templates/seed-defaults?template_type=${template_type}`, { method: "POST", body: JSON.stringify({}) }),
 
     preview: async (data: PreviewRequest): Promise<string> => {
-        const token = getToken();
-        const res = await fetch(`${BASE}/api/v1/templates/preview`, {
+        const blob = await fetchBlob("/api/v1/templates/preview", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error("Error generando preview");
-        const blob = await res.blob();
         return URL.createObjectURL(blob);
     },
 };
