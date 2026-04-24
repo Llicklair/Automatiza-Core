@@ -221,7 +221,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
     except Exception:
         logger.debug("Error guardando plan en caché", exc_info=True)
 
-    plan: list[SubTask] = []
+    plan = []
     for idx, step in enumerate(plan_result.steps):
         agent = step.agent if step.agent in VALID_DOMAINS else "unknown"
         raw_deps = getattr(step, "needs_output_from", None) or []
@@ -284,7 +284,7 @@ async def plan_node(state: OrchestratorState) -> dict:
         plan = [
             {
                 "id": "step_1",
-                "agent": domain,
+                "agent": domain or "",
                 "action": "process",
                 "params": {"intent": state["user_intent"]},
                 "depends_on": [],
