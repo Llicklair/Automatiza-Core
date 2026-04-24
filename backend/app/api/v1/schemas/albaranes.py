@@ -1,6 +1,6 @@
 """Pydantic schemas for albaranes (delivery notes)."""
 
-from datetime import date as date_type
+from datetime import date as date_type, datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -49,6 +49,6 @@ class DeliveryNoteResponse(BaseModel):
     amount_base: float
     tax_amount: float
     amount_total: float
-    created_at: Optional[str] = None
+    created_at: Optional[datetime] = None
     lines: List[DeliveryNoteLineResponse] = []
     model_config = {"from_attributes": True}

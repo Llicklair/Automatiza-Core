@@ -10,6 +10,16 @@ from app.core.llm_factory import (
 )
 
 
+@pytest.fixture(autouse=True)
+def clear_api_keys(monkeypatch):
+    """Ensure no API keys bleed in from local .env files during these tests."""
+    monkeypatch.setattr("app.core.llm_factory.settings.GROQ_API_KEY", "")
+    monkeypatch.setattr("app.core.llm_factory.settings.GEMINI_API_KEY", "")
+    monkeypatch.setattr("app.core.llm_factory.settings.OPENAI_API_KEY", "")
+    monkeypatch.setattr("app.core.llm_factory.settings.ANTHROPIC_API_KEY", "")
+    monkeypatch.setattr("app.core.llm_factory.settings.OPENROUTER_API_KEY", "")
+
+
 class TestGetLlm:
     def test_returns_mock_in_testing_without_keys(self):
         """In testing env with no API keys, get_llm returns MockChatModel."""

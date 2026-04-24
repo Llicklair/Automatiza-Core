@@ -1,5 +1,7 @@
 """Pydantic schemas for HR Documents endpoints."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -18,7 +20,7 @@ class HRDocumentOut(BaseModel):
     content_html: str
     status: str
     instructions: str | None
-    created_at: str
-    approved_at: str | None
+    created_at: datetime
+    approved_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)

@@ -69,15 +69,17 @@ def _get_langfuse():
     global _langfuse_client
     if _langfuse_client is not None:
         return _langfuse_client
-    if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
+    if not getattr(settings, "LANGFUSE_PUBLIC_KEY", None) or not getattr(
+        settings, "LANGFUSE_SECRET_KEY", None
+    ):
         return None
     try:
         from langfuse import Langfuse
 
         _langfuse_client = Langfuse(
-            public_key=settings.LANGFUSE_PUBLIC_KEY,
-            secret_key=settings.LANGFUSE_SECRET_KEY,
-            host=settings.LANGFUSE_HOST,
+            public_key=getattr(settings, "LANGFUSE_PUBLIC_KEY", ""),
+            secret_key=getattr(settings, "LANGFUSE_SECRET_KEY", ""),
+            host=getattr(settings, "LANGFUSE_HOST", "https://cloud.langfuse.com"),
         )
     except ImportError:
         pass  # Langfuse no instalado — modo silencioso

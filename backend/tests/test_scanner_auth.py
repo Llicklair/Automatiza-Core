@@ -118,9 +118,7 @@ class TestIsScannerToken:
         from unittest.mock import MagicMock
 
         request = MagicMock()
-        request.headers = {}
-        # headers.get returns default
-        request.headers.get = lambda k, d="": d
+        request.headers.get = MagicMock(return_value="")
         assert is_scanner_token(request) is False
 
     def test_invalid_token_returns_false(self):
@@ -134,6 +132,5 @@ class TestIsScannerToken:
         from unittest.mock import MagicMock
 
         request = MagicMock()
-        request.headers = {"authorization": "Basic dXNlcjpwYXNz"}
         request.headers.get = lambda k, d="": "Basic dXNlcjpwYXNz" if k == "authorization" else d
         assert is_scanner_token(request) is False

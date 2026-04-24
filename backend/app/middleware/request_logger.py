@@ -4,7 +4,7 @@ import logging
 import time
 import uuid
 
-from starlette.datastructures import MutableHeaders, State
+from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.observability import record_http_request
@@ -27,10 +27,14 @@ class RequestLoggerMiddleware:
 
         request_id = str(uuid.uuid4())
 
-        # Seed scope["state"] so request.state.request_id is accessible in route handlers
-        if "state" not in scope or not isinstance(scope["state"], State):
-            scope["state"] = State()
-        scope["state"].request_id = request_id  # type: ignore[attr-defined]
+        # scope["state"] must be a plain dict (ASGI standard).
+        # Starlette's Request.state does State(scope["state"]), so if scope["state"]
+        # is already a State object it creates a nested State where _state is not a
+        # dict — causing "TypeError: 'State' object is not subscriptable" on every
+        # attribute read (request.state.request_id, etc.).
+        if "state" not in scope or not isinstance(scope["state"], dict):
+            scope["state"] = {}
+        scope["state"]["request_id"] = request_id
 
         t0 = time.perf_counter()
         status_code = 500
@@ -55,7 +59,9 @@ class RequestLoggerMiddleware:
 
             tenant_id = "-"
             state = scope.get("state")
-            if state is not None and hasattr(state, "tenant_id"):
+            if isinstance(state, dict):
+                tenant_id = str(state.get("tenant_id", "-") or "-")
+            elif state is not None and hasattr(state, "tenant_id"):
                 tenant_id = str(state.tenant_id)
 
             logger.info(

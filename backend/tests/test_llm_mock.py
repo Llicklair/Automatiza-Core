@@ -138,7 +138,7 @@ class TestMockChatModelClassifyDomain:
 
     def test_classify_email(self):
         mock = MockChatModel()
-        result = mock._classify_domain("enviar correo al cliente")
+        result = mock._classify_domain("enviar correo electronico")
         assert result == "email"
 
     def test_classify_banking(self):

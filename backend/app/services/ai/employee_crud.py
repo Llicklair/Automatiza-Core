@@ -76,7 +76,7 @@ def to_out(e: AIEmployee) -> dict:
 async def _get_employee(employee_id: str, tenant_id, db: AsyncSession) -> AIEmployee | None:
     result = await db.execute(
         select(AIEmployee).where(
-            AIEmployee.id == employee_id,
+            AIEmployee.id == uuid.UUID(str(employee_id)),
             AIEmployee.tenant_id == tenant_id,
         )
     )

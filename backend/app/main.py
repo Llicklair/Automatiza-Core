@@ -82,7 +82,10 @@ app.include_router(ws_router)
 
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
-    request_id = getattr(request.state, "request_id", None)
+    try:
+        request_id = request.state.request_id
+    except (AttributeError, TypeError):
+        request_id = None
     logger.warning(
         "AppException %s on %s %s: %s",
         exc.error_type,
@@ -110,7 +113,10 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    request_id = getattr(request.state, "request_id", None)
+    try:
+        request_id = request.state.request_id
+    except (AttributeError, TypeError):
+        request_id = None
     logger.error(
         "Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True
     )

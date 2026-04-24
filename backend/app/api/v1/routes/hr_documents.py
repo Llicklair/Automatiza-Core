@@ -10,6 +10,8 @@ Endpoints:
 
 import logging
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,7 +68,7 @@ async def list_hr_documents(
 
 @router.get("/{doc_id}")
 async def get_hr_document(
-    doc_id: str,
+    doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -78,7 +80,7 @@ async def get_hr_document(
 
 @router.post("/{doc_id}/approve")
 async def approve_hr_document(
-    doc_id: str,
+    doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -90,7 +92,7 @@ async def approve_hr_document(
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_hr_document(
-    doc_id: str,
+    doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Import HRDocument at module level so its table is in Base.metadata at startup
+from app.db.models.hr_documents import HRDocument
 from app.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
@@ -262,7 +264,6 @@ async def generate_document(
     # Save with fresh session to avoid expiry issues
     try:
         from app.db.base import AsyncSessionLocal
-        from app.db.models.hr_documents import HRDocument
 
         async with AsyncSessionLocal() as save_db:
             doc = HRDocument(
@@ -305,8 +306,6 @@ async def list_documents(
     offset: int = 0,
 ) -> list[dict]:
     """List HR documents for a tenant with optional filters."""
-    from app.db.models.hr_documents import HRDocument
-
     query = (
         select(HRDocument)
         .where(HRDocument.tenant_id == tenant_id)
@@ -339,8 +338,6 @@ async def list_documents(
 
 async def get_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
     """Fetch a single HR document. Raises ValueError if not found."""
-    from app.db.models.hr_documents import HRDocument
-
     result = await db.execute(
         select(HRDocument).where(
             HRDocument.id == doc_id,
@@ -365,8 +362,6 @@ async def get_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
 
 async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
     """Mark a document as approved. Raises ValueError if not found."""
-    from app.db.models.hr_documents import HRDocument
-
     result = await db.execute(
         select(HRDocument).where(
             HRDocument.id == doc_id,
@@ -385,8 +380,6 @@ async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
 
 async def delete_document(doc_id: str, tenant_id, db: AsyncSession) -> None:
     """Delete a document. Raises ValueError if not found."""
-    from app.db.models.hr_documents import HRDocument
-
     result = await db.execute(
         select(HRDocument).where(
             HRDocument.id == doc_id,

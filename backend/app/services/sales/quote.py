@@ -50,6 +50,11 @@ async def create_quote(db: AsyncSession, tenant_id: UUID, data: dict) -> Quote:
         amount_base += line_base
         tax_amount += line_tax
 
+    # Remove totals from data because we pass them explicitly below
+    data.pop("amount_base", None)
+    data.pop("tax_amount", None)
+    data.pop("amount_total", None)
+
     db_quote = Quote(
         tenant_id=tenant_id,
         amount_base=amount_base,
@@ -107,8 +112,11 @@ async def update_quote(
     for field, value in update_data.items():
         setattr(quote, field, value)
     await db.commit()
-    await db.refresh(quote)
-    return quote
+    # Reload with relationships so Pydantic can serialize client/lines
+    result = await db.execute(
+        _quote_query_with_rels().where(Quote.id == quote_id, Quote.tenant_id == tenant_id)
+    )
+    return result.scalar_one()
 
 
 async def delete_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> None:
