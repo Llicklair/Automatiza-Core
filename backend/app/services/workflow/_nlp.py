@@ -11,6 +11,7 @@ from app.core.llm_factory import get_llm
 from app.db.models import models
 from app.prompts import load_prompt
 from app.services.workflow._ui_graph import generate_preview_nodes
+from app.services.workflow.conditions import evaluate_conditions
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,12 @@ async def fire_event(
     for wf in workflows:
         wf_events = wf.trigger_config.get("events", [])
         if event_name not in wf_events and "any" not in wf_events:
+            continue
+
+        if not evaluate_conditions(wf.trigger_config.get("conditions"), context):
+            logger.debug(
+                "[FIRE_EVENT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name
+            )
             continue
 
         execution = models.WorkflowExecution(

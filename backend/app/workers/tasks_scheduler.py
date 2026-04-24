@@ -14,6 +14,7 @@ from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 from app.services.idempotency import IdempotencyGuard
 from app.services.workflow import execute_deterministic_steps
+from app.services.workflow.conditions import evaluate_conditions
 from app.services.workflow.scheduler import (
     create_execution,
     create_task_for_execution,
@@ -194,6 +195,19 @@ async def _check_scheduled_workflows():
 
             if await has_active_execution(db, wf.id):
                 logger.info("[BEAT] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
+                continue
+
+            temporal_context = {
+                "now_hour": now_local.hour,
+                "now_minute": now_local.minute,
+                "now_weekday": now_local.weekday(),  # 0=lunes … 6=domingo
+                "now_day": now_local.day,
+                "now_month": now_local.month,
+            }
+            if not evaluate_conditions(wf.trigger_config.get("conditions"), temporal_context):
+                logger.debug(
+                    "[BEAT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name
+                )
                 continue
 
             logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
