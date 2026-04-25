@@ -619,7 +619,8 @@ python smoke_tasks_workflows.py   # Lanza tareas IA de ejemplo
 
 para aplicar cambios sin reinstalar el exe 
 
-cd desktop; npm run sync
+
+
 cd desktop && npm run sync
 
 ```
