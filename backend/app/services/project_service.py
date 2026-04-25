@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy import desc, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import Project, ProjectTask
@@ -69,8 +70,12 @@ async def create_task(db: AsyncSession, tenant_id: UUID, data: dict) -> ProjectT
     task = ProjectTask(tenant_id=tenant_id, **data)
     db.add(task)
     await db.commit()
-    await db.refresh(task)
-    return task
+    result = await db.execute(
+        select(ProjectTask)
+        .where(ProjectTask.id == task.id)
+        .options(selectinload(ProjectTask.project))
+    )
+    return result.scalar_one()
 
 
 async def update_task(db: AsyncSession, tenant_id: UUID, task_id: UUID, data: dict) -> ProjectTask:
@@ -83,8 +88,12 @@ async def update_task(db: AsyncSession, tenant_id: UUID, task_id: UUID, data: di
     for key, value in data.items():
         setattr(task, key, value)
     await db.commit()
-    await db.refresh(task)
-    return task
+    result = await db.execute(
+        select(ProjectTask)
+        .where(ProjectTask.id == task_id)
+        .options(selectinload(ProjectTask.project))
+    )
+    return result.scalar_one()
 
 
 async def delete_task(db: AsyncSession, tenant_id: UUID, task_id: UUID) -> None:

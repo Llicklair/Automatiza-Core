@@ -41,6 +41,19 @@ async def _ensure_schema() -> None:
         "ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS journal_entry_id UUID REFERENCES journal_entries(id)",
         "CREATE INDEX IF NOT EXISTS ix_journal_entries_invoice_id ON journal_entries(invoice_id)",
         "CREATE INDEX IF NOT EXISTS ix_journal_entries_payroll_id ON journal_entries(payroll_id)",
+        """CREATE TABLE IF NOT EXISTS generated_uis (
+            id UUID PRIMARY KEY,
+            tenant_id UUID NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            prompt TEXT NOT NULL,
+            content_html TEXT NOT NULL,
+            is_pinned BOOLEAN NOT NULL DEFAULT TRUE,
+            metadata_json JSON,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS ix_generated_uis_tenant_id ON generated_uis(tenant_id)",
     ]
     try:
         async with engine.begin() as conn:
