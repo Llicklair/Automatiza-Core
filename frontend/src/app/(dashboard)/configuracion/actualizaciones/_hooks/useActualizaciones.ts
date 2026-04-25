@@ -16,7 +16,9 @@ export interface HealthData {
     checks: Record<string, HealthCheck>;
 }
 
-export type UpdateStatus = "idle" | "checking" | "available" | "up_to_date" | "error";
+export type UpdateStatus = "idle" | "checking" | "available" | "downloading" | "downloaded" | "up_to_date" | "error";
+
+const eAPI = typeof window !== "undefined" ? (window as any).electronAPI : null;
 
 export function useActualizaciones() {
     const [health, setHealth] = useState<HealthData | null>(null);
@@ -24,6 +26,8 @@ export function useActualizaciones() {
     const [error, setError] = useState("");
     const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
     const [updateError, setUpdateError] = useState("");
+    const [downloadPercent, setDownloadPercent] = useState(0);
+    const [updateVersion, setUpdateVersion] = useState("");
 
     async function loadHealth() {
         setLoading(true);
@@ -41,18 +45,47 @@ export function useActualizaciones() {
     async function checkForUpdates() {
         setUpdateStatus("checking");
         setUpdateError("");
-        try {
-            await new Promise(r => setTimeout(r, 1500));
-            setUpdateStatus("up_to_date");
-        } catch {
-            setUpdateStatus("error");
-            setUpdateError("No se pudo conectar al servidor de actualizaciones. Se habilitará próximamente.");
+        if (!eAPI) {
+            // Fuera de Electron (desarrollo web)
+            setTimeout(() => setUpdateStatus("up_to_date"), 800);
+            return;
         }
+        eAPI.checkForUpdates();
     }
+
+    function installUpdate() {
+        eAPI?.installUpdate();
+    }
+
+    // Suscribirse a eventos IPC del proceso principal
+    useEffect(() => {
+        if (!eAPI) return;
+
+        eAPI.onUpdateAvailable((info: { version: string }) => {
+            setUpdateVersion(info.version);
+            setUpdateStatus("available");
+        });
+        eAPI.onUpdateNotAvailable(() => setUpdateStatus("up_to_date"));
+        eAPI.onUpdateDownloadProgress((p: { percent: number }) => {
+            setDownloadPercent(p.percent);
+            setUpdateStatus("downloading");
+        });
+        eAPI.onUpdateDownloaded(() => setUpdateStatus("downloaded"));
+        eAPI.onUpdateError((msg: string) => {
+            setUpdateStatus("error");
+            setUpdateError(msg);
+        });
+
+        return () => eAPI.removeUpdateListeners();
+    }, []);
 
     useEffect(() => { loadHealth(); }, []);
 
     const checks = health?.checks || {};
 
-    return { health, loading, error, updateStatus, updateError, checks, loadHealth, checkForUpdates };
+    return {
+        health, loading, error,
+        updateStatus, updateError, downloadPercent, updateVersion,
+        checks, loadHealth, checkForUpdates, installUpdate,
+    };
 }

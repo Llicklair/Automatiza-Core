@@ -1,10 +1,42 @@
 const { app, BrowserWindow, dialog, shell, ipcMain } = require("electron");
 const path = require("path");
+const { autoUpdater } = require("electron-updater");
 
 const { startAll, stopAll, killOrphanProcesses, getBackendEnv, waitForHTTP } = require("./service-manager");
 const { stopBackend, startBackend } = require("./python-manager");
 const { getLanIP, getAccessURLs } = require("./network-utils");
 const { createTray, destroyTray } = require("./tray-manager");
+
+// ── Auto-updater ───────────────────────────────────────────────────────────
+
+function setupAutoUpdater() {
+  if (!app.isPackaged) return; // solo en builds empaquetados
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-available", (info) => {
+    mainWindow?.webContents.send("update-available", { version: info.version });
+  });
+  autoUpdater.on("update-not-available", () => {
+    mainWindow?.webContents.send("update-not-available");
+  });
+  autoUpdater.on("download-progress", (p) => {
+    mainWindow?.webContents.send("update-download-progress", {
+      percent: Math.round(p.percent),
+      transferred: p.transferred,
+      total: p.total,
+    });
+  });
+  autoUpdater.on("update-downloaded", () => {
+    mainWindow?.webContents.send("update-downloaded");
+  });
+  autoUpdater.on("error", (err) => {
+    mainWindow?.webContents.send("update-error", err.message);
+  });
+
+  autoUpdater.checkForUpdates().catch(() => {}); // silencioso en arranque
+}
 
 let mainWindow = null;
 let splashWindow = null;
@@ -116,6 +148,7 @@ async function startup() {
 
     // Ventana principal
     createMainWindow();
+    setupAutoUpdater();
 
     // Tray
     createTray({
@@ -155,6 +188,20 @@ async function startup() {
 }
 
 // ── IPC Handlers ──────────────────────────────────────────────────────────
+
+ipcMain.handle("check-for-updates", async () => {
+  if (!app.isPackaged) {
+    mainWindow?.webContents.send("update-not-available");
+    return;
+  }
+  autoUpdater.checkForUpdates().catch((err) => {
+    mainWindow?.webContents.send("update-error", err.message);
+  });
+});
+
+ipcMain.handle("install-update", () => {
+  autoUpdater.quitAndInstall();
+});
 
 ipcMain.handle("open-template-native", async (_event, filePath) => {
   await shell.openPath(filePath);

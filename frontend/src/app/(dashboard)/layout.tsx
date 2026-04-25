@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -22,10 +22,21 @@ function decodeJwtName(token: string): string {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
+    const pathname = usePathname();
     const showToast = useToastStore((s) => s.show);
     const pushNotification = useNotificationStore((s) => s.push);
     const triggerRefresh = useNotificationStore((s) => s.triggerRefresh);
     const lastCheckRef = useRef<number>(Date.now() / 1000);
+
+    // Onboarding guard: redirect if company not configured yet
+    useEffect(() => {
+        if (pathname === "/primeros-pasos") return;
+        const token = localStorage.getItem("access_token");
+        if (!token) return;
+        api.tenant.me().then(t => {
+            if (!t.nif) router.push("/primeros-pasos");
+        }).catch(() => {});
+    }, [pathname, router]);
 
     // Auth check + WebSocket notifications
     useEffect(() => {

@@ -2,7 +2,7 @@
 
 > Documento de definición de producto. Define qué es, para quién, qué hace, y qué necesita para ser viable comercialmente.
 >
-> _Última revisión: 2026-04-25 (v3)_
+> _Última revisión: 2026-04-25 (v4)_
 
 ---
 
@@ -74,9 +74,6 @@ Envío y lectura de correos (Gmail, Outlook, SMTP) si el usuario configura crede
 ### Automatizaciones (workflows)
 Tareas recurrentes en lenguaje natural: "cada lunes, envíame un resumen de facturas pendientes". Ejecución automática por cron, condiciones lógicas (AND/OR/NOT/umbrales), consultas a BD en tiempo real antes de ejecutar.
 
-### Reclutamiento
-Posiciones abiertas, recepción de CVs, seguimiento de candidatos, análisis de perfiles por IA.
-
 ### Compliance y asesoría fiscal
 Consulta automática del BOE, avisos de vencimientos fiscales (IVA, IRPF), respuestas de asesoría basadas en documentos indexados.
 
@@ -130,6 +127,18 @@ Manager: "¿Cuántas horas extra ha hecho Juan este mes?" → HR agent responde
 ```
 **Criterios**: Registro de jornada almacenado con hora entrada/salida. Cálculo correcto de horas extra vs contractuales. Exportable para inspección laboral.
 
+### Flujo 7 — Primera experiencia (onboarding)
+```
+Usuario instala → abre app → asistente guiado:
+1. Nombre empresa + NIF + dirección fiscal
+2. Opción importar datos o empezar de cero
+3. Configurar email (saltable)
+4. 3 ejemplos en lenguaje natural
+5. Crear primer cliente + primera factura como tutorial
+→ Usuario llega a pantalla principal habiendo hecho algo real
+```
+**Criterios**: Usuario completa el flujo en < 5 minutos. Sin errores ni pantallas en blanco. Al finalizar existe al menos 1 cliente y 1 factura en BD. El 100% de los pasos son saltables excepto NIF + nombre empresa.
+
 ---
 
 ## 3. Limitaciones conocidas de v1
@@ -147,16 +156,29 @@ Manager: "¿Cuántas horas extra ha hecho Juan este mes?" → HR agent responde
 
 ## 4. Roadmap
 
+### Criterio de lanzamiento — v1.0 no sale sin esto
+
+> Un checkbox sin marcar en esta lista es un bloqueante. No hay excepciones.
+
+- [ ] Los 7 flujos críticos pasan sin intervención manual
+- [ ] Onboarding completo (flujo 7) funciona en < 5 minutos
+- [ ] VeriFactu implementado y validado con AEAT (ver sección 5.6) — **bloqueante legal**
+- [ ] Auto-update operativo (el usuario puede recibir parches sin reinstalar)
+- [ ] Backup exportable desde Settings
+- [ ] Mensajes de error comprensibles — cero errores técnicos visibles al usuario
+- [ ] Precio y canal de distribución decididos (ver sección 6)
+
 ### v1.0 — Producto mínimo viable (actual)
 - [x] 9 agentes especializados funcionales
 - [x] Orquestador con clasificación de intención
-- [x] 5 flujos críticos end-to-end + flujo 6 (control horario)
+- [x] 7 flujos críticos end-to-end
 - [ ] Panel de control horario (fichajes, horas extra, ausencias, calendario)
 - [x] Aplicación Electron con PostgreSQL embebido
 - [ ] Onboarding de primera experiencia (ver sección 5)
 - [ ] Modo offline graceful (ver sección 5)
-- [ ] TicketBAI / VeriFactu — facturación legal (ver sección 5)
+- [ ] TicketBAI / VeriFactu — facturación legal (ver sección 5) ⚠️ bloqueante legal
 - [ ] Backup automático local
+- [ ] Auto-update del Electron app
 
 ### v1.5 — Completar la experiencia
 - [ ] Página frontend para email (/email)
@@ -164,7 +186,7 @@ Manager: "¿Cuántas horas extra ha hecho Juan este mes?" → HR agent responde
 - [ ] Ruta API para Excel agent
 - [ ] Ruta API para Marketing agent
 - [ ] Importación de datos desde Excel/CSV (migración desde ERP anterior)
-- [ ] Auto-update del Electron app
+- [ ] Reclutamiento: posiciones, CVs, seguimiento de candidatos
 
 ### v2.0 — Diferenciación
 - [ ] Integración bancaria real (Belvo/Salt Edge)
@@ -286,16 +308,40 @@ El sistema maneja datos sensibles: nóminas, datos personales de empleados, info
 ### Recomendación preliminar
 
 **Suscripción mensual con tier gratuito limitado**:
-- **Gratis**: ERP básico sin IA (formularios manuales), 1 usuario, datos locales
-- **Pro (€X/mes)**: IA ilimitada, workflows, RAG, soporte email
+- **Gratis**: hasta 10 facturas/mes, 1 empleado, sin workflows automáticos, sin RAG — suficiente para probar, insuficiente para operar
+- **Pro (€X/mes)**: IA ilimitada, facturas ilimitadas, workflows, RAG, soporte email
 - **Asesoría (€X/mes)**: Multi-empresa (v2), soporte prioritario, compliance avanzado
 
-El tier gratuito funciona como demo permanente. La IA es el upsell natural. El coste de LLM se absorbe en la suscripción.
+El tier gratuito es una demo con límites reales, no un ERP completo sin IA. La IA y los límites operativos son el upsell. El coste de LLM se absorbe en Pro.
 
-### Pendiente de decidir
-- [ ] Precio exacto por tier
-- [ ] Si el tier gratuito incluye N interacciones IA/mes
-- [ ] Canal de distribución: web directa, marketplaces, network de asesorías
+### Canal de distribución — decisión urgente pre-lanzamiento
+
+El canal determina el precio, el onboarding y el soporte. Para PYMEs españolas el canal más eficiente es **B2B indirecto via asesorías**: la asesoría adopta el producto y lo recomienda a sus clientes (que ya confían en ella). Alternativas:
+
+| Canal | Pros | Contras |
+|-------|------|---------|
+| **Asesorías (B2B indirecto)** | Acceso directo al segmento, confianza establecida, volumen por cuenta | Ciclo de venta más largo, necesitas convencer a la asesoría primero |
+| **Web directa (B2C)** | Control total, sin intermediario | Coste de adquisición alto, requiere marketing activo |
+| **Marketplaces** | Descubrimiento gratuito | Competencia directa, márgenes reducidos |
+
+**Decisión pendiente** (bloqueante para lanzamiento): ¿asesorías primero o web directa?
+
+### Métricas de éxito de v1.0
+
+Sin un número, no sabes cuándo has terminado. Propuesta:
+
+| Métrica | Objetivo a 90 días del lanzamiento |
+|---------|-------------------------------------|
+| Clientes pagando (Pro) | 10 |
+| Churn mensual | < 10% |
+| Flujos críticos completados sin error | > 95% |
+| NPS | > 30 |
+| Tiempo medio de onboarding | < 5 minutos |
+
+### Pendiente de decidir — bloqueante pre-lanzamiento
+- [ ] **Canal de distribución**: asesorías primero o web directa
+- [ ] **Precio exacto** por tier (Pro y Asesoría)
+- [ ] Si tier gratuito incluye N interacciones IA/mes adicionales
 - [ ] Modelo de soporte: solo email, chat, telefónico
 
 ---
