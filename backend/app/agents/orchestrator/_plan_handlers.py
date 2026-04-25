@@ -30,7 +30,7 @@ async def _plan_from_blueprint(state: OrchestratorState, wf) -> "list[SubTask] |
     Devuelve None si el blueprint está vacío.
     Delega a NodeEngine si hay nodos avanzados (y devuelve plan marcado como done).
     """
-    from app.services.ai.node_engine import has_advanced_nodes
+    from app.services.ai.node_graph_helpers import has_advanced_nodes
 
     if not wf or not wf.ui_nodes:
         return None
@@ -86,7 +86,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
 
     class PlanStep(BaseModel):
         agent: str = Field(
-            description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag, team, custom"
+            description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag, workflow, compliance, recruitment, marketing, chat, custom"
         )
         action: str = Field(description="Acción corta, ej: extract_data, create_report, send_email")
         instruction: str = Field(

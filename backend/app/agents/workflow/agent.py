@@ -79,7 +79,13 @@ async def run_workflow_agent(
         )
 
         try:
-            plan = json.loads(response.content)
+            raw = response.content.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.rsplit("```", 1)[0].strip()
+            plan = json.loads(raw)
         except Exception as e:
             logger.warning("Error parseando respuesta JSON del LLM en workflow_agent: %s", e)
             return WorkflowAgentResult(
