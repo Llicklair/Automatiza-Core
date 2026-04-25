@@ -154,7 +154,7 @@ async def run_workflow(
     await db.commit()
     await db.refresh(execution)
 
-    from app.services.ai.node_engine import has_advanced_nodes
+    from app.services.ai.node_graph_helpers import has_advanced_nodes
 
     if workflow.ui_nodes and has_advanced_nodes(workflow.ui_nodes, workflow.ui_edges):
         try:

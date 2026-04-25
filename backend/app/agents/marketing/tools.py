@@ -11,7 +11,7 @@ from langchain_core.tools import tool
 from sqlalchemy import select
 
 from app.db.base import AsyncSessionLocal
-from app.db.models.billing import Product
+from app.db.models.inventory import Product
 
 logger = logging.getLogger(__name__)
 
