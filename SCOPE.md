@@ -1,214 +1,311 @@
-# AutomatizaPyme — Scope & Objetivos Reales
+# AutomatizaPyme — Scope de Producto v1
 
-> Documento de alineación basado en análisis exhaustivo del código fuente. Define honestamente qué existe implementado, qué está incompleto, y qué debe funcionar impecablemente end-to-end.
+> Documento de definición de producto. Define qué es, para quién, qué hace, y qué necesita para ser viable comercialmente.
 >
-> _Última revisión: 2026-04-24 (v2) — actualizado tras refactorización arquitectural + audit frontend completo._
+> _Última revisión: 2026-04-25 (v3)_
 
 ---
 
-## 0. Qué es y qué puede hacer este sistema
+## 0. Visión y diferenciación
 
-AutomatizaPyme es un ERP con inteligencia artificial integrada para pequeñas y medianas empresas españolas. En lugar de navegar por menús y formularios, el usuario escribe en lenguaje natural — "crea una factura para García S.L. por 1.200€" — y el sistema lo ejecuta.
+### Qué es
 
-### Lo que SÍ puede hacer hoy
+AutomatizaPyme es un ERP de escritorio con inteligencia artificial integrada. En lugar de navegar menús y rellenar formularios, el usuario escribe instrucciones en lenguaje natural — "crea una factura para García S.L. por 1.200€" — y el sistema lo ejecuta.
 
-**Facturación y ventas**
-El sistema puede crear facturas, albaranes, presupuestos y pedidos a partir de una instrucción de texto. Calcula totales con IVA, asigna número correlativo, vincula al cliente en base de datos y deja la factura visible en la UI sin intervención manual. También genera facturas recurrentes de forma automática según la periodicidad configurada.
+### Para quién
 
-**Recursos Humanos**
-Puede dar de alta empleados, calcular nóminas, registrar jornadas y generar liquidaciones. Entiende instrucciones como "calcula la nómina de marzo de todos los empleados" y escribe los resultados en la base de datos.
+**Asesorías, gestorías y pequeñas empresas españolas (1-50 empleados)** que:
+- Hoy usan Excel, papel o un ERP genérico que no entienden
+- No tienen departamento de IT
+- Necesitan facturación, nóminas, control de clientes y documentos en un solo sitio
+- Valoran que sus datos NO salgan de su ordenador
 
-**CRM y clientes**
-Gestiona el ciclo de ventas: crea clientes, registra oportunidades, anota actividades y lleva el pipeline. También gestiona reservas y reuniones.
+### Por qué existe
 
-**Banca y contabilidad**
-Permite cargar extractos bancarios, ver saldos, listar movimientos y hacer conciliación. Genera informes financieros (pérdidas y ganancias, balance, cashflow) consultando directamente la base de datos.
+Los ERP existentes (Holded, Sage, A3, Contasol) tienen dos problemas para este segmento:
+1. **Curva de aprendizaje alta** — el usuario necesita saber dónde está cada función
+2. **Datos en la nube** — muchas PYMEs y asesorías son reticentes a subir datos fiscales y de empleados a servidores de terceros
 
-**Documentos e inteligencia documental (RAG)**
-El usuario puede subir contratos, facturas en PDF o cualquier documento. El sistema los indexa con embeddings vectoriales (pgvector) y después puede responder preguntas sobre su contenido: "¿cuándo vence el contrato con Telefónica?" extrae la fecha directamente del PDF.
+AutomatizaPyme resuelve ambos: la IA elimina la curva de aprendizaje, y la arquitectura local-first garantiza que los datos nunca salen del ordenador del cliente.
 
-**Correo electrónico**
-Si el tenant configura Gmail, Outlook o SMTP, el sistema puede enviar correos, leer la bandeja de entrada y ejecutar instrucciones como "envía un resumen de facturas pendientes a contabilidad@empresa.com". Sin credenciales configuradas, funciona en modo demo.
+### Riesgo competitivo
 
-**Automatizaciones (workflows)**
-El usuario puede programar tareas recurrentes con lenguaje natural: "cada lunes, envíame un resumen de facturas pendientes". El sistema guarda el workflow, lo ejecuta automáticamente según el cron definido, y registra cada ejecución. Los workflows soportan condiciones lógicas (AND, OR, NOT, umbrales) y condiciones basadas en datos en tiempo real: al momento del disparo, pueden consultar la BD ("ejecutar solo si hay más de 10 facturas pendientes" o "solo si el total impagado supera 5.000€"). Los providers disponibles cubren billing y RRHH, y son extensibles.
+Holded, Sage y otros están añadiendo asistentes IA. La ventaja no es "tener IA" sino:
+- **IA como interfaz principal**, no como chatbot añadido al margen
+- **Agentes que ejecutan acciones**, no solo responden preguntas
+- **Local-first**: cumplimiento de privacidad sin esfuerzo
+- **Precio de entrada bajo** vs suscripciones SaaS crecientes
 
-**Reclutamiento**
-Gestiona posiciones abiertas, recibe CVs, hace seguimiento de candidatos y permite al agente analizar perfiles.
-
-**Compliance y asesoría fiscal**
-Consulta el BOE automáticamente, avisa de vencimientos fiscales (IVA, IRPF, etc.) y responde preguntas de asesoría basándose en documentos indexados.
-
----
-
-### Lo que NO puede hacer (limitaciones reales)
-
-**Sin integración bancaria real (Open Banking / PSD2)**
-Los saldos y movimientos bancarios se alimentan de extractos importados manualmente (.csv, .ofx). No hay conexión directa con ningún banco español. Para eso se necesitaría integrar la API de un proveedor como Belvo o Salt Edge, que está fuera del scope v1.
-
-**Sin firma electrónica**
-Los contratos y documentos generados no pueden firmarse digitalmente desde la plataforma. No hay integración con DocuSign, Autofirma ni similar.
-
-**Sin presentación automática a la AEAT**
-El sistema calcula el IVA, el IRPF y genera los modelos fiscales, pero no los envía a la Agencia Tributaria. Eso requeriría certificado digital del contribuyente e integración con la sede electrónica de la AEAT.
-
-**Una empresa por instalación**
-La versión de escritorio está diseñada para que cada empresa instale su propia copia con su propia base de datos local. No hay un modo "multitenant en la nube" donde una empresa pueda gestionar múltiples sociedades desde una sola cuenta.
-
-**Los datos no salen del ordenador del cliente**
-Por diseño, todos los datos del ERP (facturas, empleados, clientes) se almacenan en la base de datos PostgreSQL local. No hay sincronización con ningún servidor externo. Esto es una decisión deliberada de privacidad, no una limitación técnica.
+Esta ventaja tiene fecha de caducidad. La velocidad de lanzamiento es el factor decisivo.
 
 ---
 
-## 1. Qué existe REALMENTE en el código
+## 1. Capacidades v1
 
-### Agentes completamente implementados
+### Facturación y ventas
+Crear facturas, albaranes, presupuestos y pedidos desde lenguaje natural. Cálculo automático de IVA, numeración correlativa, vinculación con clientes en BD. Facturas recurrentes con periodicidad configurable. Visible en UI sin recarga.
 
-| Agente | Archivo | Herramientas reales implementadas | BD conectada | Ruta API |
-|--------|---------|-----------------------------------|--------------|----------|
-| **Billing** | `agents/billing/agent.py` | create/query/write invoice, PDF, albaranes, quotelines | Invoice, InvoiceLine, DeliveryNote, QuoteLine, RecurringInvoice | ✅ `/api/v1/invoices/*` `/api/v1/albaranes/*` |
-| **HR** | `agents/hr/agent.py` | employee mgmt, payroll calc, liquidaciones, jornada | Employee, Payroll, Settlement, JornadaRecord | ✅ `/api/v1/hr/*` |
-| **CRM** | `agents/crm/agent.py` | clientes, oportunidades, actividades | Client, Opportunity, Activity | ✅ `/api/v1/crm/*` |
-| **Banking** | `agents/banking/agent.py` | check_balances, list_transactions, financial_summary, reconcile | BankTransaction, accounts (accounting.py) | ✅ `/api/v1/banking/*` `/api/v1/accounting/*` |
-| **Compliance** | `agents/compliance/agent.py` | fiscal_deadlines, BOE scraper, document search | DocumentEmbedding, Tenant | ✅ `/api/v1/advisory/*` |
-| **Documents** | `agents/documents/agent.py` | upload, search, retrieval | TenantDocument | ✅ `/api/v1/documents/*` |
-| **Recruitment** | `agents/recruitment/agent.py` | posiciones, candidatos, tracking | RecruitmentPosition, Candidate | ✅ `/api/v1/recruitment/*` |
-| **RAG** | `agents/rag/agent.py` | search_documents (vector, top_k=5) | DocumentEmbedding (pgvector real) | Interno (sin ruta propia) |
-| **Workflow** | `agents/workflow/agent.py` | workflow_execution, task_planning | Workflow, WorkflowExecution, DomainEvent | ✅ `/api/v1/workflows/*` |
+### Recursos Humanos
+Alta de empleados, cálculo de nóminas, registro de jornada, liquidaciones. Procesa instrucciones como "calcula la nómina de marzo de todos los empleados".
 
-### Orquestador — implementado con LangGraph completo
+### Control horario y gestión de jornadas
+Panel dedicado para gestionar el tiempo de trabajo de cada empleado:
+- **Horario contractual**: horas semanales del contrato, franja horaria asignada (ej. 9:00-17:00), tipo de jornada (completa, parcial, turnos)
+- **Registro diario**: fichaje de entrada/salida (manual o por el empleado), cálculo automático de horas trabajadas vs horas contractuales
+- **Horas extra**: detección automática cuando las horas trabajadas superan las contractuales, diferenciación entre compensadas y pagadas
+- **Ausencias e incidencias**: registro de faltas con motivo (baja médica, vacaciones, permiso, ausencia injustificada), impacto automático en nómina
+- **Vista calendario**: visualización mensual por empleado o por equipo, con colores por tipo de jornada/incidencia
+- **Alertas**: aviso cuando un empleado acumula horas extra no compensadas, o cuando faltan fichajes
 
-- **Archivo**: `agents/orchestrator/_core.py`
-- **Arquitectura real**: máquina de estados LangGraph con nodos: `classifier → dispatcher → validator → summarizer`
-- **Clasificador de intención**: `classifier.py` — enruta a los 10+ agentes especializados
-- **Dispatcher por dominio**: `banking.py`, `billing.py`, `compliance.py`, `crm.py`, `documents.py`, `hr.py`, `email.py`, `custom.py`, `misc.py`, `reports.py`
-- **Entrada principal**: `POST /api/v1/ai_employees/instruct`
+> Obligatorio: el registro de jornada es requisito legal en España desde 2019 (RD-ley 8/2019). El sistema debe poder exportar los registros en formato válido para inspección laboral.
 
-### Scheduler / Automatizaciones — APScheduler real
+### CRM y clientes
+Ciclo de ventas completo: clientes, oportunidades, actividades, pipeline. Gestión de reservas y reuniones.
 
-- **Archivo**: `services/scheduler.py` — `AsyncIOScheduler` registrado en lifespan de FastAPI
-- **Jobs registrados al arrancar**:
-  - `check_scheduled_workflows` — cada minuto
-  - `process_recurring_invoices` — diario 8:00 AM
-  - `cleanup_stuck_executions` — cada 10 minutos
-  - `catchup_missed_workflows` — arranque diferido
-  - `bootstrap_employee_heartbeats` — arranque diferido
+### Banca y contabilidad
+Carga de extractos bancarios (CSV/OFX), consulta de saldos, listado de movimientos, conciliación. Informes financieros: P&L, balance, cashflow.
 
-### Worker / Task system
+### Documentos e inteligencia documental (RAG)
+Subida de contratos, facturas PDF o cualquier documento. Indexación con embeddings vectoriales (pgvector). Preguntas sobre contenido: "¿cuándo vence el contrato con Telefónica?" extrae la respuesta del PDF.
 
-- `workers/tasks_orchestrator.py` — ejecuta LangGraph en background
-- `workers/tasks_scheduler.py` — integración APScheduler
-- `workers/tasks_node_engine.py` — motor de ejecución de nodos
+### Correo electrónico
+Envío y lectura de correos (Gmail, Outlook, SMTP) si el usuario configura credenciales. Instrucciones como "envía un resumen de facturas pendientes a contabilidad@empresa.com". Sin credenciales: modo demo.
 
-### Modelos de BD reales (SQLAlchemy async)
+### Automatizaciones (workflows)
+Tareas recurrentes en lenguaje natural: "cada lunes, envíame un resumen de facturas pendientes". Ejecución automática por cron, condiciones lógicas (AND/OR/NOT/umbrales), consultas a BD en tiempo real antes de ejecutar.
 
-`billing.py`, `accounting.py`, `hr.py`, `crm.py`, `embeddings.py`, `workflows.py`, `auth.py` — todos con ORM completo y soporte multi-tenant.
+### Reclutamiento
+Posiciones abiertas, recepción de CVs, seguimiento de candidatos, análisis de perfiles por IA.
+
+### Compliance y asesoría fiscal
+Consulta automática del BOE, avisos de vencimientos fiscales (IVA, IRPF), respuestas de asesoría basadas en documentos indexados.
 
 ---
 
-## 2. Qué está PARCIALMENTE implementado (código existe, integración incompleta)
+## 2. Flujos críticos — deben funcionar impecablemente
 
-| Componente | Estado real |
-|-----------|------------|
-| **Email agent** | ✅ Rutas expuestas: `POST /messaging/email/send`, `POST /messaging/email/instruct`, `GET /messaging/email/status` |
-| **Excel agent** | Herramientas completas (`export_erp_data`, `import_excel`, `modify_excel`). **Sin ruta API wired** |
-| **Marketing agent** | Código existe (campañas, contenido). **Sin ruta API encontrada** |
-| **Frontend pages** | `/ventas/facturas`, `/rrhh/empleados`, `/rrhh/documentos` — ✅ conectadas al API. Sin conectar: `/ai-employees/`, `/email/`, `/excel/` (Fase 1.5) |
+> Hacer 5 flujos perfectos vale más que 15 flujos rotos.
+> Cualquier nueva funcionalidad solo entra si estos 5 siguen funcionando.
 
----
-
-## 3. Qué NO puede hacer (limitaciones reales, no de diseño futuro)
-
-| Limitación | Razón real |
-|-----------|-----------|
-| **Integración bancaria real (PSD2/Open Banking)** | Solo carga manual de extractos — no hay OAuth bancario |
-| **Firma electrónica** | No implementado |
-| **Envío/recepción de email desde UI** | Ruta API expuesta; falta página frontend `/email/` (Fase 1.5) |
-| **Exportación Excel desde chat** | El agente excel existe pero sin ruta wired ni página frontend |
-| **Presentación automática AEAT** | Sin integración con APIs fiscales oficiales |
-| **Multi-empresa por instalación** | Local-first: una empresa = una instalación |
-| **Sincronización cloud de datos ERP** | Por diseño: datos nunca salen del cliente |
-| **Flujos de workflow con condiciones complejas** | ✅ Resuelto: evaluador de condiciones lógicas (AND/OR/NOT/threshold) + consultas a BD en tiempo real via query providers |
-
----
-
-## 4. Qué debe funcionar IMPECABLEMENTE end-to-end
-
-> **Hacer 5 flujos perfectos vale más que 15 flujos rotos.**
-> Cualquier nueva funcionalidad solo entra si estos 5 flujos siguen funcionando.
-
-### 🎯 Flujo 1 — Factura desde lenguaje natural
+### Flujo 1 — Factura desde lenguaje natural
 ```
-Usuario: "Crea una factura para Cliente X por 1500€ de consultoría"
-→ Orquestador clasifica → billing agent → valida cliente en BD →
-→ crea Invoice + InvoiceLines → responde con número de factura →
-→ visible en UI /facturas
+"Crea una factura para Cliente X por 1500€ de consultoría"
+→ Clasifica → billing agent → valida cliente → crea factura + líneas → confirma → visible en UI
 ```
-**Criterio**: La factura existe en BD con número correlativo, estado correcto, aparece en UI sin recarga manual.
+**Criterios**: Factura en BD con número correlativo y estado correcto. Aparece en UI sin recarga. Respuesta en < 5 segundos.
 
----
-
-### 🎯 Flujo 2 — Consulta de estado financiero
+### Flujo 2 — Consulta financiera
 ```
-Usuario: "¿Cuánto hemos facturado este mes y qué facturas están pendientes de cobro?"
-→ Orquestador → billing agent → query BD → agrega totales → responde
+"¿Cuánto hemos facturado este mes y qué facturas están pendientes?"
+→ billing agent → query → agrega → responde en chat
 ```
-**Criterio**: Los números coinciden con un SELECT manual en PostgreSQL.
+**Criterios**: Números coinciden con un SELECT manual. Respuesta en < 3 segundos.
 
----
-
-### 🎯 Flujo 3 — Alta de empleado
+### Flujo 3 — Alta de empleado
 ```
-Usuario: "Da de alta a María García, contrato indefinido, 2200€/mes, inicio 1 junio"
-→ Orquestador → HR agent → Employee + contrato en BD → confirma en chat → aparece en /hr
+"Da de alta a María García, contrato indefinido, 2200€/mes, inicio 1 junio"
+→ HR agent → crea Employee + contrato → confirma → visible en /rrhh
 ```
-**Criterio**: Empleado en BD con todos los campos requeridos, sin errores de validación.
+**Criterios**: Empleado en BD con todos los campos requeridos. Sin errores de validación. Respuesta en < 5 segundos.
 
----
-
-### 🎯 Flujo 4 — Workflow recurrente end-to-end
+### Flujo 4 — Workflow recurrente end-to-end
 ```
-Usuario: "Cada lunes envíame un resumen de facturas pendientes"
-→ Workflow guardado en BD → APScheduler programa job →
-→ lunes: billing agent genera resumen → email agent envía →
-→ WorkflowExecution registrado con status: success
+"Cada lunes envíame un resumen de facturas pendientes"
+→ Workflow guardado → scheduler programa job → lunes: billing genera resumen → email envía → log success
 ```
-**Criterio**: Email recibido, log en BD con `status: success`, sin intervención humana.
-> ⚠️ Este flujo requiere primero exponer la ruta del email agent (ver sección 2).
+**Criterios**: Email recibido, ejecución registrada con status: success, sin intervención humana.
 
----
-
-### 🎯 Flujo 5 — Consulta documental (RAG)
+### Flujo 5 — Consulta documental (RAG)
 ```
 Usuario sube contrato PDF → "¿Cuándo vence el contrato con Proveedor X?"
-→ Documents agent indexa → RAG busca chunks (pgvector) → responde con fecha
+→ Documents indexa → RAG busca chunks → responde con fecha
 ```
-**Criterio**: Fecha extraída del PDF sin alucinaciones. Verificable comparando con el documento.
+**Criterios**: Fecha correcta extraída del PDF. Verificable contra el documento original.
+
+### Flujo 6 — Control horario de empleado
+```
+Empleado ficha entrada → trabaja → ficha salida → sistema calcula horas
+→ si excede contrato → marca hora extra → refleja en nómina mensual
+Manager: "¿Cuántas horas extra ha hecho Juan este mes?" → HR agent responde
+```
+**Criterios**: Registro de jornada almacenado con hora entrada/salida. Cálculo correcto de horas extra vs contractuales. Exportable para inspección laboral.
 
 ---
 
-## 5. Deuda técnica bloqueante (para los 5 flujos)
+## 3. Limitaciones conocidas de v1
 
-| Deuda | Impacto | Flujo afectado | Estado |
-|------|---------|---------------|--------|
-| Email agent sin ruta API | Workflows que envían emails no completan el ciclo | Flujo 4 | ✅ Resuelto |
-| Frontend pages desconectadas | Usuario ve UI vacía aunque BD tiene datos | Flujos 1, 3 | ✅ Resuelto (audit confirmó conexión) |
-| Excel agent sin ruta API | Exportación no accesible desde chat | — | ⚠️ Fase 1.5 |
-| Condiciones de workflow solo time-based | Automatizaciones complejas (umbral de facturación, etc.) imposibles | Flujo 4 (extendido) | ⚠️ Fase 2 |
+| Limitación | Motivo |
+|-----------|--------|
+| Sin conexión bancaria directa | Open Banking/PSD2 requiere integración con Belvo o Salt Edge |
+| Sin firma electrónica | No hay integración con DocuSign/Autofirma |
+| Sin presentación automática a AEAT | Requiere certificado digital y API de sede electrónica |
+| Una empresa por instalación | Diseño deliberado: una empresa = una BD local |
+| Datos no se sincronizan a la nube | Decisión de privacidad, no limitación técnica |
+| Requiere internet para IA | El LLM es remoto; sin conexión, la IA no funciona |
 
 ---
 
-## 6. Estado: real vs. objetivo
+## 4. Roadmap
 
-| Flujo | Estado código | Frontend | Objetivo |
-|-------|--------------|----------|----------|
-| Factura desde chat | ✅ Implementado | ✅ /ventas/facturas conectado | ✅ Impecable |
-| Consulta financiera | ✅ Implementado | ✅ N/A (respuesta en chat) | ✅ Impecable |
-| Alta de empleado | ✅ Implementado | ✅ /rrhh/empleados conectado | ✅ Impecable |
-| Workflow recurrente | ✅ Email ruta expuesta | N/A | ✅ Impecable |
-| RAG documental | ✅ Implementado | ✅ /documentos conectado | ✅ Impecable (requiere pgvector en prod) |
-| Email desde chat | ✅ Agente + ruta ok | ❌ Página /email sin conectar | Fase 1.5 |
-| Excel desde chat | ⚠️ Agente ok, ruta falta | ❌ Página /excel sin conectar | Fase 1.5 |
-| Workflows con condiciones complejas | ❌ Solo time-based | ❌ | Fase 2 |
-| Integración bancaria PSD2 | ❌ Solo manual | ❌ | Fuera de scope v1 |
-| Presentación AEAT | ❌ | ❌ | Fuera de scope v1 |
+### v1.0 — Producto mínimo viable (actual)
+- [x] 9 agentes especializados funcionales
+- [x] Orquestador con clasificación de intención
+- [x] 5 flujos críticos end-to-end + flujo 6 (control horario)
+- [ ] Panel de control horario (fichajes, horas extra, ausencias, calendario)
+- [x] Aplicación Electron con PostgreSQL embebido
+- [ ] Onboarding de primera experiencia (ver sección 5)
+- [ ] Modo offline graceful (ver sección 5)
+- [ ] TicketBAI / VeriFactu — facturación legal (ver sección 5)
+- [ ] Backup automático local
+
+### v1.5 — Completar la experiencia
+- [ ] Página frontend para email (/email)
+- [ ] Página frontend para Excel (/excel)
+- [ ] Ruta API para Excel agent
+- [ ] Ruta API para Marketing agent
+- [ ] Importación de datos desde Excel/CSV (migración desde ERP anterior)
+- [ ] Auto-update del Electron app
+
+### v2.0 — Diferenciación
+- [ ] Integración bancaria real (Belvo/Salt Edge)
+- [ ] Firma electrónica (Autofirma/DocuSign)
+- [ ] Multi-empresa por instalación
+- [ ] Dashboards visuales con gráficos
+- [ ] App móvil (consulta, no gestión completa)
+
+### Futuro
+- Presentación automática a AEAT
+- Marketplace de plugins/agentes de terceros
+- Modo cloud opcional (sincronización voluntaria)
+
+---
+
+## 5. Requisitos no funcionales — críticos para producto real
+
+### 5.1 Primera experiencia (onboarding)
+
+Hoy: el usuario instala, abre, y ve una pantalla vacía. Tiene que intuir qué hacer.
+
+**Necesita**: Un asistente guiado que en 5 minutos:
+1. Pida nombre de empresa, NIF, dirección fiscal
+2. Ofrezca importar datos existentes (Excel/CSV) o empezar de cero
+3. Configure email (opcional, puede saltar)
+4. Muestre 3 ejemplos de lo que puede hacer con lenguaje natural
+5. Cree el primer cliente/factura como tutorial
+
+Sin esto, el 80% de usuarios abandona en los primeros 10 minutos.
+
+### 5.2 Degradación cuando el LLM falla
+
+Hoy: si el LLM no responde o devuelve algo imparseable, el sistema muestra errores técnicos ("No se pudo parsear el plan del LLM").
+
+**Necesita**:
+- Mensajes de error comprensibles: "No he podido procesar tu solicitud. ¿Puedes reformularla?"
+- Retry automático (1-2 intentos) antes de mostrar error
+- Las funciones de UI (tablas, formularios) deben funcionar SIN la IA — el ERP básico no debería depender del LLM
+- Indicador visual claro de "IA no disponible" vs "error en tu solicitud"
+
+### 5.3 Dependencia de internet y costes LLM
+
+- **Sin internet**: La IA no funciona, pero el ERP debería seguir operativo para consultas, listados, formularios manuales
+- **Costes**: Cada interacción con IA tiene coste de tokens. Necesita:
+  - Estimación de coste mensual por volumen de uso
+  - Mecanismo para que el usuario sepa su consumo
+  - Posibilidad de modelo local (Ollama/llama.cpp) como alternativa sin coste
+
+### 5.4 Backup y recuperación
+
+Local-first significa: si el PC muere, la empresa pierde todo. Esto es un showstopper.
+
+**Necesita (mínimo v1)**:
+- Exportación programada de BD a archivo (pg_dump automático)
+- Botón "Exportar backup" en settings
+- Guía de restauración clara
+
+**Deseable (v1.5)**:
+- Backup automático diario a carpeta configurable (USB, NAS, carpeta de nube tipo Dropbox)
+- Verificación de integridad del backup
+
+### 5.5 Mecanismo de actualización
+
+**Necesita**:
+- Auto-update via Electron autoUpdater (Squirrel/electron-updater)
+- Notificación no intrusiva de nueva versión
+- Migraciones de BD automáticas al actualizar
+- Rollback si la migración falla
+
+### 5.6 Facturación legal en España
+
+**TicketBAI** (País Vasco) y **VeriFactu** (resto de España) son obligatorios para software de facturación en 2026.
+
+Requisitos mínimos:
+- Encadenamiento de facturas (hash de la anterior)
+- Firma electrónica de cada factura
+- Envío a la AEAT/hacienda foral en tiempo real o plazo
+- QR en cada factura impresa
+- Registro de eventos (alta, anulación, modificación)
+
+**Sin esto, el software no puede venderse legalmente como herramienta de facturación en España.**
+
+### 5.7 Seguridad y RGPD/LOPD
+
+El sistema maneja datos sensibles: nóminas, datos personales de empleados, información fiscal.
+
+**Necesita**:
+- Control de acceso: ¿quién puede ver nóminas? ¿Y datos de clientes?
+- Log de auditoría de accesos (quién accedió a qué dato y cuándo)
+- Cifrado de la BD local (o al menos de campos sensibles)
+- Derecho al olvido: capacidad de borrar todos los datos de una persona
+- Política de privacidad clara para el usuario final
+
+### 5.8 Rendimiento
+
+| Operación | Objetivo |
+|-----------|----------|
+| Arranque de la aplicación | < 15 segundos |
+| Respuesta de IA (flujos simples) | < 5 segundos |
+| Consultas a BD (listados, búsquedas) | < 1 segundo |
+| Indexación de documento PDF | < 10 segundos por página |
+| Carga de página frontend | < 2 segundos |
+
+---
+
+## 6. Modelo de negocio
+
+> Sin definición de modelo de negocio, las decisiones técnicas se toman en el vacío.
+
+### Opciones a evaluar
+
+| Modelo | Pros | Contras |
+|--------|------|---------|
+| **Licencia única + mantenimiento anual** | Ingreso upfront, familiar para PYMEs | Ingresos no recurrentes, difícil financiar desarrollo continuo |
+| **Suscripción mensual** | Ingresos predecibles, alineado con coste LLM | Resistencia de PYMEs a "otro SaaS mensual" |
+| **Freemium** | Baja barrera de entrada, viralidad | Difícil convertir en segmento PYME |
+| **Pago por uso de IA** | Justo: pagas lo que usas | Impredecible para el cliente, genera ansiedad de uso |
+
+### Recomendación preliminar
+
+**Suscripción mensual con tier gratuito limitado**:
+- **Gratis**: ERP básico sin IA (formularios manuales), 1 usuario, datos locales
+- **Pro (€X/mes)**: IA ilimitada, workflows, RAG, soporte email
+- **Asesoría (€X/mes)**: Multi-empresa (v2), soporte prioritario, compliance avanzado
+
+El tier gratuito funciona como demo permanente. La IA es el upsell natural. El coste de LLM se absorbe en la suscripción.
+
+### Pendiente de decidir
+- [ ] Precio exacto por tier
+- [ ] Si el tier gratuito incluye N interacciones IA/mes
+- [ ] Canal de distribución: web directa, marketplaces, network de asesorías
+- [ ] Modelo de soporte: solo email, chat, telefónico
+
+---
+
+## Apéndice: Decisiones tomadas
+
+| Decisión | Razón | Fecha |
+|----------|-------|-------|
+| Local-first (no SaaS) | Privacidad como diferenciador + confianza segmento PYME | Inicio proyecto |
+| Electron + PostgreSQL embebido | Instalación sin dependencias, familiar para usuario Windows | Inicio proyecto |
+| Claude como LLM principal | Mejor relación calidad/coste para español + tool use | Inicio proyecto |
+| Un tenant por instalación | Simplifica v1, multi-empresa planificado para v2 | Inicio proyecto |
+| Datos nunca salen del ordenador | Elimina preocupaciones RGPD de hosting, reduce costes infra | Inicio proyecto |
