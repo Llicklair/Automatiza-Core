@@ -5,6 +5,7 @@ import {
     Users2, FileText, Package, Bot, Zap, Building2,
     ShoppingCart, BarChart3, KeyRound
 } from "lucide-react";
+import { api } from "@/lib/api";
 
 export interface Step {
     id: string;
@@ -183,7 +184,18 @@ export function usePrimerosPassos() {
 
     useEffect(() => {
         const saved = localStorage.getItem("onboarding_completed");
-        if (saved) setCompleted(new Set(JSON.parse(saved)));
+        const base = new Set<string>(saved ? JSON.parse(saved) : []);
+
+        Promise.all([api.tenant.me(), api.tenant.getLlmConfig()])
+            .then(([tenant, llm]) => {
+                if (tenant.nif && tenant.name) base.add("empresa");
+                else base.delete("empresa");
+                const hasKey = Object.values(llm.providers).some(p => p.has_key);
+                if (hasKey) base.add("api_keys");
+                else base.delete("api_keys");
+                setCompleted(new Set(base));
+            })
+            .catch(() => setCompleted(new Set(base)));
     }, []);
 
     const toggle = (id: string) => {

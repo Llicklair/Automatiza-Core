@@ -40,7 +40,7 @@ function StatusRow({ icon, label, status, detail }: {
 }
 
 export default function ActualizacionesPage() {
-    const { health, loading, error, updateStatus, updateError, checks, loadHealth, checkForUpdates } = useActualizaciones();
+    const { health, loading, error, updateStatus, updateError, downloadPercent, updateVersion, checks, loadHealth, checkForUpdates, installUpdate } = useActualizaciones();
 
     return (
         <div className="p-8 max-w-3xl mx-auto space-y-8">
@@ -72,7 +72,7 @@ export default function ActualizacionesPage() {
                     </div>
                     <button
                         onClick={checkForUpdates}
-                        disabled={updateStatus === "checking"}
+                        disabled={["checking","downloading","downloaded"].includes(updateStatus)}
                         className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary disabled:opacity-50 text-foreground text-xs font-medium rounded-lg transition-colors"
                     >
                         {updateStatus === "checking" ? (
@@ -93,7 +93,36 @@ export default function ActualizacionesPage() {
                 {updateStatus === "available" && (
                     <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm">
                         <Download className="w-4 h-4 flex-shrink-0" />
-                        Hay una nueva versión disponible. La actualización automática se habilitará próximamente.
+                        {updateVersion ? `Nueva versión v${updateVersion} disponible. Descargando...` : "Nueva versión disponible. Descargando..."}
+                    </div>
+                )}
+                {updateStatus === "downloading" && (
+                    <div className="mt-4 space-y-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
+                        <div className="flex items-center justify-between text-primary text-sm">
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                                Descargando actualización...
+                            </span>
+                            <span className="text-xs font-mono">{downloadPercent}%</span>
+                        </div>
+                        <div className="w-full bg-primary/20 rounded-full h-1.5 overflow-hidden">
+                            <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${downloadPercent}%` }} />
+                        </div>
+                    </div>
+                )}
+                {updateStatus === "downloaded" && (
+                    <div className="mt-4 flex items-center justify-between px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="flex items-center gap-2 text-emerald-300 text-sm">
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                            Actualización lista para instalar
+                        </span>
+                        <button
+                            onClick={installUpdate}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors"
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            Instalar y reiniciar
+                        </button>
                     </div>
                 )}
                 {updateStatus === "error" && (
@@ -168,37 +197,29 @@ export default function ActualizacionesPage() {
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-muted-foreground" />
-                    Cómo aplicar una actualización
+                    Cómo funcionan las actualizaciones
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                    AutomatizaPyme se actualiza sincronizando el código fuente con la app instalada.
-                    No requiere reinstalar el <code className="text-foreground">.exe</code>.
+                    AutomatizaPyme se actualiza automáticamente en segundo plano. Cuando hay una nueva versión,
+                    se descarga sin interrumpir tu trabajo. Al finalizar, aparecerá el botón <strong className="text-foreground">Instalar y reiniciar</strong> arriba.
                 </p>
                 <ol className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex gap-3">
                         <span className="w-5 h-5 rounded-full bg-primary/20 border border-primary/20 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-                        <span>Descarga o actualiza el código fuente del proyecto.</span>
+                        <span>La app comprueba actualizaciones automáticamente al arrancar.</span>
                     </li>
                     <li className="flex gap-3">
                         <span className="w-5 h-5 rounded-full bg-primary/20 border border-primary/20 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-                        <div>
-                            <span>Abre un terminal en la carpeta del proyecto y ejecuta:</span>
-                            <code className="block mt-1.5 bg-card text-foreground px-3 py-2 rounded-lg font-mono text-xs">
-                                cd desktop &amp;&amp; npm run sync
-                            </code>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Si hay cambios en el frontend, usa <code className="text-muted-foreground">npm run sync:rebuild</code> en su lugar.
-                            </p>
-                        </div>
+                        <span>Si hay una versión nueva, se descarga en segundo plano sin interrumpirte.</span>
                     </li>
                     <li className="flex gap-3">
                         <span className="w-5 h-5 rounded-full bg-primary/20 border border-primary/20 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
-                        <span>Reinicia la aplicación desde la bandeja del sistema: clic derecho → <strong className="text-foreground">Salir</strong>, luego vuelve a abrirla.</span>
+                        <span>Cuando esté lista, pulsa <strong className="text-foreground">Instalar y reiniciar</strong>. La app se cerrará, aplicará la actualización y volverá a abrirse.</span>
                     </li>
                 </ol>
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/5 border border-amber-500/15 text-amber-300/80 text-xs">
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/15 text-muted-foreground text-xs">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                    Si el sync incluye nuevas dependencias Python o migraciones de base de datos, el reinicio las aplicará automáticamente.
+                    Las migraciones de base de datos se aplican automáticamente en el reinicio. Tus datos nunca se pierden.
                 </div>
             </div>
         </div>

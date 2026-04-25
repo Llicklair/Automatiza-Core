@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = True
 
     # Embeddings
-    EMBEDDINGS_PROVIDER: str = "local"  # local | gemini | openai
+    EMBEDDINGS_PROVIDER: str = "gemini"  # local | gemini | openai
     EMBEDDINGS_LOCAL_MODEL: str = "BAAI/bge-m3"  # modelo HuggingFace local
 
     # OAuth — Google (Gmail + Drive)

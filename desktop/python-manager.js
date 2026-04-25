@@ -126,50 +126,104 @@ async function downloadPython(onProgress) {
 
 /**
  * Instala las dependencias del backend.
- * @param {Function} onProgress
+ * @param {Function} onProgress - (message, percent)
  */
 async function installDeps(onProgress) {
   if (areDepsInstalled()) return;
 
-  onProgress("Instalando dependencias del backend...", 0);
+  onProgress("Instalando dependencias del backend (puede tardar varios minutos)...", 0);
   logPython("Iniciando instalación de dependencias...");
 
   const pipExe = path.join(PYTHON_DIR, "Scripts", "pip.exe");
   const requirementsPath = path.join(BACKEND_DIR, "requirements.txt");
 
   if (!fs.existsSync(requirementsPath)) {
-    const errMsg = `No se encontró requirements.txt en: ${requirementsPath}. La instalación no puede continuar.`;
-    logPython(errMsg);
-    throw new Error(errMsg);
+    throw new Error(`No se encontró requirements.txt en: ${requirementsPath}.`);
   }
 
-  logPython(`Instalando desde requirements.txt: ${requirementsPath}`);
-  logPython(`pip: ${pipExe}`);
-  logPython(`site-packages: ${SITE_PACKAGES}`);
+  // Si pip no existe (instalación previa incompleta), reinstalarlo
+  if (!fs.existsSync(pipExe)) {
+    logPython("pip.exe no encontrado — reinstalando pip...");
+    onProgress("Reparando instalación de Python (pip)...", 5);
+    const getPipPath = path.join(PYTHON_DIR, "get-pip.py");
+    await downloadFile("https://bootstrap.pypa.io/get-pip.py", getPipPath, () => {});
+    execSync(`"${PYTHON_EXE}" "${getPipPath}"`, {
+      cwd: PYTHON_DIR,
+      stdio: "pipe",
+      timeout: 120000,
+      env: { ...process.env, PYTHONPATH: SITE_PACKAGES },
+    });
+    try { fs.unlinkSync(getPipPath); } catch {}
+    if (!fs.existsSync(pipExe)) {
+      throw new Error(`No se pudo instalar pip. Revisa AutomatizaPyme_BACKEND_LOG.txt en tu Escritorio.`);
+    }
+    logPython("pip reinstalado correctamente.");
+  }
 
-  try {
-    execSync(
-      `"${pipExe}" install --target "${SITE_PACKAGES}" -r "${requirementsPath}" --no-warn-script-location`,
+  logPython(`Instalando desde: ${requirementsPath}`);
+
+  await new Promise((resolve, reject) => {
+    const pip = spawn(
+      pipExe,
+      ["install", "--target", SITE_PACKAGES, "-r", requirementsPath, "--no-warn-script-location"],
       {
         cwd: BACKEND_DIR,
-        stdio: "pipe",
-        timeout: 600000,
         env: { ...process.env, PYTHONPATH: SITE_PACKAGES },
+        stdio: "pipe",
       }
     );
-    logPython("Dependencias instaladas correctamente.");
-    // Guardar hash de requirements.txt para detectar cambios futuros
-    try {
-      const crypto = require("crypto");
-      const currentHash = crypto.createHash("md5").update(fs.readFileSync(requirementsPath)).digest("hex");
-      fs.writeFileSync(DEPS_HASH_FILE, currentHash);
-    } catch {}
-  } catch (err) {
-    const output = (err.stdout || "").toString() + "\n" + (err.stderr || "").toString();
-    logPython(`ERROR instalando dependencias:\n${output}`);
-    throw new Error(`Fallo al instalar dependencias del backend:\n${output.slice(0, 500)}`);
-  }
 
+    let pkgCount = 0;
+    let installing = false;
+    let heartbeatSec = 0;
+
+    // Heartbeat cada 5s durante la fase silenciosa de copia de archivos
+    const heartbeat = setInterval(() => {
+      if (!installing) return;
+      heartbeatSec += 5;
+      const mins = Math.floor(heartbeatSec / 60);
+      const secs = heartbeatSec % 60;
+      const elapsed = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      onProgress(`Copiando archivos... (${elapsed} — esto puede tardar varios minutos)`, 92);
+    }, 5000);
+
+    pip.stdout.on("data", (data) => {
+      const text = data.toString();
+      logPython(`[pip] ${text.trim()}`);
+
+      if (text.includes("Installing collected packages")) {
+        installing = true;
+        heartbeatSec = 0;
+        onProgress("Copiando archivos al sistema (fase lenta, por favor espera)...", 91);
+        return;
+      }
+      if (!installing) {
+        const match = text.match(/Collecting ([^\s]+)/);
+        if (match) {
+          pkgCount++;
+          const pct = Math.min(5 + Math.round((pkgCount / 80) * 85), 90);
+          onProgress(`Descargando ${match[1]}...`, pct);
+        }
+      }
+    });
+    pip.stderr.on("data", (data) => logPython(`[pip stderr] ${data.toString().trim()}`));
+
+    pip.on("error", (err) => { clearInterval(heartbeat); reject(new Error(`No se pudo lanzar pip: ${err.message}`)); });
+    pip.on("close", (code) => {
+      clearInterval(heartbeat);
+      if (code === 0) resolve();
+      else reject(new Error(`pip salió con código ${code}. Revisa AutomatizaPyme_BACKEND_LOG.txt en tu Escritorio.`));
+    });
+  });
+
+  // Guardar hash de requirements.txt para detectar cambios futuros
+  try {
+    const crypto = require("crypto");
+    const hash = crypto.createHash("md5").update(fs.readFileSync(requirementsPath)).digest("hex");
+    fs.writeFileSync(DEPS_HASH_FILE, hash);
+  } catch {}
+
+  logPython("Dependencias instaladas correctamente.");
   onProgress("Dependencias instaladas", 100);
 }
 

@@ -204,7 +204,7 @@ function getBackendEnv(lanIP) {
     SMTP_PASSWORD: envVar("SMTP_PASSWORD"),
     SMTP_TLS:      envVar("SMTP_TLS", "true"),
     // Embeddings
-    EMBEDDINGS_PROVIDER:    envVar("EMBEDDINGS_PROVIDER", "local"),
+    EMBEDDINGS_PROVIDER:    envVar("EMBEDDINGS_PROVIDER", "gemini"),
     EMBEDDINGS_LOCAL_MODEL: envVar("EMBEDDINGS_LOCAL_MODEL", "BAAI/bge-m3"),
     // Java JRE para OpenDataLoader PDF
     JAVA_HOME: fs.existsSync(path.join(APPDATA_DIR, "jre", "bin", "java.exe"))
@@ -248,7 +248,7 @@ function runSpawn(cmd, args, opts, label) {
  * Si .next no existe o la API URL cambió, hacer build primero.
  * Usa npx next para evitar problemas de PATH con el binario next.
  */
-async function startFrontend() {
+async function startFrontend(onProgress = () => {}) {
   const isWin = process.platform === "win32";
   const npmCmd = isWin ? "npm.cmd" : "npm";
   const nextDir = path.join(FRONTEND_DIR, ".next");
@@ -276,7 +276,21 @@ async function startFrontend() {
 
   if (!depsUpToDate) {
     logBoot("Frontend: instalando dependencias (npm install)...");
-    await runSpawn(npmCmd, ["install", "--no-audit", "--no-fund"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND INSTALL");
+    onProgress("Instalando dependencias del frontend...", 76);
+
+    let npmSec = 0;
+    const npmHeartbeat = setInterval(() => {
+      npmSec += 5;
+      const mins = Math.floor(npmSec / 60);
+      const secs = npmSec % 60;
+      onProgress(`Instalando dependencias del frontend... (${mins > 0 ? `${mins}m ` : ""}${secs}s)`, 76);
+    }, 5000);
+
+    try {
+      await runSpawn(npmCmd, ["install", "--no-audit", "--no-fund"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND INSTALL");
+    } finally {
+      clearInterval(npmHeartbeat);
+    }
     logBoot("Frontend: dependencias instaladas.");
     try {
       if (fs.existsSync(lockfilePath)) {
@@ -295,12 +309,26 @@ async function startFrontend() {
   let buildFailed = false;
   if (needsBuild) {
     logBoot("Frontend: ejecutando 'npm run build'...");
+    onProgress("Compilando frontend (primera vez, ~3 minutos)...", 78);
+
+    // Heartbeat durante el build — Next.js no emite progreso parseable
+    let buildSec = 0;
+    const buildHeartbeat = setInterval(() => {
+      buildSec += 5;
+      const mins = Math.floor(buildSec / 60);
+      const secs = buildSec % 60;
+      const elapsed = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      onProgress(`Compilando frontend... (${elapsed})`, 80);
+    }, 5000);
+
     try {
       await runSpawn(npmCmd, ["run", "build"], { cwd: FRONTEND_DIR, env: frontendEnv, timeout: 600000 }, "FRONTEND BUILD");
       logBoot("Frontend: build completado.");
     } catch (buildErr) {
       logBoot(`[FRONTEND BUILD ERROR] ${buildErr.message}`);
       buildFailed = true;
+    } finally {
+      clearInterval(buildHeartbeat);
     }
   }
 
@@ -310,6 +338,7 @@ async function startFrontend() {
   }
 
   // ── FASE 2: Arrancar el servidor Next.js ─────────────────────────────────
+  onProgress("Arrancando frontend...", 88);
   logBoot("Frontend: arrancando servidor Next.js...");
   frontendProcess = spawn(
     npmCmd,
@@ -468,10 +497,9 @@ async function startAll(onProgress) {
   logBoot("Backend operativo en puerto 8080.");
   onProgress("Backend operativo", 75);
 
-  // 3. Frontend (el build síncrono ocurre dentro de startFrontend si es necesario)
+  // 3. Frontend (el build ocurre dentro de startFrontend si es necesario)
   logBoot("Iniciando frontend...");
-  onProgress("Construyendo frontend...", 78);
-  const fp = await startFrontend();
+  const fp = await startFrontend(onProgress);
 
   fp.stdout.on("data", (data) => {
     const line = data.toString();
