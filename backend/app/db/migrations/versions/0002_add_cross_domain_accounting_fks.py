@@ -4,8 +4,8 @@ Revision ID: 0002_accounting_fks
 Revises: 0001_initial_squash
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0002_accounting_fks"
