@@ -27,7 +27,7 @@ export function ApprovalsSection({ loading, approvals }: ApprovalsSectionProps) 
                 ) : approvals.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground text-xs flex flex-col items-center gap-2">
                         <CheckCircle2 className="w-8 h-8 text-muted-foreground" />
-                        Todo al d\u00EDa. No hay cuellos de botella.
+                        Todo al día. No hay cuellos de botella.
                     </div>
                 ) : (
                     approvals.map(a => (

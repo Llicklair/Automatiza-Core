@@ -26,7 +26,7 @@ export function AiInsightsSection({ insights }: AiInsightsSectionProps) {
             </div>
             <div className="px-6 py-5 border-b border-primary/20 flex items-center justify-between relative z-10 bg-gradient-to-r from-indigo-500/10 to-transparent">
                 <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-primary" /> Sugerencias Estrat\u00E9gicas IA
+                    <Sparkles className="w-5 h-5 text-primary" /> Sugerencias Estratégicas IA
                 </h2>
             </div>
             <div className="p-6 relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4">

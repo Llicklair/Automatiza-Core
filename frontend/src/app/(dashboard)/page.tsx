@@ -13,7 +13,7 @@ import { ApprovalsSection } from "./_components/ApprovalsSection";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
-    const saludo = h < 14 ? "Buenos d\u00EDas" : h < 21 ? "Buenas tardes" : "Buenas noches";
+    const saludo = h < 14 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
     return name ? `${saludo}, ${name}` : saludo;
 }
 
@@ -33,7 +33,7 @@ export default function DashboardPage() {
             <div className="relative z-10">
                 <h1 className="text-3xl font-bold text-foreground tracking-tight">{getGreeting(userName)}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Aqu\u00ED tienes el resumen financiero y operativo de tu negocio.
+                    Aquí tienes el resumen financiero y operativo de tu negocio.
                 </p>
             </div>
 

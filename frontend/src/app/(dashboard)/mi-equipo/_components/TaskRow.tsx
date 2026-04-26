@@ -103,7 +103,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                 value={replyText}
                                                 onChange={e => setReplyText(e.target.value)}
                                                 onKeyDown={e => e.key === "Enter" && handleReply()}
-                                                placeholder="Responde al agente para que contin\u00fae\u2026"
+                                                placeholder="Responde al agente para que continúe…"
                                                 disabled={replying}
                                                 className="flex-1 bg-background border border-primary/30 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
                                             />
@@ -113,7 +113,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                 className="px-4 py-2.5 bg-primary rounded-xl text-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2 transition"
                                             >
                                                 {replying ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                                                {replying ? "Enviando\u2026" : "Responder"}
+                                                {replying ? "Enviando…" : "Responder"}
                                             </button>
                                         </div>
                                     </div>
@@ -134,7 +134,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                         title="Copiar prompt"
                                     >
                                         {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                                        {copied ? "\u00a1Copiado!" : "Copiar"}
+                                        {copied ? "¡Copiado!" : "Copiar"}
                                     </button>
                                 </div>
                                 <p className="px-4 py-3 text-sm text-primary-foreground/90 leading-relaxed whitespace-pre-wrap">
@@ -148,7 +148,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                         <X className="w-4 h-4 text-red-400 flex-shrink-0" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-red-400 mb-0.5">Error durante la ejecuci\u00f3n</p>
+                                        <p className="font-semibold text-red-400 mb-0.5">Error durante la ejecución</p>
                                         <p className="text-red-300/80 leading-relaxed">{task.error_message}</p>
                                     </div>
                                 </div>
@@ -159,7 +159,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                     <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
                                         <div className="px-4 py-3 border-b border-border bg-muted">
                                             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Plan de Ejecuci\u00f3n
+                                                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Plan de Ejecución
                                             </h4>
                                         </div>
                                         <div className="p-4 overflow-x-auto text-xs font-mono text-muted-foreground flex-1">
@@ -205,13 +205,13 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                                 </span>
                                                             </div>
                                                             <p className="text-sm text-foreground leading-relaxed">
-                                                                {res.summary || (res.error ? `\u274C ${res.error}` : (typeof res.output === 'string' ? res.output : '\u2705 Completado.'))}
+                                                                {res.summary || (res.error ? `❌ ${res.error}` : (typeof res.output === 'string' ? res.output : '✅ Completado.'))}
                                                             </p>
                                                         </div>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <p className="text-xs text-muted-foreground italic">No hay resultados a\u00fan.</p>
+                                                <p className="text-xs text-muted-foreground italic">No hay resultados aún.</p>
                                             )}
                                         </div>
                                     </div>

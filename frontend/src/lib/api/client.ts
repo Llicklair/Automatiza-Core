@@ -11,6 +11,13 @@ export const BASE =
     ? `${window.location.protocol}//${window.location.hostname}:8080`
     : "http://127.0.0.1:8080";
 
+function parseDetail(raw: unknown): string {
+    if (typeof raw === "string") return raw;
+    if (Array.isArray(raw))
+        return raw.map((e: { msg?: string }) => e.msg ?? JSON.stringify(e)).join("; ");
+    return JSON.stringify(raw);
+}
+
 export function getToken(): string | null {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("access_token");
@@ -69,7 +76,7 @@ export async function request<T>(
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new ApiError(
             res.status,
-            err.detail ?? "Error desconocido",
+            parseDetail(err.detail ?? "Error desconocido"),
             err.request_id,
             err.type,
         );
@@ -108,7 +115,7 @@ export async function requestUpload<T>(path: string, formData: FormData): Promis
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new ApiError(
             res.status,
-            err.detail ?? "Error desconocido",
+            parseDetail(err.detail ?? "Error desconocido"),
             err.request_id,
             err.type,
         );

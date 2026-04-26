@@ -36,7 +36,7 @@ export function EmpleadoFormModal({
             title={editingId ? "Editar Empleado" : "Nuevo Empleado"}
             onSubmit={onSubmit}
             isSubmitting={saving}
-            submitLabel={saving ? "Guardando\u2026" : editingId ? "Guardar cambios" : "Crear empleado"}
+            submitLabel={saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear empleado"}
         >
             <div className="space-y-4">
                 <FormField label="Nombre completo" required>
@@ -44,7 +44,7 @@ export function EmpleadoFormModal({
                         required
                         value={form.name}
                         onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        placeholder="Ej: Mar\u00eda Garc\u00eda L\u00f3pez"
+                        placeholder="Ej: María García López"
                     />
                 </FormField>
 
@@ -56,7 +56,7 @@ export function EmpleadoFormModal({
                             placeholder="12345678A"
                         />
                     </FormField>
-                    <FormField label="Salario base (\u20ac/mes)">
+                    <FormField label="Salario base (€/mes)">
                         <Input
                             type="number"
                             value={form.base_salary}
@@ -80,7 +80,7 @@ export function EmpleadoFormModal({
                         <Input
                             value={form.department}
                             onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
-                            placeholder="Administraci\u00f3n"
+                            placeholder="Administración"
                         />
                     </FormField>
                     <FormField label="Cargo">
