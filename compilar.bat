@@ -46,17 +46,33 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [1/2] Instalando dependencias de desktop...
-:: Usamos call npm.cmd para evitar problemas con la politica de PowerShell
+echo [1/3] Instalando dependencias de desktop...
 call npm.cmd install
 if %errorlevel% neq 0 (
-    echo [ERROR] Ocurrio un problema al instalar las dependencias.
+    echo [ERROR] Ocurrio un problema al instalar dependencias de desktop.
     pause
     exit /b 1
 )
 echo.
 
-echo [2/2] Generando el instalador (.exe)...
+echo [2/3] Preparando frontend (npm install + build)...
+cd /d "%~dp0frontend"
+call npm.cmd install --no-audit --no-fund
+if %errorlevel% neq 0 (
+    echo [ERROR] npm install del frontend fallo.
+    pause
+    exit /b 1
+)
+call npm.cmd run build
+if %errorlevel% neq 0 (
+    echo [ERROR] npm run build del frontend fallo.
+    pause
+    exit /b 1
+)
+cd /d "%~dp0desktop"
+echo.
+
+echo [3/3] Generando el instalador (.exe)...
 call npm.cmd run dist
 if %errorlevel% neq 0 (
     echo [ERROR] Ocurrio un problema al generar el ejecutable.
@@ -70,5 +86,8 @@ echo [EXITO] El proceso ha finalizado correctamente.
 echo.
 echo Puedes encontrar el instalador compilado listo en:
 echo -^> %~dp0desktop\dist\
+echo.
+echo NOTA: El frontend ya va pre-compilado (.next incluido).
+echo       El primer arranque solo necesitara npm install (sin build).
 echo ==================================================
 pause

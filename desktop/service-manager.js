@@ -4,7 +4,7 @@
  */
 const path = require("path");
 const http = require("http");
-const { spawn, execSync } = require("child_process");
+const { spawn, execSync, exec } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const crypto = require("crypto");
@@ -219,11 +219,12 @@ function getBackendEnv(lanIP) {
  */
 function runSpawn(cmd, args, opts, label) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, {
+    // exec usa cmd /c en Windows automáticamente — evita EINVAL con .cmd files en Node 22
+    const cmdLine = [cmd, ...args].map(a => /\s/.test(a) ? `"${a}"` : a).join(" ");
+    const child = exec(cmdLine, {
       cwd: opts.cwd,
       env: opts.env || process.env,
-      stdio: "pipe",
-      windowsHide: true,
+      maxBuffer: 200 * 1024 * 1024,
     });
     child.stdout.on("data", (d) => logBoot(`[${label} STDOUT] ${d.toString().trim()}`));
     child.stderr.on("data", (d) => logBoot(`[${label} STDERR] ${d.toString().trim()}`));
@@ -264,11 +265,15 @@ async function startFrontend(onProgress = () => {}) {
   const installedLockPath = path.join(nodeModulesDir, ".installed-lock");
 
   let depsUpToDate = false;
-  if (fs.existsSync(nodeModulesDir) && fs.existsSync(installedLockPath) && fs.existsSync(lockfilePath)) {
+  const binDir = path.join(nodeModulesDir, ".bin");
+  if (fs.existsSync(nodeModulesDir) && fs.existsSync(lockfilePath)) {
     try {
       const currentLock = crypto.createHash("md5").update(fs.readFileSync(lockfilePath)).digest("hex");
-      const installedLock = fs.readFileSync(installedLockPath, "utf8");
-      if (currentLock === installedLock) {
+      if (fs.existsSync(installedLockPath)) {
+        depsUpToDate = fs.readFileSync(installedLockPath, "utf8") === currentLock;
+      } else if (fs.existsSync(binDir)) {
+        // Instalación empaquetada: node_modules ya existe pero sin stamp — confiar y sellar
+        fs.writeFileSync(installedLockPath, currentLock);
         depsUpToDate = true;
       }
     } catch {}
@@ -340,9 +345,10 @@ async function startFrontend(onProgress = () => {}) {
   // ── FASE 2: Arrancar el servidor Next.js ─────────────────────────────────
   onProgress("Arrancando frontend...", 88);
   logBoot("Frontend: arrancando servidor Next.js...");
+  const nextBin = path.join(FRONTEND_DIR, "node_modules", "next", "dist", "bin", "next");
   frontendProcess = spawn(
-    npmCmd,
-    ["start", "--", "-H", "0.0.0.0"],
+    "node",
+    [nextBin, "start", "-H", "0.0.0.0", "-p", "3000"],
     {
       cwd: FRONTEND_DIR,
       env: frontendEnv,

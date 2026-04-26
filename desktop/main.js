@@ -49,7 +49,7 @@ let localNetworkEnabled = true;
 function createSplash() {
   splashWindow = new BrowserWindow({
     width: 480,
-    height: 320,
+    height: 360,
     frame: false,
     resizable: false,
     transparent: false,
@@ -78,7 +78,9 @@ function createMainWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 600,
-    icon: path.join(__dirname, "assets", "icon.ico"),
+    icon: app.isPackaged
+      ? path.join(process.resourcesPath, "icon.ico")
+      : path.join(__dirname, "assets", "icon.ico"),
     title: "AutomatizaPyme",
     show: false,
     webPreferences: {

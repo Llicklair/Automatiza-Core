@@ -58,7 +58,8 @@
       "Bash(rm -f \"/c/Users/Marcos/Desktop/atomatizacion de empresas/.gitnexus/kuzu/lock\")",
       "Bash(C:/Users/Marcos/AppData/Local/Programs/Python/Python311/python.exe:*)",
       "Bash(\"C:/Users/Marcos/AppData/Local/Programs/Python/Python311/python.exe\" -m pip install poetry)",
-      "Bash(\"C:/Users/Marcos/AppData/Local/Programs/Python/Python311/Scripts/poetry.exe\" lock:*)"
+      "Bash(\"C:/Users/Marcos/AppData/Local/Programs/Python/Python311/Scripts/poetry.exe\" lock:*)",
+      "Bash(git -C \"C:\\\\Users\\\\Marcos\\\\Desktop\\\\automatizacion de empresas\" rev-parse --show-toplevel)"
     ]
   }
 }
