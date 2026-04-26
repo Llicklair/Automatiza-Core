@@ -18,7 +18,8 @@
   "devDependencies": {
     "electron": "^41.2.1",
     "electron-builder": "^26.8.1",
-    "png-to-ico": "^2.1.8"
+    "png-to-ico": "^2.1.8",
+    "rcedit": "^4.0.1"
   },
   "build": {
     "appId": "com.automatizapyme.desktop",
@@ -33,6 +34,7 @@
       "icon": "assets/icon.ico",
       "signAndEditExecutable": false
     },
+    "afterPack": "./afterPack.js",
     "forceCodeSigning": false,
     "nsis": {
       "oneClick": true,
@@ -64,6 +66,14 @@
     ],
     "extraResources": [
       {
+        "from": "assets/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "assets/icon.png",
+        "to": "icon.png"
+      },
+      {
         "from": "../backend",
         "to": "project/backend",
         "filter": [
@@ -83,7 +93,7 @@
         "filter": [
           "**/*",
           "!node_modules/**",
-          "!.next/**"
+          "!.next/cache/**"
         ]
       }
     ]
