@@ -4,7 +4,7 @@ import random
 import uuid
 from datetime import date, timedelta
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import BankTransaction, Invoice
@@ -13,8 +13,12 @@ from app.services.state_machine import can_transition
 
 
 async def get_summary(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
-    """Financial summary derived from local invoices."""
-    query = select(Invoice).where(Invoice.tenant_id == tenant_id)
+    """Financial summary derived from invoices in the last 30 days."""
+    since = date.today() - timedelta(days=30)
+    query = select(Invoice).where(
+        Invoice.tenant_id == tenant_id,
+        Invoice.date >= since,
+    )
     result = await db.execute(query)
     invoices = result.scalars().all()
 
@@ -22,15 +26,15 @@ async def get_summary(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     gastos = sum(float(inv.amount_total) for inv in invoices if inv.invoice_type == "received")
 
     neto = ingresos - gastos
-    margen = round((neto / ingresos) * 100) if ingresos > 0 else 0
+    margen = round((neto / ingresos) * 100, 1) if ingresos > 0 else 0
 
     if not invoices:
         return {"ingresos": 0, "gastos": 0, "neto": 0, "margen": 0, "is_demo": False}
 
     return {
-        "ingresos": ingresos,
-        "gastos": gastos,
-        "neto": neto,
+        "ingresos": round(ingresos, 2),
+        "gastos": round(gastos, 2),
+        "neto": round(neto, 2),
         "margen": margen,
         "is_demo": False,
     }
@@ -139,42 +143,95 @@ async def reconcile_transaction(
     return {"message": "Conciliado correctamente", "status": "ok"}
 
 
-def get_analytics() -> dict:
-    """Return pre-processed cashflow data and AI insights for the Home Page."""
-    cashflow_data = [
-        {"month": "Sep", "ingresos": 14200, "gastos": 8500},
-        {"month": "Oct", "ingresos": 18500, "gastos": 9200},
-        {"month": "Nov", "ingresos": 16100, "gastos": 10500},
-        {"month": "Dic", "ingresos": 21000, "gastos": 12100},
-        {"month": "Ene", "ingresos": 19400, "gastos": 11000},
-        {"month": "Feb", "ingresos": 22300, "gastos": 10200},
-    ]
+async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
+    """Return real cashflow data and dynamic insights for the Home Page."""
+    today = date.today()
+    month_names = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
-    ai_insights = [
-        {
-            "id": "1",
-            "type": "success",
-            "title": "Crecimiento sostenido detectado",
-            "message": "Los ingresos del Q1 muestran un incremento del 18% frente al mes anterior, impulsado por nuevos clientes de software.",
-            "action_text": "Ver informes",
-            "action_url": "/banca",
-        },
-        {
-            "id": "2",
-            "type": "warning",
-            "title": "3 facturas a punto de vencer",
-            "message": "Tienes 3 facturas emitidas por un valor total de 4.250\u20ac que vencen esta semana y no estan conciliadas.",
-            "action_text": "Revisar facturas",
-            "action_url": "/ventas/facturas",
-        },
-        {
-            "id": "3",
-            "type": "info",
-            "title": "Eficiencia en gastos",
-            "message": "En comparacion con tu sector, tus gastos recurrentes (servicios/cloud) estan un 5% optimizados. Buen trabajo!",
-            "action_text": "Analizar costes",
-            "action_url": "/tesoreria/pagos-y-cobros",
-        },
-    ]
+    cashflow_data = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        y, m = m_date.year, m_date.month
+
+        issued_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "issued",
+            extract("year", Invoice.date) == y,
+            extract("month", Invoice.date) == m,
+        )
+        received_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "received",
+            extract("year", Invoice.date) == y,
+            extract("month", Invoice.date) == m,
+        )
+        ingresos = float((await db.execute(issued_q)).scalar())
+        gastos = float((await db.execute(received_q)).scalar())
+        cashflow_data.append({
+            "month": month_names[m - 1],
+            "ingresos": round(ingresos, 2),
+            "gastos": round(gastos, 2),
+        })
+
+    total_ingresos = sum(c["ingresos"] for c in cashflow_data)
+    total_gastos = sum(c["gastos"] for c in cashflow_data)
+    neto = total_ingresos - total_gastos
+
+    pending_q = select(func.count(), func.coalesce(func.sum(Invoice.amount_total), 0)).where(
+        Invoice.tenant_id == tenant_id,
+        Invoice.invoice_type == "issued",
+        Invoice.status.in_(["sent", "draft"]),
+        Invoice.due_date <= today + timedelta(days=7),
+    )
+    pending_res = (await db.execute(pending_q)).one()
+    pending_count = pending_res[0]
+    pending_amount = float(pending_res[1])
+
+    ai_insights = []
+    if total_ingresos > 0 and len(cashflow_data) >= 2:
+        prev = cashflow_data[-2]["ingresos"]
+        curr = cashflow_data[-1]["ingresos"]
+        if prev > 0:
+            pct = round(((curr - prev) / prev) * 100, 1)
+            if pct > 0:
+                ai_insights.append({
+                    "id": "1", "type": "success",
+                    "title": "Crecimiento detectado",
+                    "message": f"Los ingresos de {cashflow_data[-1]['month']} crecieron un {pct}% respecto al mes anterior.",
+                    "action_text": "Ver informes", "action_url": "/banca",
+                })
+            elif pct < -5:
+                ai_insights.append({
+                    "id": "1", "type": "warning",
+                    "title": "Descenso de ingresos",
+                    "message": f"Los ingresos de {cashflow_data[-1]['month']} bajaron un {abs(pct)}% respecto al mes anterior.",
+                    "action_text": "Ver informes", "action_url": "/banca",
+                })
+
+    if pending_count > 0:
+        ai_insights.append({
+            "id": "2", "type": "warning",
+            "title": f"{pending_count} facturas próximas a vencer",
+            "message": f"Tienes {pending_count} facturas emitidas por {pending_amount:,.2f}€ que vencen esta semana.",
+            "action_text": "Revisar facturas", "action_url": "/ventas/facturas",
+        })
+
+    if total_gastos > 0:
+        margen = round((neto / total_ingresos) * 100, 1) if total_ingresos > 0 else 0
+        ai_insights.append({
+            "id": "3", "type": "info" if margen > 20 else "warning",
+            "title": f"Margen del periodo: {margen}%",
+            "message": f"Ingresos: {total_ingresos:,.2f}€ | Gastos: {total_gastos:,.2f}€ | Beneficio: {neto:,.2f}€ en los últimos 6 meses.",
+            "action_text": "Analizar costes", "action_url": "/analitica",
+        })
+
+    if not ai_insights:
+        ai_insights.append({
+            "id": "1", "type": "info",
+            "title": "Sin datos suficientes",
+            "message": "Crea facturas emitidas y recibidas para ver insights automáticos aquí.",
+            "action_text": "Crear factura", "action_url": "/ventas/facturas",
+        })
 
     return {"cashflow": cashflow_data, "insights": ai_insights}

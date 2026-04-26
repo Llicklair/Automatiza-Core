@@ -58,7 +58,11 @@ async def list_tasks(
     tenant_id: UUID,
     project_id: UUID | None = None,
 ) -> list[ProjectTask]:
-    query = select(ProjectTask).where(ProjectTask.tenant_id == tenant_id)
+    query = (
+        select(ProjectTask)
+        .where(ProjectTask.tenant_id == tenant_id)
+        .options(selectinload(ProjectTask.project))
+    )
     if project_id:
         query = query.where(ProjectTask.project_id == project_id)
     query = query.order_by(desc(ProjectTask.created_at))
