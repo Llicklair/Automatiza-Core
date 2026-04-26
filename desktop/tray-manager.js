@@ -1,4 +1,4 @@
-const { Tray, Menu, nativeImage, clipboard, dialog } = require("electron");
+const { Tray, Menu, nativeImage, clipboard, dialog, app } = require("electron");
 const path = require("path");
 
 let tray = null;
@@ -13,8 +13,10 @@ let tray = null;
  * @param {Function} options.onQuit - Callback para salir
  */
 function createTray({ lanIP, urls, onShow, onStop, onQuit }) {
-  // Icono: usa icon.png si existe, si no crea uno genérico
-  const iconPath = path.join(__dirname, "assets", "icon.png");
+  // Icono: fuera del asar para que Windows pueda leerlo nativamente
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, "icon.png")
+    : path.join(__dirname, "assets", "icon.png");
   let icon;
   try {
     icon = nativeImage.createFromPath(iconPath);

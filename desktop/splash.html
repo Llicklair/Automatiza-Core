@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AutomatizaPyme</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +30,7 @@
     .subtitle {
       font-size: 14px;
       color: #94a3b8;
-      margin-bottom: 48px;
+      margin-bottom: 28px;
       letter-spacing: 2px;
       text-transform: uppercase;
     }
@@ -50,13 +51,16 @@
     }
     #status {
       font-size: 13px;
-      line-height: 1.6;
+      line-height: 1.5;
       color: #64748b;
-      min-height: 24px;
-      overflow: visible;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
       padding: 0 16px;
       max-width: 340px;
+      -webkit-font-smoothing: antialiased;
     }
     .version {
       position: fixed;
