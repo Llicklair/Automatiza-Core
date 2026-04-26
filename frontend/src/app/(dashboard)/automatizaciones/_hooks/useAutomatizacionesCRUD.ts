@@ -136,14 +136,14 @@ export function useAutomatizacionesCRUD() {
             "en cuanto", "tras ", "después de", "antes de", "a las ", "a partir",
         ];
         if (workflowKeywords.some(k => tl.includes(k))) return false;
-        if (t.startsWith("\u00bf") || t.endsWith("?")) {
-            const actionVerbs = ["crea", "genera", "env\u00eda", "haz", "registra", "sube", "programa"];
+        if (t.startsWith("¿") || t.endsWith("?")) {
+            const actionVerbs = ["crea", "genera", "envía", "haz", "registra", "sube", "programa"];
             return !actionVerbs.some(v => tl.includes(v));
         }
         const questionStarts = [
-            "cu\u00e1ntas", "cu\u00e1ntos", "cu\u00e1nto", "cu\u00e1ndo", "d\u00f3nde", "c\u00f3mo",
-            "qu\u00e9 es", "qu\u00e9 son", "hay ", "tiene ", "est\u00e1", "se ejecut",
-            "termin\u00f3", "ha terminado", "funcion\u00f3", "fall\u00f3",
+            "cuántas", "cuántos", "cuánto", "cuándo", "dónde", "cómo",
+            "qué es", "qué son", "hay ", "tiene ", "está", "se ejecut",
+            "terminó", "ha terminado", "funcionó", "falló",
             "explica", "diferencia", "ayuda", "hola", "buenas", "gracias",
         ];
         return questionStarts.some(q => tl.startsWith(q));

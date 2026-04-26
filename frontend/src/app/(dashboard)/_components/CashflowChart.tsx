@@ -13,7 +13,7 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
     return (
         <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
             <h2 className="text-sm font-semibold text-foreground mb-6 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-muted-foreground" /> Cashflow — Evoluci\u00F3n semestral
+                <Activity className="w-4 h-4 text-muted-foreground" /> Cashflow — Evolución semestral
             </h2>
             <div className="h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -33,7 +33,7 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
                         <RTooltip
                             contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', fontSize: '12px' }}
                             itemStyle={{ color: '#e4e4e7' }}
-                            formatter={((value: unknown) => [`${Number(value)?.toLocaleString() ?? 0}\u20AC`]) as never}
+                            formatter={((value: unknown) => [`${Number(value)?.toLocaleString() ?? 0}€`]) as never}
                         />
                         <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
                         <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />

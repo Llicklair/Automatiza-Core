@@ -41,17 +41,17 @@ export const CHAT_OPTION = {
 export const COORDINATOR_OPTION = {
     value: "coordinator",
     label: "\u{1F9E0} Coordinador General",
-    desc: "Tarea compleja puntual: coordina varios agentes en secuencia para darte un \u00fanico resultado",
+    desc: "Tarea compleja puntual: coordina varios agentes en secuencia para darte un único resultado",
 };
 
 export const DOMAIN_OPTIONS = [
-    { value: "billing", label: "\u{1F4B0} Facturaci\u00f3n", desc: "Facturas, cobros, presupuestos" },
-    { value: "documents", label: "\u{1F4C4} Documentos", desc: "OCR, an\u00e1lisis, clasificaci\u00f3n de documentos" },
-    { value: "hr", label: "\u{1F465} RRHH", desc: "N\u00f3minas, empleados, gesti\u00f3n de personal" },
-    { value: "compliance", label: "\u2696\uFE0F Asesor Fiscal", desc: "Obligaciones tributarias, BOE, alertas" },
-    { value: "banking", label: "\u{1F3E6} Banca", desc: "Resumen bancario, movimientos, conciliaci\u00f3n" },
+    { value: "billing", label: "\u{1F4B0} Facturación", desc: "Facturas, cobros, presupuestos" },
+    { value: "documents", label: "\u{1F4C4} Documentos", desc: "OCR, análisis, clasificación de documentos" },
+    { value: "hr", label: "\u{1F465} RRHH", desc: "Nóminas, empleados, gestión de personal" },
+    { value: "compliance", label: "⚖️ Asesor Fiscal", desc: "Obligaciones tributarias, BOE, alertas" },
+    { value: "banking", label: "\u{1F3E6} Banca", desc: "Resumen bancario, movimientos, conciliación" },
     { value: "crm", label: "\u{1F91D} CRM", desc: "Oportunidades, clientes, seguimiento comercial" },
-    { value: "excel", label: "\u{1F4CA} Excel / Datos", desc: "Cruza tablas y elabora hojas de c\u00e1lculo" },
+    { value: "excel", label: "\u{1F4CA} Excel / Datos", desc: "Cruza tablas y elabora hojas de cálculo" },
     { value: "email", label: "\u{1F4E7} Correos", desc: "Bandeja de entrada, responde y organiza" },
 ];
 
