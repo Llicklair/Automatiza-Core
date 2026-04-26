@@ -45,7 +45,7 @@ async def create_task(
 async def list_tasks(
     request: Request,
     skip: int = 0,
-    limit: int = Query(default=50, le=100),
+    limit: int = Query(default=50, le=200),
     status_filter: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

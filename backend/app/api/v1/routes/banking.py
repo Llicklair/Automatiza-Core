@@ -73,4 +73,4 @@ async def get_banking_analytics(
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve datos preprocesados de cashflow y consejos IA para la Home Page."""
-    return svc.get_analytics()
+    return await svc.get_analytics(db, current_user.tenant_id)

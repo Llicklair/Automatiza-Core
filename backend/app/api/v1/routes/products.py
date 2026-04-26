@@ -27,7 +27,7 @@ router = APIRouter()
 async def list_products(
     request: Request,
     skip: int = 0,
-    limit: int = Query(default=50, le=100),
+    limit: int = Query(default=50, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

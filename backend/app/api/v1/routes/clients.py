@@ -26,7 +26,7 @@ router = APIRouter()
 async def list_clients(
     request: Request,
     skip: int = 0,
-    limit: int = Query(default=50, le=100),
+    limit: int = Query(default=50, le=200),
     client_type: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -97,7 +97,7 @@ async def list_client_invoices(
     request: Request,
     client_id: UUID,
     skip: int = 0,
-    limit: int = Query(default=100, le=100),
+    limit: int = Query(default=100, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

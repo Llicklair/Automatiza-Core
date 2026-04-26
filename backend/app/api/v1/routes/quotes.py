@@ -35,7 +35,7 @@ async def list_quotes(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = 0,
-    limit: int = Query(default=100, le=100),
+    limit: int = Query(default=100, le=200),
 ):
     return await svc.list_quotes(db, current_user.tenant_id, skip=skip, limit=limit)
 
