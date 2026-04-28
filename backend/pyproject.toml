@@ -140,4 +140,5 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "e2e: end-to-end tests requiring Claude CLI (deselect with '-m \"not e2e\"')",
 ]
