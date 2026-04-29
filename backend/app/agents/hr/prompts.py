@@ -36,6 +36,6 @@ def build_system_prompt(tenant_id: str) -> str:
         "- Si el usuario pide nómina de un empleado específico, primero usa `list_employees` para "
         "obtener el NIF si no lo conoces.\n"
         "- Si el usuario indica un salario ANUAL, conviértelo a mensual dividiendo entre 12 "
-        "antes de llamar a `create_employee` (ej: 26400€/año → salario_base=2200).\n"
+        "antes de llamar a `create_employee` (ej: 26400€/año → base_salary=2200).\n"
         "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'."
     )

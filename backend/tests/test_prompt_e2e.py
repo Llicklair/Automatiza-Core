@@ -680,7 +680,7 @@ class TestHRAgentToolChoiceE2E:
         assert tool_call["name"] == "create_employee", \
             f"Esperaba create_employee, obtuvo {tool_call['name']}"
         args = tool_call["args"]
-        salary = float(args.get("salario_base", args.get("salary", args.get("monthly_salary", 0))))
+        salary = float(args.get("base_salary", args.get("salario_base", args.get("salary", args.get("monthly_salary", 0)))))
         assert salary == pytest.approx(2200, abs=10), (
             f"salario_base={salary}, esperado 2200 (26400/12).\n"
             "→ La regla de conversión salario anual→mensual no está funcionando"
@@ -1033,7 +1033,7 @@ def _run_generic_agent_tool(
     from app.prompts import load_prompt
 
     prompt = load_prompt(prompt_name)
-    if tenant_id_placeholder and "{tenant_id}" in prompt:
+    if "{tenant_id}" in prompt:
         prompt = prompt.format(tenant_id="test-tenant")
     agent_tools = _import_tools(domain)
     return _run_agent_get_first_tool(prompt, agent_tools, user_intent, domain)
