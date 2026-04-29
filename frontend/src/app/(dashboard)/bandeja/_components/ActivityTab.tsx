@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import type { AIEmployee, ActivityEntry } from "@/lib/api/ai_employees";
 import { RefreshCw, ChevronDown, Bot } from "lucide-react";
 import { InboxMessage, CATEGORY_CONFIG } from "./InboxMessage";
+import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
 
 interface ActivityTabProps {
     isActive?: boolean;
@@ -42,9 +43,21 @@ export function ActivityTab({ isActive = true }: ActivityTabProps) {
         ]).finally(() => setLoading(false));
 
         if (!isActive) return;
-        const interval = setInterval(() => fetchEntries(true), 15_000);
+        const interval = setInterval(() => fetchEntries(true), 60_000);
         return () => clearInterval(interval);
     }, [fetchEntries, isActive]);
+
+    useNotificationSocket({
+        activity_new: (msg) => {
+            const entry = msg.entry as ActivityEntry | undefined;
+            if (!entry) return;
+            // Only prepend if it matches current filters
+            if (filterEmp && entry.employee_id !== filterEmp) return;
+            if (filterCat && entry.category !== filterCat) return;
+            setEntries(prev => [entry, ...prev]);
+            offsetRef.current += 1;
+        },
+    });
 
     const empMap = Object.fromEntries(employees.map(e => [e.id, e]));
 

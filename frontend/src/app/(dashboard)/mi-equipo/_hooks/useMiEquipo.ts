@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
+import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
 
 const TABS = [
     { key: "tareas", label: "Tareas" },
@@ -52,9 +53,19 @@ export function useMiEquipo() {
     useEffect(() => {
         if (activeTab !== "equipo") return;
         loadData();
-        const interval = setInterval(loadData, 15_000);
+        const interval = setInterval(loadData, 60_000);
         return () => clearInterval(interval);
     }, [loadData, activeTab]);
+
+    useNotificationSocket({
+        agent_status_changed: (msg) => {
+            const { employee_id, status } = msg as { employee_id: string; status: AIEmployee["status"] };
+            if (!employee_id || !status) return;
+            setEmployees(prev =>
+                prev.map(e => e.id === employee_id ? { ...e, status } : e)
+            );
+        },
+    });
 
     const handleSeed = async () => {
         setSeeding(true);

@@ -119,23 +119,111 @@ async def resume_orchestrator(task_id: str):
         )
 
 
+async def _set_agent_status(db, employee_id: str, tenant_id: str, status: str) -> None:
+    """Actualiza el status de un AIEmployee en la sesión actual."""
+    import uuid as _uuid
+    from sqlalchemy import select as _select
+    from app.db.models.ai_employees import AIEmployee
+    result = await db.execute(
+        _select(AIEmployee).where(
+            AIEmployee.id == _uuid.UUID(employee_id),
+            AIEmployee.tenant_id == _uuid.UUID(tenant_id),
+        )
+    )
+    emp = result.scalar_one_or_none()
+    if emp:
+        emp.status = status
+
+
+async def _log_task_completion(db, task, final_state: dict, employee_id: str | None, tenant_id: str):
+    """Crea entrada de actividad con el resultado del agente."""
+    from app.services.workflow.activity import log_activity
+    results = final_state.get("agent_results", [])
+    error = final_state.get("error_message")
+    if error:
+        message, icon = f"Error: {str(error)[:150]}", "❌"
+    elif results:
+        last = results[-1]
+        raw = last.get("output") or last.get("summary") or last.get("result") or ""
+        message = str(raw).strip()[:200] or f"Completado: {task.user_intent[:100]}"
+        icon = "✅"
+    else:
+        message, icon = f"Completado: {task.user_intent[:100]}", "✅"
+    return await log_activity(
+        db=db, tenant_id=tenant_id, category="task",
+        message=message, employee_id=employee_id, task_id=str(task.id), icon=icon,
+    )
+
+
+async def _broadcast(manager, tenant_id: str, payload: dict) -> None:
+    try:
+        await manager.broadcast_to_tenant(tenant_id, payload)
+    except Exception as exc:
+        logger.debug("WS broadcast error: %s", exc)
+
+
 async def _execute_orchestrator(task_id: str):
     """Coordina: cargar tarea -> construir estado -> stream LangGraph -> persistir."""
     from app.agents.orchestrator import orchestrator
+    from app.api.ws.notifications import manager
 
     async with AsyncSessionLocal() as db:
         task = await _load_and_start_task(task_id, db)
         if not task:
             return
 
-        initial_state = await _build_initial_state(task, task_id, db)
+        employee_id: str | None = (task.additional_metadata or {}).get("addressed_employee_id")
+        tenant_id = str(task.tenant_id)
 
+        if employee_id:
+            await _set_agent_status(db, employee_id, tenant_id, "working")
+            await db.commit()
+            await _broadcast(manager, tenant_id, {
+                "type": "agent_status_changed", "employee_id": employee_id, "status": "working",
+            })
+
+        initial_state = await _build_initial_state(task, task_id, db)
         log_push(task_id, "Iniciando automatizacion...")
-        final_state = await _stream_and_log(task_id, initial_state, orchestrator)
+
+        try:
+            final_state = await _stream_and_log(task_id, initial_state, orchestrator)
+        except Exception:
+            if employee_id:
+                await _set_agent_status(db, employee_id, tenant_id, "idle")
+                try:
+                    await db.commit()
+                except Exception:
+                    pass
+                await _broadcast(manager, tenant_id, {
+                    "type": "agent_status_changed", "employee_id": employee_id, "status": "idle",
+                })
+            raise
 
         await _save_final_state(task, final_state, db)
         await _sync_workflow_artifacts(task, final_state, db)
+
+        entry = await _log_task_completion(db, task, final_state, employee_id, tenant_id)
+        if employee_id:
+            await _set_agent_status(db, employee_id, tenant_id, "idle")
         await db.commit()
+
+        if employee_id:
+            await _broadcast(manager, tenant_id, {
+                "type": "agent_status_changed", "employee_id": employee_id, "status": "idle",
+            })
+        if entry:
+            await _broadcast(manager, tenant_id, {
+                "type": "activity_new",
+                "entry": {
+                    "id": str(entry.id),
+                    "employee_id": str(entry.employee_id) if entry.employee_id else None,
+                    "category": entry.category,
+                    "icon": entry.icon,
+                    "message": entry.message,
+                    "metadata": entry.metadata_json,
+                    "created_at": entry.created_at.isoformat(),
+                },
+            })
 
 
 async def _resume_orchestrator(task_id: str):
