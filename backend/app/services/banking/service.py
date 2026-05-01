@@ -4,12 +4,18 @@ import random
 import uuid
 from datetime import date, timedelta
 
-from sqlalchemy import desc, extract, func, select
+from sqlalchemy import desc, extract, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import BankTransaction, Invoice
+from app.services.analytics import DEMO_TX_PREFIX
 from app.services.event_bus import emit_event
 from app.services.state_machine import can_transition
+
+
+def _real_tx_filter():
+    """SQLAlchemy filter that excludes demo bank transactions ([DEMO] prefix)."""
+    return not_(BankTransaction.description.like(f"{DEMO_TX_PREFIX}%"))
 
 
 async def get_summary(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
@@ -52,7 +58,11 @@ async def list_transactions(db: AsyncSession, tenant_id: uuid.UUID) -> list:
 
 
 async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> dict:
-    """Generate demo bank transactions simulating a PSD2 sync."""
+    """Genera movimientos DEMO simulando PSD2 (Plaid/Nordigen no integrado).
+
+    Cada transacción se prefija con `[DEMO]` para que las analíticas reales
+    puedan filtrarlas y no contaminar las métricas del tenant.
+    """
     descriptions = [
         "Recibo Luz Gesternova",
         "Abono Cliente STRIPE",
@@ -70,7 +80,7 @@ async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uui
         tx = BankTransaction(
             tenant_id=tenant_id,
             date=today - timedelta(days=day_offset),
-            description=random.choice(descriptions),
+            description=f"{DEMO_TX_PREFIX} {random.choice(descriptions)}",
             amount=round(amount, 2),
             balance=round(balance, 2),
             status="unreconciled",
@@ -78,8 +88,27 @@ async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uui
         db.add(tx)
 
     await db.commit()
-    await emit_event(db, tenant_id, user_id, "banking_synced", {"count": 5})
-    return {"message": "Sincronizado correctamente", "status": "ok"}
+    await emit_event(db, tenant_id, user_id, "banking_synced", {"count": 5, "demo": True})
+    return {
+        "message": "Movimientos demo generados (PSD2 no configurado)",
+        "status": "ok",
+        "is_demo": True,
+        "count": 5,
+    }
+
+
+async def purge_demo_transactions(db: AsyncSession, tenant_id: uuid.UUID) -> int:
+    """Borra todas las transacciones marcadas como demo en el tenant. Devuelve nº borradas."""
+    from sqlalchemy import delete
+
+    res = await db.execute(
+        delete(BankTransaction).where(
+            BankTransaction.tenant_id == tenant_id,
+            BankTransaction.description.like(f"{DEMO_TX_PREFIX}%"),
+        )
+    )
+    await db.commit()
+    return int(res.rowcount or 0)
 
 
 async def reconcile_transaction(

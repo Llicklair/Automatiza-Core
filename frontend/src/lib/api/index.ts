@@ -10,6 +10,7 @@ import { tasks, approvals } from "./tasks";
 import { documents } from "./documents";
 import { erp } from "./erp";
 import { banking } from "./banking";
+import { analytics } from "./analytics";
 import { crm } from "./crm";
 import { hr } from "./hr";
 import { projects } from "./projects";
@@ -37,6 +38,7 @@ export const api = {
     documents,
     erp,
     banking,
+    analytics,
     crm,
     hr,
     projects,
@@ -77,6 +79,15 @@ export type {
     RecurringLineItem,
 } from "./erp";
 export type { BankTransaction } from "./banking";
+export type { AnalyticsDashboard } from "./analytics";
+export type { AnalyticsCashflowEntry } from "./analytics";
+export type { AnalyticsTopCliente } from "./analytics";
+export type { AnalyticsEstadoFactura } from "./analytics";
+export type { AnalyticsFacturas } from "./analytics";
+export type { AnalyticsRRHH } from "./analytics";
+export type { AnalyticsBanca } from "./analytics";
+export type { AnalyticsIA } from "./analytics";
+export type { AnalyticsClientes } from "./analytics";
 export type { Opportunity, Activity, EventItem, Reservation } from "./crm";
 export type { Employee, Payroll, PayrollCalculation } from "./hr";
 export type { Project, ProjectTask } from "./projects";
