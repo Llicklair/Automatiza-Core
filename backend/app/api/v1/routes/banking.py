@@ -41,8 +41,24 @@ async def sync_bank_transactions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Genera movimientos demo simulando conexion PSD2 por Plaid/Nordigen"""
+    """Genera movimientos DEMO simulando PSD2 (Plaid/Nordigen no integrado).
+
+    Las transacciones quedan prefijadas con [DEMO] para que las analíticas
+    reales puedan filtrarlas. Usa DELETE /transactions/demo para borrarlas.
+    """
     return await svc.sync_transactions(db, current_user.tenant_id, current_user.id)
+
+
+@router.delete("/transactions/demo")
+@limiter.limit("10/minute")
+async def purge_demo_transactions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Borra todas las transacciones demo del tenant."""
+    deleted = await svc.purge_demo_transactions(db, current_user.tenant_id)
+    return {"status": "ok", "deleted": deleted}
 
 
 @router.post("/transactions/{tx_id}/reconcile")

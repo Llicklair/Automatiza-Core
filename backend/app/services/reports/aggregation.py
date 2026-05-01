@@ -9,7 +9,7 @@ import uuid
 from calendar import monthrange
 from datetime import UTC, date, datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.routes.reports._schemas import (
@@ -26,6 +26,7 @@ from app.db.models.models import (
     Invoice,
     Payroll,
 )
+from app.services.analytics import DEMO_TX_PREFIX
 
 _logger = logging.getLogger(__name__)
 
@@ -199,13 +200,14 @@ async def aggregate(
         importe_pendiente_cobro=sum(float(i.amount_total or 0) for i in pending_issued),
     )
 
-    # ── Banca ──
+    # ── Banca (excluye datos demo) ──
     tx_q = await db.execute(
         select(BankTransaction).where(
             and_(
                 BankTransaction.tenant_id == tenant_id,
                 BankTransaction.date >= start,
                 BankTransaction.date <= end,
+                not_(BankTransaction.description.like(f"{DEMO_TX_PREFIX}%")),
             )
         )
     )
