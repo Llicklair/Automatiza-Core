@@ -39,7 +39,7 @@ export default function ApiKeysPage() {
                 <p>
                     Las API Keys permiten que los agentes IA se conecten a modelos de lenguaje.
                     Necesitas al menos una para que el sistema funcione.
-                    <span className="text-primary">Gemini</span> es el proveedor recomendado por defecto.
+                    <span className="text-primary">Claude Code</span> es el proveedor recomendado por defecto.
                 </p>
             </InfoBanner>
 

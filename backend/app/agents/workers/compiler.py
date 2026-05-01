@@ -61,11 +61,21 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
         )
 
     # Zero Trust: cada tool se resuelve explícitamente del registry.
-    # KeyError si la tool no existe — fallo ruidoso intencionado.
+    # Si una skill apunta a una tool inexistente (p.ej. tras renombrado), se omite
+    # con warning y el agente sigue funcionando con el resto. Evita que un AIEmployee
+    # con una sola skill obsoleta deje de responder.
     allowed_tools = []
+    skipped: list[str] = []
     for skill in skills:
-        tool_fn = get_tool_for_employee(skill.tool_module)
-        allowed_tools.append(tool_fn)
+        try:
+            allowed_tools.append(get_tool_for_employee(skill.tool_module))
+        except KeyError:
+            skipped.append(skill.tool_module)
+    if skipped:
+        logger.warning(
+            "Empleado '%s' tiene skills obsoletas omitidas (revisa agent_skills): %s",
+            employee.name, skipped,
+        )
 
     llm = get_llm()
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm

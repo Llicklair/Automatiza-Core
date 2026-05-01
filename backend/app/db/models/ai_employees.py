@@ -73,7 +73,7 @@ class TokenLedger(Base):
     prompt_tokens = Column(Integer, nullable=False)
     completion_tokens = Column(Integer, nullable=False)
     cost_usd = Column(Numeric(10, 6), nullable=False)
-    llm_provider = Column(String(50), nullable=True)  # "gemini", "claude", "ollama"
+    llm_provider = Column(String(50), nullable=True)  # "anthropic", "openai", "groq", "claude_code"
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
 
 

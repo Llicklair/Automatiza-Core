@@ -64,3 +64,4 @@ desktop/dist/
 backups/
 .gitnexus
 .claude/worktrees/
+backend/scripts/_runs/

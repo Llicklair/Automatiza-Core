@@ -1072,7 +1072,7 @@ def upgrade() -> None:
             nullable=False,
             unique=True,
         ),
-        sa.Column("active_llm_provider", sa.String(50), nullable=False, server_default="gemini"),
+        sa.Column("active_llm_provider", sa.String(50), nullable=False, server_default="claude_code"),
         sa.Column(
             "active_embeddings_provider", sa.String(50), nullable=False, server_default="local"
         ),

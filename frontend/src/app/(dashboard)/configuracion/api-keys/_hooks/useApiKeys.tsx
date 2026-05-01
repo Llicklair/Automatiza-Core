@@ -5,18 +5,11 @@ import { api, LlmConfigResponse, LlmProviderConfigUpdate } from "@/lib/api";
 
 export const LLM_PROVIDERS = [
     {
-        key: "gemini", label: "Gemini", placeholder: "AIzaSy...",
-        defaultModel: "gemini-2.5-flash",
-        models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro"],
-        consoleUrl: "https://aistudio.google.com/apikey",
-        hint: "Recomendado. Requiere facturación activa en Google AI Studio.",
-    },
-    {
         key: "anthropic", label: "Anthropic", placeholder: "sk-ant-...",
         defaultModel: "claude-sonnet-4-6",
         models: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
         consoleUrl: "https://console.anthropic.com/settings/keys",
-        hint: "Modelos Claude. Alta calidad, de pago.",
+        hint: "Recomendado. Modelos Claude de alta calidad.",
     },
     {
         key: "groq", label: "Groq", placeholder: "gsk_...",
@@ -34,8 +27,8 @@ export const LLM_PROVIDERS = [
     },
     {
         key: "openrouter", label: "OpenRouter", placeholder: "sk-or-...",
-        defaultModel: "google/gemini-2.0-flash-exp:free",
-        models: ["google/gemini-2.0-flash-exp:free", "google/gemma-3-27b-it:free", "mistralai/mistral-small-3.1-24b-instruct:free", "qwen/qwen3-235b-a22b-thinking-2507"],
+        defaultModel: "anthropic/claude-sonnet-4-6",
+        models: ["anthropic/claude-sonnet-4-6", "google/gemma-3-27b-it:free", "mistralai/mistral-small-3.1-24b-instruct:free", "qwen/qwen3-235b-a22b-thinking-2507"],
         consoleUrl: "https://openrouter.ai/keys",
         hint: "Acceso a múltiples modelos con una sola key.",
     },
@@ -43,7 +36,6 @@ export const LLM_PROVIDERS = [
 
 export const EMBEDDINGS_OPTIONS = [
     { key: "local",   label: "Local (BAAI/bge-m3)",        desc: "Sin coste, offline, ~570 MB" },
-    { key: "gemini",  label: "Gemini text-embedding-004",  desc: "Requiere Gemini API Key" },
     { key: "openai",  label: "OpenAI text-embedding-3-small", desc: "Requiere OpenAI API Key" },
 ];
 
@@ -66,7 +58,7 @@ export function useApiKeys() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState("");
-    const [activeLlm, setActiveLlm] = useState("gemini");
+    const [activeLlm, setActiveLlm] = useState("claude_code");
     const [activeEmbeddings, setActiveEmbeddings] = useState("local");
     const [providers, setProviders] = useState<Record<string, ProviderState>>({});
     const [claudeSetup, setClaudeSetup] = useState<ClaudeSetupState>({ phase: "idle" });

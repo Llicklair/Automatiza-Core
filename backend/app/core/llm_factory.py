@@ -1,12 +1,11 @@
 """
 Fábrica centralizada de LLMs.
 
-Soporta: groq, gemini, openai, anthropic, openrouter, mock.
+Soporta: groq, openai, anthropic, openrouter, claude_code, mock.
 Incluye fallback chains automáticas y configuración per-tenant desde BD.
 
 Módulos internos:
-  _llm_mock.py   — MockChatModel (testing sin API keys)
-  _llm_gemini.py — Sanitizer de mensajes + wrapper para Gemini
+  _llm_mock.py — MockChatModel (testing sin API keys)
 """
 
 import logging
@@ -18,7 +17,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 from app.core.llm.claude_code import ClaudeCodeChatModel
-from app.core.llm.gemini import GeminiSafeWrapper
 from app.core.llm.mock import MockChatModel
 
 _log = logging.getLogger(__name__)
@@ -40,7 +38,7 @@ def get_llm(
 ) -> BaseChatModel:
     """
     Fábrica centralizada para instanciar el modelo LLM configurado.
-    Soporta: groq, gemini, openai, anthropic, openrouter.
+    Soporta: groq, openai, anthropic, openrouter, claude_code.
     Fallback final: MockChatModel (solo en testing) o lanza error en producción.
     """
     # Si hay un LLM de tenant precargado (vía set_tenant_llm_context) y no se fuerza un provider,
@@ -61,7 +59,6 @@ def get_llm(
     if settings.ENVIRONMENT == "testing":
         has_key = (
             (selected_provider == "groq" and settings.GROQ_API_KEY)
-            or (selected_provider == "gemini" and settings.GEMINI_API_KEY)
             or (selected_provider == "openai" and settings.OPENAI_API_KEY)
             or (selected_provider == "anthropic" and settings.ANTHROPIC_API_KEY)
             or (selected_provider == "openrouter" and settings.OPENROUTER_API_KEY)
@@ -71,9 +68,6 @@ def get_llm(
 
     if selected_provider == "groq":
         return _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
-
-    elif selected_provider == "gemini":
-        return _build_gemini(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
 
     elif selected_provider == "anthropic":
         return _build_anthropic(
@@ -169,18 +163,6 @@ async def get_llm_for_tenant(
                     max_tokens=4096,
                     timeout=30,
                 )
-            elif provider == "gemini":
-                from langchain_google_genai import ChatGoogleGenerativeAI
-
-                return GeminiSafeWrapper(
-                    ChatGoogleGenerativeAI(
-                        model=model or settings.GEMINI_MODEL or "gemini-2.5-flash",
-                        google_api_key=api_key,
-                        temperature=temperature,
-                        max_output_tokens=20000,
-                        timeout=30,
-                    )
-                )
             elif provider == "openai":
                 kwargs = {
                     "model_name": model or settings.OPENAI_MODEL or "gpt-4o-mini",
@@ -220,8 +202,7 @@ def get_embedder():
 
     Opciones:
       - local   → HuggingFace BAAI/bge-m3 (offline, sin coste, estado del arte multilingüe)
-      - gemini  → models/text-embedding-004  (requiere GEMINI_API_KEY)
-      - openai  → text-embedding-3-small     (requiere OPENAI_API_KEY)
+      - openai  → text-embedding-3-small  (requiere OPENAI_API_KEY)
 
     Nota: Anthropic (Claude) y Groq no tienen API de embeddings propia.
     """
@@ -237,20 +218,6 @@ def get_embedder():
             return HuggingFaceEmbeddings(model_name=model_name)
         except (ImportError, OSError, ValueError) as e:
             _log.warning("HuggingFaceEmbeddings no disponible: %s", e)
-
-    elif provider == "gemini":
-        if settings.GEMINI_API_KEY:
-            try:
-                from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-                return GoogleGenerativeAIEmbeddings(
-                    model="models/text-embedding-004",
-                    google_api_key=settings.GEMINI_API_KEY,
-                )
-            except (ImportError, OSError, ValueError) as e:
-                _log.warning("GoogleGenerativeAIEmbeddings no disponible: %s", e)
-        else:
-            _log.warning("EMBEDDINGS_PROVIDER=gemini pero GEMINI_API_KEY está vacía.")
 
     elif provider == "openai":
         if settings.OPENAI_API_KEY:
@@ -316,26 +283,6 @@ def _try_groq_fallback(temperature: float, max_tokens: int | None = None) -> "Ba
         return None
 
 
-def _try_gemini_fallback(
-    temperature: float, max_tokens: int | None = None
-) -> "BaseChatModel | None":
-    if not settings.GEMINI_API_KEY:
-        return None
-    try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        return ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL or "gemini-2.5-flash",
-            google_api_key=settings.GEMINI_API_KEY,
-            temperature=temperature,
-            max_output_tokens=max_tokens or 4096,
-            timeout=30,
-        )
-    except (ImportError, ValueError, TypeError) as exc:
-        _log.warning("Failed to init Gemini fallback: %s", exc)
-        return None
-
-
 # ---------------------------------------------------------------------------
 # Builders internos por provider (reducen la complejidad ciclomática de get_llm)
 # ---------------------------------------------------------------------------
@@ -367,29 +314,6 @@ def _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fal
         return mock_fallback
 
 
-def _build_gemini(temperature, format_output, max_tokens, base_fallbacks, mock_fallback):
-    try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        if not settings.GEMINI_API_KEY:
-            return mock_fallback
-        base_llm = ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL or "gemini-2.5-flash",
-            google_api_key=settings.GEMINI_API_KEY,
-            temperature=temperature,
-            max_output_tokens=max_tokens or 20000,
-            timeout=30,
-        )
-        fallbacks = list(base_fallbacks)
-        groq_fb = _try_groq_fallback(temperature)
-        if groq_fb:
-            fallbacks.insert(0, groq_fb)
-        return GeminiSafeWrapper(base_llm.with_fallbacks(fallbacks))
-    except (ImportError, ValueError, TypeError) as e:
-        _log.warning("Error iniciando Gemini (%s), usando fallbacks.", e)
-        return mock_fallback
-
-
 def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, mock_fallback):
     try:
         from langchain_anthropic import ChatAnthropic
@@ -404,13 +328,9 @@ def _build_anthropic(temperature, format_output, max_tokens, base_fallbacks, moc
             timeout=30,
         )
         fallbacks = list(base_fallbacks)
-        # Preferred order: Gemini first, then OpenAI
         openai_fb = _try_openai_fallback(temperature, format_output)
-        gemini_fb = _try_gemini_fallback(temperature)
         if openai_fb:
             fallbacks.insert(0, openai_fb)
-        if gemini_fb:
-            fallbacks.insert(0, gemini_fb)
         return base_llm.with_fallbacks(fallbacks)
     except (ImportError, ValueError, TypeError) as e:
         _log.warning("Error iniciando Anthropic (%s), usando fallbacks.", e)
@@ -446,7 +366,6 @@ def _build_openrouter(temperature, format_output, max_tokens, base_fallbacks):
             "qwen/qwen3-235b-a22b-thinking-2507",
             "google/gemma-3-27b-it:free",
             "mistralai/mistral-small-3.1-24b-instruct:free",
-            "google/gemini-2.0-flash-exp:free",
         ]
 
         custom_model = settings.OPENROUTER_MODEL

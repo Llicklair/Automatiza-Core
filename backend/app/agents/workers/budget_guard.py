@@ -68,11 +68,11 @@ async def record_token_usage(
 ) -> None:
     """Registra el coste de una invocación LLM en token_ledger.
 
-    Estimación de coste por defecto para Gemini Flash (ajustar si cambia provider).
+    Estimación de coste por defecto para Anthropic Claude Sonnet (ajustar si cambia provider).
     No hace commit — el caller gestiona la transacción.
     """
-    # Coste estimado: gemini-2.5-flash ~$0.00015/1k input + $0.0006/1k output
-    cost_usd = (prompt_tokens / 1000) * 0.00015 + (completion_tokens / 1000) * 0.0006
+    # Coste estimado: claude-sonnet ~$3/MTok input + $15/MTok output
+    cost_usd = (prompt_tokens / 1000) * 0.003 + (completion_tokens / 1000) * 0.015
 
     entry = TokenLedger(
         id=uuid.uuid4(),

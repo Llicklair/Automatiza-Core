@@ -51,9 +51,9 @@ class TenantLlmConfig(Base):
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True
     )
     # Provider activo para LLM y embeddings
-    active_llm_provider = Column(String(50), nullable=False, default="gemini")
+    active_llm_provider = Column(String(50), nullable=False, default="claude_code")
     active_embeddings_provider = Column(String(50), nullable=False, default="local")
-    # JSON cifrado: { "gemini": {"api_key": "...", "model": "...", "enabled": true}, ... }
+    # JSON cifrado: { "anthropic": {"api_key": "...", "model": "...", "enabled": true}, ... }
     encrypted_keys = Column(Text)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
