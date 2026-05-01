@@ -25,6 +25,12 @@ async def init_tenant_node(state: OrchestratorState) -> dict:
             "error_message": "Falta tenant_id — no se puede ejecutar sin contexto de empresa",
         }
 
+    # Defensa multi-tenant: setear el ContextVar para que TODAS las tools
+    # invocadas en este flujo (orchestrator + built-in + custom) usen este
+    # tenant_id, ignorando cualquier valor que el LLM intente pasar.
+    from app.agents.tenant_context import set_active_tenant
+    set_active_tenant(tenant_id)
+
     try:
         async with AsyncSessionLocal() as db:
             cfg_result = await db.execute(

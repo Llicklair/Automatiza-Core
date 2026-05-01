@@ -80,14 +80,32 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     llm = get_llm()
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm
 
-    system_prompt = employee.system_prompt
+    system_prompt_base = employee.system_prompt
     employee_name = employee.name
+
+    def _enriched_system_prompt(state: AgentState) -> str:
+        from datetime import date as _date
+
+        tenant_id = state.get("tenant_id", "")
+        user_id = state.get("user_id", "")
+        today = _date.today().isoformat()
+        runtime_ctx = (
+            "\n\n--- CONTEXTO DE EJECUCIÓN (USAR SIEMPRE) ---\n"
+            f"tenant_id={tenant_id}\n"
+            f"user_id={user_id}\n"
+            f"fecha_actual={today}\n"
+            "Cuando una herramienta requiera tenant_id, usa el valor de arriba SIEMPRE. "
+            "NUNCA pidas el tenant_id al usuario — ya lo tienes. "
+            "Si una herramienta requiere user_id u otro identificador interno, "
+            "úsalo del contexto sin preguntar."
+        )
+        return (system_prompt_base or "") + runtime_ctx
 
     async def agent_node(state: AgentState) -> dict[str, Any]:
         """Nodo principal: el LLM razona y elige herramientas."""
         if not state.get("messages"):
             state["messages"] = [
-                SystemMessage(content=system_prompt),
+                SystemMessage(content=_enriched_system_prompt(state)),
                 HumanMessage(content=state.get("user_intent", "")),
             ]
 

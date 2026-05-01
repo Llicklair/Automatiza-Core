@@ -12,6 +12,8 @@ Uso:
 import logging
 from typing import Any, Callable
 
+from app.agents.tenant_context import enforce_tenant
+
 logger = logging.getLogger(__name__)
 
 # Registro lazy: se puebla una sola vez al primer acceso
@@ -168,7 +170,11 @@ def _build_registry() -> dict[str, Callable]:
 
     registry["create_ai_employee_from_description"] = create_ai_employee_from_description
 
-    logger.info("Tool registry loaded: %d tools", len(registry))
+    # Defensa multi-tenant: envolver TODAS las tools para que ignoren el
+    # tenant_id que el LLM les pasa y usen el del ContextVar activo.
+    registry = {name: enforce_tenant(tool) for name, tool in registry.items()}
+
+    logger.info("Tool registry loaded: %d tools (tenant-isolation enforced)", len(registry))
     return registry
 
 

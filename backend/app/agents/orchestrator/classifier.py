@@ -75,16 +75,16 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "escanear",
     ],
     "compliance": [
-        "modelo",
+        "modelo 303",
+        "modelo 130",
+        "modelo 111",
+        "modelo 200",
+        "modelo 390",
         "hacienda",
         "aeat",
-        "303",
-        "130",
-        "111",
-        "200",
         "impuesto",
-        "declaración",
-        "trimestral",
+        "declaración trimestral",
+        "declaración del iva",
     ],
     "hr": [
         "nómina",
@@ -103,6 +103,10 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "oportunidad",
         "lead",
         "cliente potencial",
+        "nuevo cliente",
+        "alta de cliente",
+        "añade un cliente",
+        "registra un cliente",
         "presupuestar",
         "reunión comercial",
         "embudo",
@@ -124,17 +128,28 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "extracto bancario",
     ],
     "rag": [
-        "pregunta",
-        "duda",
+        "qué dice",
+        "qué dicen",
+        "qué hay sobre",
+        "qué tenemos sobre",
+        "qué información",
+        "qué dice nuestra",
+        "según el contrato",
+        "según el documento",
+        "según los documentos",
+        "según la política",
+        "política interna",
         "consultar documento",
-        "qué dice el contrato",
+        "consultar la documentación",
+        "preguntar a la documentación",
+        "pregúntale a la documentación",
+        "busca en los documentos",
+        "resume el documento",
         "qué significa",
-        "resumen documento",
     ],
     "excel": ["excel", "csv", "cruzar", "tabla", "hoja de cálculo", "datos", "columnas"],
     "email": [
-        "correo",
-        "email",
+        "correo electrónico",
         "bandeja de entrada",
         "buzón",
         "inbox",
@@ -278,6 +293,67 @@ _CHITCHAT_TOKENS = {
     "gracias", "ok", "vale", "qué tal", "cómo estás",
 }
 
+# Strong keywords: si alguno matchea → dominio devuelto directamente sin scoring.
+# Solo poner aquí términos altamente predictivos del dominio (alta precisión, baja
+# ambigüedad). Si dudas si añadir uno, NO lo añadas — déjalo en _KEYWORD_MAP.
+# Orden importa: el primer match gana cuando hay strong en varios dominios.
+# Pones primero los dominios más específicos / "acción primaria" frente a
+# dominios "objeto/recurso" (billing puede aparecer como complemento).
+_STRONG_KEYWORDS: dict[str, list[str]] = {
+    # Acciones específicas primero
+    "rag": [
+        "qué dice", "qué dicen", "qué hay sobre", "qué tenemos sobre",
+        "qué información tenemos", "según el contrato", "según el documento",
+        "según los documentos", "según la política", "política interna",
+        "consultar la documentación", "preguntar a la documentación",
+        "pregúntale a la documentación", "busca en los documentos",
+        "resume el documento",
+    ],
+    "compliance": ["modelo 303", "modelo 130", "modelo 111", "modelo 200",
+                   "modelo 390", "aeat", "hacienda"],
+    "banking": ["iban", "concilia", "concilia movimiento", "extracto bancario",
+                "resumen financiero", "estado financiero", "saldo de la cuenta",
+                "transferencia"],
+    "email": ["envía un email", "envía email", "envía un correo", "envía correo",
+              "manda un email", "manda email", "manda un correo", "responde el correo",
+              "responde el email", "bandeja de entrada", "revisa el inbox"],
+    "workflow": ["crea un workflow", "automatización", "workflow", "cada lunes",
+                 "cada martes", "cada miércoles", "cada jueves", "cada viernes",
+                 "cada día", "cada semana"],
+    "documents": ["escanea", "escanear este", "sube este pdf", "sube este documento",
+                  "clasifica los documentos", "clasifica el documento"],
+    "recruitment": ["candidato", "currículum", "shortlist", "selección de personal",
+                    "vacante", "oferta de trabajo", "publica una oferta",
+                    "publicar una oferta", "puesto vacante"],
+    "marketing": ["campaña de marketing", "redes sociales", "instagram", "linkedin"],
+    "excel": ["excel", "csv", "hoja de cálculo"],
+    "report": ["informe mensual", "snapshot", "estado de la empresa", "cierre mensual"],
+    # Dominios "objeto/recurso" al final (pueden aparecer como complemento de acción)
+    "hr": ["nómina", "nóminas", "da de alta empleado", "alta del empleado",
+           "alta de empleado"],
+    "billing": ["factura", "facturas", "cobro de", "presupuesto"],
+}
+
+
+def _strong_keyword_match(intent_lower: str) -> str | None:
+    """Devuelve el dominio si algún strong keyword matchea, None si no."""
+    for domain, keywords in _STRONG_KEYWORDS.items():
+        for kw in keywords:
+            if kw in intent_lower:
+                return domain
+    return None
+
+
+_MULTI_STEP_CONNECTORS = (
+    " y luego ", " y después ", " y envía", " y manda",
+    " y prepara", " y genera", " y crea", " y notifica", " también ",
+    ", luego ", ", después ", " después de ",
+)
+
+
+def _has_multi_step_connector(intent_lower: str) -> bool:
+    return any(c in intent_lower for c in _MULTI_STEP_CONNECTORS)
+
 
 def _is_pure_chitchat(intent_lower: str) -> bool:
     """True si el intent es un saludo/cortesía sin contenido accionable."""
@@ -301,6 +377,9 @@ def _keyword_classify(intent_lower: str) -> str:
     if _is_pure_chitchat(intent_lower):
         return "chat"
 
+    # 0b. Strong keywords: una sola coincidencia → dominio resuelto…
+    strong = _strong_keyword_match(intent_lower)
+
     # 1. Scoring de dominios especializados (chat se trata aparte)
     scores: dict[str, int] = {}
     for domain, keywords in _KEYWORD_MAP.items():
@@ -310,14 +389,16 @@ def _keyword_classify(intent_lower: str) -> str:
         if n:
             scores[domain] = n
 
+    # 0c. …pero si hay strong + OTRO dominio en score + conector multi-step → coordinator.
+    if strong is not None:
+        other_domains = [d for d in scores if d != strong]
+        if other_domains and _has_multi_step_connector(intent_lower):
+            return "coordinator"
+        return strong
+
     if scores:
         # Multi-step: dos o más dominios distintos + conector de secuencia → coordinator
-        multi_connectors = (
-            " y luego ", " y después ", " y envía", " y envía", " y manda",
-            " y prepara", " y genera", " y crea", " y notifica", " también ",
-            ", luego ", ", después ", " después de ",
-        )
-        if len(scores) >= 2 and any(c in intent_lower for c in multi_connectors):
+        if len(scores) >= 2 and _has_multi_step_connector(intent_lower):
             return "coordinator"
 
         sorted_doms = sorted(scores.items(), key=lambda x: x[1], reverse=True)
