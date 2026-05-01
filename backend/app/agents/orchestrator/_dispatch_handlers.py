@@ -154,6 +154,13 @@ async def _invoke_dynamic_employee(
 
 async def _invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: str) -> AgentResult:
     """Routing: DISPATCHER_MAP → skill → AIEmployee dinámico → fallback."""
+    # Defensa multi-tenant: re-setear ContextVar antes de invocar cualquier
+    # dispatcher por si el flujo asyncio lo perdió en el camino.
+    _tid = enriched_state.get("tenant_id")
+    if _tid:
+        from app.agents.tenant_context import set_active_tenant
+        set_active_tenant(_tid)
+
     dispatcher_fn = DISPATCHER_MAP.get(agent_name)
     if dispatcher_fn:
         return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=120)

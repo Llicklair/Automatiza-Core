@@ -48,3 +48,8 @@ async def get_product_catalog(tenant_id: str) -> str:
 
 
 tools = [get_product_catalog]
+
+
+# Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar
+from app.agents.tenant_context import isolated as _isolated
+tools = _isolated(tools)

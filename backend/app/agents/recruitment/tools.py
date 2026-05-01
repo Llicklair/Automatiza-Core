@@ -216,3 +216,8 @@ async def update_candidate_status(tenant_id: str, candidate_id: str, new_status:
 
 
 tools = [create_position, list_positions, process_cv, list_candidates, update_candidate_status]
+
+
+# Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar
+from app.agents.tenant_context import isolated as _isolated
+tools = _isolated(tools)
