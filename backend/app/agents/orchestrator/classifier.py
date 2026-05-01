@@ -4,6 +4,7 @@ Incluye clasificación por LLM (semántica) y fallback por palabras clave.
 """
 
 import logging
+import re
 
 from app.agents.orchestrator.state import (
     VALID_DOMAINS,
@@ -13,6 +14,43 @@ from app.agents.orchestrator.state import (
 
 logger = logging.getLogger(__name__)
 
+# Patrones de normalización: tokens que NO afectan la clasificación pero rompen
+# el cache hit ("crea factura 500" vs "crea factura 600" deberían ser el mismo).
+_RE_EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
+_RE_NIF = re.compile(r"\b[A-Z]?\d{7,8}[A-Z]?\b", re.IGNORECASE)
+_RE_DATE = re.compile(
+    r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b"
+)
+_RE_AMOUNT = re.compile(r"\b\d[\d.,]*\s*(?:€|eur|euros?|usd|\$|%)\b", re.IGNORECASE)
+_RE_NUMBER = re.compile(r"\b\d+([.,]\d+)?\b")
+_RE_WHITESPACE = re.compile(r"\s+")
+_RE_MONTH = re.compile(
+    r"\b(enero|febrero|marzo|abril|mayo|junio|julio|"
+    r"agosto|septiembre|octubre|noviembre|diciembre)\b",
+    re.IGNORECASE,
+)
+_RE_QUARTER = re.compile(r"\b[qQ][1-4]\b")
+
+
+def _normalize_for_cache(text: str) -> str:
+    """Normaliza el intent para maximizar hits del cache de classifier.
+
+    Sustituye importes, fechas, NIFs, emails, números por placeholders.
+    Mantiene el resto en minúsculas. Dos intents con la misma estructura pero
+    valores distintos comparten cache (e.g. 'crea factura 500 EUR' y
+    'crea factura 600 EUR' colapsan al mismo key).
+    """
+    t = text.lower().strip()
+    t = _RE_EMAIL.sub("<email>", t)
+    t = _RE_AMOUNT.sub("<amount>", t)
+    t = _RE_DATE.sub("<date>", t)
+    t = _RE_NIF.sub("<nif>", t)
+    t = _RE_MONTH.sub("<month>", t)
+    t = _RE_QUARTER.sub("<quarter>", t)
+    t = _RE_NUMBER.sub("<num>", t)
+    t = _RE_WHITESPACE.sub(" ", t).strip()
+    return t
+
 
 # Reglas de palabras clave — usadas como fallback rápido si el LLM falla
 _KEYWORD_MAP: dict[str, list[str]] = {
@@ -21,7 +59,6 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "facturar",
         "cobro",
         "pago",
-        "cliente",
         "iva",
         "presupuesto",
         "albarán",
@@ -53,13 +90,13 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "nómina",
         "nóminas",
         "empleado",
-        "trabajo",
         "laboral",
         "vacaciones",
-        "baja",
-        "alta",
+        "baja médica",
         "trabajador",
         "salario",
+        "sueldo",
+        "contrato laboral",
     ],
     "crm": [
         "venta",
@@ -236,26 +273,146 @@ def _is_question(text: str) -> bool:
     return any(t.lower().startswith(q) for q in question_starts)
 
 
+_CHITCHAT_TOKENS = {
+    "hola", "buenas", "buenos días", "buenas tardes", "buenas noches",
+    "gracias", "ok", "vale", "qué tal", "cómo estás",
+}
+
+
+def _is_pure_chitchat(intent_lower: str) -> bool:
+    """True si el intent es un saludo/cortesía sin contenido accionable."""
+    stripped = intent_lower.strip("?!.¿¡ ")
+    if not stripped:
+        return False
+    # Hasta 6 palabras y empieza por un token de chitchat
+    if len(stripped.split()) > 6:
+        return False
+    return any(stripped.startswith(t) for t in _CHITCHAT_TOKENS)
+
+
 def _keyword_classify(intent_lower: str) -> str:
-    """Clasificación determinista por palabras clave — fallback rápido."""
-    # Primero: buscar coincidencia con dominios especializados
+    """Clasificación determinista por palabras clave usando scoring por dominio.
+
+    Score = nº de keywords distintos del dominio que aparecen en el intent.
+    Devuelve el dominio con score máximo si gana de forma clara; si hay empate
+    o ningún match, devuelve 'unknown' para que el LLM decida.
+    """
+    # 0. Saludos puros → chat directo
+    if _is_pure_chitchat(intent_lower):
+        return "chat"
+
+    # 1. Scoring de dominios especializados (chat se trata aparte)
+    scores: dict[str, int] = {}
     for domain, keywords in _KEYWORD_MAP.items():
         if domain == "chat":
             continue
-        if any(kw in intent_lower for kw in keywords):
-            return domain
-    # Solo si NO hay dominio detectado: preguntas generales van a chat
+        n = sum(1 for kw in keywords if kw in intent_lower)
+        if n:
+            scores[domain] = n
+
+    if scores:
+        # Multi-step: dos o más dominios distintos + conector de secuencia → coordinator
+        multi_connectors = (
+            " y luego ", " y después ", " y envía", " y envía", " y manda",
+            " y prepara", " y genera", " y crea", " y notifica", " también ",
+            ", luego ", ", después ", " después de ",
+        )
+        if len(scores) >= 2 and any(c in intent_lower for c in multi_connectors):
+            return "coordinator"
+
+        sorted_doms = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        top, top_score = sorted_doms[0]
+        runner_up = sorted_doms[1][1] if len(sorted_doms) > 1 else 0
+        # Ganador claro: el top tiene al menos 2 matches o duplica al siguiente
+        if top_score >= 2 or top_score > runner_up:
+            return top
+        # Empate ambiguo → dejar al LLM
+        return "unknown"
+
+    # 2. Sin matches: si parece pregunta → chat
     if _is_question(intent_lower):
         return "chat"
     return "unknown"
+
+
+async def _resolve_custom_employee(state: OrchestratorState, intent_lower: str) -> dict | None:
+    """Si la tarea va dirigida a un AIEmployee custom (por id en metadata o por nombre/rol
+    mencionado en el texto), devuelve el dict de metadata enriquecido y enruta a 'custom'.
+
+    Devuelve None si no hay empleado custom direccionable.
+    """
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.ai_employees import AIEmployee
+
+    metadata = dict(state.get("additional_metadata") or {})
+    tenant_id = state.get("tenant_id")
+    if not tenant_id:
+        return None
+
+    # Caso 1: el cliente ya pasó addressed_employee_id (UI con selector de empleado)
+    if metadata.get("addressed_employee_id"):
+        return metadata
+
+    # Caso 2: detectar mención por nombre o rol en el texto natural
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(AIEmployee).where(
+                    AIEmployee.tenant_id == UUID(tenant_id),
+                    AIEmployee.domain == "custom",
+                    AIEmployee.status.in_(("idle", "working", "pending_setup")),
+                )
+            )
+            employees = result.scalars().all()
+    except Exception as e:
+        logger.debug("No se pudo cargar AIEmployees custom: %s", e)
+        return None
+
+    import re
+
+    _STOPWORDS = {"de", "del", "la", "el", "los", "las", "y", "o", "para", "por"}
+
+    def _word_tokens(text: str) -> list[str]:
+        if not text:
+            return []
+        cleaned = re.sub(r"[()\[\]]", " ", text.lower())
+        return [t for t in cleaned.split() if len(t) >= 3 and t not in _STOPWORDS]
+
+    for emp in employees:
+        tokens: set[str] = set()
+        tokens.update(_word_tokens(emp.name))
+        tokens.update(_word_tokens(emp.role))
+        if emp.name:
+            tokens.add(emp.name.lower())  # match nombre completo
+        if not tokens:
+            continue
+        for tok in tokens:
+            if re.search(r"\b" + re.escape(tok) + r"\b", intent_lower):
+                metadata["addressed_employee_id"] = str(emp.id)
+                logger.info(
+                    "[CLASSIFY] empleado custom resuelto por mención '%s': %s (%s)",
+                    tok, emp.name, emp.id,
+                )
+                return metadata
+
+    return None
+
+
+_CACHE_TTL_CLASSIFY = 86400  # 24 h — los patrones de clasificación no cambian a menudo
 
 
 async def classify_node(state: OrchestratorState) -> OrchestratorState:
     """
     Clasifica la intención del usuario en un dominio.
     Si el domain ya viene definido (desde la BD/API), se usa directamente.
-    Estrategia fallback: LLM (comprensión semántica) → palabras clave.
+    Estrategia: cache → custom employee → keywords → LLM → fallback a chat.
     """
+    from app.services.llm_cache import llm_cache
+
     # ── Atajo: si el domain ya está definido y es válido, no reclasificar ────
     existing_domain = state.get("classified_domain")
     if existing_domain and existing_domain in VALID_DOMAINS:
@@ -268,42 +425,72 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
 
     intent = state["user_intent"]
     intent_lower = intent.lower()
+    tenant_id = state.get("tenant_id", "")
+    cache_key = f"classify:{_normalize_for_cache(intent)}"
 
-    # ── Paso 1: Palabras clave — rápido y sin coste ──────────────────────────
+    # ── Paso 0: ¿La tarea va dirigida a un AIEmployee custom? ────────────────
+    # No se cachea: depende del estado de AIEmployees del tenant (puede cambiar).
+    custom_metadata = await _resolve_custom_employee(state, intent_lower)
+    if custom_metadata is not None:
+        return {
+            **state,
+            "classified_domain": "custom",
+            "additional_metadata": custom_metadata,
+            "status": TaskStatus.PLANNING,
+            "iteration_count": state.get("iteration_count", 0) + 1,
+        }
+
+    # ── Paso 1: cache hit por intent normalizado ─────────────────────────────
+    cached = await llm_cache.get(tenant_id, cache_key)
+    if cached and cached in VALID_DOMAINS:
+        logger.debug("[CLASSIFY] cache hit para '%s' → %s", cache_key, cached)
+        return {
+            **state,
+            "classified_domain": cached,
+            "status": TaskStatus.PLANNING,
+            "iteration_count": state.get("iteration_count", 0) + 1,
+        }
+
+    # ── Paso 2: keywords + scoring ───────────────────────────────────────────
     domain = _keyword_classify(intent_lower)
 
-    # ── Paso 2: LLM semántico solo si keywords no resolvieron ────────────────
+    # ── Paso 3: LLM semántico solo si keywords no resolvieron ────────────────
     if domain == "unknown":
-        tenant_id = state.get("tenant_id", "")
         try:
+            import asyncio as _asyncio
+
             from langchain_core.messages import HumanMessage, SystemMessage
 
             from app.core.llm_factory import get_llm
-            from app.services.llm_cache import llm_cache
 
-            cache_key_intent = f"classify:{intent_lower}"
-            cached = await llm_cache.get(tenant_id, cache_key_intent)
-            if cached and cached in VALID_DOMAINS:
-                domain = cached
-            else:
-                llm = get_llm(temperature=0)
-                import asyncio as _asyncio
-
-                response = await _asyncio.wait_for(
-                    llm.ainvoke(
-                        [
-                            SystemMessage(content=_CLASSIFY_SYSTEM),
-                            HumanMessage(content=intent),
-                        ]
-                    ),
-                    timeout=30,
-                )
-                raw = response.content.strip().lower().split()[0] if response.content else ""
-                if raw in VALID_DOMAINS:
-                    domain = raw
-                    await llm_cache.set(tenant_id, cache_key_intent, domain, ttl_override=7200)
+            llm = get_llm(temperature=0)
+            response = await _asyncio.wait_for(
+                llm.ainvoke(
+                    [
+                        SystemMessage(content=_CLASSIFY_SYSTEM),
+                        HumanMessage(content=intent),
+                    ]
+                ),
+                timeout=30,
+            )
+            raw = response.content.strip().lower().split()[0] if response.content else ""
+            if raw in VALID_DOMAINS:
+                domain = raw
         except Exception as e:
             logger.debug("Fallo en clasificación LLM: %s", e)
+
+    # ── Paso 4: fallback a chat si no se resolvió ────────────────────────────
+    if domain not in VALID_DOMAINS:
+        logger.info("[CLASSIFY] sin dominio resuelto para intent='%s'; fallback a chat", intent[:80])
+        domain = "chat"
+
+    # ── Paso 5: cachear el resultado (cualquier vía: keyword o LLM) ──────────
+    try:
+        await llm_cache.set(
+            tenant_id, cache_key, domain, ttl_override=_CACHE_TTL_CLASSIFY
+        )
+    except Exception as e:
+        logger.debug("No se pudo cachear classification: %s", e)
 
     return {
         **state,

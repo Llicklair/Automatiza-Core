@@ -17,21 +17,64 @@ from app.db.models.ai_employees import AgentSkill, AIEmployee
 logger = logging.getLogger(__name__)
 
 AVAILABLE_SKILLS = [
+    # billing
     "billing.create_invoice",
     "billing.list_invoices",
-    "billing.send_reminder",
+    "billing.update_invoice",
+    "billing.update_invoice_status",
+    "billing.search_client",
+    "billing.send_invoice_by_email",
+    # hr
     "hr.list_employees",
-    "hr.generate_payroll",
-    "hr.generate_document",
-    "crm.list_clients",
-    "crm.create_activity",
-    "email.send",
-    "email.read_inbox",
-    "documents.search_rag",
-    "documents.upload",
+    "hr.create_employee",
+    "hr.calculate_and_create_payroll",
+    "hr.generate_all_payrolls",
+    "hr.list_payrolls",
+    "hr.update_payroll",
+    "hr.approve_payroll",
+    # crm
+    "crm.list_opportunities",
+    "crm.create_opportunity",
+    "crm.update_opportunity_stage",
+    "crm.qualify_leads",
+    # banking
     "banking.list_transactions",
-    "compliance.check",
-    "excel.export",
+    "banking.check_balances",
+    "banking.financial_summary",
+    "banking.reconcile_transactions",
+    # email
+    "email.send_email",
+    "email.check_inbox",
+    "email.check_unread",
+    # documents
+    "documents.create_document",
+    "documents.classify_document",
+    "documents.list_tenant_documents",
+    "documents.get_document_content",
+    "documents.update_existing_document",
+    "documents.search_documents",
+    "documents.search_documents_semantic",
+    "documents.answer_from_documents",
+    # compliance
+    "compliance.check_fiscal_deadlines",
+    "compliance.fiscal_query",
+    "compliance.check_boe_news",
+    # excel
+    "excel.import_excel",
+    "excel.read_excel",
+    "excel.modify_excel",
+    "excel.export_erp_data",
+    "excel.list_available_datasets",
+    # recruitment
+    "recruitment.list_positions",
+    "recruitment.create_position",
+    "recruitment.list_candidates",
+    "recruitment.process_cv",
+    "recruitment.update_candidate_status",
+    # rag / knowledge
+    "rag.get_tenant_knowledge",
+    "rag.upsert_tenant_knowledge",
+    "rag.get_product_catalog",
 ]
 
 VALID_EMPLOYEE_DOMAINS = {

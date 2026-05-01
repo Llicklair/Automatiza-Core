@@ -38,15 +38,15 @@ export const STEPS: Step[] = [
     {
         id: "api_keys",
         title: "Configura tu clave de IA",
-        description: "Los agentes necesitan una API Key para funcionar. Gemini es gratuito y perfecto para empezar.",
-        detail: "Ve a Configuración → API Keys, activa un proveedor (recomendamos Gemini) y pega tu clave. Hay un enlace directo para crearla en cada proveedor.",
+        description: "Los agentes necesitan acceso a un modelo de IA para funcionar. Claude Code se integra automáticamente.",
+        detail: "Ve a Configuración → API Keys, activa un proveedor (recomendamos Claude Code o Anthropic) y, si aplica, pega tu clave.",
         icon: KeyRound,
         color: "violet",
         href: "/configuracion/api-keys",
         hrefLabel: "Ir a API Keys",
         tips: [
             "Solo necesitas una API Key. Puedes cambiar de proveedor en cualquier momento.",
-            "Gemini ofrece un plan gratuito con límites generosos, ideal para empezar.",
+            "Claude Code se autentica automáticamente sin necesidad de pegar una key.",
         ],
         prerequisite: "empresa",
     },

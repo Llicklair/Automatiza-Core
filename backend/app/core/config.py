@@ -40,14 +40,12 @@ class Settings(BaseSettings):
 
     # LLM
     DEFAULT_LLM_PROVIDER: str = (
-        "claude_code"  # claude_code | anthropic | gemini | openai | groq | openrouter
+        "claude_code"  # claude_code | anthropic | openai | groq | openrouter
     )
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"  # claude-sonnet-4-6 | claude-opus-4-6
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     OPENROUTER_API_KEY: str = ""
@@ -61,7 +59,7 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = True
 
     # Embeddings
-    EMBEDDINGS_PROVIDER: str = "gemini"  # local | gemini | openai
+    EMBEDDINGS_PROVIDER: str = "local"  # local | openai
     EMBEDDINGS_LOCAL_MODEL: str = "BAAI/bge-m3"  # modelo HuggingFace local
 
     # OAuth — Google (Gmail + Drive)

@@ -1,11 +1,10 @@
 """
 ClaudeCodeChatModel — LangChain wrapper para Claude Code CLI (suscripcion VSCode/Pro).
 
-Estrategia: warm process pool por tenant.
-  - Un proceso `claude -p` pre-spawneado por tenant espera en stdin.
-  - Al usarse, se lanza inmediatamente un reemplazo en background.
-  - Cold start solo en la primera llamada; las siguientes usan el proceso ya cargado.
-  - cwd neutro (home del usuario) para evitar cargar el contexto del proyecto.
+Estrategia: subprocess one-shot por llamada.
+  - `claude -p` es one-shot: lee stdin hasta EOF, procesa, escribe a stdout, termina.
+  - No es viable mantener un "warm pool" — el CLI muere si no recibe input pronto.
+  - cwd neutro (tempdir) para evitar cargar el contexto del proyecto.
 
 Tool calling: prompt-based.
   - bind_tools() almacena los schemas y devuelve un clon.
@@ -32,12 +31,6 @@ from pydantic import ConfigDict
 _log = logging.getLogger(__name__)
 
 TIMEOUT = 180  # segundos
-
-# ---------------------------------------------------------------------------
-# Warm process pool
-# ---------------------------------------------------------------------------
-_warm_pool: dict[str, "asyncio.subprocess.Process"] = {}
-_refill_in_flight: set[str] = set()
 
 
 def _resolve_claude_bin() -> str:
@@ -72,6 +65,7 @@ def _neutral_cwd() -> str:
 
 
 async def _spawn_process() -> "asyncio.subprocess.Process":
+    """Spawn fresh subprocess de `claude -p`. Una llamada = un proceso."""
     return await asyncio.create_subprocess_exec(
         _resolve_claude_bin(),
         "-p",
@@ -82,38 +76,6 @@ async def _spawn_process() -> "asyncio.subprocess.Process":
         env=_clean_env(),
         cwd=_neutral_cwd(),
     )
-
-
-async def _refill_slot(key: str) -> None:
-    try:
-        proc = await _spawn_process()
-        _warm_pool[key] = proc
-        _log.debug("[ClaudeCode] slot '%s' pre-calentado (pid=%s)", key, proc.pid)
-    except Exception as exc:
-        _log.warning("[ClaudeCode] pre-calentamiento fallido para '%s': %s", key, exc)
-    finally:
-        _refill_in_flight.discard(key)
-
-
-async def _acquire_process(key: str) -> "asyncio.subprocess.Process":
-    proc = _warm_pool.pop(key, None)
-
-    # Lanzar refill en background
-    if key not in _refill_in_flight:
-        _refill_in_flight.add(key)
-        asyncio.create_task(_refill_slot(key))
-
-    if proc is not None and proc.returncode is not None:
-        _log.warning("[ClaudeCode] proceso warm muerto para '%s', spawneando fresh", key)
-        proc = None
-
-    if proc is None:
-        _log.info("[ClaudeCode] pool miss para '%s' — cold start", key)
-        proc = await _spawn_process()
-    else:
-        _log.info("[ClaudeCode] pool hit para '%s' — warm start (pid=%s)", key, proc.pid)
-
-    return proc
 
 
 # ---------------------------------------------------------------------------
@@ -415,7 +377,7 @@ class ClaudeCodeChatModel(BaseChatModel):
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
         try:
-            proc = await _acquire_process(self.pool_key)
+            proc = await _spawn_process()
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(input=prompt.encode("utf-8")),
                 timeout=self.timeout,

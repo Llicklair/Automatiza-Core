@@ -7,7 +7,6 @@ from app.agents.orchestrator.dispatchers.billing import _dispatch_billing
 from app.agents.orchestrator.dispatchers.chat import _dispatch_chat
 from app.agents.orchestrator.dispatchers.compliance import _dispatch_compliance
 from app.agents.orchestrator.dispatchers.crm import _dispatch_crm
-from app.agents.orchestrator.dispatchers.custom import _dispatch_custom
 from app.agents.orchestrator.dispatchers.documents import _dispatch_documents
 from app.agents.orchestrator.dispatchers.hr import _dispatch_hr
 from app.agents.orchestrator.dispatchers.misc import (
@@ -49,7 +48,6 @@ __all__ = [
     "_dispatch_compliance",
     "_dispatch_hr",
     "_dispatch_crm",
-    "_dispatch_custom",
     "_dispatch_banking",
     "_dispatch_report",
     "_dispatch_rag",

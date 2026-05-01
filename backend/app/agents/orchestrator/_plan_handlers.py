@@ -279,12 +279,13 @@ async def plan_node(state: OrchestratorState) -> dict:
                 "error_message": f"Error planificando tarea: {type(e).__name__}: {e}",
                 "iteration_count": state["iteration_count"] + 1,
             }
-    # 3. Plan de un solo agente
+    # 3. Plan de un solo agente — defensa: si el dominio no es válido caemos a 'chat'
     else:
+        single_agent = domain if domain in VALID_DOMAINS else "chat"
         plan = [
             {
                 "id": "step_1",
-                "agent": domain or "",
+                "agent": single_agent,
                 "action": "process",
                 "params": {"intent": state["user_intent"]},
                 "depends_on": [],

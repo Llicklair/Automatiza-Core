@@ -24,7 +24,7 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
 
     # Fail fast: agentes inválidos no deben llegar a dispatch
     invalid = [
-        s["id"]
+        f"{s['id']}={s.get('agent')!r}"
         for s in plan
         if s.get("agent") not in VALID_DOMAINS and s.get("agent") != "node_engine"
     ]
@@ -39,7 +39,7 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
         return {
             **state,
             "status": TaskStatus.FAILED,
-            "error_message": f"Plan contiene agentes no reconocidos: {invalid}",
+            "error_message": f"Plan contiene pasos con agente no reconocido: {invalid}",
         }
 
     return {

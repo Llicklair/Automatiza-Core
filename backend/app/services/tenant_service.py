@@ -18,8 +18,8 @@ from app.api.v1.schemas.tenant import LlmProviderConfig
 from app.db.models.models import Tenant, TenantLlmConfig
 from app.services.encryption import decrypt_credentials, encrypt_credentials
 
-ALLOWED_LLM_PROVIDERS = {"gemini", "anthropic", "groq", "openai", "openrouter", "claude_code"}
-ALLOWED_EMBEDDINGS_PROVIDERS = {"local", "gemini", "openai"}
+ALLOWED_LLM_PROVIDERS = {"anthropic", "groq", "openai", "openrouter", "claude_code"}
+ALLOWED_EMBEDDINGS_PROVIDERS = {"local", "openai"}
 
 _MASKED = "••••••••"
 
@@ -98,7 +98,7 @@ async def get_llm_config(db: AsyncSession, tenant_id: UUID) -> dict[str, Any]:
     keys = _decrypt_keys(cfg)
 
     return {
-        "active_llm_provider": cfg.active_llm_provider if cfg else "gemini",
+        "active_llm_provider": cfg.active_llm_provider if cfg else "claude_code",
         "active_embeddings_provider": cfg.active_embeddings_provider if cfg else "local",
         "providers": _build_providers_out(keys),
     }
