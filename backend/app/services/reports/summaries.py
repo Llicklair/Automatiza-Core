@@ -5,7 +5,7 @@ Extracted from api/v1/routes/reports/_helpers.py.
 
 import logging
 
-from app.api.v1.routes.reports._schemas import (
+from app.services.reports._schemas import (
     FiscalIRPF,
     FiscalIS,
     FiscalIVA,
