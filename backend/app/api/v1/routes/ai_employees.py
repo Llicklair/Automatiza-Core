@@ -61,6 +61,13 @@ async def create_ai_employee(
     return out
 
 
+@router.get("/ai-employees/available-skills")
+async def list_available_skills(
+    current_user: User = Depends(get_current_user),
+):
+    return svc.AVAILABLE_SKILLS
+
+
 @router.get("/ai-employees/{employee_id}", response_model=AIEmployeeOut)
 async def get_ai_employee(
     employee_id: str,
@@ -152,13 +159,6 @@ async def update_employee_status(
     if not result:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
     return result
-
-
-@router.get("/ai-employees/available-skills")
-async def list_available_skills(
-    current_user: User = Depends(get_current_user),
-):
-    return svc.AVAILABLE_SKILLS
 
 
 @router.post("/ai-employees/{employee_id}/instruct")
