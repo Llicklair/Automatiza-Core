@@ -3,6 +3,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+# Re-export de la ubicación canónica en services/
+from app.services._tenant_schemas import LlmProviderConfig  # noqa: F401
+
 
 class TenantMeResponse(BaseModel):
     id: UUID
@@ -23,10 +26,7 @@ class TenantMeUpdate(BaseModel):
     contact_email: str | None = None
 
 
-class LlmProviderConfig(BaseModel):
-    api_key: str | None = None
-    model: str | None = None
-    enabled: bool = False
+# LlmProviderConfig vive en services/_tenant_schemas — re-exportado arriba
 
 
 class LlmConfigUpdate(BaseModel):

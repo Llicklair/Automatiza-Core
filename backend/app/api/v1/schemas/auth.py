@@ -5,6 +5,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
+# Schemas compartidos con la capa services — re-exportados aquí para mantener
+# compat con route handlers existentes; ubicación canónica: services/auth/_schemas.py
+from app.services.auth._schemas import TenantCreate, UserCreate  # noqa: F401
+
 # ─── Auth ───────────────────────────────────────────────────────────────────
 
 
@@ -26,11 +30,6 @@ class RefreshRequest(BaseModel):
 # ─── Tenant ──────────────────────────────────────────────────────────────────
 
 
-class TenantCreate(BaseModel):
-    name: str = Field(..., min_length=2, max_length=200)
-    nif: str = Field(..., pattern=r"^[A-Z0-9]{9}$", description="NIF/CIF español (9 chars)")
-
-
 class TenantOut(BaseModel):
     model_config = {"from_attributes": True}
     id: UUID
@@ -44,12 +43,7 @@ class TenantOut(BaseModel):
 # ─── User ────────────────────────────────────────────────────────────────────
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-    full_name: str | None = None
-    # Registro inicial: se crea el tenant en el mismo call
-    tenant: TenantCreate
+# UserCreate y TenantCreate viven en services/auth/_schemas — re-exportados arriba
 
 
 class UserOut(BaseModel):
