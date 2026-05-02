@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import and_, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.routes.reports._schemas import (
+from app.services.reports._schemas import (
     CompanySnapshot,
     SnapshotSectionBanking,
     SnapshotSectionClients,
