@@ -4,17 +4,19 @@ import { useEffect, useState } from "react";
 import { aiEmployees, type AIEmployee } from "@/lib/api/ai_employees";
 import { MessageSquare, Trash2, Pencil } from "lucide-react";
 import { AppearancePicker, getAvatarClasses } from "./IconPicker";
+import { UsageModal } from "./UsageModal";
 
-function BudgetBar({ employeeId, limit }: { employeeId: string; limit: number }) {
+function BudgetBar({ employee, limit }: { employee: AIEmployee; limit: number }) {
     const [spent, setSpent] = useState<number | null>(null);
+    const [modalOpen, setModalOpen] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
-        aiEmployees.usage(employeeId, { limit: 1 })
+        aiEmployees.usage(employee.id, { limit: 1 })
             .then(r => { if (!cancelled) setSpent(r.total_cost_usd); })
             .catch(() => { if (!cancelled) setSpent(0); });
         return () => { cancelled = true; };
-    }, [employeeId]);
+    }, [employee.id]);
 
     if (spent === null) return null;
     const pct = Math.min(100, (spent / limit) * 100);
@@ -22,15 +24,22 @@ function BudgetBar({ employeeId, limit }: { employeeId: string; limit: number })
     const textColor = pct >= 90 ? "text-red-400" : pct >= 70 ? "text-amber-400" : "text-muted-foreground";
 
     return (
-        <div className="flex flex-col gap-1 pt-2 border-t border-border">
-            <div className={`flex items-center justify-between text-[10px] ${textColor}`}>
-                <span>Presupuesto</span>
-                <span className="font-medium">${spent.toFixed(2)} / ${limit.toFixed(2)}</span>
-            </div>
-            <div className="h-1 rounded-full bg-muted overflow-hidden">
-                <div className={`h-full ${color} transition-all`} style={{ width: `${pct}%` }} />
-            </div>
-        </div>
+        <>
+            <button
+                onClick={() => setModalOpen(true)}
+                title="Ver historial de consumo"
+                className="flex flex-col gap-1 pt-2 border-t border-border w-full text-left hover:opacity-80 transition-opacity"
+            >
+                <div className={`flex items-center justify-between text-[10px] ${textColor}`}>
+                    <span>Presupuesto</span>
+                    <span className="font-medium">${spent.toFixed(2)} / ${limit.toFixed(2)}</span>
+                </div>
+                <div className="h-1 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+                </div>
+            </button>
+            {modalOpen && <UsageModal employee={employee} onClose={() => setModalOpen(false)} />}
+        </>
     );
 }
 
@@ -96,7 +105,7 @@ export function EmployeeCard({ employee, onToggle, onInstruct, onDelete, onAppea
                 </span>
             </div>
             {employee.budget_limit_usd != null && employee.budget_limit_usd > 0 && (
-                <BudgetBar employeeId={employee.id} limit={employee.budget_limit_usd} />
+                <BudgetBar employee={employee} limit={employee.budget_limit_usd} />
             )}
             <div className="flex items-center justify-between pt-2 border-t border-border gap-2">
                 <span className="text-[10px] text-muted-foreground capitalize">{employee.domain}</span>
