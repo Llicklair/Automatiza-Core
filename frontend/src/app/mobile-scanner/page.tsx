@@ -6,32 +6,9 @@ import {
     ScanLine, Package, ArrowDown, ArrowUp, Truck, Loader2,
     CheckCircle2, XCircle, AlertTriangle,
 } from "lucide-react";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-type ProductInfo = {
-    id: string; sku: string; name: string; description: string | null;
-    price: number | null; stock_quantity: number; stock_min_alert: number | null; low_stock: boolean;
-};
+import { mobileScanner, type ScannedProduct } from "@/lib/api/scanner";
 
 type ActionResult = { success: boolean; message: string; data?: any };
-
-function scannerFetch<T>(path: string, token: string, opts: RequestInit = {}): Promise<T> {
-    return fetch(`${BASE}/api/v1/scanner${path}`, {
-        ...opts,
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            ...(opts.headers || {}),
-        },
-    }).then(async (res) => {
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(err.detail || res.statusText);
-        }
-        return res.json();
-    });
-}
 
 function MobileScannerInner() {
     const params = useSearchParams();
@@ -40,7 +17,7 @@ function MobileScannerInner() {
     const [deviceInfo, setDeviceInfo] = useState<{ tenant_id: string; device: string } | null>(null);
 
     const [sku, setSku] = useState("");
-    const [product, setProduct] = useState<ProductInfo | null>(null);
+    const [product, setProduct] = useState<ScannedProduct | null>(null);
     const [loading, setLoading] = useState(false);
     const [quantity, setQuantity] = useState(1);
     const [result, setResult] = useState<ActionResult | null>(null);
@@ -49,7 +26,7 @@ function MobileScannerInner() {
     // Verify token on mount
     useEffect(() => {
         if (!token) { setAuthenticated(false); return; }
-        scannerFetch<any>("/whoami", token)
+        mobileScanner.whoami(token)
             .then((data) => { setAuthenticated(true); setDeviceInfo(data); })
             .catch(() => setAuthenticated(false));
     }, [token]);
@@ -58,9 +35,7 @@ function MobileScannerInner() {
         if (!sku.trim()) return;
         setLoading(true); setProduct(null); setResult(null);
         try {
-            const data = await scannerFetch<ProductInfo>("/scan-product", token, {
-                method: "POST", body: JSON.stringify({ sku: sku.trim() }),
-            });
+            const data = await mobileScanner.scanProduct(token, sku.trim());
             setProduct(data);
         } catch (e: any) {
             setResult({ success: false, message: e.message });
@@ -72,9 +47,7 @@ function MobileScannerInner() {
         if (!product) return;
         setLoading(true); setResult(null);
         try {
-            const data = await scannerFetch<any>("/stock-entry", token, {
-                method: "POST", body: JSON.stringify({ sku: product.sku, quantity }),
-            });
+            const data = await mobileScanner.stockEntry(token, product.sku, quantity);
             setResult({ success: true, message: `+${quantity} → Stock: ${data.stock_after}`, data });
             setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
         } catch (e: any) { setResult({ success: false, message: e.message }); }
@@ -85,9 +58,7 @@ function MobileScannerInner() {
         if (!product) return;
         setLoading(true); setResult(null);
         try {
-            const data = await scannerFetch<any>("/stock-exit", token, {
-                method: "POST", body: JSON.stringify({ sku: product.sku, quantity }),
-            });
+            const data = await mobileScanner.stockExit(token, product.sku, quantity);
             setResult({ success: true, message: `-${quantity} → Stock: ${data.stock_after}`, data });
             setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
         } catch (e: any) { setResult({ success: false, message: e.message }); }
@@ -98,9 +69,7 @@ function MobileScannerInner() {
         if (!albaranNum.trim()) return;
         setLoading(true); setResult(null);
         try {
-            const data = await scannerFetch<any>("/confirm-delivery", token, {
-                method: "POST", body: JSON.stringify({ albaran_number: albaranNum.trim() }),
-            });
+            const data = await mobileScanner.confirmDelivery(token, albaranNum.trim());
             setResult({ success: true, message: `Albarán ${data.albaran_number}: ${data.status}` });
             setAlbaranNum("");
         } catch (e: any) { setResult({ success: false, message: e.message }); }
