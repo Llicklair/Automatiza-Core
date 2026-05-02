@@ -67,7 +67,8 @@ async def _load_and_start_task(task_id: str, db):
     Carga la tarea, verifica que no este cancelada y la marca como executing.
     Devuelve la tarea o None si no debe continuar.
     """
-    result = await db.execute(select(Task).where(Task.id == task_id))
+    task_uuid = uuid.UUID(task_id) if isinstance(task_id, str) else task_id
+    result = await db.execute(select(Task).where(Task.id == task_uuid))
     task = result.scalar_one_or_none()
     if not task:
         return None
@@ -228,7 +229,8 @@ async def _load_task_and_approval(task_id: str, db):
     Devuelve (task, payload_dict) o None si falta alguno.
     """
     try:
-        task_res = await db.execute(select(Task).where(Task.id == task_id))
+        task_uuid = uuid.UUID(task_id) if isinstance(task_id, str) else task_id
+        task_res = await db.execute(select(Task).where(Task.id == task_uuid))
         task = task_res.scalar_one_or_none()
         if not task:
             logger.error("[RESUME] Tarea %s no encontrada", task_id)

@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
 async def _mark_task_failed(task_id: str, error_msg: str):
     """Marca una tarea como fallida en BD directamente (sin pasar por el orquestador)."""
     try:
+        task_uuid = uuid.UUID(task_id) if isinstance(task_id, str) else task_id
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Task).where(Task.id == task_id))
+            result = await db.execute(select(Task).where(Task.id == task_uuid))
             task = result.scalar_one_or_none()
             if task:
                 task.status = "failed"
