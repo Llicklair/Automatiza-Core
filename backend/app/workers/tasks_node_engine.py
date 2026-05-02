@@ -82,17 +82,22 @@ async def _run_node_engine(execution_id: str):
 
     from sqlalchemy import select
 
+    from app.core.tenant_context import set_current_tenant
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
     from app.services.ai.node_engine import NodeEngine
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        # para que la query de bootstrap también corra con contexto de tenant.
         result = await db.execute(
             select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id))
         )
         execution = result.scalar_one_or_none()
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
+
+        set_current_tenant(str(execution.tenant_id))
 
         engine = NodeEngine(
             workflow_id=str(execution.workflow_id),
@@ -109,17 +114,22 @@ async def _resume_node_engine(execution_id: str, from_node_id: str):
 
     from sqlalchemy import select
 
+    from app.core.tenant_context import set_current_tenant
     from app.db.base import AsyncSessionLocal
     from app.db.models.models import WorkflowExecution
     from app.services.ai.node_engine import NodeEngine
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        # para que la query de bootstrap también corra con contexto de tenant.
         result = await db.execute(
             select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id))
         )
         execution = result.scalar_one_or_none()
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
+
+        set_current_tenant(str(execution.tenant_id))
 
         engine = NodeEngine(
             workflow_id=str(execution.workflow_id),

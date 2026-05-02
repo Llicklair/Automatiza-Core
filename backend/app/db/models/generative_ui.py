@@ -2,7 +2,7 @@
 
 from sqlalchemy import JSON
 
-from .common import UUID, Base, Boolean, Column, DateTime, String, Text, utcnow, uuid
+from .common import UUID, Base, Boolean, Column, DateTime, ForeignKey, String, Text, utcnow, uuid
 
 
 class GeneratedUI(Base):
@@ -15,7 +15,7 @@ class GeneratedUI(Base):
     __tablename__ = "generated_uis"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), index=True, nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     prompt = Column(Text, nullable=False)

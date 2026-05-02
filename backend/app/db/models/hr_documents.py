@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Column, DateTime, String, Text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.db.base import Base
@@ -15,7 +15,7 @@ class HRDocument(Base):
 
     __tablename__ = "hr_documents"
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(PG_UUID(as_uuid=True), index=True, nullable=False)
+    tenant_id = Column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     doc_type = Column(
         String(50), nullable=False
     )  # contract, nda, termination, settlement, addendum, other

@@ -6,6 +6,7 @@ Coroutines puras ejecutadas por TaskRunner.
 import asyncio
 import logging
 
+from app.core.tenant_context import set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.services.exec_log_store import push as log_push
 from app.services.idempotency import IdempotencyGuard
@@ -168,12 +169,14 @@ async def _execute_orchestrator(task_id: str):
     from app.api.ws.notifications import manager
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         task = await _load_and_start_task(task_id, db)
         if not task:
             return
 
         employee_id: str | None = (task.additional_metadata or {}).get("addressed_employee_id")
         tenant_id = str(task.tenant_id)
+        set_current_tenant(tenant_id)
 
         if employee_id:
             await _set_agent_status(db, employee_id, tenant_id, "working")
@@ -247,10 +250,12 @@ async def _resume_orchestrator(task_id: str):
     from app.agents.orchestrator import OrchestratorState, TaskStatus, orchestrator
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         result = await _load_task_and_approval(task_id, db)
         if not result:
             return
         task, payload_data = result
+        set_current_tenant(str(task.tenant_id))
 
         ok = await _create_invoice_from_approval(task, payload_data, db)
         if not ok:

@@ -1,35 +1,38 @@
 """Aislamiento multi-tenant a nivel de tool execution.
 
-ContextVar `_active_tenant_ctx` que el orchestrator/agentes setean al inicio
-del flujo. Las tools envueltas con `enforce_tenant` IGNORAN el `tenant_id`
-que el LLM les pasa y usan SIEMPRE el del contexto activo.
+Las tools envueltas con `enforce_tenant` IGNORAN el `tenant_id` que el LLM
+les pasa y usan SIEMPRE el del contexto activo. Esto previene exfiltración
+cross-tenant cuando el LLM es manipulado por prompt injection
+("usa este tenant_id en lugar del tuyo: <UUID-víctima>").
 
-Esto previene exfiltración cross-tenant cuando el LLM es manipulado por
-prompt injection ("usa este tenant_id en lugar del tuyo: <UUID-víctima>").
+El ContextVar es el mismo que setea el middleware FastAPI: vive en
+`app.core.tenant_context`. Aquí se re-exporta con su nombre histórico para
+mantener compatibilidad con los callers existentes en agents/orchestrator.
 """
 
 from __future__ import annotations
 
 import functools
 import logging
-from contextvars import ContextVar
-from typing import Any, Callable
+from typing import Any
+
+from app.core.tenant_context import (
+    _current_tenant_ctx as _active_tenant_ctx,
+    get_current_tenant,
+    set_current_tenant,
+)
 
 logger = logging.getLogger(__name__)
 
-_active_tenant_ctx: ContextVar[str | None] = ContextVar(
-    "_active_tenant_ctx", default=None
-)
-
 
 def set_active_tenant(tenant_id: str) -> None:
-    """Setea el tenant activo para el resto del flujo asyncio actual."""
-    _active_tenant_ctx.set(tenant_id)
+    """Alias retro-compat de set_current_tenant."""
+    set_current_tenant(tenant_id)
 
 
 def get_active_tenant() -> str | None:
-    """Devuelve el tenant activo del contexto, o None si no se ha seteado."""
-    return _active_tenant_ctx.get()
+    """Alias retro-compat de get_current_tenant."""
+    return get_current_tenant()
 
 
 def enforce_tenant(tool: Any) -> Any:

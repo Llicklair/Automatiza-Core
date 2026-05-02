@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_token
+from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
 from app.db.models.models import Tenant, User
 from app.services import tenant_service
@@ -34,6 +35,11 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception
+
+    # Fija el tenant activo en el ContextVar para el resto del request.
+    # Lo leen el listener SQLAlchemy (Fase 3 RLS), agentes LangGraph y el
+    # decorador enforce_tenant que protege las tools del LLM.
+    set_current_tenant(str(user.tenant_id))
     return user
 
 
