@@ -5,13 +5,13 @@ Banking agent node + LangGraph graph builder.
 import logging
 from datetime import datetime as dt
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.llm_factory import get_llm
+from app.core.llm_factory import get_llm, make_cached_system_message
 from app.prompts import load_prompt
 
 from .tools import tools
@@ -27,8 +27,8 @@ def _get_llm():
 
 async def banking_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = SystemMessage(
-            content=BANKING_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
+        sys_msg = make_cached_system_message(
+            BANKING_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
         )
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]

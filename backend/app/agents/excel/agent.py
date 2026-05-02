@@ -11,13 +11,13 @@ Cada herramienta ejecuta lógica determinista (BD, openpyxl, pandas).
 
 from datetime import datetime
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.llm_factory import get_llm
+from app.core.llm_factory import get_llm, make_cached_system_message
 
 from .prompts import EXCEL_SYSTEM_PROMPT
 from .tools import tools
@@ -29,8 +29,8 @@ def _get_llm():
 
 async def excel_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = SystemMessage(
-            content=EXCEL_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
+        sys_msg = make_cached_system_message(
+            EXCEL_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
         )
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]

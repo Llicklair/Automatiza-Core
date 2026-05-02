@@ -4,13 +4,13 @@ CRM agent — LangGraph graph definition and node logic.
 
 from datetime import datetime
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
 from app.agents.types import StepResult
-from app.core.llm_factory import get_llm
+from app.core.llm_factory import get_llm, make_cached_system_message
 
 from .tools import tools
 
@@ -21,20 +21,18 @@ def _get_llm():
 
 async def crm_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = SystemMessage(
-            content=(
-                "Eres el Agente Comercial (CRM) de la empresa automatizada.\n"
-                "Gestionas las etapas de los leads y cualificas oportunidades.\n"
-                "Tus herramientas:\n"
-                "1. list_opportunities: para ver embudos y prospectos.\n"
-                "2. qualify_leads: para analizar leads nuevos y rankear a quién contactar.\n"
-                "3. update_opportunity_stage: para avanzar deals (won/lost/qualified).\n"
-                "4. create_opportunity: si descubres una nueva vía de negocio en un cliente.\n"
-                "5. create_document: para generar informes en texto o csv y guardarlos en el Gestor Documental.\n"
-                "6. Herramientas documentales (list_tenant_documents, get_document_content) "
-                "por si necesitas leer emails escaneados, contratos, que contengan información clave.\n"
-                f"Tú respondes y decides a partir del ID de Tenant actual: {state.get('tenant_id')}."
-            )
+        sys_msg = make_cached_system_message(
+            "Eres el Agente Comercial (CRM) de la empresa automatizada.\n"
+            "Gestionas las etapas de los leads y cualificas oportunidades.\n"
+            "Tus herramientas:\n"
+            "1. list_opportunities: para ver embudos y prospectos.\n"
+            "2. qualify_leads: para analizar leads nuevos y rankear a quién contactar.\n"
+            "3. update_opportunity_stage: para avanzar deals (won/lost/qualified).\n"
+            "4. create_opportunity: si descubres una nueva vía de negocio en un cliente.\n"
+            "5. create_document: para generar informes en texto o csv y guardarlos en el Gestor Documental.\n"
+            "6. Herramientas documentales (list_tenant_documents, get_document_content) "
+            "por si necesitas leer emails escaneados, contratos, que contengan información clave.\n"
+            f"Tú respondes y decides a partir del ID de Tenant actual: {state.get('tenant_id')}."
         )
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]

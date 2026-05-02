@@ -2,12 +2,12 @@
 Marketing agent — LangGraph graph definition and node logic.
 """
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
-from app.core.llm_factory import get_llm
+from app.core.llm_factory import get_llm, make_cached_system_message
 from app.prompts import load_prompt
 
 from .tools import tools
@@ -19,7 +19,7 @@ async def marketing_agent_node(state: AgentState) -> dict:
     llm = get_llm(temperature=0.4).bind_tools(tools)
     if not state.get("messages"):
         state["messages"] = [
-            SystemMessage(content=MARKETING_SYSTEM_PROMPT),
+            make_cached_system_message(MARKETING_SYSTEM_PROMPT),
             HumanMessage(
                 content=state.get("user_intent", "Genera un plan de contenidos para este mes")
             ),

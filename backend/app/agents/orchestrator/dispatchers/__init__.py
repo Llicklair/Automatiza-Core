@@ -19,11 +19,13 @@ from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_team,
     _dispatch_workflow,
 )
+from app.agents.orchestrator.dispatchers.accounting import _dispatch_accounting
 from app.agents.orchestrator.dispatchers.reports import _dispatch_report
 
 # Registro de dispatchers: agent_name → callable(state, subtask) -> AgentResult
 DISPATCHER_MAP = {
     "billing": _dispatch_billing,
+    "accounting": _dispatch_accounting,
     "documents": _dispatch_documents,
     "compliance": _dispatch_compliance,
     "banking": _dispatch_banking,
@@ -43,6 +45,7 @@ DISPATCHER_MAP = {
 
 __all__ = [
     "DISPATCHER_MAP",
+    "_dispatch_accounting",
     "_dispatch_billing",
     "_dispatch_documents",
     "_dispatch_compliance",
