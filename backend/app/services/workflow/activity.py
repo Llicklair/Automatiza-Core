@@ -28,11 +28,14 @@ async def log_activity(
 
     No hace commit — el caller es responsable de la transacción.
     """
+    def _to_uuid(val):
+        return uuid.UUID(val) if isinstance(val, str) else val
+
     entry = ActivityEntry(
         id=uuid.uuid4(),
-        tenant_id=tenant_id,
-        employee_id=employee_id,
-        task_id=task_id,
+        tenant_id=_to_uuid(tenant_id),
+        employee_id=_to_uuid(employee_id) if employee_id else None,
+        task_id=_to_uuid(task_id) if task_id else None,
         category=category,
         icon=icon,
         message=message,
