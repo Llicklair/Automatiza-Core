@@ -184,7 +184,12 @@ async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
         .values(status="cancelled")
     )
 
-    await db.execute(sql_delete(AuditLog).where(AuditLog.task_id.in_(task_ids)))
+    await db.execute(
+        sql_delete(AuditLog).where(
+            AuditLog.task_id.in_(task_ids),
+            AuditLog.tenant_id == tenant_id,
+        )
+    )
     await db.execute(sql_delete(PendingApproval).where(PendingApproval.task_id.in_(task_ids)))
     await db.execute(
         sql_update(TenantDocument).where(TenantDocument.task_id.in_(task_ids)).values(task_id=None)
@@ -208,7 +213,9 @@ async def get_task_audit(
     await get_task(db, task_id=task_id, tenant_id=tenant_id)
 
     result = await db.execute(
-        select(AuditLog).where(AuditLog.task_id == task_id).order_by(AuditLog.executed_at)
+        select(AuditLog)
+        .where(AuditLog.task_id == task_id, AuditLog.tenant_id == tenant_id)
+        .order_by(AuditLog.executed_at)
     )
     entries = list(result.scalars().all())
 
