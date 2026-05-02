@@ -28,6 +28,25 @@ export interface AvailableSkill {
     label: string;
 }
 
+export interface UsageEntry {
+    id: string;
+    task_id: string | null;
+    provider: string | null;
+    tokens_in: number;
+    tokens_out: number;
+    cost_usd: number;
+    created_at: string;
+}
+
+export interface EmployeeUsage {
+    employee_id: string;
+    total_calls: number;
+    total_tokens_in: number;
+    total_tokens_out: number;
+    total_cost_usd: number;
+    entries: UsageEntry[];
+}
+
 export const aiEmployees = {
     list: () =>
         request<AIEmployee[]>("/api/v1/ai-employees"),
@@ -58,6 +77,14 @@ export const aiEmployees = {
 
     seed: () =>
         request<{ created: string[]; message: string }>("/api/v1/ai-employees/seed", { method: "POST" }),
+
+    usage: (id: string, params?: { limit?: number; offset?: number }) => {
+        const qs = new URLSearchParams();
+        if (params?.limit) qs.set("limit", String(params.limit));
+        if (params?.offset) qs.set("offset", String(params.offset));
+        const query = qs.toString() ? `?${qs}` : "";
+        return request<EmployeeUsage>(`/api/v1/ai-employees/${id}/usage${query}`);
+    },
 
     activityFeed: (params?: { employee_id?: string; category?: string; limit?: number; offset?: number }) => {
         const qs = new URLSearchParams();

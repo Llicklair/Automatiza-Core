@@ -1,9 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import type { AIEmployee } from "@/lib/api/ai_employees";
+import { useEffect, useState } from "react";
+import { aiEmployees, type AIEmployee } from "@/lib/api/ai_employees";
 import { MessageSquare, Trash2, Pencil } from "lucide-react";
 import { AppearancePicker, getAvatarClasses } from "./IconPicker";
+
+function BudgetBar({ employeeId, limit }: { employeeId: string; limit: number }) {
+    const [spent, setSpent] = useState<number | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        aiEmployees.usage(employeeId, { limit: 1 })
+            .then(r => { if (!cancelled) setSpent(r.total_cost_usd); })
+            .catch(() => { if (!cancelled) setSpent(0); });
+        return () => { cancelled = true; };
+    }, [employeeId]);
+
+    if (spent === null) return null;
+    const pct = Math.min(100, (spent / limit) * 100);
+    const color = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500";
+    const textColor = pct >= 90 ? "text-red-400" : pct >= 70 ? "text-amber-400" : "text-muted-foreground";
+
+    return (
+        <div className="flex flex-col gap-1 pt-2 border-t border-border">
+            <div className={`flex items-center justify-between text-[10px] ${textColor}`}>
+                <span>Presupuesto</span>
+                <span className="font-medium">${spent.toFixed(2)} / ${limit.toFixed(2)}</span>
+            </div>
+            <div className="h-1 rounded-full bg-muted overflow-hidden">
+                <div className={`h-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+            </div>
+        </div>
+    );
+}
 
 export const STATUS_CONFIG = {
     idle:          { label: "Disponible",      color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" },
@@ -66,6 +95,9 @@ export function EmployeeCard({ employee, onToggle, onInstruct, onDelete, onAppea
                     {s.label}
                 </span>
             </div>
+            {employee.budget_limit_usd != null && employee.budget_limit_usd > 0 && (
+                <BudgetBar employeeId={employee.id} limit={employee.budget_limit_usd} />
+            )}
             <div className="flex items-center justify-between pt-2 border-t border-border gap-2">
                 <span className="text-[10px] text-muted-foreground capitalize">{employee.domain}</span>
                 <div className="flex items-center gap-1">
