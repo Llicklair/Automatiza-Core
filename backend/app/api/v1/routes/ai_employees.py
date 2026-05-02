@@ -61,6 +61,32 @@ async def create_ai_employee(
     return out
 
 
+@router.get("/ai-employees/{employee_id}", response_model=AIEmployeeOut)
+async def get_ai_employee(
+    employee_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await svc.get_employee(employee_id, current_user.tenant_id, db)
+    if not result:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    return result
+
+
+@router.get("/ai-employees/{employee_id}/usage")
+async def get_employee_usage(
+    employee_id: str,
+    limit: int = Query(50, le=200),
+    offset: int = Query(0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    emp = await svc.get_employee(employee_id, current_user.tenant_id, db)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    return await svc.get_employee_ledger(employee_id, current_user.tenant_id, db, limit, offset)
+
+
 @router.post("/ai-employees/{employee_id}/provision", response_model=AIEmployeeOut)
 async def provision_ai_employee(
     employee_id: str,
@@ -151,9 +177,12 @@ async def instruct_employee(
             db,
         )
     except ValueError as e:
-        if "pausado" in str(e) or "paused" in str(e):
+        msg = str(e)
+        if "pausado" in msg or "paused" in msg:
             raise HTTPException(status_code=409, detail="El empleado está pausado")
-        raise HTTPException(status_code=404, detail=str(e))
+        if "budget_exceeded" in msg:
+            raise HTTPException(status_code=402, detail="Presupuesto agotado para este empleado")
+        raise HTTPException(status_code=404, detail=msg)
 
 
 @router.delete("/ai-employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)

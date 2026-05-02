@@ -186,7 +186,7 @@ async def _execute_orchestrator(task_id: str):
         log_push(task_id, "Iniciando automatizacion...")
 
         try:
-            final_state = await _stream_and_log(task_id, initial_state, orchestrator)
+            final_state, usage_cb = await _stream_and_log(task_id, initial_state, orchestrator)
         except Exception:
             if employee_id:
                 await _set_agent_status(db, employee_id, tenant_id, "idle")
@@ -201,6 +201,19 @@ async def _execute_orchestrator(task_id: str):
 
         await _save_final_state(task, final_state, db)
         await _sync_workflow_artifacts(task, final_state, db)
+
+        if employee_id and (usage_cb.total_tokens_in + usage_cb.total_tokens_out) > 0:
+            from app.services.ai.employee_crud import record_token_usage
+            await record_token_usage(
+                employee_id=employee_id,
+                tenant_id=tenant_id,
+                task_id=task_id,
+                tokens_in=usage_cb.total_tokens_in,
+                tokens_out=usage_cb.total_tokens_out,
+                cost_usd=usage_cb.total_cost_usd,
+                provider=usage_cb._current_provider,
+                db=db,
+            )
 
         entry = await _log_task_completion(db, task, final_state, employee_id, tenant_id)
         if employee_id:
