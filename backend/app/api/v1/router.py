@@ -16,6 +16,7 @@ from app.api.v1.routes import (
     hr,
     hr_documents,
     integrations,
+    llm_usage,
     messaging,
     projects,
     quotes,
@@ -61,3 +62,4 @@ api_router.include_router(hr_documents.router)
 api_router.include_router(generative_ui.router)
 api_router.include_router(users.router)
 api_router.include_router(system.router)
+api_router.include_router(llm_usage.router)

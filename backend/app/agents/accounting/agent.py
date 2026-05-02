@@ -1,6 +1,4 @@
-"""
-Billing agent — LangGraph graph definition and node logic.
-"""
+"""Accounting agent — LangGraph graph for accounting and journal entries."""
 
 from datetime import date, datetime
 
@@ -12,21 +10,31 @@ from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm, make_cached_system_message
 
-from .prompts import BILLING_SYSTEM_PROMPT
-from .tools import tools
+from .prompts import ACCOUNTING_SYSTEM_PROMPT
+from ._account_tools import (
+    create_journal_entry,
+    get_account_balance,
+    get_profit_loss_summary,
+    list_fixed_assets,
+    list_journal_entries,
+)
+
+tools = [
+    create_journal_entry,
+    list_journal_entries,
+    get_account_balance,
+    get_profit_loss_summary,
+    list_fixed_assets,
+]
 
 
-def _get_llm():
-    return get_llm(temperature=0)
-
-
-async def billing_agent_node(state: AgentState):
-    """Nodo principal: el LLM razona y elige herramientas."""
+async def accounting_agent_node(state: AgentState):
+    """Nodo principal: el LLM razona y elige herramientas contables."""
     today = date.today().isoformat()
 
     if "messages" not in state or not state["messages"]:
         sys_msg = make_cached_system_message(
-            BILLING_SYSTEM_PROMPT.format(
+            ACCOUNTING_SYSTEM_PROMPT.format(
                 tenant_id=state.get("tenant_id", ""),
                 today=today,
             )
@@ -37,17 +45,17 @@ async def billing_agent_node(state: AgentState):
     else:
         extra_init_messages = []
 
-    llm_with_tools = _get_llm().bind_tools(tools)
+    llm_with_tools = get_llm(temperature=0).bind_tools(tools)
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"billing_step_{datetime.now().timestamp()}",
-        description="Procesando solicitud de facturación...",
+        step_id=f"accounting_step_{datetime.now().timestamp()}",
+        description="Procesando solicitud de contabilidad...",
         status="completed",
         action_taken=(
-            "Invocando herramientas de facturación"
+            "Invocando herramientas de contabilidad"
             if response.tool_calls
-            else "Asistencia de facturación completada."
+            else "Asistencia contable completada."
         ),
     )
 
@@ -58,33 +66,29 @@ async def billing_agent_node(state: AgentState):
     return {"messages": extra_init_messages + [response], "agent_results": state["agent_results"]}
 
 
-def billing_finalize_node(state: AgentState):
-    """Cierra el flujo del agente de facturación."""
+def accounting_finalize_node(state: AgentState):
+    """Cierra el flujo del agente de contabilidad."""
     last_msg = state["messages"][-1]
-
     final_result = StepResult(
-        step_id="billing_final",
-        description="Agente de Facturación ha finalizado.",
+        step_id="accounting_final",
+        description="Agente de Contabilidad ha finalizado.",
         status="completed",
         action_taken=(
             last_msg.content
             if isinstance(last_msg.content, str)
-            else "Operación de facturación completada."
+            else "Operación contable completada."
         ),
     )
-
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 
 
-# ─── Compilar grafo ───────────────────────────────────────────────────────────
-
 workflow = StateGraph(AgentState)
-workflow.add_node("billing_agent", billing_agent_node)
+workflow.add_node("accounting_agent", accounting_agent_node)
 workflow.add_node("tools", ToolNode(tools))
-workflow.add_node("finalize", billing_finalize_node)
+workflow.add_node("finalize", accounting_finalize_node)
 
-workflow.set_entry_point("billing_agent")
-workflow.add_conditional_edges("billing_agent", tools_condition)
-workflow.add_edge("tools", "billing_agent")
+workflow.set_entry_point("accounting_agent")
+workflow.add_conditional_edges("accounting_agent", tools_condition)
+workflow.add_edge("tools", "accounting_agent")
 
 graph = workflow.compile()

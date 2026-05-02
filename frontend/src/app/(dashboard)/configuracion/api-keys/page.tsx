@@ -7,6 +7,7 @@ import { useApiKeys } from "./_hooks/useApiKeys";
 import { LlmProvidersCard } from "./_components/LlmProvidersCard";
 import { EmbeddingsCard } from "./_components/EmbeddingsCard";
 import { ClaudeCodeCard } from "./_components/ClaudeCodeCard";
+import { UsageStatsCard } from "./_components/UsageStatsCard";
 
 export default function ApiKeysPage() {
     const router = useRouter();
@@ -60,6 +61,8 @@ export default function ApiKeysPage() {
                 setClaudeSetup={setClaudeSetup}
                 updateProvider={updateProvider}
             />
+
+            <UsageStatsCard />
 
             {msg && (
                 <p className={`mb-3 text-xs flex items-center gap-1.5 ${msg.startsWith("Error") ? "text-red-400" : "text-emerald-400"}`}>

@@ -30,6 +30,37 @@ def set_tenant_llm_context(llm) -> None:
     _tenant_llm_ctx.set(llm)
 
 
+def _resolve_active_provider() -> str:
+    """Determina el provider LLM activo: ContextVar del tenant o config global."""
+    ctx_llm = _tenant_llm_ctx.get()
+    if ctx_llm is not None:
+        module = getattr(type(ctx_llm), "__module__", "") or ""
+        if "anthropic" in module.lower():
+            return "anthropic"
+        return "other"
+    return (settings.DEFAULT_LLM_PROVIDER or "openai").lower()
+
+
+def make_cached_system_message(text: str):
+    """
+    Crea un SystemMessage que activa el prompt caching de Anthropic cuando el
+    provider activo es 'anthropic'. Para cualquier otro provider devuelve un
+    SystemMessage estándar sin overhead.
+
+    Uso en agentes:
+        sys_msg = make_cached_system_message(SYSTEM_PROMPT)
+    """
+    from langchain_core.messages import SystemMessage
+
+    if _resolve_active_provider() == "anthropic":
+        return SystemMessage(content=[{
+            "type": "text",
+            "text": text,
+            "cache_control": {"type": "ephemeral"},
+        }])
+    return SystemMessage(content=text)
+
+
 def get_llm(
     temperature: float = 0,
     format_output: str = None,
