@@ -165,3 +165,47 @@ async def auth_client(client, seed_tenant_and_user):
     _, _, token = seed_tenant_and_user
     client.headers["Authorization"] = f"Bearer {token}"
     return client
+
+
+@pytest_asyncio.fixture
+async def seed_second_tenant_and_user(db: AsyncSession):
+    """Crea un SEGUNDO tenant + user para validar aislamiento multi-tenant."""
+    from app.db.models.models import Tenant, User
+
+    tenant = Tenant(
+        id=uuid4(),
+        name="Empresa Otra S.L.",
+        nif="B99999999",
+        plan="starter",
+    )
+    db.add(tenant)
+    await db.flush()
+
+    user = User(
+        id=uuid4(),
+        tenant_id=tenant.id,
+        email="otro@empresa.com",
+        hashed_password=get_password_hash("OtherPass123!"),
+        full_name="Usuario Otro",
+        role="admin",
+    )
+    db.add(user)
+    await db.commit()
+
+    token = create_access_token({
+        "sub": str(user.id),
+        "tenant_id": str(tenant.id),
+        "role": "admin",
+    })
+    return tenant, user, token
+
+
+@pytest_asyncio.fixture
+async def auth_client_b(seed_second_tenant_and_user):
+    """Segundo cliente HTTP autenticado como un tenant distinto."""
+    from httpx import ASGITransport, AsyncClient
+    _, _, token = seed_second_tenant_and_user
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ac.headers["Authorization"] = f"Bearer {token}"
+        yield ac
