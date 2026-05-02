@@ -247,7 +247,7 @@ async def instruct_employee(
     if employee.status == "paused":
         raise ValueError("paused")
     if employee.budget_limit_usd is not None:
-        spent = await get_employee_spend(employee_id, db)
+        spent = await get_employee_spend(employee_id, tenant_id, db)
         if spent >= float(employee.budget_limit_usd):
             raise ValueError(f"budget_exceeded:{spent:.4f}/{float(employee.budget_limit_usd):.2f}")
 
@@ -381,11 +381,21 @@ async def record_token_usage(
     ))
 
 
-async def get_employee_spend(employee_id: str, db: AsyncSession) -> float:
-    """Return cumulative cost_usd spent by an employee across all tasks."""
+def _to_uuid(val) -> _uuid.UUID:
+    return val if isinstance(val, _uuid.UUID) else _uuid.UUID(str(val))
+
+
+async def get_employee_spend(employee_id: str, tenant_id, db: AsyncSession) -> float:
+    """Return cumulative cost_usd spent by an employee across all tasks.
+
+    Filters by both employee_id AND tenant_id as defense-in-depth: even if an
+    attacker guessed an employee UUID, the tenant filter prevents cross-tenant
+    cost data leaks.
+    """
     result = await db.execute(
         select(func.sum(TokenLedger.cost_usd)).where(
-            TokenLedger.employee_id == _uuid.UUID(employee_id)
+            TokenLedger.employee_id == _to_uuid(employee_id),
+            TokenLedger.tenant_id == _to_uuid(tenant_id),
         )
     )
     total = result.scalar_one_or_none()
@@ -399,12 +409,16 @@ async def get_employee_ledger(
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
-    """Return per-call ledger rows plus aggregate spend for one employee."""
-    emp_uuid = _uuid.UUID(employee_id)
+    """Return per-call ledger rows plus aggregate spend for one employee.
+
+    Always filters by tenant_id to prevent cross-tenant data leaks.
+    """
+    emp_uuid = _to_uuid(employee_id)
+    tnt_uuid = _to_uuid(tenant_id)
 
     rows_result = await db.execute(
         select(TokenLedger)
-        .where(TokenLedger.employee_id == emp_uuid)
+        .where(TokenLedger.employee_id == emp_uuid, TokenLedger.tenant_id == tnt_uuid)
         .order_by(desc(TokenLedger.created_at))
         .limit(min(limit, 200))
         .offset(offset)
@@ -417,7 +431,7 @@ async def get_employee_ledger(
             func.sum(TokenLedger.completion_tokens).label("total_out"),
             func.sum(TokenLedger.cost_usd).label("total_cost"),
             func.count(TokenLedger.id).label("total_calls"),
-        ).where(TokenLedger.employee_id == emp_uuid)
+        ).where(TokenLedger.employee_id == emp_uuid, TokenLedger.tenant_id == tnt_uuid)
     )
     agg = agg_result.one()
 
