@@ -103,9 +103,9 @@ async def _send_invoice_by_email_async(
             pdf_doc = doc_result.scalar_one_or_none()
             doc_id = str(pdf_doc.id) if pdf_doc else None
 
-        from app.agents.email import send_email_direct
+        from app.services.email_sender import send_email
 
-        result_text = await send_email_direct(
+        result_text = await send_email(
             tenant_id=tenant_id,
             to=email_to,
             subject=f"Factura {invoice.invoice_number} - {float(invoice.amount_total):.2f}€",
