@@ -5,10 +5,13 @@ from __future__ import annotations
 import logging
 import uuid
 
-from sqlalchemy import desc, select
+import uuid as _uuid
+from decimal import Decimal
+
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.ai_employees import ActivityEntry, AgentSkill, AIEmployee
+from app.db.models.ai_employees import ActivityEntry, AgentSkill, AIEmployee, TokenLedger
 from app.db.models.tasks import Task
 
 logger = logging.getLogger(__name__)
@@ -243,6 +246,10 @@ async def instruct_employee(
         raise ValueError("Empleado no encontrado")
     if employee.status == "paused":
         raise ValueError("paused")
+    if employee.budget_limit_usd is not None:
+        spent = await get_employee_spend(employee_id, db)
+        if spent >= float(employee.budget_limit_usd):
+            raise ValueError(f"budget_exceeded:{spent:.4f}/{float(employee.budget_limit_usd):.2f}")
 
     task = Task(
         id=uuid.uuid4(),
@@ -339,3 +346,97 @@ async def create_activity(
     await db.commit()
     await db.refresh(entry)
     return {"id": str(entry.id), "created_at": entry.created_at.isoformat()}
+
+
+# ── Single-employee lookup ───────────────────────────────────────────────────
+
+
+async def get_employee(employee_id: str, tenant_id, db: AsyncSession) -> dict | None:
+    employee = await _get_employee(employee_id, tenant_id, db)
+    return to_out(employee) if employee else None
+
+
+# ── TokenLedger ──────────────────────────────────────────────────────────────
+
+
+async def record_token_usage(
+    employee_id: str,
+    tenant_id: str,
+    task_id: str,
+    tokens_in: int,
+    tokens_out: int,
+    cost_usd: float,
+    provider: str,
+    db: AsyncSession,
+) -> None:
+    """Append an immutable cost record to the TokenLedger for an AI employee."""
+    db.add(TokenLedger(
+        tenant_id=_uuid.UUID(tenant_id),
+        employee_id=_uuid.UUID(employee_id),
+        task_id=_uuid.UUID(task_id),
+        prompt_tokens=tokens_in,
+        completion_tokens=tokens_out,
+        cost_usd=Decimal(str(round(cost_usd, 6))),
+        llm_provider=provider,
+    ))
+
+
+async def get_employee_spend(employee_id: str, db: AsyncSession) -> float:
+    """Return cumulative cost_usd spent by an employee across all tasks."""
+    result = await db.execute(
+        select(func.sum(TokenLedger.cost_usd)).where(
+            TokenLedger.employee_id == _uuid.UUID(employee_id)
+        )
+    )
+    total = result.scalar_one_or_none()
+    return float(total or 0)
+
+
+async def get_employee_ledger(
+    employee_id: str,
+    tenant_id,
+    db: AsyncSession,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    """Return per-call ledger rows plus aggregate spend for one employee."""
+    emp_uuid = _uuid.UUID(employee_id)
+
+    rows_result = await db.execute(
+        select(TokenLedger)
+        .where(TokenLedger.employee_id == emp_uuid)
+        .order_by(desc(TokenLedger.created_at))
+        .limit(min(limit, 200))
+        .offset(offset)
+    )
+    rows = rows_result.scalars().all()
+
+    agg_result = await db.execute(
+        select(
+            func.sum(TokenLedger.prompt_tokens).label("total_in"),
+            func.sum(TokenLedger.completion_tokens).label("total_out"),
+            func.sum(TokenLedger.cost_usd).label("total_cost"),
+            func.count(TokenLedger.id).label("total_calls"),
+        ).where(TokenLedger.employee_id == emp_uuid)
+    )
+    agg = agg_result.one()
+
+    return {
+        "employee_id": employee_id,
+        "total_calls": int(agg.total_calls or 0),
+        "total_tokens_in": int(agg.total_in or 0),
+        "total_tokens_out": int(agg.total_out or 0),
+        "total_cost_usd": float(agg.total_cost or 0),
+        "entries": [
+            {
+                "id": str(r.id),
+                "task_id": str(r.task_id) if r.task_id else None,
+                "provider": r.llm_provider,
+                "tokens_in": r.prompt_tokens,
+                "tokens_out": r.completion_tokens,
+                "cost_usd": float(r.cost_usd),
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ],
+    }

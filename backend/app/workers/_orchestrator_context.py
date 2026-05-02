@@ -219,7 +219,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
         task_id, f"[{'OK' if status_val == 'done' else 'FAIL'}] Ejecucion finalizada ({status_val})"
     )
     logger.info("FINAL STATE RETURNED BY LANGGRAPH: %s", result)
-    return result
+    return result, usage_callback
 
 
 async def _load_task_and_approval(task_id: str, db):

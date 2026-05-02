@@ -28,6 +28,10 @@ class UsageTrackingCallback(BaseCallbackHandler):
         self.tenant_id = tenant_id
         self.agent_name = agent_name
         self._current_provider: str = "unknown"
+        # Accumulated totals for the lifetime of this callback instance (one task run)
+        self.total_tokens_in: int = 0
+        self.total_tokens_out: int = 0
+        self.total_cost_usd: float = 0.0
 
     def on_llm_start(
         self,
@@ -67,6 +71,11 @@ class UsageTrackingCallback(BaseCallbackHandler):
                     provider=self._current_provider,
                     tokens_in=tokens_in,
                     tokens_out=tokens_out,
+                )
+                self.total_tokens_in += tokens_in
+                self.total_tokens_out += tokens_out
+                self.total_cost_usd += llm_usage_tracker.estimate_cost(
+                    self._current_provider, tokens_in, tokens_out
                 )
         except Exception as exc:
             _log.debug("UsageTrackingCallback.on_llm_end error: %s", exc)
