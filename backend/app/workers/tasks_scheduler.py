@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 from croniter import croniter
 from sqlalchemy import select
 
+from app.core.tenant_context import set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 from app.services.idempotency import IdempotencyGuard
@@ -184,10 +185,12 @@ async def _check_scheduled_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         for wf in await get_active_scheduled_workflows(db):
             if not _should_run_now(wf.trigger_config or {}, now_local):
                 continue
 
+            set_current_tenant(str(wf.tenant_id))
             idempotency_key = f"{wf.id}:{now_local.strftime('%Y%m%d%H%M')}"
             guard = IdempotencyGuard(ttl=120)
             if await guard.already_executed("workflow_beat", idempotency_key):
@@ -220,6 +223,8 @@ async def _check_scheduled_workflows():
             )
             await _dispatch_workflow(db, wf, execution, "schedule_based", guard, idempotency_key)
 
+        # Limpia el ContextVar para que el último tenant del loop no quede activo.
+        set_current_tenant(None)
         await db.commit()
 
 
@@ -236,11 +241,13 @@ async def _catchup_missed_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         for wf in await get_active_scheduled_workflows(db):
             cron_expr = (wf.trigger_config or {}).get("cron")
             if not cron_expr:
                 continue
 
+            set_current_tenant(str(wf.tenant_id))
             last_exec = await get_last_execution(db, wf.id)
             since = last_exec.started_at if last_exec else wf.created_at
             if since.tzinfo is None:
@@ -273,6 +280,7 @@ async def _catchup_missed_workflows():
             )
             await _dispatch_workflow(db, wf, execution, "catchup")
 
+        set_current_tenant(None)
         await db.commit()
 
 
@@ -290,6 +298,7 @@ async def _process_recurring_invoices():
     interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
 
     async with AsyncSessionLocal() as db:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         result = await db.execute(
             select(RecurringInvoice).where(
                 RecurringInvoice.is_active.is_(True),
@@ -299,6 +308,7 @@ async def _process_recurring_invoices():
         generated = 0
         for rec in result.scalars().all():
             try:
+                set_current_tenant(str(rec.tenant_id))
                 line_totals = [_calc_line_totals(ln) for ln in (rec.lines_json or [])]
                 amount_base = sum(b for b, _ in line_totals)
                 tax_amount = sum(t for _, t in line_totals)
@@ -338,6 +348,7 @@ async def _process_recurring_invoices():
             except Exception as e:
                 logger.error("[RECURRING] Error procesando plantilla %s: %s", rec.id, e)
 
+        set_current_tenant(None)
         await db.commit()
         logger.info("[RECURRING] %d facturas generadas automaticamente.", generated)
         return {"generated": generated}

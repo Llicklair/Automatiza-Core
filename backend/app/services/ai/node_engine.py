@@ -330,13 +330,21 @@ class NodeEngine:
         return has_suspended_nodes(self.node_states)
 
     async def _load_workflow(self, db: AsyncSession) -> Workflow | None:
+        # Filtro por tenant: defensa en profundidad. La validación primaria ocurre
+        # upstream en run_workflow(); esto la respalda y será obligatorio bajo RLS.
         result = await db.execute(
-            select(Workflow).where(Workflow.id == uuid.UUID(self.workflow_id))
+            select(Workflow).where(
+                Workflow.id == uuid.UUID(self.workflow_id),
+                Workflow.tenant_id == uuid.UUID(self.tenant_id),
+            )
         )
         return result.scalar_one_or_none()
 
     async def _load_execution(self, db: AsyncSession) -> WorkflowExecution | None:
         result = await db.execute(
-            select(WorkflowExecution).where(WorkflowExecution.id == uuid.UUID(self.execution_id))
+            select(WorkflowExecution).where(
+                WorkflowExecution.id == uuid.UUID(self.execution_id),
+                WorkflowExecution.tenant_id == uuid.UUID(self.tenant_id),
+            )
         )
         return result.scalar_one_or_none()
