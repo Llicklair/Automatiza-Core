@@ -73,8 +73,12 @@ async def lifespan(app: FastAPI):
     from app.services.scheduler import start_scheduler, stop_scheduler
 
     await start_scheduler()
+    # Relay WebSocket ↔ Redis (sólo cuando REDIS_URL está configurado)
+    from app.services.ws_relay import start_ws_relay, stop_ws_relay
+    await start_ws_relay()
     yield
-    # Parar scheduler y tareas en vuelo
+    # Parar scheduler, relay y tareas en vuelo
+    await stop_ws_relay()
     await stop_scheduler()
     from app.services.workflow.task_runner import task_runner
 

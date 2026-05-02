@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     TELEGRAM_WEBHOOK_SECRET: str = ""
     TELEGRAM_WEBHOOK_URL: str = ""  # e.g. https://tudominio.com/api/v1/messaging/telegram/webhook
 
+    # Cola de tareas (opcional — activa Celery cuando está configurado)
+    REDIS_URL: str | None = None  # redis://localhost:6379/0
+
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 

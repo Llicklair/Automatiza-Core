@@ -24,6 +24,11 @@ from app.services.exec_log_store import push as log_push
 
 logger = logging.getLogger(__name__)
 
+# Nodos del orquestador cuyos nombres se emiten al frontend vía WebSocket
+_ORCHESTRATOR_NODES = frozenset(
+    {"init_tenant", "classify", "load_knowledge", "planner", "validate", "dispatch", "summarize"}
+)
+
 
 async def _build_tenant_context(tenant_id: str, db) -> str:
     """
@@ -114,24 +119,61 @@ async def _build_initial_state(task, task_id: str, db) -> dict:
     }
 
 
+async def _broadcast(tenant_id: str, message: dict) -> None:
+    """
+    Envía un evento WebSocket al tenant.
+    — Cuando REDIS_URL está configurado (modo Celery): publica en Redis pub/sub.
+    — Sin Redis (modo in-process): llama directamente al WebSocket manager.
+    """
+    from app.core.config import settings
+
+    if settings.REDIS_URL:
+        import json as _json
+        try:
+            import redis.asyncio as aioredis
+            async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
+                await r.publish(f"ap:ws:{tenant_id}", _json.dumps(message))
+        except Exception:
+            logger.debug("Error publicando evento en Redis", exc_info=True)
+    else:
+        from app.api.ws.notifications import manager as ws_manager
+        await ws_manager.broadcast_to_tenant(tenant_id, message)
+
+
 async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> dict:
     """
-    Ejecuta el grafo en modo streaming, emite logs por exec_log_store y
-    devuelve el estado final.
+    Ejecuta el grafo en modo streaming, emite logs por exec_log_store,
+    transmite progreso por WebSocket y devuelve el estado final.
     """
+    from app.core.llm_callbacks import UsageTrackingCallback
+
     final_state = None
+    tenant_id = initial_state.get("tenant_id", "")
+    domain = initial_state.get("classified_domain") or "unknown"
     seen_results: set = set()
+
+    usage_callback = UsageTrackingCallback(tenant_id=tenant_id, agent_name=domain)
+    _run_config = {"recursion_limit": 50, "callbacks": [usage_callback]}
 
     async def _run():
         nonlocal final_state
         try:
-            async for chunk in orchestrator.astream(initial_state, config={"recursion_limit": 50}):
+            async for chunk in orchestrator.astream(initial_state, config=_run_config):
                 for node_name, state_update in chunk.items():
                     if node_name == "__end__":
                         final_state = state_update
                         continue
                     if state_update is None:
                         continue
+
+                    # Notificar progreso de nodo al frontend
+                    if node_name in _ORCHESTRATOR_NODES:
+                        log_push(task_id, f"[{node_name}] completado")
+                        await _broadcast(tenant_id, {
+                            "type": "orchestrator_step",
+                            "node": node_name,
+                            "task_id": task_id,
+                        })
 
                     for r in state_update.get("agent_results") or []:
                         rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))
@@ -143,6 +185,13 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
                                 summary = summary.get("action") or str(summary)[:120]
                             ok = "OK" if r.get("success") else "FAIL"
                             log_push(task_id, f"[{ok}] [{agent}] {str(summary)[:200]}")
+                            await _broadcast(tenant_id, {
+                                "type": "agent_result",
+                                "agent": agent,
+                                "success": r.get("success", False),
+                                "summary": str(summary)[:200],
+                                "task_id": task_id,
+                            })
 
                     err = state_update.get("error_message")
                     if err and err not in seen_results:
