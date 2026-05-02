@@ -1,22 +1,43 @@
 """
-Dispatch de tareas — envía coroutines al TaskRunner en proceso.
-"""
+Dispatch de tareas.
 
+Cuando REDIS_URL está configurado, las tareas se enolan en Celery (workers
+separados con reintentos). En caso contrario se ejecutan en proceso con
+asyncio (comportamiento original, sin regresión).
+"""
+import logging
+
+from app.core.config import settings
 from app.services.workflow.task_runner import task_runner
+
+_log = logging.getLogger(__name__)
+
+
+def _celery_available() -> bool:
+    from app.celery_app import celery_app
+    return celery_app is not None and bool(settings.REDIS_URL)
 
 
 async def dispatch_orchestrator(task_id: str) -> None:
-    from app.workers.tasks_orchestrator import execute_orchestrator
-
-    await task_runner.submit("run_orchestrator", execute_orchestrator(task_id), task_id)
+    if _celery_available():
+        from app.workers.celery_tasks import celery_execute_orchestrator
+        celery_execute_orchestrator.delay(task_id)
+        _log.info("Tarea %s encolada en Celery (queue=orchestrator)", task_id)
+    else:
+        from app.workers.tasks_orchestrator import execute_orchestrator
+        await task_runner.submit("run_orchestrator", execute_orchestrator(task_id), task_id)
 
 
 async def dispatch_resume_orchestrator(task_id: str) -> None:
-    from app.workers.tasks_orchestrator import resume_orchestrator
-
-    await task_runner.submit(
-        "resume_orchestrator", resume_orchestrator(task_id), f"resume:{task_id}"
-    )
+    if _celery_available():
+        from app.workers.celery_tasks import celery_resume_orchestrator
+        celery_resume_orchestrator.delay(task_id)
+        _log.info("Reanudación %s encolada en Celery", task_id)
+    else:
+        from app.workers.tasks_orchestrator import resume_orchestrator
+        await task_runner.submit(
+            "resume_orchestrator", resume_orchestrator(task_id), f"resume:{task_id}"
+        )
 
 
 async def dispatch_node_engine(execution_id: str) -> None:

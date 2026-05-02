@@ -25,6 +25,7 @@ httpx = "^0.28.0"
 langgraph = "^0.2.0"
 langchain-core = "^0.3.0"
 langchain-openai = "^0.2.0"
+langchain-anthropic = "^0.3.0"
 langchain-groq = "^0.2.0"
 langchain-huggingface = "^0.1.0"
 sentence-transformers = "^3.0.0"
@@ -40,6 +41,8 @@ docxtpl = "^0.16.0"
 mammoth = "^1.6.0"
 htmldocx = "^0.0.6"
 python-docx = "^1.1.0"
+celery = { extras = ["redis"], version = ">=5.3,<6" }
+redis = { extras = ["hiredis"], version = ">=5.0,<6" }
 
 
 [tool.poetry.group.dev.dependencies]
@@ -101,7 +104,7 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = [
     "langgraph.*", "langchain.*", "langchain_core.*", "langchain_openai.*",
-    "langchain_groq.*", "langchain_huggingface.*",
+    "langchain_anthropic.*", "langchain_groq.*", "langchain_huggingface.*",
     "sentence_transformers.*", "pgvector.*", "reportlab.*", "pypdf.*",
     "apscheduler.*", "slowapi.*", "croniter.*", "docxtpl.*", "mammoth.*",
     "htmldocx.*", "docx.*", "openpyxl.*", "tabula.*",
