@@ -26,6 +26,13 @@ from app.db.models.models import (
     Payroll,
     Task,
 )
+from app.services.cache import cached_json
+
+# TTL del dashboard: 5 min. Valor de compromiso entre frescura percibida
+# (si el usuario crea una factura quiere verla) y coste (11 agregaciones
+# pesadas por cada miss). Para invalidación inmediata tras mutaciones
+# significativas, el endpoint de mutación puede llamar cache_invalidate.
+_DASHBOARD_TTL_SECONDS = 300
 
 DEMO_TX_PREFIX = "[DEMO]"
 _MONTHS_ES = [
@@ -65,6 +72,17 @@ def _real_tx_filter():
     return not_(BankTransaction.description.like(f"{DEMO_TX_PREFIX}%"))
 
 
+def _dashboard_cache_key(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    period: str,
+    start: date,
+    end: date,
+) -> str:
+    return f"dashboard:v1:{tenant_id}:{period}:{start}:{end}"
+
+
+@cached_json(key=_dashboard_cache_key, ttl_seconds=_DASHBOARD_TTL_SECONDS)
 async def get_dashboard(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -72,7 +90,11 @@ async def get_dashboard(
     start: date,
     end: date,
 ) -> dict:
-    """Agrega todas las métricas del dashboard para un periodo (YYYY-MM)."""
+    """Agrega todas las métricas del dashboard para un periodo (YYYY-MM).
+
+    Cacheado en Redis con TTL de 5 min (ver `_DASHBOARD_TTL_SECONDS`).
+    Si Redis no está disponible (sin REDIS_URL), se ejecuta sin caché.
+    """
     today = date.today()
 
     # ── Facturas: agregaciones del periodo ───────────────────────────────
