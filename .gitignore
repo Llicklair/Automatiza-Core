@@ -60,8 +60,11 @@ backend/_pytest_cache_tmp/
 # Electron build artifacts
 desktop/dist/
 
-# Backups
+# Backups (datos pg_dump generados en runtime, no código fuente)
 backups/
+# Excepción: la página /configuracion/backups del frontend SÍ se versiona.
+!frontend/src/app/**/backups/
+!frontend/src/app/**/backups/**
 .gitnexus
 .claude/worktrees/
 backend/scripts/_runs/

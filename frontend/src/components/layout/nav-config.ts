@@ -137,6 +137,7 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Empresa", href: "/configuracion/empresa" },
                     { label: "Perfil", href: "/configuracion/perfil" },
                     { label: "Claves API", href: "/configuracion/api-keys" },
+                    { label: "Copias de seguridad", href: "/configuracion/backups" },
                     { label: "Actualizaciones", href: "/configuracion/actualizaciones" },
                 ],
             },
@@ -168,4 +169,5 @@ Object.assign(ROUTE_LABELS, {
     "/configuracion/integraciones": "Mensajería",
     "/configuracion/perfil": "Perfil",
     "/configuracion/api-keys": "Claves API",
+    "/configuracion/backups": "Copias de seguridad",
 });
