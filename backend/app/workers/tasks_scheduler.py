@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 from croniter import croniter
 from sqlalchemy import select
 
-from app.core.tenant_context import set_current_tenant, system_context
+from app.core.tenant_context import set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 from app.services.idempotency import IdempotencyGuard
@@ -185,12 +185,8 @@ async def _check_scheduled_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
-        # Bootstrap multi-tenant: get_active_scheduled_workflows debe ver
-        # workflows de todos los tenants. Bajo RLS esto requiere system_context().
-        with system_context():
-            scheduled = await get_active_scheduled_workflows(db)
-
-        for wf in scheduled:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        for wf in await get_active_scheduled_workflows(db):
             if not _should_run_now(wf.trigger_config or {}, now_local):
                 continue
 
@@ -245,10 +241,8 @@ async def _catchup_missed_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
-        with system_context():
-            scheduled = await get_active_scheduled_workflows(db)
-
-        for wf in scheduled:
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        for wf in await get_active_scheduled_workflows(db):
             cron_expr = (wf.trigger_config or {}).get("cron")
             if not cron_expr:
                 continue
@@ -304,19 +298,15 @@ async def _process_recurring_invoices():
     interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
 
     async with AsyncSessionLocal() as db:
-        # Bootstrap multi-tenant: la consulta carga RecurringInvoice de todos
-        # los tenants vencidos. Bajo RLS necesita system_context().
-        with system_context():
-            result = await db.execute(
-                select(RecurringInvoice).where(
-                    RecurringInvoice.is_active.is_(True),
-                    RecurringInvoice.next_run_date <= today,
-                )
+        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        result = await db.execute(
+            select(RecurringInvoice).where(
+                RecurringInvoice.is_active.is_(True),
+                RecurringInvoice.next_run_date <= today,
             )
-            recurring = list(result.scalars().all())
-
+        )
         generated = 0
-        for rec in recurring:
+        for rec in result.scalars().all():
             try:
                 set_current_tenant(str(rec.tenant_id))
                 line_totals = [_calc_line_totals(ln) for ln in (rec.lines_json or [])]
@@ -375,9 +365,7 @@ async def cleanup_stuck_executions():
 async def _cleanup_stuck_executions():
     cutoff = datetime.now(UTC) - timedelta(minutes=15)
 
-    # Tarea de mantenimiento: opera sobre ejecuciones de todos los tenants.
-    # Bajo RLS requiere system_context() durante toda la operación.
-    async with AsyncSessionLocal() as db, system_context():
+    async with AsyncSessionLocal() as db:
         stuck = await get_stuck_executions(db, cutoff)
         if not stuck:
             return {"cleaned": 0}

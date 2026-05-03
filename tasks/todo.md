@@ -34,16 +34,8 @@
   - `CREATE POLICY tenant_isolation ON x USING (tenant_id = current_setting('app.current_tenant', true)::uuid);`
   - `CREATE POLICY tenant_insert ON x FOR INSERT WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid);`
 - [ ] 3.3 Listener SQLAlchemy `before_cursor_execute` que ejecute `SET LOCAL app.current_tenant = '<uuid>'` desde el contextvar antes de cada operación. Si no hay tenant en contexto, lanzar excepción (con whitelist para queries del sistema/health).
-- [ ] 3.4 Aplicar en entorno de desarrollo. **PENDIENTE: Postgres local no responde en :5433.** Pasos cuando esté arriba:
-  1. `cd backend && alembic upgrade head` (debe aplicar 0003_enable_rls limpiamente).
-  2. Smoke manual: levantar la app, login, navegar dashboard / listar invoices / alta de empleado / disparar workflow. Cualquier 0 filas inesperado o error de policy indica un endpoint que no setea tenant correctamente.
-  3. Si la migración falla por filas huérfanas en `generated_uis` o `hr_documents`, limpiarlas o asignarles tenant antes de reintentar.
-- [x] 3.5 Tests RLS contra Postgres real: `tests/test_rls_isolation.py` creado. 5 tests que se saltan cleanly cuando no hay Postgres y validan al activarse:
-  - Sin contexto → 0 filas (NULLIF en policy).
-  - Tenant A solo ve filas de tenant A.
-  - INSERT con tenant_id ajeno → rechazado por WITH CHECK.
-  - `system_context()` ve todos los tenants.
-  - Para correrlos: `TEST_DATABASE_URL=postgresql+asyncpg://... pytest tests/test_rls_isolation.py`.
+- [ ] 3.4 Aplicar primero en entorno de desarrollo. Verificar que las queries normales funcionan (smoke test del dashboard, listado de invoices, alta de empleado).
+- [ ] 3.5 Fixtures de test: conectarse como `automatizapyme_app` y verificar que SIN setear `app.current_tenant`, las queries devuelven 0 filas.
 
 ---
 
