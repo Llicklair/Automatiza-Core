@@ -13,6 +13,7 @@ import logging
 from typing import Any, Callable
 
 from app.agents.tenant_context import enforce_tenant
+from app.agents.tool_timeout import apply_default_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,14 @@ def _build_registry() -> dict[str, Callable]:
     # tenant_id que el LLM les pasa y usen el del ContextVar activo.
     registry = {name: enforce_tenant(tool) for name, tool in registry.items()}
 
-    logger.info("Tool registry loaded: %d tools (tenant-isolation enforced)", len(registry))
+    # Timeout por tool: una herramienta colgada no debe bloquear todo el
+    # workflow. Default 60s, overrides en tool_timeout._TIMEOUT_OVERRIDES.
+    registry = {name: apply_default_timeout(tool) for name, tool in registry.items()}
+
+    logger.info(
+        "Tool registry loaded: %d tools (tenant-isolation + timeout enforced)",
+        len(registry),
+    )
     return registry
 
 
