@@ -24,6 +24,13 @@ if "sqlite" not in settings.DATABASE_URL:
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
+# Registra el listener RLS sobre el sync_engine subyacente: SQLAlchemy
+# comparte los eventos entre el AsyncEngine y su sync_engine, y los hooks
+# tipo before_cursor_execute solo se exponen a nivel sync.
+from app.db.rls import register_rls_listener  # noqa: E402
+
+register_rls_listener(engine.sync_engine)
+
 AsyncSessionLocal = async_sessionmaker(
     engine,
     class_=AsyncSession,
