@@ -140,6 +140,83 @@ async def test_create_backup_invokes_pg_dump_with_correct_flags(monkeypatch, tmp
     assert captured["env"]["PGPASSWORD"] == "p"
 
 
+# ── Tests de los API helpers (list/get_path/delete + path traversal) ────────
+
+
+def test_list_backups_returns_sorted_desc(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    a = tmp_path / "a.dump"
+    b = tmp_path / "b.dump"
+    a.write_bytes(b"x" * 100)
+    b.write_bytes(b"x" * 200)
+    # b más reciente que a.
+    old = time.time() - 3600
+    os.utime(a, (old, old))
+
+    items = backup_module.list_backups()
+    assert [i["filename"] for i in items] == ["b.dump", "a.dump"]
+    assert items[0]["size_mb"] >= 0
+    assert items[0]["age_hours"] < 1
+    assert items[1]["age_hours"] >= 1
+
+
+def test_list_backups_returns_empty_when_dir_missing(monkeypatch, tmp_path):
+    missing = tmp_path / "no-such-dir"
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(missing))
+    assert backup_module.list_backups() == []
+
+
+def test_resolve_safe_rejects_path_traversal(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    for evil in [
+        "../../../etc/passwd.dump",
+        "..\\..\\windows\\system32.dump",
+        "subdir/x.dump",
+        "/absolute/path.dump",
+        "..dump",
+        "",
+    ]:
+        with pytest.raises(ValueError):
+            backup_module._resolve_safe(evil)
+
+
+def test_resolve_safe_rejects_non_dump_extension(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    with pytest.raises(ValueError, match=".dump"):
+        backup_module._resolve_safe("backup.sql")
+
+
+def test_resolve_safe_accepts_valid_filename(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    resolved = backup_module._resolve_safe("pyme_db_20260503_040000.dump")
+    assert resolved.parent == tmp_path.resolve()
+
+
+def test_get_backup_path_raises_when_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    with pytest.raises(FileNotFoundError):
+        backup_module.get_backup_path("inexistente.dump")
+
+
+def test_delete_backup_removes_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    target = tmp_path / "to_delete.dump"
+    target.write_bytes(b"x")
+    assert backup_module.delete_backup("to_delete.dump") is True
+    assert not target.exists()
+
+
+def test_delete_backup_returns_false_when_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    assert backup_module.delete_backup("no_existe.dump") is False
+
+
+def test_delete_backup_blocks_path_traversal(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup_module.settings, "BACKUP_DIR", str(tmp_path))
+    with pytest.raises(ValueError):
+        backup_module.delete_backup("../../etc/passwd.dump")
+
+
 async def test_create_backup_cleans_output_on_failure(monkeypatch, tmp_path):
     fake_pg_dump = tmp_path / "pg_dump.exe"
     fake_pg_dump.write_bytes(b"")
