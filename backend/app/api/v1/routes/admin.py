@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.core.config import settings
-from app.core.dependencies import get_current_user
+from app.core.dependencies import require_role
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 
@@ -40,8 +40,11 @@ def _parse_db_url(url: str) -> dict:
 
 @router.get("/backup")
 @limiter.limit("10/minute")
-async def download_backup(request: Request, current_user: User = Depends(get_current_user)):
-    """Genera un pg_dump y lo devuelve como descarga .sql."""
+async def download_backup(
+    request: Request,
+    current_user: User = Depends(require_role("admin")),
+):
+    """Genera un pg_dump y lo devuelve como descarga .sql. Solo admin."""
     db_info = _parse_db_url(settings.DATABASE_URL)
 
     env = {"PGPASSWORD": db_info["password"]}
@@ -95,9 +98,10 @@ async def download_backup(request: Request, current_user: User = Depends(get_cur
 async def restore_backup(
     request: Request,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
-    """Restaura la BD a partir de un archivo .sql subido por el usuario."""
+    """Restaura la BD a partir de un archivo .sql subido. Solo admin.
+    Operación destructiva: pierde los datos actuales."""
     if not file.filename or not file.filename.lower().endswith(".sql"):
         raise HTTPException(status_code=400, detail="El archivo debe tener extensión .sql")
 

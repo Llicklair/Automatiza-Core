@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.tasks import AuditLogOut, TaskCreate, TaskOut
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
@@ -64,9 +64,10 @@ async def list_tasks(
 async def cleanup_tasks(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
-    """Elimina TODAS las tareas del tenant. Las activas se cancelan primero."""
+    """Elimina TODAS las tareas del tenant. Las activas se cancelan primero.
+    Solo admin: operación destructiva sobre el workflow del tenant."""
     return await svc.cleanup_tasks(db, tenant_id=current_user.tenant_id)
 
 

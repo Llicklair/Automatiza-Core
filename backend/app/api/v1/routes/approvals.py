@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.approvals import ApprovalDecision, PendingApprovalOut
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
@@ -57,8 +57,9 @@ async def decide_approval(
 async def cleanup_approvals(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
-    """Elimina TODAS las aprobaciones. Las pendientes se rechazan y sus tareas/workflows se cancelan."""
+    """Elimina TODAS las aprobaciones. Las pendientes se rechazan y sus
+    tareas/workflows se cancelan. Solo admin: operación destructiva."""
     deleted = await svc.cleanup_all(db, current_user.tenant_id)
     return {"deleted": deleted}
