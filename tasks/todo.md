@@ -27,22 +27,23 @@
 
 ## Fase 3 — Row-Level Security en Postgres (2-3 días)
 
-- [x] 3.1 Rol de aplicación en Postgres: `pyme_app` (sin BYPASSRLS) creado. Setup automatizado en `backend/scripts/setup_postgres_rls.sql`. La app debe conectar con `DATABASE_URL=postgresql+asyncpg://pyme_app:pyme_app_pass@localhost:5433/pyme_db`. `pyme_user` queda reservado para migraciones Alembic y queries admin (scheduler, mantenimiento).
-  - **Decisión revisada respecto al plan original:** la primera versión usaba FORCE ROW LEVEL SECURITY con un único rol. Postgres no permite que un rol no privilegiado desactive `row_security`, por lo que `system_context()` no podía bypassear. La nueva arquitectura usa dos roles + sin FORCE.
-  - **TODO pendiente:** que el scheduler use un engine admin separado conectado con `pyme_user`. Hoy `tasks_scheduler.py` usa el AsyncSessionLocal por defecto y dependerá de cómo se configure `DATABASE_URL` (si la app corre como `pyme_app`, los jobs del scheduler fallarán). Se cierra como parte de Fase 5 o un parche menor antes del rollout.
+- [ ] 3.1 Crear rol de aplicación en Postgres: `automatizapyme_app` (sin privilegios de BYPASSRLS). El pool de SQLAlchemy se conectará con este rol, NO con el owner de las tablas.
 - [ ] 3.2 Migración Alembic `enable_rls_phase1.py`:
   - **Pendiente de Fase 1 (decisión opción B):** añadir `FOREIGN KEY (tenant_id) REFERENCES tenants(id)` en `generated_uis` y `hr_documents` ANTES de habilitar RLS. Validar que no haya filas huérfanas (`SELECT COUNT(*) FROM generated_uis g LEFT JOIN tenants t ON t.id = g.tenant_id WHERE t.id IS NULL` debe dar 0).
   - Para cada tabla tenant-scoped: `ALTER TABLE x ENABLE ROW LEVEL SECURITY;`
   - `CREATE POLICY tenant_isolation ON x USING (tenant_id = current_setting('app.current_tenant', true)::uuid);`
   - `CREATE POLICY tenant_insert ON x FOR INSERT WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid);`
 - [ ] 3.3 Listener SQLAlchemy `before_cursor_execute` que ejecute `SET LOCAL app.current_tenant = '<uuid>'` desde el contextvar antes de cada operación. Si no hay tenant en contexto, lanzar excepción (con whitelist para queries del sistema/health).
-- [x] 3.4 Aplicado en dev. PostgreSQL 17 instalado vía winget en :5433. Migración 0003 aplicada en `pyme_db` y `pyme_db_test` sin errores. RLS activo en 43 tablas, 43 policies. Smoke manual de la app pendiente del usuario (arrancar backend con `DATABASE_URL=postgresql+asyncpg://pyme_app:pyme_app_pass@localhost:5433/pyme_db`).
-- [x] 3.5 Tests RLS contra Postgres real: 5 tests pasan en `pyme_db_test`. Validan:
+- [ ] 3.4 Aplicar en entorno de desarrollo. **PENDIENTE: Postgres local no responde en :5433.** Pasos cuando esté arriba:
+  1. `cd backend && alembic upgrade head` (debe aplicar 0003_enable_rls limpiamente).
+  2. Smoke manual: levantar la app, login, navegar dashboard / listar invoices / alta de empleado / disparar workflow. Cualquier 0 filas inesperado o error de policy indica un endpoint que no setea tenant correctamente.
+  3. Si la migración falla por filas huérfanas en `generated_uis` o `hr_documents`, limpiarlas o asignarles tenant antes de reintentar.
+- [x] 3.5 Tests RLS contra Postgres real: `tests/test_rls_isolation.py` creado. 5 tests que se saltan cleanly cuando no hay Postgres y validan al activarse:
   - Sin contexto → 0 filas (NULLIF en policy).
-  - Tenant A / B → solo ven sus propias filas.
+  - Tenant A solo ve filas de tenant A.
   - INSERT con tenant_id ajeno → rechazado por WITH CHECK.
-  - Engine admin (pyme_user) bypassa RLS y ve todos los tenants.
-  - Para correrlos: `pytest tests/test_rls_isolation.py` (auto-skip si no hay Postgres).
+  - `system_context()` ve todos los tenants.
+  - Para correrlos: `TEST_DATABASE_URL=postgresql+asyncpg://... pytest tests/test_rls_isolation.py`.
 
 ---
 

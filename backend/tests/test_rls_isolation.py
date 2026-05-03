@@ -29,15 +29,6 @@ from app.db.rls import register_rls_listener
 
 TEST_DB_URL = os.getenv(
     "TEST_DATABASE_URL",
-    # pyme_app es el rol no-owner sin BYPASSRLS — equivalente a cómo conectará
-    # la app en producción. RLS aplica.
-    "postgresql+asyncpg://pyme_app:pyme_app_pass@localhost:5433/pyme_db_test",
-)
-
-# Engine admin: usado SOLO para crear/limpiar fixtures porque pyme_user es
-# owner y bypassa RLS. La app real NO debe usar este rol.
-TEST_ADMIN_DB_URL = os.getenv(
-    "TEST_ADMIN_DATABASE_URL",
     "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db_test",
 )
 
@@ -53,7 +44,7 @@ async def _can_connect(url: str) -> bool:
         return False
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="module")
 async def pg_engine():
     if not await _can_connect(TEST_DB_URL):
         pytest.skip(
@@ -73,31 +64,25 @@ async def session(pg_engine):
         yield s
 
 
-@pytest_asyncio.fixture
-async def two_tenants():
+@pytest_asyncio.fixture(scope="module")
+async def two_tenants(pg_engine):
     """Crea dos tenants y un Client de cada uno como dato de prueba.
 
-    Usa el engine admin (pyme_user, owner) porque la creación pasa por
-    encima de RLS. La app real conectará con pyme_app y verá RLS activo.
-    Limpia al final del módulo.
+    Limpia al final del módulo para no contaminar otras suites.
     """
-    admin_eng = create_async_engine(TEST_ADMIN_DB_URL)
-    sm = async_sessionmaker(admin_eng, class_=AsyncSession, expire_on_commit=False)
+    sm = async_sessionmaker(pg_engine, class_=AsyncSession, expire_on_commit=False)
     tid_a = uuid.uuid4()
     tid_b = uuid.uuid4()
     cid_a = uuid.uuid4()
     cid_b = uuid.uuid4()
 
-    async with sm() as s:
+    async with sm() as s, system_context():
         await s.execute(
             text(
-                "INSERT INTO tenants (id, name, nif, plan, is_active, created_at) "
-                "VALUES (:id, :name, :nif, 'free', true, now())"
+                "INSERT INTO tenants (id, name, jurisdiction, plan, created_at) "
+                "VALUES (:id, :name, 'ES', 'free', now())"
             ),
-            [
-                {"id": tid_a, "name": "rls-test-A", "nif": str(tid_a)[:9]},
-                {"id": tid_b, "name": "rls-test-B", "nif": str(tid_b)[:9]},
-            ],
+            [{"id": tid_a, "name": "rls-test-A"}, {"id": tid_b, "name": "rls-test-B"}],
         )
         await s.execute(
             text(
@@ -113,11 +98,10 @@ async def two_tenants():
 
     yield {"a": str(tid_a), "b": str(tid_b), "client_a": str(cid_a), "client_b": str(cid_b)}
 
-    async with sm() as s:
+    async with sm() as s, system_context():
         await s.execute(text("DELETE FROM clients WHERE tenant_id IN (:a, :b)"), {"a": tid_a, "b": tid_b})
         await s.execute(text("DELETE FROM tenants WHERE id IN (:a, :b)"), {"a": tid_a, "b": tid_b})
         await s.commit()
-    await admin_eng.dispose()
 
 
 @pytest.mark.asyncio
@@ -163,31 +147,19 @@ async def test_insert_with_wrong_tenant_id_is_rejected(session, two_tenants):
                 {"id": bogus_id, "tid": two_tenants["b"]},
             )
             await session.commit()
-        # Postgres lanza "new row violates row-level security policy" (en) o
-        # "viola la política de seguridad de registros" (es).
-        msg = str(exc_info.value).lower()
-        assert (
-            "row-level security" in msg
-            or "policy" in msg
-            or "seguridad de registros" in msg
-            or "pol" in msg  # "política" / "pol�tica" (encoding latin-1 vs utf-8)
-        )
+        # Postgres lanza "new row violates row-level security policy"
+        assert "row-level security" in str(exc_info.value).lower() or "policy" in str(exc_info.value).lower()
         await session.rollback()
 
 
 @pytest.mark.asyncio
-async def test_admin_engine_sees_all_tenants(two_tenants):
-    """El engine admin (pyme_user, owner) bypassa RLS y ve todos los tenants.
-    Este es el patrón que el scheduler debe usar en producción para sus
-    queries de mantenimiento global."""
-    admin_eng = create_async_engine(TEST_ADMIN_DB_URL)
-    sm = async_sessionmaker(admin_eng, class_=AsyncSession, expire_on_commit=False)
-    async with sm() as s:
-        result = await s.execute(
+async def test_system_context_sees_all_tenants(session, two_tenants):
+    """system_context() debe ver datos de todos los tenants (mantenimiento)."""
+    with system_context():
+        result = await session.execute(
             text("SELECT id::text FROM clients WHERE id IN (:a, :b)"),
             {"a": uuid.UUID(two_tenants["client_a"]), "b": uuid.UUID(two_tenants["client_b"])},
         )
         ids = {r.id for r in result.all()}
-    await admin_eng.dispose()
 
     assert ids == {two_tenants["client_a"], two_tenants["client_b"]}

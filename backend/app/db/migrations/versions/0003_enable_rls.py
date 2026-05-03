@@ -89,11 +89,7 @@ def upgrade() -> None:
 
     for table in _tenant_scoped_tables(conn):
         op.execute(f'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY;')
-        # Sin FORCE: el owner (rol que ejecuta migraciones) bypassa RLS
-        # automáticamente y puede hacer DDL/DML administrativo.
-        # La app conecta con un rol distinto sin BYPASSRLS, al que sí aplican
-        # las políticas. system_context() puede usar SET row_security = off
-        # porque no es el owner.
+        op.execute(f'ALTER TABLE "{table}" FORCE ROW LEVEL SECURITY;')
         op.execute(
             f"""
             CREATE POLICY tenant_isolation ON "{table}"
@@ -108,6 +104,7 @@ def downgrade() -> None:
 
     for table in _tenant_scoped_tables(conn):
         op.execute(f'DROP POLICY IF EXISTS tenant_isolation ON "{table}";')
+        op.execute(f'ALTER TABLE "{table}" NO FORCE ROW LEVEL SECURITY;')
         op.execute(f'ALTER TABLE "{table}" DISABLE ROW LEVEL SECURITY;')
 
     op.drop_constraint("fk_hr_documents_tenant_id", "hr_documents", type_="foreignkey")

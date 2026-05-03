@@ -79,28 +79,11 @@ def is_system_context() -> bool:
 @contextmanager
 def system_context() -> Iterator[None]:
     """Context manager que indica al listener RLS que esta sesión es de sistema
-    y NO debe inyectar el GUC `app.current_tenant`.
+    y debe ver datos de todos los tenants.
 
     Uso restringido: bootstrap de scheduler, jobs de mantenimiento global,
     consultas administrativas. NUNCA en código de aplicación que sirva un
     request de usuario.
-
-    IMPORTANTE — arquitectura de roles Postgres:
-
-    Postgres NO permite que un rol sin BYPASSRLS desactive `row_security`.
-    Esto significa que `system_context()` solo bypassa RLS si la sesión está
-    conectada con un rol que sea OWNER de las tablas o tenga BYPASSRLS.
-
-    En este proyecto:
-    - El engine principal (`db.base.engine`) usa `pyme_app`, rol sin BYPASSRLS.
-      Sobre este engine, system_context() NO desactiva RLS — solo evita que
-      el listener inyecte un tenant. Las queries seguirán filtradas.
-    - Para queries verdaderamente cross-tenant (scheduler, mantenimiento),
-      hay que usar un engine separado conectado con `pyme_user` (owner) o
-      con un rol específico con BYPASSRLS. Ver TODO en workers/tasks_scheduler.py.
-
-    Ejemplo correcto en el scheduler (pendiente de implementación con engine
-    admin separado):
 
         async with AsyncSessionLocal() as db, system_context():
             workflows = await get_active_scheduled_workflows(db)
