@@ -1,89 +1,41 @@
-# P0 — Multi-tenancy hardening (RLS + tenant context async)
+# Multi-tenancy hardening — estado final
 
-**Objetivo:** Eliminar el riesgo crítico de fuga de datos entre tenants. Hoy el aislamiento depende 100% del filtro manual `where(tenant_id == ...)` en cada query. Una sola query olvidada filtra datos de todas las PYMEs. Solución: defensa en profundidad con contextvars + Row-Level Security en Postgres + validación automática.
+## Hecho (commit `7de2bf5`)
 
-**Riesgo actual confirmado:** `services/ai/employee_crud.py:298` y patrones similares donde el filtro no es inmediatamente visible.
+### Fase 1 — Auditoría
+Documento `docs/multitenancy/tenant_scoped_tables.md` con 34 tablas tenant-scoped, 100% UUID, mapa de queries vulnerables. Tras verificación línea-por-línea quedaron como hallazgos reales:
+- `node_engine.py:332-345` — añadido filtro `Workflow.tenant_id` defensivo en `_load_workflow` y `_load_execution`.
+- `GeneratedUI` y `HRDocument` — añadido `ForeignKey("tenants.id")`.
 
----
-
-## Fase 1 — Auditoría (1 día)
-
-- [ ] 1.1 Listar todos los modelos con `tenant_id` (SQLAlchemy). Generar `docs/multitenancy/tenant_scoped_tables.md` con la lista completa.
-- [ ] 1.2 Identificar tablas globales (sin tenant): `User` (tiene tenant_id pero también es tabla de auth), `Tenant`, tablas de catálogo. Documentar la decisión por tabla.
-- [ ] 1.3 Grep de queries potencialmente vulnerables: `select(Model)` sin `.where(...tenant_id...)` en el mismo archivo. Reportar candidatas, NO arreglar todavía (Fase 4 lo hará automático).
-- [ ] 1.4 Verificar que todos los `tenant_id` en BD son `UUID` (no mezcla con `Integer`). Si hay mezcla, decidir tipo único antes de RLS.
-
----
-
-## Fase 2 — Tenant context con contextvars (1 día)
-
-- [ ] 2.1 Crear `backend/app/core/tenant_context.py` con `ContextVar[Optional[UUID]]` y helpers `set_current_tenant(tenant_id)`, `get_current_tenant()`, `require_current_tenant()`.
-- [x] 2.2 ~~Middleware FastAPI~~ → Implementado como side effect en `get_current_user` (`core/dependencies.py:36-39`). Más simple que un middleware: aprovecha que toda ruta autenticada pasa por esa dependencia. Las rutas públicas (login, /health) NO setean tenant — comportamiento correcto.
-- [ ] 2.3 Propagar a Celery: `task_dispatch.py` debe pasar `tenant_id` como argumento de la tarea. El worker hace `set_current_tenant()` al inicio de cada `@shared_task`.
-- [x] 2.4 Propagar a agentes LangGraph. **Estado:** la cadena HTTP request → orquestador (`_init_handlers.py:38`) → dispatcher (`_dispatch_handlers.py:~135`) ya setea el ContextVar antes de invocar al agente, y las tools usan `enforce_tenant` que lee del mismo ContextVar consolidado en Fase 2.1. Los `agent_node` individuales (billing, hr, documents, email, banking) NO setean por sí mismos pero heredan el contexto por asyncio. Añadir defensa adicional en cada `agent_node` se traslada a Fase 5 (auditoría exhaustiva). También revisar en Fase 5 el timing de `chat.py:_build_extra_context` que el subagente flagó como sospechoso.
-- [ ] 2.5 Tests unitarios: aislamiento entre requests concurrentes (asyncio.gather con tenants distintos no debe contaminarse).
+### Fase 2 — Tenant context centralizado
+- `core/tenant_context.py`: ContextVar + `set_current_tenant`, `get_current_tenant`, `require_current_tenant`, `tenant_context()`.
+- `agents/tenant_context.py`: consolidado, ahora delega en core (alias retro-compat).
+- `core/dependencies.py`: `get_current_user` setea el tenant tras autenticar.
+- `workers/tasks_node_engine.py`, `workers/tasks_orchestrator.py`, `workers/tasks_scheduler.py`: setean tenant en sus entry points.
+- `tests/test_tenant_context.py`: 8 tests, incluido aislamiento concurrente.
 
 ---
 
-## Fase 3 — Row-Level Security en Postgres (2-3 días)
+## Descartado — Fases 3 a 6 (RLS en Postgres)
 
-- [ ] 3.1 Crear rol de aplicación en Postgres: `automatizapyme_app` (sin privilegios de BYPASSRLS). El pool de SQLAlchemy se conectará con este rol, NO con el owner de las tablas.
-- [ ] 3.2 Migración Alembic `enable_rls_phase1.py`:
-  - **Pendiente de Fase 1 (decisión opción B):** añadir `FOREIGN KEY (tenant_id) REFERENCES tenants(id)` en `generated_uis` y `hr_documents` ANTES de habilitar RLS. Validar que no haya filas huérfanas (`SELECT COUNT(*) FROM generated_uis g LEFT JOIN tenants t ON t.id = g.tenant_id WHERE t.id IS NULL` debe dar 0).
-  - Para cada tabla tenant-scoped: `ALTER TABLE x ENABLE ROW LEVEL SECURITY;`
-  - `CREATE POLICY tenant_isolation ON x USING (tenant_id = current_setting('app.current_tenant', true)::uuid);`
-  - `CREATE POLICY tenant_insert ON x FOR INSERT WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid);`
-- [ ] 3.3 Listener SQLAlchemy `before_cursor_execute` que ejecute `SET LOCAL app.current_tenant = '<uuid>'` desde el contextvar antes de cada operación. Si no hay tenant en contexto, lanzar excepción (con whitelist para queries del sistema/health).
-- [ ] 3.4 Aplicar primero en entorno de desarrollo. Verificar que las queries normales funcionan (smoke test del dashboard, listado de invoices, alta de empleado).
-- [ ] 3.5 Fixtures de test: conectarse como `automatizapyme_app` y verificar que SIN setear `app.current_tenant`, las queries devuelven 0 filas.
+**Decisión 2026-05-03:** AutomatizaPyme es **single-tenant local** — cada PYME corre su propia instalación desktop con su propia BD aislada. RLS no aporta seguridad porque no hay otros tenants en la misma BD de los que protegerse.
 
----
+**Reverts:** commits `9bac626` y `09475c1` (revierten `1bc2a15` y `485803c`). El git log preserva el código por si se construye un SaaS multi-tenant en backend en el futuro — entonces se cherry-pickean.
 
-## Fase 4 — Validación automática en desarrollo (1 día)
+**Lo que se quitó:**
+- `backend/app/db/rls.py` (listener Postgres)
+- `backend/app/db/migrations/versions/0003_enable_rls.py` (policies)
+- `backend/app/db/{base,session}.py` — llamadas a `register_rls_listener`
+- `backend/app/core/tenant_context.py` — `system_context()` / `is_system_context()`
+- `backend/tests/test_rls_isolation.py`
+- `backend/scripts/setup_postgres_rls.sql`
+- `backend/app/workers/tasks_scheduler.py` — wrappers `system_context()`
 
-- [ ] 4.1 Listener SQLAlchemy `before_execute` que en `ENVIRONMENT=development|test` inspeccione la query: si toca tabla tenant-scoped y NO hay `tenant_id` en `WHERE` ni `app.current_tenant` seteado, registrar warning con stacktrace.
-- [ ] 4.2 En tests, convertir el warning en error (pytest fixture).
-- [ ] 4.3 Ejecutar la suite completa de tests. Cada warning encontrado se arregla agregando el filtro explícito (defensa en profundidad: aunque RLS lo bloquearía, el filtro explícito mejora rendimiento del query planner).
+**Lo que se conservó:** todo lo de Fase 1+2, que es valor real independientemente del modelo (defense in depth, FKs íntegras, ContextVar para propagación limpia).
 
----
-
-## Fase 5 — Tareas en background y agentes (1 día)
-
-- [ ] 5.1 Auditar `app/workers/` y `app/agents/*/agent.py`. Confirmar que cada entry point setea el tenant context antes de la primera query.
-- [ ] 5.2 APScheduler: revisar tareas programadas que iteran sobre todos los tenants. Estas deben usar un patrón explícito `with tenant_context(tid): ...` y NO el rol `automatizapyme_app` por defecto, o usar un rol de superadmin con BYPASSRLS controlado.
-- [ ] 5.3 Tests de integración: ejecutar un agente con tenant A y verificar que NO puede acceder a datos de tenant B aunque la query esté mal escrita.
-
----
-
-## Fase 6 — Rollout (1 día)
-
-- [ ] 6.1 Despliegue en staging. Smoke test manual de los flujos críticos: login, dashboard, alta de invoice, ejecución de agente, generación de reporte.
-- [ ] 6.2 Monitorear logs durante 48h en staging buscando: queries bloqueadas por RLS, warnings del listener de Fase 4, latencia de queries (RLS añade overhead — medir).
-- [ ] 6.3 Despliegue en producción con migración Alembic. Plan de rollback documentado: `ALTER TABLE x DISABLE ROW LEVEL SECURITY` por tabla.
-- [ ] 6.4 Actualizar `ARCHITECTURE.md` y `CLAUDE.md` con la regla: "Toda query a tabla tenant-scoped DEBE incluir filtro `tenant_id` explícito; RLS es defensa secundaria, no excusa para omitirlo".
-
----
-
-## Criterios de aceptación
-
-1. Un test de integración que conecta como `automatizapyme_app` SIN setear `app.current_tenant` recibe 0 filas en cualquier tabla tenant-scoped.
-2. Las queries existentes siguen pasando todos los tests sin cambios funcionales.
-3. La latencia P95 del dashboard no aumenta más del 15% respecto al baseline.
-4. La suite de tests no emite warnings del listener de Fase 4.
-5. Documentación actualizada en `ARCHITECTURE.md`.
-
----
-
-## Fuera de alcance (queda para después)
-
-- Caché Redis del dashboard (P1 del plan general).
-- Repository pattern y Unit of Work (P4).
-- Migrar a schema-per-tenant (no necesario con RLS bien hecho).
-
----
-
-## Antes de empezar — Preguntas para confirmar
-
-1. ¿El proyecto está en producción con clientes reales hoy? Esto define el ritmo del rollout y si conviene feature flag por tenant.
-2. ¿Postgres es la BD oficial en todos los entornos (dev, staging, prod)? RLS es específico de Postgres.
-3. ¿Existe un job de migración de datos pendiente que requiera bypass de RLS? Si sí, planificar cómo correrlo (rol superadmin temporal).
+**Pre-requisitos para reintroducir RLS si surge SaaS:**
+1. Existir un escenario multi-tenant real (varios clientes en una misma BD).
+2. Crear rol app `pyme_app` (sin BYPASSRLS) además del owner `pyme_user`.
+3. Migración Alembic equivalente a la 0003 reverteada.
+4. Engine admin separado para scheduler y queries cross-tenant.
+5. Verificar overhead del listener `before_cursor_execute` con benchmarks.

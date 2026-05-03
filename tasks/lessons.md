@@ -23,3 +23,24 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 3. Reportar al usuario "hallazgo X confirmado" o "hallazgo X falso positivo" antes de editar código.
 
 **Aplicación:** Esta regla se aplica especialmente cuando el subagente reporta "missing where" / "missing filter" / "missing validation" — estos patrones son los que más fácilmente generan falsos positivos por lectura parcial.
+
+---
+
+## 2026-05-03 — Comprobar gestores portables del proyecto antes de instalar dependencias system-wide
+
+**Contexto:** Para validar la Fase 3 (RLS) necesitaba un Postgres corriendo. Vi `Test-NetConnection localhost -Port 5433 → False`, asumí "no hay Postgres" e instalé PostgreSQL 17 vía winget como servicio del sistema. Después descubrimos que `desktop/postgres-manager.js` ya gestiona PostgreSQL 15 portable en `%APPDATA%\AutomatizaPyme\pgsql\` — exactamente lo que tendrá el end-user.
+
+**Consecuencias:**
+- Postgres 17 system-wide redundante con la portable que produce el producto.
+- Pruebas hechas contra una versión de Postgres distinta a la de producción.
+- Tiempo perdido en descubrir y revertir.
+
+**Patrón:** "puerto cerrado → no existe el servicio" es una conclusión incompleta cuando el proyecto tiene su propio gestor de runtime. Los proyectos desktop empaquetados (Electron + backend embebido) frecuentemente descargan y arrancan sus propios servicios bajo demanda — no están corriendo permanentemente.
+
+**Regla:** Antes de `winget install`, `apt install`, `brew install`, etc. para un servicio (Postgres, Redis, Mongo, Java, Python runtime):
+1. Grep el repo: `desktop/`, `scripts/`, `install/`, `bin/` por archivos como `*-manager.js`, `setup_*.sh`, `install_*.bat`, `python-manager.js`, `jre-manager.js`.
+2. Si existe un gestor del proyecto, leerlo. Probablemente descarga binarios portables a `APPDATA` / `~/.local/share` / equivalente.
+3. Usar ese setup en lugar de instalar system-wide. Es exactamente lo que tiene el end-user.
+4. Si NO hay gestor, valida con el usuario antes de instalar system-wide.
+
+**Aplicación:** Crítico para proyectos con app desktop empaquetada o cualquier instalación que aspire a "self-contained" / portable.
