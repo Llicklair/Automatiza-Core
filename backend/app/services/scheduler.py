@@ -54,6 +54,18 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # Diario a las 4:00 (Europe/Madrid): backup pg_dump + rotación.
+    # Hora baja para no competir con la actividad del usuario.
+    from app.services.backup import run_backup_job
+
+    scheduler.add_job(
+        run_backup_job,
+        CronTrigger(hour=4, minute=0),
+        id="daily_backup",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     logger.info("Scheduler: %d tareas periódicas registradas", len(scheduler.get_jobs()))
 
 
