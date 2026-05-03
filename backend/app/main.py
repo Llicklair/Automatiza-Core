@@ -259,6 +259,17 @@ async def health_check():
         "active_tasks": task_runner.active_count,
     }
 
+    # ── Redis / Scheduler / Backup ────────────────────────────────────────
+    from app.services.health import check_last_backup, check_redis, check_scheduler
+
+    health["checks"]["redis"] = await check_redis()
+    health["checks"]["scheduler"] = check_scheduler()
+    health["checks"]["last_backup"] = check_last_backup()
+
+    # Si Redis está configurado y caído, marca degraded.
+    if health["checks"]["redis"].get("status") == "down":
+        health["status"] = "degraded"
+
     status_code = 200 if health["status"] == "ok" else 503
     return JSONResponse(health, status_code=status_code)
 
