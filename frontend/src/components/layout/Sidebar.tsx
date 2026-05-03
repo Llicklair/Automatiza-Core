@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NAV_SECTIONS, type NavItem, type NavSection } from "./nav-config";
 import { useSidebar } from "./_hooks/useSidebar";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export function Sidebar() {
     const {
@@ -18,6 +19,19 @@ export function Sidebar() {
         isActive,
         isParentActive,
     } = useSidebar();
+
+    const role = useUserRole();
+    const isAdmin = role === "admin";
+
+    const filterItem = (item: NavItem): NavItem | null => {
+        if (item.adminOnly && !isAdmin) return null;
+        if (item.subItems) {
+            const visibleSubs = item.subItems.filter(s => !s.adminOnly || isAdmin);
+            if (visibleSubs.length === 0) return null;
+            return { ...item, subItems: visibleSubs };
+        }
+        return item;
+    };
 
     const renderNavItem = (item: NavItem) => {
         const Icon = item.icon;
@@ -128,7 +142,10 @@ export function Sidebar() {
                     <div className="mx-3 mb-1.5 border-t border-sidebar-border" />
                 )}
                 <div className="space-y-0.5">
-                    {section.items.map((item) => renderNavItem(item))}
+                    {section.items.map((item) => {
+                        const visible = filterItem(item);
+                        return visible ? renderNavItem(visible) : null;
+                    })}
                 </div>
             </div>
         );
@@ -164,10 +181,10 @@ export function Sidebar() {
                 </nav>
             </ScrollArea>
 
-            {/* Footer: settings + collapse toggle */}
+            {/* Footer: settings (admin only) + collapse toggle */}
             <div className="px-2 py-3 border-t border-sidebar-border space-y-0.5">
-                {/* Settings link */}
-                {collapsed ? (
+                {/* Settings link — solo admin */}
+                {isAdmin && (collapsed ? (
                     <Link
                         href="/configuracion/empresa"
                         onClick={(e) => handleNavClick(e, "/configuracion/empresa")}
@@ -195,7 +212,7 @@ export function Sidebar() {
                         <Settings className="h-4 w-4 flex-shrink-0" />
                         <span className="truncate">Configuración</span>
                     </Link>
-                )}
+                ))}
 
                 {/* Collapse toggle */}
                 <button

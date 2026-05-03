@@ -12,7 +12,8 @@ export type NavItem = {
     label: string;
     icon: LucideIcon;
     href?: string;
-    subItems?: { label: string; href: string }[];
+    adminOnly?: boolean;
+    subItems?: { label: string; href: string; adminOnly?: boolean }[];
 };
 
 export type NavSection = {
@@ -108,7 +109,7 @@ export const NAV_SECTIONS: NavSection[] = [
                 ],
             },
             { label: "Impuestos", icon: Scale, href: "/impuestos" },
-            { label: "Compliance", icon: ShieldCheck, href: "/compliance" },
+            { label: "Compliance", icon: ShieldCheck, href: "/compliance", adminOnly: true },
         ],
     },
     {
@@ -117,7 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Analítica", icon: PieChart, href: "/analitica" },
             { label: "Informes IA", icon: BarChart3, href: "/informes" },
             { label: "Marketing", icon: Megaphone, href: "/marketing" },
-            { label: "Auditoría", icon: ScrollText, href: "/auditoria" },
+            { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true },
         ],
     },
     {
@@ -136,9 +137,9 @@ export const NAV_SECTIONS: NavSection[] = [
                 label: "Configuración", icon: Settings, subItems: [
                     { label: "Empresa", href: "/configuracion/empresa" },
                     { label: "Perfil", href: "/configuracion/perfil" },
-                    { label: "Claves API", href: "/configuracion/api-keys" },
-                    { label: "Copias de seguridad", href: "/configuracion/backups" },
-                    { label: "Actualizaciones", href: "/configuracion/actualizaciones" },
+                    { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true },
+                    { label: "Copias de seguridad", href: "/configuracion/backups", adminOnly: true },
+                    { label: "Actualizaciones", href: "/configuracion/actualizaciones", adminOnly: true },
                 ],
             },
         ],
