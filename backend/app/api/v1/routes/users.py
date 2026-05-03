@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.services import user_service
@@ -117,8 +117,9 @@ async def update_user(
 async def delete_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
+    """Borra un usuario del tenant. Solo admin del propio tenant."""
     user = await user_service.get_user(uuid.UUID(user_id), current_user.tenant_id, db)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
