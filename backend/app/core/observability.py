@@ -28,10 +28,19 @@ from app.core.config import settings
 
 
 class StructuredFormatter(logging.Formatter):
-    """Formatea los logs como JSON para ingestión en Loki/ELK."""
+    """Formatea los logs como JSON para ingestión en Loki/ELK.
+
+    Auto-inyecta `request_id` y `tenant_id` desde los ContextVars del request
+    actual, por lo que cualquier `logger.info(...)` en el call stack de una
+    request HTTP queda correlacionado sin esfuerzo adicional.
+    """
 
     def format(self, record: logging.LogRecord) -> str:
-        log_data = {
+        # Importes locales para evitar ciclos en init de logging.
+        from app.core.request_context import get_current_request_id
+        from app.core.tenant_context import get_current_tenant
+
+        log_data: dict[str, Any] = {
             "timestamp": self.formatTime(record),
             "level": record.levelname,
             "logger": record.name,
@@ -39,8 +48,18 @@ class StructuredFormatter(logging.Formatter):
             "module": record.module,
             "function": record.funcName,
         }
-        # Añadir campos extra si existen (tenant_id, task_id, trace_id)
-        for field in ("tenant_id", "task_id", "trace_id", "agent", "duration_ms"):
+
+        # Auto-inyección desde ContextVars (lo del record manda si está).
+        ctx_request_id = get_current_request_id()
+        if ctx_request_id and not hasattr(record, "request_id"):
+            log_data["request_id"] = ctx_request_id
+
+        ctx_tenant_id = get_current_tenant()
+        if ctx_tenant_id and not hasattr(record, "tenant_id"):
+            log_data["tenant_id"] = ctx_tenant_id
+
+        # Campos explícitos pasados via extra={...} en el call site.
+        for field in ("request_id", "tenant_id", "task_id", "trace_id", "agent", "duration_ms"):
             if hasattr(record, field):
                 log_data[field] = getattr(record, field)
         if record.exc_info:
@@ -108,7 +127,13 @@ def trace_llm_call(
     logger = get_logger("llm_trace")
     ctx: dict = {"input": None, "output": None, "tokens": 0}
     start = time.monotonic()
-    trace_id = trace_id or str(uuid.uuid4())
+
+    # Si no se pasó trace_id explícito, usa el request_id del contexto para
+    # agrupar todas las llamadas LLM de un mismo request en una sola traza.
+    if not trace_id:
+        from app.core.request_context import get_current_request_id
+
+        trace_id = get_current_request_id() or str(uuid.uuid4())
 
     langfuse = _get_langfuse()
     trace = span = None
@@ -178,6 +203,13 @@ try:
         registry=_registry,
         buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
     )
+    TOOL_EXECUTION_DURATION = Histogram(
+        "automatizapyme_tool_duration_seconds",
+        "Latencia de ejecución de tools de agente",
+        ["tool", "status"],  # status: ok | timeout | error
+        registry=_registry,
+        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
+    )
     APPROVALS_PENDING = Gauge(
         "automatizapyme_approvals_pending",
         "Aprobaciones pendientes por tenant",
@@ -229,6 +261,19 @@ def record_llm_latency(agent: str, duration_seconds: float, model: str = "gpt-4o
         return
     try:
         LLM_LATENCY.labels(agent=agent, model=model).observe(duration_seconds)
+    except Exception:
+        pass
+
+
+def record_tool_execution(tool: str, status: str, duration_seconds: float):
+    """Registra latencia y resultado de una ejecución de tool de agente.
+
+    `status` ∈ {"ok", "timeout", "error"} — útil para alertar sobre tools
+    que sistemáticamente expiran o fallan."""
+    if not _metrics_enabled:
+        return
+    try:
+        TOOL_EXECUTION_DURATION.labels(tool=tool, status=status).observe(duration_seconds)
     except Exception:
         pass
 

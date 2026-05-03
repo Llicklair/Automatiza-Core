@@ -8,6 +8,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.observability import record_http_request
+from app.core.request_context import set_current_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,11 @@ class RequestLoggerMiddleware:
             return
 
         request_id = str(uuid.uuid4())
+
+        # Propaga al ContextVar para que el StructuredFormatter, trace_llm_call
+        # y cualquier código downstream (services, agents, tools) puedan leerlo
+        # sin recibirlo como parámetro explícito.
+        set_current_request_id(request_id)
 
         # scope["state"] must be a plain dict (ASGI standard).
         # Starlette's Request.state does State(scope["state"]), so if scope["state"]

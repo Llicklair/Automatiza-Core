@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     # Cola de tareas (opcional — activa Celery cuando está configurado)
     REDIS_URL: str | None = None  # redis://localhost:6379/0
 
+    # Observabilidad — Langfuse (opcional, traza llamadas LLM si las dos keys
+    # están presentes; sino el código sigue funcionando en modo silencioso).
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 
