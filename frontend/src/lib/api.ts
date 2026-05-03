@@ -23,6 +23,17 @@ export type {
     RecurringLineItem,
 } from "./api/erp";
 export type { BankTransaction } from "./api/banking";
+export type {
+    AnalyticsDashboard,
+    AnalyticsCashflowEntry,
+    AnalyticsTopCliente,
+    AnalyticsEstadoFactura,
+    AnalyticsFacturas,
+    AnalyticsRRHH,
+    AnalyticsBanca,
+    AnalyticsIA,
+    AnalyticsClientes,
+} from "./api/analytics";
 export type { Opportunity, Activity, EventItem, Reservation } from "./api/crm";
 export type { Employee, Payroll, PayrollCalculation } from "./api/hr";
 export type { Project, ProjectTask } from "./api/projects";
