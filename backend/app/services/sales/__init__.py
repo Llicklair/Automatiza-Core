@@ -1,47 +1,39 @@
-"""Sales domain services."""
+"""Sales domain services — re-exports for backwards compatibility."""
 
-from app.services.sales.albaran import (
+from app.services.sales.commands import (
+    convert_to_invoice,
     create_albaran,
+    create_client,
+    create_product,
+    create_purchase_order,
+    create_quote,
+    create_sales_order,
+    create_stock_movement,
     delete_albaran,
+    delete_client,
+    delete_product,
+    delete_purchase_order,
+    delete_quote,
+    delete_sales_order,
+    update_albaran_status,
+    update_client,
+    update_product,
+    update_purchase_order,
+    update_quote,
+    update_sales_order,
+)
+from app.services.sales.queries import (
     get_albaran,
     get_albaran_pdf_data,
+    get_quote,
     list_albaranes,
-    update_albaran_status,
-)
-from app.services.sales.client import (
-    create_client,
-    delete_client,
     list_client_invoices,
     list_clients,
-    update_client,
-)
-from app.services.sales.product import (
-    create_product,
-    create_stock_movement,
-    delete_product,
     list_products,
-    list_stock_movements,
-    update_product,
-)
-from app.services.sales.purchase_order import (
-    create_purchase_order,
-    delete_purchase_order,
     list_purchase_orders,
-    update_purchase_order,
-)
-from app.services.sales.quote import (
-    convert_to_invoice,
-    create_quote,
-    delete_quote,
-    get_quote,
     list_quotes,
-    update_quote,
-)
-from app.services.sales.sales_order import (
-    create_sales_order,
-    delete_sales_order,
     list_sales_orders,
-    update_sales_order,
+    list_stock_movements,
 )
 
 __all__ = [

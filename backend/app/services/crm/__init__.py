@@ -1,11 +1,6 @@
-"""CRM domain services."""
+"""CRM domain services — re-exports for backwards compatibility."""
 
-from app.services.crm.contract_generator import (
-    build_context_for_client,
-    build_context_for_employee,
-    generate_contract,
-)
-from app.services.crm.service import (
+from app.services.crm.commands import (
     create_activity,
     create_event,
     create_opportunity,
@@ -14,34 +9,39 @@ from app.services.crm.service import (
     delete_event,
     delete_opportunity,
     delete_reservation,
-    list_activities,
-    list_events,
-    list_opportunities,
-    list_reservations,
+    generate_contract,
     update_event,
     update_opportunity,
     update_reservation,
 )
+from app.services.crm.queries import (
+    build_context_for_client,
+    build_context_for_employee,
+    list_activities,
+    list_events,
+    list_opportunities,
+    list_reservations,
+)
 
 __all__ = [
-    # service
+    # queries
     "list_opportunities",
+    "list_activities",
+    "list_events",
+    "list_reservations",
+    "build_context_for_client",
+    "build_context_for_employee",
+    # commands
     "create_opportunity",
     "update_opportunity",
     "delete_opportunity",
-    "list_activities",
     "create_activity",
     "delete_activity",
-    "list_events",
     "create_event",
     "update_event",
     "delete_event",
-    "list_reservations",
     "create_reservation",
     "update_reservation",
     "delete_reservation",
-    # contract_generator
-    "build_context_for_client",
-    "build_context_for_employee",
     "generate_contract",
 ]
