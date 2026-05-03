@@ -93,6 +93,11 @@ class Settings(BaseSettings):
     LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
 
+    # Backups automáticos de la BD del usuario.
+    BACKUP_ENABLED: bool = True
+    BACKUP_DIR: str = ""  # Vacío → %APPDATA%/AutomatizaPyme/backups (default por OS)
+    BACKUP_RETENTION_DAYS: int = 7
+
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 
