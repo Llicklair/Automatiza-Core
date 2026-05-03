@@ -146,7 +146,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
     Ejecuta el grafo en modo streaming, emite logs por exec_log_store,
     transmite progreso por WebSocket y devuelve el estado final.
     """
-    from app.core.llm_callbacks import UsageTrackingCallback
+    from app.core.llm_callbacks import UsageTrackingCallback, get_langfuse_callback
 
     final_state = None
     tenant_id = initial_state.get("tenant_id", "")
@@ -154,7 +154,14 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
     seen_results: set = set()
 
     usage_callback = UsageTrackingCallback(tenant_id=tenant_id, agent_name=domain)
-    _run_config = {"recursion_limit": 50, "callbacks": [usage_callback]}
+    callbacks: list = [usage_callback]
+    langfuse_cb = get_langfuse_callback(
+        tenant_id=tenant_id, agent=domain, task_id=task_id
+    )
+    if langfuse_cb is not None:
+        callbacks.append(langfuse_cb)
+
+    _run_config = {"recursion_limit": 50, "callbacks": callbacks}
 
     async def _run():
         nonlocal final_state

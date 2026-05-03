@@ -43,6 +43,12 @@ htmldocx = "^0.0.6"
 python-docx = "^1.1.0"
 celery = { extras = ["redis"], version = ">=5.3,<6" }
 redis = { extras = ["hiredis"], version = ">=5.0,<6" }
+# Observabilidad LLM opcional: si las keys LANGFUSE_* no están en .env,
+# el integrador degrada silenciosamente y no se envía ninguna traza.
+langfuse = { version = ">=2.50,<3", optional = true }
+
+[tool.poetry.extras]
+observability = ["langfuse"]
 
 
 [tool.poetry.group.dev.dependencies]
