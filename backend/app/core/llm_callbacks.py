@@ -10,6 +10,7 @@ from typing import Any
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
+from app.core.config import settings
 from app.services import llm_usage_tracker
 
 _log = logging.getLogger(__name__)
@@ -79,6 +80,48 @@ class UsageTrackingCallback(BaseCallbackHandler):
                 )
         except Exception as exc:
             _log.debug("UsageTrackingCallback.on_llm_end error: %s", exc)
+
+
+def get_langfuse_callback(
+    tenant_id: str,
+    agent: str = "unknown",
+    task_id: str | None = None,
+) -> BaseCallbackHandler | None:
+    """Devuelve un CallbackHandler de Langfuse listo para enchufar a LangChain
+    si: (a) langfuse está instalado en el venv, y (b) las dos keys
+    LANGFUSE_PUBLIC_KEY/SECRET_KEY están configuradas. Sino devuelve None.
+
+    Cuando devuelve un handler, LangChain envía cada llamada LLM (input
+    messages, output, tokens, latencia) a Langfuse Cloud, agrupada por
+    user_id=tenant_id y con metadata del agente.
+
+    Diseño: degradación silenciosa total. Activar Langfuse es solo añadir
+    `langfuse` al venv + las keys al .env; el código no cambia.
+    """
+    if not (settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY):
+        return None
+
+    try:
+        from langfuse.callback import CallbackHandler
+    except ImportError:
+        _log.debug(
+            "Langfuse keys configuradas pero el paquete no está instalado. "
+            "pip install langfuse — o no usar observability extra."
+        )
+        return None
+
+    try:
+        return CallbackHandler(
+            public_key=settings.LANGFUSE_PUBLIC_KEY,
+            secret_key=settings.LANGFUSE_SECRET_KEY,
+            host=settings.LANGFUSE_HOST,
+            user_id=tenant_id or "unknown",
+            session_id=task_id,
+            metadata={"agent": agent, "tenant_id": tenant_id},
+        )
+    except Exception as exc:
+        _log.warning("Langfuse handler init falló: %s", exc)
+        return None
 
 
 def _extract_tokens(response: LLMResult) -> tuple[int, int]:
