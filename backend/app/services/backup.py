@@ -25,6 +25,7 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from app.core.config import settings
@@ -192,3 +193,139 @@ async def run_backup_job() -> dict[str, int | str | None]:
         "rotated": rotated,
         "status": "ok" if created else "failed",
     }
+
+
+# ── API helpers (usados por routes/system.py) ────────────────────────────────
+
+
+def _backup_dir() -> Path:
+    """Devuelve el directorio efectivo de backups (config o default por OS)."""
+    return Path(settings.BACKUP_DIR or _default_backup_dir())
+
+
+def _resolve_safe(filename: str) -> Path:
+    """Resuelve un nombre de archivo dentro del backup_dir, bloqueando path
+    traversal. Lanza ValueError si el path resuelto se escapa del directorio
+    o no es un .dump."""
+    if not filename or "/" in filename or "\\" in filename or ".." in filename:
+        raise ValueError(f"Nombre de archivo inválido: {filename!r}")
+    if not filename.endswith(".dump"):
+        raise ValueError("Solo se permiten archivos .dump")
+
+    base = _backup_dir().resolve()
+    target = (base / filename).resolve()
+    try:
+        target.relative_to(base)
+    except ValueError as exc:
+        raise ValueError(f"Path fuera del directorio de backups: {filename!r}") from exc
+    return target
+
+
+def list_backups() -> list[dict[str, Any]]:
+    """Lista los backups disponibles ordenados por mtime descendente."""
+    base = _backup_dir()
+    if not base.exists():
+        return []
+
+    items: list[dict[str, Any]] = []
+    for entry in base.glob("*.dump"):
+        try:
+            stat = entry.stat()
+        except OSError:
+            continue
+        items.append(
+            {
+                "filename": entry.name,
+                "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "age_hours": round((time.time() - stat.st_mtime) / 3600, 1),
+            }
+        )
+    items.sort(key=lambda x: x["created_at"], reverse=True)
+    return items
+
+
+def get_backup_path(filename: str) -> Path:
+    """Devuelve el Path absoluto a un backup, validando que existe.
+    Lanza FileNotFoundError o ValueError según el caso."""
+    target = _resolve_safe(filename)
+    if not target.exists():
+        raise FileNotFoundError(f"Backup no encontrado: {filename}")
+    return target
+
+
+def delete_backup(filename: str) -> bool:
+    """Borra un backup específico. Devuelve True si se borró, False si no existía."""
+    try:
+        target = _resolve_safe(filename)
+    except ValueError:
+        raise
+    if not target.exists():
+        return False
+    target.unlink()
+    logger.info("backup: borrado manualmente %s", filename)
+    return True
+
+
+def _find_pg_restore() -> Path | None:
+    """Equivalente a _find_pg_dump para pg_restore (mismo dir bin)."""
+    exe = "pg_restore.exe" if sys.platform == "win32" else "pg_restore"
+    found = shutil.which(exe)
+    if found:
+        return Path(found)
+    portable_bin = _portable_postgres_bin()
+    if portable_bin:
+        candidate = portable_bin / exe
+        if candidate.exists():
+            return candidate
+    return None
+
+
+async def restore_backup(filename: str) -> dict[str, str | None]:
+    """Restaura la BD desde un backup. OPERACIÓN DESTRUCTIVA: --clean borra
+    los objetos existentes antes de recrearlos.
+
+    Devuelve {"status": "ok"|"failed", "error": str|None}.
+    """
+    target = get_backup_path(filename)  # valida existencia y path
+
+    pg_restore = _find_pg_restore()
+    if pg_restore is None:
+        return {"status": "failed", "error": "pg_restore no encontrado en PATH ni en Postgres portable"}
+
+    db = _parse_db_url(settings.DATABASE_URL)
+    cmd = [
+        str(pg_restore),
+        "--host", str(db["host"]),
+        "--port", str(db["port"]),
+        "--username", str(db["user"]),
+        "--dbname", str(db["dbname"]),
+        "--clean",
+        "--if-exists",
+        "--no-owner",
+        "--no-privileges",
+        str(target),
+    ]
+    env = {**os.environ, "PGPASSWORD": str(db["password"])}
+
+    logger.warning("backup: RESTORE iniciado desde %s — operación destructiva", filename)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=900)
+    except asyncio.TimeoutError:
+        return {"status": "failed", "error": "pg_restore excedió 15 min"}
+    except Exception as exc:
+        return {"status": "failed", "error": str(exc)[:500]}
+
+    if proc.returncode != 0:
+        err_text = (stderr or b"").decode(errors="replace")[:500]
+        logger.error("backup: pg_restore falló (rc=%s): %s", proc.returncode, err_text)
+        return {"status": "failed", "error": err_text}
+
+    logger.info("backup: RESTORE completado desde %s", filename)
+    return {"status": "ok", "error": None}
