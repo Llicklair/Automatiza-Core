@@ -21,6 +21,11 @@ _current_tenant_ctx: ContextVar[str | None] = ContextVar(
     "current_tenant", default=None
 )
 
+# Bandera para queries de sistema que deben ver datos de todos los tenants
+# (scheduler, jobs de mantenimiento, migraciones). Se setea explícitamente
+# y el listener RLS la respeta saltándose la inyección de policy.
+_system_ctx: ContextVar[bool] = ContextVar("system_context", default=False)
+
 
 def set_current_tenant(tenant_id: str | None) -> None:
     """Setea el tenant activo para el resto del contexto async actual."""
@@ -64,3 +69,30 @@ def tenant_context(tenant_id: str) -> Iterator[None]:
         yield
     finally:
         _current_tenant_ctx.reset(token)
+
+
+def is_system_context() -> bool:
+    """Devuelve True si el código actual está dentro de un `system_context()`."""
+    return _system_ctx.get()
+
+
+@contextmanager
+def system_context() -> Iterator[None]:
+    """Context manager que indica al listener RLS que esta sesión es de sistema
+    y debe ver datos de todos los tenants.
+
+    Uso restringido: bootstrap de scheduler, jobs de mantenimiento global,
+    consultas administrativas. NUNCA en código de aplicación que sirva un
+    request de usuario.
+
+        async with AsyncSessionLocal() as db, system_context():
+            workflows = await get_active_scheduled_workflows(db)
+            for wf in workflows:
+                with tenant_context(str(wf.tenant_id)):
+                    ...
+    """
+    token = _system_ctx.set(True)
+    try:
+        yield
+    finally:
+        _system_ctx.reset(token)

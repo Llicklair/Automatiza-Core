@@ -23,6 +23,12 @@ _sync_engine = create_engine(
     echo=False,
 )
 
+# El motor síncrono lo usan agentes y scripts. Aplica el mismo listener RLS
+# para mantener una sola política de aislamiento, independientemente del driver.
+from app.db.rls import register_rls_listener  # noqa: E402
+
+register_rls_listener(_sync_engine)
+
 SessionLocal = sessionmaker(
     bind=_sync_engine,
     autocommit=False,
