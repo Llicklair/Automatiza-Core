@@ -210,6 +210,19 @@ try:
         registry=_registry,
         buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
     )
+    AGENT_RUNS_TOTAL = Counter(
+        "automatizapyme_agent_runs_total",
+        "Total de invocaciones a agentes vía dispatcher",
+        ["agent", "status"],  # status: success | failed | timeout | error
+        registry=_registry,
+    )
+    AGENT_DURATION = Histogram(
+        "automatizapyme_agent_duration_seconds",
+        "Latencia end-to-end de una invocación de agente",
+        ["agent"],
+        registry=_registry,
+        buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0],
+    )
     APPROVALS_PENDING = Gauge(
         "automatizapyme_approvals_pending",
         "Aprobaciones pendientes por tenant",
@@ -274,6 +287,24 @@ def record_tool_execution(tool: str, status: str, duration_seconds: float):
         return
     try:
         TOOL_EXECUTION_DURATION.labels(tool=tool, status=status).observe(duration_seconds)
+    except Exception:
+        pass
+
+
+def record_agent_run(agent: str, status: str, duration_seconds: float):
+    """Registra una invocación de agente.
+
+    `status` ∈ {"success", "failed", "timeout", "error"}:
+      - success: AgentResult con success=True
+      - failed:  AgentResult con success=False (error de negocio reportado)
+      - timeout: asyncio.TimeoutError dentro del dispatcher
+      - error:   excepción no controlada
+    """
+    if not _metrics_enabled:
+        return
+    try:
+        AGENT_RUNS_TOTAL.labels(agent=agent, status=status).inc()
+        AGENT_DURATION.labels(agent=agent).observe(duration_seconds)
     except Exception:
         pass
 

@@ -152,7 +152,9 @@ async def _invoke_dynamic_employee(
             return _make_error_result(subtask, agent_name, action="failed", error=str(e))
 
 
-async def _invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: str) -> AgentResult:
+async def _invoke_dispatcher_impl(
+    enriched_state: dict, subtask: dict, agent_name: str
+) -> AgentResult:
     """Routing: DISPATCHER_MAP → skill → AIEmployee dinámico → fallback."""
     # Defensa multi-tenant: re-setear ContextVar antes de invocar cualquier
     # dispatcher por si el flujo asyncio lo perdió en el camino.
@@ -184,6 +186,28 @@ async def _invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: st
         "output": {"message": f"[PENDIENTE] Agente '{agent_name}' no implementado aún"},
         "error": None,
     }
+
+
+async def _invoke_dispatcher(
+    enriched_state: dict, subtask: dict, agent_name: str
+) -> AgentResult:
+    """Wrapper que instrumenta latencia y status de cada invocación de agente.
+    El routing real está en _invoke_dispatcher_impl."""
+    import time
+
+    from app.core.observability import record_agent_run
+
+    start = time.monotonic()
+    status = "error"
+    try:
+        result = await _invoke_dispatcher_impl(enriched_state, subtask, agent_name)
+        status = "success" if result and result.get("success") else "failed"
+        return result
+    except asyncio.TimeoutError:
+        status = "timeout"
+        raise
+    finally:
+        record_agent_run(agent_name, status, time.monotonic() - start)
 
 
 async def _execute_one(
