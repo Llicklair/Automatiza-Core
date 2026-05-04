@@ -35,7 +35,7 @@ export default function CRMPipelinePage() {
     } = useEmbudoDeVentas();
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8">
+        <div className="p-8 max-w-[1400px] mx-auto">
             <PageHeader
                 title="Embudo de Ventas (CRM)"
                 description="Gestiona tus leads o deja que la IA los cualifique."

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -15,6 +15,9 @@ class EmployeeBase(BaseModel):
     irpf_rate: float | None = None
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
+    leave_type: str | None = None
+    leave_start: date | None = None
+    leave_end: date | None = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -32,6 +35,9 @@ class EmployeeUpdate(BaseModel):
     irpf_rate: float | None = None
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
+    leave_type: str | None = None
+    leave_start: date | None = None
+    leave_end: date | None = None
 
 
 class EmployeeResponse(EmployeeBase):
@@ -40,6 +46,94 @@ class EmployeeResponse(EmployeeBase):
     created_at: datetime
     updated_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Schedules ─────────────────────────────────────────────────────────────────
+
+
+class ScheduleDay(BaseModel):
+    day_of_week: int
+    start_time: str
+    end_time: str
+    active: bool = True
+
+
+class ScheduleUpsert(BaseModel):
+    schedules: list[ScheduleDay]
+
+
+class ScheduleAISuggestRequest(BaseModel):
+    instruction: str
+    employee_ids: list[UUID] | None = None
+
+
+# ── Attendance ────────────────────────────────────────────────────────────────
+
+
+class ClockInRequest(BaseModel):
+    employee_id: UUID
+    notes: str | None = None
+
+
+class AttendanceResponse(BaseModel):
+    id: UUID
+    employee_id: UUID
+    clock_in: datetime
+    clock_out: datetime | None = None
+    date: date
+    notes: str | None = None
+
+
+# ── Leave Requests ────────────────────────────────────────────────────────────
+
+
+class ExpenseCreate(BaseModel):
+    employee_id: UUID
+    amount: float
+    category: str
+    description: str
+    date: date
+    notes: str | None = None
+
+
+class ExpenseUpdate(BaseModel):
+    status: str | None = None
+    notes: str | None = None
+
+
+class ExpenseResponse(BaseModel):
+    id: UUID
+    employee_id: UUID
+    amount: float
+    category: str
+    description: str
+    date: date
+    status: str
+    receipt_filename: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+    employee: EmployeeResponse | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeaveRequestCreate(BaseModel):
+    employee_id: UUID
+    leave_type: str
+    start_date: date
+    end_date: date
+    notes: str | None = None
+
+
+class LeaveRequestResponse(BaseModel):
+    id: UUID
+    employee_id: UUID
+    leave_type: str
+    start_date: date
+    end_date: date
+    status: str
+    notes: str | None = None
+    created_at: datetime
 
 
 class PayrollBase(BaseModel):

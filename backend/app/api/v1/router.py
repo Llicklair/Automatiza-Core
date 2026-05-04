@@ -3,6 +3,9 @@ from fastapi import APIRouter
 from app.api.v1.routes import (
     accounting,
     admin,
+    alerts,
+    calendar,
+    client_portal,
     advisory,
     ai_employees,
     analytics,
@@ -23,7 +26,9 @@ from app.api.v1.routes import (
     recruitment,
     reports,
     scanner,
-    skills,
+    import_bulk,
+    portal,
+    search,
     system,
     tasks,
     templates,
@@ -48,7 +53,6 @@ api_router.include_router(projects.router)
 api_router.include_router(accounting.router)
 api_router.include_router(advisory.router)
 api_router.include_router(workflows.router)
-api_router.include_router(skills.router)
 api_router.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
 api_router.include_router(reports.router)
 api_router.include_router(analytics.router)
@@ -63,3 +67,9 @@ api_router.include_router(generative_ui.router)
 api_router.include_router(users.router)
 api_router.include_router(system.router)
 api_router.include_router(llm_usage.router)
+api_router.include_router(search.router)
+api_router.include_router(portal.router)
+api_router.include_router(import_bulk.router)
+api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
+api_router.include_router(calendar.router)
+api_router.include_router(client_portal.router)

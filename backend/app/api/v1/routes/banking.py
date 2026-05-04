@@ -81,6 +81,54 @@ async def reconcile_transaction(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/transactions/{tx_id}/ignore")
+@limiter.limit("20/minute")
+async def ignore_transaction(
+    request: Request,
+    tx_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await svc.ignore_transaction(db, current_user.tenant_id, tx_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/transactions/{tx_id}/unreconcile")
+@limiter.limit("20/minute")
+async def unreconcile_transaction(
+    request: Request,
+    tx_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await svc.unreconcile_transaction(db, current_user.tenant_id, tx_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/reconciliation/suggestions")
+@limiter.limit("20/minute")
+async def get_reconciliation_suggestions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await svc.get_reconciliation_suggestions(db, current_user.tenant_id)
+
+
+@router.post("/reconciliation/auto-match")
+@limiter.limit("10/minute")
+async def auto_reconcile(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await svc.auto_reconcile(db, current_user.tenant_id, current_user.id)
+
+
 @router.get("/analytics")
 @limiter.limit("20/minute")
 async def get_banking_analytics(

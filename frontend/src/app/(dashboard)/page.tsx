@@ -10,6 +10,7 @@ import { CashflowChart } from "./_components/CashflowChart";
 import { RecentInvoicesSection } from "./_components/RecentInvoicesSection";
 import { AiActivitySection } from "./_components/AiActivitySection";
 import { ApprovalsSection } from "./_components/ApprovalsSection";
+import { RrhhWidget } from "./_components/RrhhWidget";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
@@ -18,7 +19,7 @@ function getGreeting(name: string) {
 }
 
 export default function DashboardPage() {
-    const { tasks, approvals, invoices, summary, analytics, loading, userName, integrations } = useDashboard();
+    const { tasks, approvals, invoices, summary, analytics, loading, userName, integrations, employees, workingNow } = useDashboard();
 
     return (
         <ErrorBoundary section="inicio">
@@ -52,6 +53,7 @@ export default function DashboardPage() {
 
                 {/* Columna Derecha Estrecha */}
                 <div className="space-y-6">
+                    <RrhhWidget loading={loading} employees={employees} working={workingNow} />
                     <AiActivitySection loading={loading} tasks={tasks} />
                     <ApprovalsSection loading={loading} approvals={approvals} />
                     <IntegrationsWidget {...integrations} />

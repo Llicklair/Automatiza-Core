@@ -1,4 +1,4 @@
-"""Employee document management — upload, list, get, delete, read."""
+﻿"""Employee document management â€” upload, list, get, delete, read."""
 
 import os
 import uuid as uuid_mod
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import TenantDocument
 
-# ── Employee documents ───────────────────────────────────────────────────────
+# â”€â”€ Employee documents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def list_employee_documents(employee_id: UUID, tenant_id, db: AsyncSession) -> list[dict]:
@@ -104,7 +104,7 @@ async def delete_employee_document(
         return False
     if doc.file_path and os.path.exists(doc.file_path):
         os.remove(doc.file_path)
-    await db.delete(doc)
+    db.delete(doc)
     await db.commit()
     return True
 

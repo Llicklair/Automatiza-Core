@@ -29,6 +29,25 @@ import { scanner } from "./scanner";
 import { messaging } from "./messaging";
 import { hrDocuments } from "./hr_documents";
 import { generativeUI } from "./generative_ui";
+import { alertsApi } from "./alerts";
+import { calendarUnified } from "./calendar_unified";
+import { users } from "./users";
+import { request } from "./client";
+
+// ── Portal types ─────────────────────────────────────────────────────────────
+export interface PortalData {
+    employee: import("./hr").Employee | null;
+    payrolls: import("./hr").Payroll[];
+    leave_requests: import("./hr").LeaveRequest[];
+}
+
+export interface SearchResult {
+    type: "employee" | "client" | "invoice";
+    id: string;
+    label: string;
+    sublabel: string;
+    href: string;
+}
 
 // ── Re-export the api object with the original shape ─────────────────────────
 export const api = {
@@ -58,6 +77,26 @@ export const api = {
     messaging,
     hrDocuments,
     generativeUI,
+    alerts: alertsApi,
+    calendarUnified,
+    users,
+    search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
+    importBulk: {
+        employees: (rows: Record<string, string>[]) =>
+            request<{ imported: number; errors: { row: number; reason: string }[] }>("/api/v1/import/employees", { method: "POST", body: JSON.stringify({ rows }) }),
+        clients: (rows: Record<string, string>[]) =>
+            request<{ imported: number; errors: { row: number; reason: string }[] }>("/api/v1/import/clients", { method: "POST", body: JSON.stringify({ rows }) }),
+        products: (rows: Record<string, string>[]) =>
+            request<{ imported: number; errors: { row: number; reason: string }[] }>("/api/v1/import/products", { method: "POST", body: JSON.stringify({ rows }) }),
+    },
+    portal: {
+        me: () => request<PortalData>("/api/v1/portal/me"),
+        submitLeave: (data: { leave_type: string; start_date: string; end_date: string; notes?: string }) =>
+            request<import("./hr").LeaveRequest>("/api/v1/portal/leave-requests", {
+                method: "POST",
+                body: JSON.stringify({ ...data, employee_id: "00000000-0000-0000-0000-000000000000" }),
+            }),
+    },
 };
 
 // ── Re-export all interfaces from domain modules ─────────────────────────────
@@ -78,7 +117,7 @@ export type {
     RecurringInvoice,
     RecurringLineItem,
 } from "./erp";
-export type { BankTransaction } from "./banking";
+export type { BankTransaction, InvoiceSuggestion, ReconciliationSuggestion } from "./banking";
 export type { AnalyticsDashboard } from "./analytics";
 export type { AnalyticsCashflowEntry } from "./analytics";
 export type { AnalyticsTopCliente } from "./analytics";
@@ -89,7 +128,7 @@ export type { AnalyticsBanca } from "./analytics";
 export type { AnalyticsIA } from "./analytics";
 export type { AnalyticsClientes } from "./analytics";
 export type { Opportunity, Activity, EventItem, Reservation } from "./crm";
-export type { Employee, Payroll, PayrollCalculation } from "./hr";
+export type { Employee, Payroll, PayrollCalculation, WorkSchedule, AttendanceRecord, LeaveRequest, Expense } from "./hr";
 export type { Project, ProjectTask } from "./projects";
 export type { JournalEntry, JournalLine, FixedAsset } from "./accounting";
 export type { CompanySnapshot, ReportDoc, FiscalSnapshot } from "./reports";
@@ -100,6 +139,7 @@ export type {
     LlmProviderConfigUpdate,
     LlmConfigUpdate,
     ClaudeCodeSetupResponse,
+    CertificateStatus,
 } from "./tenant";
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";
@@ -109,3 +149,6 @@ export type { ScannerToken, ScannedProduct, StockMovementResult } from "./scanne
 export type { TelegramConnectResponse, TelegramStatus } from "./messaging";
 export type { HRDocument, HRDocumentGeneratePayload } from "./hr_documents";
 export type { GenerativeInterface } from "./generative_ui";
+export type { AlertEntry } from "./alerts";
+export type { UnifiedCalendarEvent } from "./calendar_unified";
+export type { User, UserCreate, UserUpdate } from "./users";

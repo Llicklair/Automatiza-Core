@@ -3,6 +3,9 @@
 import { ShoppingBag, Plus, Search, Loader2, ChevronDown, Package, Calendar, Check, Truck, Trash2 } from "lucide-react";
 import { usePedidosCompra } from "./_hooks/usePedidosCompra";
 import { NuevoPedidoModal } from "./_components/NuevoPedidoModal";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -26,16 +29,17 @@ export default function PedidosCompraPage() {
     } = usePedidosCompra();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Pedidos de Compra</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Gestiona los pedidos a tus proveedores antes de recibir la factura.</p>
-                </div>
-                <button onClick={openNew} className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
-                    <Plus className="w-4 h-4" /> Nuevo pedido
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Pedidos de Compra"
+                description="Gestiona los pedidos a tus proveedores antes de recibir la factura."
+                icon={ShoppingBag}
+                actions={
+                    <Button onClick={openNew}>
+                        <Plus className="w-4 h-4 mr-2" /> Nuevo pedido
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-3 gap-4">
                 {[
@@ -52,10 +56,11 @@ export default function PedidosCompraPage() {
 
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                    type="text" placeholder="Buscar por número o proveedor..."
-                    value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-card border border-border text-foreground text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                <Input
+                    placeholder="Buscar por número o proveedor..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="pl-9"
                 />
             </div>
 
@@ -71,7 +76,7 @@ export default function PedidosCompraPage() {
                         {orders.length === 0 ? "Crea tu primer pedido de compra a un proveedor." : `Sin resultados para "${search}"`}
                     </p>
                     {orders.length === 0 && (
-                        <button onClick={openNew} className="mt-6 bg-primary hover:bg-primary text-foreground text-sm px-4 py-2 rounded-xl transition-colors">Crear pedido</button>
+                        <Button onClick={openNew} className="mt-6">Crear pedido</Button>
                     )}
                 </div>
             ) : (
@@ -103,17 +108,16 @@ export default function PedidosCompraPage() {
                                     </button>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {nextStatus && (
-                                            <button onClick={() => handleAdvance(order)} className="flex items-center gap-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-foreground text-xs px-3 py-1.5 rounded-lg transition-colors">
-                                                <Check className="w-3 h-3" /> {STATUS_MAP[nextStatus]?.label}
-                                            </button>
+                                            <Button size="sm" variant="ghost" className="h-7 text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/30" onClick={() => handleAdvance(order)}>
+                                                <Check className="w-3 h-3 mr-1" /> {STATUS_MAP[nextStatus]?.label}
+                                            </Button>
                                         )}
                                         {!["cancelled", "received"].includes(order.status) && (
-                                            <button onClick={() => handleCancel(order)} className="text-xs text-muted-foreground hover:text-rose-400 px-2 py-1.5 rounded-lg hover:bg-rose-500/10 transition-colors">Cancelar</button>
+                                            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleCancel(order)}>Cancelar</Button>
                                         )}
-                                        <button onClick={() => handleDelete(order.id)} disabled={deletingId === order.id}
-                                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(order.id)} disabled={deletingId === order.id}>
                                             {deletingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
 

@@ -11,6 +11,7 @@ from .common import (
     relationship,
     utcnow,
     uuid,
+    Text,
 )
 
 
@@ -31,6 +32,12 @@ class Tenant(Base):
     jurisdiction = Column(
         String(20), nullable=False, default="ES_TAX"
     )  # Consumido por RAG retriever filter
+    # Firma digital (certificado PKCS#12 para XAdES-BES)
+    cert_path = Column(String(500), nullable=True)
+    cert_password = Column(Text, nullable=True)
+    cert_subject = Column(String(500), nullable=True)
+    cert_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -53,6 +60,20 @@ class User(Base):
     last_login_at = Column(DateTime(timezone=True))
 
     tenant = relationship("Tenant", back_populates="users")
+
+
+class ClientPortalToken(Base):
+    """Token de acceso de cliente al portal externo."""
+    __tablename__ = "client_portal_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)  # SHA-256 del token bruto
+    is_active = Column(Boolean, nullable=False, default=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class PasswordResetToken(Base):

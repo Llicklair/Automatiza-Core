@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Download, FileText, Loader2, Trash2, CheckCircle2, Clock, XCircle, Send } from "lucide-react";
 import { useFacturaDetalle } from "./_hooks/useFacturaDetalle";
+import { Button } from "@/components/ui/button";
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
     pending:   <Send className="w-3.5 h-3.5" />,
@@ -52,31 +53,25 @@ export default function FacturaDetallePage() {
 
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                     {invoice && (STATUS_TRANSITIONS[invoice.status] ?? []).map((tr) => (
-                        <button
+                        <Button
                             key={tr.next}
+                            variant="ghost"
+                            size="sm"
                             disabled={statusLoading}
                             onClick={() => handleStatusChange(tr.next)}
-                            className={`inline-flex items-center gap-1.5 text-foreground px-3 py-2 rounded-xl transition text-sm font-medium disabled:opacity-50 ${tr.color}`}
+                            className={`text-foreground ${tr.color}`}
                         >
-                            {statusLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (STATUS_ICONS[tr.next] ?? <Clock className="w-3.5 h-3.5" />)}
+                            {statusLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <span className="mr-1.5">{STATUS_ICONS[tr.next] ?? <Clock className="w-3.5 h-3.5" />}</span>}
                             {tr.label}
-                        </button>
+                        </Button>
                     ))}
-                    <button
-                        disabled={!invoice || downloading}
-                        onClick={handleDownload}
-                        className="inline-flex items-center gap-2 bg-primary hover:bg-primary disabled:opacity-50 text-foreground px-4 py-2.5 rounded-xl transition shadow-lg shadow-primary/20 font-medium"
-                    >
-                        {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    <Button disabled={!invoice || downloading} onClick={handleDownload}>
+                        {downloading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
                         PDF
-                    </button>
-                    <button
-                        disabled={!invoice || deleting}
-                        onClick={handleDelete}
-                        className="inline-flex items-center gap-2 bg-muted hover:bg-red-700 disabled:opacity-50 text-foreground hover:text-foreground px-3 py-2.5 rounded-xl transition font-medium"
-                    >
+                    </Button>
+                    <Button variant="ghost" size="icon" className="hover:bg-red-500/10 hover:text-red-400" disabled={!invoice || deleting} onClick={handleDelete}>
                         {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
+                    </Button>
                 </div>
             </div>
 

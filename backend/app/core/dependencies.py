@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_token
 from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
+from app.db.models.crm import Client
 from app.db.models.models import Tenant, User
 from app.services import tenant_service
 
@@ -56,6 +57,30 @@ async def get_tenant_or_404(
         return await tenant_service.get_tenant(db, current_user.tenant_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant no encontrado")
+
+
+async def get_current_client_portal(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Client:
+    """Dependencia para endpoints del portal de clientes externo."""
+    exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token de portal inválido o expirado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    payload = decode_token(credentials.credentials)
+    if payload is None or payload.get("type") != "client_portal":
+        raise exc
+    client_id: str | None = payload.get("sub")
+    tenant_id: str | None = payload.get("tenant_id")
+    if not client_id or not tenant_id:
+        raise exc
+    result = await db.execute(select(Client).where(Client.id == UUID(client_id)))
+    client = result.scalar_one_or_none()
+    if client is None or str(client.tenant_id) != tenant_id:
+        raise exc
+    return client
 
 
 def require_role(*roles: str):

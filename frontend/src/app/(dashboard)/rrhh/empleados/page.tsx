@@ -1,6 +1,7 @@
 "use client";
 
-import { Users, Plus, Wallet, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { Users, Plus, Wallet, ShieldCheck, Upload } from "lucide-react";
 import { useEmpleados, STATUS_OPTIONS, currencyFmt } from "./_hooks/useEmpleados";
 import { EmployeeDocsModal } from "./_components/EmployeeDocsModal";
 import { EmpleadoFormModal } from "./_components/EmpleadoFormModal";
@@ -11,6 +12,10 @@ import { KpiCard } from "@/components/shared/KpiCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { exportToCsv } from "@/lib/utils/export-csv";
+import type { Employee } from "@/lib/api";
+import { api } from "@/lib/api";
+import { ImportCsvModal } from "@/components/shared/ImportCsvModal";
 
 export default function EmployeesPage() {
     const {
@@ -19,6 +24,20 @@ export default function EmployeesPage() {
         selectedEmp, setSelectedEmp, empPayrolls, loadingPayrolls,
         docsEmp, setDocsEmp,
     } = useEmpleados();
+
+    const [showImport, setShowImport] = useState(false);
+
+    const handleExport = () =>
+        exportToCsv<Employee>("empleados", employees, [
+            { header: "Nombre", accessor: (e) => e.name },
+            { header: "NIF", accessor: (e) => e.nif ?? "" },
+            { header: "Email", accessor: (e) => e.email ?? "" },
+            { header: "Departamento", accessor: (e) => e.department ?? "" },
+            { header: "Rol", accessor: (e) => e.role ?? "" },
+            { header: "Salario base", accessor: (e) => e.base_salary ?? "" },
+            { header: "Estado", accessor: (e) => e.status },
+            { header: "Fecha alta", accessor: (e) => e.join_date ?? "" },
+        ]);
 
     return (
         <div className="space-y-6 p-6">
@@ -29,9 +48,14 @@ export default function EmployeesPage() {
                 description="Gestiona las altas, roles y salarios. El Agente RRHH usará esta tabla para pre-calcular nóminas."
                 icon={Users}
                 actions={
-                    <Button onClick={openModal}>
-                        <Plus className="mr-2 h-4 w-4" /> Añadir Empleado
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
+                            <Upload className="mr-2 h-4 w-4" /> Importar CSV
+                        </Button>
+                        <Button onClick={openModal}>
+                            <Plus className="mr-2 h-4 w-4" /> Añadir Empleado
+                        </Button>
+                    </div>
                 }
             />
 
@@ -71,6 +95,7 @@ export default function EmployeesPage() {
                         { column: "status", title: "Estado", options: STATUS_OPTIONS },
                         { column: "department", title: "Departamento", options: departmentOptions },
                     ]}
+                    onExport={handleExport}
                 />
             )}
 
@@ -84,6 +109,25 @@ export default function EmployeesPage() {
                 saving={saving}
                 error={error}
                 onSubmit={handleSubmit}
+            />
+
+            {/* Import CSV modal */}
+            <ImportCsvModal
+                open={showImport}
+                onClose={() => setShowImport(false)}
+                entityName="empleados"
+                columns={[
+                    { header: "Nombre", field: "nombre", required: true, example: "Ana García" },
+                    { header: "NIF", field: "nif", example: "12345678A" },
+                    { header: "Email", field: "email", example: "ana@empresa.com" },
+                    { header: "Departamento", field: "departamento", example: "Ventas" },
+                    { header: "Rol", field: "rol", example: "Comercial" },
+                    { header: "Salario base", field: "salario_base", example: "28000" },
+                    { header: "IRPF %", field: "irpf", example: "15" },
+                    { header: "Estado", field: "estado", example: "active" },
+                ]}
+                onImport={(rows) => api.importBulk.employees(rows)}
+                onSuccess={() => window.location.reload()}
             />
 
             {/* Payroll drawer */}

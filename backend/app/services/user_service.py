@@ -1,4 +1,4 @@
-"""User CRUD operations — business logic extracted from routes."""
+﻿"""User CRUD operations â€” business logic extracted from routes."""
 
 import uuid
 
@@ -64,5 +64,5 @@ async def update_user(
 
 
 async def delete_user(user: User, db: AsyncSession) -> None:
-    await db.delete(user)
+    db.delete(user)
     await db.commit()

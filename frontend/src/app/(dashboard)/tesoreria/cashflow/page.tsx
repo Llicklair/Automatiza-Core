@@ -3,17 +3,19 @@
 import { AreaChart, Wallet, ArrowUpRight, ArrowDownRight, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCashflow } from "./_hooks/useCashflow";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 
 export default function CashflowPage() {
     const { loading, filter, setFilter, totalIn, totalOut, netFlow, visibleEvents } = useCashflow();
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Previsión de Tesorería (Cashflow)</h1>
-                <p className="text-muted-foreground">Analiza tus cobros y pagos futuros basados en facturas de venta, compra y nóminas.</p>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+            <PageHeader
+                title="Previsión de Tesorería (Cashflow)"
+                description="Analiza tus cobros y pagos futuros basados en facturas de venta, compra y nóminas."
+                icon={AreaChart}
+            />
 
             {/* Cajas de resumen */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -62,10 +64,10 @@ export default function CashflowPage() {
                         Histórico de Movimientos
                     </h3>
 
-                    <div className="flex bg-muted rounded-lg p-1 border border-border">
-                        <button onClick={() => setFilter('all')} className={cn("px-3 py-1.5 rounded-md text-xs font-medium transition-colors", filter === 'all' ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-accent/50")}>Todos</button>
-                        <button onClick={() => setFilter('in')} className={cn("px-3 py-1.5 rounded-md text-xs font-medium transition-colors", filter === 'in' ? "bg-emerald-500/20 text-emerald-400 shadow-sm" : "text-muted-foreground hover:text-emerald-400 hover:bg-accent/50")}>Entradas</button>
-                        <button onClick={() => setFilter('out')} className={cn("px-3 py-1.5 rounded-md text-xs font-medium transition-colors", filter === 'out' ? "bg-rose-500/20 text-rose-400 shadow-sm" : "text-muted-foreground hover:text-rose-400 hover:bg-accent/50")}>Salidas</button>
+                    <div className="flex bg-muted rounded-lg p-1 border border-border gap-0.5">
+                        <Button variant="ghost" size="sm" onClick={() => setFilter('all')} className={cn("h-7 px-3 text-xs", filter === 'all' ? "bg-card text-foreground shadow-sm hover:bg-card" : "text-muted-foreground")}>Todos</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setFilter('in')} className={cn("h-7 px-3 text-xs", filter === 'in' ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20" : "text-muted-foreground hover:text-emerald-400")}>Entradas</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setFilter('out')} className={cn("h-7 px-3 text-xs", filter === 'out' ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/20" : "text-muted-foreground hover:text-rose-400")}>Salidas</Button>
                     </div>
                 </div>
 

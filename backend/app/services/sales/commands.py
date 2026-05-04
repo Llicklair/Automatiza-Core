@@ -1,4 +1,4 @@
-"""Sales domain — write commands (CQRS-lite).
+﻿"""Sales domain â€” write commands (CQRS-lite).
 
 All functions here perform INSERT / UPDATE / DELETE operations.
 Read-only helpers are imported from queries.py where needed.
@@ -76,7 +76,7 @@ async def create_client(
             },
         )
     except Exception:
-        logger.warning("emit_event client_created falló — no es crítico")
+        logger.warning("emit_event client_created fallÃ³ â€” no es crÃ­tico")
 
     return new_client
 
@@ -117,7 +117,7 @@ async def delete_client(
     if not client:
         raise LookupError("Cliente no encontrado")
     try:
-        await db.delete(client)
+        db.delete(client)
         await db.commit()
     except SQLAlchemyError as e:
         await db.rollback()
@@ -161,7 +161,7 @@ async def delete_product(db: AsyncSession, tenant_id: UUID, product_id: UUID) ->
     product = result.scalar_one_or_none()
     if not product:
         raise LookupError("Producto no encontrado")
-    await db.delete(product)
+    db.delete(product)
     await db.commit()
 
 
@@ -277,7 +277,7 @@ async def delete_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> Non
     quote = result.scalar_one_or_none()
     if not quote:
         raise LookupError("Quote not found")
-    await db.delete(quote)
+    db.delete(quote)
     await db.commit()
 
 
@@ -473,7 +473,7 @@ async def delete_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) ->
     note = result.scalar_one_or_none()
     if not note:
         raise LookupError("Albaran no encontrado")
-    await db.delete(note)
+    db.delete(note)
     await db.commit()
 
 
@@ -561,7 +561,7 @@ async def delete_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUI
     order = result.scalar_one_or_none()
     if not order:
         raise LookupError("Pedido de compra no encontrado")
-    await db.delete(order)
+    db.delete(order)
     await db.commit()
 
 
@@ -648,5 +648,5 @@ async def delete_sales_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) 
     order = result.scalar_one_or_none()
     if not order:
         raise LookupError("Pedido no encontrado")
-    await db.delete(order)
+    db.delete(order)
     await db.commit()

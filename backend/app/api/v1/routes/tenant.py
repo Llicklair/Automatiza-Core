@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+import shutil
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.tenant import (
@@ -10,6 +14,7 @@ from app.api.v1.schemas.tenant import (
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
+from app.db.models.auth import Tenant
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services import tenant_service as svc
@@ -117,3 +122,91 @@ async def claude_code_logout(
     """Cierra la sesión de Claude Code CLI."""
     data = await svc.claude_code_logout()
     return ClaudeCodeSetupResponse(**data)
+
+
+# ── Firma digital (certificado PKCS#12) ──────────────────────────────────────
+
+_CERT_DIR = Path("uploads/certs")
+
+
+@router.get("/certificate", tags=["tenant"])
+@limiter.limit("20/minute")
+async def get_certificate_status(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = res.scalar_one_or_none()
+    if not tenant or not tenant.cert_path:
+        return {"has_certificate": False}
+    return {
+        "has_certificate": True,
+        "cert_subject": tenant.cert_subject,
+        "cert_expires_at": tenant.cert_expires_at.isoformat() if tenant.cert_expires_at else None,
+    }
+
+
+@router.post("/certificate", tags=["tenant"])
+@limiter.limit("10/minute")
+async def upload_certificate(
+    request: Request,
+    file: UploadFile = File(...),
+    password: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not file.filename or not file.filename.lower().endswith((".p12", ".pfx")):
+        raise HTTPException(status_code=400, detail="El archivo debe ser .p12 o .pfx")
+
+    cert_dir = _CERT_DIR / str(current_user.tenant_id)
+    cert_dir.mkdir(parents=True, exist_ok=True)
+    cert_path = cert_dir / "cert.p12"
+
+    content = await file.read()
+    cert_path.write_bytes(content)
+
+    # Validate and extract metadata
+    try:
+        from app.services.billing.xades_signer import load_certificate_info
+        info = load_certificate_info(str(cert_path), password)
+    except Exception as exc:
+        cert_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"Certificado inválido o contraseña incorrecta: {exc}")
+
+    from datetime import datetime, timezone
+    expires_at = datetime.fromisoformat(info["expires_at"])
+
+    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = res.scalar_one_or_none()
+    tenant.cert_path = str(cert_path)
+    tenant.cert_password = password
+    tenant.cert_subject = info["subject"]
+    tenant.cert_expires_at = expires_at
+    await db.commit()
+
+    return {
+        "message": "Certificado cargado correctamente",
+        "cert_subject": info["subject"],
+        "cert_expires_at": info["expires_at"],
+    }
+
+
+@router.delete("/certificate", status_code=204, tags=["tenant"])
+@limiter.limit("10/minute")
+async def delete_certificate(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = res.scalar_one_or_none()
+    if tenant and tenant.cert_path:
+        p = Path(tenant.cert_path)
+        if p.exists():
+            p.unlink()
+        tenant.cert_path = None
+        tenant.cert_password = None
+        tenant.cert_subject = None
+        tenant.cert_expires_at = None
+        await db.commit()

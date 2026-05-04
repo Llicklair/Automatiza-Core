@@ -1,4 +1,4 @@
-"""Payroll CRUD, calculation preview, PDF generation and persistence."""
+﻿"""Payroll CRUD, calculation preview, PDF generation and persistence."""
 
 import logging
 import os
@@ -19,7 +19,7 @@ from app.services.template_service import get_default_theme
 logger = logging.getLogger(__name__)
 
 
-# ── Payrolls CRUD ────────────────────────────────────────────────────────────
+# â”€â”€ Payrolls CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def list_payrolls(tenant_id, db: AsyncSession) -> list[Payroll]:
@@ -184,12 +184,12 @@ async def delete_payroll(payroll_id: UUID, tenant_id, db: AsyncSession) -> bool:
         return False
     if payroll.status != "draft":
         raise ValueError("Solo se pueden eliminar nominas en estado borrador")
-    await db.delete(payroll)
+    db.delete(payroll)
     await db.commit()
     return True
 
 
-# ── Payroll PDF ──────────────────────────────────────────────────────────────
+# â”€â”€ Payroll PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def build_payroll_pdf(
@@ -291,7 +291,7 @@ async def generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id
                 category="Nominas",
                 status="processed",
                 processed_at=datetime.now(UTC),
-                parsed_content=f"Nomina de {payroll.employee.name if payroll.employee else 'empleado'} — Periodo {period}. Neto: {float(payroll.net_salary or 0):.2f}€",
+                parsed_content=f"Nomina de {payroll.employee.name if payroll.employee else 'empleado'} â€” Periodo {period}. Neto: {float(payroll.net_salary or 0):.2f}â‚¬",
             )
             db.add(doc)
             await db.commit()

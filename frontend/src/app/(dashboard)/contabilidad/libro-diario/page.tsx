@@ -3,6 +3,8 @@
 import { FileDown, Plus, BookOpen, Trash2 } from "lucide-react";
 import { useLibroDiario } from "./_hooks/useLibroDiario";
 import { AsientoModal } from "./_components/AsientoModal";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 
 export default function LibroDiarioPage() {
     const {
@@ -14,21 +16,22 @@ export default function LibroDiarioPage() {
     } = useLibroDiario();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground mb-2">Libro Diario</h1>
-                    <p className="text-muted-foreground">Registro cronológico de todos los asientos y movimientos contables.</p>
-                </div>
-                <div className="flex gap-3">
-                    <button onClick={exportCSV} disabled={entries.length === 0} className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-accent disabled:opacity-40 text-foreground rounded-lg transition-colors font-medium border border-border">
-                        <FileDown className="w-4 h-4" /> Exportar CSV
-                    </button>
-                    <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary text-foreground rounded-lg transition-colors font-medium shadow-lg shadow-primary/20">
-                        <Plus className="w-4 h-4" /> Nuevo Asiento
-                    </button>
-                </div>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+            <PageHeader
+                title="Libro Diario"
+                description="Registro cronológico de todos los asientos y movimientos contables."
+                icon={BookOpen}
+                actions={
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={exportCSV} disabled={entries.length === 0}>
+                            <FileDown className="w-4 h-4 mr-2" /> Exportar CSV
+                        </Button>
+                        <Button onClick={() => setModalOpen(true)}>
+                            <Plus className="w-4 h-4 mr-2" /> Nuevo Asiento
+                        </Button>
+                    </div>
+                }
+            />
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
                 {loading ? (
@@ -82,13 +85,15 @@ export default function LibroDiarioPage() {
                                             </table>
                                         </td>
                                         <td className="px-2 py-4 align-top">
-                                            <button
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                                                 onClick={() => deleteEntry(entry.id)}
-                                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
                                                 title="Eliminar asiento"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}

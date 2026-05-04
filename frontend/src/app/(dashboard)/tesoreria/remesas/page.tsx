@@ -2,6 +2,8 @@
 
 import { Send, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 import { useRemesas, TYPE_CONFIG, type RemesaType } from "./_hooks/useRemesas";
 import RemesaItemList from "./_components/RemesaItemList";
 import RemesaSummary from "./_components/RemesaSummary";
@@ -18,24 +20,23 @@ export default function RemesasPage() {
     } = useRemesas();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Remesas Bancarias SEPA</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Agrupa facturas y nominas para generar ficheros SEPA XML listos para tu banco.
-                    </p>
-                </div>
-                <button onClick={handleGenerar}
-                    disabled={selected.length === 0 || agent.status === "creating" || agent.status === "polling"}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary disabled:opacity-40 text-foreground px-5 py-2.5 rounded-xl font-medium transition-colors text-sm shadow-lg shadow-primary/20">
-                    {(agent.status === "creating" || agent.status === "polling")
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <Send className="w-4 h-4" />}
-                    {selected.length > 0 ? `Generar remesa (${fmt(totalSelected)})` : "Selecciona conceptos"}
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+            <PageHeader
+                title="Remesas Bancarias SEPA"
+                description="Agrupa facturas y nominas para generar ficheros SEPA XML listos para tu banco."
+                icon={Send}
+                actions={
+                    <Button
+                        onClick={handleGenerar}
+                        disabled={selected.length === 0 || agent.status === "creating" || agent.status === "polling"}
+                    >
+                        {(agent.status === "creating" || agent.status === "polling")
+                            ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            : <Send className="w-4 h-4 mr-2" />}
+                        {selected.length > 0 ? `Generar remesa (${fmt(totalSelected)})` : "Selecciona conceptos"}
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-4">
@@ -45,11 +46,11 @@ export default function RemesasPage() {
                             const c = TYPE_CONFIG[t];
                             const count = items.filter(i => i.type === t).length;
                             return (
-                                <button key={t} onClick={() => setActiveType(t)}
-                                    className={cn("px-4 py-2 rounded-xl text-sm font-medium border transition-all",
-                                        activeType === t ? `${c.color} ${c.border} ${c.bg}` : "text-muted-foreground border-border hover:text-foreground hover:border-border")}>
+                                <Button key={t} variant="ghost" onClick={() => setActiveType(t)}
+                                    className={cn("px-4 py-2 h-auto text-sm font-medium border transition-all",
+                                        activeType === t ? `${c.color} ${c.border} ${c.bg} hover:${c.bg}` : "text-muted-foreground border-border hover:text-foreground")}>
                                     {c.label} ({count})
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>
@@ -90,7 +91,7 @@ export default function RemesasPage() {
                     toast.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400")}>
                     {toast.type === "ok" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                     {toast.msg}
-                    <button onClick={() => setToast(null)}><X className="w-4 h-4 opacity-60 hover:opacity-100" /></button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)}><X className="w-4 h-4" /></Button>
                 </div>
             )}
         </div>

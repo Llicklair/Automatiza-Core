@@ -33,6 +33,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (pathname === "/primeros-pasos") return;
         const token = localStorage.getItem("access_token");
         if (!token) return;
+        try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            // Non-admin users go to their portal when landing on "/"
+            if (pathname === "/" && payload.role && payload.role !== "admin") {
+                router.push("/portal");
+                return;
+            }
+        } catch { /* ignore */ }
         api.tenant.me().then(t => {
             if (!t.nif) router.push("/primeros-pasos");
         }).catch(() => {});
@@ -59,6 +67,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     showToast(msg, toastType);
                     pushNotification(msg, toastType as any);
                     if (step === total_steps) triggerRefresh();
+                    return;
+                }
+                if (data.type === "hr_notification") {
+                    const msg = data.message as string || "Notificación RRHH";
+                    const nType = (data.notif_type as string) || "info";
+                    showToast(msg, nType as any);
+                    pushNotification(msg, nType as any);
+                    triggerRefresh();
                     return;
                 }
                 if (data.type === "event" && data.event) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Table } from "@tanstack/react-table";
-import { X, SlidersHorizontal } from "lucide-react";
+import { X, SlidersHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +25,7 @@ interface DataTableToolbarProps<TData> {
     searchKey?: string;
     searchPlaceholder?: string;
     facetedFilters?: FacetedFilterConfig[];
+    onExport?: () => void;
 }
 
 export function DataTableToolbar<TData>({
@@ -32,6 +33,7 @@ export function DataTableToolbar<TData>({
     searchKey,
     searchPlaceholder = "Buscar...",
     facetedFilters,
+    onExport,
 }: DataTableToolbarProps<TData>) {
     const isFiltered = table.getState().columnFilters.length > 0;
 
@@ -64,6 +66,12 @@ export function DataTableToolbar<TData>({
                     </Button>
                 )}
             </div>
+            {onExport && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={onExport}>
+                    <Download className="h-3.5 w-3.5" />
+                    CSV
+                </Button>
+            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">

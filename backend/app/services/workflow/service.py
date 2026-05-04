@@ -1,4 +1,4 @@
-"""Servicio de dominio para Workflows & Automatizaciones.
+﻿"""Servicio de dominio para Workflows & Automatizaciones.
 
 CRUD de workflows/executions y queries. La logica de ejecucion, NLP y grafos
 UI esta en sub-modulos (_execution, _nlp, _ui_graph) y se re-exporta aqui
@@ -34,7 +34,7 @@ from app.services.workflow._ui_graph import (  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-# ── CRUD ─────────────────────────────────────────────────────────────────────
+# â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def list_workflows(tenant_id, db: AsyncSession) -> list[models.Workflow]:
@@ -96,12 +96,12 @@ async def delete_workflow(workflow_id: UUID, tenant_id, db: AsyncSession) -> boo
     wf = await get_workflow(workflow_id, tenant_id, db)
     if not wf:
         return False
-    await db.delete(wf)
+    db.delete(wf)
     await db.commit()
     return True
 
 
-# ── Recent completions ───────────────────────────────────────────────────────
+# â”€â”€ Recent completions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def recent_completions(tenant_id, since: float, db: AsyncSession) -> list[dict]:
@@ -135,7 +135,7 @@ async def recent_completions(tenant_id, since: float, db: AsyncSession) -> list[
     ]
 
 
-# ── Execution queries ────────────────────────────────────────────────────────
+# â”€â”€ Execution queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def get_execution(

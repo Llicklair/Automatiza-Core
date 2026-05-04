@@ -3,6 +3,8 @@
 import { Monitor, Building2, Car, Package, Loader2, Plus, Pencil, Trash2, TrendingDown, Wallet, Archive } from "lucide-react";
 import { useActivos, calcDepreciation } from "./_hooks/useActivos";
 import { AssetModal } from "./_components/AssetModal";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -23,21 +25,17 @@ export default function ActivosFijosPage() {
     } = useActivos();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Activos y Amortizaciones</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Control del inmovilizado material e intangible y sus cuotas de amortización lineal.
-                    </p>
-                </div>
-                <button
-                    onClick={openCreate}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground px-5 py-2.5 rounded-xl font-medium transition-colors text-sm shadow-lg shadow-primary/20"
-                >
-                    <Plus className="w-4 h-4" /> Añadir Activo
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Activos y Amortizaciones"
+                description="Control del inmovilizado material e intangible y sus cuotas de amortización lineal."
+                icon={Archive}
+                actions={
+                    <Button onClick={openCreate}>
+                        <Plus className="w-4 h-4 mr-2" /> Añadir Activo
+                    </Button>
+                }
+            />
 
             {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -94,9 +92,9 @@ export default function ActivosFijosPage() {
                         <Archive className="w-10 h-10 text-muted-foreground mb-3" />
                         <p className="text-muted-foreground font-medium">Sin activos registrados</p>
                         <p className="text-muted-foreground text-sm mt-1 mb-4">Añade ordenadores, vehículos o instalaciones para ver su amortización.</p>
-                        <button onClick={openCreate} className="text-sm text-primary hover:text-primary transition">
+                        <Button variant="ghost" size="sm" onClick={openCreate} className="text-primary">
                             + Añadir primer activo
-                        </button>
+                        </Button>
                     </div>
                 ) : (
                     <div className="divide-y divide-border">
@@ -131,14 +129,12 @@ export default function ActivosFijosPage() {
                                     <div className="col-span-1 text-right text-xs text-muted-foreground font-mono">{fmt(monthly)}</div>
                                     <div className="col-span-1 text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <button onClick={() => openEdit(asset)}
-                                                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEdit(asset)}>
                                                 <Pencil className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button onClick={() => handleDelete(asset.id, asset.name)} disabled={deletingId === asset.id}
-                                                className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50">
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10" onClick={() => handleDelete(asset.id, asset.name)} disabled={deletingId === asset.id}>
                                                 {deletingId === asset.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                            </button>
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>

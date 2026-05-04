@@ -4,6 +4,7 @@ from .common import (
     JSONB,
     UUID,
     Base,
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -60,6 +61,9 @@ class Employee(Base):
     periodo_prueba_dias = Column(Integer)
 
     status = Column(String(50), default="active")  # active | inactive | leave
+    leave_type = Column(String(30), nullable=True)  # baja_medica | vacaciones | excedencia
+    leave_start = Column(Date, nullable=True)
+    leave_end = Column(Date, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -253,3 +257,98 @@ class Candidate(Base):
 
     tenant = relationship("Tenant")
     position = relationship("RecruitmentPosition", back_populates="candidates")
+
+
+# ── Horarios semanales ────────────────────────────────────────────────────────
+
+
+class WorkSchedule(Base):
+    """Plantilla de horario semanal fijo por empleado."""
+
+    __tablename__ = "work_schedules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True)
+
+    day_of_week = Column(Integer, nullable=False)  # 0=Lunes … 6=Domingo
+    start_time = Column(String(5), nullable=False)  # "09:00"
+    end_time = Column(String(5), nullable=False)    # "17:00"
+    active = Column(Boolean, default=True, nullable=False)
+
+    tenant = relationship("Tenant")
+    employee = relationship("Employee")
+
+
+# ── Fichajes en tiempo real ───────────────────────────────────────────────────
+
+
+class Attendance(Base):
+    """Registro de entrada/salida en tiempo real."""
+
+    __tablename__ = "attendance"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True)
+
+    clock_in = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    clock_out = Column(DateTime(timezone=True), nullable=True)
+    date = Column(Date, nullable=False)
+    notes = Column(String(255), nullable=True)
+
+    tenant = relationship("Tenant")
+    employee = relationship("Employee")
+
+
+# ── Gastos y dietas ───────────────────────────────────────────────────────────
+
+
+class Expense(Base):
+    """Gasto o dieta de empleado pendiente de aprobación y reembolso."""
+
+    __tablename__ = "expenses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True)
+
+    amount = Column(Numeric(10, 2), nullable=False)
+    category = Column(String(50), nullable=False)  # viaje | dieta | material | formacion | otro
+    description = Column(Text, nullable=False)
+    date = Column(Date, nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending | approved | rejected | reimbursed
+
+    receipt_filename = Column(String(255), nullable=True)
+    receipt_path = Column(String(500), nullable=True)
+    notes = Column(String(500), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    tenant = relationship("Tenant")
+    employee = relationship("Employee")
+
+
+# ── Solicitudes de baja / vacaciones ─────────────────────────────────────────
+
+
+class LeaveRequest(Base):
+    """Solicitud formal de baja o vacaciones para un empleado."""
+
+    __tablename__ = "leave_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False, index=True)
+
+    leave_type = Column(String(30), nullable=False)  # baja_medica | vacaciones | excedencia
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending | approved | rejected
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    tenant = relationship("Tenant")
+    employee = relationship("Employee")

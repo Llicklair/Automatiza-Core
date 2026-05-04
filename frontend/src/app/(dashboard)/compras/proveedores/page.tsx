@@ -3,6 +3,9 @@
 import { Truck, Plus, Search, Pencil, Trash2, Loader2, Building2, Mail, MapPin } from "lucide-react";
 import { useProveedores } from "./_hooks/useProveedores";
 import { ProveedorModal } from "./_components/ProveedorModal";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function ProveedoresPage() {
     const {
@@ -15,19 +18,17 @@ export default function ProveedoresPage() {
     } = useProveedores();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Proveedores</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Gestiona el directorio de proveedores y sus datos de contacto.</p>
-                </div>
-                <button
-                    onClick={openNew}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
-                >
-                    <Plus className="w-4 h-4" /> Nuevo proveedor
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Proveedores"
+                description="Gestiona el directorio de proveedores y sus datos de contacto."
+                icon={Truck}
+                actions={
+                    <Button onClick={openNew}>
+                        <Plus className="w-4 h-4 mr-2" /> Nuevo proveedor
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-3 gap-4">
                 {[
@@ -44,12 +45,11 @@ export default function ProveedoresPage() {
 
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                    type="text"
+                <Input
                     placeholder="Buscar por nombre, NIF o email..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-card border border-border text-foreground text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                    className="pl-9"
                 />
             </div>
 
@@ -69,9 +69,7 @@ export default function ProveedoresPage() {
                             : `No hay proveedores que coincidan con "${search}"`}
                     </p>
                     {suppliers.length === 0 && (
-                        <button onClick={openNew} className="mt-6 bg-primary hover:bg-primary text-foreground text-sm px-4 py-2 rounded-xl transition-colors">
-                            Añadir proveedor
-                        </button>
+                        <Button onClick={openNew} className="mt-6">Añadir proveedor</Button>
                     )}
                 </div>
             ) : (
@@ -109,16 +107,12 @@ export default function ProveedoresPage() {
                                 ) : <span className="text-muted-foreground italic text-sm">—</span>}
                             </div>
                             <div className="col-span-1 flex items-center justify-end gap-1">
-                                <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(s)}>
                                     <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(s.id)}
-                                    disabled={deletingId === s.id}
-                                    className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors"
-                                >
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id}>
                                     {deletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     ))}

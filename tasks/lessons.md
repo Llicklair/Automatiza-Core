@@ -44,3 +44,19 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 4. Si NO hay gestor, valida con el usuario antes de instalar system-wide.
 
 **Aplicación:** Crítico para proyectos con app desktop empaquetada o cualquier instalación que aspire a "self-contained" / portable.
+
+---
+
+## 2026-05-03 — `db.delete()` en SQLAlchemy async NO es awaitable
+
+**Contexto:** La operación DELETE de clientes fallaba silenciosamente. La causa era `await db.delete(obj)` en `services/sales/commands.py`. SQLAlchemy async hace que `session.execute()`, `session.commit()`, `session.refresh()`, `session.flush()`, `session.rollback()` sean awaitables, pero `session.delete()`, `session.add()`, `session.expunge()` son **síncronos** — añadir `await` provoca que se ignore la operación sin error visible.
+
+**Impacto descubierto:** El bug estaba en 28 puntos del backend (17 archivos): billing, crm, hr, sales, user_service, template_service, project_service, documents, workflow, agents.
+
+**Regla:** En SQLAlchemy async (`AsyncSession`):
+- ✅ Awaitable: `execute()`, `commit()`, `rollback()`, `refresh()`, `flush()`, `merge()`, `scalar()`, `scalars()`
+- ❌ NO awaitable (síncronos): `add()`, `delete()`, `expunge()`, `add_all()`
+
+**Prevención:** Al escribir cualquier `await db.<método>()`, verificar que el método retorna una corrutina. `delete()` y `add()` modifican el estado interno de la sesión sin I/O — son síncronos por diseño.
+
+**Aplicación:** Revisar con grep `await db\.delete\(` y `await db\.add\(` en cualquier codebase SQLAlchemy async antes de hacer merge a main.

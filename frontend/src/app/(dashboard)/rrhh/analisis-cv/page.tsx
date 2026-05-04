@@ -2,6 +2,7 @@
 
 import { useAnalisisCV } from "./_hooks/useAnalisisCV";
 import { FileSearch, Upload, Loader2, Mail, Phone, GraduationCap, Briefcase, Globe, Star } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 export default function AnalisisCVPage() {
     const {
@@ -17,13 +18,12 @@ export default function AnalisisCVPage() {
     } = useAnalisisCV();
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-            <div>
-                <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                    <FileSearch className="w-6 h-6 text-violet-400" /> Análisis de CV con IA
-                </h1>
-                <p className="text-xs text-muted-foreground mt-1">Sube un CV en PDF y la IA extrae automáticamente toda la información relevante</p>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Análisis de CV con IA"
+                description="Sube un CV en PDF y la IA extrae automáticamente toda la información relevante."
+                icon={FileSearch}
+            />
 
             {/* Drop zone */}
             <div

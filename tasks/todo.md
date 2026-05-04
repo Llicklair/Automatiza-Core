@@ -1,41 +1,77 @@
-# Multi-tenancy hardening — estado final
+# Limpieza de menús e interfaz — sidebar
 
-## Hecho (commit `7de2bf5`)
+Fecha: 2026-05-04
+Archivo central: `frontend/src/components/layout/nav-config.ts`
 
-### Fase 1 — Auditoría
-Documento `docs/multitenancy/tenant_scoped_tables.md` con 34 tablas tenant-scoped, 100% UUID, mapa de queries vulnerables. Tras verificación línea-por-línea quedaron como hallazgos reales:
-- `node_engine.py:332-345` — añadido filtro `Workflow.tenant_id` defensivo en `_load_workflow` y `_load_execution`.
-- `GeneratedUI` y `HRDocument` — añadido `ForeignKey("tenants.id")`.
+## Contexto
 
-### Fase 2 — Tenant context centralizado
-- `core/tenant_context.py`: ContextVar + `set_current_tenant`, `get_current_tenant`, `require_current_tenant`, `tenant_context()`.
-- `agents/tenant_context.py`: consolidado, ahora delega en core (alias retro-compat).
-- `core/dependencies.py`: `get_current_user` setea el tenant tras autenticar.
-- `workers/tasks_node_engine.py`, `workers/tasks_orchestrator.py`, `workers/tasks_scheduler.py`: setean tenant en sus entry points.
-- `tests/test_tenant_context.py`: 8 tests, incluido aislamiento concurrente.
+El sidebar tiene varios labels duplicados y páginas reales que no aparecen. Las
+páginas `/tareas`, `/actividades`, `/aprobaciones` no son huérfanas: son
+redirects intencionales hacia `/mi-equipo` y `/bandeja` (URLs legacy). No se
+tocan.
 
----
+## Cambios propuestos
 
-## Descartado — Fases 3 a 6 (RLS en Postgres)
+### 1. Renombrar item top "Tareas" → "Mi equipo"
+- **Por qué**: el label dice "Tareas" pero `href = /mi-equipo`. Engaña y choca
+  con `Proyectos › Tareas`.
+- **Cómo**: en `nav-config.ts:30`, cambiar `label: "Tareas"` por
+  `label: "Mi equipo"`. Mantener icono `Sparkles` o cambiar a `Users2`.
+- **Riesgo**: ninguno. Solo afecta al label visible y `ROUTE_LABELS`.
 
-**Decisión 2026-05-03:** AutomatizaPyme es **single-tenant local** — cada PYME corre su propia instalación desktop con su propia BD aislada. RLS no aporta seguridad porque no hay otros tenants en la misma BD de los que protegerse.
+### 2. Diferenciar "Calendario" duplicado
+- **Por qué**: top-level `/calendario` y `CRM › Calendario` (`/crm/calendario`)
+  comparten label exacto.
+- **Cómo**: renombrar el de CRM a "Calendario CRM" o "Eventos comerciales"
+  (`nav-config.ts:68`). El del top queda como "Calendario".
+- **Riesgo**: ninguno.
 
-**Reverts:** commits `9bac626` y `09475c1` (revierten `1bc2a15` y `485803c`). El git log preserva el código por si se construye un SaaS multi-tenant en backend en el futuro — entonces se cherry-pickean.
+### 3. Aplanar la sección "Integraciones"
+- **Por qué**: la sección padre se llama "Integraciones" y tiene un hijo
+  "Conexiones" (`/integraciones`) y otro "Mensajería"
+  (`/configuracion/integraciones`). Confuso.
+- **Cómo**:
+  - Convertir "Integraciones" en item plano apuntando a `/integraciones`
+    (sin subItems).
+  - Mover "Mensajería" → `/configuracion/integraciones` dentro del submenú
+    "Configuración" como una entrada más.
+- **Riesgo**: ninguno. Las URLs no cambian.
 
-**Lo que se quitó:**
-- `backend/app/db/rls.py` (listener Postgres)
-- `backend/app/db/migrations/versions/0003_enable_rls.py` (policies)
-- `backend/app/db/{base,session}.py` — llamadas a `register_rls_listener`
-- `backend/app/core/tenant_context.py` — `system_context()` / `is_system_context()`
-- `backend/tests/test_rls_isolation.py`
-- `backend/scripts/setup_postgres_rls.sql`
-- `backend/app/workers/tasks_scheduler.py` — wrappers `system_context()`
+### 4. Añadir páginas reales que faltan en el sidebar
+- **`/correos`** → bajo "Herramientas" como "Correos" (icono `Mail`).
+- **`/excel`** → bajo "Herramientas" como "Importar Excel"
+  (icono `FileSpreadsheet`).
+- **Riesgo**: ninguno, son enlaces nuevos.
 
-**Lo que se conservó:** todo lo de Fase 1+2, que es valor real independientemente del modelo (defense in depth, FKs íntegras, ContextVar para propagación limpia).
+### 5. (OPCIONAL — pendiente de tu visto bueno) hubs de sección sin enlace
+Páginas raíz que existen pero no se exponen en el sidebar:
+`/ventas`, `/compras`, `/crm`, `/contabilidad`, `/rrhh`, `/tesoreria`,
+`/inventario`, `/configuracion`. Antes de tocar nada, hay que confirmar si
+contienen un panel resumen útil o si solo son scaffolding. Si son útiles,
+añadirlas como primera subentrada "Resumen" en cada submenú padre.
 
-**Pre-requisitos para reintroducir RLS si surge SaaS:**
-1. Existir un escenario multi-tenant real (varios clientes en una misma BD).
-2. Crear rol app `pyme_app` (sin BYPASSRLS) además del owner `pyme_user`.
-3. Migración Alembic equivalente a la 0003 reverteada.
-4. Engine admin separado para scheduler y queries cross-tenant.
-5. Verificar overhead del listener `before_cursor_execute` con benchmarks.
+### 6. (NO TOCAR salvo que pidas) etiquetas vs URL
+- `Tesorería › Cuentas` → `/banca`
+- `Inventario › Productos` → `/catalogo`
+Son URLs legacy con label correcto. No rompe nada; renombrar la URL implicaría
+mover páginas y migrar imports. Dejarlo.
+
+## Verificación post-cambio
+
+1. `tsc --noEmit` en `frontend/`.
+2. Abrir el sidebar en cada sección y confirmar que:
+   - "Mi equipo" aparece en lugar de "Tareas".
+   - No hay dos "Calendario" iguales.
+   - "Integraciones" es un item plano y "Mensajería" vive en Configuración.
+   - "Correos" e "Importar Excel" aparecen en Herramientas.
+3. `gitnexus_detect_changes()` para confirmar que solo cambia
+   `nav-config.ts` (+ posibles imports de iconos nuevos).
+
+## Estado
+
+- [ ] 1. Renombrar "Tareas" → "Mi equipo"
+- [ ] 2. Diferenciar "Calendario" CRM
+- [ ] 3. Aplanar "Integraciones"
+- [ ] 4. Añadir "Correos" y "Excel" en Herramientas
+- [ ] 5. Decidir sobre hubs de sección (requiere confirmación)
+- [ ] 6. Verificación tsc + sidebar visual

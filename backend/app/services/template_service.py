@@ -1,6 +1,6 @@
-"""
+﻿"""
 Business logic for document template management.
-Services raise ValueError / LookupError — routes translate to HTTP responses.
+Services raise ValueError / LookupError â€” routes translate to HTTP responses.
 """
 
 import logging
@@ -13,7 +13,7 @@ from app.db.models.billing import DocumentTemplate
 
 logger = logging.getLogger(__name__)
 
-# ── Preset templates ────────────────────────────────────────────────────────
+# â”€â”€ Preset templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _PRESET_TEMPLATES = [
     {
@@ -55,7 +55,7 @@ _PRESET_TEMPLATES = [
 ]
 
 
-# ── Internal helpers ────────────────────────────────────────────────────────
+# â”€â”€ Internal helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def _get_or_raise(db: AsyncSession, template_id: UUID, tenant_id) -> DocumentTemplate:
@@ -83,7 +83,7 @@ async def _clear_default(db: AsyncSession, tenant_id, template_type: str):
         tpl.is_default = False
 
 
-# ── CRUD ────────────────────────────────────────────────────────────────────
+# â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def list_templates(
@@ -126,7 +126,7 @@ async def update_template(
 
 async def delete_template(db: AsyncSession, template_id: UUID, tenant_id) -> None:
     tpl = await _get_or_raise(db, template_id, tenant_id)
-    await db.delete(tpl)
+    db.delete(tpl)
     await db.commit()
 
 
@@ -168,7 +168,7 @@ async def seed_defaults(
     return created
 
 
-# ── Preview PDF generation ──────────────────────────────────────────────────
+# â”€â”€ Preview PDF generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def generate_preview(theme_config: dict) -> bytes:
@@ -370,7 +370,7 @@ def _generate_excel_sample(theme_config: dict) -> bytes:
     )
 
 
-# ── Shared utility (used by agents and other services) ──────────────────────
+# â”€â”€ Shared utility (used by agents and other services) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def get_default_theme(tenant_id, template_type: str, db: AsyncSession) -> dict | None:

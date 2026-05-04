@@ -225,3 +225,219 @@ async def email_status(
             "smtp": smtp,
         },
     }
+
+
+@limiter.limit("30/minute")
+@router.get("/email/inbox")
+async def email_inbox(
+    request: Request,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Lista los últimos mensajes recibidos del proveedor configurado.
+    Detecta provider en este orden: gmail > outlook. Devuelve formato uniforme.
+    """
+    from app.agents.email.tools import _get_oauth_token
+
+    tenant_id = str(current_user.tenant_id)
+    limit = max(1, min(limit, 50))
+
+    gmail_token = await _get_oauth_token(tenant_id, "gmail")
+    if gmail_token:
+        from app.integrations.gmail_client import GmailClient
+
+        client = GmailClient(gmail_token)
+        try:
+            msgs = await client.list_messages(max_results=limit)
+            return {
+                "provider": "gmail",
+                "messages": [
+                    {
+                        "id": m["id"],
+                        "from": m.get("from", ""),
+                        "subject": m.get("subject", ""),
+                        "date": m.get("date", ""),
+                        "snippet": m.get("snippet", ""),
+                        "unread": "UNREAD" in (m.get("label_ids") or []),
+                    }
+                    for m in msgs
+                ],
+            }
+        finally:
+            await client.close()
+
+    outlook_token = await _get_oauth_token(tenant_id, "outlook")
+    if outlook_token:
+        from app.integrations.outlook_client import OutlookClient
+
+        client = OutlookClient(outlook_token)
+        try:
+            msgs = await client.list_messages(top=limit)
+            return {
+                "provider": "outlook",
+                "messages": [
+                    {
+                        "id": m["id"],
+                        "from": m.get("from", ""),
+                        "subject": m.get("subject", ""),
+                        "date": m.get("date", ""),
+                        "snippet": m.get("snippet", ""),
+                        "unread": not m.get("is_read", False),
+                    }
+                    for m in msgs
+                ],
+            }
+        finally:
+            await client.close()
+
+    return {"provider": None, "messages": []}
+
+
+@limiter.limit("30/minute")
+@router.get("/drive/files")
+async def drive_list_files(
+    request: Request,
+    folder: str = "root",
+    q: str = "",
+    current_user: User = Depends(get_current_user),
+):
+    """Lista archivos de Google Drive del tenant. Requiere OAuth Gmail con scope drive."""
+    from app.agents.email.tools import _get_oauth_token
+
+    tenant_id = str(current_user.tenant_id)
+    token = await _get_oauth_token(tenant_id, "gmail")
+    if not token:
+        raise HTTPException(status_code=400, detail="Conecta Google (Gmail) para acceder a Drive")
+
+    from app.integrations.google_drive_client import GoogleDriveClient
+
+    client = GoogleDriveClient(token)
+    try:
+        # Mapear consulta libre del usuario a query Drive
+        query_filter = f"name contains '{q}'" if q else ""
+        files = await client.list_files(folder_id=folder, query=query_filter, page_size=50)
+        return {
+            "files": [
+                {
+                    "id": f.get("id", ""),
+                    "name": f.get("name", ""),
+                    "mime_type": f.get("mimeType", ""),
+                    "size": int(f["size"]) if f.get("size") else None,
+                    "modified": f.get("modifiedTime", ""),
+                    "is_folder": f.get("mimeType") == "application/vnd.google-apps.folder",
+                }
+                for f in files
+            ],
+        }
+    finally:
+        await client.close()
+
+
+@limiter.limit("20/minute")
+@router.post("/drive/attach/{file_id}")
+async def drive_attach_as_document(
+    request: Request,
+    file_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Descarga un fichero de Drive y lo guarda como Document del tenant.
+    Devuelve el Document para que el frontend lo añada como adjunto al correo.
+    """
+    from app.agents.email.tools import _get_oauth_token
+
+    tenant_id = str(current_user.tenant_id)
+    token = await _get_oauth_token(tenant_id, "gmail")
+    if not token:
+        raise HTTPException(status_code=400, detail="Conecta Google (Gmail) para acceder a Drive")
+
+    from app.integrations.google_drive_client import GoogleDriveClient
+
+    client = GoogleDriveClient(token)
+    try:
+        meta = await client.get_file_metadata(file_id)
+        if meta.get("mimeType") == "application/vnd.google-apps.folder":
+            raise HTTPException(status_code=400, detail="No se puede adjuntar una carpeta")
+        content = await client.download_file(file_id)
+    finally:
+        await client.close()
+
+    from app.services.documents import service as docs_svc
+
+    doc = await docs_svc.upload_single(
+        meta.get("name") or "drive-file",
+        content,
+        meta.get("mimeType"),
+        current_user.tenant_id,
+        current_user.id,
+        db,
+        "email-attachment",
+    )
+    return {
+        "id": str(doc.id),
+        "file_name": doc.file_name,
+        "file_type": doc.file_type,
+        "file_size": doc.file_size,
+        "status": doc.status,
+        "category": doc.category,
+        "parsed_content": doc.parsed_content,
+        "created_at": doc.created_at.isoformat() if doc.created_at else "",
+        "processed_at": doc.processed_at.isoformat() if doc.processed_at else None,
+        "task_id": str(doc.task_id) if doc.task_id else None,
+    }
+
+
+@limiter.limit("60/minute")
+@router.get("/email/messages/{message_id}")
+async def email_message_detail(
+    request: Request,
+    message_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Devuelve el cuerpo completo de un mensaje del proveedor configurado."""
+    from app.agents.email.tools import _get_oauth_token
+
+    tenant_id = str(current_user.tenant_id)
+
+    gmail_token = await _get_oauth_token(tenant_id, "gmail")
+    if gmail_token:
+        from app.integrations.gmail_client import GmailClient
+
+        client = GmailClient(gmail_token)
+        try:
+            meta = await client.get_message(message_id)
+            body = await client.get_message_body(message_id)
+            return {
+                "provider": "gmail",
+                "id": meta["id"],
+                "from": meta.get("from", ""),
+                "to": meta.get("to", ""),
+                "subject": meta.get("subject", ""),
+                "date": meta.get("date", ""),
+                "body": body,
+            }
+        finally:
+            await client.close()
+
+    outlook_token = await _get_oauth_token(tenant_id, "outlook")
+    if outlook_token:
+        from app.integrations.outlook_client import OutlookClient
+
+        client = OutlookClient(outlook_token)
+        try:
+            m = await client.get_message(message_id)
+            return {
+                "provider": "outlook",
+                "id": m.get("id", ""),
+                "from": m.get("from", ""),
+                "to": m.get("to", ""),
+                "subject": m.get("subject", ""),
+                "date": m.get("date", ""),
+                "body": m.get("body", ""),
+            }
+        finally:
+            await client.close()
+
+    raise HTTPException(status_code=400, detail="No hay proveedor de email configurado")

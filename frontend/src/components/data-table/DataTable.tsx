@@ -36,6 +36,7 @@ interface DataTableProps<TData, TValue> {
     isLoading?: boolean;
     emptyMessage?: string;
     pageSize?: number;
+    onExport?: () => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -47,6 +48,7 @@ export function DataTable<TData, TValue>({
     isLoading = false,
     emptyMessage = "Sin resultados.",
     pageSize = 10,
+    onExport,
 }: DataTableProps<TData, TValue>) {
     const [rowSelection, setRowSelection] = useState({});
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -82,6 +84,7 @@ export function DataTable<TData, TValue>({
                 searchKey={searchKey}
                 searchPlaceholder={searchPlaceholder}
                 facetedFilters={facetedFilters}
+                onExport={onExport}
             />
             <div className="rounded-md border">
                 <Table>

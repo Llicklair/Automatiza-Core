@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type Task, type Approval, type Invoice, type GmailMessage, type DriveFile, type OutlookMessage, type OneDriveFile } from "@/lib/api";
+import { api, type Task, type Approval, type Invoice, type GmailMessage, type DriveFile, type OutlookMessage, type OneDriveFile, type Employee, type AttendanceRecord } from "@/lib/api";
 import { useNotificationStore } from "@/stores/notifications";
 
 function decodeJwtName(token: string): string {
@@ -33,6 +33,8 @@ export interface DashboardData {
     loading: boolean;
     userName: string;
     integrations: DashboardIntegrationsState;
+    employees: Employee[];
+    workingNow: AttendanceRecord[];
 }
 
 export function useDashboard(): DashboardData {
@@ -41,6 +43,8 @@ export function useDashboard(): DashboardData {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [summary, setSummary] = useState({ ingresos: 0, gastos: 0, neto: 0, margen: 0 });
     const [analytics, setAnalytics] = useState<{ cashflow: any[]; insights: any[] }>({ cashflow: [], insights: [] });
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [workingNow, setWorkingNow] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState("");
     const [gmailConnected, setGmailConnected] = useState(false);
@@ -70,13 +74,17 @@ export function useDashboard(): DashboardData {
             api.integrations.gdriveStatus().catch(() => ({ connected: false })),
             api.integrations.outlookStatus().catch(() => ({ connected: false })),
             api.integrations.onedriveStatus().catch(() => ({ connected: false })),
+            api.hr.employees.list().catch(() => []),
+            api.hr.attendance.now().catch(() => []),
         ])
-            .then(([sum, inv, t, a, an, gs, ds, os, ods]) => {
+            .then(([sum, inv, t, a, an, gs, ds, os, ods, emps, working]) => {
                 setSummary(sum);
                 setInvoices(inv);
                 setTasks(t);
                 setApprovals(a);
                 setAnalytics(an);
+                setEmployees(emps);
+                setWorkingNow(working);
                 setGmailConnected(gs.connected);
                 setGdriveConnected(ds.connected);
                 setOutlookConnected(os.connected);
@@ -104,6 +112,8 @@ export function useDashboard(): DashboardData {
         analytics,
         loading,
         userName,
+        employees,
+        workingNow,
         integrations: {
             gmailConnected,
             gdriveConnected,

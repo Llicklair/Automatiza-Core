@@ -30,6 +30,13 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def create_client_portal_access_token(client_id: str, tenant_id: str) -> str:
+    """JWT de corta duración para el portal de clientes (type=client_portal)."""
+    expire = datetime.now(UTC) + timedelta(days=7)
+    payload = {"sub": client_id, "tenant_id": tenant_id, "exp": expire, "type": "client_portal"}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 def decode_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

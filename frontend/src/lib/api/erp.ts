@@ -39,6 +39,8 @@ export interface Invoice {
     notes: string | null;
     terms: string | null;
     external_id: string | null;
+    verifactu_status: string | null;
+    verifactu_sent_at: string | null;
     created_at: string;
     updated_at: string | null;
     client?: Client;
@@ -248,6 +250,10 @@ export const erp = {
             request<void>(`/api/v1/invoices/${id}`, { method: "DELETE" }),
         downloadPdf: (id: string, invoiceNumber: string | null) =>
             downloadBlob(`/api/v1/invoices/${id}/pdf`, `Factura_${invoiceNumber || id.slice(0, 8)}.pdf`),
+        downloadFacturae: (id: string, invoiceNumber: string | null) =>
+            downloadBlob(`/api/v1/invoices/${id}/facturae`, `facturae_${(invoiceNumber || id.slice(0, 8)).replace(/\//g, "-")}.xsig`),
+        sendVerifactu: (id: string) =>
+            request<{ message: string; invoice_id: string; status: string }>(`/api/v1/invoices/${id}/verifactu-send`, { method: "POST" }),
     },
     quotes: {
         list: (params?: { skip?: number; limit?: number }) => {

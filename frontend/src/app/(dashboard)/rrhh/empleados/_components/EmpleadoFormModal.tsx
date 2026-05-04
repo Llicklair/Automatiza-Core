@@ -9,7 +9,8 @@ import {
     SelectContent,
     SelectItem,
 } from "@/components/ui/select";
-import { EmployeeForm } from "../_hooks/useEmpleados";
+import { EmployeeForm, LEAVE_TYPE_OPTIONS } from "../_hooks/useEmpleadosTypes";
+export type { EmployeeForm };
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ export function EmpleadoFormModal({
                 <FormField label="Estado">
                     <Select
                         value={form.status}
-                        onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
+                        onValueChange={(v) => setForm((f) => ({ ...f, status: v, leave_type: v !== "leave" ? "" : f.leave_type }))}
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Seleccionar estado" />
@@ -107,6 +108,42 @@ export function EmpleadoFormModal({
                         </SelectContent>
                     </Select>
                 </FormField>
+
+                {form.status === "leave" && (
+                    <>
+                        <FormField label="Tipo de baja">
+                            <Select
+                                value={form.leave_type}
+                                onValueChange={(v) => setForm((f) => ({ ...f, leave_type: v }))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar tipo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {LEAVE_TYPE_OPTIONS.map((o) => (
+                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FormField>
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField label="Inicio de baja">
+                                <Input
+                                    type="date"
+                                    value={form.leave_start}
+                                    onChange={(e) => setForm((f) => ({ ...f, leave_start: e.target.value }))}
+                                />
+                            </FormField>
+                            <FormField label="Fin de baja (est.)">
+                                <Input
+                                    type="date"
+                                    value={form.leave_end}
+                                    onChange={(e) => setForm((f) => ({ ...f, leave_end: e.target.value }))}
+                                />
+                            </FormField>
+                        </div>
+                    </>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                     <FormField label="Fecha de alta">

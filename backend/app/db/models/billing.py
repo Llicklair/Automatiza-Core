@@ -61,6 +61,9 @@ class Invoice(Base):
     external_id = Column(String(255))
     document_id = Column(UUID(as_uuid=True), ForeignKey("tenant_documents.id"), nullable=True)
 
+    verifactu_status = Column(String(30), nullable=True)   # None | "sent" | "error"
+    verifactu_sent_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

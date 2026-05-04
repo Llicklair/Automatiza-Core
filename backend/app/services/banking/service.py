@@ -6,6 +6,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import desc, extract, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models.models import BankTransaction, Invoice
 from app.services.analytics import DEMO_TX_PREFIX
@@ -170,6 +171,133 @@ async def reconcile_transaction(
         {"invoice_number": invoice.invoice_number, "tx_id": str(tx.id)},
     )
     return {"message": "Conciliado correctamente", "status": "ok"}
+
+
+async def ignore_transaction(
+    db: AsyncSession, tenant_id: uuid.UUID, tx_id: uuid.UUID
+) -> dict:
+    """Mark a bank transaction as ignored (no matching invoice)."""
+    result = await db.execute(
+        select(BankTransaction).where(BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id)
+    )
+    tx = result.scalars().first()
+    if not tx:
+        raise LookupError("Transacción no encontrada")
+    tx.status = "ignored"
+    await db.commit()
+    return {"message": "Transacción ignorada", "status": "ok"}
+
+
+async def unreconcile_transaction(
+    db: AsyncSession, tenant_id: uuid.UUID, tx_id: uuid.UUID
+) -> dict:
+    """Undo a reconciliation: revert tx to unreconciled and invoice to sent."""
+    result = await db.execute(
+        select(BankTransaction).where(BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id)
+    )
+    tx = result.scalars().first()
+    if not tx:
+        raise LookupError("Transacción no encontrada")
+    if tx.invoice_id:
+        inv_res = await db.execute(select(Invoice).where(Invoice.id == tx.invoice_id))
+        invoice = inv_res.scalars().first()
+        if invoice and invoice.status == "paid":
+            invoice.status = "sent"
+    tx.status = "unreconciled"
+    tx.invoice_id = None
+    tx.journal_entry_id = None
+    await db.commit()
+    return {"message": "Conciliación deshecha", "status": "ok"}
+
+
+async def get_reconciliation_suggestions(
+    db: AsyncSession, tenant_id: uuid.UUID
+) -> list[dict]:
+    """Return unreconciled transactions with invoice suggestions matched by amount (±0.02€)."""
+    tx_res = await db.execute(
+        select(BankTransaction)
+        .where(BankTransaction.tenant_id == tenant_id, BankTransaction.status == "unreconciled")
+        .order_by(desc(BankTransaction.date))
+    )
+    txs = tx_res.scalars().all()
+
+    inv_res = await db.execute(
+        select(Invoice)
+        .options(selectinload(Invoice.client))
+        .where(Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"]))
+    )
+    invoices = inv_res.scalars().all()
+
+    out = []
+    for tx in txs:
+        tx_amount = abs(float(tx.amount))
+        matched = [
+            {
+                "id": str(inv.id),
+                "invoice_number": inv.invoice_number,
+                "amount_total": float(inv.amount_total),
+                "client_name": inv.client.name if inv.client else None,
+                "status": inv.status,
+                "date": inv.date.isoformat() if inv.date else None,
+            }
+            for inv in invoices
+            if abs(abs(float(inv.amount_total)) - tx_amount) <= 0.02
+        ]
+        out.append({
+            "tx": {
+                "id": str(tx.id),
+                "date": tx.date.isoformat(),
+                "description": tx.description,
+                "amount": float(tx.amount),
+            },
+            "suggestions": matched,
+        })
+    return out
+
+
+async def auto_reconcile(
+    db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID
+) -> dict:
+    """Auto-match transactions that have exactly one invoice matching by amount."""
+    tx_res = await db.execute(
+        select(BankTransaction).where(
+            BankTransaction.tenant_id == tenant_id,
+            BankTransaction.status == "unreconciled",
+        )
+    )
+    txs = tx_res.scalars().all()
+
+    inv_res = await db.execute(
+        select(Invoice).where(
+            Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"])
+        )
+    )
+    invoices = list(inv_res.scalars().all())
+
+    matched_count = 0
+    used_ids: set[str] = set()
+
+    for tx in txs:
+        tx_amount = abs(float(tx.amount))
+        candidates = [
+            inv for inv in invoices
+            if str(inv.id) not in used_ids
+            and abs(abs(float(inv.amount_total)) - tx_amount) <= 0.02
+        ]
+        if len(candidates) == 1:
+            inv = candidates[0]
+            tx.invoice_id = inv.id
+            tx.status = "reconciled"
+            if can_transition("Invoice", inv.status, "paid"):
+                inv.status = "paid"
+            used_ids.add(str(inv.id))
+            matched_count += 1
+
+    if matched_count > 0:
+        await db.commit()
+        await emit_event(db, tenant_id, user_id, "banking_auto_reconciled", {"count": matched_count})
+
+    return {"matched": matched_count, "total": len(txs)}
 
 
 async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:

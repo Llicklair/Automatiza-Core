@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Wallet, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Loader2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useBalanceSituacion, type AccountBalance } from "./_hooks/useBalanceSituacion";
 
 const fmt = (v: number) => v.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
@@ -39,16 +40,17 @@ function SectionBlock({ title, items, totalLabel, total, color }: {
 
                 return (
                     <div key={subsection} className="border-b border-border/50 last:border-b-0">
-                        <button
+                        <Button
+                            variant="ghost"
                             onClick={() => setExpanded(prev => ({ ...prev, [subsection]: !prev[subsection] }))}
-                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-accent/50 transition-colors text-left"
+                            className="w-full flex items-center justify-between px-5 py-3 h-auto rounded-none"
                         >
                             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                 {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                                 {subsection}
                             </div>
                             <span className="text-sm font-semibold text-foreground">{fmt(subTotal)}</span>
-                        </button>
+                        </Button>
 
                         {isOpen && (
                             <div className="bg-muted/50 divide-y divide-border">

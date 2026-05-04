@@ -1,5 +1,5 @@
-"""
-Seed: Automatización compleja de ejemplo con todos los tipos de nodo.
+﻿"""
+Seed: AutomatizaciÃ³n compleja de ejemplo con todos los tipos de nodo.
 
 Uso:
     cd backend
@@ -11,23 +11,23 @@ O directamente:
 Crea un workflow con el siguiente grafo:
 
     [Trigger: Manual]
-         │
-    [Skill: billing]  ──  "Generar factura mensual para ACME"
-         │
-    [Conditional]  ──  ¿factura > 1000€?
+         â”‚
+    [Skill: billing]  â”€â”€  "Generar factura mensual para ACME"
+         â”‚
+    [Conditional]  â”€â”€  Â¿factura > 1000â‚¬?
         / \
-      Sí    No
-      │      │
+      SÃ­    No
+      â”‚      â”‚
   [Skill:  [Skill:
    email]   documents]
-   │         │
-   └────┬────┘
-        │
+   â”‚         â”‚
+   â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”˜
+        â”‚
     [Delay 15s]
-        │
-    [Approval Gate]  ──  "Aprobar envío al cliente"
-        │
-    [Skill: email]  ──  "Enviar factura por email al cliente"
+        â”‚
+    [Approval Gate]  â”€â”€  "Aprobar envÃ­o al cliente"
+        â”‚
+    [Skill: email]  â”€â”€  "Enviar factura por email al cliente"
 
 """
 import asyncio
@@ -44,9 +44,9 @@ from app.db.models.models import Workflow   # noqa: E402
 from sqlalchemy import select               # noqa: E402
 
 
-WORKFLOW_NAME = "[DEMO] Facturación avanzada ACME con aprobación"
+WORKFLOW_NAME = "[DEMO] FacturaciÃ³n avanzada ACME con aprobaciÃ³n"
 
-# ─── Nodos ─────────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Nodos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 NODES = [
     {
@@ -65,7 +65,7 @@ NODES = [
         "data": {
             "label": "Generar factura mensual ACME",
             "domain": "billing",
-            "instruction": "Crea una factura para el cliente ACME Corp (NIF: A12345678) del mes actual por los servicios de consultoría prestados. Base imponible 1500€, IVA 21%.",
+            "instruction": "Crea una factura para el cliente ACME Corp (NIF: A12345678) del mes actual por los servicios de consultorÃ­a prestados. Base imponible 1500â‚¬, IVA 21%.",
         },
     },
     {
@@ -73,7 +73,7 @@ NODES = [
         "type": "conditional",
         "position": {"x": 300, "y": 260},
         "data": {
-            "label": "¿Importe > 1000€?",
+            "label": "Â¿Importe > 1000â‚¬?",
             "condition": {
                 "field": "skill-billing.output.extracted_data.amount_total",
                 "operator": "gt",
@@ -88,7 +88,7 @@ NODES = [
         "data": {
             "label": "Notificar al director financiero",
             "domain": "email",
-            "instruction": "Envía un email al director financiero informando que se ha generado una factura de alto importe para ACME.",
+            "instruction": "EnvÃ­a un email al director financiero informando que se ha generado una factura de alto importe para ACME.",
         },
     },
     {
@@ -98,7 +98,7 @@ NODES = [
         "data": {
             "label": "Archivar como factura menor",
             "domain": "documents",
-            "instruction": "Archiva la factura generada en la carpeta de facturas menores sin notificación especial.",
+            "instruction": "Archiva la factura generada en la carpeta de facturas menores sin notificaciÃ³n especial.",
         },
     },
     {
@@ -106,7 +106,7 @@ NODES = [
         "type": "delay",
         "position": {"x": 300, "y": 540},
         "data": {
-            "label": "Esperar 15s para revisión",
+            "label": "Esperar 15s para revisiÃ³n",
             "delay_seconds": 15,
         },
     },
@@ -115,8 +115,8 @@ NODES = [
         "type": "approval_gate",
         "position": {"x": 300, "y": 660},
         "data": {
-            "label": "Aprobar envío al cliente",
-            "description": "La factura de ACME está lista. ¿Deseas enviarla al cliente por email?",
+            "label": "Aprobar envÃ­o al cliente",
+            "description": "La factura de ACME estÃ¡ lista. Â¿Deseas enviarla al cliente por email?",
         },
     },
     {
@@ -126,12 +126,12 @@ NODES = [
         "data": {
             "label": "Enviar factura al cliente",
             "domain": "email",
-            "instruction": "Envía la factura generada por email al cliente ACME con un mensaje cordial adjuntando el PDF.",
+            "instruction": "EnvÃ­a la factura generada por email al cliente ACME con un mensaje cordial adjuntando el PDF.",
         },
     },
 ]
 
-# ─── Aristas ───────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Aristas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 EDGES = [
     {
@@ -196,7 +196,7 @@ async def seed():
         tenant_res = await db.execute(select(Tenant).limit(1))
         tenant = tenant_res.scalar_one_or_none()
         if not tenant:
-            print("ERROR: No hay tenants en la BD. Ejecuta primero el seed básico.")
+            print("ERROR: No hay tenants en la BD. Ejecuta primero el seed bÃ¡sico.")
             return
 
         user_res = await db.execute(select(User).where(User.tenant_id == tenant.id).limit(1))
@@ -206,7 +206,7 @@ async def seed():
         existing = await db.execute(select(Workflow).where(Workflow.name == WORKFLOW_NAME))
         old = existing.scalar_one_or_none()
         if old:
-            await db.delete(old)
+            db.delete(old)
             await db.flush()
             print(f"  Workflow demo anterior eliminado.")
 
@@ -215,15 +215,15 @@ async def seed():
             created_by=user.id if user else None,
             name=WORKFLOW_NAME,
             description=(
-                "Automatización completa: genera factura → evalúa importe → "
-                "notifica o archiva → delay → aprobación humana → envío final."
+                "AutomatizaciÃ³n completa: genera factura â†’ evalÃºa importe â†’ "
+                "notifica o archiva â†’ delay â†’ aprobaciÃ³n humana â†’ envÃ­o final."
             ),
             is_active=True,
             trigger_type="manual",
             trigger_config={},
             action_type="ai_task",
             action_config={
-                "instruction": "Ejecutar flujo completo de facturación ACME con aprobación.",
+                "instruction": "Ejecutar flujo completo de facturaciÃ³n ACME con aprobaciÃ³n.",
                 "domain": "billing",
             },
             ui_nodes=NODES,
@@ -242,17 +242,17 @@ async def seed():
         print(f"")
         print(f"  Tipos de nodo:")
         for n in NODES:
-            print(f"    [{n['type']:15s}] {n['id']:25s} → {n['data'].get('label', '')}")
+            print(f"    [{n['type']:15s}] {n['id']:25s} â†’ {n['data'].get('label', '')}")
         print(f"")
         print(f"  Abre la UI en /automatizaciones y busca:")
         print(f"    '{WORKFLOW_NAME}'")
         print(f"")
-        print(f"  Pulsa el botón ▶ para ejecutar y observa el grafo en tiempo real.")
+        print(f"  Pulsa el botÃ³n â–¶ para ejecutar y observa el grafo en tiempo real.")
 
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("  SEED: Automatización avanzada de demo")
+    print("  SEED: AutomatizaciÃ³n avanzada de demo")
     print("=" * 70)
     asyncio.run(seed())
     print("  Done!")

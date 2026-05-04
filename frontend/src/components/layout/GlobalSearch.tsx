@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Users, UserCircle, FileText } from "lucide-react";
 import {
     CommandDialog,
     CommandInput,
@@ -10,11 +10,35 @@ import {
     CommandEmpty,
     CommandGroup,
     CommandItem,
+    CommandSeparator,
 } from "@/components/ui/command";
 import { NAV_SECTIONS } from "./nav-config";
+import { api, type SearchResult } from "@/lib/api";
+
+const TYPE_ICON: Record<string, React.ReactNode> = {
+    employee: <Users className="mr-2 h-4 w-4 text-indigo-400" />,
+    client:   <UserCircle className="mr-2 h-4 w-4 text-emerald-400" />,
+    invoice:  <FileText className="mr-2 h-4 w-4 text-amber-400" />,
+};
+
+const TYPE_LABEL: Record<string, string> = {
+    employee: "Empleados",
+    client:   "Clientes",
+    invoice:  "Facturas",
+};
+
+function groupResults(results: SearchResult[]): Record<string, SearchResult[]> {
+    return results.reduce<Record<string, SearchResult[]>>((acc, r) => {
+        (acc[r.type] ||= []).push(r);
+        return acc;
+    }, {});
+}
 
 export function GlobalSearch() {
     const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<SearchResult[]>([]);
+    const [loading, setLoading] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -28,10 +52,40 @@ export function GlobalSearch() {
         return () => document.removeEventListener("keydown", down);
     }, []);
 
+    // Reset on close
+    useEffect(() => {
+        if (!open) {
+            setQuery("");
+            setResults([]);
+        }
+    }, [open]);
+
+    const fetchResults = useCallback(async (q: string) => {
+        if (q.length < 2) { setResults([]); return; }
+        setLoading(true);
+        try {
+            const data = await api.search(q);
+            setResults(data);
+        } catch {
+            setResults([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Debounce
+    useEffect(() => {
+        const t = setTimeout(() => fetchResults(query), 250);
+        return () => clearTimeout(t);
+    }, [query, fetchResults]);
+
     const handleSelect = (href: string) => {
         setOpen(false);
         router.push(href);
     };
+
+    const grouped = groupResults(results);
+    const hasResults = results.length > 0;
 
     return (
         <>
@@ -47,11 +101,45 @@ export function GlobalSearch() {
             </button>
 
             <CommandDialog open={open} onOpenChange={setOpen}>
-                <CommandInput placeholder="Buscar página o función..." />
+                <CommandInput
+                    placeholder="Buscar empleados, clientes, facturas..."
+                    value={query}
+                    onValueChange={setQuery}
+                />
                 <CommandList>
-                    <CommandEmpty>Sin resultados.</CommandEmpty>
+                    {/* Real data results */}
+                    {query.length >= 2 && (
+                        <>
+                            {loading && (
+                                <div className="py-6 text-center text-sm text-muted-foreground">Buscando…</div>
+                            )}
+                            {!loading && !hasResults && (
+                                <CommandEmpty>Sin resultados para &quot;{query}&quot;</CommandEmpty>
+                            )}
+                            {!loading && hasResults && Object.entries(grouped).map(([type, items]) => (
+                                <CommandGroup key={type} heading={TYPE_LABEL[type] ?? type}>
+                                    {items.map((r) => (
+                                        <CommandItem
+                                            key={r.id}
+                                            value={`${r.label} ${r.sublabel}`}
+                                            onSelect={() => handleSelect(r.href)}
+                                        >
+                                            {TYPE_ICON[r.type]}
+                                            <span>{r.label}</span>
+                                            {r.sublabel && (
+                                                <span className="ml-2 text-xs text-muted-foreground">{r.sublabel}</span>
+                                            )}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            ))}
+                            <CommandSeparator />
+                        </>
+                    )}
+
+                    {/* Navigation fallback (always shown) */}
                     {NAV_SECTIONS.map((section, si) => (
-                        <CommandGroup key={si} heading={section.title || "Principal"}>
+                        <CommandGroup key={si} heading={section.title || "Navegación"}>
                             {section.items.map((item) => {
                                 if (item.href) {
                                     return (

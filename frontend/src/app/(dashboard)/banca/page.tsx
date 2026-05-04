@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Banknote, Link2, RefreshCw, TrendingUp } from "lucide-react";
+import { Banknote, CheckCircle2, Link2, RefreshCw, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { SaldosTab } from "./_components/SaldosTab";
 import { TransaccionesTab } from "./_components/TransaccionesTab";
 import { ResumenTab } from "./_components/ResumenTab";
+import { ConciliacionTab } from "./_components/ConciliacionTab";
 
-type Tab = "saldos" | "transacciones" | "resumen";
+type Tab = "saldos" | "transacciones" | "conciliacion" | "resumen";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: "saldos",         label: "Saldos",           icon: Banknote    },
-    { id: "transacciones",  label: "Transacciones",    icon: RefreshCw   },
-    { id: "resumen",        label: "Resumen del mes",  icon: TrendingUp  },
+    { id: "saldos",         label: "Saldos",           icon: Banknote      },
+    { id: "transacciones",  label: "Transacciones",    icon: RefreshCw     },
+    { id: "conciliacion",   label: "Conciliación",     icon: CheckCircle2  },
+    { id: "resumen",        label: "Resumen del mes",  icon: TrendingUp    },
 ];
 
 export default function BancaPage() {
@@ -46,6 +48,7 @@ export default function BancaPage() {
 
             {tab === "saldos"        && <SaldosTab />}
             {tab === "transacciones" && <TransaccionesTab />}
+            {tab === "conciliacion"  && <ConciliacionTab />}
             {tab === "resumen"       && <ResumenTab />}
         </div>
     );

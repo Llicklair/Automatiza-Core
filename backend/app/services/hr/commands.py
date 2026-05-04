@@ -1,4 +1,4 @@
-"""HR commands — write operations (CQRS-lite).
+"""HR commands - write operations (CQRS-lite).
 
 All functions here produce side effects: INSERT/UPDATE/DELETE or file writes.
 Read helpers are imported from queries.py to avoid duplication.
@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.hr import Candidate, RecruitmentPosition
+from app.db.models.hr import Attendance, Candidate, Expense, LeaveRequest, RecruitmentPosition, WorkSchedule
 from app.db.models.hr_documents import HRDocument
 from app.db.models.models import Employee
 from app.services.event_bus import emit_event
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR_CVS = os.environ.get("CV_UPLOAD_DIR", "uploads/cvs")
 
 
-# ── Employee commands ────────────────────────────────────────────────────────
+# â"€â"€ Employee commands â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 
 async def create_employee(payload, tenant_id, db: AsyncSession) -> Employee:
@@ -56,7 +56,7 @@ async def create_employee(payload, tenant_id, db: AsyncSession) -> Employee:
             },
         )
     except Exception:
-        logger.warning("emit_event employee_created fallo — no es critico")
+        logger.warning("emit_event employee_created fallo - no es critico")
 
     return emp
 
@@ -78,12 +78,12 @@ async def delete_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> boo
     emp = await get_employee(employee_id, tenant_id, db)
     if not emp:
         return False
-    await db.delete(emp)
+    db.delete(emp)
     await db.commit()
     return True
 
 
-# ── Document commands ────────────────────────────────────────────────────────
+# â"€â"€ Document commands â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 
 async def generate_document(
@@ -112,7 +112,7 @@ async def generate_document(
 
     title = DOC_TYPE_LABELS.get(doc_type, "Documento Laboral")
     if employee_name:
-        title += f" — {employee_name}"
+        title += f" - {employee_name}"
 
     user_prompt = (
         f"Genera un documento de tipo: {doc_type} ({title})\n"
@@ -203,11 +203,11 @@ async def delete_document(doc_id: str, tenant_id, db: AsyncSession) -> None:
     doc = result.scalar_one_or_none()
     if not doc:
         raise ValueError("Documento no encontrado")
-    await db.delete(doc)
+    db.delete(doc)
     await db.commit()
 
 
-# ── Recruitment commands ─────────────────────────────────────────────────────
+# â"€â"€ Recruitment commands â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 
 async def create_position(db: AsyncSession, tenant_id: UUID, payload: dict) -> dict:
@@ -345,7 +345,291 @@ async def analyze_cv_standalone(file_name: str, file_obj) -> dict:
             os.remove(tmp_path)
 
 
-# ── Re-exports from sub-modules ──────────────────────────────────────────────
+# ── Schedule commands ─────────────────────────────────────────────────────────
+
+
+async def upsert_schedule(
+    db: AsyncSession, tenant_id, employee_id: UUID, schedules: list[dict]
+) -> list[WorkSchedule]:
+    """Replace all schedule rows for an employee (upsert by day_of_week)."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    for s in schedules:
+        stmt = (
+            pg_insert(WorkSchedule)
+            .values(
+                employee_id=employee_id,
+                tenant_id=tenant_id,
+                day_of_week=s["day_of_week"],
+                start_time=s["start_time"],
+                end_time=s["end_time"],
+                active=s.get("active", True),
+            )
+            .on_conflict_do_update(
+                index_elements=["employee_id", "day_of_week"],
+                set_={
+                    "start_time": s["start_time"],
+                    "end_time": s["end_time"],
+                    "active": s.get("active", True),
+                },
+            )
+        )
+        await db.execute(stmt)
+    await db.commit()
+    result = await db.execute(
+        select(WorkSchedule)
+        .where(WorkSchedule.employee_id == employee_id, WorkSchedule.tenant_id == tenant_id)
+        .order_by(WorkSchedule.day_of_week)
+    )
+    return list(result.scalars().all())
+
+
+# ── Attendance commands ───────────────────────────────────────────────────────
+
+
+async def clock_in(
+    db: AsyncSession, tenant_id, employee_id: UUID, notes: str | None = None
+) -> Attendance:
+    """Create an attendance clock-in. Raises ValueError if already open."""
+    from datetime import date as date_type
+
+    existing = await db.execute(
+        select(Attendance).where(
+            Attendance.employee_id == employee_id,
+            Attendance.tenant_id == tenant_id,
+            Attendance.clock_out.is_(None),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise ValueError("El empleado ya tiene una entrada abierta")
+
+    record = Attendance(
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        date=date_type.today(),
+        notes=notes,
+    )
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def clock_out_attendance(db: AsyncSession, tenant_id, attendance_id: UUID) -> Attendance:
+    """Set clock_out = now() and auto-create JornadaRecord for legal compliance."""
+    from app.db.models.hr import JornadaRecord
+
+    result = await db.execute(
+        select(Attendance).where(
+            Attendance.id == attendance_id,
+            Attendance.tenant_id == tenant_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        raise ValueError("Fichaje no encontrado")
+    if record.clock_out is not None:
+        raise ValueError("Este fichaje ya tiene salida registrada")
+
+    now = datetime.now(timezone.utc)
+    record.clock_out = now
+    await db.commit()
+    await db.refresh(record)
+
+    # Auto-generate JornadaRecord (RD 8/2019)
+    try:
+        hora_entrada = record.clock_in.astimezone(timezone.utc).strftime("%H:%M")
+        hora_salida = now.strftime("%H:%M")
+        mins = (now - record.clock_in).total_seconds() / 60
+        horas = round(mins / 60, 2)
+
+        jornada = JornadaRecord(
+            tenant_id=tenant_id,
+            employee_id=record.employee_id,
+            fecha=record.date,
+            hora_entrada=hora_entrada,
+            hora_salida=hora_salida,
+            horas_ordinarias=min(horas, 8.0),
+            horas_extra=max(0, round(horas - 8.0, 2)),
+            year=record.date.year,
+            month=record.date.month,
+            notas=record.notes or "",
+        )
+        db.add(jornada)
+        await db.commit()
+    except Exception:
+        pass  # non-critical — don't fail the clock-out
+
+    return record
+
+
+# ── Leave request commands ────────────────────────────────────────────────────
+
+
+async def _ws_notify(tenant_id, message: str, notif_type: str = "info") -> None:
+    try:
+        import asyncio
+        from app.api.ws.notifications import manager
+        asyncio.create_task(
+            manager.broadcast_to_tenant(
+                str(tenant_id),
+                {"type": "hr_notification", "message": message, "notif_type": notif_type},
+            )
+        )
+    except Exception:
+        pass
+
+
+async def create_leave_request(
+    db: AsyncSession, tenant_id, employee_id: UUID,
+    leave_type: str, start_date, end_date, notes: str | None = None,
+) -> LeaveRequest:
+    req = LeaveRequest(
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        leave_type=leave_type,
+        start_date=start_date,
+        end_date=end_date,
+        notes=notes,
+    )
+    db.add(req)
+    await db.commit()
+    await db.refresh(req)
+    await _ws_notify(tenant_id, "Nueva solicitud de ausencia pendiente de aprobación", "info")
+    return req
+
+
+async def approve_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> LeaveRequest:
+    """Approve a leave request and update employee status."""
+    req = await _get_leave_request(db, tenant_id, request_id)
+    req.status = "approved"
+    emp = await get_employee(req.employee_id, tenant_id, db)
+    if emp:
+        emp.status = "leave"
+        emp.leave_type = req.leave_type
+        emp.leave_start = req.start_date
+        emp.leave_end = req.end_date
+    await db.commit()
+    await db.refresh(req)
+    name = emp.name if emp else "Empleado"
+    await _ws_notify(tenant_id, f"Solicitud aprobada: {name} de baja desde {req.start_date}", "success")
+    return req
+
+
+async def reject_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> LeaveRequest:
+    req = await _get_leave_request(db, tenant_id, request_id)
+    req.status = "rejected"
+    await db.commit()
+    await db.refresh(req)
+    await _ws_notify(tenant_id, "Solicitud de ausencia rechazada", "warning")
+    return req
+
+
+async def delete_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> None:
+    req = await _get_leave_request(db, tenant_id, request_id)
+    await db.delete(req)
+    await db.commit()
+
+
+async def _get_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> LeaveRequest:
+    result = await db.execute(
+        select(LeaveRequest).where(LeaveRequest.id == request_id, LeaveRequest.tenant_id == tenant_id)
+    )
+    req = result.scalar_one_or_none()
+    if not req:
+        raise ValueError("Solicitud no encontrada")
+    return req
+
+
+# ── Expense commands ──────────────────────────────────────────────────────────
+
+
+async def create_expense(
+    db: AsyncSession, tenant_id, employee_id: UUID,
+    amount: float, category: str, description: str, date, notes: str | None = None,
+) -> Expense:
+    exp = Expense(
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        amount=amount,
+        category=category,
+        description=description,
+        date=date,
+        notes=notes,
+    )
+    db.add(exp)
+    await db.commit()
+    await db.refresh(exp)
+    await _ws_notify(tenant_id, f"Nuevo gasto de {amount:.2f}€ pendiente de aprobación", "info")
+    return exp
+
+
+async def approve_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
+    exp = await _get_expense(db, tenant_id, expense_id)
+    exp.status = "approved"
+    await db.commit()
+    await db.refresh(exp)
+    await _ws_notify(tenant_id, f"Gasto de {float(exp.amount):.2f}€ aprobado", "success")
+    return exp
+
+
+async def reject_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
+    exp = await _get_expense(db, tenant_id, expense_id)
+    exp.status = "rejected"
+    await db.commit()
+    await db.refresh(exp)
+    await _ws_notify(tenant_id, f"Gasto de {float(exp.amount):.2f}€ rechazado", "warning")
+    return exp
+
+
+async def reimburse_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
+    exp = await _get_expense(db, tenant_id, expense_id)
+    exp.status = "reimbursed"
+    await db.commit()
+    await db.refresh(exp)
+    await _ws_notify(tenant_id, f"Gasto de {float(exp.amount):.2f}€ marcado como reembolsado", "success")
+    return exp
+
+
+async def upload_expense_receipt(
+    db: AsyncSession, tenant_id, expense_id: UUID, file_bytes: bytes, filename: str
+) -> Expense:
+    exp = await _get_expense(db, tenant_id, expense_id)
+    subdir = os.path.join(UPLOAD_DIR, "gastos", str(expense_id))
+    os.makedirs(subdir, exist_ok=True)
+    safe_name = f"{uuid_mod.uuid4().hex[:8]}_{filename}"
+    dest = os.path.join(subdir, safe_name)
+    with open(dest, "wb") as f:
+        f.write(file_bytes)
+    exp.receipt_filename = filename
+    exp.receipt_path = dest
+    await db.commit()
+    await db.refresh(exp)
+    return exp
+
+
+async def delete_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> None:
+    exp = await _get_expense(db, tenant_id, expense_id)
+    if exp.receipt_path and os.path.exists(exp.receipt_path):
+        try:
+            shutil.rmtree(os.path.dirname(exp.receipt_path), ignore_errors=True)
+        except Exception:
+            pass
+    await db.delete(exp)
+    await db.commit()
+
+
+async def _get_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
+    result = await db.execute(
+        select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id)
+    )
+    exp = result.scalar_one_or_none()
+    if not exp:
+        raise ValueError("Gasto no encontrado")
+    return exp
+
+
+# ── Re-exports from sub-modules ───────────────────────────────────────────────
 
 from app.services.hr._employee_docs import (  # noqa: E402, F401
     delete_employee_document,
