@@ -2,6 +2,9 @@
 
 import { FolderTree, Search, ChevronRight, ChevronDown, Loader2, BookOpen } from "lucide-react";
 import { useCuadroCuentas } from "./_hooks/useCuadroCuentas";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -9,33 +12,30 @@ export default function CuadroCuentasPage() {
     const { loading, noData, search, setSearch, expanded, filteredGroups, toggle, q } = useCuadroCuentas();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Cuadro de Cuentas (PGC)</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Plan General Contable de España — cuentas con actividad real en el libro diario.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    {noData && (
-                        <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-3 py-2 rounded-xl">
-                            <BookOpen className="w-4 h-4" />
-                            Sin asientos registrados
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Cuadro de Cuentas (PGC)"
+                description="Plan General Contable de España — cuentas con actividad real en el libro diario."
+                icon={FolderTree}
+                actions={
+                    <div className="flex items-center gap-3">
+                        {noData && (
+                            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs px-3 py-2 rounded-xl">
+                                <BookOpen className="w-4 h-4" /> Sin asientos registrados
+                            </div>
+                        )}
+                        <div className="relative">
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Input
+                                placeholder="Buscar código 430, 700..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-9 w-56"
+                            />
                         </div>
-                    )}
-                    <div className="relative">
-                        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            placeholder="Buscar código 430, 700..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="bg-card border border-border text-foreground text-sm rounded-xl pl-9 pr-4 py-2 w-56 focus:outline-none focus:border-primary transition-colors"
-                        />
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {loading ? (
                 <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
@@ -70,9 +70,10 @@ export default function CuadroCuentasPage() {
 
                         return (
                             <div key={group.group} className="border-b border-border last:border-0">
-                                <button
+                                <Button
+                                    variant="ghost"
                                     onClick={() => toggle(group.group)}
-                                    className="w-full grid grid-cols-12 gap-4 px-6 py-3.5 hover:bg-accent/50 transition-colors text-left group"
+                                    className="w-full grid grid-cols-12 gap-4 px-6 py-3.5 h-auto rounded-none text-left"
                                 >
                                     <div className="col-span-5 flex items-center gap-2">
                                         {isOpen
@@ -88,7 +89,7 @@ export default function CuadroCuentasPage() {
                                         {fmt(Math.abs(groupSaldo))}
                                         {groupSaldo < 0 && <span className="text-xs ml-0.5">H</span>}
                                     </div>
-                                </button>
+                                </Button>
 
                                 {isOpen && group.accounts
                                     .sort((a, b) => a.code.localeCompare(b.code))

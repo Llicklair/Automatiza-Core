@@ -17,6 +17,22 @@ from app.services.hr.commands import (
     generate_finiquito_pdf,
     generate_liquidacion_pdf,
     generate_registro_jornada,
+    # schedule + attendance writes
+    upsert_schedule,
+    clock_in,
+    clock_out_attendance,
+    # leave request writes
+    create_leave_request,
+    approve_leave_request,
+    reject_leave_request,
+    delete_leave_request,
+    # expense writes
+    create_expense,
+    approve_expense,
+    reject_expense,
+    reimburse_expense,
+    upload_expense_receipt,
+    delete_expense,
 )
 from app.services.hr.queries import (
     UPLOAD_DIR,
@@ -34,6 +50,16 @@ from app.services.hr.queries import (
     read_document_file,
     # special docs
     load_employee_and_tenant,
+    # schedule + attendance reads
+    list_schedules,
+    get_employee_schedule,
+    list_attendance,
+    get_currently_working,
+    # leave request reads
+    list_leave_requests,
+    # expense reads
+    list_expenses,
+    get_expense_receipt_path,
 )
 
 __all__ = [
@@ -63,4 +89,24 @@ __all__ = [
     "generate_liquidacion_pdf",
     "generate_registro_jornada",
     "UPLOAD_DIR",
+    "upsert_schedule",
+    "clock_in",
+    "clock_out_attendance",
+    "list_schedules",
+    "get_employee_schedule",
+    "list_attendance",
+    "get_currently_working",
+    "list_leave_requests",
+    "create_leave_request",
+    "approve_leave_request",
+    "reject_leave_request",
+    "delete_leave_request",
+    "list_expenses",
+    "get_expense_receipt_path",
+    "create_expense",
+    "approve_expense",
+    "reject_expense",
+    "reimburse_expense",
+    "upload_expense_receipt",
+    "delete_expense",
 ]

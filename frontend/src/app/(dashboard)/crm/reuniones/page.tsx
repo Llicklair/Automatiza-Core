@@ -6,6 +6,9 @@ import { es } from "date-fns/locale";
 import { EventItem } from "@/lib/api";
 import { useReuniones } from "./_hooks/useReuniones";
 import { CreateMeetingModal } from "./_components/CreateMeetingModal";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function MeetingsPage() {
     const {
@@ -18,11 +21,11 @@ export default function MeetingsPage() {
     } = useReuniones();
 
     const renderCard = (m: EventItem, isPastMeeting: boolean) => (
-        <div key={m.id} className={`p-5 rounded-2xl border transition-all ${isPastMeeting ? "bg-background/40 border-border opacity-70" : "bg-muted border-border hover:border-blue-500/30"}`}>
+        <div key={m.id} className={`p-5 rounded-2xl border transition-all ${isPastMeeting ? "bg-background/40 border-border opacity-70" : "bg-muted border-border hover:border-primary/30"}`}>
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl ${isPastMeeting ? "bg-muted" : "bg-blue-500/10"}`}>
-                        <Video className={`w-5 h-5 ${isPastMeeting ? "text-muted-foreground" : "text-blue-400"}`} />
+                    <div className={`p-2.5 rounded-xl ${isPastMeeting ? "bg-muted" : "bg-primary/10"}`}>
+                        <Video className={`w-5 h-5 ${isPastMeeting ? "text-muted-foreground" : "text-primary"}`} />
                     </div>
                     <div>
                         <h3 className={`font-medium ${isPastMeeting ? "text-muted-foreground" : "text-foreground"}`}>{m.title}</h3>
@@ -32,9 +35,14 @@ export default function MeetingsPage() {
                         </p>
                     </div>
                 </div>
-                <button onClick={() => handleDelete(m.id)} className="text-muted-foreground hover:text-red-400 p-1 transition-colors">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                    onClick={() => handleDelete(m.id)}
+                >
                     <Trash2 className="w-4 h-4" />
-                </button>
+                </Button>
             </div>
             {m.description && <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{m.description}</p>}
             <div className="flex items-center justify-between">
@@ -44,7 +52,7 @@ export default function MeetingsPage() {
                 </div>
                 {!isPastMeeting && m.location_or_link && m.location_or_link.startsWith("http") && (
                     <a href={m.location_or_link} target="_blank" rel="noreferrer"
-                        className="flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 px-3 py-1.5 rounded-lg">
+                        className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 bg-primary/10 px-3 py-1.5 rounded-lg">
                         Unirse <ArrowUpRight className="w-3 h-3" />
                     </a>
                 )}
@@ -53,31 +61,35 @@ export default function MeetingsPage() {
     );
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-light text-foreground flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-xl"><Video className="w-8 h-8 text-blue-400" /></div>
-                        Reuniones (Meet)
-                    </h1>
-                    <p className="text-muted-foreground mt-2 ml-14 text-sm">Gestiona tus videollamadas con clientes.</p>
-                </div>
-                <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
-                    <Plus className="w-4 h-4" /> Programar Reunión
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Reuniones (Meet)"
+                description="Gestiona tus videollamadas con clientes."
+                icon={Video}
+                actions={
+                    <Button onClick={() => setShowCreate(true)}>
+                        <Plus className="w-4 h-4 mr-2" /> Programar Reunión
+                    </Button>
+                }
+            />
 
             <div className="bg-card border border-border rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center gap-4 mb-8">
                     <div className="relative flex-1 max-w-md">
                         <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input type="text" placeholder="Buscar reuniones..." value={search} onChange={e => setSearch(e.target.value)}
-                            className="w-full bg-background border border-border text-sm text-foreground rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-blue-500" />
+                        <Input
+                            placeholder="Buscar reuniones..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="pl-10"
+                        />
                     </div>
                 </div>
 
                 {isLoading ? (
-                    <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>
+                    <div className="flex justify-center p-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    </div>
                 ) : meetings.length === 0 ? (
                     <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl">
                         <VideoOff className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -89,16 +101,22 @@ export default function MeetingsPage() {
                         {upcoming.length > 0 && (
                             <div>
                                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                                     Próximas y Hoy ({upcoming.length})
                                 </h2>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">{upcoming.map(m => renderCard(m, false))}</div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {upcoming.map(m => renderCard(m, false))}
+                                </div>
                             </div>
                         )}
                         {past.length > 0 && (
                             <div>
-                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Finalizadas ({past.length})</h2>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">{past.map(m => renderCard(m, true))}</div>
+                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                                    Finalizadas ({past.length})
+                                </h2>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {past.map(m => renderCard(m, true))}
+                                </div>
                             </div>
                         )}
                     </div>

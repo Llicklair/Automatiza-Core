@@ -12,9 +12,24 @@ import {
     Pencil, Trash2, Loader2, Paperclip,
 } from "lucide-react";
 import { DataTableColumnHeader } from "@/components/data-table";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmployeeForm, EMPTY_FORM } from "./useEmpleadosTypes";
+
+const LEAVE_LABELS: Record<string, { label: string; className: string }> = {
+    baja_medica: { label: "Baja médica", className: "bg-red-500/10 text-red-400 border-red-500/20" },
+    vacaciones:  { label: "Vacaciones",  className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+    excedencia:  { label: "Excedencia",  className: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+};
+
+function EmployeeStatusBadge({ emp }: { emp: Employee }) {
+    if (emp.status === "leave") {
+        const leave = LEAVE_LABELS[emp.leave_type ?? ""] ?? { label: "De baja", className: "bg-orange-500/10 text-orange-400 border-orange-500/20" };
+        return <Badge variant="outline" className={`text-xs ${leave.className}`}>{leave.label}</Badge>;
+    }
+    if (emp.status === "inactive") return <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground">Inactivo</Badge>;
+    return <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/20">Activo</Badge>;
+}
 
 export const currencyFmt = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
@@ -66,6 +81,9 @@ export function useEmpleadosCRUD(
             base_salary: emp.base_salary ? String(emp.base_salary) : "", status: emp.status,
             join_date: emp.join_date ? emp.join_date.slice(0, 10) : "",
             contract_end_date: emp.contract_end_date ? emp.contract_end_date.slice(0, 10) : "",
+            leave_type: emp.leave_type || "",
+            leave_start: emp.leave_start ? emp.leave_start.slice(0, 10) : "",
+            leave_end: emp.leave_end ? emp.leave_end.slice(0, 10) : "",
         });
         setError("");
         setShowModal(true);
@@ -100,6 +118,9 @@ export function useEmpleadosCRUD(
                 status: form.status,
                 join_date: form.join_date || undefined,
                 contract_end_date: form.contract_end_date || undefined,
+                leave_type: form.status === "leave" ? (form.leave_type || null) : null,
+                leave_start: form.status === "leave" ? (form.leave_start || null) : null,
+                leave_end: form.status === "leave" ? (form.leave_end || null) : null,
             };
             if (editingId) {
                 await api.hr.employees.update(editingId, payload);
@@ -205,7 +226,7 @@ export function useEmpleadosCRUD(
         {
             accessorKey: "status",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Estado" />,
-            cell: ({ row }) => <StatusBadge status={row.original.status} />,
+            cell: ({ row }) => <EmployeeStatusBadge emp={row.original} />,
             filterFn: (row, _id, filterValue: string[]) => {
                 return filterValue.includes(row.original.status);
             },

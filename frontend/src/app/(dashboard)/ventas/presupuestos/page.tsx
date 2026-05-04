@@ -5,6 +5,9 @@ import QuotesTable from "./_components/QuotesTable";
 import QuoteModal from "./_components/QuoteModal";
 import QuoteToast from "./_components/QuoteToast";
 import { FileText, Plus, Search, Clock } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function QuotesPage() {
     const {
@@ -20,40 +23,30 @@ export default function QuotesPage() {
     } = usePresupuestos();
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-light text-foreground flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <FileText className="w-8 h-8 text-primary" />
-                        </div>
-                        {t("quotes")}
-                    </h1>
-                    <p className="text-muted-foreground mt-2 ml-14 text-sm max-w-2xl">
-                        {t("quotesDescription")}
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground shadow-lg shadow-primary/20 px-5 py-2.5 rounded-full font-medium transition-colors"
-                    >
-                        <Plus className="w-4 h-4" /> {t("newQuote")}
-                    </button>
-                    <button className="flex items-center gap-2 bg-card border border-border hover:bg-muted text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
-                        <Clock className="w-4 h-4 text-muted-foreground" /> {t("quoteExpired")}
-                    </button>
-                </div>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title={t("quotes")}
+                description={t("quotesDescription")}
+                icon={FileText}
+                actions={
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => {}}>
+                            <Clock className="w-4 h-4 mr-2" /> {t("quoteExpired")}
+                        </Button>
+                        <Button onClick={() => setShowModal(true)}>
+                            <Plus className="w-4 h-4 mr-2" /> {t("newQuote")}
+                        </Button>
+                    </div>
+                }
+            />
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-border flex justify-between items-center bg-muted">
+                <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
                     <div className="relative">
                         <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
+                        <Input
                             placeholder={t("quoteSearchPlaceholder")}
-                            className="bg-background border border-border text-sm text-foreground rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-primary transition-colors w-72"
+                            className="pl-10 w-72"
                         />
                     </div>
                 </div>

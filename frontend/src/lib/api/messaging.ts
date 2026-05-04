@@ -1,7 +1,8 @@
 /**
- * API client — Messaging (Telegram, Email).
+ * API client — Messaging (Telegram, Email, Drive).
  */
 import { request } from "./client";
+import type { Document } from "./documents";
 
 export interface TelegramConnectResponse {
     link_url: string;
@@ -37,6 +38,39 @@ export interface EmailInstructResult {
     error: string | null;
 }
 
+export interface InboxMessage {
+    id: string;
+    from: string;
+    subject: string;
+    date: string;
+    snippet: string;
+    unread: boolean;
+}
+
+export interface InboxResponse {
+    provider: "gmail" | "outlook" | null;
+    messages: InboxMessage[];
+}
+
+export interface EmailDetail {
+    provider: "gmail" | "outlook";
+    id: string;
+    from: string;
+    to: string;
+    subject: string;
+    date: string;
+    body: string;
+}
+
+export interface DriveFile {
+    id: string;
+    name: string;
+    mime_type: string;
+    size: number | null;
+    modified: string;
+    is_folder: boolean;
+}
+
 export const messaging = {
     telegram: {
         connect: () =>
@@ -60,6 +94,21 @@ export const messaging = {
             request<EmailInstructResult>("/api/v1/messaging/email/instruct", {
                 method: "POST",
                 body: JSON.stringify({ message, task_id: taskId }),
+            }),
+        inbox: (limit = 20) =>
+            request<InboxResponse>(`/api/v1/messaging/email/inbox?limit=${limit}`),
+        getMessage: (id: string) =>
+            request<EmailDetail>(`/api/v1/messaging/email/messages/${encodeURIComponent(id)}`),
+    },
+    drive: {
+        list: (folder = "root", q = "") => {
+            const params = new URLSearchParams({ folder });
+            if (q) params.set("q", q);
+            return request<{ files: DriveFile[] }>(`/api/v1/messaging/drive/files?${params}`);
+        },
+        attachAsDocument: (fileId: string) =>
+            request<Document>(`/api/v1/messaging/drive/attach/${encodeURIComponent(fileId)}`, {
+                method: "POST",
             }),
     },
 };

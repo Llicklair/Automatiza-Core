@@ -6,6 +6,8 @@ import { es } from "date-fns/locale";
 import { useCalendario } from "./_hooks/useCalendario";
 import { CreateEventModal } from "./_components/CreateEventModal";
 import { EventDetailModal } from "./_components/EventDetailModal";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 
 export default function CalendarPage() {
     const {
@@ -21,26 +23,28 @@ export default function CalendarPage() {
     } = useCalendario();
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-light text-foreground flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl"><CalendarIcon className="w-8 h-8 text-primary" /></div>
-                        Calendario
-                    </h1>
-                    <p className="text-muted-foreground mt-2 ml-14 text-sm">Visualiza tus reuniones, demostraciones y recordatorios.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1 mr-4">
-                        <button onClick={prevMonth} className="p-1.5 hover:bg-muted rounded-md transition-colors"><ChevronLeft className="w-4 h-4 text-muted-foreground" /></button>
-                        <button onClick={goToToday} className="px-3 py-1.5 text-sm font-medium hover:bg-muted rounded-md transition-colors text-foreground">Hoy</button>
-                        <button onClick={nextMonth} className="p-1.5 hover:bg-muted rounded-md transition-colors"><ChevronRight className="w-4 h-4 text-muted-foreground" /></button>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title="Calendario"
+                description="Visualiza tus reuniones, demostraciones y recordatorios."
+                icon={CalendarIcon}
+                actions={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
+                                <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" className="h-8 px-3 text-sm" onClick={goToToday}>Hoy</Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        <Button onClick={() => setShowCreate(true)}>
+                            <Plus className="w-4 h-4 mr-2" /> Agendar Cita
+                        </Button>
                     </div>
-                    <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
-                        <Plus className="w-4 h-4" /> Agendar Cita
-                    </button>
-                </div>
-            </div>
+                }
+            />
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
                 <div className="px-6 py-4 border-b border-border bg-muted">

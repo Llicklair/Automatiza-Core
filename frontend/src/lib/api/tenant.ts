@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, requestUpload } from "./client";
 
 export interface LlmProviderEntry {
     model: string;
@@ -30,6 +30,12 @@ export interface ClaudeCodeSetupResponse {
     message: string;
 }
 
+export interface CertificateStatus {
+    has_certificate: boolean;
+    cert_subject?: string;
+    cert_expires_at?: string;
+}
+
 export const tenant = {
     me: () => request<{ id: string; name: string; nif: string; address: string | null; phone: string | null; contact_email: string | null }>("/api/v1/tenant/me"),
     updateMe: (data: { name?: string; nif?: string; address?: string | null; phone?: string | null; contact_email?: string | null }) =>
@@ -55,4 +61,16 @@ export const tenant = {
         request<ClaudeCodeSetupResponse>("/api/v1/tenant/claude-code-logout", {
             method: "POST",
         }),
+    certificate: {
+        status: () => request<CertificateStatus>("/api/v1/tenant/certificate"),
+        upload: (file: File, password: string) => {
+            const fd = new FormData();
+            fd.append("file", file);
+            fd.append("password", password);
+            return requestUpload<{ message: string; cert_subject: string; cert_expires_at: string }>(
+                "/api/v1/tenant/certificate", fd
+            );
+        },
+        delete: () => request<void>("/api/v1/tenant/certificate", { method: "DELETE" }),
+    },
 };

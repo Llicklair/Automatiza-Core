@@ -1,27 +1,64 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Mail, Send, Bot, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Mail, Send, Bot, AlertCircle, CheckCircle2, Loader2, Paperclip, X, FileText, Inbox, RefreshCw, HardDrive, Folder } from "lucide-react";
 import { api } from "@/lib/api";
-import type { EmailStatus } from "@/lib/api/messaging";
+import type { EmailStatus, InboxMessage, EmailDetail, DriveFile } from "@/lib/api/messaging";
+import type { Document } from "@/lib/api/documents";
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateStr: string): string {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) {
+        return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    }
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
 
 const TABS = [
+    { key: "bandeja", label: "Bandeja", icon: Inbox },
     { key: "componer", label: "Componer", icon: Send },
     { key: "ia", label: "Instrucción IA", icon: Bot },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
 export default function CorreosPage() {
-    const [activeTab, setActiveTab] = useState<TabKey>("componer");
+    const [activeTab, setActiveTab] = useState<TabKey>("bandeja");
     const [status, setStatus] = useState<EmailStatus | null>(null);
 
     // Compose form
     const [to, setTo] = useState("");
     const [subject, setSubject] = useState("");
     const [body, setBody] = useState("");
+    const [attachments, setAttachments] = useState<Document[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
 
     // AI instruct form
     const [instruction, setInstruction] = useState("");
+
+    // Inbox
+    const [inboxMessages, setInboxMessages] = useState<InboxMessage[] | null>(null);
+    const [inboxLoading, setInboxLoading] = useState(false);
+    const [inboxProvider, setInboxProvider] = useState<"gmail" | "outlook" | null>(null);
+    const [selectedMsg, setSelectedMsg] = useState<EmailDetail | null>(null);
+    const [bodyLoading, setBodyLoading] = useState(false);
+
+    // Drive picker
+    const [showDrive, setShowDrive] = useState(false);
+    const [driveFiles, setDriveFiles] = useState<DriveFile[] | null>(null);
+    const [driveLoading, setDriveLoading] = useState(false);
+    const [driveQuery, setDriveQuery] = useState("");
+    const [importingId, setImportingId] = useState<string | null>(null);
 
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -30,18 +67,108 @@ export default function CorreosPage() {
         api.messaging.email.status().then(setStatus).catch(() => null);
     }, []);
 
+    async function loadInbox() {
+        setInboxLoading(true);
+        try {
+            const res = await api.messaging.email.inbox(20);
+            setInboxMessages(res.messages);
+            setInboxProvider(res.provider);
+        } catch (err) {
+            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al cargar la bandeja" });
+            setInboxMessages([]);
+        } finally {
+            setInboxLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        if (activeTab === "bandeja" && inboxMessages === null) {
+            loadInbox();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
+
+    async function openMessage(id: string) {
+        setBodyLoading(true);
+        setSelectedMsg(null);
+        try {
+            const detail = await api.messaging.email.getMessage(id);
+            setSelectedMsg(detail);
+        } catch (err) {
+            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al cargar el mensaje" });
+        } finally {
+            setBodyLoading(false);
+        }
+    }
+
     async function handleSend(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
         setResult(null);
         try {
-            const res = await api.messaging.email.send(to, subject, body);
+            const ids = attachments.map((a) => a.id);
+            const res = await api.messaging.email.send(to, subject, body, ids.length ? ids : undefined);
             setResult({ ok: true, message: res.result });
-            setTo(""); setSubject(""); setBody("");
+            setTo(""); setSubject(""); setBody(""); setAttachments([]);
         } catch (err: unknown) {
             setResult({ ok: false, message: err instanceof Error ? err.message : "Error al enviar" });
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleAttach(e: React.ChangeEvent<HTMLInputElement>) {
+        const files = Array.from(e.target.files ?? []);
+        if (files.length === 0) return;
+        setUploading(true);
+        try {
+            const uploaded = await Promise.all(
+                files.map((f) => api.documents.upload(f, "email-attachment"))
+            );
+            setAttachments((prev) => [...prev, ...uploaded]);
+        } catch (err: unknown) {
+            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al subir el archivo" });
+        } finally {
+            setUploading(false);
+            if (fileRef.current) fileRef.current.value = "";
+        }
+    }
+
+    function removeAttachment(id: string) {
+        setAttachments((prev) => prev.filter((a) => a.id !== id));
+    }
+
+    async function openDrivePicker() {
+        setShowDrive(true);
+        if (driveFiles === null) {
+            await loadDrive("");
+        }
+    }
+
+    async function loadDrive(q: string) {
+        setDriveLoading(true);
+        try {
+            const res = await api.messaging.drive.list("root", q);
+            setDriveFiles(res.files);
+        } catch (err) {
+            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al listar Drive" });
+            setDriveFiles([]);
+        } finally {
+            setDriveLoading(false);
+        }
+    }
+
+    async function attachFromDrive(file: DriveFile) {
+        if (file.is_folder) return;
+        setImportingId(file.id);
+        try {
+            const doc = await api.messaging.drive.attachAsDocument(file.id);
+            setAttachments((prev) => [...prev, doc]);
+            setShowDrive(false);
+        } catch (err) {
+            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al importar de Drive" });
+        } finally {
+            setImportingId(null);
         }
     }
 
@@ -126,6 +253,125 @@ export default function CorreosPage() {
                 </div>
             )}
 
+            {/* Inbox tab */}
+            {activeTab === "bandeja" && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                            {inboxProvider === "gmail" && "Bandeja de Gmail"}
+                            {inboxProvider === "outlook" && "Bandeja de Outlook"}
+                            {inboxProvider === null && !inboxLoading && "Sin proveedor configurado"}
+                            {inboxLoading && "Cargando bandeja…"}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={loadInbox}
+                            disabled={inboxLoading}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        >
+                            {inboxLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                            Refrescar
+                        </button>
+                    </div>
+
+                    {!inboxLoading && inboxProvider === null && (
+                        <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground border border-dashed border-border rounded-lg">
+                            <Inbox className="w-8 h-8 opacity-30" />
+                            <p className="text-sm">No hay proveedor de correo configurado</p>
+                            <p className="text-xs max-w-xs text-center">
+                                Conecta Gmail u Outlook en <strong>Configuración &rsaquo; Mensajería</strong>
+                                para ver tu bandeja aquí.
+                            </p>
+                        </div>
+                    )}
+
+                    {!inboxLoading && inboxMessages?.length === 0 && inboxProvider !== null && (
+                        <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground border border-dashed border-border rounded-lg">
+                            <Inbox className="w-8 h-8 opacity-30" />
+                            <p className="text-sm">Bandeja vacía</p>
+                        </div>
+                    )}
+
+                    {inboxMessages && inboxMessages.length > 0 && (
+                        <ul className="rounded-lg border border-border overflow-hidden divide-y divide-border">
+                            {inboxMessages.map((m) => (
+                                <li key={m.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => openMessage(m.id)}
+                                        className="w-full text-left px-4 py-3 hover:bg-muted/30 transition-colors flex items-start gap-3"
+                                    >
+                                        {m.unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-violet-500 shrink-0" aria-label="No leído" />}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-sm truncate ${m.unread ? "font-semibold text-foreground" : "text-foreground"}`}>
+                                                    {m.from || "(sin remitente)"}
+                                                </span>
+                                                <span className="text-[11px] text-muted-foreground ml-auto shrink-0 tabular-nums">
+                                                    {formatDate(m.date)}
+                                                </span>
+                                            </div>
+                                            <p className={`text-sm truncate ${m.unread ? "text-foreground" : "text-muted-foreground"}`}>
+                                                {m.subject || "(sin asunto)"}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                                {m.snippet}
+                                            </p>
+                                        </div>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    {/* Detail modal */}
+                    {(selectedMsg || bodyLoading) && (
+                        <div
+                            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+                            onClick={() => { setSelectedMsg(null); setBodyLoading(false); }}
+                        >
+                            <div
+                                className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex items-start justify-between gap-4 p-5 border-b border-border">
+                                    {bodyLoading || !selectedMsg ? (
+                                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                                            <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                                        </div>
+                                    ) : (
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-base font-semibold text-foreground truncate">{selectedMsg.subject || "(sin asunto)"}</h3>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                <strong className="text-foreground/80">De:</strong> {selectedMsg.from}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                <strong className="text-foreground/80">Para:</strong> {selectedMsg.to || "—"}
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground mt-1">{formatDate(selectedMsg.date)}</p>
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => { setSelectedMsg(null); setBodyLoading(false); }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                        aria-label="Cerrar"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="p-5 overflow-auto flex-1">
+                                    {selectedMsg && (
+                                        selectedMsg.provider === "outlook" && /<[a-z][^>]*>/i.test(selectedMsg.body)
+                                            ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedMsg.body }} />
+                                            : <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">{selectedMsg.body}</pre>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Compose tab */}
             {activeTab === "componer" && (
                 <form onSubmit={handleSend} className="space-y-4">
@@ -162,9 +408,69 @@ export default function CorreosPage() {
                             className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-violet-500"
                         />
                     </div>
+
+                    {/* Attachments */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-muted-foreground">
+                                Adjuntos {attachments.length > 0 && `(${attachments.length})`}
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => fileRef.current?.click()}
+                                    disabled={uploading}
+                                    className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 disabled:opacity-50"
+                                >
+                                    {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+                                    Adjuntar archivo
+                                </button>
+                                {status?.providers.gmail && (
+                                    <button
+                                        type="button"
+                                        onClick={openDrivePicker}
+                                        className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300"
+                                    >
+                                        <HardDrive className="w-3.5 h-3.5" />
+                                        Desde Drive
+                                    </button>
+                                )}
+                                <input
+                                    ref={fileRef}
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleAttach}
+                                />
+                            </div>
+                        </div>
+                        {attachments.length > 0 && (
+                            <ul className="space-y-1.5">
+                                {attachments.map((a) => (
+                                    <li
+                                        key={a.id}
+                                        className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-xs"
+                                    >
+                                        <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="flex-1 truncate text-foreground">{a.file_name}</span>
+                                        <span className="text-muted-foreground tabular-nums">{formatBytes(a.file_size)}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeAttachment(a.id)}
+                                            className="text-muted-foreground hover:text-foreground"
+                                            aria-label="Quitar adjunto"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || uploading}
                         className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -196,6 +502,77 @@ export default function CorreosPage() {
                         Ejecutar instrucción
                     </button>
                 </form>
+            )}
+
+            {/* Drive picker modal */}
+            {showDrive && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+                    onClick={() => setShowDrive(false)}
+                >
+                    <div
+                        className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-4 border-b border-border">
+                            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                                <HardDrive className="w-4 h-4 text-violet-400" />
+                                Adjuntar desde Google Drive
+                            </h3>
+                            <button
+                                onClick={() => setShowDrive(false)}
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label="Cerrar"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-4 border-b border-border">
+                            <input
+                                type="text"
+                                value={driveQuery}
+                                onChange={(e) => setDriveQuery(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); loadDrive(driveQuery); } }}
+                                placeholder="Buscar archivo… (Enter para buscar)"
+                                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            />
+                        </div>
+                        <div className="overflow-auto flex-1">
+                            {driveLoading && (
+                                <div className="flex items-center justify-center h-40 text-muted-foreground gap-2 text-sm">
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                                </div>
+                            )}
+                            {!driveLoading && driveFiles?.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground text-sm">
+                                    <HardDrive className="w-7 h-7 opacity-30" />
+                                    Sin archivos
+                                </div>
+                            )}
+                            {!driveLoading && driveFiles && driveFiles.length > 0 && (
+                                <ul className="divide-y divide-border">
+                                    {driveFiles.map((f) => (
+                                        <li key={f.id}>
+                                            <button
+                                                type="button"
+                                                onClick={() => attachFromDrive(f)}
+                                                disabled={f.is_folder || importingId === f.id}
+                                                className="w-full text-left px-4 py-3 hover:bg-muted/30 transition-colors flex items-center gap-3 disabled:opacity-50"
+                                            >
+                                                {f.is_folder ? <Folder className="w-4 h-4 text-muted-foreground shrink-0" /> : <FileText className="w-4 h-4 text-muted-foreground shrink-0" />}
+                                                <span className="flex-1 truncate text-sm text-foreground">{f.name}</span>
+                                                {f.size != null && (
+                                                    <span className="text-xs text-muted-foreground tabular-nums">{formatBytes(f.size)}</span>
+                                                )}
+                                                {importingId === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

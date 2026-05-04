@@ -38,6 +38,15 @@ class GoogleDriveClient:
         resp.raise_for_status()
         return resp.json().get("files", [])
 
+    async def get_file_metadata(self, file_id: str) -> dict:
+        """Get metadata for a single file."""
+        resp = await self._client.get(
+            f"{DRIVE_API}/files/{file_id}",
+            params={"fields": "id,name,mimeType,size,modifiedTime,webViewLink"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     async def download_file(self, file_id: str) -> bytes:
         """Download file content."""
         resp = await self._client.get(

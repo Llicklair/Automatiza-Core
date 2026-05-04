@@ -3,6 +3,10 @@
 import { FileText, Plus, Loader2, Send, Wand2 } from "lucide-react";
 import { useHRDocumentos, DOC_TYPES, DOC_TEMPLATES } from "./_hooks/useHRDocumentos";
 import { DocumentCard } from "./_components/DocumentCard";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function HRDocumentosPage() {
     const {
@@ -13,16 +17,15 @@ export default function HRDocumentosPage() {
     } = useHRDocumentos();
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             {toast && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border text-foreground text-sm px-5 py-2.5 rounded-full shadow-lg">{toast}</div>
             )}
-            <div>
-                <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-violet-400" /> Gestoría Documental
-                </h1>
-                <p className="text-xs text-muted-foreground mt-1">Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar.</p>
-            </div>
+            <PageHeader
+                title="Gestoría Documental"
+                description="Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar."
+                icon={FileText}
+            />
 
             <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
                 <Wand2 className="w-4 h-4 text-violet-400 shrink-0" />
@@ -33,11 +36,10 @@ export default function HRDocumentosPage() {
                     placeholder="Ej: quiero un contrato para Laura Martínez de contratación indefinida"
                     className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
-                <button onClick={handleNLGenerate} disabled={!nlText.trim() || nlGenerating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-foreground text-xs font-medium rounded-lg transition-colors shrink-0">
-                    {nlGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                <Button size="sm" onClick={handleNLGenerate} disabled={!nlText.trim() || nlGenerating}>
+                    {nlGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
                     {nlGenerating ? "Generando…" : "Generar"}
-                </button>
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -48,16 +50,25 @@ export default function HRDocumentosPage() {
                         </h2>
                         <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">Tipo de documento</label>
-                            <select value={form.doc_type} onChange={e => setForm(f => ({ ...f, doc_type: e.target.value, instructions: DOC_TEMPLATES[e.target.value] ?? "" }))}
-                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50">
-                                {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                            </select>
+                            <Select
+                                value={form.doc_type}
+                                onValueChange={v => setForm(f => ({ ...f, doc_type: v, instructions: DOC_TEMPLATES[v] ?? "" }))}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {DOC_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">Nombre del empleado</label>
-                            <input value={form.employee_name} onChange={e => setForm(f => ({ ...f, employee_name: e.target.value }))}
+                            <Input
+                                value={form.employee_name}
+                                onChange={e => setForm(f => ({ ...f, employee_name: e.target.value }))}
                                 placeholder="Ej: María López"
-                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50" />
+                            />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">Instrucciones <span className="text-muted-foreground/60">(edita los corchetes con los datos reales)</span></label>
@@ -69,11 +80,10 @@ export default function HRDocumentosPage() {
                         <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
                             <p className="text-xs text-amber-400/80">⚠️ Borradores orientativos. Revisa y aprueba antes de cualquier uso legal.</p>
                         </div>
-                        <button onClick={handleGenerate} disabled={generating}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-foreground rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
-                            {generating && <Loader2 className="w-4 h-4 animate-spin" />}
+                        <Button className="w-full" onClick={handleGenerate} disabled={generating}>
+                            {generating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                             {generating ? "Generando borrador…" : "Generar borrador"}
-                        </button>
+                        </Button>
                     </div>
                 </div>
 

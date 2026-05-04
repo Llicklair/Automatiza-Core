@@ -4,7 +4,8 @@ import {
     Home, Flag, ShoppingCart, Briefcase, Building2, Calendar,
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
     BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
-    Activity, Wand2, FileSearch,
+    Activity, Wand2, FileSearch, Clock, Timer, UserCircle, Receipt,
+    Mail, FileSpreadsheet, AlertTriangle, FolderKanban,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,9 +25,11 @@ export type NavSection = {
 export const NAV_SECTIONS: NavSection[] = [
     {
         items: [
-            { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
             { label: "Inicio", icon: Home, href: "/" },
-            { label: "Tareas", icon: Sparkles, href: "/mi-equipo" },
+            { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
+            { label: "Mi portal", icon: UserCircle, href: "/portal" },
+            { label: "Mi equipo", icon: Sparkles, href: "/mi-equipo" },
+            { label: "Calendario", icon: Calendar, href: "/calendario" },
             { label: "Bandeja", icon: Activity, href: "/bandeja" },
             { label: "Sandbox IA", icon: Wand2, href: "/sandbox" },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones" },
@@ -35,19 +38,27 @@ export const NAV_SECTIONS: NavSection[] = [
     {
         title: "Negocio",
         items: [
-            { label: "Contactos", icon: Users2, href: "/clientes" },
+            {
+                label: "Contactos", icon: Users2, subItems: [
+                    { label: "Clientes", href: "/clientes" },
+                    { label: "Portal clientes", href: "/clientes/portal", adminOnly: true },
+                ],
+            },
             {
                 label: "Ventas", icon: ShoppingCart, subItems: [
+                    { label: "Resumen", href: "/ventas" },
                     { label: "Facturas", href: "/ventas/facturas" },
                     { label: "Albaranes", href: "/albaranes" },
                     { label: "Presupuestos", href: "/ventas/presupuestos" },
                     { label: "Pedidos", href: "/ventas/pedidos" },
                     { label: "Recurrentes", href: "/ventas/recurrentes" },
                     { label: "Servicios", href: "/ventas/servicios" },
+                    { label: "Facturación electrónica", href: "/ventas/facturacion-electronica" },
                 ],
             },
             {
                 label: "Compras", icon: Package, subItems: [
+                    { label: "Resumen", href: "/compras" },
                     { label: "Facturas", href: "/compras/facturas" },
                     { label: "Pedidos", href: "/compras/pedidos" },
                     { label: "Proveedores", href: "/compras/proveedores" },
@@ -55,31 +66,38 @@ export const NAV_SECTIONS: NavSection[] = [
             },
             {
                 label: "CRM", icon: Users, subItems: [
+                    { label: "Resumen", href: "/crm" },
                     { label: "Embudo de ventas", href: "/crm/embudo-de-ventas" },
                     { label: "Actividades", href: "/crm/actividades" },
-                    { label: "Calendario", href: "/crm/calendario" },
+                    { label: "Calendario CRM", href: "/crm/calendario" },
                     { label: "Reservas", href: "/crm/reservas" },
                     { label: "Reuniones", href: "/crm/reuniones" },
                 ],
             },
             {
                 label: "RRHH", icon: Briefcase, subItems: [
+                    { label: "Resumen", href: "/rrhh" },
                     { label: "Empleados", href: "/rrhh/empleados" },
                     { label: "Nóminas", href: "/rrhh/nominas" },
                     { label: "Reclutamiento", href: "/rrhh/reclutamiento" },
                     { label: "Análisis de CV", href: "/rrhh/analisis-cv" },
                     { label: "Gestoría Documental", href: "/rrhh/documentos" },
+                    { label: "Horarios", href: "/rrhh/horarios" },
+                    { label: "Fichajes", href: "/rrhh/fichajes" },
+                    { label: "Vacaciones", href: "/rrhh/vacaciones" },
+                    { label: "Gastos", href: "/rrhh/gastos" },
                 ],
             },
             {
                 label: "Inventario", icon: Building2, subItems: [
+                    { label: "Resumen", href: "/inventario" },
                     { label: "Productos", href: "/catalogo" },
                     { label: "Stock", href: "/inventario/stock" },
                     { label: "Escáner almacén", href: "/inventario/scanner" },
                 ],
             },
             {
-                label: "Proyectos", icon: Calendar, subItems: [
+                label: "Proyectos", icon: FolderKanban, subItems: [
                     { label: "Panel", href: "/proyectos" },
                     { label: "Tareas", href: "/proyectos/tareas" },
                     { label: "Mis tareas", href: "/proyectos/mis-tareas" },
@@ -92,6 +110,7 @@ export const NAV_SECTIONS: NavSection[] = [
         items: [
             {
                 label: "Tesorería", icon: Landmark, subItems: [
+                    { label: "Resumen", href: "/tesoreria" },
                     { label: "Cuentas", href: "/banca" },
                     { label: "Cashflow", href: "/tesoreria/cashflow" },
                     { label: "Pagos y cobros", href: "/tesoreria/pagos-y-cobros" },
@@ -100,6 +119,7 @@ export const NAV_SECTIONS: NavSection[] = [
             },
             {
                 label: "Contabilidad", icon: BookOpen, subItems: [
+                    { label: "Resumen", href: "/contabilidad" },
                     { label: "Cuadro de cuentas", href: "/contabilidad/cuadro-de-cuentas" },
                     { label: "Libro diario", href: "/contabilidad/libro-diario" },
                     { label: "P&G", href: "/contabilidad/perdidas-y-ganancias" },
@@ -118,6 +138,7 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Analítica", icon: PieChart, href: "/analitica" },
             { label: "Informes IA", icon: BarChart3, href: "/informes" },
             { label: "Marketing", icon: Megaphone, href: "/marketing" },
+            { label: "Alertas", icon: AlertTriangle, href: "/alertas" },
             { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true },
         ],
     },
@@ -127,16 +148,16 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Plantillas", icon: Layers, href: "/plantillas" },
             { label: "Escáner", icon: ScanLine, href: "/escaner" },
             { label: "Documentos", icon: FileText, href: "/documentos" },
-            {
-                label: "Integraciones", icon: Plug, subItems: [
-                    { label: "Conexiones", href: "/integraciones" },
-                    { label: "Mensajería", href: "/configuracion/integraciones" },
-                ],
-            },
+            { label: "Correos", icon: Mail, href: "/correos" },
+            { label: "Importar Excel", icon: FileSpreadsheet, href: "/excel" },
+            { label: "Integraciones", icon: Plug, href: "/integraciones" },
             {
                 label: "Configuración", icon: Settings, subItems: [
+                    { label: "Resumen", href: "/configuracion" },
                     { label: "Empresa", href: "/configuracion/empresa" },
                     { label: "Perfil", href: "/configuracion/perfil" },
+                    { label: "Mensajería", href: "/configuracion/integraciones" },
+                    { label: "Firma digital", href: "/configuracion/firma-digital", adminOnly: true },
                     { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true },
                     { label: "Copias de seguridad", href: "/configuracion/backups", adminOnly: true },
                     { label: "Actualizaciones", href: "/configuracion/actualizaciones", adminOnly: true },

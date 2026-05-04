@@ -1,4 +1,4 @@
-"""Billing commands — write operations (CQRS-lite).
+﻿"""Billing commands â€” write operations (CQRS-lite).
 
 All functions here produce side effects: INSERT/UPDATE/DELETE or file writes.
 Read helpers are imported from queries.py to avoid duplication.
@@ -36,7 +36,7 @@ from app.services.billing.queries import (
 logger = logging.getLogger(__name__)
 
 
-# ── Invoice commands ─────────────────────────────────────────────────────────
+# â”€â”€ Invoice commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def create_invoice(
@@ -47,7 +47,7 @@ async def create_invoice(
     user_id,
     db: AsyncSession,
 ):
-    """Crea factura con líneas. Lanza ValueError si IVA inválido o total negativo."""
+    """Crea factura con lÃ­neas. Lanza ValueError si IVA invÃ¡lido o total negativo."""
     for k in ("amount_base", "tax_amount", "amount_total"):
         payload_dict.pop(k, None)
 
@@ -107,7 +107,7 @@ async def create_invoice(
 
         if tax_perc not in VALID_IVA:
             raise ValueError(
-                f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%."
+                f"Tipo de IVA invÃ¡lido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%."
             )
 
         line_base = qty * uprice
@@ -158,10 +158,10 @@ async def update_status(
     new_status: str,
     db: AsyncSession,
 ):
-    """Cambia estado. Lanza ValueError si no existe o estado inválido."""
+    """Cambia estado. Lanza ValueError si no existe o estado invÃ¡lido."""
     allowed = {"draft", "pending", "paid", "cancelled"}
     if new_status not in allowed:
-        raise ValueError(f"Estado no válido. Opciones: {allowed}")
+        raise ValueError(f"Estado no vÃ¡lido. Opciones: {allowed}")
 
     invoice = await _load_invoice(invoice_id, tenant_id, db)
     if not invoice:
@@ -182,7 +182,7 @@ async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
     invoice = await _load_invoice(invoice_id, tenant_id, db, with_joins=False)
     if not invoice:
         return False
-    await db.delete(invoice)
+    db.delete(invoice)
     await db.commit()
     return True
 
@@ -228,7 +228,7 @@ async def generate_and_save_invoice_pdf(invoice, tenant_id, user_id) -> None:
         logger.error("Error generando PDF de factura: %s", e)
 
 
-# ── Accounting commands ──────────────────────────────────────────────────────
+# â”€â”€ Accounting commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def create_journal_entry(
@@ -247,7 +247,7 @@ async def create_journal_entry(
 
     if abs(total_debit - total_credit) > 0.01:
         raise ValueError(
-            f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})"
+            f"El asiento estÃ¡ descuadrado: Debe ({total_debit}) != Haber ({total_credit})"
         )
 
     new_entry = JournalEntry(
@@ -295,7 +295,7 @@ async def delete_journal_entry(
     entry = result.scalar_one_or_none()
     if not entry:
         raise LookupError("Asiento no encontrado")
-    await db.delete(entry)
+    db.delete(entry)
     await db.commit()
 
 
@@ -338,11 +338,11 @@ async def delete_fixed_asset(
     asset = result.scalar_one_or_none()
     if not asset:
         raise LookupError("Activo no encontrado")
-    await db.delete(asset)
+    db.delete(asset)
     await db.commit()
 
 
-# ── Recurring commands ───────────────────────────────────────────────────────
+# â”€â”€ Recurring commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def create_recurring(
@@ -413,7 +413,7 @@ async def delete_recurring(
     rec = result.scalar_one_or_none()
     if not rec:
         return False
-    await db.delete(rec)
+    db.delete(rec)
     await db.commit()
     return True
 

@@ -22,7 +22,7 @@ export type {
     RecurringInvoice,
     RecurringLineItem,
 } from "./api/erp";
-export type { BankTransaction } from "./api/banking";
+export type { BankTransaction, InvoiceSuggestion, ReconciliationSuggestion } from "./api/banking";
 export type {
     AnalyticsDashboard,
     AnalyticsCashflowEntry,
@@ -35,7 +35,7 @@ export type {
     AnalyticsClientes,
 } from "./api/analytics";
 export type { Opportunity, Activity, EventItem, Reservation } from "./api/crm";
-export type { Employee, Payroll, PayrollCalculation } from "./api/hr";
+export type { Employee, Payroll, PayrollCalculation, WorkSchedule, AttendanceRecord, LeaveRequest, Expense } from "./api/hr";
 export type { Project, ProjectTask } from "./api/projects";
 export type { JournalEntry, JournalLine, FixedAsset } from "./api/accounting";
 export type { CompanySnapshot, ReportDoc, FiscalSnapshot } from "./api/reports";
@@ -45,5 +45,10 @@ export type {
     LlmConfigResponse,
     LlmProviderConfigUpdate,
     LlmConfigUpdate,
+    CertificateStatus,
 } from "./api/tenant";
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./api/integrations";
+export type { SearchResult, PortalData } from "./api/index";
+export type { AlertEntry } from "./api/alerts";
+export type { UnifiedCalendarEvent } from "./api/calendar_unified";
+export type { User, UserCreate, UserUpdate } from "./api/users";

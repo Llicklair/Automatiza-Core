@@ -10,6 +10,7 @@ import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Legend
 } from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAnalitica } from "./_hooks/useAnalitica";
 
 interface TooltipPayloadEntry {
@@ -26,14 +27,13 @@ function fmtInt(n: number) {
     return n.toLocaleString("es-ES");
 }
 
-// Genera las últimas 12 opciones de mes (YYYY-MM) para el selector
 function monthOptions(): { value: string; label: string }[] {
     const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const opts: { value: string; label: string }[] = [];
     const now = new Date();
     let y = now.getFullYear();
-    let m = now.getMonth(); // 0-indexed
+    let m = now.getMonth();
     for (let i = 0; i < 12; i++) {
         const value = `${y}-${String(m + 1).padStart(2, "0")}`;
         opts.push({ value, label: `${months[m]} ${y}` });
@@ -114,7 +114,7 @@ export default function AnaliticaPage() {
     const opts = monthOptions();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-8">
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
@@ -163,329 +163,549 @@ export default function AnaliticaPage() {
                 </div>
             )}
 
-            {/* KPIs del periodo */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <KpiCard
-                    label={`Ingresos · ${periodLabel}`}
-                    value={`${fmt(ingresosPeriodo)}€`}
-                    sub={`${emitidasCount} emitidas en total`}
-                    icon={TrendingUp}
-                    color="emerald"
-                />
-                <KpiCard
-                    label={`Gastos · ${periodLabel}`}
-                    value={`${fmt(gastosPeriodo)}€`}
-                    sub={`${recibidasCount} recibidas en total`}
-                    icon={TrendingDown}
-                    color="red"
-                />
-                <KpiCard
-                    label="Beneficio del periodo"
-                    value={`${fmt(beneficioPeriodo)}€`}
-                    sub={`Margen: ${margenPeriodo}%`}
-                    icon={Activity}
-                    color="indigo"
-                />
-                <KpiCard
-                    label="Éxito agentes IA"
-                    value={`${tasksSuccessRate}%`}
-                    sub={`${tasksDone} tareas completadas`}
-                    icon={BrainCircuit}
-                    color="amber"
-                />
-            </div>
+            {/* Tabs por categoría */}
+            <Tabs defaultValue="resumen" className="space-y-6">
+                <TabsList className="h-10 gap-1">
+                    <TabsTrigger value="resumen" className="flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5" /> Resumen
+                    </TabsTrigger>
+                    <TabsTrigger value="ventas" className="flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5" /> Ventas
+                    </TabsTrigger>
+                    <TabsTrigger value="finanzas" className="flex items-center gap-1.5">
+                        <Wallet className="w-3.5 h-3.5" /> Finanzas
+                    </TabsTrigger>
+                    <TabsTrigger value="rrhh" className="flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5" /> RRHH
+                    </TabsTrigger>
+                    <TabsTrigger value="ia" className="flex items-center gap-1.5">
+                        <BrainCircuit className="w-3.5 h-3.5" /> IA
+                    </TabsTrigger>
+                </TabsList>
 
-            {/* Avisos de cobro */}
-            {(vencenProximos > 0 || importePendienteCobro > 0) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {vencenProximos > 0 && (
-                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between">
-                            <div>
-                                <p className="text-xs text-amber-300 uppercase font-semibold tracking-wide">Vencen en 7 días</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{vencenProximos} facturas</p>
-                                <p className="text-xs text-muted-foreground mt-1">{fmt(importeVencenProximos)}€ pendientes de cobro</p>
-                            </div>
-                            <Clock className="w-8 h-8 text-amber-400/60" />
-                        </div>
-                    )}
-                    {importePendienteCobro > 0 && (
-                        <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between">
-                            <div>
-                                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Pendiente de cobro total</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{fmt(importePendienteCobro)}€</p>
-                                <p className="text-xs text-muted-foreground mt-1">{factPendientes} facturas emitidas sin cobrar</p>
-                            </div>
-                            <FileText className="w-8 h-8 text-muted-foreground/40" />
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Gráficos principales */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-primary" /> Evolución del Cashflow
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-6">Ingresos vs Gastos — Últimos 6 meses</p>
-                    <div className="h-[240px]">
-                        {cashflow.length === 0 || cashflow.every(c => c.ingresos === 0 && c.gastos === 0) ? (
-                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                                Sin datos de cashflow en los últimos 6 meses
-                            </div>
-                        ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={cashflow} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorIn2" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorOut2" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
-                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="month" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                                    <RTooltip content={<CustomTooltip />} />
-                                    <Legend wrapperStyle={{ fontSize: 12, color: "#71717a" }} />
-                                    <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn2)" />
-                                    <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut2)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        )}
+                {/* ── RESUMEN ───────────────────────────────────────────── */}
+                <TabsContent value="resumen" className="space-y-8 mt-0">
+                    {/* KPIs del periodo */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <KpiCard
+                            label={`Ingresos · ${periodLabel}`}
+                            value={`${fmt(ingresosPeriodo)}€`}
+                            sub={`${emitidasCount} emitidas en total`}
+                            icon={TrendingUp}
+                            color="emerald"
+                        />
+                        <KpiCard
+                            label={`Gastos · ${periodLabel}`}
+                            value={`${fmt(gastosPeriodo)}€`}
+                            sub={`${recibidasCount} recibidas en total`}
+                            icon={TrendingDown}
+                            color="red"
+                        />
+                        <KpiCard
+                            label="Beneficio del periodo"
+                            value={`${fmt(beneficioPeriodo)}€`}
+                            sub={`Margen: ${margenPeriodo}%`}
+                            icon={Activity}
+                            color="indigo"
+                        />
+                        <KpiCard
+                            label="Éxito agentes IA"
+                            value={`${tasksSuccessRate}%`}
+                            sub={`${tasksDone} tareas completadas`}
+                            icon={BrainCircuit}
+                            color="amber"
+                        />
                     </div>
-                </div>
 
-                <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-primary" /> Estado de Facturas
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-4">Distribución por importe (acumulado)</p>
-                    {pieData.length === 0 ? (
-                        <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
-                            Sin facturas emitidas
-                        </div>
-                    ) : (
-                        <>
-                            <div className="h-[180px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
-                                            {pieData.map((_, i) => (
-                                                <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
-                                            ))}
-                                        </Pie>
-                                        <RTooltip formatter={(v) => [`${fmt(Number(v ?? 0))}€`]} contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px", fontSize: "12px" }} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="space-y-2 mt-2">
-                                {pieData.map((d, i) => (
-                                    <div key={d.name} className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS_PIE[i % COLORS_PIE.length] }} />
-                                            <span className="text-muted-foreground">{d.name}</span>
-                                        </div>
-                                        <span className="text-foreground font-medium">{fmt(d.value)}€</span>
+                    {/* Avisos de cobro */}
+                    {(vencenProximos > 0 || importePendienteCobro > 0) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {vencenProximos > 0 && (
+                                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-amber-300 uppercase font-semibold tracking-wide">Vencen en 7 días</p>
+                                        <p className="text-xl font-bold text-foreground mt-1">{vencenProximos} facturas</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{fmt(importeVencenProximos)}€ pendientes de cobro</p>
                                     </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Bloques Banca y RRHH */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card border border-border rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-primary" /> Banca
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-5">
-                        Movimientos reales de {periodLabel} (excluye demo)
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Saldo actual</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{fmt(banca.saldo_actual)}€</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Movimientos</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{fmtInt(banca.transacciones_periodo)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-emerald-400 uppercase tracking-wide">Entradas</p>
-                            <p className="text-lg font-semibold text-emerald-400 mt-1">+{fmt(banca.entradas_periodo)}€</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-red-400 uppercase tracking-wide">Salidas</p>
-                            <p className="text-lg font-semibold text-red-400 mt-1">−{fmt(banca.salidas_periodo)}€</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-border text-xs">
-                        <span className="text-muted-foreground">Reconciliación</span>
-                        <span className="text-foreground font-medium">
-                            {banca.reconciliadas} / {banca.transacciones_periodo} conciliadas
-                            {banca.pendientes_conciliar > 0 && (
-                                <span className="text-amber-400 ml-2">({banca.pendientes_conciliar} pendientes)</span>
+                                    <Clock className="w-8 h-8 text-amber-400/60" />
+                                </div>
                             )}
-                        </span>
-                    </div>
-                </div>
-
-                <div className="bg-card border border-border rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-primary" /> Recursos Humanos
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-5">
-                        Plantilla y nóminas de {periodLabel}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Empleados activos</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{fmtInt(rrhh.empleados_activos)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Coste nóminas</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{fmt(rrhh.coste_nominas_periodo)}€</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-emerald-400 uppercase tracking-wide">Pagadas</p>
-                            <p className="text-lg font-semibold text-emerald-400 mt-1">{rrhh.nominas_pagadas}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-amber-400 uppercase tracking-wide">Pendientes</p>
-                            <p className="text-lg font-semibold text-amber-400 mt-1">{rrhh.nominas_pendientes}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Panel inferior: top clientes + facturación + IA */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-card border border-border rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" /> Top Clientes
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Por volumen en {periodLabel}</p>
-                    {topClientes.length === 0 ? (
-                        <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
-                            Sin clientes facturados este periodo
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {topClientes.map((c, i) => {
-                                const maxVal = topClientes[0].total || 1;
-                                const pct = Math.round((c.total / maxVal) * 100);
-                                return (
-                                    <div key={c.name}>
-                                        <div className="flex items-center justify-between mb-1.5 text-xs">
-                                            <span className="text-foreground font-medium truncate max-w-[160px]">{c.name}</span>
-                                            <span className="text-foreground font-semibold ml-2 shrink-0">{fmt(c.total)}€</span>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-700"
-                                                style={{
-                                                    width: `${pct}%`,
-                                                    background: `linear-gradient(90deg, ${COLORS_PIE[i % COLORS_PIE.length]}, ${COLORS_PIE[(i + 1) % COLORS_PIE.length]})`
-                                                }}
-                                            />
-                                        </div>
+                            {importePendienteCobro > 0 && (
+                                <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Pendiente de cobro total</p>
+                                        <p className="text-xl font-bold text-foreground mt-1">{fmt(importePendienteCobro)}€</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{factPendientes} facturas emitidas sin cobrar</p>
                                     </div>
-                                );
-                            })}
+                                    <FileText className="w-8 h-8 text-muted-foreground/40" />
+                                </div>
+                            )}
                         </div>
                     )}
-                </div>
 
-                <div className="bg-card border border-border rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-primary" /> Facturación por Mes
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Ingresos vs Gastos</p>
-                    <div className="h-[200px]">
-                        {cashflow.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sin datos mensuales</div>
-                        ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={cashflow} margin={{ top: 5, right: 5, left: -25, bottom: 0 }} barGap={4}>
-                                    <XAxis dataKey="month" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                                    <RTooltip content={<CustomTooltip />} />
-                                    <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="gastos" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
+                    {/* Gráficos principales */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
+                            <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-primary" /> Evolución del Cashflow
+                            </h2>
+                            <p className="text-xs text-muted-foreground mb-6">Ingresos vs Gastos — Últimos 6 meses</p>
+                            <div className="h-[240px]">
+                                {cashflow.length === 0 || cashflow.every(c => c.ingresos === 0 && c.gastos === 0) ? (
+                                    <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                                        Sin datos de cashflow en los últimos 6 meses
+                                    </div>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={cashflow} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorIn2" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                </linearGradient>
+                                                <linearGradient id="colorOut2" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
+                                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <XAxis dataKey="month" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                                            <RTooltip content={<CustomTooltip />} />
+                                            <Legend wrapperStyle={{ fontSize: 12, color: "#71717a" }} />
+                                            <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn2)" />
+                                            <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut2)" />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
+                            <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-primary" /> Estado de Facturas
+                            </h2>
+                            <p className="text-xs text-muted-foreground mb-4">Distribución por importe (acumulado)</p>
+                            {pieData.length === 0 ? (
+                                <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
+                                    Sin facturas emitidas
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="h-[180px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
+                                                    {pieData.map((_, i) => (
+                                                        <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <RTooltip formatter={(v) => [`${fmt(Number(v ?? 0))}€`]} contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", borderRadius: "8px", fontSize: "12px" }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="space-y-2 mt-2">
+                                        {pieData.map((d, i) => (
+                                            <div key={d.name} className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS_PIE[i % COLORS_PIE.length] }} />
+                                                    <span className="text-muted-foreground">{d.name}</span>
+                                                </div>
+                                                <span className="text-foreground font-medium">{fmt(d.value)}€</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
-                </div>
 
-                <div className="bg-card border border-border rounded-2xl p-6">
-                    <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <BrainCircuit className="w-4 h-4 text-primary" /> Rendimiento IA
-                    </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Estadísticas de agentes</p>
+                    {/* Resumen de estados de factura */}
+                    {!loading && (
+                        <div className="grid grid-cols-3 gap-4">
+                            {[
+                                { label: "Facturas Cobradas", count: factPagadas, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
+                                { label: "Facturas Pendientes", count: factPendientes, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/20" },
+                                { label: "Borradores", count: factBorrador, color: "text-muted-foreground", bg: "bg-muted border-border" },
+                            ].map(item => (
+                                <div key={item.label} className={`rounded-2xl border ${item.bg} p-5 flex items-center justify-between`}>
+                                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                                    <span className={`text-2xl font-bold ${item.color}`}>{item.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </TabsContent>
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between py-3 border-b border-border">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Completadas
-                            </div>
-                            <span className="text-emerald-400 font-bold text-sm">{tasksDone}</span>
+                {/* ── VENTAS ────────────────────────────────────────────── */}
+                <TabsContent value="ventas" className="space-y-6 mt-0">
+                    {/* KPIs ventas */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <KpiCard
+                            label={`Ingresos · ${periodLabel}`}
+                            value={`${fmt(ingresosPeriodo)}€`}
+                            sub={`${emitidasCount} facturas emitidas`}
+                            icon={TrendingUp}
+                            color="emerald"
+                        />
+                        <KpiCard
+                            label="Pendiente de cobro"
+                            value={`${fmt(importePendienteCobro)}€`}
+                            sub={`${factPendientes} sin cobrar`}
+                            icon={Clock}
+                            color="amber"
+                        />
+                        <KpiCard
+                            label="Facturas cobradas"
+                            value={`${factPagadas}`}
+                            sub={`${factBorrador} borradores`}
+                            icon={FileText}
+                            color="indigo"
+                        />
+                    </div>
+
+                    {/* Avisos de cobro */}
+                    {(vencenProximos > 0 || importePendienteCobro > 0) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {vencenProximos > 0 && (
+                                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-amber-300 uppercase font-semibold tracking-wide">Vencen en 7 días</p>
+                                        <p className="text-xl font-bold text-foreground mt-1">{vencenProximos} facturas</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{fmt(importeVencenProximos)}€ pendientes de cobro</p>
+                                    </div>
+                                    <Clock className="w-8 h-8 text-amber-400/60" />
+                                </div>
+                            )}
+                            {importePendienteCobro > 0 && (
+                                <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Pendiente de cobro total</p>
+                                        <p className="text-xl font-bold text-foreground mt-1">{fmt(importePendienteCobro)}€</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{factPendientes} facturas emitidas sin cobrar</p>
+                                    </div>
+                                    <FileText className="w-8 h-8 text-muted-foreground/40" />
+                                </div>
+                            )}
                         </div>
-                        <div className="flex items-center justify-between py-3 border-b border-border">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <XCircle className="w-4 h-4 text-red-400" /> Fallidas
-                            </div>
-                            <span className="text-red-400 font-bold text-sm">{tasksFailed}</span>
-                        </div>
-                        <div className="flex items-center justify-between py-3 border-b border-border">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Clock className="w-4 h-4 text-amber-400" /> En curso
-                            </div>
-                            <span className="text-amber-400 font-bold text-sm">{tasksPending}</span>
-                        </div>
-                        <div className="flex items-center justify-between py-3 border-b border-border">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Zap className="w-4 h-4 text-primary" /> Tasa de éxito
-                            </div>
-                            <span className="text-primary font-bold text-sm">{tasksSuccessRate}%</span>
+                    )}
+
+                    {/* Top clientes + Facturación por mes */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-card border border-border rounded-2xl p-6">
+                            <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                                <Users className="w-4 h-4 text-primary" /> Top Clientes
+                            </h2>
+                            <p className="text-xs text-muted-foreground mb-5">Por volumen en {periodLabel}</p>
+                            {topClientes.length === 0 ? (
+                                <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
+                                    Sin clientes facturados este periodo
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {topClientes.map((c, i) => {
+                                        const maxVal = topClientes[0].total || 1;
+                                        const pct = Math.round((c.total / maxVal) * 100);
+                                        return (
+                                            <div key={c.name}>
+                                                <div className="flex items-center justify-between mb-1.5 text-xs">
+                                                    <span className="text-foreground font-medium truncate max-w-[160px]">{c.name}</span>
+                                                    <span className="text-foreground font-semibold ml-2 shrink-0">{fmt(c.total)}€</span>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-700"
+                                                        style={{
+                                                            width: `${pct}%`,
+                                                            background: `linear-gradient(90deg, ${COLORS_PIE[i % COLORS_PIE.length]}, ${COLORS_PIE[(i + 1) % COLORS_PIE.length]})`
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
-                        <div className="pt-2">
-                            <div className="flex justify-between text-xs text-muted-foreground mb-2">
-                                <span>Fiabilidad global</span>
-                                <span className="text-foreground font-medium">{tasksSuccessRate}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-border rounded-full overflow-hidden">
-                                <div
-                                    className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-1000"
-                                    style={{ width: `${tasksSuccessRate}%` }}
-                                />
+                        <div className="bg-card border border-border rounded-2xl p-6">
+                            <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-primary" /> Facturación por Mes
+                            </h2>
+                            <p className="text-xs text-muted-foreground mb-5">Ingresos vs Gastos</p>
+                            <div className="h-[220px]">
+                                {cashflow.length === 0 ? (
+                                    <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sin datos mensuales</div>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={cashflow} margin={{ top: 5, right: 5, left: -25, bottom: 0 }} barGap={4}>
+                                            <XAxis dataKey="month" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                                            <RTooltip content={<CustomTooltip />} />
+                                            <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="gastos" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                )}
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Resumen de estados de factura */}
-            {!loading && (
-                <div className="grid grid-cols-3 gap-4">
-                    {[
-                        { label: "Facturas Cobradas", count: factPagadas, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
-                        { label: "Facturas Pendientes", count: factPendientes, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/20" },
-                        { label: "Borradores", count: factBorrador, color: "text-muted-foreground", bg: "bg-muted border-border" },
-                    ].map(item => (
-                        <div key={item.label} className={`rounded-2xl border ${item.bg} p-5 flex items-center justify-between`}>
-                            <span className="text-sm text-muted-foreground">{item.label}</span>
-                            <span className={`text-2xl font-bold ${item.color}`}>{item.count}</span>
+                    {/* Estados de factura */}
+                    {!loading && (
+                        <div className="grid grid-cols-3 gap-4">
+                            {[
+                                { label: "Facturas Cobradas", count: factPagadas, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
+                                { label: "Facturas Pendientes", count: factPendientes, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/20" },
+                                { label: "Borradores", count: factBorrador, color: "text-muted-foreground", bg: "bg-muted border-border" },
+                            ].map(item => (
+                                <div key={item.label} className={`rounded-2xl border ${item.bg} p-5 flex items-center justify-between`}>
+                                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                                    <span className={`text-2xl font-bold ${item.color}`}>{item.count}</span>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-            )}
+                    )}
+                </TabsContent>
+
+                {/* ── FINANZAS ──────────────────────────────────────────── */}
+                <TabsContent value="finanzas" className="space-y-6 mt-0">
+                    {/* KPIs finanzas */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <KpiCard
+                            label="Beneficio del periodo"
+                            value={`${fmt(beneficioPeriodo)}€`}
+                            sub={`Margen: ${margenPeriodo}%`}
+                            icon={Activity}
+                            color="indigo"
+                        />
+                        <KpiCard
+                            label={`Gastos · ${periodLabel}`}
+                            value={`${fmt(gastosPeriodo)}€`}
+                            sub={`${recibidasCount} facturas recibidas`}
+                            icon={TrendingDown}
+                            color="red"
+                        />
+                        <KpiCard
+                            label="Saldo bancario"
+                            value={`${fmt(banca.saldo_actual)}€`}
+                            sub={`${banca.transacciones_periodo} movimientos`}
+                            icon={Wallet}
+                            color="emerald"
+                        />
+                    </div>
+
+                    {/* Banca */}
+                    <div className="bg-card border border-border rounded-2xl p-6">
+                        <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                            <Wallet className="w-4 h-4 text-primary" /> Banca
+                        </h2>
+                        <p className="text-xs text-muted-foreground mb-5">
+                            Movimientos reales de {periodLabel} (excluye demo)
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide">Saldo actual</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{fmt(banca.saldo_actual)}€</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide">Movimientos</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{fmtInt(banca.transacciones_periodo)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-emerald-400 uppercase tracking-wide">Entradas</p>
+                                <p className="text-2xl font-semibold text-emerald-400 mt-1">+{fmt(banca.entradas_periodo)}€</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-red-400 uppercase tracking-wide">Salidas</p>
+                                <p className="text-2xl font-semibold text-red-400 mt-1">−{fmt(banca.salidas_periodo)}€</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-border text-xs">
+                            <span className="text-muted-foreground">Reconciliación</span>
+                            <span className="text-foreground font-medium">
+                                {banca.reconciliadas} / {banca.transacciones_periodo} conciliadas
+                                {banca.pendientes_conciliar > 0 && (
+                                    <span className="text-amber-400 ml-2">({banca.pendientes_conciliar} pendientes)</span>
+                                )}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Cashflow */}
+                    <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
+                        <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-primary" /> Evolución del Cashflow
+                        </h2>
+                        <p className="text-xs text-muted-foreground mb-6">Ingresos vs Gastos — Últimos 6 meses</p>
+                        <div className="h-[260px]">
+                            {cashflow.length === 0 || cashflow.every(c => c.ingresos === 0 && c.gastos === 0) ? (
+                                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                                    Sin datos de cashflow en los últimos 6 meses
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={cashflow} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorIn3" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorOut3" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
+                                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <XAxis dataKey="month" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                                        <RTooltip content={<CustomTooltip />} />
+                                        <Legend wrapperStyle={{ fontSize: 12, color: "#71717a" }} />
+                                        <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn3)" />
+                                        <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut3)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                    </div>
+                </TabsContent>
+
+                {/* ── RRHH ──────────────────────────────────────────────── */}
+                <TabsContent value="rrhh" className="space-y-6 mt-0">
+                    {/* KPIs RRHH */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <KpiCard
+                            label="Empleados activos"
+                            value={`${fmtInt(rrhh.empleados_activos)}`}
+                            icon={Users}
+                            color="indigo"
+                        />
+                        <KpiCard
+                            label="Coste nóminas"
+                            value={`${fmt(rrhh.coste_nominas_periodo)}€`}
+                            sub={`Periodo: ${periodLabel}`}
+                            icon={Briefcase}
+                            color="red"
+                        />
+                        <KpiCard
+                            label="Nóminas pagadas"
+                            value={`${rrhh.nominas_pagadas}`}
+                            icon={CheckCircle2}
+                            color="emerald"
+                        />
+                        <KpiCard
+                            label="Nóminas pendientes"
+                            value={`${rrhh.nominas_pendientes}`}
+                            icon={Clock}
+                            color="amber"
+                        />
+                    </div>
+
+                    <div className="bg-card border border-border rounded-2xl p-6">
+                        <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-primary" /> Recursos Humanos
+                        </h2>
+                        <p className="text-xs text-muted-foreground mb-5">
+                            Plantilla y nóminas de {periodLabel}
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide">Empleados activos</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{fmtInt(rrhh.empleados_activos)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide">Coste nóminas</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{fmt(rrhh.coste_nominas_periodo)}€</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-emerald-400 uppercase tracking-wide">Pagadas</p>
+                                <p className="text-2xl font-semibold text-emerald-400 mt-1">{rrhh.nominas_pagadas}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-amber-400 uppercase tracking-wide">Pendientes</p>
+                                <p className="text-2xl font-semibold text-amber-400 mt-1">{rrhh.nominas_pendientes}</p>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                {/* ── IA ────────────────────────────────────────────────── */}
+                <TabsContent value="ia" className="space-y-6 mt-0">
+                    {/* KPIs IA */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <KpiCard
+                            label="Tasa de éxito"
+                            value={`${tasksSuccessRate}%`}
+                            sub="Fiabilidad global"
+                            icon={Zap}
+                            color="indigo"
+                        />
+                        <KpiCard
+                            label="Completadas"
+                            value={`${tasksDone}`}
+                            icon={CheckCircle2}
+                            color="emerald"
+                        />
+                        <KpiCard
+                            label="En curso"
+                            value={`${tasksPending}`}
+                            icon={Clock}
+                            color="amber"
+                        />
+                        <KpiCard
+                            label="Fallidas"
+                            value={`${tasksFailed}`}
+                            icon={XCircle}
+                            color="red"
+                        />
+                    </div>
+
+                    <div className="bg-card border border-border rounded-2xl p-6 max-w-lg">
+                        <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                            <BrainCircuit className="w-4 h-4 text-primary" /> Rendimiento IA
+                        </h2>
+                        <p className="text-xs text-muted-foreground mb-5">Estadísticas de agentes</p>
+
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between py-3 border-b border-border">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Completadas
+                                </div>
+                                <span className="text-emerald-400 font-bold text-sm">{tasksDone}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-3 border-b border-border">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <XCircle className="w-4 h-4 text-red-400" /> Fallidas
+                                </div>
+                                <span className="text-red-400 font-bold text-sm">{tasksFailed}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-3 border-b border-border">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Clock className="w-4 h-4 text-amber-400" /> En curso
+                                </div>
+                                <span className="text-amber-400 font-bold text-sm">{tasksPending}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-3 border-b border-border">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Zap className="w-4 h-4 text-primary" /> Tasa de éxito
+                                </div>
+                                <span className="text-primary font-bold text-sm">{tasksSuccessRate}%</span>
+                            </div>
+
+                            <div className="pt-2">
+                                <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                                    <span>Fiabilidad global</span>
+                                    <span className="text-foreground font-medium">{tasksSuccessRate}%</span>
+                                </div>
+                                <div className="w-full h-2 bg-border rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-1000"
+                                        style={{ width: `${tasksSuccessRate}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

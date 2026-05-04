@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.hr import Candidate, RecruitmentPosition
+from app.db.models.hr import Attendance, Candidate, Expense, LeaveRequest, RecruitmentPosition, WorkSchedule
 from app.db.models.hr_documents import HRDocument
 from app.db.models.models import Employee
 from app.prompts import load_prompt
@@ -377,6 +377,153 @@ async def list_candidates(db: AsyncSession, tenant_id: UUID, position_id: UUID) 
         .order_by(Candidate.score.desc().nullslast())
     )
     return list(result.scalars().all())
+
+
+# ── Schedule queries ─────────────────────────────────────────────────────────
+
+
+async def list_schedules(db: AsyncSession, tenant_id) -> dict:
+    """Return schedules grouped by employee_id → list of day rows."""
+    result = await db.execute(
+        select(WorkSchedule)
+        .where(WorkSchedule.tenant_id == tenant_id)
+        .order_by(WorkSchedule.employee_id, WorkSchedule.day_of_week)
+    )
+    rows = result.scalars().all()
+    grouped: dict = {}
+    for r in rows:
+        key = str(r.employee_id)
+        grouped.setdefault(key, []).append(_schedule_row(r))
+    return grouped
+
+
+async def get_employee_schedule(db: AsyncSession, tenant_id, employee_id: UUID) -> list[dict]:
+    result = await db.execute(
+        select(WorkSchedule)
+        .where(WorkSchedule.tenant_id == tenant_id, WorkSchedule.employee_id == employee_id)
+        .order_by(WorkSchedule.day_of_week)
+    )
+    return [_schedule_row(r) for r in result.scalars().all()]
+
+
+def _schedule_row(r: WorkSchedule) -> dict:
+    return {
+        "id": str(r.id),
+        "employee_id": str(r.employee_id),
+        "day_of_week": r.day_of_week,
+        "start_time": r.start_time,
+        "end_time": r.end_time,
+        "active": r.active,
+    }
+
+
+# ── Attendance queries ────────────────────────────────────────────────────────
+
+
+async def list_attendance(db: AsyncSession, tenant_id, date=None) -> list[dict]:
+    """Return attendance records for a day (defaults to today)."""
+    from datetime import date as date_type
+
+    target = date or date_type.today()
+    result = await db.execute(
+        select(Attendance)
+        .where(Attendance.tenant_id == tenant_id, Attendance.date == target)
+        .order_by(Attendance.clock_in)
+    )
+    return [_attendance_row(r) for r in result.scalars().all()]
+
+
+async def get_currently_working(db: AsyncSession, tenant_id) -> list[dict]:
+    """Return attendance records where clock_out IS NULL."""
+    result = await db.execute(
+        select(Attendance)
+        .where(Attendance.tenant_id == tenant_id, Attendance.clock_out.is_(None))
+        .order_by(Attendance.clock_in)
+    )
+    return [_attendance_row(r) for r in result.scalars().all()]
+
+
+def _attendance_row(r: Attendance) -> dict:
+    return {
+        "id": str(r.id),
+        "employee_id": str(r.employee_id),
+        "clock_in": r.clock_in.isoformat() if r.clock_in else None,
+        "clock_out": r.clock_out.isoformat() if r.clock_out else None,
+        "date": r.date.isoformat() if r.date else None,
+        "notes": r.notes,
+    }
+
+
+# ── Leave request queries ─────────────────────────────────────────────────────
+
+
+async def list_leave_requests(
+    db: AsyncSession, tenant_id, status_filter: str | None = None
+) -> list[dict]:
+    q = select(LeaveRequest).where(LeaveRequest.tenant_id == tenant_id)
+    if status_filter:
+        q = q.where(LeaveRequest.status == status_filter)
+    result = await db.execute(q.order_by(LeaveRequest.created_at.desc()))
+    return [_leave_request_row(r) for r in result.scalars().all()]
+
+
+def _leave_request_row(r: LeaveRequest) -> dict:
+    return {
+        "id": str(r.id),
+        "employee_id": str(r.employee_id),
+        "leave_type": r.leave_type,
+        "start_date": r.start_date.isoformat() if r.start_date else None,
+        "end_date": r.end_date.isoformat() if r.end_date else None,
+        "status": r.status,
+        "notes": r.notes,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+# ── Expense queries ───────────────────────────────────────────────────────────
+
+
+async def list_expenses(
+    db: AsyncSession, tenant_id, status_filter: str | None = None, employee_id=None
+) -> list[dict]:
+    q = (
+        select(Expense)
+        .where(Expense.tenant_id == tenant_id)
+        .options(__import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(Expense.employee))
+    )
+    if status_filter:
+        q = q.where(Expense.status == status_filter)
+    if employee_id:
+        q = q.where(Expense.employee_id == employee_id)
+    result = await db.execute(q.order_by(Expense.created_at.desc()))
+    return [_expense_row(r) for r in result.scalars().all()]
+
+
+def _expense_row(r: Expense) -> dict:
+    emp = r.employee if r.employee else None
+    return {
+        "id": str(r.id),
+        "employee_id": str(r.employee_id),
+        "employee_name": emp.name if emp else None,
+        "amount": float(r.amount),
+        "category": r.category,
+        "description": r.description,
+        "date": r.date.isoformat() if r.date else None,
+        "status": r.status,
+        "receipt_filename": r.receipt_filename,
+        "notes": r.notes,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+async def get_expense_receipt_path(db: AsyncSession, tenant_id, expense_id) -> tuple[str, str] | None:
+    result = await db.execute(
+        select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id)
+    )
+    exp = result.scalar_one_or_none()
+    if not exp or not exp.receipt_path:
+        return None
+    return exp.receipt_path, exp.receipt_filename or "recibo"
 
 
 # ── Re-exports from sub-modules ──────────────────────────────────────────────

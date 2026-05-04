@@ -1,4 +1,4 @@
-"""Gestión de plantillas de contrato: CRUD, preview, guardado y generación."""
+﻿"""GestiÃ³n de plantillas de contrato: CRUD, preview, guardado y generaciÃ³n."""
 
 import logging
 import os
@@ -25,7 +25,7 @@ async def upload_contract_template(
     if ext not in {".docx", ".doc", ".odt"}:
         raise ValueError("Solo se permiten archivos .docx, .doc u .odt")
     if len(contents) > 20 * 1024 * 1024:
-        raise ValueError("Archivo demasiado grande (máx. 20MB)")
+        raise ValueError("Archivo demasiado grande (mÃ¡x. 20MB)")
 
     file_path = save_file_to_disk(contents, ext)
     doc = TenantDocument(
@@ -81,7 +81,7 @@ async def delete_contract_template(doc_id: uuid.UUID, tenant_id, db: AsyncSessio
             os.remove(doc.file_path)
         except OSError:
             logger.warning("No se pudo eliminar archivo: %s", doc.file_path)
-    await db.delete(doc)
+    db.delete(doc)
     await db.commit()
     return True
 
@@ -104,7 +104,7 @@ def preview_contract_html(file_path: str) -> dict:
 
 
 def save_contract_html(html: str, file_path: str) -> int:
-    """Guarda HTML editado como .docx. Retorna nuevo tamaño. Lanza ImportError, ValueError, OSError."""
+    """Guarda HTML editado como .docx. Retorna nuevo tamaÃ±o. Lanza ImportError, ValueError, OSError."""
     from app.services.documents.docx_html_save import save_html_as_docx
 
     save_html_as_docx(html, file_path)
@@ -116,7 +116,7 @@ async def save_contract_html_and_update(
     doc: TenantDocument,
     db: AsyncSession,
 ) -> int:
-    """Guarda HTML como .docx y actualiza el tamaño en BD. Retorna nuevo tamaño.
+    """Guarda HTML como .docx y actualiza el tamaÃ±o en BD. Retorna nuevo tamaÃ±o.
 
     Lanza FileNotFoundError, ImportError, ValueError, OSError.
     """

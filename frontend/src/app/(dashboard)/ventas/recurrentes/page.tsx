@@ -4,6 +4,9 @@ import { useRecurrentes, fmt } from "./_hooks/useRecurrentes";
 import RecurringList from "./_components/RecurringList";
 import RecurringModal from "./_components/RecurringModal";
 import { RefreshCw, Plus, Search, Loader2, AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function RecurrentesPage() {
     const {
@@ -18,16 +21,17 @@ export default function RecurrentesPage() {
     } = useRecurrentes();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("recurring")}</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">{t("recurringDescription")}</p>
-                </div>
-                <button onClick={openNew} className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
-                    <Plus className="w-4 h-4" /> {t("newRecurring")}
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title={t("recurring")}
+                description={t("recurringDescription")}
+                icon={RefreshCw}
+                actions={
+                    <Button onClick={openNew}>
+                        <Plus className="w-4 h-4 mr-2" /> {t("newRecurring")}
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-3 gap-4">
                 <div className="bg-card border border-border rounded-2xl p-5">
@@ -53,8 +57,12 @@ export default function RecurrentesPage() {
 
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <input type="text" placeholder={t("recurringSearchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-card border border-border text-foreground text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-primary transition-colors" />
+                <Input
+                    placeholder={t("recurringSearchPlaceholder")}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="pl-9"
+                />
             </div>
 
             {loading ? (
@@ -69,7 +77,7 @@ export default function RecurrentesPage() {
                         {recurrings.length === 0 ? t("recurringEmptyDescription") : t("recurringNoResults", { search })}
                     </p>
                     {recurrings.length === 0 && (
-                        <button onClick={openNew} className="mt-6 bg-primary hover:bg-primary text-foreground text-sm px-4 py-2 rounded-xl transition-colors">{t("createTemplate")}</button>
+                        <Button onClick={openNew} className="mt-6">{t("createTemplate")}</Button>
                     )}
                 </div>
             ) : (

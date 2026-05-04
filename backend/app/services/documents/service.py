@@ -1,12 +1,12 @@
-"""Servicio de dominio para gestión documental.
+﻿"""Servicio de dominio para gestiÃ³n documental.
 
-Encapsula: subida/descarga de archivos, clasificación automática,
-escaneo, procesamiento ZIP, importación de BD tabulares, y plantillas de contrato.
+Encapsula: subida/descarga de archivos, clasificaciÃ³n automÃ¡tica,
+escaneo, procesamiento ZIP, importaciÃ³n de BD tabulares, y plantillas de contrato.
 
-Sub-módulos extraídos:
-- _file_ops: validación, guardado, clasificación por extensión, ZIP
-- _contracts: plantillas de contrato (CRUD, preview, generación)
-- _tabular: parseo e importación de archivos tabulares
+Sub-mÃ³dulos extraÃ­dos:
+- _file_ops: validaciÃ³n, guardado, clasificaciÃ³n por extensiÃ³n, ZIP
+- _contracts: plantillas de contrato (CRUD, preview, generaciÃ³n)
+- _tabular: parseo e importaciÃ³n de archivos tabulares
 """
 
 import io
@@ -31,7 +31,7 @@ from app.services.documents._contracts import (  # noqa: F401
     upload_contract_template,
 )
 
-# ── Re-exports desde sub-módulos ─────────────────────────────────────────────
+# â”€â”€ Re-exports desde sub-mÃ³dulos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 from app.services.documents._file_ops import (
     UPLOAD_DIR,
     auto_classify_category,
@@ -48,7 +48,7 @@ from app.services.documents._tabular import (  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-# ── Dispatch interno ────────────────────────────────────────────────────────
+# â”€â”€ Dispatch interno â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def _dispatch_task(
@@ -81,10 +81,10 @@ async def _dispatch_task(
 
         await dispatch_orchestrator(str(task.id))
     except Exception as e:
-        logger.warning("Orchestrator dispatch falló para doc %s: %s", doc.id, e)
+        logger.warning("Orchestrator dispatch fallÃ³ para doc %s: %s", doc.id, e)
 
 
-# ── Upload ──────────────────────────────────────────────────────────────────
+# â”€â”€ Upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def upload_single(
@@ -125,7 +125,7 @@ async def upload_single(
     return doc
 
 
-# ── Scan (clasificación automática) ──────────────────────────────────────────
+# â”€â”€ Scan (clasificaciÃ³n automÃ¡tica) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def scan_single(
@@ -166,7 +166,7 @@ async def scan_single(
     return doc, auto_cat
 
 
-# ── Bulk upload (ZIP) ────────────────────────────────────────────────────────
+# â”€â”€ Bulk upload (ZIP) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def upload_bulk(
@@ -209,7 +209,7 @@ async def upload_bulk(
     return docs
 
 
-# ── Export ────────────────────────────────────────────────────────────────────
+# â”€â”€ Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def export_all(tenant_id, db: AsyncSession) -> bytes:
@@ -244,7 +244,7 @@ async def export_all(tenant_id, db: AsyncSession) -> bytes:
     return zip_buffer.getvalue()
 
 
-# ── List / Get / Delete ──────────────────────────────────────────────────────
+# â”€â”€ List / Get / Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def list_documents(
@@ -293,12 +293,12 @@ async def delete_document(doc_id: uuid.UUID, tenant_id, db: AsyncSession) -> boo
             except OSError:
                 logger.warning("No se pudo eliminar archivo: %s", fallback)
 
-    await db.delete(doc)
+    db.delete(doc)
     await db.commit()
     return True
 
 
-# ── Download con regeneración PDF ────────────────────────────────────────────
+# â”€â”€ Download con regeneraciÃ³n PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def _resolve_file_path(doc: TenantDocument) -> str | None:
@@ -335,7 +335,7 @@ async def prepare_download(doc: TenantDocument, tenant_id, db: AsyncSession) -> 
             if header != b"%PDF-":
                 await _regenerate_ai_invoice_pdf(doc, file_path, tenant_id, db)
         except Exception:
-            pass  # No bloquear descarga por errores de regeneración
+            pass  # No bloquear descarga por errores de regeneraciÃ³n
 
     return file_path
 
@@ -382,7 +382,7 @@ async def _regenerate_ai_invoice_pdf(
     company_nif = extracted_data.get("issuer_nif") or (
         tenant_obj.nif if tenant_obj else "B00000000"
     )
-    company_address = extracted_data.get("issuer_address") or "Calle Principal, 1 · Madrid"
+    company_address = extracted_data.get("issuer_address") or "Calle Principal, 1 Â· Madrid"
     company_email = extracted_data.get("issuer_email") or ""
 
     invoice_data = {
@@ -423,7 +423,7 @@ async def _regenerate_ai_invoice_pdf(
 
     pdf_bytes = generate_invoice_pdf(invoice_data)
     if not pdf_bytes.startswith(b"%PDF-"):
-        raise ValueError("No se pudo regenerar el PDF (bytes inválidos)")
+        raise ValueError("No se pudo regenerar el PDF (bytes invÃ¡lidos)")
 
     with open(file_path, "wb") as f:
         f.write(pdf_bytes)
@@ -434,7 +434,7 @@ async def _regenerate_ai_invoice_pdf(
     await db.commit()
 
 
-# ── Update content ───────────────────────────────────────────────────────────
+# â”€â”€ Update content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def update_content(

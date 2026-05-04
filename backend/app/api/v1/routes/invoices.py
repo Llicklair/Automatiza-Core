@@ -1,18 +1,22 @@
 """Rutas para facturas — thin controller."""
 
 import logging
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.erp import InvoiceCreate, InvoiceResponse, InvoiceStatusUpdate
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
+from app.db.models.auth import Tenant
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as svc
+from app.services.billing.facturae import generate_facturae_xml, mark_verifactu_sent
 from app.services.event_bus import emit_event
 
 logger = logging.getLogger(__name__)
@@ -199,3 +203,47 @@ async def download_retention_invoice_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
+
+
+@router.get("/invoices/{invoice_id}/facturae", tags=["erp"])
+@limiter.limit("20/minute")
+async def download_facturae(
+    request: Request,
+    invoice_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        xml_bytes, file_name = await generate_facturae_xml(invoice_id, current_user.tenant_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Auto-sign if tenant has a certificate
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    if tenant and tenant.cert_path and Path(tenant.cert_path).exists():
+        try:
+            from app.services.billing.xades_signer import sign_xml
+            xml_bytes = sign_xml(xml_bytes, tenant.cert_path, tenant.cert_password or "")
+        except Exception as exc:
+            logger.warning("XAdES signing failed, returning unsigned XML: %s", exc)
+
+    return Response(
+        content=xml_bytes,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
+
+
+@router.post("/invoices/{invoice_id}/verifactu-send", tags=["erp"])
+@limiter.limit("10/minute")
+async def send_to_verifactu(
+    request: Request,
+    invoice_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return await mark_verifactu_sent(invoice_id, current_user.tenant_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

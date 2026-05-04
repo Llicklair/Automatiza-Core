@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText, Plus, Euro, Clock, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/data-table";
@@ -65,13 +66,11 @@ export default function FacturasPage() {
             <div className="flex flex-wrap items-end gap-4">
                 <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("from")}</label>
-                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                        className="bg-muted border border-border rounded-xl px-3 py-2 text-foreground text-sm outline-none focus:border-primary/20" />
+                    <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
                 </div>
                 <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("to")}</label>
-                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                        className="bg-muted border border-border rounded-xl px-3 py-2 text-foreground text-sm outline-none focus:border-primary/20" />
+                    <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
                 </div>
                 {(dateFrom || dateTo) && (
                     <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>

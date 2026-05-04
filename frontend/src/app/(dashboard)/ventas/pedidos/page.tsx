@@ -4,6 +4,9 @@ import { usePedidos } from "./_hooks/usePedidos";
 import OrderCard from "./_components/OrderCard";
 import OrderModal from "./_components/OrderModal";
 import { ClipboardList, Plus, Search, Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function PedidosPage() {
     const {
@@ -17,16 +20,17 @@ export default function PedidosPage() {
     } = usePedidos();
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("orders")}</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">{t("ordersDescription")}</p>
-                </div>
-                <button onClick={openNew} className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
-                    <Plus className="w-4 h-4" /> {t("newOrder")}
-                </button>
-            </div>
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+            <PageHeader
+                title={t("orders")}
+                description={t("ordersDescription")}
+                icon={ClipboardList}
+                actions={
+                    <Button onClick={openNew}>
+                        <Plus className="w-4 h-4 mr-2" /> {t("newOrder")}
+                    </Button>
+                }
+            />
 
             <div className="grid grid-cols-3 gap-4">
                 {[
@@ -43,8 +47,12 @@ export default function PedidosPage() {
 
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <input type="text" placeholder={t("searchOrderPlaceholder")} value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-card border border-border text-foreground text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-primary transition-colors" />
+                <Input
+                    placeholder={t("searchOrderPlaceholder")}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="pl-9"
+                />
             </div>
 
             {loading ? (
@@ -59,7 +67,7 @@ export default function PedidosPage() {
                         {orders.length === 0 ? t("orderEmptyDescription") : t("orderNoMatch", { search })}
                     </p>
                     {orders.length === 0 && (
-                        <button onClick={openNew} className="mt-6 bg-primary hover:bg-primary text-foreground text-sm px-4 py-2 rounded-xl transition-colors">{t("createOrder")}</button>
+                        <Button onClick={openNew} className="mt-6">{t("createOrder")}</Button>
                     )}
                 </div>
             ) : (

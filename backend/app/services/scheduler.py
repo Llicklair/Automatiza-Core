@@ -54,6 +54,17 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # Diario a las 8:30 (Europe/Madrid): alertas automáticas de negocio
+    from app.services.alerts import run_daily_alerts
+
+    scheduler.add_job(
+        run_daily_alerts,
+        CronTrigger(hour=8, minute=30),
+        id="daily_alerts",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     # Diario a las 4:00 (Europe/Madrid): backup pg_dump + rotación.
     # Hora baja para no competir con la actividad del usuario.
     from app.services.backup import run_backup_job

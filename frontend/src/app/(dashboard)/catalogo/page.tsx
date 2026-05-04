@@ -1,6 +1,7 @@
 "use client";
 
-import { Package, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Package, Plus, Pencil, Trash2, Loader2, Upload } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
@@ -10,6 +11,8 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useCatalogPage } from "./_hooks/useCatalogPage";
 import { ProductModal } from "./_components/ProductModal";
+import { ImportCsvModal } from "@/components/shared/ImportCsvModal";
+import { api } from "@/lib/api";
 
 const fmt = (val: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(val);
@@ -22,6 +25,8 @@ export default function CatalogPage() {
         isSubmitting, deletingId,
         openCreate, openEdit, handleSubmit, handleDelete,
     } = useCatalogPage();
+
+    const [showImport, setShowImport] = useState(false);
 
     const columns: ColumnDef<Product, any>[] = [
         {
@@ -106,9 +111,14 @@ export default function CatalogPage() {
                 description="Gestiona productos y servicios. La IA los usa para emitir facturas y presupuestos."
                 icon={Package}
                 actions={
-                    <Button onClick={openCreate}>
-                        <Plus className="mr-2 h-4 w-4" />Nuevo Artículo
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
+                            <Upload className="mr-2 h-4 w-4" /> Importar CSV
+                        </Button>
+                        <Button onClick={openCreate}>
+                            <Plus className="mr-2 h-4 w-4" />Nuevo Artículo
+                        </Button>
+                    </div>
                 }
             />
 
@@ -144,6 +154,22 @@ export default function CatalogPage() {
                     isSubmitting={isSubmitting}
                 />
             )}
+
+            <ImportCsvModal
+                open={showImport}
+                onClose={() => setShowImport(false)}
+                entityName="productos"
+                columns={[
+                    { header: "Nombre", field: "nombre", required: true, example: "Servicio de consultoría" },
+                    { header: "SKU", field: "sku", example: "SRV-001" },
+                    { header: "Descripción", field: "descripcion", example: "Consultoría hora" },
+                    { header: "Precio", field: "precio", required: true, example: "150.00" },
+                    { header: "IVA %", field: "iva", example: "21" },
+                    { header: "Stock", field: "stock", example: "0" },
+                ]}
+                onImport={(rows) => api.importBulk.products(rows)}
+                onSuccess={() => window.location.reload()}
+            />
         </div>
     );
 }
