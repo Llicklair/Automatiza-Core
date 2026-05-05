@@ -54,6 +54,21 @@ async def _ensure_schema() -> None:
             updated_at TIMESTAMP NOT NULL DEFAULT NOW()
         )""",
         "CREATE INDEX IF NOT EXISTS ix_generated_uis_tenant_id ON generated_uis(tenant_id)",
+        """CREATE TABLE IF NOT EXISTS user_invitations (
+            id UUID PRIMARY KEY,
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            email VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL DEFAULT 'employee',
+            token_hash VARCHAR(64) NOT NULL UNIQUE,
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            used_at TIMESTAMP WITH TIME ZONE,
+            used_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS ix_user_invitations_tenant_id ON user_invitations(tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_user_invitations_email ON user_invitations(email)",
+        "CREATE INDEX IF NOT EXISTS ix_user_invitations_token_hash ON user_invitations(token_hash)",
     ]
     try:
         async with engine.begin() as conn:

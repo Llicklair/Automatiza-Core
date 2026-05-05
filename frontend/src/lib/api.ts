@@ -51,4 +51,14 @@ export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDri
 export type { SearchResult, PortalData } from "./api/index";
 export type { AlertEntry } from "./api/alerts";
 export type { UnifiedCalendarEvent } from "./api/calendar_unified";
-export type { User, UserCreate, UserUpdate } from "./api/users";
+export type {
+    User,
+    UserCreate,
+    UserUpdate,
+    Invitation,
+    InvitationCreated,
+    InvitationCreate,
+    InvitationPublic,
+    InvitationAccept,
+    InvitationAcceptResponse,
+} from "./api/users";

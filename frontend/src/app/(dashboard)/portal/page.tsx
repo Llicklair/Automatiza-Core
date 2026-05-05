@@ -2,10 +2,12 @@
 import { useState, useEffect } from "react";
 import {
     User, Briefcase, FileText, Umbrella, Plus, Download,
-    Check, Clock, X, Banknote, Receipt, Loader2, Upload,
+    Check, Clock, X, Banknote, Receipt, Loader2, Upload, Eye,
+    Play, StopCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { PortalData, LeaveRequest, Payroll, Expense } from "@/lib/api";
+import type { PortalData, LeaveRequest, Payroll, Expense, Employee } from "@/lib/api";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -63,9 +65,21 @@ function currency(n: number) {
 }
 
 export default function PortalPage() {
+    const role = useUserRole();
+    const isAdmin = role === "admin";
+
     const [tab, setTab] = useState<Tab>("ficha");
     const [data, setData] = useState<PortalData | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // Admin "view as employee" mode
+    const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+    const readOnly = !!data?.read_only;
+
+    // Clock in/out
+    const [clockBusy, setClockBusy] = useState(false);
+    const [clockError, setClockError] = useState<string | null>(null);
 
     // Leave request modal
     const [showLeave, setShowLeave] = useState(false);
@@ -81,22 +95,75 @@ export default function PortalPage() {
     const [expenseError, setExpenseError] = useState<string | null>(null);
     const [uploadingReceiptId, setUploadingReceiptId] = useState<string | null>(null);
 
-    const load = async () => {
+    const load = async (asEmployeeId?: string) => {
         setLoading(true);
         try {
-            const portalData = await api.portal.me();
+            const portalData = asEmployeeId
+                ? await api.portal.meAs(asEmployeeId)
+                : await api.portal.me();
             setData(portalData);
             if (portalData.employee) {
                 try {
                     const exps = await api.hr.expenses.list(undefined, portalData.employee.id);
                     setMyExpenses(exps);
                 } catch { /* noop */ }
+            } else {
+                setMyExpenses([]);
             }
         } catch { /* noop */ }
         finally { setLoading(false); }
     };
 
     useEffect(() => { load(); }, []);
+
+    // Admin: load employees list for the "view as" selector
+    useEffect(() => {
+        if (!isAdmin) return;
+        (async () => {
+            try {
+                const list = await api.hr.employees.list();
+                setEmployeesList(list);
+            } catch { /* noop */ }
+        })();
+    }, [isAdmin]);
+
+    const handleSelectEmployee = (empId: string) => {
+        setSelectedEmployeeId(empId);
+        load(empId || undefined);
+    };
+
+    const handleClockIn = async () => {
+        setClockBusy(true);
+        setClockError(null);
+        try {
+            await api.portal.clockIn();
+            await load();
+        } catch (e) {
+            setClockError(e instanceof Error ? e.message : "No se pudo fichar la entrada");
+        } finally {
+            setClockBusy(false);
+        }
+    };
+
+    const handleClockOut = async () => {
+        setClockBusy(true);
+        setClockError(null);
+        try {
+            await api.portal.clockOut();
+            await load();
+        } catch (e) {
+            setClockError(e instanceof Error ? e.message : "No se pudo fichar la salida");
+        } finally {
+            setClockBusy(false);
+        }
+    };
+
+    const formatClockTime = (iso: string | null | undefined) => {
+        if (!iso) return "—";
+        return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    };
+
+    const DAY_LABELS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
     const handleSubmitExpense = async () => {
         if (!expenseForm.amount || !expenseForm.description || !expenseForm.date) {
@@ -163,13 +230,87 @@ export default function PortalPage() {
                     solicitas vacaciones y reportas gastos para reembolso. Todo lo que envías
                     queda registrado y pasa por la aprobación de RRHH.
                 </p>
+
+                {isAdmin && (
+                    <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl">
+                        <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
+                            <p className="text-xs font-medium text-foreground mb-1">Vista de admin</p>
+                            <p className="text-xs text-muted-foreground">
+                                Como admin no tienes ficha aquí. Selecciona un empleado para previsualizar Mi portal en modo lectura.
+                            </p>
+                        </div>
+                        <select
+                            value={selectedEmployeeId}
+                            onChange={(e) => handleSelectEmployee(e.target.value)}
+                            className="bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-primary/20 outline-none min-w-[220px]"
+                        >
+                            <option value="">— Mi propio portal —</option>
+                            {employeesList.map((e) => (
+                                <option key={e.id} value={e.id}>
+                                    {e.name}{e.email ? ` · ${e.email}` : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {readOnly && (
+                    <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
+                        <Eye className="w-4 h-4 shrink-0" />
+                        <span>Estás viendo Mi portal de otro empleado en <strong>modo lectura</strong>. No puedes solicitar vacaciones ni gastos en su nombre.</span>
+                    </div>
+                )}
+
+                {emp && (
+                    <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl">
+                        <Clock className={`w-5 h-5 shrink-0 ${data?.active_attendance ? "text-emerald-400" : "text-muted-foreground"}`} />
+                        <div className="flex-1">
+                            <p className="text-xs font-medium text-foreground">
+                                {data?.active_attendance
+                                    ? `Trabajando desde las ${formatClockTime(data.active_attendance.clock_in)}`
+                                    : "No tienes ningún fichaje activo"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {data?.active_attendance
+                                    ? "Recuerda fichar la salida al terminar tu jornada."
+                                    : "Pulsa para registrar tu entrada cuando empieces a trabajar."}
+                            </p>
+                        </div>
+                        {data?.active_attendance ? (
+                            <button
+                                onClick={handleClockOut}
+                                disabled={readOnly || clockBusy}
+                                className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+                            >
+                                {clockBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <StopCircle className="w-4 h-4" />}
+                                Fichar salida
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleClockIn}
+                                disabled={readOnly || clockBusy}
+                                className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+                            >
+                                {clockBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                Fichar entrada
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {clockError && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive">
+                        {clockError}
+                    </div>
+                )}
             </div>
 
             {loading && (
                 <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">Cargando…</div>
             )}
 
-            {!loading && !emp && (
+            {!loading && !emp && !isAdmin && (
                 <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
                     <Briefcase className="w-8 h-8 mx-auto text-muted-foreground opacity-40" />
                     <p className="text-sm text-foreground font-medium">Tu cuenta no está vinculada a ningún empleado</p>
@@ -177,6 +318,16 @@ export default function PortalPage() {
                         Pide al administrador que añada tu email ({" "}
                         <span className="font-mono text-xs">{typeof window !== "undefined" ? (() => { try { const t = localStorage.getItem("access_token"); if (!t) return ""; return JSON.parse(atob(t.split(".")[1])).email; } catch { return ""; } })() : ""}</span>
                         {" "}) a tu ficha de empleado.
+                    </p>
+                </div>
+            )}
+
+            {!loading && !emp && isAdmin && !selectedEmployeeId && (
+                <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
+                    <Briefcase className="w-8 h-8 mx-auto text-muted-foreground opacity-40" />
+                    <p className="text-sm text-foreground font-medium">Selecciona un empleado para previsualizar</p>
+                    <p className="text-xs text-muted-foreground">
+                        Usa el selector de arriba para ver Mi portal de cualquier persona de tu plantilla.
                     </p>
                 </div>
             )}
@@ -239,6 +390,59 @@ export default function PortalPage() {
                                 </span>
                             </div>
                             </div>
+
+                            {/* Horario semanal estipulado */}
+                            <div className="rounded-xl border border-border bg-card overflow-hidden">
+                                <div className="px-4 py-3 border-b border-border">
+                                    <p className="text-sm font-medium text-foreground">Horario estipulado</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Tu jornada semanal según la ficha que configuró RRHH.
+                                    </p>
+                                </div>
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                                            <th className="text-left font-medium px-4 py-2">Día</th>
+                                            <th className="text-left font-medium px-4 py-2">Entrada</th>
+                                            <th className="text-left font-medium px-4 py-2">Salida</th>
+                                            <th className="text-right font-medium px-4 py-2">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {DAY_LABELS.map((label, dayIdx) => {
+                                            const slots = (data?.schedule ?? []).filter(s => s.day_of_week === dayIdx);
+                                            if (slots.length === 0) {
+                                                return (
+                                                    <tr key={dayIdx} className="border-b border-border last:border-0">
+                                                        <td className="px-4 py-2 text-foreground">{label}</td>
+                                                        <td className="px-4 py-2 text-muted-foreground" colSpan={2}>Día libre</td>
+                                                        <td className="px-4 py-2 text-right text-muted-foreground text-xs">—</td>
+                                                    </tr>
+                                                );
+                                            }
+                                            return slots.map((s, idx) => (
+                                                <tr key={s.id ?? `${dayIdx}-${idx}`} className="border-b border-border last:border-0">
+                                                    <td className="px-4 py-2 text-foreground">{idx === 0 ? label : ""}</td>
+                                                    <td className="px-4 py-2 text-muted-foreground font-mono">{s.start_time}</td>
+                                                    <td className="px-4 py-2 text-muted-foreground font-mono">{s.end_time}</td>
+                                                    <td className="px-4 py-2 text-right">
+                                                        {s.active ? (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-muted text-muted-foreground border border-border">Inactivo</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })}
+                                    </tbody>
+                                </table>
+                                {(!data?.schedule || data.schedule.length === 0) && (
+                                    <div className="px-4 py-3 text-xs text-muted-foreground border-t border-border">
+                                        Tu ficha aún no tiene horario configurado. Avisa a RRHH para que lo añada.
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -298,7 +502,7 @@ export default function PortalPage() {
                                     Solicita vacaciones, bajas u otras ausencias. Cada petición pasa por aprobación
                                     y verás aquí su estado en cualquier momento.
                                 </p>
-                                <Button size="sm" className="gap-2 shrink-0" onClick={() => { setShowLeave(true); setLeaveError(null); }}>
+                                <Button size="sm" className="gap-2 shrink-0" disabled={readOnly} onClick={() => { setShowLeave(true); setLeaveError(null); }}>
                                     <Plus className="w-4 h-4" /> Nueva solicitud
                                 </Button>
                             </div>
@@ -360,7 +564,7 @@ export default function PortalPage() {
                                     Registra gastos profesionales para reembolso (viajes, dietas, material…).
                                     Adjunta el recibo y RRHH lo aprobará para incluirlo en tu próxima nómina.
                                 </p>
-                                <Button size="sm" className="gap-2 shrink-0" onClick={() => { setShowExpense(true); setExpenseError(null); }}>
+                                <Button size="sm" className="gap-2 shrink-0" disabled={readOnly} onClick={() => { setShowExpense(true); setExpenseError(null); }}>
                                     <Plus className="w-4 h-4" /> Nuevo gasto
                                 </Button>
                             </div>
@@ -411,7 +615,7 @@ export default function PortalPage() {
                                                             >
                                                                 <Download className="w-3 h-3" /> Ver
                                                             </button>
-                                                        ) : exp.status === "pending" ? (
+                                                        ) : exp.status === "pending" && !readOnly ? (
                                                             <label className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
                                                                 {uploadingReceiptId === exp.id
                                                                     ? <Loader2 className="w-3 h-3 animate-spin" />
