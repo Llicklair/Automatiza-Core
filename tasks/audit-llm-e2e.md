@@ -4,6 +4,8 @@
 **Alcance:** Estático (sin ejecutar LLM real). Backend FastAPI + LangGraph, todos los dominios de agentes.
 **Método:** Glob + Grep + lectura selectiva. Sin runtime.
 
+> **Addendum 2026-05-05:** Ver sección 13 al final — hallazgo runtime adicional descubierto al implementar tests E2E: el nodo `finalize` estaba declarado pero desconectado en los grafos de hr/billing/banking/accounting. Ya arreglado.
+
 ---
 
 ## TL;DR — Veredicto
@@ -214,3 +216,36 @@ Esto compensa parcialmente la falta de `AgentResult` dentro de cada `agent.py`: 
 ## Cómo continuar
 
 Si quieres avanzar con runtime real (validación con LLM en vivo de los flujos críticos), me dices qué dominios y los pruebo contra mock primero, luego con clave Anthropic real para el happy path. Esa segunda pasada ya consumiría créditos.
+
+---
+
+## 13. Addendum runtime — finalize node desconectado (resuelto)
+
+**Descubierto al implementar `tests/test_e2e_agent_flows.py`.**
+
+Los grafos de **hr, billing, banking y accounting** declaraban un nodo `finalize` (`hr_finalize_node`, `billing_finalize_node`, etc.) cuyo único propósito es devolver `{"status": "done", "agent_results": [final_result]}`. Pero el grafo nunca lo invocaba:
+
+```python
+# Antes (desconectado):
+workflow.add_conditional_edges("hr_agent", tools_condition)  # rutea a "tools" o END
+workflow.add_edge("tools", "hr_agent")
+# ↑ tools_condition retorna "__end__" cuando no hay tool_calls — finalize era código muerto
+```
+
+**Síntoma observable:** al ejecutar `await graph.ainvoke(state)`, el resultado tenía `status="running"` y los `agent_results` quedaban con lo que había acumulado el `*_agent_node` durante el loop, no el `final_result` del finalize.
+
+**Fix aplicado:** path_map en `add_conditional_edges` que remappea `__end__` (de `tools_condition`) al nodo `finalize`, y conecta `finalize → END`:
+
+```python
+workflow.add_conditional_edges(
+    "hr_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
+)
+workflow.add_edge("tools", "hr_agent")
+workflow.add_edge("finalize", END)
+```
+
+Aplicado en los 4 archivos: `agents/hr/agent.py`, `agents/billing/agent.py`, `agents/banking/agent.py`, `agents/accounting/agent.py`.
+
+**Verificación:** `tests/test_e2e_agent_flows.py` (nuevo) ejercita la cadena `agent_node → bind_tools → tool_call → ToolNode (DB SQLite) → agent_node → finalize` con mock LLM scripteado, y asserta que `result["status"] == "done"` y `result["agent_results"]` está poblado por el finalize node. Suite completa: 629 passed, 0 failed.
+
+**Pendiente (no en este lote):** este fix mejora el contrato pero no resuelve por completo el hallazgo de la sección 2 sobre `AgentResult`. El finalize node devuelve un `StepResult` (en `agent_results`), no un `AgentResult` con el flag `success`. Para compliance total con el contrato, los 4 nodos `*_finalize_node` deberían devolver además `AgentResult(success=True/False, data, error)`. Esto sigue pendiente.
