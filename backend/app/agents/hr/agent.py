@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.agent_tools.documents import (
@@ -112,7 +112,10 @@ workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("finalize", hr_finalize_node)
 
 workflow.set_entry_point("hr_agent")
-workflow.add_conditional_edges("hr_agent", tools_condition)
+workflow.add_conditional_edges(
+    "hr_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
+)
 workflow.add_edge("tools", "hr_agent")
+workflow.add_edge("finalize", END)
 
 graph = workflow.compile()

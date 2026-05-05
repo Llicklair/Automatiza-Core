@@ -5,7 +5,7 @@ Billing agent — LangGraph graph definition and node logic.
 from datetime import date, datetime
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
@@ -84,7 +84,10 @@ workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("finalize", billing_finalize_node)
 
 workflow.set_entry_point("billing_agent")
-workflow.add_conditional_edges("billing_agent", tools_condition)
+workflow.add_conditional_edges(
+    "billing_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
+)
 workflow.add_edge("tools", "billing_agent")
+workflow.add_edge("finalize", END)
 
 graph = workflow.compile()
