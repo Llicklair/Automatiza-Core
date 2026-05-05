@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +14,26 @@ from app.services import tenant_service
 
 bearer_scheme = HTTPBearer()
 
+# Rol "employee": solo accede al portal del empleado, su propio perfil,
+# auth (refresh/logout) y datos básicos del tenant. Cualquier otro path → 403.
+_EMPLOYEE_ALLOWED_PREFIXES = (
+    "/api/v1/portal/",
+    "/api/v1/auth/",
+)
+_EMPLOYEE_ALLOWED_EXACT = frozenset({
+    "/api/v1/users/me",
+    "/api/v1/tenant/me",
+})
+
+
+def _employee_can_access(path: str) -> bool:
+    if path in _EMPLOYEE_ALLOWED_EXACT:
+        return True
+    return any(path.startswith(p) for p in _EMPLOYEE_ALLOWED_PREFIXES)
+
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -36,6 +54,12 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception
+
+    if user.role == "employee" and not _employee_can_access(request.url.path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido al portal del empleado",
+        )
 
     # Fija el tenant activo en el ContextVar para el resto del request.
     # Lo leen el listener SQLAlchemy (Fase 3 RLS), agentes LangGraph y el

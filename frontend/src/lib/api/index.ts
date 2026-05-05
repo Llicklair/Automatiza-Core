@@ -39,6 +39,9 @@ export interface PortalData {
     employee: import("./hr").Employee | null;
     payrolls: import("./hr").Payroll[];
     leave_requests: import("./hr").LeaveRequest[];
+    schedule?: import("./hr").WorkSchedule[];
+    active_attendance?: import("./hr").AttendanceRecord | null;
+    read_only?: boolean;
 }
 
 export interface SearchResult {
@@ -91,6 +94,17 @@ export const api = {
     },
     portal: {
         me: () => request<PortalData>("/api/v1/portal/me"),
+        meAs: (employeeId: string) =>
+            request<PortalData>(`/api/v1/portal/as/${employeeId}`),
+        clockIn: (notes?: string) =>
+            request<import("./hr").AttendanceRecord>("/api/v1/portal/clock-in", {
+                method: "POST",
+                body: JSON.stringify({ notes }),
+            }),
+        clockOut: () =>
+            request<import("./hr").AttendanceRecord>("/api/v1/portal/clock-out", {
+                method: "POST",
+            }),
         submitLeave: (data: { leave_type: string; start_date: string; end_date: string; notes?: string }) =>
             request<import("./hr").LeaveRequest>("/api/v1/portal/leave-requests", {
                 method: "POST",
@@ -151,4 +165,14 @@ export type { HRDocument, HRDocumentGeneratePayload } from "./hr_documents";
 export type { GenerativeInterface } from "./generative_ui";
 export type { AlertEntry } from "./alerts";
 export type { UnifiedCalendarEvent } from "./calendar_unified";
-export type { User, UserCreate, UserUpdate } from "./users";
+export type {
+    User,
+    UserCreate,
+    UserUpdate,
+    Invitation,
+    InvitationCreated,
+    InvitationCreate,
+    InvitationPublic,
+    InvitationAccept,
+    InvitationAcceptResponse,
+} from "./users";

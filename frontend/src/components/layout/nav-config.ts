@@ -14,6 +14,8 @@ export type NavItem = {
     icon: LucideIcon;
     href?: string;
     adminOnly?: boolean;
+    /** Marca el item como núcleo de la app (Mi equipo, Automatizaciones, etc.) — se renderiza con un color destacado en el sidebar. */
+    highlight?: boolean;
     subItems?: { label: string; href: string; adminOnly?: boolean }[];
 };
 
@@ -28,11 +30,11 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Inicio", icon: Home, href: "/" },
             { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
             { label: "Mi portal", icon: UserCircle, href: "/portal" },
-            { label: "Mi equipo", icon: Sparkles, href: "/mi-equipo" },
+            { label: "Mi equipo", icon: Sparkles, href: "/mi-equipo", highlight: true },
+            { label: "Automatizaciones", icon: Zap, href: "/automatizaciones", highlight: true },
+            { label: "Sandbox IA", icon: Wand2, href: "/sandbox" },
             { label: "Calendario", icon: Calendar, href: "/calendario" },
             { label: "Bandeja", icon: Activity, href: "/bandeja" },
-            { label: "Sandbox IA", icon: Wand2, href: "/sandbox" },
-            { label: "Automatizaciones", icon: Zap, href: "/automatizaciones" },
         ],
     },
     {
@@ -129,7 +131,6 @@ export const NAV_SECTIONS: NavSection[] = [
                 ],
             },
             { label: "Impuestos", icon: Scale, href: "/impuestos" },
-            { label: "Compliance", icon: ShieldCheck, href: "/compliance", adminOnly: true },
         ],
     },
     {
@@ -139,6 +140,12 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Informes IA", icon: BarChart3, href: "/informes" },
             { label: "Marketing", icon: Megaphone, href: "/marketing" },
             { label: "Alertas", icon: AlertTriangle, href: "/alertas" },
+        ],
+    },
+    {
+        title: "Gobierno",
+        items: [
+            { label: "Compliance", icon: ShieldCheck, href: "/compliance", adminOnly: true },
             { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true },
         ],
     },
@@ -156,6 +163,7 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Resumen", href: "/configuracion" },
                     { label: "Empresa", href: "/configuracion/empresa" },
                     { label: "Perfil", href: "/configuracion/perfil" },
+                    { label: "Usuarios", href: "/configuracion/usuarios", adminOnly: true },
                     { label: "Mensajería", href: "/configuracion/integraciones" },
                     { label: "Firma digital", href: "/configuracion/firma-digital", adminOnly: true },
                     { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true },
@@ -192,4 +200,5 @@ Object.assign(ROUTE_LABELS, {
     "/configuracion/perfil": "Perfil",
     "/configuracion/api-keys": "Claves API",
     "/configuracion/backups": "Copias de seguridad",
+    "/configuracion/usuarios": "Usuarios",
 });

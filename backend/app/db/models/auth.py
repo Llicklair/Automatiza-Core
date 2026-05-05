@@ -54,7 +54,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(200))
-    role = Column(String(50), nullable=False, default="user")  # admin|user|viewer
+    role = Column(String(50), nullable=False, default="user")  # admin|user|viewer|employee
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     last_login_at = Column(DateTime(timezone=True))
@@ -84,4 +84,20 @@ class PasswordResetToken(Base):
     token_hash = Column(String(64), unique=True, nullable=False, index=True)  # SHA-256 del token
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class UserInvitation(Base):
+    """Invitación de acceso al tenant. El admin genera una y comparte el enlace; el invitado pone su contraseña al aceptar."""
+    __tablename__ = "user_invitations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    role = Column(String(50), nullable=False, default="employee")  # admin|user|employee
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)  # SHA-256 del token bruto
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    used_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)

@@ -22,9 +22,28 @@ export function Sidebar() {
 
     const role = useUserRole();
     const isAdmin = role === "admin";
+    const isEmployee = role === "employee";
+
+    // Para rol "employee": solo se ve Inicio, Mi portal y Configuración > Perfil.
+    const EMPLOYEE_ALLOWED_HREFS = new Set<string>([
+        "/",
+        "/portal",
+        "/configuracion",
+        "/configuracion/perfil",
+    ]);
 
     const filterItem = (item: NavItem): NavItem | null => {
         if (item.adminOnly && !isAdmin) return null;
+        if (isEmployee) {
+            const allowedSubs = item.subItems?.filter(s => EMPLOYEE_ALLOWED_HREFS.has(s.href));
+            if (allowedSubs && allowedSubs.length > 0) {
+                return { ...item, subItems: allowedSubs };
+            }
+            if (item.href && EMPLOYEE_ALLOWED_HREFS.has(item.href)) {
+                return { ...item, subItems: undefined };
+            }
+            return null;
+        }
         if (item.subItems) {
             const visibleSubs = item.subItems.filter(s => !s.adminOnly || isAdmin);
             if (visibleSubs.length === 0) return null;
@@ -39,6 +58,25 @@ export function Sidebar() {
         const expanded = expandedItems.has(item.label);
         const hasSubItems = !!item.subItems && item.subItems.length > 0;
 
+        const highlight = !!item.highlight;
+        // Container: hover/activo sutil cuando highlight, sin pisar el color del texto
+        const containerStyle = highlight
+            ? cn(
+                "hover:bg-primary/5 transition-all",
+                active && "bg-primary/10"
+            )
+            : (active
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground");
+        // Icono: color primary + halo sutil con drop-shadow del propio color
+        const iconClass = highlight
+            ? "h-4 w-4 flex-shrink-0 text-primary drop-shadow-[0_0_4px_currentColor]"
+            : "h-4 w-4 flex-shrink-0";
+        // Label: foreground en negrita (contraste con icono primary)
+        const labelClass = highlight
+            ? "truncate text-foreground font-semibold tracking-tight"
+            : "truncate";
+
         // Collapsed mode
         if (collapsed) {
             const href = item.href || (item.subItems?.[0]?.href ?? "#");
@@ -50,12 +88,10 @@ export function Sidebar() {
                         title={item.label}
                         className={cn(
                             "flex items-center justify-center w-full h-9 rounded-md transition-colors",
-                            active
-                                ? "bg-primary/15 text-primary"
-                                : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            containerStyle
                         )}
                     >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        <Icon className={iconClass} />
                     </Link>
                 </div>
             );
@@ -70,13 +106,11 @@ export function Sidebar() {
                         onClick={(e) => handleNavClick(e, item.href!)}
                         className={cn(
                             "flex items-center gap-2.5 px-2.5 h-9 rounded-md text-[13px] font-medium transition-colors",
-                            active
-                                ? "bg-primary/15 text-primary"
-                                : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            containerStyle
                         )}
                     >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{item.label}</span>
+                        <Icon className={iconClass} />
+                        <span className={labelClass}>{item.label}</span>
                     </Link>
                 </div>
             );
