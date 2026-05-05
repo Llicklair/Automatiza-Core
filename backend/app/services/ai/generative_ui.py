@@ -1,6 +1,6 @@
-﻿"""Servicio de dominio para Generative UI.
+"""Servicio de dominio para Generative UI.
 
-Encapsula la lÃ³gica de negocio: keyword matching, consultas ERP,
+Encapsula la lógica de negocio: keyword matching, consultas ERP,
 llamadas al LLM y persistencia de interfaces generadas.
 """
 
@@ -16,11 +16,11 @@ from app.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
-# â”€â”€ Keyword sets para resoluciÃ³n de contexto ERP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”€â”€ Keyword sets para resolución de contexto ERP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _KW_INVOICES = {
     "factura",
-    "facturaciÃ³n",
+    "facturación",
     "facturacion",
     "cobro",
     "pago",
@@ -30,14 +30,14 @@ _KW_INVOICES = {
 }
 _KW_CLIENTS = {"cliente", "cartera", "crm", "contacto"}
 _KW_EMPLOYEES = {"empleado", "plantilla", "rrhh", "personal", "equipo", "trabajador"}
-_KW_PAYROLLS = {"nÃ³mina", "nomina", "salario", "sueldo"}
+_KW_PAYROLLS = {"nómina", "nomina", "salario", "sueldo"}
 
 
 # â”€â”€ Funciones de servicio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
-    """Consulta datos reales del ERP segÃºn keywords del prompt.
+    """Consulta datos reales del ERP según keywords del prompt.
 
     Returns formatted string for LLM context, or empty string if no match.
     """
@@ -77,7 +77,7 @@ async def fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
             total = sum(i["total"] for i in items)
             pending = [i for i in items if i["estado"] in ("draft", "sent", "pending")]
             sections.append(
-                f"FACTURAS ({len(items)} mÃ¡s recientes, total: {total:.2f}â‚¬, "
+                f"FACTURAS ({len(items)} más recientes, total: {total:.2f}â‚¬, "
                 f"pendientes: {len(pending)}, importe pendiente: {sum(i['total'] for i in pending):.2f}â‚¬):\n"
                 + "\n".join(
                     f"  - {i['numero']} | {i['estado']} | {i['total']:.2f}â‚¬ | {i['fecha']} | vence {i['vencimiento']}"
@@ -96,7 +96,7 @@ async def fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
         rows = result.all()
         if rows:
             sections.append(
-                f"CLIENTES ({len(rows)} mÃ¡s recientes):\n"
+                f"CLIENTES ({len(rows)} más recientes):\n"
                 + "\n".join(
                     f"  - {r.name} | {r.nif or '-'} | {r.email or '-'} | {r.phone or '-'} | {r.city or '-'}"
                     for r in rows
@@ -120,14 +120,14 @@ async def fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
         rows = result.all()
         if rows:
             sections.append(
-                f"EMPLEADOS ({len(rows)} mÃ¡s recientes):\n"
+                f"EMPLEADOS ({len(rows)} más recientes):\n"
                 + "\n".join(
                     f"  - {r.name} | {r.department or '-'} | {r.role or '-'} | {float(r.base_salary or 0):.2f}â‚¬"
                     for r in rows
                 )
             )
 
-    # --- NÃ³minas ---
+    # --- Nóminas ---
     if words & _KW_PAYROLLS:
         result = await db.execute(
             select(
@@ -145,7 +145,7 @@ async def fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
         rows = result.all()
         if rows:
             sections.append(
-                f"NÃ“MINAS ({len(rows)} mÃ¡s recientes):\n"
+                f"NÃ“MINAS ({len(rows)} más recientes):\n"
                 + "\n".join(
                     f"  - {r.period_start.strftime('%Y-%m') if r.period_start else '-'} | "
                     f"Bruto {float(r.gross_salary or 0):.2f}â‚¬ | Neto {float(r.net_salary or 0):.2f}â‚¬ | {r.status}"
@@ -170,8 +170,8 @@ async def generate_ui(
     """Genera HTML via LLM y lo persiste.
 
     Raises:
-        asyncio.TimeoutError: LLM tardÃ³ mÃ¡s de 120s.
-        ValueError: LLM devolviÃ³ respuesta vacÃ­a.
+        asyncio.TimeoutError: LLM tardó más de 120s.
+        ValueError: LLM devolvió respuesta vacía.
     """
     from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -200,7 +200,7 @@ async def generate_ui(
 
     content_html = response.content
     if not content_html or not content_html.strip():
-        raise ValueError("El LLM devolviÃ³ una respuesta vacÃ­a")
+        raise ValueError("El LLM devolvió una respuesta vacía")
 
     resolved_title = title or f"Interfaz â€” {prompt[:60]}{'...' if len(prompt) > 60 else ''}"
 
@@ -219,7 +219,7 @@ async def generate_ui(
 
 
 async def debug_llm(tenant_id, db: AsyncSession) -> dict:
-    """DiagnÃ³stico rÃ¡pido: verifica que el LLM responde."""
+    """Diagnóstico rápido: verifica que el LLM responde."""
     import shutil
 
     from langchain_core.messages import HumanMessage
@@ -292,7 +292,7 @@ async def update_ui(
     description: str | None = None,
     is_pinned: bool | None = None,
 ) -> GeneratedUI | None:
-    """ActualizaciÃ³n parcial de una interfaz. Retorna None si no existe."""
+    """Actualización parcial de una interfaz. Retorna None si no existe."""
     ui = await get_ui(ui_id, tenant_id, db)
     if not ui:
         return None
@@ -311,6 +311,6 @@ async def delete_ui(ui_id: str, tenant_id, db: AsyncSession) -> bool:
     ui = await get_ui(ui_id, tenant_id, db)
     if not ui:
         return False
-    db.delete(ui)
+    await db.delete(ui)
     await db.commit()
     return True

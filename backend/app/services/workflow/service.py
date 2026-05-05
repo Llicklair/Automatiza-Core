@@ -96,7 +96,7 @@ async def delete_workflow(workflow_id: UUID, tenant_id, db: AsyncSession) -> boo
     wf = await get_workflow(workflow_id, tenant_id, db)
     if not wf:
         return False
-    db.delete(wf)
+    await db.delete(wf)
     await db.commit()
     return True
 

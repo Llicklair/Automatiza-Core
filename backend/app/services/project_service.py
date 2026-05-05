@@ -46,7 +46,7 @@ async def delete_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) ->
     project = result.scalar_one_or_none()
     if not project:
         raise LookupError("Project not found")
-    db.delete(project)
+    await db.delete(project)
     await db.commit()
 
 
@@ -107,5 +107,5 @@ async def delete_task(db: AsyncSession, tenant_id: UUID, task_id: UUID) -> None:
     task = result.scalar_one_or_none()
     if not task:
         raise LookupError("Task not found")
-    db.delete(task)
+    await db.delete(task)
     await db.commit()

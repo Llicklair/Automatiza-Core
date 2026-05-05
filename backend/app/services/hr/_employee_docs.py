@@ -104,7 +104,7 @@ async def delete_employee_document(
         return False
     if doc.file_path and os.path.exists(doc.file_path):
         os.remove(doc.file_path)
-    db.delete(doc)
+    await db.delete(doc)
     await db.commit()
     return True
 

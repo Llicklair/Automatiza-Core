@@ -1,12 +1,12 @@
-﻿"""Servicio de dominio para gestiÃ³n documental.
+"""Servicio de dominio para gestión documental.
 
-Encapsula: subida/descarga de archivos, clasificaciÃ³n automÃ¡tica,
-escaneo, procesamiento ZIP, importaciÃ³n de BD tabulares, y plantillas de contrato.
+Encapsula: subida/descarga de archivos, clasificación automática,
+escaneo, procesamiento ZIP, importación de BD tabulares, y plantillas de contrato.
 
-Sub-mÃ³dulos extraÃ­dos:
-- _file_ops: validaciÃ³n, guardado, clasificaciÃ³n por extensiÃ³n, ZIP
-- _contracts: plantillas de contrato (CRUD, preview, generaciÃ³n)
-- _tabular: parseo e importaciÃ³n de archivos tabulares
+Sub-módulos extraídos:
+- _file_ops: validación, guardado, clasificación por extensión, ZIP
+- _contracts: plantillas de contrato (CRUD, preview, generación)
+- _tabular: parseo e importación de archivos tabulares
 """
 
 import io
@@ -31,7 +31,7 @@ from app.services.documents._contracts import (  # noqa: F401
     upload_contract_template,
 )
 
-# â”€â”€ Re-exports desde sub-mÃ³dulos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”€â”€ Re-exports desde sub-módulos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 from app.services.documents._file_ops import (
     UPLOAD_DIR,
     auto_classify_category,
@@ -81,7 +81,7 @@ async def _dispatch_task(
 
         await dispatch_orchestrator(str(task.id))
     except Exception as e:
-        logger.warning("Orchestrator dispatch fallÃ³ para doc %s: %s", doc.id, e)
+        logger.warning("Orchestrator dispatch falló para doc %s: %s", doc.id, e)
 
 
 # â”€â”€ Upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -125,7 +125,7 @@ async def upload_single(
     return doc
 
 
-# â”€â”€ Scan (clasificaciÃ³n automÃ¡tica) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”€â”€ Scan (clasificación automática) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def scan_single(
@@ -293,12 +293,12 @@ async def delete_document(doc_id: uuid.UUID, tenant_id, db: AsyncSession) -> boo
             except OSError:
                 logger.warning("No se pudo eliminar archivo: %s", fallback)
 
-    db.delete(doc)
+    await db.delete(doc)
     await db.commit()
     return True
 
 
-# â”€â”€ Download con regeneraciÃ³n PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”€â”€ Download con regeneración PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def _resolve_file_path(doc: TenantDocument) -> str | None:
@@ -335,7 +335,7 @@ async def prepare_download(doc: TenantDocument, tenant_id, db: AsyncSession) -> 
             if header != b"%PDF-":
                 await _regenerate_ai_invoice_pdf(doc, file_path, tenant_id, db)
         except Exception:
-            pass  # No bloquear descarga por errores de regeneraciÃ³n
+            pass  # No bloquear descarga por errores de regeneración
 
     return file_path
 
@@ -423,7 +423,7 @@ async def _regenerate_ai_invoice_pdf(
 
     pdf_bytes = generate_invoice_pdf(invoice_data)
     if not pdf_bytes.startswith(b"%PDF-"):
-        raise ValueError("No se pudo regenerar el PDF (bytes invÃ¡lidos)")
+        raise ValueError("No se pudo regenerar el PDF (bytes inválidos)")
 
     with open(file_path, "wb") as f:
         f.write(pdf_bytes)

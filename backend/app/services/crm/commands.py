@@ -1,4 +1,4 @@
-﻿"""CRM commands â€” write operations (CQRS-lite).
+"""CRM commands â€” write operations (CQRS-lite).
 
 All functions here produce side effects: INSERT/UPDATE/DELETE or file writes.
 Read helpers are imported from queries.py to avoid duplication.
@@ -47,7 +47,7 @@ async def delete_opportunity(db: AsyncSession, tenant_id: UUID, opp_id: UUID) ->
     opp = result.scalar_one_or_none()
     if not opp:
         raise LookupError("Oportunidad no encontrada")
-    db.delete(opp)
+    await db.delete(opp)
     await db.commit()
 
 
@@ -69,7 +69,7 @@ async def delete_activity(db: AsyncSession, tenant_id: UUID, activity_id: UUID) 
     activity = result.scalar_one_or_none()
     if not activity:
         raise LookupError("Activity not found")
-    db.delete(activity)
+    await db.delete(activity)
     await db.commit()
 
 
@@ -105,7 +105,7 @@ async def delete_event(db: AsyncSession, tenant_id: UUID, event_id: UUID) -> Non
     evt = result.scalar_one_or_none()
     if not evt:
         raise LookupError("Evento no encontrado")
-    db.delete(evt)
+    await db.delete(evt)
     await db.commit()
 
 
@@ -143,7 +143,7 @@ async def delete_reservation(db: AsyncSession, tenant_id: UUID, res_id: UUID) ->
     res = result.scalar_one_or_none()
     if not res:
         raise LookupError("Reserva no encontrada")
-    db.delete(res)
+    await db.delete(res)
     await db.commit()
 
 
@@ -154,10 +154,10 @@ def generate_contract(template_path: str, context: dict) -> bytes:
     """Rellena el .docx y devuelve los bytes resultantes.
 
     Raises:
-        ImportError: si docxtpl no estÃ¡ instalado.
-        Exception: cualquier error de docxtpl (plantilla invÃ¡lida, variable mal formadaâ€¦).
+        ImportError: si docxtpl no está instalado.
+        Exception: cualquier error de docxtpl (plantilla inválida, variable mal formadaâ€¦).
     """
-    from docxtpl import DocxTemplate  # lazy import â€” no falla si no estÃ¡ en dev
+    from docxtpl import DocxTemplate  # lazy import â€” no falla si no está en dev
 
     tpl = DocxTemplate(template_path)
     tpl.render(context)

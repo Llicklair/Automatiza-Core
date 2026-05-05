@@ -126,7 +126,7 @@ async def update_template(
 
 async def delete_template(db: AsyncSession, template_id: UUID, tenant_id) -> None:
     tpl = await _get_or_raise(db, template_id, tenant_id)
-    db.delete(tpl)
+    await db.delete(tpl)
     await db.commit()
 
 

@@ -1,4 +1,4 @@
-﻿"""Servicio para generaciÃ³n y gestiÃ³n de informes snapshot (PDF mensuales)."""
+"""Servicio para generación y gestión de informes snapshot (PDF mensuales)."""
 
 import logging
 import os
@@ -116,6 +116,6 @@ async def delete_snapshot_report(report_id: uuid.UUID, tenant_id, db: AsyncSessi
                 )
             break
 
-    db.delete(doc)
+    await db.delete(doc)
     await db.commit()
     return True

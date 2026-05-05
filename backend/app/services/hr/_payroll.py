@@ -184,7 +184,7 @@ async def delete_payroll(payroll_id: UUID, tenant_id, db: AsyncSession) -> bool:
         return False
     if payroll.status != "draft":
         raise ValueError("Solo se pueden eliminar nominas en estado borrador")
-    db.delete(payroll)
+    await db.delete(payroll)
     await db.commit()
     return True
 
