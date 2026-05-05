@@ -1,4 +1,4 @@
-﻿"""employee_crud â€” CRUD, skills catalog, activity feed and direct instruction for AIEmployee."""
+"""employee_crud â€” CRUD, skills catalog, activity feed and direct instruction for AIEmployee."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ _SKILL_LABELS = {
     "billing.list_invoices": "Consultar facturas",
     "billing.send_reminder": "Enviar recordatorios de cobro",
     "hr.list_employees": "Ver empleados",
-    "hr.generate_payroll": "Generar nÃ³minas",
+    "hr.generate_payroll": "Generar nóminas",
     "hr.generate_document": "Generar documentos laborales",
     "crm.list_clients": "Ver clientes",
     "crm.create_activity": "Registrar actividad CRM",
@@ -114,7 +114,7 @@ async def create_employee(
         system_prompt=(
             f"Eres {name}, agente IA con rol: {role_description}. "
             f"Ejecutas las tareas asignadas de forma proactiva y profesional. "
-            f"Comunicas siempre en espaÃ±ol, con tono profesional y directo."
+            f"Comunicas siempre en español, con tono profesional y directo."
         ),
         budget_limit_usd=budget_limit_usd,
         doc_folder=f"agentes/{name_slug}-{str(uuid.uuid4())[:8]}",
@@ -228,7 +228,7 @@ async def delete_employee(employee_id: str, tenant_id, db: AsyncSession) -> bool
     employee = await _get_employee(employee_id, tenant_id, db)
     if not employee:
         return False
-    db.delete(employee)
+    await db.delete(employee)
     await db.commit()
     return True
 
@@ -240,7 +240,7 @@ async def instruct_employee(
     user_id,
     db: AsyncSession,
 ) -> dict:
-    """EnvÃ­a instrucciÃ³n directa. Lanza ValueError si no existe o estÃ¡ pausado."""
+    """Envía instrucción directa. Lanza ValueError si no existe o está pausado."""
     employee = await _get_employee(employee_id, tenant_id, db)
     if not employee:
         raise ValueError("Empleado no encontrado")
@@ -273,7 +273,7 @@ async def instruct_employee(
         db=db,
         tenant_id=str(tenant_id),
         category="system",
-        message=f"InstrucciÃ³n enviada a {employee.name}: {message[:80]}{'â€¦' if len(message) > 80 else ''}",
+        message=f"Instrucción enviada a {employee.name}: {message[:80]}{'â€¦' if len(message) > 80 else ''}",
         employee_id=str(employee.id),
         task_id=str(task.id),
         icon="ðŸ’¬",

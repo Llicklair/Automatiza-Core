@@ -78,7 +78,7 @@ async def delete_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> boo
     emp = await get_employee(employee_id, tenant_id, db)
     if not emp:
         return False
-    db.delete(emp)
+    await db.delete(emp)
     await db.commit()
     return True
 
@@ -203,7 +203,7 @@ async def delete_document(doc_id: str, tenant_id, db: AsyncSession) -> None:
     doc = result.scalar_one_or_none()
     if not doc:
         raise ValueError("Documento no encontrado")
-    db.delete(doc)
+    await db.delete(doc)
     await db.commit()
 
 

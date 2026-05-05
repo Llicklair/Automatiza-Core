@@ -1,5 +1,5 @@
-﻿"""
-Workflow agent â€” orquestaciÃ³n principal: LLM â†’ parse â†’ DB â†’ resultado.
+"""
+Workflow agent â€” orquestación principal: LLM â†’ parse â†’ DB â†’ resultado.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ async def run_workflow_agent(
     execution_mode: str = "reasoning",
 ) -> WorkflowAgentResult:
     """
-    OrquestaciÃ³n del agente de workflows: LLM -> InterpretaciÃ³n -> DB -> Resultado.
+    Orquestación del agente de workflows: LLM -> Interpretación -> DB -> Resultado.
 
     Args:
         execution_mode: 'reasoning' (por defecto) o 'deterministic'.
@@ -96,7 +96,7 @@ async def run_workflow_agent(
 
         async with AsyncSessionLocal() as db:
             if action == "create":
-                wf_name = plan.get("name", "Nueva AutomÃ¡tica")
+                wf_name = plan.get("name", "Nueva Automática")
                 wf_description = plan.get("description", "")
                 wf_trigger_type = plan.get("trigger_type", "event_based")
                 wf_action_config = plan.get("action_config", {})
@@ -157,7 +157,7 @@ async def run_workflow_agent(
 
                 if not existing_wf or str(existing_wf.tenant_id) != tenant_id:
                     return WorkflowAgentResult(
-                        success=False, action=action, error="No se encontrÃ³ el workflow indicado."
+                        success=False, action=action, error="No se encontró el workflow indicado."
                     )
 
                 if action == "delete":
