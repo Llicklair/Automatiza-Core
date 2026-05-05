@@ -14,7 +14,6 @@ from app.core.llm_factory import (
 def clear_api_keys(monkeypatch):
     """Ensure no API keys bleed in from local .env files during these tests."""
     monkeypatch.setattr("app.core.llm_factory.settings.GROQ_API_KEY", "")
-    monkeypatch.setattr("app.core.llm_factory.settings.GEMINI_API_KEY", "")
     monkeypatch.setattr("app.core.llm_factory.settings.OPENAI_API_KEY", "")
     monkeypatch.setattr("app.core.llm_factory.settings.ANTHROPIC_API_KEY", "")
     monkeypatch.setattr("app.core.llm_factory.settings.OPENROUTER_API_KEY", "")
@@ -40,10 +39,6 @@ class TestGetLlm:
 
     def test_groq_without_key_returns_mock(self):
         llm = get_llm(provider="groq")
-        assert isinstance(llm, MockChatModel)
-
-    def test_gemini_without_key_returns_mock(self):
-        llm = get_llm(provider="gemini")
         assert isinstance(llm, MockChatModel)
 
     def test_anthropic_without_key_returns_mock(self):
