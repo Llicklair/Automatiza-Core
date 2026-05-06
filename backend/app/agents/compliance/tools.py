@@ -37,14 +37,19 @@ def _get_llm_json():
 
 
 @tool
-async def check_fiscal_deadlines(days_ahead: int = 90) -> str:
+async def check_fiscal_deadlines(
+    days_ahead: int = 90, tenant_id: str | None = None
+) -> str:
     """
     Consulta los vencimientos fiscales próximos del calendario AEAT.
     Devuelve alertas claras sobre modelos tributarios pendientes.
 
     Args:
         days_ahead: Días de antelación para buscar vencimientos (por defecto 90)
+        tenant_id: aceptado por consistencia con otras tools; el calendario
+            AEAT es nacional y no se filtra por tenant.
     """
+    _ = tenant_id  # accepted but unused: AEAT calendar is the same for all tenants
     try:
         vencimientos = get_proximos_vencimientos(days_ahead=days_ahead)
     except Exception as e:
@@ -95,11 +100,16 @@ Devuelve JSON: {"alertas": ["...", "..."]}"""
 
 
 @tool
-async def check_boe_news() -> str:
+async def check_boe_news(tenant_id: str | None = None) -> str:
     """
     Consulta las últimas novedades del BOE relevantes para PYMEs y autónomos.
     Resume el impacto y acciones recomendadas.
+
+    Args:
+        tenant_id: aceptado por consistencia con otras tools; el BOE es
+            público nacional y no se filtra por tenant.
     """
+    _ = tenant_id  # accepted but unused: BOE is national, same for all tenants
     scraper = BOEScraper()
     try:
         novedades = await scraper.get_novedades(seccion="fiscal", max_items=5)
