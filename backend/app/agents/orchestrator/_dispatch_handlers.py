@@ -116,7 +116,7 @@ async def _invoke_dynamic_employee(
                         "status": "running",
                     }
                 ),
-                timeout=120,
+                timeout=180,
             )
             messages = result_state.get("messages", [])
             final_text = next(
@@ -153,14 +153,14 @@ async def _invoke_dynamic_employee(
             employee.status = "idle"
             await db.commit()
             logger.exception(
-                "Timeout (120s) en dynamic employee '%s'", employee.name
+                "Timeout (180s) en dynamic employee '%s'", employee.name
             )
             return _make_error_result(
                 subtask,
                 agent_name,
                 action="failed",
                 error=(
-                    f"Timeout de 120s al ejecutar el agente custom '{employee.name}'. "
+                    f"Timeout de 180s al ejecutar el agente custom '{employee.name}'. "
                     "El system_prompt o el modelo LLM tardaron demasiado en responder."
                 ),
             )
