@@ -10,9 +10,12 @@ por el usuario aparezca como opción en el plan multi-step generado:
   5. validate_node falla si agent='custom' sin employee_id ni addressed_id
   6. validate_node pasa si agent='custom' con employee_id en params
   7. _invoke_dynamic_employee usa params.employee_id antes que metadata
+  8. _invoke_dynamic_employee propaga mensaje útil cuando hay TimeoutError
+     o cualquier excepción sin str() (antes producía error="")
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -245,3 +248,121 @@ class TestDispatcherCustomPerStepEmployee:
             )
 
         assert captured["employee_id"] == str(per_step_emp.id)
+
+
+# ─── Bug fix: error vacío cuando hay TimeoutError ────────────────────────────
+
+
+class TestDispatcherErrorPropagation:
+    @pytest.mark.asyncio
+    async def test_timeout_error_propagates_meaningful_message(
+        self, db: AsyncSession, seed_tenant_and_user
+    ):
+        """asyncio.TimeoutError().__str__() devuelve '' por defecto. El
+        dispatcher debe detectarlo y dar al usuario un mensaje claro
+        ("Timeout de 120s al ejecutar..."), no propagar error=''.
+        """
+        from app.agents.orchestrator._dispatch_handlers import _invoke_dynamic_employee
+        from app.db.models.ai_employees import AIEmployee
+
+        tenant, _user, _token = seed_tenant_and_user
+
+        emp = AIEmployee(
+            id=uuid4(), tenant_id=tenant.id, name="Slow CEO", role="CEO",
+            domain="custom", is_builtin=False, status="idle",
+            system_prompt="prompt muy largo", icon="x", avatar_color="#fff",
+        )
+        db.add(emp)
+        await db.commit()
+
+        async def fake_compile(_emp_id, _db):
+            mock = MagicMock()
+            # Simulamos un grafo que tarda demasiado: ainvoke nunca completa.
+            # asyncio.wait_for lo cancelará y lanzará TimeoutError.
+            async def _hangs(*_a, **_kw):
+                await asyncio.sleep(999)
+            mock.ainvoke = _hangs
+            return mock
+
+        async def fake_budget(*_a, **_kw):
+            return True
+
+        # Bajamos timeout a 0.1s con monkeypatch para no esperar 120s reales.
+        with patch(
+            "app.agents.workers.compile_dynamic_agent", new=fake_compile
+        ), patch(
+            "app.agents.workers.check_agent_budget", new=fake_budget
+        ), patch(
+            "app.agents.orchestrator._dispatch_handlers.asyncio.wait_for",
+            new=AsyncMock(side_effect=asyncio.TimeoutError()),
+        ):
+            result = await _invoke_dynamic_employee(
+                enriched_state={
+                    "tenant_id": str(tenant.id),
+                    "user_intent": "lo que sea",
+                    "additional_metadata": {},
+                },
+                subtask={
+                    "id": "step_x",
+                    "params": {"intent": "test", "employee_id": str(emp.id)},
+                },
+                agent_name="custom",
+                tenant_id=str(tenant.id),
+            )
+
+        assert result is not None
+        assert result["success"] is False
+        assert result["error"], "error must not be empty"
+        assert "Timeout" in result["error"]
+        assert "Slow CEO" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_exception_without_message_falls_back_to_type_name(
+        self, db: AsyncSession, seed_tenant_and_user
+    ):
+        """Cualquier excepción con str() vacío debe propagar el tipo."""
+        from app.agents.orchestrator._dispatch_handlers import _invoke_dynamic_employee
+        from app.db.models.ai_employees import AIEmployee
+
+        tenant, _user, _token = seed_tenant_and_user
+
+        emp = AIEmployee(
+            id=uuid4(), tenant_id=tenant.id, name="Crashy Custom", role="X",
+            domain="custom", is_builtin=False, status="idle",
+            system_prompt="x", icon="x", avatar_color="#fff",
+        )
+        db.add(emp)
+        await db.commit()
+
+        class _Mystery(Exception):
+            pass
+
+        async def fake_compile(*_a, **_kw):
+            raise _Mystery()  # str(_Mystery()) == ''
+
+        async def fake_budget(*_a, **_kw):
+            return True
+
+        with patch(
+            "app.agents.workers.compile_dynamic_agent", new=fake_compile
+        ), patch(
+            "app.agents.workers.check_agent_budget", new=fake_budget
+        ):
+            result = await _invoke_dynamic_employee(
+                enriched_state={
+                    "tenant_id": str(tenant.id),
+                    "user_intent": "x",
+                    "additional_metadata": {},
+                },
+                subtask={
+                    "id": "step_x",
+                    "params": {"employee_id": str(emp.id)},
+                },
+                agent_name="custom",
+                tenant_id=str(tenant.id),
+            )
+
+        assert result is not None
+        assert result["success"] is False
+        assert result["error"], "error must not be empty"
+        assert "_Mystery" in result["error"] or "sin mensaje" in result["error"]
