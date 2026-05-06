@@ -1,6 +1,7 @@
 """Node handlers: plan_node and its helpers (_plan_from_blueprint, _plan_from_llm)."""
 
 import asyncio
+import hashlib
 import json
 import logging
 from datetime import datetime
@@ -18,10 +19,61 @@ from app.agents.orchestrator.state import (
 from app.core.config import settings
 from app.core.llm_factory import get_llm
 from app.db.base import AsyncSessionLocal
+from app.db.models.ai_employees import AIEmployee
 from app.db.models.models import Workflow
 from app.services.llm_cache import llm_cache
 
 logger = logging.getLogger(__name__)
+
+
+async def _load_tenant_custom_employees(tenant_id: str) -> list[AIEmployee]:
+    """Devuelve los AIEmployees custom (no builtin) y activos del tenant.
+    Lista ordenada por nombre para que el cache key sea estable.
+    """
+    if not tenant_id:
+        return []
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(AIEmployee)
+                .where(
+                    AIEmployee.tenant_id == UUID(tenant_id),
+                    AIEmployee.is_builtin.is_(False),
+                    AIEmployee.status.in_(("idle", "working")),
+                )
+                .order_by(AIEmployee.name)
+            )
+            return list(result.scalars().all())
+    except Exception as e:
+        logger.debug("[PLAN] No se pudieron cargar custom employees: %s", e)
+        return []
+
+
+def _custom_employees_block(employees: list[AIEmployee]) -> str:
+    """Bloque de texto para inyectar al prompt del planner.
+    Lista los AIEmployees custom disponibles para que el LLM pueda incluirlos
+    en el plan referenciándolos por employee_id.
+    """
+    if not employees:
+        return ""
+    lines = [
+        f'  - "{emp.name}" — {emp.role} (employee_id: "{emp.id}")' for emp in employees
+    ]
+    return (
+        "\nAGENTES CUSTOM DISPONIBLES PARA ESTE TENANT (además de los builtin):\n"
+        + "\n".join(lines)
+        + '\nSi el usuario menciona uno por nombre o rol, usa agent="custom" '
+        "y rellena el campo employee_id con el id correspondiente. "
+        'Ejemplo: {"agent": "custom", "employee_id": "<uuid>", "instruction": "..."}\n'
+    )
+
+
+def _custom_employees_hash(employees: list[AIEmployee]) -> str:
+    """Hash estable del set de custom employees, para invalidar caché si cambia."""
+    if not employees:
+        return "no-custom"
+    payload = "|".join(f"{emp.id}:{emp.name}:{emp.role}" for emp in employees)
+    return hashlib.sha256(payload.encode()).hexdigest()[:12]
 
 
 async def _plan_from_blueprint(state: OrchestratorState, wf) -> "list[SubTask] | None":
@@ -95,12 +147,25 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
         needs_output_from: list[int] = Field(
             default_factory=list, description="Índices (1-based) de pasos anteriores requeridos."
         )
+        employee_id: str | None = Field(
+            default=None,
+            description=(
+                "ID (UUID) del AIEmployee custom. SOLO cuando agent='custom'. "
+                "Debe ser uno de los IDs listados en AGENTES CUSTOM DISPONIBLES."
+            ),
+        )
 
     class MultiAgentPlan(BaseModel):
         steps: list[PlanStep] = Field(description="Lista de pasos para resolver la tarea.")
 
     _tenant_id = state.get("tenant_id", "")
-    _cache_key = f"plan:{state['user_intent']}"
+
+    # Lista de custom employees del tenant para inyectar al prompt del planner
+    # y para construir cache key estable que se invalide si el set cambia.
+    custom_employees = await _load_tenant_custom_employees(_tenant_id)
+    custom_block = _custom_employees_block(custom_employees)
+    custom_hash = _custom_employees_hash(custom_employees)
+    _cache_key = f"plan:{custom_hash}:{state['user_intent']}"
 
     # Intentar desde caché
     _cached = await llm_cache.get(_tenant_id, _cache_key)
@@ -116,12 +181,15 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
                     valid = False
                     break
                 raw_deps = step.get("needs_output_from", []) or []
+                params: dict = {"intent": step.get("instruction", "")}
+                if agent == "custom" and step.get("employee_id"):
+                    params["employee_id"] = step["employee_id"]
                 plan.append(
                     {
                         "id": f"step_{idx + 1}",
                         "agent": agent,
                         "action": step.get("action", "process"),
-                        "params": {"intent": step.get("instruction", "")},
+                        "params": params,
                         "depends_on": [
                             f"step_{d}" for d in raw_deps if isinstance(d, int) and 1 <= d <= idx
                         ],
@@ -148,11 +216,12 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
         f"La empresa opera en euros bajo ley española. Hoy es {datetime.now().strftime('%d/%m/%Y')}.\n\n"
         "Descompón la petición en pasos MÍNIMOS usando SOLO los agentes necesarios. Ejecución puntual — NO crees reglas recurrentes.\n\n"
         f"Petición: {state['user_intent']}\n\n"
-        "AGENTES: billing, hr, crm, banking, email, compliance, documents, rag, excel, custom\n"
-        "REGLAS: mínimo de pasos; excel para hojas/informes; billing guarda facturas internamente; "
+        "AGENTES BUILTIN: billing, hr, crm, banking, email, compliance, documents, rag, excel\n"
+        + custom_block
+        + "REGLAS: mínimo de pasos; excel para hojas/informes; billing guarda facturas internamente; "
         "email como último paso si se pide notificación; NIF en facturas; mes/año en nóminas.\n"
         "PARALELISMO: needs_output_from con índices (1-based) de pasos requeridos; vacío = paralelo.\n\n"
-        'JSON: {"steps": [{"agent": "...", "action": "...", "instruction": "...", "needs_output_from": []}]}'
+        'JSON: {"steps": [{"agent": "...", "action": "...", "instruction": "...", "needs_output_from": [], "employee_id": null}]}'
     )
 
     plan_result = None
@@ -211,6 +280,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
                             "action": s.action,
                             "instruction": s.instruction,
                             "needs_output_from": getattr(s, "needs_output_from", []) or [],
+                            "employee_id": getattr(s, "employee_id", None),
                         }
                         for s in plan_result.steps
                     ]
@@ -221,16 +291,28 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
     except Exception:
         logger.debug("Error guardando plan en caché", exc_info=True)
 
+    # Validate that any employee_id returned by the LLM matches a real custom
+    # employee of this tenant — defense against LLM hallucinated UUIDs.
+    valid_employee_ids = {str(e.id) for e in custom_employees}
+
     plan = []
     for idx, step in enumerate(plan_result.steps):
         agent = step.agent if step.agent in VALID_DOMAINS else "unknown"
         raw_deps = getattr(step, "needs_output_from", None) or []
+        params: dict = {"intent": step.instruction}
+        emp_id = getattr(step, "employee_id", None)
+        if agent == "custom" and emp_id and emp_id in valid_employee_ids:
+            params["employee_id"] = emp_id
+        elif agent == "custom" and emp_id and emp_id not in valid_employee_ids:
+            logger.warning(
+                "[PLAN] LLM devolvió employee_id desconocido '%s', ignorando", emp_id
+            )
         plan.append(
             {
                 "id": f"step_{idx + 1}",
                 "agent": agent,
                 "action": step.action,
-                "params": {"intent": step.instruction},
+                "params": params,
                 "depends_on": [
                     f"step_{d}" for d in raw_deps if isinstance(d, int) and 1 <= d <= idx
                 ],
