@@ -190,7 +190,10 @@ async def _invoke_dispatcher_impl(
 
     dispatcher_fn = DISPATCHER_MAP.get(agent_name)
     if dispatcher_fn:
-        return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=120)
+        # 180s alineado con custom employees. Builtin agents pueden necesitar
+        # cold-start de embeddings (BAAI/bge-m3 ~570MB en primer uso) o LLM
+        # call de un solo tool con prompt grande. 120s era ajustado.
+        return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=180)
 
     if agent_name == "skill" or (isinstance(agent_name, str) and agent_name.startswith("skill:")):
         return await _dispatch_skill(enriched_state, subtask)
@@ -267,8 +270,8 @@ async def _execute_one(
                 subtask,
                 agent_name,
                 action="timeout",
-                error=f"Timeout: el agente '{agent_name}' no respondió en 120s (2 intentos)",
-                summary=f"Timeout: agente {agent_name} excedió 120s tras 2 intentos",
+                error=f"Timeout: el agente '{agent_name}' no respondió en 180s (2 intentos)",
+                summary=f"Timeout: agente {agent_name} excedió 180s tras 2 intentos",
             )
         except _TRANSIENT_ERRORS as e:
             err_str = str(e)
