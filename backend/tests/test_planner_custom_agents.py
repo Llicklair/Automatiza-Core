@@ -65,11 +65,32 @@ class TestCustomEmployeesHelpers:
         emp.name = "Marcos Recio"
         emp.role = "CTO"
         emp.id = "abc-123"
+        emp.system_prompt = "Soy el CTO. Coordino tecnología."
         block = _custom_employees_block([emp])
         assert "Marcos Recio" in block
         assert "CTO" in block
         assert "abc-123" in block
         assert 'agent="custom"' in block
+
+    def test_block_includes_expertise_snippet_and_use_guidance(self):
+        from app.agents.orchestrator._plan_handlers import _custom_employees_block
+
+        emp = MagicMock()
+        emp.name = "Eva Auditora"
+        emp.role = "Auditora Interna"
+        emp.id = "xyz-789"
+        emp.system_prompt = (
+            "Soy Eva, auditora interna. Reviso flujos de gastos, identifico "
+            "duplicados y compruebo cumplimiento de la política interna."
+        )
+        block = _custom_employees_block([emp])
+        # El snippet del expertise debe aparecer para que el LLM pueda juzgar
+        assert "auditora interna" in block.lower()
+        assert "duplicados" in block
+        # La nueva guía debe permitir asignación sin mención explícita
+        assert "AUNQUE" in block  # marca la frase clave del prompt
+        # Y debe distinguir uso vs builtin
+        assert "PRECEDENCIA" in block
 
     def test_block_empty_when_no_employees(self):
         from app.agents.orchestrator._plan_handlers import _custom_employees_block

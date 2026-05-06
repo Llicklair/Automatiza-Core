@@ -51,20 +51,44 @@ async def _load_tenant_custom_employees(tenant_id: str) -> list[AIEmployee]:
 
 def _custom_employees_block(employees: list[AIEmployee]) -> str:
     """Bloque de texto para inyectar al prompt del planner.
-    Lista los AIEmployees custom disponibles para que el LLM pueda incluirlos
-    en el plan referenciándolos por employee_id.
+    Lista los AIEmployees custom disponibles con un resumen del expertise
+    (primeras frases del system_prompt) para que el LLM pueda elegirlos
+    cuando el rol encaje con la tarea, mencionados explícitamente o no.
     """
     if not employees:
         return ""
+
+    def _expertise_snippet(emp: AIEmployee) -> str:
+        """Primer fragmento útil del system_prompt — el LLM lo usa para juzgar
+        si el custom es apropiado para una sub-tarea."""
+        text = (emp.system_prompt or "").strip()
+        # Tomamos las primeras ~200 caracteres, cortando en frase si se puede.
+        snippet = text[:240].replace("\n", " ").strip()
+        if len(text) > 240:
+            cut = max(snippet.rfind(". "), snippet.rfind("; "), 0)
+            snippet = snippet[: cut + 1] if cut > 80 else snippet + "..."
+        return snippet
+
     lines = [
-        f'  - "{emp.name}" — {emp.role} (employee_id: "{emp.id}")' for emp in employees
+        f'  - "{emp.name}" — {emp.role} (employee_id: "{emp.id}")\n'
+        f"      Expertise: {_expertise_snippet(emp)}"
+        for emp in employees
     ]
     return (
-        "\nAGENTES CUSTOM DISPONIBLES PARA ESTE TENANT (además de los builtin):\n"
+        "\nAGENTES CUSTOM DEL TENANT (además de los builtin):\n"
         + "\n".join(lines)
-        + '\nSi el usuario menciona uno por nombre o rol, usa agent="custom" '
-        "y rellena el campo employee_id con el id correspondiente. "
-        'Ejemplo: {"agent": "custom", "employee_id": "<uuid>", "instruction": "..."}\n'
+        + (
+            "\nUSO: si el rol/expertise de un custom encaja con una sub-tarea, "
+            'asígnasela usando agent="custom" y rellenando employee_id con su id, '
+            "AUNQUE el usuario no lo mencione por nombre. Ejemplo: una tarea de "
+            'visión técnica/coordinación ejecutiva puede ir a un "CTO" custom '
+            "aunque el prompt solo describa el resultado deseado. "
+            'Formato: {"agent": "custom", "employee_id": "<uuid>", "instruction": "..."}.\n'
+            "PRECEDENCIA: prefiere builtin para tareas directas y bien tipadas "
+            "(crear factura, generar nómina, conciliar banca). Reserva los custom "
+            "para tareas de coordinación, supervisión, análisis transversal o "
+            "expertise específico que el builtin no cubre.\n"
+        )
     )
 
 
