@@ -82,6 +82,28 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
         for s in plan
         if s.get("agent") not in VALID_DOMAINS and s.get("agent") != "node_engine"
     ]
+    # Pasos con agent='custom' necesitan resolver a un AIEmployee concreto.
+    # Aceptamos: employee_id en los params del paso o addressed_employee_id en
+    # el metadata global del state. Si no hay ninguno, falla pronto con un
+    # mensaje claro en lugar de degenerarse en el dispatcher.
+    addressed = (state.get("additional_metadata") or {}).get("addressed_employee_id")
+    custom_unresolved = [
+        s["id"]
+        for s in plan
+        if s.get("agent") == "custom"
+        and not s.get("params", {}).get("employee_id")
+        and not addressed
+    ]
+    if custom_unresolved:
+        return {
+            **state,
+            "status": TaskStatus.FAILED,
+            "error_message": (
+                f"Pasos con agent='custom' sin employee_id: {custom_unresolved}. "
+                "El planner debe especificar employee_id o el classifier debe resolver "
+                "addressed_employee_id desde la mención del usuario."
+            ),
+        }
     if invalid:
         # Invalidar cache envenenado para que el próximo intento regenere el plan
         try:

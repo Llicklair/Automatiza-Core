@@ -49,8 +49,12 @@ async def _invoke_dynamic_employee(
     from app.services.workflow.activity import log_activity
 
     async with AsyncSessionLocal() as db:
-        addressed_id = (enriched_state.get("additional_metadata") or {}).get(
-            "addressed_employee_id"
+        # Per-step employee_id (puesto por el planner) tiene prioridad sobre
+        # el addressed_employee_id global del state. Permite que un mismo plan
+        # multi-step invoque a varios custom employees distintos.
+        step_employee_id = (subtask.get("params") or {}).get("employee_id")
+        addressed_id = step_employee_id or (
+            (enriched_state.get("additional_metadata") or {}).get("addressed_employee_id")
         )
         if addressed_id and agent_name == "custom":
             try:
