@@ -419,12 +419,29 @@ class ClaudeCodeChatModel(BaseChatModel):
             )
 
         def _parse(raw_text: str):
+            # Strip markdown code fences first.
             clean = re.sub(r"```(?:json)?\s*", "", raw_text)
             clean = re.sub(r"```", "", clean).strip()
-            match = re.search(r"\{.*\}", clean, re.DOTALL)
-            if match:
-                clean = match.group(0)
-            parsed = json.loads(clean)
+
+            # raw_decode lets us recover when the model wraps JSON in prose.
+            # The greedy `\{.*\}` regex captured between the first `{` and last `}`,
+            # which fails parsing if there are multiple sibling JSON objects or
+            # trailing prose. Walk through every `{` and try raw_decode from there
+            # until one parses cleanly.
+            decoder = json.JSONDecoder()
+            parsed = None
+            for m in re.finditer(r"\{", clean):
+                try:
+                    candidate, _ = decoder.raw_decode(clean[m.start():])
+                    parsed = candidate
+                    break
+                except json.JSONDecodeError:
+                    continue
+
+            if parsed is None:
+                # Last resort: parse the whole cleaned blob and let json.loads raise.
+                parsed = json.loads(clean)
+
             if hasattr(schema, "model_validate"):
                 return schema.model_validate(parsed)
             return parsed
