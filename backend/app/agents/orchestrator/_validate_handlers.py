@@ -9,6 +9,34 @@ from app.services.llm_cache import llm_cache
 logger = logging.getLogger(__name__)
 
 
+# Keyword → dominio. Si el planner LLM devuelve plan vacío (prompt complejo,
+# json mal formado, modelo confuso) caemos a este clasificador determinista
+# para asignar al menos un agente y dar una respuesta al usuario en lugar
+# de marcar la tarea como FAILED.
+_DOMAIN_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "billing": ("factura", "albaran", "albarán", "cobro", "venta", "presupuesto", "proforma"),
+    "hr": ("nomina", "nómina", "empleado", "sueldo", "rrhh", "contrato laboral", "plantilla"),
+    "banking": ("banco", "saldo", "transaccion", "transacción", "concilia", "movimiento bancario"),
+    "accounting": ("asiento", "contabilidad", "libro mayor", "p&g", "perdida", "pérdida", "cuenta 4"),
+    "compliance": ("fiscal", "iva", "modelo 303", "modelo 111", "modelo 200", "boe", "trimestre"),
+    "documents": ("documento", "escanear", "archivo", "clasificar", "carpeta", "buzón", "buzon"),
+    "crm": ("oportunidad", "lead", "comercial", "pipeline", "cliente nuevo"),
+    "email": ("correo", "email", "enviar mensaje", "recordatorio"),
+    "excel": ("excel", "hoja de calculo", "hoja de cálculo", "exportar", "xlsx"),
+    "rag": ("consulta interna", "knowledge base", "politica interna", "política interna"),
+    "recruitment": ("cv", "candidato", "candidata", "posicion abierta", "posición abierta"),
+    "marketing": ("campaña", "campana", "catalogo", "catálogo de productos"),
+}
+
+
+def _heuristic_classify(intent: str) -> str:
+    """Clasificador por keyword count. Devuelve el dominio con más coincidencias."""
+    text = (intent or "").lower()
+    scores = {d: sum(1 for kw in kws if kw in text) for d, kws in _DOMAIN_KEYWORDS.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else "chat"
+
+
 async def validate_node(state: OrchestratorState) -> OrchestratorState:
     """
     Validación determinista pre-ejecución.
@@ -16,6 +44,32 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
     """
     plan = state.get("plan", [])
     if not plan:
+        # Fallback heurístico: el LLM no pudo descomponer la tarea (prompt
+        # complejo o formato roto). En lugar de fallar, clasificamos por
+        # keywords y delegamos a un único agente.
+        intent = state.get("user_intent", "")
+        domain = _heuristic_classify(intent)
+        if domain in VALID_DOMAINS:
+            logger.warning(
+                "[VALIDATE] Plan LLM vacío. Fallback heurístico → agente '%s' para intent: %s",
+                domain,
+                intent[:120],
+            )
+            return {
+                **state,
+                "plan": [
+                    {
+                        "id": "step_1",
+                        "agent": domain,
+                        "action": "process",
+                        "params": {"intent": intent},
+                        "depends_on": [],
+                        "status": "pending",
+                    }
+                ],
+                "status": TaskStatus.EXECUTING,
+                "iteration_count": state["iteration_count"] + 1,
+            }
         return {
             **state,
             "status": TaskStatus.FAILED,
