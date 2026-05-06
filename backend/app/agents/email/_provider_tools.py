@@ -161,7 +161,7 @@ def build_real_tools(
         subject: str,
         body: str,
         provider: str = default_provider,
-        attachment_ids: list[str] | None = None,
+        attachment_ids: list[str] | str | None = None,
     ) -> str:
         """Envía un correo electrónico al destinatario indicado.
         Args:
@@ -171,6 +171,8 @@ def build_real_tools(
             body: Cuerpo del correo en texto plano
             provider: Proveedor de correo a usar
             attachment_ids: Opcional. Lista de IDs de documentos a adjuntar.
+                Acepta también un único ID como string — los LLM suelen
+                omitir los corchetes con un solo elemento.
         """
         if provider not in providers:
             return f"Error: proveedor '{provider}' no disponible. Usa uno de: {provider_desc}"

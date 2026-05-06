@@ -214,7 +214,11 @@ def check_unread(tenant_id: str, max_results: int = 10) -> str:
 
 @tool
 def send_email(
-    tenant_id: str, to: str, subject: str, body: str, attachment_ids: list[str] | None = None
+    tenant_id: str,
+    to: str,
+    subject: str,
+    body: str,
+    attachment_ids: list[str] | str | None = None,
 ) -> str:
     """
     Envía un correo electrónico al destinatario indicado, permitiendo adjuntar documentos.
@@ -223,7 +227,9 @@ def send_email(
         to: Dirección de correo electrónico del destinatario
         subject: Asunto del correo
         body: Cuerpo del correo en texto plano
-        attachment_ids: Opcional. Lista de IDs de documentos del Escanear (TenantDocument) a adjuntar.
+        attachment_ids: Opcional. Lista de IDs de documentos del Escanear
+            (TenantDocument) a adjuntar. Acepta también un único ID como
+            string — los LLM suelen omitir los corchetes con un solo elemento.
     """
     if isinstance(attachment_ids, str):
         attachment_ids = [attachment_ids] if attachment_ids else None
