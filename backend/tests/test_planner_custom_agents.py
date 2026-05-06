@@ -260,7 +260,7 @@ class TestDispatcherErrorPropagation:
     ):
         """asyncio.TimeoutError().__str__() devuelve '' por defecto. El
         dispatcher debe detectarlo y dar al usuario un mensaje claro
-        ("Timeout de 120s al ejecutar..."), no propagar error=''.
+        ("Timeout de 180s al ejecutar..."), no propagar error=''.
         """
         from app.agents.orchestrator._dispatch_handlers import _invoke_dynamic_employee
         from app.db.models.ai_employees import AIEmployee
@@ -287,7 +287,7 @@ class TestDispatcherErrorPropagation:
         async def fake_budget(*_a, **_kw):
             return True
 
-        # Bajamos timeout a 0.1s con monkeypatch para no esperar 120s reales.
+        # Bajamos timeout a 0.1s con monkeypatch para no esperar 180s reales.
         with patch(
             "app.agents.workers.compile_dynamic_agent", new=fake_compile
         ), patch(
