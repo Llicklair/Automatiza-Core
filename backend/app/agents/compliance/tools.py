@@ -160,6 +160,11 @@ _CONTEXTO_NORMATIVO = """
 
 async def _search_tenant_docs(tenant_id: str, question: str) -> str:
     """Busca fragmentos relevantes en los documentos del tenant via RAG. Devuelve texto o vacío."""
+    from app.agents.agent_tools.semantic_search import (
+        cosine_topk,
+        is_missing_table_or_extension,
+    )
+
     try:
         embedder = get_embedder()
         if not embedder:
@@ -170,20 +175,19 @@ async def _search_tenant_docs(tenant_id: str, question: str) -> str:
                 sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
             )
             jurisdiction = tenant_result.scalar() or "ES_TAX"
-            stmt = (
-                sa.select(DocumentEmbedding)
-                .where(
-                    DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
-                    sa.or_(
-                        DocumentEmbedding.jurisdiction == jurisdiction,
-                        DocumentEmbedding.jurisdiction.is_(None),
-                    ),
+            try:
+                scored = await cosine_topk(
+                    db,
+                    tenant_id=tenant_id,
+                    query_vector=query_vector,
+                    top_k=3,
+                    jurisdiction=jurisdiction,
                 )
-                .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
-                .limit(3)
-            )
-            result = await db.execute(stmt)
-            fragments = result.scalars().all()
+            except Exception as ve:
+                if is_missing_table_or_extension(ve):
+                    return ""
+                raise
+            fragments = [m for m, _dist in scored]
         return "".join(
             f"\n--- Fragmento {i} ---\n{m.text_content}\n" for i, m in enumerate(fragments, 1)
         )

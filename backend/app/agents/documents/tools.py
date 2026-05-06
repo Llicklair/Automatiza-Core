@@ -339,33 +339,23 @@ async def search_documents_semantic(tenant_id: str, query: str, limit: int = 5) 
 
 _SEMANTIC_DISABLED_MSG = (
     "Búsqueda semántica no habilitada en este tenant: la tabla "
-    "'document_embeddings' o la extensión pgvector no están disponibles. "
-    "Como alternativa, usa list_tenant_documents para listar documentos "
-    "filtrando por categoría, o get_document_content para leer un "
-    "documento concreto."
+    "'document_embeddings' aún no está creada. Como alternativa, usa "
+    "list_tenant_documents para listar documentos filtrando por "
+    "categoría, o get_document_content para leer un documento concreto."
 )
 
 
-def _is_missing_table_or_extension(exc: Exception) -> bool:
-    """Detecta el error pgsql cuando la infraestructura de búsqueda
-    semántica (tabla document_embeddings o extensión vector) no está
-    instalada — código sqlstate 42P01 (UndefinedTable) o 42704
-    (UndefinedObject)."""
-    sqlstate = getattr(exc, "sqlstate", None) or getattr(
-        getattr(exc, "orig", None), "sqlstate", None
-    )
-    if sqlstate in ("42P01", "42704"):
-        return True
-    err = str(exc).lower()
-    return (
-        "document_embeddings" in err
-        and ("does not exist" in err or "no existe la relaci" in err)
-    ) or ('type "vector"' in err and "does not exist" in err)
+# Re-export del helper para no romper imports antiguos.
+from app.agents.agent_tools.semantic_search import (  # noqa: E402
+    is_missing_table_or_extension as _is_missing_table_or_extension,
+)
 
 
 async def _search_documents_semantic_async(tenant_id: str, query: str, limit: int) -> str:
-    from sqlalchemy import text
-
+    from app.agents.agent_tools.semantic_search import (
+        cosine_topk,
+        similarity_from_distance,
+    )
     from app.db.base import AsyncSessionLocal
 
     try:
@@ -376,35 +366,25 @@ async def _search_documents_semantic_async(tenant_id: str, query: str, limit: in
         query_vector = await embedder.aembed_query(query)
 
         async with AsyncSessionLocal() as db:
-            # Búsqueda por coseno en pgvector
-            stmt = text("""
-                SELECT de.document_id, de.text_content,
-                       de.embedding <=> :query_vec::vector AS distance
-                FROM document_embeddings de
-                WHERE de.tenant_id = :tid
-                ORDER BY distance ASC
-                LIMIT :lim
-            """)
-            result = await db.execute(
-                stmt,
-                {
-                    "query_vec": str(query_vector),
-                    "tid": tenant_id,
-                    "lim": limit,
-                },
+            scored = await cosine_topk(
+                db,
+                tenant_id=tenant_id,
+                query_vector=query_vector,
+                top_k=limit,
             )
-            rows = result.fetchall()
 
-            if not rows:
+            if not scored:
                 return f"No se encontraron documentos relevantes para: '{query}'"
 
             lines = []
-            for doc_id, text_content, distance in rows:
-                similarity = max(0, 1 - distance)
-                snippet = text_content[:200].replace("\n", " ")
-                lines.append(f"- Doc ID: {doc_id} | Relevancia: {similarity:.0%} | {snippet}...")
+            for emb, distance in scored:
+                similarity = similarity_from_distance(distance)
+                snippet = emb.text_content[:200].replace("\n", " ")
+                lines.append(
+                    f"- Doc ID: {emb.document_id} | Relevancia: {similarity:.0%} | {snippet}..."
+                )
 
-            return f"Resultados de búsqueda semántica ({len(rows)}):\n" + "\n".join(lines)
+            return f"Resultados de búsqueda semántica ({len(scored)}):\n" + "\n".join(lines)
     except Exception as e:
         if _is_missing_table_or_extension(e):
             return _SEMANTIC_DISABLED_MSG

@@ -17,34 +17,21 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+from app.agents.agent_tools.semantic_search import (
+    cosine_topk,
+    is_missing_table_or_extension as _is_missing_table_or_extension,
+)
 from app.core.llm_factory import get_embedder, get_llm
 from app.db.base import AsyncSessionLocal
-from app.db.models.embeddings import DocumentEmbedding
 
 logger = logging.getLogger(__name__)
 
 
 _SEMANTIC_DISABLED_NOTE = (
     "(búsqueda semántica no habilitada en este tenant — la tabla "
-    "'document_embeddings' o la extensión pgvector no están disponibles; "
-    "se usaron solo coincidencias por nombre/categoría)"
+    "'document_embeddings' aún no está creada; se usaron solo "
+    "coincidencias por nombre/categoría)"
 )
-
-
-def _is_missing_table_or_extension(exc: Exception) -> bool:
-    """sqlstate 42P01 (UndefinedTable) o 42704 (UndefinedObject) o el
-    error textual cuando falta la tabla document_embeddings o la
-    extensión vector."""
-    sqlstate = getattr(exc, "sqlstate", None) or getattr(
-        getattr(exc, "orig", None), "sqlstate", None
-    )
-    if sqlstate in ("42P01", "42704"):
-        return True
-    err = str(exc).lower()
-    return (
-        "document_embeddings" in err
-        and ("does not exist" in err or "no existe la relaci" in err)
-    ) or ('type "vector"' in err and "does not exist" in err)
 
 
 def _get_llm():
@@ -98,25 +85,18 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
                 jurisdiction = j_res.scalar() or "ES_TAX"
 
                 query_vector = await embedder.aembed_query(query)
-                stmt_vector = (
-                    sa.select(DocumentEmbedding)
-                    .where(
-                        DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
-                        sa.or_(
-                            DocumentEmbedding.jurisdiction == jurisdiction,
-                            DocumentEmbedding.jurisdiction.is_(None),
-                        ),
-                    )
-                    .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
-                    .limit(top_k)
-                )
-                # La búsqueda vectorial puede fallar si la tabla o pgvector
-                # no están instaladas. En ese caso conservamos los matches
-                # por filename y marcamos el bloque semántico como no
-                # disponible — más útil para el LLM que abortar entero.
+                # Coseno en Python (sin pgvector) — la app desktop no lo
+                # incluye. Si la tabla aún no está creada, marcamos
+                # disabled y conservamos los matches por filename.
                 try:
-                    res_vector = await db.execute(stmt_vector)
-                    for match in res_vector.scalars().all():
+                    scored = await cosine_topk(
+                        db,
+                        tenant_id=tenant_id,
+                        query_vector=query_vector,
+                        top_k=top_k,
+                        jurisdiction=jurisdiction,
+                    )
+                    for match, _dist in scored:
                         doc_name_res = await db.execute(
                             sa.select(TenantDocument.file_name).where(
                                 TenantDocument.id == match.document_id
@@ -209,21 +189,15 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
                 jurisdiction = j_res.scalar() or "ES_TAX"
 
                 query_vector = await embedder.aembed_query(question)
-                stmt_vector = (
-                    sa.select(DocumentEmbedding)
-                    .where(
-                        DocumentEmbedding.tenant_id == uuid.UUID(tenant_id),
-                        sa.or_(
-                            DocumentEmbedding.jurisdiction == jurisdiction,
-                            DocumentEmbedding.jurisdiction.is_(None),
-                        ),
-                    )
-                    .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
-                    .limit(top_k)
-                )
                 try:
-                    res_vector = await db.execute(stmt_vector)
-                    for match in res_vector.scalars().all():
+                    scored = await cosine_topk(
+                        db,
+                        tenant_id=tenant_id,
+                        query_vector=query_vector,
+                        top_k=top_k,
+                        jurisdiction=jurisdiction,
+                    )
+                    for match, _dist in scored:
                         doc_name_res = await db.execute(
                             sa.select(TenantDocument.file_name).where(
                                 TenantDocument.id == match.document_id

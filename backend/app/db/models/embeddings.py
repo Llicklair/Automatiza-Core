@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -26,7 +25,11 @@ class DocumentEmbedding(Base):
     # Jurisdicción del tenant al momento de indexar (para filtro cross-border)
     jurisdiction = Column(String(20), nullable=True, index=True)
 
-    # Vector column — 768-dimensional (BAAI/bge-m3)
-    embedding = Column(Vector(768), nullable=False)
+    # Embedding vector almacenado como lista de floats en JSONB.
+    # Antes era pgvector.sqlalchemy.Vector(768), pero la app desktop
+    # distribuye un Postgres portable sin la extensión pgvector. Para
+    # mantenerla portable usamos JSONB y calculamos similitud coseno
+    # en Python — adecuado hasta ~5.000 chunks por tenant.
+    embedding = Column(JSONB, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
