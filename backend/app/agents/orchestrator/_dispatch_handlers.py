@@ -149,11 +149,32 @@ async def _invoke_dynamic_employee(
                 "output": {"action": "completed" if success else "failed", "response": final_text},
                 "error": None if success else final_text,
             }
+        except asyncio.TimeoutError:
+            employee.status = "idle"
+            await db.commit()
+            logger.exception(
+                "Timeout (120s) en dynamic employee '%s'", employee.name
+            )
+            return _make_error_result(
+                subtask,
+                agent_name,
+                action="failed",
+                error=(
+                    f"Timeout de 120s al ejecutar el agente custom '{employee.name}'. "
+                    "El system_prompt o el modelo LLM tardaron demasiado en responder."
+                ),
+            )
         except Exception as e:
             employee.status = "idle"
             await db.commit()
             logger.exception("Error en dynamic employee '%s'", employee.name)
-            return _make_error_result(subtask, agent_name, action="failed", error=str(e))
+            # Algunas excepciones (TimeoutError, ConnectionError sin args, etc.)
+            # tienen str(e) == "". Garantizamos un mensaje útil para que el plan
+            # no propague 'error: ""' al usuario.
+            msg = str(e).strip() or f"{type(e).__name__} (sin mensaje)"
+            return _make_error_result(
+                subtask, agent_name, action="failed", error=msg
+            )
 
 
 async def _invoke_dispatcher_impl(
