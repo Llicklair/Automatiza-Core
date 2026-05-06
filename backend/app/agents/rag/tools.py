@@ -24,6 +24,29 @@ from app.db.models.embeddings import DocumentEmbedding
 logger = logging.getLogger(__name__)
 
 
+_SEMANTIC_DISABLED_NOTE = (
+    "(búsqueda semántica no habilitada en este tenant — la tabla "
+    "'document_embeddings' o la extensión pgvector no están disponibles; "
+    "se usaron solo coincidencias por nombre/categoría)"
+)
+
+
+def _is_missing_table_or_extension(exc: Exception) -> bool:
+    """sqlstate 42P01 (UndefinedTable) o 42704 (UndefinedObject) o el
+    error textual cuando falta la tabla document_embeddings o la
+    extensión vector."""
+    sqlstate = getattr(exc, "sqlstate", None) or getattr(
+        getattr(exc, "orig", None), "sqlstate", None
+    )
+    if sqlstate in ("42P01", "42704"):
+        return True
+    err = str(exc).lower()
+    return (
+        "document_embeddings" in err
+        and ("does not exist" in err or "no existe la relaci" in err)
+    ) or ('type "vector"' in err and "does not exist" in err)
+
+
 def _get_llm():
     return get_llm(temperature=0)
 
@@ -43,6 +66,7 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
 
     retrieved_chunks = []
     source_names = set()
+    semantic_disabled = False
 
     try:
         async with AsyncSessionLocal() as db:
@@ -86,28 +110,50 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
                     .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
                     .limit(top_k)
                 )
-                res_vector = await db.execute(stmt_vector)
-                for match in res_vector.scalars().all():
-                    doc_name_res = await db.execute(
-                        sa.select(TenantDocument.file_name).where(
-                            TenantDocument.id == match.document_id
+                # La búsqueda vectorial puede fallar si la tabla o pgvector
+                # no están instaladas. En ese caso conservamos los matches
+                # por filename y marcamos el bloque semántico como no
+                # disponible — más útil para el LLM que abortar entero.
+                try:
+                    res_vector = await db.execute(stmt_vector)
+                    for match in res_vector.scalars().all():
+                        doc_name_res = await db.execute(
+                            sa.select(TenantDocument.file_name).where(
+                                TenantDocument.id == match.document_id
+                            )
                         )
-                    )
-                    doc_name = doc_name_res.scalar()
-                    if doc_name:
-                        source_names.add(doc_name)
-                    page_info = f" [Pág. {match.page_number}]" if match.page_number else ""
-                    type_info = f" ({match.element_type})" if match.element_type else ""
-                    retrieved_chunks.append(f"{match.text_content}{page_info}{type_info}")
+                        doc_name = doc_name_res.scalar()
+                        if doc_name:
+                            source_names.add(doc_name)
+                        page_info = f" [Pág. {match.page_number}]" if match.page_number else ""
+                        type_info = f" ({match.element_type})" if match.element_type else ""
+                        retrieved_chunks.append(
+                            f"{match.text_content}{page_info}{type_info}"
+                        )
+                except Exception as ve:
+                    if _is_missing_table_or_extension(ve):
+                        semantic_disabled = True
+                    else:
+                        raise
     except Exception as e:
-        return f"Error en búsqueda: {e}"
+        if _is_missing_table_or_extension(e):
+            semantic_disabled = True
+        else:
+            return f"Error en búsqueda: {e}"
 
     if not retrieved_chunks:
+        if semantic_disabled:
+            return (
+                f"No se encontraron documentos por nombre/categoría para "
+                f"'{query}'. {_SEMANTIC_DISABLED_NOTE}"
+            )
         return f"No se encontraron documentos relevantes para: '{query}'"
 
     result = (
         f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
     )
+    if semantic_disabled:
+        result += f"{_SEMANTIC_DISABLED_NOTE}\n"
     result += f"Fuentes: {', '.join(source_names)}\n\n"
     for idx, chunk in enumerate(retrieved_chunks, 1):
         result += f"--- Fragmento {idx} ---\n{chunk[:500]}\n\n"
@@ -128,6 +174,7 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
 
     retrieved_chunks = []
     source_names = set()
+    semantic_disabled = False
 
     try:
         async with AsyncSessionLocal() as db:
@@ -174,25 +221,36 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
                     .order_by(DocumentEmbedding.embedding.cosine_distance(query_vector))
                     .limit(top_k)
                 )
-                res_vector = await db.execute(stmt_vector)
-                for match in res_vector.scalars().all():
-                    doc_name_res = await db.execute(
-                        sa.select(TenantDocument.file_name).where(
-                            TenantDocument.id == match.document_id
+                try:
+                    res_vector = await db.execute(stmt_vector)
+                    for match in res_vector.scalars().all():
+                        doc_name_res = await db.execute(
+                            sa.select(TenantDocument.file_name).where(
+                                TenantDocument.id == match.document_id
+                            )
                         )
-                    )
-                    doc_name = doc_name_res.scalar()
-                    if doc_name:
-                        source_names.add(doc_name)
-                    page_ref = f" [Página {match.page_number}]" if match.page_number else ""
-                    retrieved_chunks.append(
-                        {
-                            "doc_id": str(match.document_id),
-                            "text": f"{match.text_content}{page_ref}",
-                        }
-                    )
+                        doc_name = doc_name_res.scalar()
+                        if doc_name:
+                            source_names.add(doc_name)
+                        page_ref = (
+                            f" [Página {match.page_number}]" if match.page_number else ""
+                        )
+                        retrieved_chunks.append(
+                            {
+                                "doc_id": str(match.document_id),
+                                "text": f"{match.text_content}{page_ref}",
+                            }
+                        )
+                except Exception as ve:
+                    if _is_missing_table_or_extension(ve):
+                        semantic_disabled = True
+                    else:
+                        raise
     except Exception as e:
-        return f"Error buscando documentos: {e}"
+        if _is_missing_table_or_extension(e):
+            semantic_disabled = True
+        else:
+            return f"Error buscando documentos: {e}"
 
     if not retrieved_chunks:
         return "No he encontrado documentos en tu base de datos que contengan información relevante para responder esta pregunta."
