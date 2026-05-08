@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.agents.orchestrator.dispatchers import DISPATCHER_MAP
+from app.agents.orchestrator._dispatch_handlers import _invoke_dispatcher
 from app.agents.tool_registry import call_tool
 from app.db.models import models
 from app.services.workflow.task_dispatch import (
@@ -338,18 +338,6 @@ async def _run_reasoning_step(
     base_state["user_intent"] = intent
     base_state["current_intent"] = intent
 
-    dispatch_fn = DISPATCHER_MAP.get(agent_name)
-    if dispatch_fn is None:
-        return (
-            {
-                "agent": agent_name,
-                "step": idx,
-                "type": "reasoning",
-                "success": False,
-                "error": f"Agente '{agent_name}' no reconocido",
-            },
-            prev_output,
-        )
     subtask = {
         "id": f"hybrid_{idx}_{agent_name}",
         "subtask_id": f"hybrid_{idx}_{agent_name}",
@@ -360,7 +348,9 @@ async def _run_reasoning_step(
         "status": "pending",
     }
     try:
-        result = await dispatch_fn(base_state, subtask)
+        # Routing unificado: built-in DISPATCHER_MAP → skill → AIEmployee custom.
+        # Misma fuente que el orquestador, así los workflows reconocen agentes custom.
+        result = await _invoke_dispatcher(base_state, subtask, agent_name)
         output_data = result.get("output", {})
         new_prev = (
             output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)

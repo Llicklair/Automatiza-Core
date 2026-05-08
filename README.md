@@ -668,7 +668,26 @@ pytest tests/test_api_auth.py -v
 pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-Archivos de test: `test_api_auth`, `test_api_health`, `test_api_tasks_agents`, `test_api_tenant`, `test_encryption`, `test_prompt_sanitizer`, `test_security`.
+### Tests del seam de routing — `test_routing_seam.py`
+
+Garantía de no-regresión sobre la cadena de invocación de agentes (modal →
+parse-nl → blueprint → NodeEngine → dispatcher → AIEmployee). Cada test ataca
+una costura concreta entre subsistemas; si alguna se rompe, CI rojo.
+
+```bash
+# Solo los tests de routing (rápidos, sin LLM real)
+pytest tests/test_routing_seam.py -v
+```
+
+Cubre 7 costuras:
+
+1. `generate_preview_nodes` asigna `data.employee_id` para AIEmployees custom.
+2. `generate_preview_nodes` usa el built-in con su nombre real (no etiqueta genérica).
+3. `_plan_from_blueprint` propaga `data.employee_id` → `params.employee_id`.
+4. `build_skill_dispatch` (NodeEngine) propaga `data.employee_id` al subtask.
+5. `plan_node` hace swap a custom cuando hay 1 match en el dominio (Fix A).
+6. `classifier._resolve_custom_employee` filtra por `is_builtin=False` (no por literal `domain == "custom"`).
+7. `_invoke_dispatcher_impl` enruta `agent="custom"` al dispatcher dinámico con `params.employee_id` intacto.
 
 ---
 

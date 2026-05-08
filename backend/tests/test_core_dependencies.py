@@ -1,12 +1,23 @@
 """Tests para app.core.dependencies — Inyección de dependencias FastAPI."""
+from unittest.mock import MagicMock
+from uuid import uuid4
+
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
 
 from app.core.dependencies import get_current_user, require_role
 from app.core.security import create_access_token
+
+
+def _mock_request(path: str = "/api/v1/test") -> MagicMock:
+    """Mock mínimo de Request — solo se accede a request.url.path en
+    get_current_user, y solo cuando user.role == 'employee'.
+    """
+    req = MagicMock()
+    req.url.path = path
+    return req
 
 
 class TestGetCurrentUser:
@@ -14,7 +25,7 @@ class TestGetCurrentUser:
     async def test_valid_token_returns_user(self, db: AsyncSession, seed_tenant_and_user):
         tenant, user, token = seed_tenant_and_user
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
-        result = await get_current_user(credentials=creds, db=db)
+        result = await get_current_user(request=_mock_request(), credentials=creds, db=db)
         assert result.id == user.id
         assert result.email == "test@empresa.com"
 
@@ -22,7 +33,7 @@ class TestGetCurrentUser:
     async def test_invalid_token_raises_401(self, db: AsyncSession):
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid.jwt.token")
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user(credentials=creds, db=db)
+            await get_current_user(request=_mock_request(), credentials=creds, db=db)
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
@@ -36,7 +47,7 @@ class TestGetCurrentUser:
         })
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user(credentials=creds, db=db)
+            await get_current_user(request=_mock_request(), credentials=creds, db=db)
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
@@ -48,7 +59,7 @@ class TestGetCurrentUser:
 
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user(credentials=creds, db=db)
+            await get_current_user(request=_mock_request(), credentials=creds, db=db)
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
@@ -56,7 +67,7 @@ class TestGetCurrentUser:
         token = create_access_token({"tenant_id": "some-id", "role": "admin"})
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user(credentials=creds, db=db)
+            await get_current_user(request=_mock_request(), credentials=creds, db=db)
         assert exc_info.value.status_code == 401
 
 
@@ -65,7 +76,7 @@ class TestRequireRole:
     async def test_matching_role_passes(self, db: AsyncSession, seed_tenant_and_user):
         tenant, user, token = seed_tenant_and_user
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
-        resolved_user = await get_current_user(credentials=creds, db=db)
+        resolved_user = await get_current_user(request=_mock_request(), credentials=creds, db=db)
 
         checker = require_role("admin", "superadmin")
         result = await checker(current_user=resolved_user)
@@ -75,7 +86,7 @@ class TestRequireRole:
     async def test_non_matching_role_raises_403(self, db: AsyncSession, seed_tenant_and_user):
         tenant, user, token = seed_tenant_and_user
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
-        resolved_user = await get_current_user(credentials=creds, db=db)
+        resolved_user = await get_current_user(request=_mock_request(), credentials=creds, db=db)
 
         checker = require_role("superadmin")
         with pytest.raises(HTTPException) as exc_info:

@@ -188,11 +188,17 @@ def build_skill_dispatch(
     if extra_meta:
         meta.update(extra_meta)
 
+    subtask_params: dict = {"intent": enriched_intent}
+    # Si el nodo tiene employee_id (asignado por parse-nl o por el modal), propágalo
+    # a params para que _invoke_dynamic_employee pueda resolver al AIEmployee exacto
+    # en lugar de elegir uno random con domain == agent_name.
+    if data.get("employee_id"):
+        subtask_params["employee_id"] = data["employee_id"]
     subtask = {
         "id": node["id"],
         "agent": domain,
         "action": "execute_node",
-        "params": {"intent": enriched_intent},
+        "params": subtask_params,
         "depends_on": [],
         "status": "pending",
     }
