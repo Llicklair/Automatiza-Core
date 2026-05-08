@@ -144,12 +144,17 @@ async def _plan_from_blueprint(state: OrchestratorState, wf) -> "list[SubTask] |
         explicit = data.get("instruction") or data.get("description") or ""
         raw = explicit if explicit.strip() else data.get("label", "")
         node_intent = raw if (raw and len(raw.split()) > 3) else state["user_intent"]
+        params: dict = {"intent": node_intent, "original_node_id": node_id}
+        # Si el nodo trae employee_id (asignado en el modal a un AIEmployee
+        # custom), propágalo a params para que _invoke_dynamic_employee lo use.
+        if data.get("employee_id"):
+            params["employee_id"] = data["employee_id"]
         plan.append(
             {
                 "id": node_id,
                 "agent": data.get("domain", "coordinator"),
                 "action": "execute_node",
-                "params": {"intent": node_intent, "original_node_id": node_id},
+                "params": params,
                 "depends_on": final_deps,
                 "status": "pending",
             }
@@ -388,16 +393,60 @@ async def plan_node(state: OrchestratorState) -> dict:
     # 3. Plan de un solo agente — defensa: si el dominio no es válido caemos a 'chat'
     else:
         single_agent = domain if domain in VALID_DOMAINS else "chat"
-        plan = [
-            {
-                "id": "step_1",
-                "agent": single_agent,
-                "action": "process",
-                "params": {"intent": state["user_intent"]},
-                "depends_on": [],
-                "status": "pending",
-            }
-        ]
+
+        # Si el tenant tiene AIEmployees custom para este dominio, evitar que el
+        # built-in se trague la tarea sin más. 1 match → atajo directo a custom;
+        # 2+ → escalar al planner LLM para que elija con criterio (rol/expertise).
+        custom_match: AIEmployee | None = None
+        if domain in VALID_DOMAINS:
+            try:
+                tenant_id_str = state.get("tenant_id", "") or ""
+                all_customs = await _load_tenant_custom_employees(tenant_id_str)
+                matching = [e for e in all_customs if e.domain == domain]
+                if len(matching) == 1:
+                    custom_match = matching[0]
+                elif len(matching) >= 2:
+                    try:
+                        plan = await _plan_from_llm(state)
+                        return {
+                            **state,
+                            "plan": plan,
+                            "status": TaskStatus.VALIDATING,
+                            "iteration_count": state["iteration_count"] + 1,
+                        }
+                    except Exception as e:
+                        logger.warning(
+                            "[PLAN] escalación a planner falló (%s), caigo a builtin '%s'",
+                            e, single_agent,
+                        )
+            except Exception as e:
+                logger.debug("[PLAN] custom lookup falló: %s", e)
+
+        if custom_match is not None:
+            plan = [
+                {
+                    "id": "step_1",
+                    "agent": "custom",
+                    "action": "process",
+                    "params": {
+                        "intent": state["user_intent"],
+                        "employee_id": str(custom_match.id),
+                    },
+                    "depends_on": [],
+                    "status": "pending",
+                }
+            ]
+        else:
+            plan = [
+                {
+                    "id": "step_1",
+                    "agent": single_agent,
+                    "action": "process",
+                    "params": {"intent": state["user_intent"]},
+                    "depends_on": [],
+                    "status": "pending",
+                }
+            ]
 
     return {
         **state,

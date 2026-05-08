@@ -12,7 +12,10 @@ import pytest
 
 from app.core import llm_callbacks
 
-_langfuse_available = importlib.util.find_spec("langfuse") is not None
+_langfuse_available = (
+    importlib.util.find_spec("langfuse") is not None
+    and importlib.util.find_spec("langchain") is not None
+)
 
 
 def test_returns_none_when_keys_empty(monkeypatch):

@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.llm_factory import get_llm
+from app.db.base import AsyncSessionLocal
 from app.db.models import models
+from app.db.models.ai_employees import AIEmployee
 from app.prompts import load_prompt
 from app.services.workflow._ui_graph import generate_preview_nodes
 from app.services.workflow.conditions import evaluate_conditions
@@ -16,7 +18,25 @@ from app.services.workflow.conditions import evaluate_conditions
 logger = logging.getLogger(__name__)
 
 
-async def parse_natural_language(text: str) -> dict:
+async def _load_tenant_employees(tenant_id) -> list[AIEmployee]:
+    """Carga AIEmployees activos del tenant para enriquecer los preview nodes."""
+    if not tenant_id:
+        return []
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(AIEmployee).where(
+                    AIEmployee.tenant_id == tenant_id,
+                    AIEmployee.status.in_(("idle", "working", "pending_setup")),
+                )
+            )
+            return list(result.scalars().all())
+    except Exception as e:
+        logger.debug("[parse-nl] no se pudieron cargar AIEmployees: %s", e)
+        return []
+
+
+async def parse_natural_language(text: str, tenant_id=None) -> dict:
     """Convierte prompt de lenguaje natural en configuracion de workflow.
 
     Raises Exception si el LLM no puede parsear.
@@ -49,7 +69,8 @@ async def parse_natural_language(text: str) -> dict:
         logger.warning("Fallo deteccion determinismo: %s", det_err)
     payload["can_be_deterministic"] = can_det
 
-    preview_nodes, preview_edges = generate_preview_nodes(payload)
+    employees = await _load_tenant_employees(tenant_id)
+    preview_nodes, preview_edges = generate_preview_nodes(payload, employees)
     payload["ui_nodes"] = preview_nodes
     payload["ui_edges"] = preview_edges
     return payload

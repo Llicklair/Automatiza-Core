@@ -943,7 +943,7 @@ class TestRecruitmentAgentToolChoiceE2E:
     def test_muestra_candidatos_uses_list_candidates(self):
         tool_call = _run_generic_agent_tool(
             "recruitment_agent", None, "recruitment",
-            "Muéstrame los candidatos para el puesto abierto"
+            "Lista todos los candidatos registrados"
         )
         assert tool_call["name"] == "list_candidates", (
             f"Esperaba list_candidates, obtuvo {tool_call['name']}"

@@ -33,8 +33,8 @@ export interface WorkflowExecution {
 }
 
 export const workflows = {
-    list: () => request<Workflow[]>("/api/v1/workflows"),
-    create: (data: Partial<Workflow>) => request<Workflow>("/api/v1/workflows", { method: "POST", body: JSON.stringify(data) }),
+    list: () => request<Workflow[]>("/api/v1/workflows/"),
+    create: (data: Partial<Workflow>) => request<Workflow>("/api/v1/workflows/", { method: "POST", body: JSON.stringify(data) }),
     parse: (text: string) => request<any>("/api/v1/workflows/parse-nl", { method: "POST", body: JSON.stringify({ text }) }),
     update: (id: string, data: Partial<Workflow>) => request<Workflow>(`/api/v1/workflows/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => request(`/api/v1/workflows/${id}`, { method: "DELETE" }),

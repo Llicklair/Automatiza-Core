@@ -215,7 +215,7 @@ async def parse_natural_language_workflow(
     current_user: models.User = Depends(get_current_user),
 ):
     try:
-        payload = await svc.parse_natural_language(body.text)
+        payload = await svc.parse_natural_language(body.text, current_user.tenant_id)
         return schemas.WorkflowParseResponse(**payload)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"No se pudo parsear la regla: {str(e)}")

@@ -465,7 +465,7 @@ async def _resolve_custom_employee(state: OrchestratorState, intent_lower: str) 
             result = await db.execute(
                 select(AIEmployee).where(
                     AIEmployee.tenant_id == UUID(tenant_id),
-                    AIEmployee.domain == "custom",
+                    AIEmployee.is_builtin.is_(False),
                     AIEmployee.status.in_(("idle", "working", "pending_setup")),
                 )
             )
