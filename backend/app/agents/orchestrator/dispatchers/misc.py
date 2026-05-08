@@ -6,7 +6,10 @@ Todos invocan agentes autónomos via LangGraph graph.ainvoke.
 import inspect
 import logging
 
-from app.agents.orchestrator.helpers import _save_ai_result_as_document
+from app.agents.orchestrator.helpers import (
+    _messages_already_generated_pdf,
+    _save_ai_result_as_document,
+)
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.agents.orchestrator.utils import _format_summary
 from app.agents.tool_registry import get_registry
@@ -53,7 +56,9 @@ async def _run_graph_agent(
 
         output = {"action": "completed" if success else "failed", "response": final_text}
 
-        if success and final_text:
+        # No duplicar si el agente ya creó un PDF profesional por su cuenta.
+        messages = result_state.get("messages", [])
+        if success and final_text and not _messages_already_generated_pdf(messages):
             await _save_ai_result_as_document(
                 tenant_id=tenant_id,
                 task_id=state["task_id"],

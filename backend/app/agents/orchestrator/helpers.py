@@ -38,6 +38,26 @@ async def _unlock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID):
         doc.locked_at = None
 
 
+_PDF_TOOL_NAMES = frozenset({"create_pdf_report", "create_pdf_text_report"})
+
+
+def _messages_already_generated_pdf(messages: list) -> bool:
+    """True si alguno de los messages del agente ya invocó una tool de PDF.
+
+    Usado por los dispatchers para no duplicar guardando un "análisis"
+    auto-generado del texto de respuesta cuando el agente ya produjo
+    su propio PDF profesional vía create_pdf_report / create_pdf_text_report.
+    """
+    if not messages:
+        return False
+    for msg in messages:
+        for tc in (getattr(msg, "tool_calls", None) or []):
+            name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+            if name in _PDF_TOOL_NAMES:
+                return True
+    return False
+
+
 async def _save_ai_result_as_document(
     tenant_id: str,
     task_id: str,
