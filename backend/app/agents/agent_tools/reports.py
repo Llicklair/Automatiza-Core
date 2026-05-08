@@ -21,7 +21,11 @@ from sqlalchemy import select
 from app.db.base import AsyncSessionLocal
 from app.db.models.auth import Tenant
 from app.db.models.models import TenantDocument
-from app.services.pdf_reports.agent_report import Report, render_agent_report
+from app.services.pdf_reports.agent_report import (
+    Report,
+    render_agent_report,
+    render_markdown_report,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -155,4 +159,102 @@ async def create_pdf_report(
         )
     except Exception as e:
         _logger.exception("Error creando PDF report")
+        return f"Error creando el informe: {e}"
+
+
+@tool
+async def create_pdf_text_report(
+    tenant_id: str,
+    title: str,
+    body: str,
+    author: str = "Asistente IA",
+    subtitle: str = "",
+    category: str = "informes",
+) -> str:
+    """
+    Genera un informe PDF profesional a partir de un cuerpo en MARKDOWN.
+
+    Más simple que `create_pdf_report` — el LLM solo emite dos strings
+    (title y body). Pensado para informes textuales tipo whitepaper o
+    estudio de mercado: títulos, párrafos, listas, tablas markdown,
+    blockquotes y línea horizontal.
+
+    El cuerpo debe ser MARKDOWN ESTÁNDAR. Soporta:
+      - Encabezados: # H1, ## H2, ### H3
+      - Párrafos (separados por línea en blanco)
+      - Listas con `- ` o `* ` o numeradas `1. `
+      - **negrita**, *cursiva*, `código en línea`
+      - Tablas markdown:
+            | Columna A | Columna B |
+            |-----------|-----------|
+            | dato 1    | dato 2    |
+      - Blockquote con `>`
+      - Línea horizontal con `---`
+
+    Para informes con KPIs en tarjetas o gráficos usa `create_pdf_report`
+    (esquema JSON estructurado, requiere provider con function calling).
+
+    Args:
+        tenant_id: ID del tenant
+        title: Título del informe (aparece en portada y nombre del archivo)
+        body: Cuerpo en markdown
+        author: Quién firma el informe (rol o nombre)
+        subtitle: Subtítulo opcional para la portada
+        category: Categoría en el Gestor (default: "informes")
+    """
+    if not title or not title.strip():
+        return "Error: 'title' no puede estar vacío."
+    if not body or not body.strip():
+        return "Error: 'body' no puede estar vacío. Pasa al menos un párrafo en markdown."
+
+    try:
+        async with AsyncSessionLocal() as db:
+            t_res = await db.execute(
+                select(Tenant.name, Tenant.logo_path).where(Tenant.id == UUID(tenant_id))
+            )
+            row = t_res.first()
+            tenant_name = (row[0] if row else None) or ""
+            logo_path = row[1] if row else None
+
+        try:
+            pdf_bytes = render_markdown_report(
+                title=title,
+                body=body,
+                author=author or "Asistente IA",
+                subtitle=subtitle.strip() or None,
+                tenant_name=tenant_name,
+                logo_path=logo_path,
+            )
+        except RuntimeError as e:
+            return f"Error generando PDF: {e}"
+
+        upload_dir = _resolve_upload_dir()
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name = f"{_slugify(title)}_{ts}.pdf"
+        file_path = os.path.join(upload_dir, file_name)
+        with open(file_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        async with AsyncSessionLocal() as db:
+            doc = TenantDocument(
+                tenant_id=UUID(tenant_id),
+                file_name=file_name,
+                file_path=file_path,
+                file_type="application/pdf",
+                file_size=len(pdf_bytes),
+                category=category,
+                status="completed",
+                parsed_content=None,
+            )
+            db.add(doc)
+            await db.commit()
+            await db.refresh(doc)
+
+        return (
+            f"Informe PDF '{file_name}' generado correctamente. "
+            f"ID: {doc.id} en la categoría '{category}'. "
+            f"{len(pdf_bytes)} bytes."
+        )
+    except Exception as e:
+        _logger.exception("Error creando PDF text report")
         return f"Error creando el informe: {e}"

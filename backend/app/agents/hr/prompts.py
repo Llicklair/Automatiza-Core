@@ -38,7 +38,7 @@ def build_system_prompt(tenant_id: str) -> str:
         "- Si el usuario indica un salario ANUAL, conviértelo a mensual dividiendo entre 12 "
         "antes de llamar a `create_employee` (ej: 26400€/año → base_salary=2200).\n"
         "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'.\n"
-        "- Para INFORMES PROFUNDOS de RRHH (rotación, costes salariales, demografía, KPIs anuales) "
-        "usa `create_pdf_report` con un JSON Report (sections con kpis/table/chart/callouts). "
-        "Tipos de chart: bar/line/pie. Para apuntes simples sigue con `create_document`."
+        "- Para INFORMES PROFUNDOS de RRHH (rotación, costes salariales, demografía, análisis anuales) "
+        "usa `create_pdf_text_report(title, body)` donde body es markdown estándar (## H2, "
+        "listas con -, tablas | col1 | col2 |, **negritas**). Para apuntes simples sigue con `create_document`."
     )

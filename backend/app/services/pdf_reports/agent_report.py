@@ -543,3 +543,218 @@ def render_agent_report(
 
     doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
     return buffer.getvalue()
+
+
+# ─── Markdown report (entry sencillo para LLMs sin function calling) ─────────
+#
+# Acepta título y un cuerpo en markdown. Se renderiza con la misma portada,
+# tipografía y footer que render_agent_report. Pensado para providers como
+# claude_code que no manejan bien el JSON estructurado: el LLM solo emite
+# dos strings.
+
+
+import re as _re
+
+_INLINE_BOLD = _re.compile(r"\*\*(.+?)\*\*")
+_INLINE_ITALIC = _re.compile(r"(?<!\*)\*([^*\n]+?)\*(?!\*)")
+_INLINE_CODE = _re.compile(r"`([^`\n]+?)`")
+
+
+def _md_inline(text: str) -> str:
+    """Convierte markdown inline (**bold**, *italic*, `code`) a HTML mini de ReportLab."""
+    # Escapa los caracteres XML primero
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    text = _INLINE_BOLD.sub(r"<b>\1</b>", text)
+    text = _INLINE_ITALIC.sub(r"<i>\1</i>", text)
+    text = _INLINE_CODE.sub(r'<font face="Courier">\1</font>', text)
+    return text
+
+
+def _md_styles(st: dict) -> dict:
+    C = st["C"]
+    sty = st["styles"]
+
+    def s(name: str, **kw) -> ParagraphStyle:
+        return ParagraphStyle(name, parent=sty["Normal"], **kw)
+
+    return {
+        "h1": s("MdH1", fontSize=18, fontName="Helvetica-Bold", textColor=colors.HexColor(C["SLATE"]),
+                spaceBefore=14, spaceAfter=8),
+        "h2": s("MdH2", fontSize=14, fontName="Helvetica-Bold", textColor=colors.HexColor(C["SLATE"]),
+                spaceBefore=12, spaceAfter=6),
+        "h3": s("MdH3", fontSize=11, fontName="Helvetica-Bold", textColor=colors.HexColor(C["INDIGO"]),
+                spaceBefore=8, spaceAfter=4),
+        "p": s("MdP", fontSize=10, leading=14, fontName="Helvetica",
+               textColor=colors.HexColor(C["SLATE"]), spaceAfter=6),
+        "li": s("MdLi", fontSize=10, leading=14, fontName="Helvetica",
+                textColor=colors.HexColor(C["SLATE"]), leftIndent=14, bulletIndent=4, spaceAfter=2),
+        "quote": s("MdQ", fontSize=10, leading=14, fontName="Helvetica-Oblique",
+                   textColor=colors.HexColor(C["GRAY"]), leftIndent=12, spaceAfter=8),
+    }
+
+
+def _md_table(rows: list[list[str]], st: dict) -> Table:
+    C = st["C"]
+    # Renderiza cada celda como Paragraph para soportar inline y wrap
+    cell_style = ParagraphStyle("MdCell", parent=st["styles"]["Normal"],
+                                fontSize=9, leading=12, fontName="Helvetica",
+                                textColor=colors.HexColor(C["SLATE"]))
+    head_style = ParagraphStyle("MdHead", parent=st["styles"]["Normal"],
+                                fontSize=8, fontName="Helvetica-Bold",
+                                textColor=colors.HexColor(C["GRAY"]))
+    data = [[Paragraph(_md_inline(c), head_style) for c in rows[0]]]
+    for r in rows[1:]:
+        data.append([Paragraph(_md_inline(c), cell_style) for c in r])
+    t = Table(data, repeatRows=1, hAlign="LEFT")
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(C["LIGHT"])),
+        ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor(C["LINE"])),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, colors.HexColor("#f1f5f9")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    return t
+
+
+def _parse_markdown(body: str, st: dict) -> list:
+    """Convierte markdown plano en una lista de flowables ReportLab.
+
+    Soporta:
+      # / ## / ### headings
+      Párrafos (separados por línea en blanco)
+      Listas con `- ` o `* ` o `1. `
+      Tablas markdown ( | col | col | con separator | --- | --- | )
+      Blockquote `> texto`
+      Línea horizontal `---`
+      Inline: **bold**, *italic*, `code`
+    """
+    s = _md_styles(st)
+    flow: list = []
+    lines = body.replace("\r\n", "\n").split("\n")
+    i = 0
+    bullets: list[str] = []
+    table_rows: list[list[str]] = []
+    para_lines: list[str] = []
+
+    def flush_para():
+        nonlocal para_lines
+        if para_lines:
+            txt = " ".join(_md_inline(l.strip()) for l in para_lines if l.strip())
+            if txt:
+                flow.append(Paragraph(txt, s["p"]))
+            para_lines = []
+
+    def flush_bullets():
+        nonlocal bullets
+        for b in bullets:
+            flow.append(Paragraph(_md_inline(b), s["li"], bulletText="•"))
+        bullets = []
+
+    def flush_table():
+        nonlocal table_rows
+        if len(table_rows) >= 2:
+            flow.append(_md_table(table_rows, st))
+            flow.append(Spacer(1, 6))
+        table_rows = []
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Tabla markdown: la primera fila empieza con '|' y la segunda es separador
+        if stripped.startswith("|") and stripped.endswith("|") and i + 1 < len(lines):
+            sep = lines[i + 1].strip()
+            if _re.match(r"^\|?\s*:?-{2,}", sep) and "|" in sep:
+                flush_para(); flush_bullets()
+                # Recoger filas
+                rows: list[list[str]] = []
+                rows.append([c.strip() for c in stripped.strip("|").split("|")])
+                i += 2  # skip separator
+                while i < len(lines) and lines[i].strip().startswith("|") and lines[i].strip().endswith("|"):
+                    rows.append([c.strip() for c in lines[i].strip().strip("|").split("|")])
+                    i += 1
+                table_rows = rows
+                flush_table()
+                continue
+
+        # Headings
+        if stripped.startswith("### "):
+            flush_para(); flush_bullets(); flush_table()
+            flow.append(Paragraph(_md_inline(stripped[4:]), s["h3"]))
+        elif stripped.startswith("## "):
+            flush_para(); flush_bullets(); flush_table()
+            flow.append(Paragraph(_md_inline(stripped[3:]), s["h2"]))
+        elif stripped.startswith("# "):
+            flush_para(); flush_bullets(); flush_table()
+            flow.append(Paragraph(_md_inline(stripped[2:]), s["h1"]))
+        # HR
+        elif stripped in ("---", "***", "___"):
+            flush_para(); flush_bullets(); flush_table()
+            C = st["C"]
+            flow.append(HRFlowable(width="100%", thickness=0.5,
+                                   color=colors.HexColor(C["LINE"]),
+                                   spaceBefore=4, spaceAfter=8))
+        # Blockquote
+        elif stripped.startswith(">"):
+            flush_para(); flush_bullets()
+            flow.append(Paragraph(_md_inline(stripped.lstrip(">").strip()), s["quote"]))
+        # Bullet list
+        elif _re.match(r"^[-*]\s+", stripped):
+            flush_para()
+            bullets.append(_re.sub(r"^[-*]\s+", "", stripped))
+        # Ordered list (los renderizamos como bullet también para simplificar)
+        elif _re.match(r"^\d+\.\s+", stripped):
+            flush_para()
+            bullets.append(_re.sub(r"^\d+\.\s+", "", stripped))
+        # Línea vacía → separador
+        elif not stripped:
+            flush_para(); flush_bullets()
+        # Texto normal
+        else:
+            flush_bullets()
+            para_lines.append(stripped)
+        i += 1
+
+    flush_para(); flush_bullets(); flush_table()
+    return flow
+
+
+class MarkdownReport(BaseModel):
+    title: str
+    subtitle: str | None = None
+    author: str = "Asistente IA"
+
+
+def render_markdown_report(
+    title: str,
+    body: str,
+    author: str = "Asistente IA",
+    subtitle: str | None = None,
+    tenant_name: str = "",
+    logo_path: str | None = None,
+) -> bytes:
+    """Renderiza un PDF a partir de un body en markdown.
+
+    Reusa la portada, tipografía y footer de render_agent_report.
+    """
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError("ReportLab no está disponible — instala 'reportlab' para usar PDFs.")
+
+    buffer = io.BytesIO()
+    doc = _make_doc(buffer)
+    st = _common_styles()
+
+    cover = Report(title=title, subtitle=subtitle, author=author, sections=[])
+
+    story: list = []
+    _build_cover(story, cover, st, tenant_name, logo_path=logo_path)
+    story.extend(_parse_markdown(body or "", st))
+
+    def _on_page(canvas, doc_):
+        _draw_footer(canvas, doc_, tenant_name, author, st, logo_path=logo_path)
+
+    doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
+    return buffer.getvalue()
