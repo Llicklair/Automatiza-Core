@@ -98,12 +98,16 @@ async def create_pdf_report(
     try:
         async with AsyncSessionLocal() as db:
             t_res = await db.execute(
-                select(Tenant.name).where(Tenant.id == UUID(tenant_id))
+                select(Tenant.name, Tenant.logo_path).where(Tenant.id == UUID(tenant_id))
             )
-            tenant_name = t_res.scalar() or ""
+            row = t_res.first()
+            tenant_name = (row[0] if row else None) or ""
+            logo_path = row[1] if row else None
 
         try:
-            pdf_bytes = render_agent_report(report, tenant_name=tenant_name)
+            pdf_bytes = render_agent_report(
+                report, tenant_name=tenant_name, logo_path=logo_path
+            )
         except RuntimeError as e:
             return f"Error generando PDF: {e}"
 

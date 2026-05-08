@@ -34,6 +34,7 @@ _KNOWN_SKILLS = [
     "banking.list_transactions",
     "compliance.check",
     "excel.export",
+    "reports.create_pdf_report",
 ]
 
 _SKILL_LABELS = {
@@ -52,6 +53,7 @@ _SKILL_LABELS = {
     "banking.list_transactions": "Ver transacciones bancarias",
     "compliance.check": "Verificar compliance fiscal",
     "excel.export": "Exportar a Excel",
+    "reports.create_pdf_report": "Generar informes PDF",
 }
 
 AVAILABLE_SKILLS = [{"module": k, "label": v} for k, v in _SKILL_LABELS.items()]

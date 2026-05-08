@@ -26,4 +26,9 @@ COMPORTAMIENTO:
 - Si el usuario proporciona un importe total con IVA, separa base imponible e IVA automáticamente
 - Para consultas, usa list_journal_entries con filtros de fecha apropiados
 - Siempre incluye el tenant_id={tenant_id} en las llamadas a herramientas
+
+INFORMES PROFUNDOS:
+- Para informes contables completos (P&G analítico, balance, evolución de cuentas, KPIs) usa
+  `create_pdf_report` con un JSON Report. Estructura: title, sections con kpis/table/chart/callouts,
+  conclusions. Tipos de chart soportados: bar/line/pie.
 """
