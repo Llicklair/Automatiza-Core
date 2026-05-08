@@ -11,7 +11,7 @@ from app.agents.types import StepResult
 from app.core.llm_factory import get_llm, make_cached_system_message
 
 from .prompts import ACCOUNTING_SYSTEM_PROMPT
-from ._account_tools import (
+from .tools import (
     create_journal_entry,
     get_account_balance,
     get_profit_loss_summary,
