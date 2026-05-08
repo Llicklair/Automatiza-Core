@@ -7,6 +7,7 @@ al formato del orquestador.
 import logging
 
 from app.agents.orchestrator.helpers import (
+    _messages_already_generated_pdf,
     _save_ai_result_as_document,
 )
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
@@ -79,21 +80,9 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
             "response": final_text,
         }
 
-        # Si el LLM ya generó su propio PDF a través de las tools de reports,
-        # no duplicar guardando un "Análisis Documento" del texto de respuesta.
-        # Antes de este check cada informe del usuario producía 2 entradas en
-        # el Gestor: el PDF real + un .pdf basura con el resumen del agente.
-        _PDF_TOOLS = {"create_pdf_report", "create_pdf_text_report"}
-        already_generated_pdf = any(
-            (tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None))
-            in _PDF_TOOLS
-            for msg in messages
-            for tc in (getattr(msg, "tool_calls", None) or [])
-        )
-
-        # Guardar resultado como documento visible solo si el agente NO
-        # generó ya un PDF por su cuenta.
-        if success and final_text and not already_generated_pdf:
+        # No duplicar el PDF si el agente ya creó uno por su cuenta vía
+        # create_pdf_report / create_pdf_text_report.
+        if success and final_text and not _messages_already_generated_pdf(messages):
             await _save_ai_result_as_document(
                 tenant_id=tenant_id,
                 task_id=state["task_id"],

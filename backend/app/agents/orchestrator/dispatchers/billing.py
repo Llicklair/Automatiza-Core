@@ -8,6 +8,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from app.agents.orchestrator.helpers import (
+    _messages_already_generated_pdf,
     _save_ai_result_as_document,
 )
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
@@ -94,8 +95,11 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
             "response": final_text,
         }
 
+        # No duplicar si el agente ya creó un PDF profesional por su cuenta.
+        already_pdf = _messages_already_generated_pdf(messages)
+
         # Guardar resultado como documento visible
-        if success and final_text:
+        if success and final_text and not already_pdf:
             if is_query:
                 await _save_ai_result_as_document(
                     tenant_id=tenant_id,
