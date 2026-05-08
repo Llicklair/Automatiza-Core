@@ -53,5 +53,7 @@ Estructura recomendada para un informe profesional:
   ## 2. Conclusiones
   Cierre del informe.
 
+EXTENSIÓN ESPERADA: para informes profundos (estudios, auditorías, análisis estratégicos) apunta a 4-6 páginas con detalle generoso — secciones desarrolladas con contexto, datos plausibles, comparativas y conclusiones razonadas. Para apuntes breves o consultas puntuales, ajusta la extensión al contexto.
+
 Para apuntes simples sin estructura usa `create_document` (txt/md/csv), NO `create_pdf_text_report`.
 La herramienta `create_pdf_report` (estructura JSON con KPIs/charts) existe pero solo úsala si el usuario pide explícitamente KPIs en tarjetas o gráficos — para informes textuales prefiere SIEMPRE `create_pdf_text_report`.
