@@ -8,6 +8,7 @@ fila correspondiente en TenantDocument para que aparezca en el Gestor.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime
@@ -42,7 +43,7 @@ def _slugify(text: str) -> str:
 
 @tool
 async def create_pdf_report(
-    tenant_id: str, report_json: str, category: str = "informes"
+    tenant_id: str, report: dict | str, category: str = "informes"
 ) -> str:
     """
     Genera un informe PDF profesional a partir de un objeto Report en JSON.
@@ -85,15 +86,29 @@ async def create_pdf_report(
 
     Args:
         tenant_id: ID del tenant
-        report_json: JSON serializado del Report (string, no dict).
+        report: el objeto Report. Pásalo como dict siguiendo el esquema
+            de arriba. Si lo pasas como string también vale (se parsea).
         category: Categoría donde clasificarlo en el Gestor (default: "informes")
     """
     try:
-        report = Report.model_validate_json(report_json)
+        if isinstance(report, str):
+            data = json.loads(report)
+        elif isinstance(report, dict):
+            data = report
+        else:
+            return f"Error: 'report' debe ser dict o JSON string, llegó {type(report).__name__}."
+        # Algunos modelos envuelven el payload en {"report": {...}} o {"input": {...}}
+        if isinstance(data, dict) and len(data) == 1:
+            only_key = next(iter(data))
+            if only_key in ("report", "input", "data", "payload") and isinstance(data[only_key], dict):
+                data = data[only_key]
+        report = Report.model_validate(data)
+    except json.JSONDecodeError as e:
+        return f"Error: el string no es JSON válido. Detalle: {e}"
     except ValidationError as e:
-        return f"Error: el JSON no cumple el esquema Report. Detalle: {e}"
+        return f"Error: el objeto no cumple el esquema Report. Detalle: {e}"
     except Exception as e:
-        return f"Error parseando JSON: {e}"
+        return f"Error procesando report: {e}"
 
     try:
         async with AsyncSessionLocal() as db:
