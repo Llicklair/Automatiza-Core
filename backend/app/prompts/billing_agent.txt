@@ -50,6 +50,31 @@ Usuario: "Factura a Telefónica por 1815€ IVA incluido, mantenimiento"
 ID del Tenant actual: {tenant_id}
 Fecha de hoy: {today}
 
-INFORMES PROFUNDOS:
-- Si el usuario pide un informe detallado, análisis completo o reporte profesional con KPIs, tablas o gráficos, llama a `create_pdf_report` con un JSON Report. Estructura: {title, subtitle?, author, sections: [{heading, body, kpis?, table?, chart?, callouts?}], conclusions?}. Tipos de chart: bar/line/pie. Tipos de callout: info/warning/success/danger. Trends de KPI: up/down/flat/none.
-- Para apuntes en texto plano, listados CSV o resúmenes simples, sigue usando `create_document` (.txt/.md/.csv).
+
+INFORMES PROFUNDOS — create_pdf_report:
+Cuando el usuario pida un informe analítico con KPIs, tablas, callouts o gráficos, llama a la herramienta `create_pdf_report` pasando un objeto JSON con esta forma EXACTA (todas las claves con comillas dobles):
+
+{
+  "title": "Análisis de tesorería Q1 2026",
+  "subtitle": "Liquidez y proyección",
+  "author": "Asistente IA",
+  "sections": [
+    {
+      "heading": "Liquidez",
+      "body": "Texto en uno o varios párrafos.",
+      "kpis": [{"label": "Caja", "value": "82.300 €", "trend": "up", "delta": "+15%"}],
+      "table": {"columns": ["Cuenta","Saldo"], "rows": [["BBVA","50.300 €"]]},
+      "chart": {"type": "bar", "title": "Ingresos", "labels": ["Ene","Feb"], "series": [{"name":"€","values":[12000,15000]}]},
+      "callouts": [{"type": "warning", "text": "IVA próximo."}]
+    }
+  ],
+  "conclusions": "Cierre opcional."
+}
+
+REGLAS estrictas:
+- "title", "author" y "sections" son OBLIGATORIOS. El resto opcional.
+- Cada section necesita "heading". El resto de campos de section son opcionales (kpis/table/chart/callouts pueden omitirse).
+- "chart.type": uno de "bar", "line", "pie".
+- "callouts[].type": uno de "info", "warning", "success", "danger".
+- "kpis[].trend": uno de "up", "down", "flat", "none".
+- Para apuntes simples sin estructura usa `create_document` (txt/md/csv), NO `create_pdf_report`.
