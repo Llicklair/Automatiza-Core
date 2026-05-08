@@ -34,14 +34,6 @@ from app.services.pdf.parser import parse_pdf
 logger = logging.getLogger(__name__)
 
 
-def _get_llm():
-    return get_llm(temperature=0)
-
-
-def _get_llm_json():
-    return get_llm(temperature=0, format_output="json")
-
-
 # ─── Modelos ──────────────────────────────────────────────────────────────────
 
 
@@ -241,7 +233,7 @@ async def _emit_document_processed(
 
 async def _classify_with_llm(raw_text: str, rule_result) -> ClassifiedDocument:
     """Clasifica el documento con LLM, con fallback a reglas si falla."""
-    llm = _get_llm_json()
+    llm = get_llm(temperature=0, format_output="json")
     try:
         response = await llm.ainvoke(
             [

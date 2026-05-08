@@ -15,10 +15,6 @@ from app.core.llm_factory import get_llm, make_cached_system_message
 from .tools import tools
 
 
-def _get_llm():
-    return get_llm(temperature=0)
-
-
 async def crm_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
         sys_msg = make_cached_system_message(
@@ -40,7 +36,7 @@ async def crm_agent_node(state: AgentState):
     else:
         extra_init_messages = []
 
-    llm_with_tools = _get_llm().bind_tools(tools)
+    llm_with_tools = get_llm(temperature=0).bind_tools(tools)
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(

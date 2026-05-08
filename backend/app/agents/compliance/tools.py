@@ -28,14 +28,6 @@ from app.integrations.boe_scraper import BOEScraper, get_proximos_vencimientos
 logger = logging.getLogger(__name__)
 
 
-def _get_llm():
-    return get_llm(temperature=0.1)
-
-
-def _get_llm_json():
-    return get_llm(temperature=0.1, format_output="json")
-
-
 @tool
 async def check_fiscal_deadlines(
     days_ahead: int = 90, tenant_id: str | None = None
@@ -70,7 +62,7 @@ async def check_fiscal_deadlines(
     if not vencimientos:
         return f"No hay vencimientos fiscales en los próximos {days_ahead} días."
 
-    llm = _get_llm_json()
+    llm = get_llm(temperature=0.1, format_output="json")
     venc_json = json.dumps(vencimientos[:10], ensure_ascii=False)
     try:
         response = await llm.ainvoke(
@@ -122,7 +114,7 @@ async def check_boe_news(tenant_id: str | None = None) -> str:
     if not novedades_relevantes:
         return "No se han detectado novedades del BOE relevantes para PYMEs en los últimos días."
 
-    llm = _get_llm_json()
+    llm = get_llm(temperature=0.1, format_output="json")
     try:
         response = await llm.ainvoke(
             [
@@ -211,7 +203,7 @@ async def fiscal_query(tenant_id: str, question: str) -> str:
         if docs_text.strip():
             contexto += "\n\nDOCUMENTOS DE LA EMPRESA:\n" + docs_text
 
-    llm = _get_llm()
+    llm = get_llm(temperature=0.1)
     try:
         response = await llm.ainvoke(
             [

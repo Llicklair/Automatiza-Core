@@ -17,14 +17,6 @@ from app.core.llm_factory import get_llm
 logger = logging.getLogger(__name__)
 
 
-def _get_llm():
-    return get_llm(temperature=0)
-
-
-def _get_llm_json():
-    return get_llm(temperature=0, format_output="json")
-
-
 @tool
 async def list_transactions(tenant_id: str, days_back: int = 30) -> str:
     """
@@ -84,7 +76,7 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
         return f"No hay transacciones en los últimos {days_back} días."
 
     # Categorizar con LLM
-    llm = _get_llm_json()
+    llm = get_llm(temperature=0, format_output="json")
     sample = todas_tx[:50]
     try:
         response = await llm.ainvoke(
@@ -155,7 +147,7 @@ async def _financial_summary_async(tenant_id: str, days_back: int) -> str:
     tx_text = await _list_transactions_async(tenant_id, days_back)
     balance_text = await _check_balances_async(tenant_id)
 
-    llm = _get_llm()
+    llm = get_llm(temperature=0)
     try:
         response = await llm.ainvoke(
             [
