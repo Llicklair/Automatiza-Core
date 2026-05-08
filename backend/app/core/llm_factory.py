@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import settings
 from app.core.llm.claude_code import ClaudeCodeChatModel
 from app.core.llm.mock import MockChatModel
+from app.core.llm_trace import attach_to as _attach_trace
 
 _log = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def get_llm(
     if provider is None:
         ctx_llm = _tenant_llm_ctx.get()
         if ctx_llm is not None:
-            return ctx_llm
+            return _attach_trace(ctx_llm)
 
     selected_provider = provider or settings.DEFAULT_LLM_PROVIDER.lower()
     mock_fallback = MockChatModel()
@@ -95,33 +96,41 @@ def get_llm(
             or (selected_provider == "openrouter" and settings.OPENROUTER_API_KEY)
         )
         if not has_key:
-            return mock_fallback
+            return _attach_trace(mock_fallback)
 
     if selected_provider == "groq":
-        return _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
+        return _attach_trace(
+            _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
+        )
 
     elif selected_provider == "anthropic":
-        return _build_anthropic(
-            temperature, format_output, max_tokens, base_fallbacks, mock_fallback
+        return _attach_trace(
+            _build_anthropic(
+                temperature, format_output, max_tokens, base_fallbacks, mock_fallback
+            )
         )
 
     elif selected_provider == "openai":
-        return _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
+        return _attach_trace(
+            _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
+        )
 
     elif selected_provider == "openrouter":
-        return _build_openrouter(temperature, format_output, max_tokens, base_fallbacks)
+        return _attach_trace(
+            _build_openrouter(temperature, format_output, max_tokens, base_fallbacks)
+        )
 
     elif selected_provider == "claude_code":
-        return ClaudeCodeChatModel()
+        return _attach_trace(ClaudeCodeChatModel())
 
     elif selected_provider == "mock":
-        return MockChatModel()
+        return _attach_trace(MockChatModel())
 
     else:
         logging.getLogger(__name__).warning(
             "Proveedor LLM desconocido: '%s'. Usando mock.", selected_provider
         )
-        return mock_fallback
+        return _attach_trace(mock_fallback)
 
 
 def get_llm_with_fallback(temperature: float = 0, provider: str = None) -> BaseChatModel:
