@@ -12,6 +12,7 @@ Soporta: KPIs, tablas, callouts (info/warning/success/danger) y gráficos
 from __future__ import annotations
 
 import io
+import os
 from datetime import datetime
 from typing import Literal
 
@@ -36,6 +37,7 @@ if REPORTLAB_AVAILABLE:
     from reportlab.lib.units import mm
     from reportlab.platypus import (
         HRFlowable,
+        Image,
         KeepTogether,
         PageBreak,
         Paragraph,
@@ -108,7 +110,33 @@ _CALLOUT_COLORS = {
 _TREND_GLYPHS = {"up": "▲", "down": "▼", "flat": "▬", "none": ""}
 
 
-def _build_cover(story: list, report: Report, st: dict, tenant_name: str) -> None:
+def _logo_flowable(logo_path: str | None, max_w_mm: float, max_h_mm: float) -> Image | None:
+    """Crea un flowable Image escalado para encajar en max_w x max_h (mm)."""
+    if not logo_path or not os.path.exists(logo_path):
+        return None
+    try:
+        from reportlab.lib.utils import ImageReader
+
+        reader = ImageReader(logo_path)
+        iw, ih = reader.getSize()
+        if iw <= 0 or ih <= 0:
+            return None
+        ratio = iw / ih
+        max_w = max_w_mm * mm
+        max_h = max_h_mm * mm
+        # Encaja respetando aspecto: ata la dimensión más restrictiva
+        if max_w / ratio <= max_h:
+            w, h = max_w, max_w / ratio
+        else:
+            w, h = max_h * ratio, max_h
+        return Image(logo_path, width=w, height=h)
+    except Exception:
+        return None
+
+
+def _build_cover(
+    story: list, report: Report, st: dict, tenant_name: str, logo_path: str | None = None
+) -> None:
     C = st["C"]
     title_style = ParagraphStyle(
         "RTitle",
@@ -135,7 +163,13 @@ def _build_cover(story: list, report: Report, st: dict, tenant_name: str) -> Non
         textColor=colors.HexColor(C["GRAY"]),
     )
 
-    story.append(Spacer(1, 60 * mm))
+    logo = _logo_flowable(logo_path, max_w_mm=45, max_h_mm=22)
+    if logo is not None:
+        story.append(Spacer(1, 35 * mm))
+        story.append(logo)
+        story.append(Spacer(1, 15 * mm))
+    else:
+        story.append(Spacer(1, 60 * mm))
     story.append(Paragraph(report.title, title_style))
     if report.subtitle:
         story.append(Paragraph(report.subtitle, subtitle_style))
@@ -409,25 +443,55 @@ def _build_section(section: Section, st: dict) -> list:
     return items
 
 
-def _draw_footer(canvas, doc, tenant_name: str, author: str, st: dict) -> None:
+def _draw_footer(
+    canvas, doc, tenant_name: str, author: str, st: dict, logo_path: str | None = None
+) -> None:
     canvas.saveState()
     C = st["C"]
-    canvas.setFont("Helvetica", 7)
-    canvas.setFillColor(colors.HexColor(C["FOOTER"]))
     page_w = A4[0]
-    text = f"{tenant_name}  ·  Página {doc.page}  ·  Generado por {author}"
-    canvas.drawCentredString(page_w / 2, 8 * mm, text)
     canvas.setStrokeColor(colors.HexColor(C["LINE"]))
     canvas.setLineWidth(0.3)
     canvas.line(15 * mm, 12 * mm, page_w - 15 * mm, 12 * mm)
+
+    if logo_path and os.path.exists(logo_path):
+        try:
+            from reportlab.lib.utils import ImageReader
+
+            reader = ImageReader(logo_path)
+            iw, ih = reader.getSize()
+            if iw > 0 and ih > 0:
+                target_h = 6 * mm
+                target_w = target_h * (iw / ih)
+                canvas.drawImage(
+                    logo_path,
+                    15 * mm,
+                    4 * mm,
+                    width=target_w,
+                    height=target_h,
+                    mask="auto",
+                    preserveAspectRatio=True,
+                )
+        except Exception:
+            pass
+
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.HexColor(C["FOOTER"]))
+    text = f"{tenant_name}  ·  Página {doc.page}  ·  Generado por {author}"
+    canvas.drawCentredString(page_w / 2, 8 * mm, text)
     canvas.restoreState()
 
 
 # ─── Entrypoint ──────────────────────────────────────────────────────────────
 
 
-def render_agent_report(report: Report, tenant_name: str = "") -> bytes:
-    """Renderiza un Report como bytes de PDF."""
+def render_agent_report(
+    report: Report, tenant_name: str = "", logo_path: str | None = None
+) -> bytes:
+    """Renderiza un Report como bytes de PDF.
+
+    Si logo_path apunta a una imagen existente, se dibuja en la portada
+    y un thumbnail en el footer de cada página.
+    """
     if not REPORTLAB_AVAILABLE:
         raise RuntimeError("ReportLab no está disponible — instala 'reportlab' para usar PDFs.")
 
@@ -436,7 +500,7 @@ def render_agent_report(report: Report, tenant_name: str = "") -> bytes:
     st = _common_styles()
 
     story: list = []
-    _build_cover(story, report, st, tenant_name)
+    _build_cover(story, report, st, tenant_name, logo_path=logo_path)
 
     for section in report.sections:
         story.extend(_build_section(section, st))
@@ -475,7 +539,7 @@ def render_agent_report(report: Report, tenant_name: str = "") -> bytes:
                 story.append(Paragraph(paragraph.strip().replace("\n", "<br/>"), conclusions_body))
 
     def _on_page(canvas, doc_):
-        _draw_footer(canvas, doc_, tenant_name, report.author, st)
+        _draw_footer(canvas, doc_, tenant_name, report.author, st, logo_path=logo_path)
 
     doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
     return buffer.getvalue()

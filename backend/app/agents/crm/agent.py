@@ -28,6 +28,9 @@ async def crm_agent_node(state: AgentState):
             "5. create_document: para generar informes en texto o csv y guardarlos en el Gestor Documental.\n"
             "6. Herramientas documentales (list_tenant_documents, get_document_content) "
             "por si necesitas leer emails escaneados, contratos, que contengan información clave.\n"
+            "7. Para INFORMES COMERCIALES PROFUNDOS (análisis de pipeline, conversión, ranking de clientes, "
+            "previsión de ventas) usa `create_pdf_report` con un JSON Report (sections con kpis/table/chart). "
+            "Para apuntes simples sigue con `create_document`.\n"
             f"Tú respondes y decides a partir del ID de Tenant actual: {state.get('tenant_id')}."
         )
         user_msg = HumanMessage(content=state["user_intent"])

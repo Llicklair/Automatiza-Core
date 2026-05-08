@@ -37,6 +37,8 @@ class Tenant(Base):
     cert_password = Column(Text, nullable=True)
     cert_subject = Column(String(500), nullable=True)
     cert_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Logo corporativo del tenant — usado por agent_report.py en informes PDF
+    logo_path = Column(String(500), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

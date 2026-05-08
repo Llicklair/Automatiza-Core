@@ -187,6 +187,9 @@ async def provision_employee_bg(
         data = json.loads(raw)
 
         assigned_skills = [s for s in data.get("skills", []) if s in _KNOWN_SKILLS]
+        # Toda configuración debe poder generar informes PDF — herramienta universal.
+        if "reports.create_pdf_report" not in assigned_skills:
+            assigned_skills.append("reports.create_pdf_report")
         unassigned_skills = [s for s in _KNOWN_SKILLS if s not in assigned_skills]
 
         async with AsyncSessionLocal() as session:

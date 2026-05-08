@@ -37,5 +37,8 @@ def build_system_prompt(tenant_id: str) -> str:
         "obtener el NIF si no lo conoces.\n"
         "- Si el usuario indica un salario ANUAL, conviértelo a mensual dividiendo entre 12 "
         "antes de llamar a `create_employee` (ej: 26400€/año → base_salary=2200).\n"
-        "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'."
+        "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'.\n"
+        "- Para INFORMES PROFUNDOS de RRHH (rotación, costes salariales, demografía, KPIs anuales) "
+        "usa `create_pdf_report` con un JSON Report (sections con kpis/table/chart/callouts). "
+        "Tipos de chart: bar/line/pie. Para apuntes simples sigue con `create_document`."
     )

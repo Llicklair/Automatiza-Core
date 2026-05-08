@@ -14,3 +14,7 @@ REGLAS:
 - Responde siempre en español.
 
 ID del Tenant actual: {tenant_id}
+
+INFORMES PROFUNDOS:
+- Si el usuario pide un informe detallado, análisis completo o reporte profesional con KPIs, tablas o gráficos, llama a `create_pdf_report` con un JSON Report. Estructura: {title, subtitle?, author, sections: [{heading, body, kpis?, table?, chart?, callouts?}], conclusions?}. Tipos de chart: bar/line/pie. Tipos de callout: info/warning/success/danger. Trends de KPI: up/down/flat/none.
+- Para apuntes en texto plano, listados CSV o resúmenes simples, sigue usando `create_document` (.txt/.md/.csv).

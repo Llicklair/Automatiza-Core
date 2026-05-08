@@ -210,3 +210,83 @@ async def delete_certificate(
         tenant.cert_subject = None
         tenant.cert_expires_at = None
         await db.commit()
+
+
+# ── Logo corporativo ─────────────────────────────────────────────────────────
+
+_LOGO_DIR = Path("uploads/logos")
+_LOGO_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+_LOGO_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+
+
+@router.get("/logo", tags=["tenant"])
+@limiter.limit("20/minute")
+async def get_logo_status(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = res.scalar_one_or_none()
+    if not tenant or not tenant.logo_path or not Path(tenant.logo_path).exists():
+        return {"has_logo": False}
+    return {"has_logo": True, "logo_path": tenant.logo_path}
+
+
+@router.post("/logo", tags=["tenant"])
+@limiter.limit("10/minute")
+async def upload_logo(
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Falta el nombre del archivo")
+    ext = Path(file.filename).suffix.lower()
+    if ext not in _LOGO_ALLOWED_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato no soportado. Usa: {', '.join(sorted(_LOGO_ALLOWED_EXT))}",
+        )
+
+    content = await file.read()
+    if len(content) > _LOGO_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="El logo no puede superar 2 MB")
+    if not content:
+        raise HTTPException(status_code=400, detail="Archivo vacío")
+
+    logo_dir = _LOGO_DIR / str(current_user.tenant_id)
+    logo_dir.mkdir(parents=True, exist_ok=True)
+    # Borrar logo previo si existía con otra extensión
+    for prev in logo_dir.glob("logo.*"):
+        try:
+            prev.unlink()
+        except OSError:
+            pass
+    logo_path = logo_dir / f"logo{ext}"
+    logo_path.write_bytes(content)
+
+    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = res.scalar_one_or_none()
+    tenant.logo_path = str(logo_path)
+    await db.commit()
+
+    return {"message": "Logo cargado correctamente", "logo_path": str(logo_path)}
+
+
+@router.delete("/logo", status_code=204, tags=["tenant"])
+@limiter.limit("10/minute")
+async def delete_logo(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = res.scalar_one_or_none()
+    if tenant and tenant.logo_path:
+        p = Path(tenant.logo_path)
+        if p.exists():
+            p.unlink(missing_ok=True)
+        tenant.logo_path = None
+        await db.commit()
