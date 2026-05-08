@@ -10,6 +10,7 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import select
 
+from app.agents.agent_tools.reports import create_pdf_report
 from app.db.base import AsyncSessionLocal
 from app.db.models.inventory import Product
 
@@ -47,7 +48,7 @@ async def get_product_catalog(tenant_id: str) -> str:
         return f"Error al obtener catálogo: {e}"
 
 
-tools = [get_product_catalog]
+tools = [get_product_catalog, create_pdf_report]
 
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar

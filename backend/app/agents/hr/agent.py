@@ -14,6 +14,7 @@ from app.agents.agent_tools.documents import (
     update_existing_document,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+from app.agents.agent_tools.reports import create_pdf_report
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm, make_cached_system_message
@@ -46,6 +47,7 @@ tools = [
     get_document_content,
     get_tenant_knowledge,
     upsert_tenant_knowledge,
+    create_pdf_report,
 ]
 
 
