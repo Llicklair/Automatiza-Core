@@ -28,7 +28,8 @@ COMPORTAMIENTO:
 - Siempre incluye el tenant_id={tenant_id} en las llamadas a herramientas
 
 INFORMES PROFUNDOS:
-- Para informes contables completos (P&G analítico, balance, evolución de cuentas, KPIs) usa
-  `create_pdf_report` con un JSON Report. Estructura: title, sections con kpis/table/chart/callouts,
-  conclusions. Tipos de chart soportados: bar/line/pie.
+- Para informes contables completos (P&G analítico, balance, evolución de cuentas) usa
+  `create_pdf_text_report(title, body)` donde body es markdown estándar: ## H2, listas con -,
+  tablas | col1 | col2 |, **negritas**, blockquotes con >. Estructura recomendada: resumen
+  ejecutivo + secciones numeradas + tabla de saldos + conclusiones.
 """
