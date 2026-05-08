@@ -30,12 +30,34 @@ from app.services.pdf_reports.agent_report import (
 _logger = logging.getLogger(__name__)
 
 
-def _resolve_upload_dir() -> str:
-    upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-    if not os.path.exists(upload_dir) and os.name == "nt":
-        upload_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
-        )
+def _resolve_upload_dir(category: str = "") -> str:
+    """Devuelve la carpeta donde guardar uploads del tenant.
+
+    Estrategia (en orden):
+      1. Si UPLOAD_DIR está definida y NO es la ruta-Linux por defecto
+         "/app/uploads" → respeta lo que el operador haya configurado.
+      2. En Windows → AppData/Roaming/AutomatizaPyme/uploads (carpeta
+         estándar de datos de usuario en Electron).
+      3. Otros SO → ./uploads relativo al cwd.
+
+    Si se pasa `category`, se crea una subcarpeta sanitizada (letras,
+    números, guiones) — los informes acaban en uploads/informes/, los
+    contratos en uploads/contratos/, etc.
+    """
+    env = os.environ.get("UPLOAD_DIR", "").strip()
+    if env and env != "/app/uploads":
+        upload_dir = env
+    elif os.name == "nt":
+        appdata = os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming")
+        upload_dir = os.path.join(appdata, "AutomatizaPyme", "uploads")
+    else:
+        upload_dir = os.path.abspath("uploads")
+
+    if category:
+        safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in category.strip().lower())
+        safe = safe.strip("_")[:30] or "general"
+        upload_dir = os.path.join(upload_dir, safe)
+
     os.makedirs(upload_dir, exist_ok=True)
     return upload_dir
 
@@ -130,7 +152,7 @@ async def create_pdf_report(
         except RuntimeError as e:
             return f"Error generando PDF: {e}"
 
-        upload_dir = _resolve_upload_dir()
+        upload_dir = _resolve_upload_dir(category)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f"{_slugify(report.title)}_{ts}.pdf"
         file_path = os.path.join(upload_dir, file_name)
@@ -228,7 +250,7 @@ async def create_pdf_text_report(
         except RuntimeError as e:
             return f"Error generando PDF: {e}"
 
-        upload_dir = _resolve_upload_dir()
+        upload_dir = _resolve_upload_dir(category)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f"{_slugify(title)}_{ts}.pdf"
         file_path = os.path.join(upload_dir, file_name)
