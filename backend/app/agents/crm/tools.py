@@ -16,6 +16,7 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
     update_existing_document,
 )
+from app.agents.agent_tools.reports import create_pdf_report
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Opportunity
 
@@ -291,6 +292,7 @@ tools = [
     list_tenant_documents,
     update_existing_document,
     get_document_content,
+    create_pdf_report,
 ]
 
 

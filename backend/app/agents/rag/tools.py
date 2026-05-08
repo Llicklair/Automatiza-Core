@@ -17,6 +17,7 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+from app.agents.agent_tools.reports import create_pdf_report
 from app.agents.agent_tools.semantic_search import (
     cosine_topk,
     is_missing_table_or_extension as _is_missing_table_or_extension,
@@ -255,4 +256,5 @@ tools = [
     get_document_content,
     get_tenant_knowledge,
     upsert_tenant_knowledge,
+    create_pdf_report,
 ]
