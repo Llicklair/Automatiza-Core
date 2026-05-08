@@ -45,6 +45,17 @@ agents/<domain>/
 └── _*.py             ← private implementation (never import from outside)
 ```
 
+### Naming: "orchestrator" vs "coordinator"
+The README uses two conceptual layers — **Orquestador** (top, persistent
+workflows + scheduler) and **Coordinador** (middle, one-shot instruction
+decomposition). In the code, the **Orquestador layer lives in
+`services/workflow/`** (parse-nl, scheduler, executions) and the
+**Coordinador layer lives in `agents/orchestrator/`**. Yes, the directory
+name `orchestrator` matches the *other* concept — it predates the README's
+naming and a 200+ occurrence rename was deemed not worth the risk. When
+reading code, treat `agents/orchestrator/` as "Coordinador" and
+`services/workflow/` as "Orquestador".
+
 ### Frontend rules
 - Components NEVER call `fetch()` directly — always use `lib/api/*.ts`
 - `lib/api/client.ts` is the single HTTP base (handles JWT, 401 refresh, errors)
