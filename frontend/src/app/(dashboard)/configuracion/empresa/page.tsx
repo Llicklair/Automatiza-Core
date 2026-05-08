@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Save } from "lucide-react";
+import { LogoSection } from "./_components/LogoSection";
 import { useConfiguracionEmpresa } from "./_hooks/useConfiguracionEmpresa";
 
 export default function EmpresaConfigPage() {
@@ -134,6 +135,8 @@ export default function EmpresaConfigPage() {
                     </form>
                 )}
             </div>
+
+            <LogoSection />
         </div>
     );
 }

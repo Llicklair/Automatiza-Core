@@ -154,6 +154,7 @@ export type {
     LlmConfigUpdate,
     ClaudeCodeSetupResponse,
     CertificateStatus,
+    LogoStatus,
 } from "./tenant";
 export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";

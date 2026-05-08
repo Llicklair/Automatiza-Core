@@ -36,6 +36,11 @@ export interface CertificateStatus {
     cert_expires_at?: string;
 }
 
+export interface LogoStatus {
+    has_logo: boolean;
+    logo_path?: string;
+}
+
 export const tenant = {
     me: () => request<{ id: string; name: string; nif: string; address: string | null; phone: string | null; contact_email: string | null }>("/api/v1/tenant/me"),
     updateMe: (data: { name?: string; nif?: string; address?: string | null; phone?: string | null; contact_email?: string | null }) =>
@@ -72,5 +77,16 @@ export const tenant = {
             );
         },
         delete: () => request<void>("/api/v1/tenant/certificate", { method: "DELETE" }),
+    },
+    logo: {
+        status: () => request<LogoStatus>("/api/v1/tenant/logo"),
+        upload: (file: File) => {
+            const fd = new FormData();
+            fd.append("file", file);
+            return requestUpload<{ message: string; logo_path: string }>(
+                "/api/v1/tenant/logo", fd
+            );
+        },
+        delete: () => request<void>("/api/v1/tenant/logo", { method: "DELETE" }),
     },
 };
