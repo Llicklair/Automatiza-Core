@@ -30,7 +30,8 @@ from pydantic import ConfigDict
 
 _log = logging.getLogger(__name__)
 
-TIMEOUT = 180  # segundos
+TIMEOUT = 290  # segundos — 10s antes que el dispatcher (300s) para que el
+              # error útil "CLI no respondió" aparezca primero, no el del wrapper.
 
 
 def _resolve_claude_bin() -> str:
