@@ -171,6 +171,11 @@ def _build_registry() -> dict[str, Callable]:
 
     registry["create_ai_employee_from_description"] = create_ai_employee_from_description
 
+    # — pdf reports —
+    from app.agents.agent_tools.reports import create_pdf_report
+
+    registry["create_pdf_report"] = create_pdf_report
+
     # Defensa multi-tenant: envolver TODAS las tools para que ignoren el
     # tenant_id que el LLM les pasa y usen el del ContextVar activo.
     registry = {name: enforce_tenant(tool) for name, tool in registry.items()}
