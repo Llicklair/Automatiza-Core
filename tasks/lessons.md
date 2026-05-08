@@ -60,3 +60,47 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 **Prevención:** Al escribir cualquier `await db.<método>()`, verificar que el método retorna una corrutina. `delete()` y `add()` modifican el estado interno de la sesión sin I/O — son síncronos por diseño.
 
 **Aplicación:** Revisar con grep `await db\.delete\(` y `await db\.add\(` en cualquier codebase SQLAlchemy async antes de hacer merge a main.
+
+## 2026-05-08 — Bug pendiente: custom employee timeout no se propaga
+
+**Síntoma**: tasks dirigidas al CTO custom (`Marcos Recio`, domain=custom) tardan
+~8 minutos en pasar de `executing` a `failed` aunque el timeout interno
+configurado en `_invoke_dynamic_employee` es 300s.
+
+**Lo que SÍ pasa**: al final, el task acaba en `failed` con error
+"Error: Claude Code CLI no respondio en el tiempo limite". Es decir, el
+timeout SÍ se dispara — pero se queda colgado en alguna parte del cleanup
+(probablemente `await db.commit()` o `log_activity` post-timeout).
+
+**Lo que NO pasa**: el wait_for(300s) que envuelve `graph.ainvoke()` no
+parece propagarse hasta el polling externo en menos de ~480s.
+
+**Hipótesis a investigar**:
+1. Tras el TimeoutError, `employee.status = "idle"` + `db.commit()` puede
+   bloquearse si la sesión de BD quedó sucia.
+2. El subprocess `claude_code` sigue corriendo en background tras
+   `subprocess.run(timeout=...)` y eso bloquea el event loop.
+3. La excepción se traga en algún sitio antes de propagarse al TaskRunner.
+
+**Cómo reproducirlo**:
+1. Pedir al CTO un informe extenso ("informe de e-commerce B2B 2026 con tablas...")
+2. Observar que `tenant_documents` no recibe el PDF inmediatamente y la
+   task queda en `executing` mucho más allá de los 300s configurados.
+
+## 2026-05-08 — Bug pendiente: custom employee timeout no se propaga
+
+**Síntoma**: tasks dirigidas al CTO custom (Marcos Recio, domain=custom) tardan ~8 minutos en pasar de `executing` a `failed` aunque el timeout interno configurado en `_invoke_dynamic_employee` es 300s.
+
+**Lo que SÍ pasa**: al final el task acaba en `failed` con "Error: Claude Code CLI no respondio en el tiempo limite". El timeout sí se dispara — pero el cleanup tarda mucho.
+
+**Hipótesis a investigar**:
+1. `await db.commit()` post-TimeoutError puede bloquearse si la sesión quedó sucia.
+2. El subprocess de claude_code sigue corriendo tras `subprocess.run(timeout=...)`.
+3. La excepción se traga antes de propagarse al TaskRunner.
+
+**Reproducir**: pedir al CTO un informe extenso. La task queda `executing` >> 300s.
+
+**Vías de investigación próxima sesión**:
+- Logs stdout del backend en vivo durante el timeout
+- Activar LLM_TRACE_ENABLED y verificar que claude_code respeta callbacks
+- Añadir logs explícitos en _invoke_dynamic_employee tras cada await
