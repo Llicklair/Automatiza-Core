@@ -17,7 +17,7 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
-from app.agents.agent_tools.reports import create_pdf_report
+from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 
 from ._export_tools import export_erp_data, list_available_datasets
 from ._import_tools import import_excel
@@ -48,6 +48,7 @@ tools = [
     get_tenant_knowledge,
     upsert_tenant_knowledge,
     create_pdf_report,
+    create_pdf_text_report,
 ]
 
 
