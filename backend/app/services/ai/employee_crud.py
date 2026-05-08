@@ -282,6 +282,13 @@ async def instruct_employee(
     )
 
     await db.commit()
+
+    # Sin esto la task queda pending eterno: el TaskRunner solo procesa lo que
+    # se le despacha explícitamente (mismo patrón que el resto de creators de
+    # tasks coordinator: workflow/_execution, event_bus, messaging, etc.).
+    from app.services.workflow.task_dispatch import dispatch_orchestrator
+    await dispatch_orchestrator(str(task.id))
+
     return {"task_id": str(task.id), "status": "queued", "employee": employee.name}
 
 
