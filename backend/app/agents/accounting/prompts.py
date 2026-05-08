@@ -31,5 +31,6 @@ INFORMES PROFUNDOS:
 - Para informes contables completos (P&G analítico, balance, evolución de cuentas) usa
   `create_pdf_text_report(title, body)` donde body es markdown estándar: ## H2, listas con -,
   tablas | col1 | col2 |, **negritas**, blockquotes con >. Estructura recomendada: resumen
-  ejecutivo + secciones numeradas + tabla de saldos + conclusiones.
+  ejecutivo + secciones numeradas + tabla de saldos + conclusiones. EXTENSIÓN: apunta a 4-6
+  páginas con detalle generoso, secciones desarrolladas, datos plausibles y conclusiones razonadas.
 """

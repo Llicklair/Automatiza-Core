@@ -40,5 +40,7 @@ def build_system_prompt(tenant_id: str) -> str:
         "- Si se te pide exportar datos a CSV o texto, usa `create_document` con category='RRHH'.\n"
         "- Para INFORMES PROFUNDOS de RRHH (rotación, costes salariales, demografía, análisis anuales) "
         "usa `create_pdf_text_report(title, body)` donde body es markdown estándar (## H2, "
-        "listas con -, tablas | col1 | col2 |, **negritas**). Para apuntes simples sigue con `create_document`."
+        "listas con -, tablas | col1 | col2 |, **negritas**). EXTENSIÓN: apunta a 4-6 páginas con "
+        "detalle generoso, secciones desarrolladas, datos plausibles y conclusiones razonadas. "
+        "Para apuntes simples sigue con `create_document`."
     )

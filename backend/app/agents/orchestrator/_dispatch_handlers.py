@@ -116,7 +116,7 @@ async def _invoke_dynamic_employee(
                         "status": "running",
                     }
                 ),
-                timeout=180,
+                timeout=300,
             )
             messages = result_state.get("messages", [])
             final_text = next(
@@ -160,7 +160,7 @@ async def _invoke_dynamic_employee(
                 agent_name,
                 action="failed",
                 error=(
-                    f"Timeout de 180s al ejecutar el agente custom '{employee.name}'. "
+                    f"Timeout de 300s al ejecutar el agente custom '{employee.name}'. "
                     "El system_prompt o el modelo LLM tardaron demasiado en responder."
                 ),
             )
@@ -193,7 +193,7 @@ async def _invoke_dispatcher_impl(
         # 180s alineado con custom employees. Builtin agents pueden necesitar
         # cold-start de embeddings (BAAI/bge-m3 ~570MB en primer uso) o LLM
         # call de un solo tool con prompt grande. 120s era ajustado.
-        return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=180)
+        return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=300)
 
     if agent_name == "skill" or (isinstance(agent_name, str) and agent_name.startswith("skill:")):
         return await _dispatch_skill(enriched_state, subtask)
