@@ -11,7 +11,7 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import select
 
-from app.agents.agent_tools.reports import create_pdf_report
+from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.db.base import AsyncSessionLocal
 from app.db.models.hr import Candidate, RecruitmentPosition
 
@@ -216,7 +216,7 @@ async def update_candidate_status(tenant_id: str, candidate_id: str, new_status:
         return f"Candidato {c.name}: {old} → {new_status}"
 
 
-tools = [create_position, list_positions, process_cv, list_candidates, update_candidate_status, create_pdf_report]
+tools = [create_position, list_positions, process_cv, list_candidates, update_candidate_status, create_pdf_report, create_pdf_text_report]
 
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar

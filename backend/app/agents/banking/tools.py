@@ -14,7 +14,7 @@ from app.agents.agent_tools.documents import (
     list_tenant_documents,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
-from app.agents.agent_tools.reports import create_pdf_report
+from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.agents.banking._account_tools import check_balances  # noqa: F401
 from app.agents.banking._reconciliation_tools import reconcile_transactions  # noqa: F401
 from app.agents.banking._transaction_tools import (  # noqa: F401
@@ -33,6 +33,7 @@ tools = [
     get_tenant_knowledge,
     upsert_tenant_knowledge,
     create_pdf_report,
+    create_pdf_text_report,
 ]
 
 __all__ = ["tools"]

@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from app.agents.agent_tools.reports import create_pdf_report
+from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm, make_cached_system_message
@@ -27,6 +27,7 @@ tools = [
     get_profit_loss_summary,
     list_fixed_assets,
     create_pdf_report,
+    create_pdf_text_report,
 ]
 
 

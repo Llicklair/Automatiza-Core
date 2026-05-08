@@ -18,7 +18,7 @@ from app.agents.agent_tools.knowledge import (
     get_tenant_knowledge,
     upsert_tenant_knowledge,
 )
-from app.agents.agent_tools.reports import create_pdf_report
+from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 
 from ._albaran_tools import create_albaran, list_albaranes
 from ._client_tools import (  # noqa: F401 (_resolve_client used by sub-modules)
@@ -63,6 +63,7 @@ tools = [
     upsert_tenant_knowledge,
     delete_tenant_knowledge,
     create_pdf_report,
+    create_pdf_text_report,
 ]
 
 
