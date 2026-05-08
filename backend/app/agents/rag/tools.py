@@ -34,10 +34,6 @@ _SEMANTIC_DISABLED_NOTE = (
 )
 
 
-def _get_llm():
-    return get_llm(temperature=0)
-
-
 @tool
 async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
     """
@@ -233,7 +229,7 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
     for idx, c in enumerate(retrieved_chunks, 1):
         contexto += f"\n--- Fragmento {idx} ---\n{c['text']}\n"
 
-    llm = _get_llm()
+    llm = get_llm(temperature=0)
     try:
         response = await llm.ainvoke(
             [

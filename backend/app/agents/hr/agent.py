@@ -32,10 +32,6 @@ from .tools import (
 logger = logging.getLogger(__name__)
 
 
-def _get_llm():
-    return get_llm(temperature=0)
-
-
 tools = [
     create_employee,
     calculate_and_create_payroll,
@@ -65,7 +61,7 @@ async def hr_agent_node(state: AgentState):
     else:
         extra_init_messages = []
 
-    llm_with_tools = _get_llm().bind_tools(tools)
+    llm_with_tools = get_llm(temperature=0).bind_tools(tools)
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
