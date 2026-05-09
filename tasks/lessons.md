@@ -251,3 +251,39 @@ El LLM **no tenía manera de saber** el UUID correcto del Invoice: `list_invoice
 4. **`logger.warning` no es suficiente para bugs silenciosos**: usar `logger.exception()` (incluye traceback) cuando el exception captura puede ser un bug de código, no operacional. Y si la operación es **silenciosa para el caller** (el caller no sabe que algo falló), elevar al menos un evento o métrica observable.
 
 **Aplicación:** Cuando se vea cualquier `except Exception` cuyo log no incluya el tipo de la excepción ni los identificadores del input que causó el fallo, marcarlo como bug pendiente — es una bomba de tiempo que oculta refactors inacabados, schemas obsoletos, y errores de tipo. Cuando se renombre una columna SQLAlchemy o un campo Pydantic, el grep posterior es **parte del refactor**, no opcional.
+
+---
+
+## 2026-05-09 — `asyncio.wait_for(proc.communicate())` no mata el subprocess en timeout (Windows)
+
+**Contexto:** Probando *"Genera un informe en PDF de facturación del último trimestre"* (Ana, billing), la task se quedaba en `executing` indefinidamente — más de 7 minutos, 0 plan steps, 0 agent_results. El timeout configurado en el provider `claude_code` era 290s. Reproduce el bug latente que ya estaba apuntado del CTO custom: `_invoke_dynamic_employee` reportaba que el TimeoutError tardaba ~8 min en propagarse cuando teóricamente debía dispararse en 300s.
+
+**Causa raíz:** [`backend/app/core/llm/claude_code.py:_agenerate`](backend/app/core/llm/claude_code.py) hacía:
+
+```python
+proc = await _spawn_process()
+stdout, stderr = await asyncio.wait_for(
+    proc.communicate(input=prompt.encode("utf-8")),
+    timeout=self.timeout,
+)
+...
+except asyncio.TimeoutError:
+    text = "Error: Claude Code CLI no respondio en el tiempo limite."
+```
+
+En Windows, `asyncio.wait_for` cuando levanta `TimeoutError` **intenta cancelar la task interna** (`proc.communicate`), pero esa task está bloqueada en un read syscall sobre stdout/stderr del subprocess — un syscall **no cancelable** desde Python. El subprocess de `claude` sigue corriendo y la task asíncrona queda en limbo: el `wait_for` no termina hasta que el subprocess termine por sí mismo (puede tardar minutos para PDFs largos), y mientras tanto la task del orquestador no progresa.
+
+Para prompts cortos (lista facturas, búsqueda) el CLI responde antes del timeout y nunca se dispara el caso patológico. Para PDFs largos (4-6 páginas con tablas) el CLI tarda más, sobrepasa el timeout, y el bug aflora.
+
+**Patrón antipatrón:**
+- Confiar en `asyncio.wait_for` para liberar recursos cuando la task interna toca subprocess/sockets/file I/O nativos. La cancelación de tasks asyncio NO cancela syscalls bloqueantes — solo señala "deja de esperar" pero los descriptores siguen abiertos.
+- Capturar `TimeoutError` y devolver un string de error sin matar al subprocess. El subprocess queda zombie consumiendo recursos.
+- Asumir que el comportamiento Linux/Mac (donde la cancelación suele funcionar mejor) se traslada idéntico a Windows.
+
+**Reglas de prevención:**
+1. **Subprocess + asyncio.wait_for siempre con kill() en el except**: tras `TimeoutError`, llamar `proc.kill()` explícitamente para cerrar los fd. Eso libera el read syscall y la corrutina de `communicate` puede salir. Después `await asyncio.wait_for(proc.wait(), timeout=5)` para reaper sin colgar el cleanup.
+2. **Capturar la referencia al `proc` fuera del try**: si el except no tiene acceso al proceso (porque está dentro del scope try), no se puede matar.
+3. **Mismo patrón para cualquier I/O nativo bloqueante**: file reads grandes, socket reads, FFI calls. La cancelación de asyncio es cooperativa — solo funciona si la task chequea cancelación periódicamente. Subprocess.communicate NO chequea.
+4. **Test de cuelgue**: para cada provider que use subprocess, un test que simule un proceso lento (`sleep 600`) y verifique que `_agenerate` retorna en `timeout + 10s` máximo. Sin este test, el bug ressurge en cada refactor.
+
+**Aplicación:** Cualquier `await asyncio.wait_for(proc.communicate(...), ...)` sin un `proc.kill()` en su `except TimeoutError` es bug latente en Windows. El mismo patrón aplica a `httpx.AsyncClient.get(timeout=...)` cuando el servidor remoto deja la conexión abierta sin enviar bytes — el timeout dispara pero la conexión TCP queda abierta (httpx la cierra correctamente, pero subprocess raw no).

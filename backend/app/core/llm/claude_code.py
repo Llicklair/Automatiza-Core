@@ -377,6 +377,8 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
+        proc: Optional[asyncio.subprocess.Process] = None
+        text = ""
         try:
             proc = await _spawn_process()
             stdout, stderr = await asyncio.wait_for(
@@ -387,11 +389,42 @@ class ClaudeCodeChatModel(BaseChatModel):
             if not text:
                 text = stderr.decode("utf-8", errors="replace").strip() or "Sin respuesta del CLI"
         except asyncio.TimeoutError:
+            # Crítico: matar el subprocess explícitamente. En Windows, asyncio
+            # no cancela el read syscall de proc.communicate, así que la
+            # corrutina queda colgada eternamente si no cerramos los fd
+            # nosotros. proc.kill() cierra stdin/stdout/stderr → la corrutina
+            # de communicate sale limpiamente y la task termina con error.
             text = "Error: Claude Code CLI no respondio en el tiempo limite."
+            if proc is not None and proc.returncode is None:
+                try:
+                    proc.kill()
+                except ProcessLookupError:
+                    pass
+                except Exception as kill_err:
+                    _log.warning("[ClaudeCode] error matando proc tras timeout: %s", kill_err)
+                # Esperar la salida con un timeout corto extra para no colgar
+                # el cleanup si el SO tarda en reaper. Si tampoco vuelve, lo
+                # damos por perdido — ya devolvemos el error al caller.
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    _log.warning(
+                        "[ClaudeCode] subprocess no terminó tras kill+5s, posible zombie pid=%s",
+                        getattr(proc, "pid", "?"),
+                    )
+                except Exception as wait_err:
+                    _log.warning("[ClaudeCode] error en proc.wait post-kill: %s", wait_err)
         except FileNotFoundError:
             text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' este en el PATH."
         except Exception as e:
             text = f"Error inesperado en Claude Code CLI: {e}"
+            # También limpiar proc si quedó colgado por una excepción inesperada
+            if proc is not None and proc.returncode is None:
+                try:
+                    proc.kill()
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except Exception:
+                    pass
         _log.info("[ClaudeCode] _agenerate key='%s': %d chars", self.pool_key, len(text))
         return self._process_response(text)
 
