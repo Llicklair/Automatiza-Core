@@ -28,6 +28,13 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
                 first_line = response.split("\n", 1)[0].strip() or response
                 return f"📊 {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
             return "📊 Consulta de facturación completada."
+        # Fallback genérico (action="completed" u otro): leer response del LLM
+        # antes de caer al "✅ Facturación: <action>" pelado. Mismo patrón ya
+        # aplicado en summary/draft_created.
+        response = (output.get("response") or "").strip()
+        if response:
+            first_line = response.split("\n", 1)[0].strip() or response
+            return f"✅ {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
         return f"✅ Facturación: {action}."
 
     if agent in ("hr", "crm", "email"):

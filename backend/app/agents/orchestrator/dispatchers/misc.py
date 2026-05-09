@@ -117,7 +117,11 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
             task_id=state["task_id"],
         )
 
-        action = agent_result.action or "Operación de email completada."
+        # El agente email devuelve en `agent_result.action` el texto multilínea
+        # del LLM (no un slug). Separamos: action queda como slug corto
+        # (email_sent/failed) y la respuesta completa va a output.response,
+        # que es lo que _format_summary y la UI esperan leer.
+        final_text = agent_result.action or "Operación de email completada."
 
         try:
             await _save_ai_result_as_document(
@@ -125,12 +129,15 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
                 task_id=state["task_id"],
                 category="correos",
                 title=f"Email: {state['user_intent'][:50]}...",
-                content=action,
+                content=final_text,
             )
         except Exception as e:
             logger.warning("Error al archivar log de email: %s", e)
 
-        _email_output = {"action": action}
+        _email_output = {
+            "action": "email_sent" if agent_result.success else "failed",
+            "response": final_text,
+        }
         return {
             "subtask_id": subtask["id"],
             "agent": "email",
