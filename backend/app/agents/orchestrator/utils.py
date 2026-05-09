@@ -17,17 +17,11 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
         if action == "approval_required":
             return "⏳ Pendiente de aprobación antes de procesar la factura."
         if action == "draft_created":
-            num = data.get("invoice_number", "")
-            client = data.get("client", data.get("client_name", ""))
-            total = data.get("total", data.get("amount_total", ""))
-            parts = ["✅ Factura creada"]
-            if num:
-                parts.append(f"**{num}**")
-            if client:
-                parts.append(f"para {client}")
-            if total:
-                parts.append(f"por {total}€")
-            return " ".join(parts) + "."
+            response = (output.get("response") or "").strip()
+            if response:
+                first_line = response.split("\n", 1)[0].strip() or response
+                return f"✅ {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
+            return "✅ Factura creada."
         if action == "summary":
             response = (output.get("response") or "").strip()
             if response:
