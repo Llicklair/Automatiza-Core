@@ -6,6 +6,17 @@ import re
 from datetime import datetime, timedelta
 
 
+def _summary_from_response(output: dict, prefix: str = "✅") -> str | None:
+    """Extrae primera línea de output.response y la formatea como summary corto.
+    Devuelve None si no hay response — caller decide fallback.
+    """
+    response = (output.get("response") or "").strip()
+    if not response:
+        return None
+    first_line = response.split("\n", 1)[0].strip() or response
+    return f"{prefix} {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
+
+
 def _format_summary(agent: str, output: dict, success: bool, error: str | None = None) -> str:
     """Convierte el output de un agente en una frase legible para el usuario."""
     if not success:
@@ -48,6 +59,12 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
         return "✅ Operación completada."
 
     if agent == "documents":
+        # Primero leer response del LLM (caso _run_graph_agent). Fallback a
+        # campos estructurados doc_type/requires_review por si algún flow
+        # los rellena.
+        from_resp = _summary_from_response(output)
+        if from_resp:
+            return from_resp
         doc_type = output.get("document_type", "documento")
         requires_review = output.get("requires_review", False)
         msg = f"✅ Documento '{doc_type}' procesado."
@@ -56,6 +73,9 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
         return msg
 
     if agent == "compliance":
+        from_resp = _summary_from_response(output)
+        if from_resp:
+            return from_resp
         respuesta = output.get("respuesta_consulta", "")
         alertas = output.get("alertas") or []
         vencimientos = output.get("vencimientos") or []
@@ -69,6 +89,9 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
         return " | ".join(parts) if parts else "✅ Análisis fiscal completado."
 
     if agent == "banking":
+        from_resp = _summary_from_response(output)
+        if from_resp:
+            return from_resp
         resumen = output.get("resumen_financiero", "")
         saldos = output.get("saldos") or []
         if resumen:
@@ -81,12 +104,18 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
         return "✅ Consulta bancaria completada."
 
     if agent == "rag":
+        from_resp = _summary_from_response(output)
+        if from_resp:
+            return from_resp
         answer = output.get("answer", "")
         if answer:
             return f"✅ {answer[:300]}{'...' if len(answer) > 300 else ''}"
         return "✅ Consulta documental completada."
 
     if agent == "excel":
+        from_resp = _summary_from_response(output)
+        if from_resp:
+            return from_resp
         return f"✅ {output.get('summary', output.get('action', 'Análisis Excel completado.'))}"
 
     return f"✅ Agente '{agent}' completado."
