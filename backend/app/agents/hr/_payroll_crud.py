@@ -78,8 +78,11 @@ async def _update_payroll_async(
                 except ValueError:
                     return f"Error: Deducciones no válidas: '{deductions_str}'."
 
+            # Cast explícito a float en ambos lados: payroll.base_salary recién
+            # se asignó como float pero payroll.irpf sigue siendo Decimal (no
+            # se ha tocado todavía). Decimal / float lanza TypeError.
             irpf_rate = (
-                float(payroll.irpf / payroll.base_salary * 100)
+                float(payroll.irpf) / float(payroll.base_salary) * 100
                 if payroll.base_salary and float(payroll.base_salary) > 0
                 else 15.0
             )
