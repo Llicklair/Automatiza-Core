@@ -54,15 +54,38 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
                 final_text = msg.content
                 break
 
-        # Detectar si fue una creación exitosa, consulta, o error
+        # Clasificación de la operación. Prioridad: intención del usuario
+        # (más fiable). El texto del LLM es fallback porque "Borrador" aparece
+        # como estado al listar facturas y disparaba falsos positivos de creación.
         _lower = final_text.lower()
-        is_creation = any(kw in _lower for kw in ["factura creada", "draft", "borrador"])
-        is_approval = "aprobación requerida" in _lower
-        is_query = any(
-            kw in _lower for kw in ["facturas recientes", "total facturado", "no hay facturas"]
+        _intent_lower = (intent or "").lower()
+        intent_says_query = any(
+            kw in _intent_lower
+            for kw in [
+                "lista", "listar", "muestra", "muéstra", "muestrame",
+                "muéstrame", "cuáles", "cuántas", "cuántos",
+                "qué facturas", "qué albaranes", "ver facturas", "ver albaranes",
+                "buscar", "busca ",
+            ]
+        )
+        intent_says_create = any(
+            kw in _intent_lower
+            for kw in ["crea ", "crear ", "genera factura", "emite factura", "nueva factura", "nuevo albarán", "crea albarán"]
         )
 
-        # Detección robusta de error: no solo prefix "error", también frases de fallo comunes
+        is_approval = "aprobación requerida" in _lower
+        is_query = (intent_says_query and not intent_says_create) or any(
+            kw in _lower for kw in ["facturas recientes", "total facturado", "no hay facturas"]
+        )
+        is_creation = (intent_says_create and not intent_says_query) or (
+            not is_query
+            and any(kw in _lower for kw in ["factura creada", "borrador creado", "se ha creado la factura", "albarán creado"])
+        )
+
+        # Detección robusta de error: prefix "error" + frases de fallo comunes.
+        # NOTA: is_error se calcula INDEPENDIENTE de is_creation. Si el intent
+        # decía "crea factura" pero la respuesta dice "no se pudo crear porque
+        # cliente no existe", debe ganar el error sobre la intención.
         _error_signals = [
             _lower.startswith("error"),
             "no se pudo" in _lower,
@@ -71,8 +94,26 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
             "fallo al" in _lower,
             "imposible" in _lower,
             "no existe" in _lower and not is_query,
+            # El agente pide al usuario más datos cuando le faltan campos
+            # obligatorios (cliente desconocido, NIF inexistente, etc.). Eso es
+            # operación NO completada — debe propagarse como error, no como
+            # "draft_created".
+            "no se encontró" in _lower and not is_query,
+            "no se ha encontrado" in _lower and not is_query,
+            "no encontrado" in _lower and not is_query,
+            "necesito el nif" in _lower,
+            "necesito que me proporciones" in _lower,
+            "podrías proporcionarme" in _lower,
+            "podrías proporcionármelo" in _lower,
+            # El LLM no consigue ejecutar una operación de write
+            # (update_invoice_status, update_invoice, send_invoice_by_email)
+            # tras varios intentos — generalmente porque le faltan UUIDs o
+            # los confunde. Debe propagarse como error.
+            "problema técnico" in _lower,
+            "uuid malformado" in _lower,
+            "factura no encontrada" in _lower and not is_query,
         ]
-        is_error = any(_error_signals) and not is_creation and not is_approval
+        is_error = any(_error_signals) and not is_approval
 
         # Si el grafo del agente reportó status de error, respetar eso
         agent_status = result_state.get("status", "")
@@ -81,14 +122,16 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
 
         success = not is_error
 
-        if is_approval:
+        if is_error:
+            action = "failed"
+        elif is_approval:
             action = "approval_required"
         elif is_creation:
             action = "draft_created"
         elif is_query:
             action = "summary"
         else:
-            action = "completed" if success else "failed"
+            action = "completed"
 
         _billing_output = {
             "action": action,
