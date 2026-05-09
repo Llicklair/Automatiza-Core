@@ -162,17 +162,30 @@ async def _load_attachments(
         for doc_id in attachment_ids:
             try:
                 res = await db.execute(
-                    select(TenantDocument.file_path, TenantDocument.title).where(
+                    select(TenantDocument.file_path, TenantDocument.file_name).where(
                         TenantDocument.id == uuid.UUID(doc_id),
                         TenantDocument.tenant_id == uuid.UUID(tenant_id),
                     )
                 )
                 row = res.one_or_none()
-                if row and row.file_path and os.path.exists(row.file_path):
-                    with open(row.file_path, "rb") as f:
-                        attachments.append((row.title or os.path.basename(row.file_path), f.read()))
+                if not row:
+                    logger.warning(
+                        "Adjunto doc_id=%s no encontrado para tenant=%s", doc_id, tenant_id
+                    )
+                    continue
+                if not row.file_path or not os.path.exists(row.file_path):
+                    logger.warning(
+                        "Adjunto doc_id=%s con file_path inválido: %s", doc_id, row.file_path
+                    )
+                    continue
+                with open(row.file_path, "rb") as f:
+                    attachments.append(
+                        (row.file_name or os.path.basename(row.file_path), f.read())
+                    )
             except Exception as _e:
-                logger.warning("Error leyendo adjunto para email: %s", _e)
+                logger.warning(
+                    "Error leyendo adjunto doc_id=%s tenant=%s: %s", doc_id, tenant_id, _e
+                )
                 continue
     return attachments
 

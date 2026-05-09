@@ -230,3 +230,24 @@ El LLM **no tenía manera de saber** el UUID correcto del Invoice: `list_invoice
 4. **Detección de errores en el dispatcher** debe incluir las frases que el LLM produce **cuando una tool falla repetidamente**: "problema técnico", "uuid malformado", "factura no encontrada", "no consigo". Sin esto, la task termina `success=True, action=summary` con un texto que dice abiertamente "no pude hacer X".
 
 **Aplicación:** Cuando se añada una tool de write que requiera UUID, **revisar la tool de query correlacionada** (`list_*` para `update_*`/`delete_*`, `search_*` para `get_*`/`add_*`). Si la query no expone ese UUID, es bug pendiente. Test obligatorio: una cadena `list → update → list` debe terminar con la entidad realmente modificada en BD.
+
+---
+
+## 2026-05-09 — `except Exception` que traga AttributeError de columnas inexistentes
+
+**Contexto:** Probando `send_invoice_by_email` con Gmail OAuth conectado, el correo **llegaba** al destinatario pero **sin el PDF adjunto**. La respuesta del LLM mencionaba "PDF adjunto" porque inventaba el detalle, pero el ToolMessage real decía *"con 0 adjuntos (ids_in=['07893052-...'])"* — la `attachment_ids` correcta entraba a `_load_attachments` pero salía lista vacía.
+
+**Causa raíz:** `_load_attachments` en `agents/email/tools.py` hacía `select(TenantDocument.file_path, TenantDocument.title)`. La columna `title` **no existe** en `TenantDocument` (los campos reales son `file_name`, `file_type`, `file_path`, `file_size`, etc.). SQLAlchemy lanzaba `AttributeError: 'TenantDocument' object has no attribute 'title'` y el bloque `except Exception as _e: logger.warning(...)` se la tragaba con un mensaje genérico *"Error leyendo adjunto para email"* — sin doc_id, sin tenant, sin la excepción real visible. Cualquier llamada a la tool quedaba con `attachments=[]` invisible para el caller.
+
+**Patrón antipatrón compuesto:**
+1. **`except Exception` bloque-amplio** que captura errores de programación (AttributeError, TypeError, ImportError…) junto a errores transitorios (FileNotFoundError, IOError). Esos primeros indican bugs en código, no condiciones runtime — taparlos congela el bug en producción.
+2. **Logs de error sin contexto identificador**: el log decía solo *"Error leyendo adjunto"* — no decía qué doc_id, qué tenant, qué excepción concreta. Imposible diagnosticar sin instrumentar.
+3. **Refactor de modelo silencioso**: `title` probablemente existió en una versión anterior de `TenantDocument`. Cuando se renombró/eliminó, nadie regrep'eó por `TenantDocument.title` para buscar consumidores. Tests no lo cubrieron porque las pruebas de email envían sin adjuntos o usan mocks.
+
+**Reglas de prevención:**
+1. **`except Exception` solo para errores transitorios conocidos**: cuando una operación toca BD/archivo/red, atrapar tipos específicos (`OSError`, `SQLAlchemyError`, `httpx.HTTPError`). Para errores de programación, propagar — ya se descubrirán antes de producción. Si se usa `except Exception` por seguridad operacional (no romper un envío de email entero por un adjunto malo), el log MUST incluir tipo, mensaje completo, y todos los identificadores (doc_id, tenant, path…).
+2. **Refactor de modelo SQLAlchemy obliga grep cross-codebase**: cuando se renombra o elimina una columna, buscar `Model.column_name` literal en TODO el código (no solo en services del propio dominio — los consumidores cross-domain como `_load_attachments` pueden estar lejos). Lint/test obligatorio: tests E2E que ejerciten el path completo (lista→write→download).
+3. **Tests de adjuntos REALES en CI**: una suite de "email integration" debe enviar al menos un email con adjunto y verificar que el output del cliente (Gmail API response, MIME multipart count) lleva el adjunto. Mocks de `_load_attachments` que devuelven lista hardcoded **no habrían cazado este bug**.
+4. **`logger.warning` no es suficiente para bugs silenciosos**: usar `logger.exception()` (incluye traceback) cuando el exception captura puede ser un bug de código, no operacional. Y si la operación es **silenciosa para el caller** (el caller no sabe que algo falló), elevar al menos un evento o métrica observable.
+
+**Aplicación:** Cuando se vea cualquier `except Exception` cuyo log no incluya el tipo de la excepción ni los identificadores del input que causó el fallo, marcarlo como bug pendiente — es una bomba de tiempo que oculta refactors inacabados, schemas obsoletos, y errores de tipo. Cuando se renombre una columna SQLAlchemy o un campo Pydantic, el grep posterior es **parte del refactor**, no opcional.
