@@ -156,7 +156,7 @@ export type {
     CertificateStatus,
     LogoStatus,
 } from "./tenant";
-export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile } from "./integrations";
+export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDriveFile, EmailConnectInput, EmailConnectStatus } from "./integrations";
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";
 export type { AIEmployee, ActivityEntry } from "./ai_employees";
 export type { RecruitmentPosition, Candidate } from "./recruitment";

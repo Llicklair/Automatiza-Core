@@ -46,6 +46,22 @@ export interface OneDriveFile {
     webUrl?: string;
 }
 
+export interface EmailConnectInput {
+    email_address: string;
+    password: string;
+    provider: string;
+    imap_host?: string;
+    imap_port?: number;
+    smtp_host?: string;
+    smtp_port?: number;
+}
+
+export interface EmailConnectStatus {
+    connected: boolean;
+    provider?: string;
+    email_address?: string;
+}
+
 export const integrations = {
     list: () => request<IntegrationStatus[]>("/api/v1/integrations/"),
     connectPsd2: (secretId: string, secretKey: string) =>
@@ -74,4 +90,12 @@ export const integrations = {
         request<OutlookMessage[]>("/api/v1/integrations/outlook/recent"),
     onedriveRecent: () =>
         request<OneDriveFile[]>("/api/v1/integrations/onedrive/recent"),
+    emailStatus: () =>
+        request<EmailConnectStatus>("/api/v1/integrations/email/status"),
+    connectEmail: (payload: EmailConnectInput) =>
+        request<{ status: string }>("/api/v1/integrations/email/connect", {
+            method: "POST", body: JSON.stringify(payload),
+        }),
+    disconnectEmail: () =>
+        request("/api/v1/integrations/email/disconnect", { method: "DELETE" }),
 };
