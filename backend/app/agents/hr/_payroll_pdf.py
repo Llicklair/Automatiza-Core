@@ -57,20 +57,24 @@ async def _generate_and_save_payroll_pdf(
 
         pdf_bytes = generate_payroll_pdf(payroll_pdf_data, payroll_theme)
 
-        upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-        if not os.path.exists(upload_dir) and os.name == "nt":
-            upload_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
-            )
-        os.makedirs(upload_dir, exist_ok=True)
+        from app.agents.agent_tools.reports import _resolve_upload_dir
+        upload_dir = _resolve_upload_dir("nominas")
 
         file_name = f"Nomina_{employee.name.replace(' ', '_')}_{month}_{year}.pdf"
         file_path = os.path.join(upload_dir, file_name)
         with open(file_path, "wb") as f:
             f.write(pdf_bytes)
 
+        # task_id del contexto async — permite que _save_ai_result_as_document
+        # (helper compartido) detecte que ya hay PDF para esta task y no
+        # genere un snapshot duplicado.
+        from app.core.tenant_context import get_current_task
+        current_task_id = get_current_task()
+        task_uuid = UUID(current_task_id) if current_task_id else None
+
         new_doc = TenantDocument(
             tenant_id=UUID(tenant_id),
+            task_id=task_uuid,
             file_name=file_name,
             file_path=file_path,
             file_type="application/pdf",
