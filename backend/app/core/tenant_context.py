@@ -21,6 +21,14 @@ _current_tenant_ctx: ContextVar[str | None] = ContextVar(
     "current_tenant", default=None
 )
 
+# Task activo (paralelo a tenant). Lo setea el TaskRunner del orquestador
+# antes de invocar agentes, para que tools que necesiten scoping por task
+# (e.g. dedup cross-dispatcher de documentos) puedan consultarlo sin
+# tener que recibir task_id como argumento explícito desde el LLM.
+_current_task_ctx: ContextVar[str | None] = ContextVar(
+    "current_task", default=None
+)
+
 
 def set_current_tenant(tenant_id: str | None) -> None:
     """Setea el tenant activo para el resto del contexto async actual."""
@@ -30,6 +38,16 @@ def set_current_tenant(tenant_id: str | None) -> None:
 def get_current_tenant() -> str | None:
     """Devuelve el tenant activo o None si no se ha seteado."""
     return _current_tenant_ctx.get()
+
+
+def set_current_task(task_id: str | None) -> None:
+    """Setea la task activa para el resto del contexto async actual."""
+    _current_task_ctx.set(task_id)
+
+
+def get_current_task() -> str | None:
+    """Devuelve la task activa o None si no se ha seteado."""
+    return _current_task_ctx.get()
 
 
 def require_current_tenant() -> str:

@@ -251,8 +251,63 @@ async def create_pdf_text_report(
             return f"Error generando PDF: {e}"
 
         upload_dir = _resolve_upload_dir(category)
+        slug = _slugify(title)
+
+        # Dedup en ventana corta: cuando el orchestrator decompone una
+        # petición unitaria de "informe PDF" en multi-agents, los sub-agents
+        # pueden llamar la tool con títulos LIGERAMENTE distintos (ej:
+        # "Q1 2026" vs "Q1-Q2 2026") en pocos segundos. Si ya hay CUALQUIER
+        # PDF de la misma categoría para el mismo tenant en los últimos 90s,
+        # sobrescribimos ese archivo y reusamos la fila — el segundo
+        # contenido del LLM suele ser más completo que el primero.
+        from datetime import timedelta
+        async with AsyncSessionLocal() as db:
+            cutoff = datetime.now() - timedelta(seconds=90)
+            recent = await db.execute(
+                select(TenantDocument)
+                .where(
+                    TenantDocument.tenant_id == UUID(tenant_id),
+                    TenantDocument.category == category,
+                    TenantDocument.file_type == "application/pdf",
+                    TenantDocument.created_at >= cutoff,
+                )
+                .order_by(TenantDocument.created_at.desc())
+                .limit(1)
+            )
+            existing = recent.scalars().first()
+
+        # task_id del contexto async actual — permite que el guard cross-dispatcher
+        # de create_document detecte que ya hay un documento de esta task y no
+        # duplique con un .md.
+        from app.core.tenant_context import get_current_task
+        current_task_id = get_current_task()
+        task_uuid = UUID(current_task_id) if current_task_id else None
+
+        if existing:
+            file_path = existing.file_path
+            file_name = existing.file_name
+            with open(file_path, "wb") as f:
+                f.write(pdf_bytes)
+            async with AsyncSessionLocal() as db:
+                # refresh tamaño/timestamp + task_id si aún no estaba seteado
+                from sqlalchemy import update
+                values = {"file_size": len(pdf_bytes), "processed_at": datetime.now()}
+                if task_uuid is not None and existing.task_id is None:
+                    values["task_id"] = task_uuid
+                await db.execute(
+                    update(TenantDocument)
+                    .where(TenantDocument.id == existing.id)
+                    .values(**values)
+                )
+                await db.commit()
+            return (
+                f"Informe PDF '{file_name}' actualizado (dedup). "
+                f"ID: {existing.id} en la categoría '{category}'. "
+                f"{len(pdf_bytes)} bytes."
+            )
+
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f"{_slugify(title)}_{ts}.pdf"
+        file_name = f"{slug}_{ts}.pdf"
         file_path = os.path.join(upload_dir, file_name)
         with open(file_path, "wb") as f:
             f.write(pdf_bytes)
@@ -260,6 +315,7 @@ async def create_pdf_text_report(
         async with AsyncSessionLocal() as db:
             doc = TenantDocument(
                 tenant_id=UUID(tenant_id),
+                task_id=task_uuid,
                 file_name=file_name,
                 file_path=file_path,
                 file_type="application/pdf",
