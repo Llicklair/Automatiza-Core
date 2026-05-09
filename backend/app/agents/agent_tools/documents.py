@@ -11,15 +11,31 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import select
 
+from app.agents.agent_tools.reports import _resolve_upload_dir
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import TenantDocument
 
 _logger = logging.getLogger(__name__)
 
+# Categorías visibles en la UI (frontend/.../documentos/page.tsx FOLDERS).
+# Cualquier otra categoría → mapea a "otros" (catch-all del UI).
+_VALID_CATEGORIES = {
+    "facturas", "bancos", "nominas", "fiscal", "crm", "excels",
+    "informes", "correos", "automatizaciones", "rrhh", "otros",
+}
+
+
+def _normalize_category(category: str | None) -> str:
+    """Mapea categorías arbitrarias a una de las visibles en la UI."""
+    if not category:
+        return "otros"
+    cat = category.strip().lower()
+    return cat if cat in _VALID_CATEGORIES else "otros"
+
 
 @tool
 async def create_document(
-    tenant_id: str, file_name: str, content: str, category: str = "informes"
+    tenant_id: str, file_name: str, content: str, category: str = "otros"
 ) -> str:
     """
     Crea un nuevo documento de texto (.txt, .csv, .md) en el Gestor Documental (Escanear).
@@ -28,25 +44,52 @@ async def create_document(
         tenant_id: ID del tenant
         file_name: Nombre del archivo, con su extension (ej: informe_ventas.csv, resumen.txt)
         content: Todo el contenido de texto literal a guardar
-        category: Categoria donde clasificarlo (ej: 'CRM', 'RRHH', 'informes')
+        category: Categoría visible en la UI. Valores válidos: 'facturas',
+            'bancos', 'nominas', 'fiscal', 'crm', 'excels', 'informes',
+            'correos', 'automatizaciones', 'rrhh', 'otros'. Cualquier valor
+            no listado se guarda como 'otros' (catch-all). Para notas o
+            recordatorios usa 'otros'.
     """
     if not content or not content.strip():
         return "Error: No se puede crear un documento vacío. Genera el contenido antes de llamar a esta herramienta."
     try:
-        async with AsyncSessionLocal() as db:
-            upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-            if not os.path.exists(upload_dir) and os.name == "nt":
-                upload_dir = os.path.abspath(
-                    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-                )
-            os.makedirs(upload_dir, exist_ok=True)
+        from app.core.tenant_context import get_current_task
 
+        current_task_id = get_current_task()
+        async with AsyncSessionLocal() as db:
+            category = _normalize_category(category)
+
+            # Guard cross-dispatcher: si esta task ya creó un documento en
+            # la misma categoría, no duplicar. Sucede cuando el coordinator
+            # descompone p.ej. "informe PDF" en billing+documents y ambos
+            # invocan tools de creación. El primero gana, el segundo se
+            # convierte en no-op informativo.
+            if current_task_id:
+                existing = await db.execute(
+                    select(TenantDocument.id, TenantDocument.file_name).where(
+                        TenantDocument.tenant_id == UUID(tenant_id),
+                        TenantDocument.task_id == UUID(current_task_id),
+                        TenantDocument.category == category,
+                    )
+                )
+                existing_doc = existing.first()
+                if existing_doc:
+                    return (
+                        f"Ya existe un documento '{existing_doc.file_name}' "
+                        f"(ID: {existing_doc.id}) creado para esta tarea en la "
+                        f"categoría '{category}'. No se crea uno duplicado. "
+                        f"Si quieres añadir contenido al existente, usa "
+                        f"update_existing_document con ese document_id."
+                    )
+
+            upload_dir = _resolve_upload_dir(category)
             file_path = os.path.join(upload_dir, file_name)
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
             doc = TenantDocument(
                 tenant_id=UUID(tenant_id),
+                task_id=UUID(current_task_id) if current_task_id else None,
                 file_name=file_name,
                 file_path=file_path,
                 file_type="text/plain",
@@ -139,8 +182,7 @@ async def update_existing_document(
                     f.write(new_content)
                 doc.file_size = os.path.getsize(doc.file_path)
             else:
-                upload_dir = "/app/uploads"
-                os.makedirs(upload_dir, exist_ok=True)
+                upload_dir = _resolve_upload_dir(_normalize_category(doc.category))
                 file_path = os.path.join(upload_dir, doc.file_name or f"doc_{document_id}.txt")
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(new_content)

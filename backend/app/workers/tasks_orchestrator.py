@@ -6,7 +6,7 @@ Coroutines puras ejecutadas por TaskRunner.
 import asyncio
 import logging
 
-from app.core.tenant_context import set_current_tenant
+from app.core.tenant_context import set_current_task, set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.services.exec_log_store import push as log_push
 from app.services.idempotency import IdempotencyGuard
@@ -177,6 +177,7 @@ async def _execute_orchestrator(task_id: str):
         employee_id: str | None = (task.additional_metadata or {}).get("addressed_employee_id")
         tenant_id = str(task.tenant_id)
         set_current_tenant(tenant_id)
+        set_current_task(task_id)
 
         if employee_id:
             await _set_agent_status(db, employee_id, tenant_id, "working")
@@ -256,6 +257,7 @@ async def _resume_orchestrator(task_id: str):
             return
         task, payload_data = result
         set_current_tenant(str(task.tenant_id))
+        set_current_task(task_id)
 
         ok = await _create_invoice_from_approval(task, payload_data, db)
         if not ok:

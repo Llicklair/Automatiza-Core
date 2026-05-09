@@ -315,3 +315,24 @@ Esos newlines literales dentro del valor `"body"` violan el JSON spec (RFC 7159 
 4. **Tests con prompts realistas**: los unit tests del parser deben usar fixtures con tool_calls que tengan bodies multilinea, comillas internas, listas markdown. Si el test solo cubre `{"name": "x", "arguments": {"a": "b"}}`, no atrapa estos bugs.
 
 **Aplicación:** Cualquier provider que parsee tool calls del output de un LLM en prompt-based debe pasar la suite mínima: body markdown con headers, body con `"comillas"` dobles dentro, body con tabla pipe `|`. Si esos casos rompen el parse strict, el parser necesita el mismo fallback de escape control chars que aplicamos aquí.
+
+---
+
+## 2026-05-09 — Guard cross-dispatcher de duplicados de documento vía ContextVar `current_task`
+
+**Contexto:** Tras arreglar el parser JSON (PDF report ya generaba el .pdf real), el coordinator descomponía la instrucción "informe PDF de facturación" en billing + documents. Billing creaba el PDF correctamente (15.1 KB). Documents agent, al recibir su sub-tarea, no tenía `create_pdf_text_report` en su toolkit (decisión de diseño correcta — documents lee/clasifica, no genera informes), así que el LLM caía a `create_document` con el cuerpo en markdown → segundo archivo `.md` (6.3 KB) con el mismo informe. **Dos archivos en BD para una misma instrucción**: confunde búsqueda RAG (`search_documents_semantic`), `list_tenant_documents`, e indexación de embeddings.
+
+**Causa estructural:** las tools que crean documentos (`create_document`, `create_pdf_text_report`) operan independientemente sin saber en qué `task_id` están corriendo. El existente guard `_messages_already_generated_pdf` solo detecta duplicados dentro del MISMO dispatcher (mira `messages` del propio agente). El de `create_pdf_text_report` con ventana de 90s funciona para reentradas inmediatas pero no cubre el caso billing→documents secuencial separado por minutos.
+
+**Patrón de fix:** ContextVar `current_task` paralelo al ya existente `current_tenant`. Lo setea el TaskRunner del orquestador (`tasks_orchestrator.py`) antes de invocar agentes. Cada @tool de creación de documento:
+1. Lee `get_current_task()`.
+2. Antes de crear, query `tenant_documents` por `(tenant_id, task_id, category)`. Si hay documento existente → no-op informativo *"Ya existe '{name}'... usa update_existing_document si quieres añadir contenido"*.
+3. Asigna el `task_id` al `TenantDocument` que crea (clave para que guards futuros lo detecten).
+
+**Reglas de prevención:**
+1. **ContextVars son la herramienta correcta para "scoping implícito"**: cuando una tool necesita saber tenant/task/user/request_id pero no tiene cómo recibirlo del LLM, no inventes un wrapper que lo inyecte explícitamente. Usa `ContextVar` y setea desde el punto de entrada (worker, request handler, scheduler). asyncio garantiza que cada Task hereda copia del contexto al crearse — concurrencia segura.
+2. **`task_id` debe asignarse a TODO documento creado en el contexto de una task**: si una tool persiste algo y olvida `task_id`, los guards futuros y la trazabilidad se rompen. Lint: cualquier `TenantDocument(...)` o equivalente que no incluya `task_id` debería tener un comment justificando por qué (e.g. uploads manuales del usuario).
+3. **Mensajes de no-op informativos > excepciones silenciosas**: cuando el guard detecta duplicado, devuelve un mensaje al LLM explicando qué pasó y sugiriendo alternativa (`update_existing_document`). El LLM lo procesa y responde al usuario. Mejor que `return ""` o lanzar exception que el LLM interpreta como fallo.
+4. **Test del cluster cross-dispatcher**: prompts del catálogo que típicamente disparan la descomposición del coordinator (los que tocan multiples dominios: "envía/genera/notifica") deben verificar que el resultado en BD es UN documento, no N.
+
+**Aplicación:** Cualquier @tool que cree filas de un modelo "scoped por task" debe consultar `get_current_task()` antes y aplicar guard. El patrón se generaliza a otras entidades (e.g. `create_email_draft`, `create_invoice` con guard contra duplicados accidentales). El cost overhead es 1 query SELECT antes de cada INSERT — despreciable y previene cluster de bugs de duplicación.
