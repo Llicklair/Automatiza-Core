@@ -60,8 +60,12 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
             "fallo al" in _lower,
             "imposible" in _lower,
             "no such tool" in _lower,
-            "no están disponibles" in _lower,
+            # Solo detectar "no están disponibles" cuando se refiere a las
+            # tools/herramientas del agente — no a campos opcionales de datos
+            # que el LLM menciona como "tales campos no están disponibles".
+            "herramientas" in _lower and "no están disponibles" in _lower,
             "herramientas no disponibles" in _lower,
+            "tool no está disponible" in _lower,
             "no se encontró" in _lower,
             "no se ha encontrado" in _lower,
             "necesito el nif" in _lower,
