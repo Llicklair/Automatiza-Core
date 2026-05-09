@@ -199,6 +199,44 @@ def _extract_json_from_text(text: str) -> Optional[str]:
     return None
 
 
+def _escape_control_chars_in_json_strings(s: str) -> str:
+    """Escapa newlines/tabs literales DENTRO de strings JSON con doble comilla.
+
+    LLMs (Claude Code CLI incluido) frecuentemente producen JSON con `\\n`
+    literales en valores multilinea (markdown bodies, párrafos largos), lo
+    que viola el spec JSON y rompe `json.loads`. Esta función recorre el
+    string carácter a carácter respetando el estado "dentro de string" y
+    escapa solo los control chars que aparecen donde no deberían.
+    """
+    out = []
+    in_string = False
+    escape_next = False
+    for ch in s:
+        if escape_next:
+            out.append(ch)
+            escape_next = False
+            continue
+        if ch == "\\":
+            out.append(ch)
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            out.append(ch)
+            continue
+        if in_string and ch == "\n":
+            out.append("\\n")
+            continue
+        if in_string and ch == "\r":
+            out.append("\\r")
+            continue
+        if in_string and ch == "\t":
+            out.append("\\t")
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
 def _parse_tool_response(text: str) -> AIMessage:
     """Parsea la respuesta del CLI buscando tool calls con multiples estrategias."""
     raw_json = _extract_json_from_text(text)
@@ -207,9 +245,23 @@ def _parse_tool_response(text: str) -> AIMessage:
 
     try:
         parsed = json.loads(raw_json)
-    except json.JSONDecodeError as e:
-        _log.warning("[ClaudeCode] JSON malformado en tool_call, fallback a texto: %s", e)
-        return AIMessage(content=text)
+    except json.JSONDecodeError as first_err:
+        # Fallback: escapar control chars literales en strings (\n, \r, \t).
+        # El LLM frecuentemente produce JSON con newlines reales en valores
+        # markdown (e.g. body de informe), violando el spec.
+        cleaned = _escape_control_chars_in_json_strings(raw_json)
+        try:
+            parsed = json.loads(cleaned)
+            _log.info(
+                "[ClaudeCode] JSON parseado tras escapar control chars (LLM emitió newlines literales)"
+            )
+        except json.JSONDecodeError as second_err:
+            _log.warning(
+                "[ClaudeCode] JSON malformado en tool_call, fallback a texto. "
+                "Primer error: %s | Segundo error tras escapar: %s | head: %s",
+                first_err, second_err, raw_json[:300],
+            )
+            return AIMessage(content=text)
 
     raw_calls = parsed.get("tool_calls") if isinstance(parsed, dict) else None
     if not raw_calls or not isinstance(raw_calls, list):
