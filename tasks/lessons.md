@@ -336,3 +336,38 @@ Esos newlines literales dentro del valor `"body"` violan el JSON spec (RFC 7159 
 4. **Test del cluster cross-dispatcher**: prompts del catálogo que típicamente disparan la descomposición del coordinator (los que tocan multiples dominios: "envía/genera/notifica") deben verificar que el resultado en BD es UN documento, no N.
 
 **Aplicación:** Cualquier @tool que cree filas de un modelo "scoped por task" debe consultar `get_current_task()` antes y aplicar guard. El patrón se generaliza a otras entidades (e.g. `create_email_draft`, `create_invoice` con guard contra duplicados accidentales). El cost overhead es 1 query SELECT antes de cada INSERT — despreciable y previene cluster de bugs de duplicación.
+
+---
+
+## 2026-05-09 — Validación de unicidad asimétrica entre query y insert (case-sensitive vs upper)
+
+**Contexto:** Probando *"Crea un empleado: Juan Pérez, NIF 12345678Z, salario 2500€"* tras `list_employees` (que mostró que ese NIF ya existía para María García López), el sistema **CREÓ un nuevo empleado duplicado** con el mismo NIF. La tool `create_employee` tiene una validación previa al insert pero estaba escrita asimétricamente:
+
+```python
+# Validación: lookup case-sensitive
+result = await db.execute(
+    select(Employee).where(
+        Employee.tenant_id == UUID(tenant_id),
+        Employee.nif == nif.strip(),  # ← sin upper
+    )
+)
+# Insert: case-INsensitive (sube a UPPER)
+emp = Employee(nif=nif.strip().upper(), ...)
+```
+
+Si el LLM emitía `"12345678z"` (minúscula), el query buscaba `Employee.nif == "12345678z"` y NO encontraba a María (que tiene `"12345678Z"`). El insert subía a `"12345678Z"` y creaba el duplicado. Resultado: dos empleados con mismo NIF en el mismo tenant, integridad de datos rota a nivel real (en España un NIF identifica unívocamente a una persona).
+
+**Patrón antipatrón compuesto:**
+- Validación de unicidad **solo en código** sin constraint a nivel BD. Cualquier ruta no validada (race condition, otra tool, una API directa) puede saltarse el check.
+- **Asimetría entre el lookup y el insert**: el insert normaliza (UPPER) pero el lookup no. Cualquier valor que el normalizador toque pero el query no, escapa la validación.
+- Tabla con un solo PK en `id` y NINGUNA constraint de negocio: cero defensa-en-profundidad.
+
+**Reglas de prevención:**
+1. **Constraint UNIQUE a nivel BD es obligatoria** para cualquier campo de negocio que represente una identidad real (NIF, CIF, email, IBAN, número de licencia). El código de aplicación es la primera línea de defensa, la BD es la barrera infalible que protege contra race conditions y rutas no auditadas. Ejemplo correcto: `CREATE UNIQUE INDEX ON employees (tenant_id, UPPER(nif)) WHERE nif IS NOT NULL` (partial + case-insensitive).
+2. **Lookup y insert deben usar la misma normalización**: si el insert hace `.upper()`, el lookup hace `func.upper(column) == value.upper()`. Si el insert hace `.strip().lower()`, el lookup también. Mantener una helper `_normalize_nif(s)` y aplicarla en ambos puntos.
+3. **Catch `IntegrityError` post-insert como red de seguridad**: incluso con validación previa correcta, una concurrencia o un bug futuro pueden colarlos. Capturar `IntegrityError` y devolver mensaje claro al LLM (e.g. *"Ya existe un empleado con NIF X (detectado por restricción de unicidad de BD)"*).
+4. **Auditoría de tablas existentes**: tablas heredadas que originalmente solo tenían PK pueden necesitar UNIQUEs retroactivamente (employees, clients, invoices, products). Antes de añadir el constraint, ejecutar query para limpiar duplicados existentes — la migración fallaría si hay duplicados.
+
+**Bug pendiente (no aplicado en esta iteración):** `agents/hr/tools.py` no aplica `_isolated()` al toolkit. Eso significa que el LLM de HR puede pasar un `tenant_id` arbitrario que no se sobrescribe por el ContextVar. No causó este bug específico (los duplicados estaban en el mismo tenant), pero es vector de prompt injection cross-tenant. Aplicar `_isolated()` requiere construir una lista `tools = [...]` (que HR no tiene exportada) — refactor pequeño pero fuera del scope de la sesión actual.
+
+**Aplicación:** Cualquier modelo SQLAlchemy con un campo "identificador real" (DNI, NIF, IBAN, MAC, IMEI, ISBN, license plate) sin UNIQUE constraint **es bug latente**. Auditoría rápida: `grep "class.*Base" db/models/` y por cada modelo verificar que los campos de negocio críticos tienen `unique=True` en el `Column(...)` o un partial UNIQUE INDEX en migración. Cualquier validación de unicidad escrita solo en código sin constraint complementaria en BD es defensa-en-profundidad ausente.
