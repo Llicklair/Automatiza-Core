@@ -1,8 +1,17 @@
 "use client";
 
-import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive, Server } from "lucide-react";
 import InfoBanner from "@/components/InfoBanner";
 import { useIntegraciones } from "./_hooks/useIntegraciones";
+
+const SMTP_PRESETS: Record<string, { imap_host: string; imap_port: number; smtp_host: string; smtp_port: number; help: string }> = {
+    gmail: { imap_host: "imap.gmail.com", imap_port: 993, smtp_host: "smtp.gmail.com", smtp_port: 587, help: "Necesitas una App Password (no tu contraseña normal). Genérala en myaccount.google.com → Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones." },
+    outlook: { imap_host: "outlook.office365.com", imap_port: 993, smtp_host: "smtp.office365.com", smtp_port: 587, help: "Usa tu contraseña habitual o una contraseña de aplicación si tienes 2FA." },
+    yahoo: { imap_host: "imap.mail.yahoo.com", imap_port: 993, smtp_host: "smtp.mail.yahoo.com", smtp_port: 587, help: "Yahoo exige App Password. Ve a Configuración → Seguridad de la cuenta → Generar contraseña de aplicación." },
+    icloud: { imap_host: "imap.mail.me.com", imap_port: 993, smtp_host: "smtp.mail.me.com", smtp_port: 587, help: "Necesitas una App Password de Apple. Genérala en appleid.apple.com → Inicio de sesión y seguridad → Contraseñas específicas para apps." },
+    custom: { imap_host: "", imap_port: 993, smtp_host: "", smtp_port: 587, help: "Introduce los datos de tu proveedor. Pregunta a tu administrador si no los conoces." },
+};
 
 function StatusBadge({ loading, connected }: { loading: boolean; connected: boolean }) {
     if (loading) return <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />;
@@ -40,14 +49,120 @@ function IntegrationCard({
     );
 }
 
+function EmailSmtpForm({
+    onSubmit, busy,
+}: {
+    onSubmit: (payload: { email_address: string; password: string; provider: string; imap_host?: string; imap_port?: number; smtp_host?: string; smtp_port?: number }) => Promise<boolean>;
+    busy: boolean;
+}) {
+    const [provider, setProvider] = useState("gmail");
+    const [emailAddr, setEmailAddr] = useState("");
+    const [password, setPassword] = useState("");
+    const preset = SMTP_PRESETS[provider] ?? SMTP_PRESETS.custom;
+    const [imapHost, setImapHost] = useState(preset.imap_host);
+    const [imapPort, setImapPort] = useState(preset.imap_port);
+    const [smtpHost, setSmtpHost] = useState(preset.smtp_host);
+    const [smtpPort, setSmtpPort] = useState(preset.smtp_port);
+
+    function handleProviderChange(next: string) {
+        setProvider(next);
+        const p = SMTP_PRESETS[next] ?? SMTP_PRESETS.custom;
+        setImapHost(p.imap_host);
+        setImapPort(p.imap_port);
+        setSmtpHost(p.smtp_host);
+        setSmtpPort(p.smtp_port);
+    }
+
+    async function submit(e: React.FormEvent) {
+        e.preventDefault();
+        const ok = await onSubmit({
+            email_address: emailAddr.trim(),
+            password,
+            provider,
+            imap_host: imapHost || undefined,
+            imap_port: imapPort || undefined,
+            smtp_host: smtpHost || undefined,
+            smtp_port: smtpPort || undefined,
+        });
+        if (ok) { setPassword(""); }
+    }
+
+    return (
+        <form onSubmit={submit} className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+                Conexión vía IMAP/SMTP — útil para servidores propios, Yahoo, iCloud o cuando OAuth no esté disponible.
+                Para <strong className="text-foreground">Gmail</strong> y <strong className="text-foreground">Outlook</strong> recomendamos OAuth (botones arriba).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="space-y-1.5 text-sm">
+                    <span className="text-muted-foreground">Proveedor</span>
+                    <select value={provider} onChange={e => handleProviderChange(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                        <option value="gmail">Gmail (App Password)</option>
+                        <option value="outlook">Outlook / Microsoft 365</option>
+                        <option value="yahoo">Yahoo Mail</option>
+                        <option value="icloud">iCloud Mail</option>
+                        <option value="custom">Servidor propio (custom)</option>
+                    </select>
+                </label>
+                <label className="space-y-1.5 text-sm">
+                    <span className="text-muted-foreground">Dirección de correo</span>
+                    <input type="email" required value={emailAddr} onChange={e => setEmailAddr(e.target.value)}
+                        placeholder="tu@correo.com" autoComplete="email"
+                        className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                </label>
+            </div>
+            <label className="space-y-1.5 text-sm block">
+                <span className="text-muted-foreground">Contraseña</span>
+                <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="App Password recomendado" autoComplete="off"
+                    className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                <span className="text-xs text-muted-foreground block leading-snug">{preset.help}</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <label className="space-y-1.5 text-sm sm:col-span-3">
+                    <span className="text-muted-foreground">Servidor IMAP</span>
+                    <input type="text" value={imapHost} onChange={e => setImapHost(e.target.value)}
+                        placeholder="imap.ejemplo.com"
+                        className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                </label>
+                <label className="space-y-1.5 text-sm">
+                    <span className="text-muted-foreground">Puerto IMAP</span>
+                    <input type="number" value={imapPort} onChange={e => setImapPort(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                </label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <label className="space-y-1.5 text-sm sm:col-span-3">
+                    <span className="text-muted-foreground">Servidor SMTP</span>
+                    <input type="text" value={smtpHost} onChange={e => setSmtpHost(e.target.value)}
+                        placeholder="smtp.ejemplo.com"
+                        className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                </label>
+                <label className="space-y-1.5 text-sm">
+                    <span className="text-muted-foreground">Puerto SMTP</span>
+                    <input type="number" value={smtpPort} onChange={e => setSmtpPort(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 transition" />
+                </label>
+            </div>
+            <button type="submit" disabled={busy || !emailAddr.trim() || !password}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
+                {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando…</> : <><Plug className="w-4 h-4" /> Conectar correo</>}
+            </button>
+        </form>
+    );
+}
+
 export default function IntegracionesPage() {
     const {
         loading, feedback,
         psd2Id, setPsd2Id, psd2Key, setPsd2Key,
         connectingPsd2, disconnectingPsd2,
         connectingGoogle, connectingMicrosoft,
+        connectingEmail, disconnectingEmail,
         getStatus, isConnected,
         connectPsd2, disconnectPsd2, connectOAuth, disconnectIntegration,
+        connectEmail, disconnectEmail,
     } = useIntegraciones();
 
     return (
@@ -203,6 +318,29 @@ export default function IntegracionesPage() {
                         </button>
                         <p className="text-xs text-muted-foreground">Al conectar Microsoft se habilitan Outlook y OneDrive simultáneamente.</p>
                     </div>
+                )}
+            </IntegrationCard>
+
+            {/* Email IMAP/SMTP (manual) */}
+            <IntegrationCard
+                icon={<Server className="w-5 h-5 text-purple-400" />}
+                iconBg="bg-purple-500/10 border border-purple-500/20"
+                title="Correo IMAP / SMTP" subtitle="Servidor propio, Yahoo, iCloud o fallback sin OAuth"
+                loading={loading} connected={isConnected("email")}
+                lastSync={getStatus("email")?.last_sync_at}
+            >
+                {isConnected("email") ? (
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Tu correo IMAP/SMTP está conectado. El agente de email puede leer la bandeja y enviar mensajes con adjuntos.
+                        </p>
+                        <button onClick={disconnectEmail} disabled={disconnectingEmail}
+                            className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 text-sm transition">
+                            {disconnectingEmail ? "Desconectando…" : "Desconectar correo"}
+                        </button>
+                    </div>
+                ) : (
+                    <EmailSmtpForm onSubmit={connectEmail} busy={connectingEmail} />
                 )}
             </IntegrationCard>
 

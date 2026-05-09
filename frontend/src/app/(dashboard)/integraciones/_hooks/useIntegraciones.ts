@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api, IntegrationStatus } from "@/lib/api";
+import type { EmailConnectInput } from "@/lib/api/integrations";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
@@ -17,6 +18,9 @@ export function useIntegraciones() {
 
     const [connectingGoogle, setConnectingGoogle] = useState(false);
     const [connectingMicrosoft, setConnectingMicrosoft] = useState(false);
+
+    const [connectingEmail, setConnectingEmail] = useState(false);
+    const [disconnectingEmail, setDisconnectingEmail] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -117,12 +121,43 @@ export function useIntegraciones() {
         }
     }
 
+    async function connectEmail(payload: EmailConnectInput) {
+        setConnectingEmail(true); setFeedback(null);
+        try {
+            await api.integrations.connectEmail(payload);
+            setFeedback({ type: "success", msg: "Correo IMAP/SMTP conectado correctamente" });
+            load();
+            return true;
+        } catch (err: unknown) {
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error desconocido" });
+            return false;
+        } finally {
+            setConnectingEmail(false);
+        }
+    }
+
+    async function disconnectEmail() {
+        if (!await showConfirm({ message: "¿Desconectar tu correo IMAP/SMTP?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
+        setDisconnectingEmail(true); setFeedback(null);
+        try {
+            await api.integrations.disconnectEmail();
+            setFeedback({ type: "success", msg: "Correo IMAP/SMTP desconectado" });
+            load();
+        } catch (err: unknown) {
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
+        } finally {
+            setDisconnectingEmail(false);
+        }
+    }
+
     return {
         integrations, loading, feedback,
         psd2Id, setPsd2Id, psd2Key, setPsd2Key,
         connectingPsd2, disconnectingPsd2,
         connectingGoogle, connectingMicrosoft,
+        connectingEmail, disconnectingEmail,
         getStatus, isConnected,
         connectPsd2, disconnectPsd2, connectOAuth, disconnectIntegration,
+        connectEmail, disconnectEmail,
     };
 }
