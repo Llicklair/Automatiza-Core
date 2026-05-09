@@ -287,3 +287,31 @@ Para prompts cortos (lista facturas, búsqueda) el CLI responde antes del timeou
 4. **Test de cuelgue**: para cada provider que use subprocess, un test que simule un proceso lento (`sleep 600`) y verifique que `_agenerate` retorna en `timeout + 10s` máximo. Sin este test, el bug ressurge en cada refactor.
 
 **Aplicación:** Cualquier `await asyncio.wait_for(proc.communicate(...), ...)` sin un `proc.kill()` en su `except TimeoutError` es bug latente en Windows. El mismo patrón aplica a `httpx.AsyncClient.get(timeout=...)` cuando el servidor remoto deja la conexión abierta sin enviar bytes — el timeout dispara pero la conexión TCP queda abierta (httpx la cierra correctamente, pero subprocess raw no).
+
+---
+
+## 2026-05-09 — Tool calling vía JSON prompt-based: LLMs producen newlines literales en strings
+
+**Contexto:** Tras arreglar el cuelgue de `claude_code` (bug subprocess timeout), la task PDF de facturación terminó OK pero el archivo creado fue **`Informe_Facturacion_Q1_2026.md`** — un markdown plano de 6,2 KB, NO un PDF. El LLM había construido un `<<<TOOL_CALL>>>` perfecto para `create_pdf_text_report`, con marcadores de inicio y fin correctos. El parser de claude_code lo extraía pero `json.loads` fallaba silenciosamente y caía al fallback "texto plano".
+
+**Causa raíz:** El `body` del tool_call contenía **markdown multilinea con newlines reales** (no escapados como `\n` dentro del JSON). Ejemplo de lo que el LLM produjo:
+
+```json
+{"tool_calls": [{"name": "create_pdf_text_report", "arguments": {"body": "# Informe
+**Período:** ...
+Este informe recoge...", ...}}]}
+```
+
+Esos newlines literales dentro del valor `"body"` violan el JSON spec (RFC 7159 §7: control characters U+0000..U+001F NOT allowed inside strings; deben escaparse). `json.loads` lanza `JSONDecodeError`, el parser de claude_code lo captura, loguea "JSON malformado" y devuelve el texto crudo como AIMessage. → Billing nunca invoca la tool, el coordinator delega a `documents` agent, que crea un `.md` con `create_document`.
+
+**Por qué se dispara con PDFs y no con tools simples:** las tools simples (`list_invoices`, `update_invoice_status`) tienen argumentos cortos (UUIDs, números, strings de una línea) — el LLM los emite sin newlines. PDFs piden bodies markdown de 4-6 páginas con párrafos, listas y tablas — ahí los newlines literales son inevitables.
+
+**Patrón antipatrón:** confiar en `json.loads` strict para parsear JSON que viene de un LLM en formato prompt-based. Los LLMs no son procesadores JSON — emiten texto que "parece" JSON. Cualquier valor de string con saltos de línea, comillas internas mal escapadas o caracteres unicode complejos rompe el parse.
+
+**Reglas de prevención:**
+1. **Tool calling prompt-based necesita parser tolerante**: si el provider no soporta function calling nativo (Anthropic API, OpenAI, Gemini con `bind_tools`), el parser DEBE manejar los modos de fallo más comunes: newlines literales en strings, comillas no escapadas, trailing commas, comments. Estrategia: tras `JSONDecodeError`, intentar normalizar (escapar control chars) y reintentar.
+2. **Function calling nativo > prompt-based**: si el deploy puede permitirlo, preferir providers con function calling nativo. El SDK serializa los argumentos correctamente y el parsing es trivial. `claude_code` CLI no lo tiene, por eso es prompt-based — pero el parser debe ser ROBUSTO al output ruidoso.
+3. **Detectar fallos silenciosos del parser con métricas**: si el LLM intenta llamar una tool y el parser cae al fallback de texto plano, eso es un fallo invisible al usuario. Loguear con WARNING incluyendo head del JSON y el error, y exponerlo en métricas (e.g. counter `claude_code_tool_parse_failures`). Sin esto, el bug sólo se detecta cuando un humano nota que la tool no se ejecutó.
+4. **Tests con prompts realistas**: los unit tests del parser deben usar fixtures con tool_calls que tengan bodies multilinea, comillas internas, listas markdown. Si el test solo cubre `{"name": "x", "arguments": {"a": "b"}}`, no atrapa estos bugs.
+
+**Aplicación:** Cualquier provider que parsee tool calls del output de un LLM en prompt-based debe pasar la suite mínima: body markdown con headers, body con `"comillas"` dobles dentro, body con tabla pipe `|`. Si esos casos rompen el parse strict, el parser necesita el mismo fallback de escape control chars que aplicamos aquí.
