@@ -51,7 +51,7 @@ async def _list_invoices_async(tenant_id: str, limit: int) -> str:
                 doc_id = doc_map.get(inv.invoice_number, "")
                 doc_info = f" | document_id: {doc_id}" if doc_id else ""
                 lines.append(
-                    f"- {inv.invoice_number}: {cli.name} | "
+                    f"- {inv.invoice_number} | invoice_id: {inv.id} | {cli.name} | "
                     f"{float(inv.amount_total):.2f}€ | "
                     f"{inv.date.strftime('%Y-%m-%d')} | "
                     f"Estado: {inv.status}{doc_info}"
@@ -61,7 +61,9 @@ async def _list_invoices_async(tenant_id: str, limit: int) -> str:
                 f"Facturas recientes ({len(rows)}):\n"
                 + "\n".join(lines)
                 + f"\n\nTotal facturado: {total_facturado:.2f}€\n"
-                + "(Usa el document_id con send_invoice_by_email o pásalo al agente de email como attachment_id)"
+                + "(invoice_id es el UUID a pasar a update_invoice_status / update_invoice / "
+                + "send_invoice_by_email. document_id es el UUID del PDF — úsalo como attachment_id "
+                + "al enviar por email.)"
             )
     except Exception as e:
         return f"Error consultando facturas: {e}"
@@ -133,6 +135,13 @@ async def list_invoices(tenant_id: str, limit: int = 15) -> str:
     """
     Lista las facturas más recientes del tenant con cliente, importe y estado.
     Útil para consultas como "¿cuánto he facturado?", "ver facturas", "listado".
+
+    Cada línea incluye `invoice_id: <uuid>` (UUID del Invoice — pásalo a
+    update_invoice_status / update_invoice / send_invoice_by_email) y
+    opcionalmente `document_id: <uuid>` (UUID del PDF — pásalo como
+    attachment_id al enviar por email). NO confundir ambos: el invoice_number
+    (ej: "IA-XXX" o "F2026-XXXX") es solo un identificador legible y NO sirve
+    como input para las tools de update.
 
     Args:
         tenant_id: ID del tenant

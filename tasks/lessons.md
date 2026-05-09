@@ -208,3 +208,25 @@ En paralelo, `_summarize_handlers.py` truncaba la respuesta de cada agente a `te
 4. **Validador opcional sugerido**: tests que comparen `tools` registradas por agente vs tools mencionadas en el system prompt. Cualquier mismatch es bug pendiente (system prompt promete algo que no existe, o tool registrada nunca documentada al LLM).
 
 **Aplicación:** Cuando se vea una `@tool` async en `agents/<X>/`, preguntarse: *¿algún otro agente necesitará esto en los próximos 6 meses?* Si la respuesta es "probablemente sí", al `agent_tools/`. Cuando se vea `dispatchers/<X>.py` con detección de error de una sola línea, replicar el patrón compuesto de billing. Cuando un agente promete en system prompt una capacidad ("consulto clientes", "leo emails"), el toolkit debe tener al menos una tool que la realice — si no, es bait-and-switch que el LLM va a descubrir al primer intento.
+
+---
+
+## 2026-05-09 — Tools de query deben exponer los IDs que las tools de write exigen
+
+**Contexto:** Probando *"Marca como pagada la factura más reciente de Construcciones Valdemar S.L."*, el LLM:
+1. Llamó a `list_invoices` y encontró la factura (nº `IA-789610CF`, `document_id: 07893052-...`).
+2. Llamó a `update_invoice_status(invoice_id=document_id, ...)` → *"Factura no encontrada"*.
+3. Reintentó con `invoice_id="IA-789610CF"` → *"UUID malformado"*.
+4. Se rindió diciendo "estoy teniendo un problema técnico".
+
+El LLM **no tenía manera de saber** el UUID correcto del Invoice: `list_invoices` exponía solo `invoice_number` (string `IA-XXX`) y `document_id` (UUID del PDF/TenantDocument, NO del Invoice). Las tools `update_invoice_status` / `update_invoice` / `send_invoice_by_email` exigen `Invoice.id` (UUID) → cadena rota.
+
+**Patrón antipatrón:** una **tool de query** que oculta el ID primario de la entidad rompe cualquier cadena compuesta "list → write" porque las **tools de write** suelen pedir UUID. El LLM tiene que adivinar — confunde `invoice_number`, `document_id`, `client_id` — y falla silenciosamente con errores como "no encontrado" o "UUID malformado". El usuario ve "estoy teniendo un problema técnico" sin pista de qué pasó.
+
+**Reglas de prevención:**
+1. **Toda tool de query (list_*, search_*, get_*) debe exponer en cada fila el UUID primario de la entidad** con un nombre coherente con el campo que esperan las tools de write (`invoice_id`, `client_id`, `payroll_id`, etc.). Los identificadores legibles (números de factura, NIFs, slugs) son útiles para el usuario pero **insuficientes** como contrato entre tools.
+2. **Cuando una tool expone múltiples IDs para una misma fila** (e.g. `invoice_id` + `document_id`), la docstring debe explicar **exactamente qué consume cada uno**: quién quiere `invoice_id`, quién quiere `document_id`. Sin esa diferenciación, el LLM elige el primero que ve.
+3. **Tools de write deberían ser robustas a inputs comunes del LLM**: si el LLM pasa un `invoice_number` en lugar de UUID, una opción defensiva es probar primero `Invoice.id == UUID(x)` y si falla con `ValueError`, hacer fallback a `Invoice.invoice_number == x`. Mejor que una `ValueError` críptica al usuario.
+4. **Detección de errores en el dispatcher** debe incluir las frases que el LLM produce **cuando una tool falla repetidamente**: "problema técnico", "uuid malformado", "factura no encontrada", "no consigo". Sin esto, la task termina `success=True, action=summary` con un texto que dice abiertamente "no pude hacer X".
+
+**Aplicación:** Cuando se añada una tool de write que requiera UUID, **revisar la tool de query correlacionada** (`list_*` para `update_*`/`delete_*`, `search_*` para `get_*`/`add_*`). Si la query no expone ese UUID, es bug pendiente. Test obligatorio: una cadena `list → update → list` debe terminar con la entidad realmente modificada en BD.
