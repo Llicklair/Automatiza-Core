@@ -4,7 +4,8 @@ import logging
 from uuid import UUID
 
 from langchain_core.tools import tool
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee
@@ -88,11 +89,16 @@ async def _create_employee_async(
         return "Error: El NIF/DNI del empleado es obligatorio."
 
     try:
+        normalized_nif = nif.strip().upper()
         async with AsyncSessionLocal() as db:
+            # Validación case-insensitive: el insert sube a uppercase, así que
+            # el query también debe ignorar case para evitar que "12345678z" y
+            # "12345678Z" se traten como NIFs distintos. La BD tiene un partial
+            # UNIQUE INDEX (tenant_id, UPPER(nif)) como segunda barrera.
             result = await db.execute(
                 select(Employee).where(
                     Employee.tenant_id == UUID(tenant_id),
-                    Employee.nif == nif.strip(),
+                    func.upper(Employee.nif) == normalized_nif,
                 )
             )
             existing = result.scalar_one_or_none()
@@ -102,7 +108,7 @@ async def _create_employee_async(
             emp = Employee(
                 tenant_id=UUID(tenant_id),
                 name=name.strip(),
-                nif=nif.strip().upper(),
+                nif=normalized_nif,
                 email=email.strip() or None,
                 base_salary=base_salary,
                 role=role or None,
@@ -110,7 +116,16 @@ async def _create_employee_async(
                 irpf_rate=irpf_rate,
             )
             db.add(emp)
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                # Race condition o validación previa fallida: el UNIQUE INDEX
+                # de BD nos protege. Mensaje claro al LLM.
+                await db.rollback()
+                return (
+                    f"Error: Ya existe un empleado con NIF {nif} en el sistema "
+                    f"(detectado por restricción de unicidad de BD)."
+                )
             await db.refresh(emp)
 
             try:
