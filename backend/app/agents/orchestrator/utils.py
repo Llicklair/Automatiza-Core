@@ -29,9 +29,11 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
                 parts.append(f"por {total}€")
             return " ".join(parts) + "."
         if action == "summary":
-            invoices = data.get("invoices", [])
-            total = data.get("total", 0)
-            return f"📊 Encontradas {len(invoices)} facturas. Total: {total:,.2f}€."
+            response = (output.get("response") or "").strip()
+            if response:
+                first_line = response.split("\n", 1)[0].strip() or response
+                return f"📊 {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
+            return "📊 Consulta de facturación completada."
         return f"✅ Facturación: {action}."
 
     if agent in ("hr", "crm", "email"):
