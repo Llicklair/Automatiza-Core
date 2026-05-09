@@ -86,9 +86,17 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
 
     _write_excel(sheets, output_path, theme=_theme)
 
+    # task_id del contexto async actual — para trazabilidad y para que
+    # guards cross-dispatcher (e.g. el de create_document) puedan detectar
+    # artefactos previos de la misma task.
+    from app.core.tenant_context import get_current_task
+    current_task_id = get_current_task()
+    task_uuid = uuid.UUID(current_task_id) if current_task_id else None
+
     async with AsyncSessionLocal() as db:
         doc = TenantDocument(
             tenant_id=uuid.UUID(tenant_id),
+            task_id=task_uuid,
             file_name=output_filename,
             file_path=output_path,
             file_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
