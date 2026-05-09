@@ -37,6 +37,10 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
         return f"✅ Facturación: {action}."
 
     if agent in ("hr", "crm", "email"):
+        response = (output.get("response") or "").strip()
+        if response:
+            first_line = response.split("\n", 1)[0].strip() or response
+            return f"✅ {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
         action = output.get("action", "")
         if action:
             return action if action.startswith(("✅", "❌", "📊", "⚠️")) else f"✅ {action}"

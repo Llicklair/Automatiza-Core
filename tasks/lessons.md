@@ -189,3 +189,22 @@ En paralelo, `_summarize_handlers.py` truncaba la respuesta de cada agente a `te
 3. **Test mínimo de "summary refleja realidad"**: para cada tool de query (list_*, search_*, check_*), un test que simule output del agente y verifique que `summary` no contiene `0` cuando hay datos, ni texto contradictorio con `output.response`.
 
 **Aplicación:** Cualquier `handler.get("foo", default)` cuyo `default` se devuelva en producción habitualmente (`[]`, `0`, `""`) es candidato a código fósil. Loguear o testear que el default NO se está cubriendo en flujos reales antes de creerse que el branch sirve.
+
+---
+
+## 2026-05-09 — Tools transversales pertenecen a `agent_tools/`, no a un agente concreto
+
+**Contexto:** Probando *"Busca el cliente con NIF B12345678"* (Ana, billing), el coordinator lo enrutó al CRM (decisión semánticamente correcta — clientes son del dominio CRM). Pero el agente CRM **no tenía `search_client` en su toolkit**: la tool vivía solo en `agents/billing/_client_tools.py`. El LLM del CRM intentó invocarla y obtuvo `"No such tool available"` → respondió en texto *"Las herramientas del CRM no están disponibles..."* y el dispatcher CRM marcó `success=True, action=completed` porque su detección de errores era débil (`final_text.lower().startswith("error")` — la respuesta no empezaba con "error").
+
+**Patrón antipatrón compuesto:**
+- Una tool **transversal** (clientes son consumidos por billing, CRM, banking, e-commerce…) vivía como tool privada de un agente concreto. Cualquier otro agente que la necesitara tenía que (a) importarla violando "agents NEVER import other agents" o (b) reimplementarla.
+- Dispatcher con detección de error débil (solo prefix matching) → cuando el LLM falla por **falta de tool** y responde en prosa, no se detecta. La task queda `done` con `success=True` y `summary="✅ completed"`.
+- Toolkit del CRM sin tools de consulta de clientes pese a que el system prompt prometía "gestión de cartera de clientes".
+
+**Reglas de prevención:**
+1. **Tools por dominio funcional, no por agente**: si una tool consulta o modifica una entidad que más de un dominio usa (`Client`, `Document`, `TenantKnowledge`, `Email`), va en `app/agents/agent_tools/<entidad>.py` y la importan los toolkits que la necesiten. Solo lógica que es **inherente al agente** (e.g. `_resolve_client` que es helper privado del flujo de creación de factura) se queda en `agents/<X>/`.
+2. **Cada dispatcher con detección de errores semánticos**, no solo prefix `"error"`: ya tenemos el patrón completo en `dispatchers/billing.py:89-108` (lista de frases de fallo comunes en español + check de `agent_status` del graph). Replicarlo en cualquier dispatcher nuevo. Cuando se vea `is_error = text.startswith("error")` solo, es bug latente.
+3. **Cuando el coordinator re-rutea a un agente, ese agente debe tener las tools necesarias para la operación**. Pre-flight de testing: para cada prompt del catálogo, verificar que el agente al que termina llegando tiene en su toolkit las tools mencionadas en su system prompt + las que naturalmente esperaría usar.
+4. **Validador opcional sugerido**: tests que comparen `tools` registradas por agente vs tools mencionadas en el system prompt. Cualquier mismatch es bug pendiente (system prompt promete algo que no existe, o tool registrada nunca documentada al LLM).
+
+**Aplicación:** Cuando se vea una `@tool` async en `agents/<X>/`, preguntarse: *¿algún otro agente necesitará esto en los próximos 6 meses?* Si la respuesta es "probablemente sí", al `agent_tools/`. Cuando se vea `dispatchers/<X>.py` con detección de error de una sola línea, replicar el patrón compuesto de billing. Cuando un agente promete en system prompt una capacidad ("consulto clientes", "leo emails"), el toolkit debe tener al menos una tool que la realice — si no, es bait-and-switch que el LLM va a descubrir al primer intento.

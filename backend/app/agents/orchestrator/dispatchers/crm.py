@@ -47,7 +47,28 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
                 final_text = msg.content
                 break
 
-        is_error = final_text.lower().startswith("error")
+        # Detección robusta de error: prefix "error" + frases de fallo comunes
+        # que el LLM produce cuando una tool no existe / no devuelve datos / pide
+        # más info al usuario. Sin esto, respuestas como "Las herramientas del
+        # CRM no están disponibles" se clasificaban como success=True.
+        _lower = final_text.lower()
+        _error_signals = [
+            _lower.startswith("error"),
+            "no se pudo" in _lower,
+            "no fue posible" in _lower,
+            "falló" in _lower,
+            "fallo al" in _lower,
+            "imposible" in _lower,
+            "no such tool" in _lower,
+            "no están disponibles" in _lower,
+            "herramientas no disponibles" in _lower,
+            "no se encontró" in _lower,
+            "no se ha encontrado" in _lower,
+            "necesito el nif" in _lower,
+            "podrías proporcionarme" in _lower,
+        ]
+        agent_status = result_state.get("status", "")
+        is_error = any(_error_signals) or agent_status in ("failed", "error")
         success = not is_error
 
         _crm_output = {

@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
+from app.agents.agent_tools.clients import search_client
 from app.agents.agent_tools.documents import (
     create_document,
     get_document_content,
@@ -287,6 +288,7 @@ tools = [
     create_opportunity,
     update_opportunity_stage,
     qualify_leads,
+    search_client,
     create_client,
     create_document,
     list_tenant_documents,
