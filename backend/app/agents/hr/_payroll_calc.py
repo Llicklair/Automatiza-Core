@@ -7,6 +7,7 @@ from uuid import UUID
 
 from langchain_core.tools import tool
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.agents.hr._payroll_pdf import _generate_and_save_payroll_pdf
 from app.db.base import AsyncSessionLocal
@@ -71,6 +72,26 @@ async def _create_payroll_async(
             start_date = datetime(year, month, 1, tzinfo=UTC)
             end_date = datetime(year, month, last_day, tzinfo=UTC)
 
+            # Guard de unicidad: ya existe nómina del mismo empleado para este
+            # period_start? Si sí, devolver mensaje claro sin crear duplicado.
+            # La BD también tiene UNIQUE(tenant_id, employee_id, period_start)
+            # como segunda barrera (migración 0007_payroll_unique).
+            existing = await db.execute(
+                select(Payroll).where(
+                    Payroll.tenant_id == UUID(tenant_id),
+                    Payroll.employee_id == employee.id,
+                    Payroll.period_start == start_date,
+                )
+            )
+            existing_payroll = existing.scalar_one_or_none()
+            if existing_payroll:
+                return (
+                    f"Ya existe una nómina para {employee.name} (NIF: {nif}) "
+                    f"en {month:02d}/{year} (estado: {existing_payroll.status}, "
+                    f"ID: {existing_payroll.id}). No se crea duplicado. "
+                    f"Usa update_payroll si quieres modificarla."
+                )
+
             payroll = Payroll(
                 tenant_id=UUID(tenant_id),
                 employee_id=employee.id,
@@ -89,7 +110,14 @@ async def _create_payroll_async(
                 status="draft",
             )
             db.add(payroll)
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                await db.rollback()
+                return (
+                    f"Error: Ya existe una nómina para {employee.name} en "
+                    f"{month:02d}/{year} (detectado por restricción de unicidad de BD)."
+                )
             await db.refresh(payroll)
 
             try:
@@ -175,9 +203,29 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
         start_date = datetime(year, month, 1, tzinfo=UTC)
         end_date = datetime(year, month, last_day, tzinfo=UTC)
 
+        # Guard masivo: pre-cargar IDs de empleados que YA tienen nómina para
+        # este period_start. Skipear esos. Sin esto cada invocación duplicaba
+        # las nóminas (vimos 120 filas para el mismo set de 5 empleados).
+        async with AsyncSessionLocal() as db:
+            existing_result = await db.execute(
+                select(Payroll.employee_id).where(
+                    Payroll.tenant_id == UUID(tenant_id),
+                    Payroll.period_start == start_date,
+                )
+            )
+            existing_employee_ids = {row[0] for row in existing_result.all()}
+
         summary_lines = []
+        skipped_lines = []
+        created_count = 0
         async with AsyncSessionLocal() as db:
             for emp in employees:
+                if emp.id in existing_employee_ids:
+                    skipped_lines.append(
+                        f"- {emp.name}: ya tenía nómina para {month:02d}/{year}, no se crea duplicado"
+                    )
+                    continue
+
                 base_salary = float(emp.base_salary) if emp.base_salary else 0
                 irpf_rate = float(emp.irpf_rate) if emp.irpf_rate is not None else 15.0
 
@@ -229,8 +277,17 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 summary_lines.append(
                     f"- {emp.name}: Bruto {base_salary:.2f}€ → Neto {net_salary:.2f}€"
                 )
+                created_count += 1
 
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                await db.rollback()
+                return (
+                    "Error: una o varias nóminas ya existían (detectado por "
+                    "restricción de unicidad de BD). Reintenta — esta llamada "
+                    "ya no se aplicará por el guard previo."
+                )
 
         try:
             from app.services.event_bus import emit_event
@@ -248,11 +305,30 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 "Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e
             )
 
-        return (
-            f"Nóminas de {month}/{year} generadas en modo DRAFT para {len(employees)} empleados:\n"
-            + "\n".join(summary_lines)
-            + "\n\nIMPORTANTE: Las nóminas están en estado BORRADOR. "
+        if created_count == 0:
+            return (
+                f"No se crearon nuevas nóminas para {month:02d}/{year}: "
+                f"todos los empleados ({len(employees)}) ya tenían nómina para ese período.\n"
+                + "\n".join(skipped_lines)
+            )
+
+        parts = [
+            f"Nóminas de {month:02d}/{year} generadas en modo DRAFT: "
+            f"{created_count} creadas, {len(skipped_lines)} omitidas (ya existían).",
+            "",
+        ]
+        if summary_lines:
+            parts.append("Creadas:")
+            parts.extend(summary_lines)
+        if skipped_lines:
+            parts.append("")
+            parts.append("Omitidas (no duplicar):")
+            parts.extend(skipped_lines)
+        parts.append("")
+        parts.append(
+            "IMPORTANTE: Las nóminas están en estado BORRADOR. "
             "El responsable debe revisarlas y aprobarlas desde RRHH > Nóminas."
         )
+        return "\n".join(parts)
     except Exception as e:
         return f"Error al generar nóminas en bloque: {str(e)}"
