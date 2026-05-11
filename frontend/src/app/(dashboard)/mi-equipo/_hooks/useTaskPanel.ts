@@ -4,7 +4,6 @@ import type { AIEmployee } from "@/lib/api/ai_employees";
 import { useNotificationStore } from "@/stores/notifications";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
-import { useNavigationGuard } from "@/stores/navigationGuard";
 
 export function useTaskPanel(isActive: boolean) {
     const toast = useToastStore();
@@ -21,7 +20,6 @@ export function useTaskPanel(isActive: boolean) {
     const [chatLoading, setChatLoading] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
     const refreshKey = useNotificationStore((s) => s.refreshKey);
-    const setGuard = useNavigationGuard((s) => s.setGuard);
 
     const load = () => {
         setLoading(true);
@@ -44,13 +42,10 @@ export function useTaskPanel(isActive: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refreshKey, isActive]);
 
-    useEffect(() => {
-        if (!isActive) return;
-        const active = showNew || creating || chatLoading || hasActive;
-        setGuard(active, "Hay una tarea IA en ejecución. Si cambias de sección perderás el progreso visible.");
-        return () => { if (active) setGuard(false); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showNew, creating, chatLoading, hasActive, isActive]);
+    // NOTA: anteriormente había un navigationGuard aquí que impedía cambiar
+    // de página mientras una task estaba activa. Eliminado: las tasks viven
+    // en backend y siguen ejecutándose aunque el usuario navegue; al volver
+    // a la pestaña, el polling y el WebSocket re-sincronizan el estado.
 
     useEffect(() => {
         if (!isActive) return;
