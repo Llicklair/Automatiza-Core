@@ -170,7 +170,7 @@ export function LiveTeamSection() {
                                     </linearGradient>
                                 ))}
                             </defs>
-                            <g transform="translate(50%, 50%)">
+                            <g style={{ transform: "translate(50%, 50%)" }}>
                                 {nodes.map(({ emp, x, y, style }) => {
                                     const isWorking = emp.status === "working" || activeDomains.has(emp.domain);
                                     const isHover = hoveredId === emp.id;
