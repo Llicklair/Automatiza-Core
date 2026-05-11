@@ -175,28 +175,51 @@ export function LiveTeamSection() {
                                     const isWorking = emp.status === "working" || activeDomains.has(emp.domain);
                                     const isHover = hoveredId === emp.id;
                                     return (
-                                        <line
-                                            key={emp.id}
-                                            x1={0} y1={0}
-                                            x2={x} y2={y}
-                                            stroke={isWorking ? `url(#grad-${emp.id})` : style.stroke}
-                                            strokeOpacity={isWorking ? 1 : isHover ? 0.4 : 0.08}
-                                            strokeWidth={isWorking ? 2 : 1}
-                                            strokeDasharray={isWorking ? "6 4" : "2 6"}
-                                        >
+                                        <g key={emp.id}>
+                                            <line
+                                                x1={0} y1={0}
+                                                x2={x} y2={y}
+                                                stroke={isWorking ? style.stroke : style.stroke}
+                                                strokeOpacity={isWorking ? 0.4 : isHover ? 0.3 : 0.08}
+                                                strokeWidth={isWorking ? 1.5 : 1}
+                                                strokeDasharray={isWorking ? "4 6" : "2 6"}
+                                                style={isWorking ? { animation: `dashflow 1.2s linear infinite` } : undefined}
+                                            />
+                                            {/* Partícula que viaja por la línea */}
                                             {isWorking && (
-                                                <animate
-                                                    attributeName="stroke-dashoffset"
-                                                    values="0;-20"
-                                                    dur="0.8s"
-                                                    repeatCount="indefinite"
-                                                />
+                                                <>
+                                                    <circle r={4} fill={style.stroke}>
+                                                        <animateMotion
+                                                            dur="1.6s"
+                                                            repeatCount="indefinite"
+                                                            path={`M 0 0 L ${x} ${y}`}
+                                                        />
+                                                        <animate
+                                                            attributeName="opacity"
+                                                            values="0;1;1;0"
+                                                            dur="1.6s"
+                                                            repeatCount="indefinite"
+                                                        />
+                                                    </circle>
+                                                    <circle r={8} fill={style.stroke} opacity="0.3">
+                                                        <animateMotion
+                                                            dur="1.6s"
+                                                            repeatCount="indefinite"
+                                                            path={`M 0 0 L ${x} ${y}`}
+                                                        />
+                                                    </circle>
+                                                </>
                                             )}
-                                        </line>
+                                        </g>
                                     );
                                 })}
                             </g>
                         </svg>
+                        <style jsx global>{`
+                            @keyframes dashflow {
+                                to { stroke-dashoffset: -20; }
+                            }
+                        `}</style>
 
                         {/* HUB central */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
