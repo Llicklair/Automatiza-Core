@@ -107,20 +107,41 @@ async def create_document(
 
 
 @tool
-async def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
+async def list_tenant_documents(
+    tenant_id: str, category: str = "all", limit: int = 50, offset: int = 0
+) -> str:
     """
-    Lista los documentos del tenant en el Escanear, opcionalmente filtrados por categoria.
-    Util antes de modificar un documento — devuelve el ID que necesitas para actualizar.
+    Lista los documentos del tenant en el Gestor Documental, opcionalmente
+    filtrados por categoria. Util antes de modificar un documento — devuelve
+    el ID que necesitas para actualizar.
+
+    Soporta pagination: cuando hay más documentos que `limit`, el output
+    incluye el total y indica cómo pedir la siguiente página con `offset`.
+
     Args:
         tenant_id: ID del tenant
-        category: Categoria a filtrar ('all', 'RRHH', 'CRM', 'Facturas', 'Nominas', etc.)
+        category: Categoria a filtrar (valores: 'all', 'facturas', 'bancos',
+            'nominas', 'fiscal', 'crm', 'excels', 'informes', 'correos',
+            'automatizaciones', 'rrhh', 'otros'). Default 'all'.
+        limit: Número máximo de documentos a devolver. Default 50 (max útil 200).
+        offset: Saltar los primeros N documentos (para pagination). Default 0.
     """
     try:
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
         async with AsyncSessionLocal() as db:
+            from sqlalchemy import func as _f
+            count_q = select(_f.count()).select_from(TenantDocument).where(
+                TenantDocument.tenant_id == UUID(tenant_id)
+            )
+            if category != "all":
+                count_q = count_q.where(TenantDocument.category == category)
+            total = (await db.execute(count_q)).scalar() or 0
+
             q = select(TenantDocument).where(TenantDocument.tenant_id == UUID(tenant_id))
             if category != "all":
                 q = q.where(TenantDocument.category == category)
-            q = q.order_by(TenantDocument.created_at.desc()).limit(15)
+            q = q.order_by(TenantDocument.created_at.desc()).limit(limit).offset(offset)
             result = await db.execute(q)
             docs = result.scalars().all()
 
@@ -135,7 +156,20 @@ async def list_tenant_documents(tenant_id: str, category: str = "all") -> str:
                     f"Fecha: {doc.created_at.strftime('%d/%m/%Y') if doc.created_at else 'N/A'} | "
                     f"Tipo: {doc.file_type or 'desconocido'}"
                 )
-            return f"Documentos en el Escanear ({len(docs)}):\n" + "\n".join(lines)
+            header = (
+                f"Documentos en el Gestor "
+                f"({'categoria ' + category + ', ' if category != 'all' else ''}"
+                f"mostrando {len(docs)} de {total} totales"
+                f"{', desde offset ' + str(offset) if offset else ''}):"
+            )
+            footer = ""
+            if offset + len(docs) < total:
+                next_offset = offset + len(docs)
+                footer = (
+                    f"\n\n[Hay {total - next_offset} documentos más. Llama de nuevo "
+                    f"con offset={next_offset} para verlos.]"
+                )
+            return header + "\n" + "\n".join(lines) + footer
     except Exception as e:
         return f"Error listando documentos: {str(e)}"
 
