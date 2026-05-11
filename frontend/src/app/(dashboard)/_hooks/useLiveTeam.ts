@@ -18,6 +18,10 @@ export interface LiveTeamData {
     employees: AIEmployee[];
     recentActivity: ActivityEntry[];
     recentResults: LiveAgentResult[];
+    /** Domains con actividad reciente — para iluminar avatares aunque
+     *  el backend no haya emitido agent_status_changed (ocurre con prompts
+     *  sin addressed_employee_id, como los de la chat bar genérica). */
+    activeDomains: Set<string>;
     loading: boolean;
 }
 
@@ -29,11 +33,31 @@ export interface LiveTeamData {
  *
  * No hace polling: estado convergente a partir del snapshot inicial + eventos WS.
  */
+const HIGHLIGHT_MS = 4000;
+
 export function useLiveTeam(): LiveTeamData {
     const [employees, setEmployees] = useState<AIEmployee[]>([]);
     const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
     const [recentResults, setRecentResults] = useState<LiveAgentResult[]>([]);
+    const [activeDomains, setActiveDomains] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+
+    const bumpDomain = useCallback((domain: string) => {
+        if (!domain) return;
+        setActiveDomains((prev) => {
+            const next = new Set(prev);
+            next.add(domain);
+            return next;
+        });
+        setTimeout(() => {
+            setActiveDomains((prev) => {
+                if (!prev.has(domain)) return prev;
+                const next = new Set(prev);
+                next.delete(domain);
+                return next;
+            });
+        }, HIGHLIGHT_MS);
+    }, []);
 
     const load = useCallback(async () => {
         try {
@@ -86,8 +110,17 @@ export function useLiveTeam(): LiveTeamData {
                 ].slice(0, 12));
                 return prev;
             });
+            // Highlight temporal del avatar correspondiente, aunque el
+            // backend no haya emitido agent_status_changed.
+            bumpDomain(agentDomain);
+        },
+        orchestrator_step: (msg) => {
+            // Cuando el orchestrator entra en "dispatch", encendemos el hub
+            // central como señal de actividad inminente.
+            const node = msg.node as string | undefined;
+            if (node === "dispatch") bumpDomain("__hub__");
         },
     });
 
-    return { employees, recentActivity, recentResults, loading };
+    return { employees, recentActivity, recentResults, activeDomains, loading };
 }

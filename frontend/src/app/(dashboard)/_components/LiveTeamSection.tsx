@@ -85,8 +85,9 @@ function EmployeeNode({
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export function LiveTeamSection() {
-    const { employees, recentActivity, recentResults, loading } = useLiveTeam();
+    const { employees, recentActivity, recentResults, activeDomains, loading } = useLiveTeam();
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    void recentActivity;
 
     // Filtra builtins primero, customs después (al final del círculo).
     const sortedEmps = useMemo(
@@ -109,8 +110,11 @@ export function LiveTeamSection() {
         });
     }, [sortedEmps]);
 
-    const workingCount = employees.filter((e) => e.status === "working").length;
+    const workingCount = employees.filter(
+        (e) => e.status === "working" || activeDomains.has(e.domain),
+    ).length;
     const totalCount = employees.length;
+    const hubActive = activeDomains.has("__hub__") || workingCount > 0;
 
     return (
         <section className="rounded-2xl border border-border bg-card/40 backdrop-blur p-6 relative overflow-hidden">
@@ -168,7 +172,7 @@ export function LiveTeamSection() {
                             </defs>
                             <g transform="translate(50%, 50%)">
                                 {nodes.map(({ emp, x, y, style }) => {
-                                    const isWorking = emp.status === "working";
+                                    const isWorking = emp.status === "working" || activeDomains.has(emp.domain);
                                     const isHover = hoveredId === emp.id;
                                     return (
                                         <line
@@ -198,8 +202,8 @@ export function LiveTeamSection() {
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
                             <div className="relative">
                                 {/* Anillos concéntricos animados */}
-                                <div className={`absolute -inset-8 rounded-full border border-primary/20 ${workingCount > 0 ? "animate-ping" : ""}`} style={{ animationDuration: "3s" }} />
-                                <div className={`absolute -inset-4 rounded-full border border-primary/30 ${workingCount > 0 ? "animate-ping" : ""}`} style={{ animationDuration: "2s" }} />
+                                <div className={`absolute -inset-8 rounded-full border border-primary/20 ${hubActive ? "animate-ping" : ""}`} style={{ animationDuration: "3s" }} />
+                                <div className={`absolute -inset-4 rounded-full border border-primary/30 ${hubActive ? "animate-ping" : ""}`} style={{ animationDuration: "2s" }} />
                                 {/* Cuerpo del hub */}
                                 <div className="relative w-36 h-36 rounded-full bg-gradient-to-br from-primary/30 to-violet-600/30 backdrop-blur-xl border-2 border-primary/40 flex flex-col items-center justify-center shadow-2xl">
                                     <div className="text-5xl font-bold text-foreground leading-none">
@@ -222,7 +226,7 @@ export function LiveTeamSection() {
                                 emp={emp}
                                 x={x}
                                 y={y}
-                                isWorking={emp.status === "working"}
+                                isWorking={emp.status === "working" || activeDomains.has(emp.domain)}
                                 isHovered={hoveredId === emp.id}
                                 onHover={setHoveredId}
                             />
