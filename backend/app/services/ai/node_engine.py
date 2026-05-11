@@ -228,10 +228,38 @@ class NodeEngine:
     async def _emit_node_event(self, payload: dict) -> None:
         """Broadcast WS de progreso de nodo del workflow.
         Silencioso en errores — no debe romper la ejecución.
+
+        Además del payload original, cuando es completed/failed emite un
+        evento sintético `activity_new` para que el feed de actividad de
+        la bandeja se actualice en vivo (sin esperar a polling).
         """
         try:
             from app.api.ws.notifications import manager as ws_manager
             await ws_manager.broadcast_to_tenant(self.tenant_id, payload)
+            # Mirror a activity_new para llenar el feed en vivo. Solo eventos
+            # terminales — los "started" saturarían el feed.
+            ev_type = payload.get("type")
+            if ev_type in ("workflow_node_completed", "workflow_node_failed"):
+                is_ok = ev_type == "workflow_node_completed"
+                node_label = payload.get("label") or "Nodo"
+                summary = payload.get("result_summary") or payload.get("error") or ""
+                synthetic_entry = {
+                    "id": f"wf-{payload.get('node_id')}-{payload.get('completed_at')}",
+                    "employee_id": None,
+                    "category": "workflow",
+                    "icon": "✅" if is_ok else "❌",
+                    "message": f"[{self.workflow_id[:8]}] {node_label}: {summary[:120]}",
+                    "metadata": {
+                        "workflow_id": self.workflow_id,
+                        "execution_id": self.execution_id,
+                        "node_id": payload.get("node_id"),
+                    },
+                    "created_at": payload.get("completed_at"),
+                }
+                await ws_manager.broadcast_to_tenant(
+                    self.tenant_id,
+                    {"type": "activity_new", "entry": synthetic_entry},
+                )
         except Exception:
             pass
 
