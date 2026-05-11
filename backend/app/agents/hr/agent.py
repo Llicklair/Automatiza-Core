@@ -52,6 +52,12 @@ tools = [
 ]
 
 
+# Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar
+# y rechazar cualquier override del LLM (prompt injection cross-tenant).
+from app.agents.tenant_context import isolated as _isolated
+tools = _isolated(tools)
+
+
 # ─── Nodos del grafo ──────────────────────────────────────────────────────────
 
 
