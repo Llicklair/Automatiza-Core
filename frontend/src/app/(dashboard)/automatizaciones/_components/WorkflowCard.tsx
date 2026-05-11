@@ -259,36 +259,54 @@ export default function WorkflowCard({
                                                     <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{description}</p>
                                                     {/* Runtime real-time WS info: agente, timer en vivo, instrucción */}
                                                     {rt[node.id] && (
-                                                        <div className="mt-1.5 space-y-0.5">
+                                                        <div className="mt-2 pt-2 border-t border-border/40 space-y-1">
                                                             {rt[node.id].status === "running" && (
                                                                 <>
-                                                                    <div className="flex items-center gap-1.5 text-[10px]">
-                                                                        <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
-                                                                        <span className="font-semibold text-blue-300">{rt[node.id].agent || node.type}</span>
-                                                                        <span className="text-blue-400/80">· {formatElapsed(rt[node.id].elapsedMs)}</span>
+                                                                    <div className="flex items-center gap-2 text-xs">
+                                                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                                                                        <span className="font-bold text-blue-300 uppercase tracking-wide">
+                                                                            {rt[node.id].agent || node.type}
+                                                                        </span>
+                                                                        <span className="ml-auto px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 font-semibold tabular-nums">
+                                                                            {formatElapsed(rt[node.id].elapsedMs)}
+                                                                        </span>
                                                                     </div>
                                                                     {rt[node.id].instruction && (
-                                                                        <p className="text-[9px] text-blue-200/70 italic truncate">
+                                                                        <p className="text-[11px] text-blue-200/80 italic leading-snug line-clamp-2">
                                                                             “{rt[node.id].instruction}”
                                                                         </p>
                                                                     )}
                                                                 </>
                                                             )}
                                                             {rt[node.id].status === "completed" && (
-                                                                <div className="flex items-center gap-1.5 text-[10px] text-emerald-300/80">
-                                                                    <span>✓ {formatElapsed(rt[node.id].elapsedMs)}</span>
+                                                                <>
+                                                                    <div className="flex items-center gap-2 text-xs text-emerald-300">
+                                                                        <span className="font-bold">✓ Completado</span>
+                                                                        <span className="ml-auto px-1.5 py-0.5 rounded bg-emerald-500/15 font-semibold tabular-nums">
+                                                                            {formatElapsed(rt[node.id].elapsedMs)}
+                                                                        </span>
+                                                                    </div>
                                                                     {rt[node.id].resultSummary && (
-                                                                        <span className="truncate">· {rt[node.id].resultSummary}</span>
+                                                                        <p className="text-[11px] text-emerald-200/80 leading-snug line-clamp-2">
+                                                                            {rt[node.id].resultSummary}
+                                                                        </p>
                                                                     )}
-                                                                </div>
+                                                                </>
                                                             )}
                                                             {rt[node.id].status === "failed" && (
-                                                                <div className="flex items-center gap-1.5 text-[10px] text-red-300">
-                                                                    <span>✗ {formatElapsed(rt[node.id].elapsedMs)}</span>
+                                                                <>
+                                                                    <div className="flex items-center gap-2 text-xs text-red-300">
+                                                                        <span className="font-bold">✗ Falló</span>
+                                                                        <span className="ml-auto px-1.5 py-0.5 rounded bg-red-500/15 font-semibold tabular-nums">
+                                                                            {formatElapsed(rt[node.id].elapsedMs)}
+                                                                        </span>
+                                                                    </div>
                                                                     {rt[node.id].error && (
-                                                                        <span className="truncate">· {rt[node.id].error}</span>
+                                                                        <p className="text-[11px] text-red-200/80 leading-snug line-clamp-2">
+                                                                            {rt[node.id].error}
+                                                                        </p>
                                                                     )}
-                                                                </div>
+                                                                </>
                                                             )}
                                                         </div>
                                                     )}

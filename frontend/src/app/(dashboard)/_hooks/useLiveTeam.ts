@@ -120,6 +120,21 @@ export function useLiveTeam(): LiveTeamData {
             const node = msg.node as string | undefined;
             if (node === "dispatch") bumpDomain("__hub__");
         },
+        workflow_node_started: (msg) => {
+            // Cada nodo de un workflow ilumina al agente correspondiente
+            // mientras está activo. Permite ver TODOS los empleados que
+            // participan en un workflow, no solo el último que respondió.
+            const agent = msg.agent as string | undefined;
+            if (agent) bumpDomain(agent);
+            bumpDomain("__hub__");
+        },
+        workflow_node_completed: (msg) => {
+            // Mantenemos el highlight unos segundos más al completar para
+            // que la transición sea suave entre nodos.
+            const node_id = msg.node_id as string | undefined;
+            void node_id;
+            bumpDomain("__hub__");
+        },
     });
 
     return { employees, recentActivity, recentResults, activeDomains, loading };
