@@ -11,6 +11,7 @@ import { RecentInvoicesSection } from "./_components/RecentInvoicesSection";
 import { AiActivitySection } from "./_components/AiActivitySection";
 import { ApprovalsSection } from "./_components/ApprovalsSection";
 import { RrhhWidget } from "./_components/RrhhWidget";
+import { LiveTeamSection } from "./_components/LiveTeamSection";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
@@ -41,6 +42,9 @@ export default function DashboardPage() {
             <AiChatBar />
 
             <KpiSection loading={loading} summary={summary} />
+
+            {/* Mapa de nodos en vivo: agentes IA */}
+            <LiveTeamSection />
 
             {/* Layout Inferior */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

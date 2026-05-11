@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Bot, Loader2, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { TaskProgressPipeline } from "./TaskProgressPipeline";
 
 const SUGGESTIONS = [
     "¿Cuánto he facturado este mes?",
@@ -16,6 +17,7 @@ const SUGGESTIONS = [
 export function AiChatBar() {
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
+    const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
     const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +35,7 @@ export function AiChatBar() {
         setMessages(prev => [...prev, { role: "user", content: msg }]);
         try {
             const task = await api.tasks.create("chat", msg);
+            setActiveTaskId(task.id);
             let answer = "";
             for (let i = 0; i < 30; i++) {
                 await new Promise(r => setTimeout(r, 1000));
@@ -110,6 +113,9 @@ export function AiChatBar() {
                     <div ref={messagesEndRef} />
                 </div>
             )}
+
+            {/* Pipeline de progreso de task activa */}
+            <TaskProgressPipeline taskId={activeTaskId} active={sending} />
 
             {/* Sugerencias rápidas — solo sin mensajes */}
             {messages.length === 0 && (
