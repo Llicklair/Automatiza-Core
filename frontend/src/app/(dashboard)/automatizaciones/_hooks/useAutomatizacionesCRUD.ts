@@ -235,8 +235,10 @@ export function useAutomatizacionesCRUD() {
         setTriggerConfig(parsed.trigger_config || { events: ["any"] });
         setActionType(parsed.action_type || "ai_task");
         setActionIntent(parsed.action_config?.instruction || "");
-        setParsedUiNodes(parsed.ui_nodes || null);
-        setParsedUiEdges(parsed.ui_edges || null);
+        // Trata array vacío como null para que el modal caiga al editor por
+        // defecto en vez de mostrar un mapa de nodos en blanco.
+        setParsedUiNodes((parsed.ui_nodes && parsed.ui_nodes.length > 0) ? parsed.ui_nodes : null);
+        setParsedUiEdges((parsed.ui_edges && parsed.ui_edges.length > 0) ? parsed.ui_edges : null);
         setExecutionMode(parsed.can_be_deterministic ? "deterministic" : "reasoning");
         setCanBeDeterministic(parsed.can_be_deterministic ?? null);
         setModeLockedByAI(true);

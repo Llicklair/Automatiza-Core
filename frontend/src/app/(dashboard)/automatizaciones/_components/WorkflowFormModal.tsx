@@ -250,8 +250,8 @@ export default function WorkflowFormModal({
                         <div className="h-72 rounded-xl overflow-hidden border border-border">
                             <WorkflowGraph
                                 key={graphKey}
-                                nodes={parsedUiNodes || defaultEditorNodes}
-                                edges={parsedUiEdges || defaultEditorEdges}
+                                nodes={(parsedUiNodes && parsedUiNodes.length > 0) ? parsedUiNodes : defaultEditorNodes}
+                                edges={(parsedUiEdges && parsedUiEdges.length > 0) ? parsedUiEdges : defaultEditorEdges}
                                 editable
                                 onNodesChange={(n) => setParsedUiNodes(n)}
                                 onEdgesChange={(e) => setParsedUiEdges(e)}
