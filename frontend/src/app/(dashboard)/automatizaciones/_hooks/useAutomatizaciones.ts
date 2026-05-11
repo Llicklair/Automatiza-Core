@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useNavigationGuard } from "@/stores/navigationGuard";
 import { useAutomatizacionesCRUD } from "./useAutomatizacionesCRUD";
 import { useAutomatizacionesExecution } from "./useAutomatizacionesExecution";
 
@@ -48,15 +46,9 @@ export function useAutomatizaciones() {
     const handleDelete = (id: string) =>
         crud.handleDelete(id, execution.expandedId, execution.setExpandedId);
 
-    // ─── Navigation guard ────────────────────────────────────────────────────
-    const setGuard = useNavigationGuard((s) => s.setGuard);
-    useEffect(() => {
-        const active =
-            crud.showModal || crud.isParsing || crud.chatLoading ||
-            crud.isSubmitting || execution.runningId !== null;
-        setGuard(active, "Hay una automatización en curso. Si cambias de sección perderás el progreso.");
-        return () => { if (active) setGuard(false); };
-    }, [crud.showModal, crud.isParsing, crud.chatLoading, crud.isSubmitting, execution.runningId, setGuard]);
+    // NOTA: el navigationGuard se eliminó intencionalmente. Workflows
+    // siguen ejecutándose en backend aunque el usuario cambie de sección.
+    // El WS + polling re-sincronizan al volver a la página.
 
     return {
         // ── State ──
