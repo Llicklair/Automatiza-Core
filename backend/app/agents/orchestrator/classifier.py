@@ -530,7 +530,40 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
     tenant_id = state.get("tenant_id", "")
     cache_key = f"classify:{_normalize_for_cache(intent)}"
 
-    # ── Paso 0: ¿La tarea va dirigida a un AIEmployee custom? ────────────────
+    # ── Paso 0a: ¿La tarea va dirigida a un AIEmployee BUILTIN específico? ───
+    # El usuario hizo /instruct con employee_id apuntando a un builtin (Ana,
+    # Carlos, Patricia, etc.). Respetar SIEMPRE su domain — no clasificar ni
+    # descomponer. Sin esto, prompts atómicos como "Aprueba nóminas"
+    # acababan descompuestos en hr + custom + custom + summary (bug 5A).
+    metadata = state.get("additional_metadata") or {}
+    addressed_id = metadata.get("addressed_employee_id")
+    if addressed_id:
+        try:
+            from uuid import UUID
+            from sqlalchemy import select
+            from app.db.base import AsyncSessionLocal
+            from app.db.models.ai_employees import AIEmployee
+
+            async with AsyncSessionLocal() as db:
+                _r = await db.execute(
+                    select(AIEmployee).where(AIEmployee.id == UUID(addressed_id))
+                )
+                _emp = _r.scalar_one_or_none()
+            if _emp and _emp.is_builtin and _emp.domain in VALID_DOMAINS:
+                logger.info(
+                    "[CLASSIFY] builtin direccionado: %s (domain=%s) → respetar",
+                    _emp.name, _emp.domain,
+                )
+                return {
+                    **state,
+                    "classified_domain": _emp.domain,
+                    "status": TaskStatus.PLANNING,
+                    "iteration_count": state.get("iteration_count", 0) + 1,
+                }
+        except Exception as _e:
+            logger.debug("[CLASSIFY] lookup de addressed builtin falló: %s", _e)
+
+    # ── Paso 0b: ¿La tarea va dirigida a un AIEmployee custom? ────────────────
     # No se cachea: depende del estado de AIEmployees del tenant (puede cambiar).
     custom_metadata = await _resolve_custom_employee(state, intent_lower)
     if custom_metadata is not None:
