@@ -33,7 +33,7 @@ export interface LiveTeamData {
  *
  * No hace polling: estado convergente a partir del snapshot inicial + eventos WS.
  */
-const HIGHLIGHT_MS = 4000;
+const HIGHLIGHT_MS = 12000;
 
 export function useLiveTeam(): LiveTeamData {
     const [employees, setEmployees] = useState<AIEmployee[]>([]);
