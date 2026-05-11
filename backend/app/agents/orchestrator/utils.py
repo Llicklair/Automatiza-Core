@@ -118,6 +118,11 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
             return from_resp
         return f"✅ {output.get('summary', output.get('action', 'Análisis Excel completado.'))}"
 
+    # Fallback final para agentes sin branch específico (marketing, recruitment,
+    # accounting, report, workflow…). Usa output.response si existe.
+    from_resp = _summary_from_response(output)
+    if from_resp:
+        return from_resp
     return f"✅ Agente '{agent}' completado."
 
 
