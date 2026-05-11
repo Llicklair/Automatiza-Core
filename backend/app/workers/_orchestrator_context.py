@@ -100,13 +100,26 @@ async def _build_initial_state(task, task_id: str, db) -> dict:
     else:
         enriched_intent = base_intent
 
+    # Si el usuario hizo /instruct a un AIEmployee específico, ese employee
+    # tiene un domain concreto (hr, marketing, billing...). El endpoint
+    # /instruct setea task.domain="coordinator" genérico pero guarda el
+    # domain real en additional_metadata.addressed_employee_domain.
+    # Preferimos ese domain real para evitar que el classify_node trate la
+    # task como genérica y la pase al planner LLM (bug 5A de descomposición).
+    _meta = task.additional_metadata or {}
+    _addressed_dom = _meta.get("addressed_employee_domain")
+    if _addressed_dom and task.domain == "coordinator":
+        _initial_domain = _addressed_dom
+    else:
+        _initial_domain = task.domain if task.domain else None
+
     return {
         "task_id": task_id,
         "tenant_id": str(task.tenant_id),
         "user_id": str(task.created_by) if task.created_by else "",
         "user_intent": enriched_intent,
         "current_intent": None,
-        "classified_domain": task.domain if task.domain else None,
+        "classified_domain": _initial_domain,
         "plan": None,
         "current_step": 0,
         "agent_results": [],
@@ -116,7 +129,7 @@ async def _build_initial_state(task, task_id: str, db) -> dict:
         "error_message": None,
         "iteration_count": 0,
         "tenant_knowledge": [],
-        "additional_metadata": task.additional_metadata or {},
+        "additional_metadata": _meta,
     }
 
 
