@@ -394,6 +394,44 @@ async def plan_node(state: OrchestratorState) -> dict:
     else:
         single_agent = domain if domain in VALID_DOMAINS else "chat"
 
+        # Short-circuit: si el usuario dirigió la task a un AIEmployee BUILTIN
+        # específico (via /instruct con addressed_employee_id), respetar su
+        # domain y planear 1 paso directo. SIN esto, el escalado al planner
+        # LLM (cuando hay 2+ customs del mismo domain) descomponía tasks
+        # atómicas en multi-agent — bug 5A del coordinator (visible en HR:
+        # "Aprueba todas las nóminas" terminaba con hr + custom + custom).
+        metadata = state.get("additional_metadata") or {}
+        addressed_id = metadata.get("addressed_employee_id")
+        if addressed_id:
+            try:
+                async with AsyncSessionLocal() as db:
+                    _r = await db.execute(
+                        select(AIEmployee).where(AIEmployee.id == UUID(addressed_id))
+                    )
+                    _emp = _r.scalar_one_or_none()
+                if _emp and _emp.is_builtin and _emp.domain in VALID_DOMAINS:
+                    plan = [
+                        {
+                            "id": "step_1",
+                            "agent": _emp.domain,
+                            "action": "process",
+                            "params": {"intent": state["user_intent"]},
+                            "depends_on": [],
+                            "status": "pending",
+                        }
+                    ]
+                    return {
+                        **state,
+                        "plan": plan,
+                        "status": TaskStatus.VALIDATING,
+                        "iteration_count": state["iteration_count"] + 1,
+                    }
+            except Exception as _e:
+                logger.debug(
+                    "[PLAN] lookup de addressed builtin falló: %s. Sigo el flujo estándar.",
+                    _e,
+                )
+
         # Si el tenant tiene AIEmployees custom para este dominio, evitar que el
         # built-in se trague la tarea sin más. 1 match → atajo directo a custom;
         # 2+ → escalar al planner LLM para que elija con criterio (rol/expertise).
