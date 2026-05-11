@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Workflow, WorkflowExecution } from "@/lib/api";
 import { TRIGGER_CONFIG, EXEC_STATUS, hasFanOut } from "./constants";
+import { useWorkflowExecution, formatElapsed } from "../_hooks/useWorkflowExecution";
 
 interface WorkflowCardProps {
     wf: Workflow;
@@ -40,6 +41,8 @@ export default function WorkflowCard({
     onContextInputToggle, onContextTextChange, onRunWithContext,
 }: WorkflowCardProps) {
     const activeExec = wfExecs.find(e => e.status === "running" || e.status === "paused");
+    // Runtime info por nodo (WS): timer en vivo, agente, instrucción.
+    const rt = useWorkflowExecution(activeExec?.id || null);
     const lastExec = wfExecs[0];
 
     // Construir capas de nodos para el mapa visual
@@ -254,6 +257,41 @@ export default function WorkflowCard({
                                                         )}
                                                     </div>
                                                     <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{description}</p>
+                                                    {/* Runtime real-time WS info: agente, timer en vivo, instrucción */}
+                                                    {rt[node.id] && (
+                                                        <div className="mt-1.5 space-y-0.5">
+                                                            {rt[node.id].status === "running" && (
+                                                                <>
+                                                                    <div className="flex items-center gap-1.5 text-[10px]">
+                                                                        <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                                                                        <span className="font-semibold text-blue-300">{rt[node.id].agent || node.type}</span>
+                                                                        <span className="text-blue-400/80">· {formatElapsed(rt[node.id].elapsedMs)}</span>
+                                                                    </div>
+                                                                    {rt[node.id].instruction && (
+                                                                        <p className="text-[9px] text-blue-200/70 italic truncate">
+                                                                            “{rt[node.id].instruction}”
+                                                                        </p>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                            {rt[node.id].status === "completed" && (
+                                                                <div className="flex items-center gap-1.5 text-[10px] text-emerald-300/80">
+                                                                    <span>✓ {formatElapsed(rt[node.id].elapsedMs)}</span>
+                                                                    {rt[node.id].resultSummary && (
+                                                                        <span className="truncate">· {rt[node.id].resultSummary}</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            {rt[node.id].status === "failed" && (
+                                                                <div className="flex items-center gap-1.5 text-[10px] text-red-300">
+                                                                    <span>✗ {formatElapsed(rt[node.id].elapsedMs)}</span>
+                                                                    {rt[node.id].error && (
+                                                                        <span className="truncate">· {rt[node.id].error}</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

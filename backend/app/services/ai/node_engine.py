@@ -225,11 +225,37 @@ class NodeEngine:
             "node_states": self.node_states,
         }
 
+    async def _emit_node_event(self, payload: dict) -> None:
+        """Broadcast WS de progreso de nodo del workflow.
+        Silencioso en errores — no debe romper la ejecución.
+        """
+        try:
+            from app.api.ws.notifications import manager as ws_manager
+            await ws_manager.broadcast_to_tenant(self.tenant_id, payload)
+        except Exception:
+            pass
+
     async def _execute_node(self, node: dict, db: AsyncSession) -> dict:
         """Despacha según type: skill, conditional, delay, approval_gate."""
         node_id = node["id"]
         node_type = node.get("type", "skill")
         now = datetime.now(UTC).isoformat()
+
+        # Extraer info legible del nodo para el frontend
+        node_data = node.get("data", {}) or {}
+        node_label = node_data.get("label") or node_data.get("description") or node_type
+        node_agent = (
+            node_data.get("domain")
+            or node_data.get("agent")
+            or node_data.get("skill")
+            or node_type
+        )
+        node_instruction = (
+            node_data.get("instruction")
+            or node_data.get("description")
+            or node_data.get("label")
+            or ""
+        )
 
         self.node_states[node_id] = {
             "status": RUNNING,
@@ -237,6 +263,19 @@ class NodeEngine:
             "output": None,
             "completed_at": None,
         }
+
+        # Emit "started"
+        await self._emit_node_event({
+            "type": "workflow_node_started",
+            "execution_id": self.execution_id,
+            "workflow_id": self.workflow_id,
+            "node_id": node_id,
+            "node_type": node_type,
+            "label": str(node_label)[:100],
+            "agent": str(node_agent)[:50],
+            "instruction": str(node_instruction)[:200],
+            "started_at": now,
+        })
 
         try:
             if node_type == "skill" or node_type not in (
@@ -246,17 +285,33 @@ class NodeEngine:
                 "trigger",
             ):
                 output = await _nodes.execute_skill_node(self, node, db)
+                completed_at = datetime.now(UTC).isoformat()
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["output"] = output
-                self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
+                self.node_states[node_id]["completed_at"] = completed_at
+                await self._emit_node_event({
+                    "type": "workflow_node_completed",
+                    "execution_id": self.execution_id,
+                    "node_id": node_id,
+                    "completed_at": completed_at,
+                    "result_summary": str(output)[:200] if output else "",
+                })
                 return {}
 
             elif node_type == "conditional":
                 branch = _nodes.execute_conditional_node(self, node)
+                completed_at = datetime.now(UTC).isoformat()
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["output"] = {"branch": branch}
-                self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
+                self.node_states[node_id]["completed_at"] = completed_at
                 skip_discarded_branch(self.edges, self.node_states, node_id, branch)
+                await self._emit_node_event({
+                    "type": "workflow_node_completed",
+                    "execution_id": self.execution_id,
+                    "node_id": node_id,
+                    "completed_at": completed_at,
+                    "result_summary": f"Rama tomada: {branch}",
+                })
                 return {}
 
             elif node_type == "delay":
@@ -266,14 +321,30 @@ class NodeEngine:
                 return await _nodes.execute_approval_gate(self, node, db)
 
             elif node_type == "trigger":
+                completed_at = datetime.now(UTC).isoformat()
                 self.node_states[node_id]["status"] = COMPLETED
-                self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
+                self.node_states[node_id]["completed_at"] = completed_at
+                await self._emit_node_event({
+                    "type": "workflow_node_completed",
+                    "execution_id": self.execution_id,
+                    "node_id": node_id,
+                    "completed_at": completed_at,
+                    "result_summary": "Trigger procesado",
+                })
                 return {}
 
         except Exception as e:
+            completed_at = datetime.now(UTC).isoformat()
             self.node_states[node_id]["status"] = FAILED
             self.node_states[node_id]["output"] = {"error": str(e)}
-            self.node_states[node_id]["completed_at"] = datetime.now(UTC).isoformat()
+            self.node_states[node_id]["completed_at"] = completed_at
+            await self._emit_node_event({
+                "type": "workflow_node_failed",
+                "execution_id": self.execution_id,
+                "node_id": node_id,
+                "completed_at": completed_at,
+                "error": str(e)[:200],
+            })
 
             try:
                 await log_action(
