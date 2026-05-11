@@ -26,11 +26,23 @@ interface NodeState {
     completed_at?: string;
 }
 
+/** Estado en vivo de cada nodo proveniente del WS (useWorkflowExecution).
+ *  Si se pasa, los CustomNodes muestran overlay con tiempo + agente + msg. */
+export interface NodeRuntimeInfo {
+    status: "running" | "completed" | "failed";
+    elapsedMs?: number;
+    agent?: string;
+    instruction?: string;
+    resultSummary?: string;
+    error?: string;
+}
+
 interface WorkflowGraphProps {
     nodes: Node[];
     edges: Edge[];
     nodeStates?: Record<string, NodeState>;
     currentNodeId?: string | null;
+    runtimeStates?: Record<string, NodeRuntimeInfo>;
     editable?: boolean;
     onNodesChange?: (nodes: Node[]) => void;
     onEdgesChange?: (edges: Edge[]) => void;
@@ -58,6 +70,7 @@ function WorkflowGraphInner({
     edges,
     nodeStates,
     currentNodeId,
+    runtimeStates,
     editable = false,
     onNodesChange: onNodesProp,
     onEdgesChange: onEdgesProp,
@@ -70,10 +83,15 @@ function WorkflowGraphInner({
             const ns = nodeStates?.[n.id];
             const isActive = currentNodeId === n.id;
             const statusColor = ns ? STATUS_BORDER[ns.status] : undefined;
+            // Inyectar runtime state en data.__runtime__ para que el custom
+            // node renderice overlay con tiempo + agente + último mensaje.
+            const rt = runtimeStates?.[n.id];
+            const isCustom = n.type && n.type in customNodeTypes;
             return {
                 ...n,
-                type: n.type && n.type in customNodeTypes ? n.type : (n.type || 'default'),
-                style: n.type && n.type in customNodeTypes ? {
+                data: isCustom && rt ? { ...n.data, __runtime__: rt } : n.data,
+                type: isCustom ? n.type : (n.type || 'default'),
+                style: isCustom ? {
                     ...(statusColor ? { filter: `drop-shadow(0 0 8px ${statusColor}40)` } : {}),
                     ...(isActive ? { filter: `drop-shadow(0 0 12px #3b82f680)` } : {}),
                     opacity: ns?.status === 'skipped' ? 0.4 : 1,
@@ -90,7 +108,7 @@ function WorkflowGraphInner({
                 },
             };
         });
-    }, [nodes, nodeStates, currentNodeId]);
+    }, [nodes, nodeStates, currentNodeId, runtimeStates]);
 
     const styledEdges = useMemo(() => {
         return edges.map(e => {
