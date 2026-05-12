@@ -18,8 +18,10 @@ RECRUITMENT_SYSTEM_PROMPT = load_prompt("recruitment_agent")
 async def recruitment_agent_node(state: AgentState) -> dict:
     llm = get_llm(temperature=0).bind_tools(tools)
     if not state.get("messages"):
+        tenant_id = str(state.get("tenant_id") or "")
+        prompt_text = RECRUITMENT_SYSTEM_PROMPT.replace("{tenant_id}", tenant_id)
         state["messages"] = [
-            make_cached_system_message(RECRUITMENT_SYSTEM_PROMPT),
+            make_cached_system_message(prompt_text),
             HumanMessage(content=state.get("user_intent", "Lista los puestos abiertos")),
         ]
     response = await llm.ainvoke(state["messages"])

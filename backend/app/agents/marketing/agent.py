@@ -18,8 +18,13 @@ MARKETING_SYSTEM_PROMPT = load_prompt("marketing_agent")
 async def marketing_agent_node(state: AgentState) -> dict:
     llm = get_llm(temperature=0.4).bind_tools(tools)
     if not state.get("messages"):
+        # Sustituir el placeholder {tenant_id} con el real antes de cachear.
+        # Sin esto el LLM ve el literal "{tenant_id}" y pide al usuario que
+        # lo proporcione.
+        tenant_id = str(state.get("tenant_id") or "")
+        prompt_text = MARKETING_SYSTEM_PROMPT.replace("{tenant_id}", tenant_id)
         state["messages"] = [
-            make_cached_system_message(MARKETING_SYSTEM_PROMPT),
+            make_cached_system_message(prompt_text),
             HumanMessage(
                 content=state.get("user_intent", "Genera un plan de contenidos para este mes")
             ),
