@@ -65,12 +65,23 @@ async def emit_event(
 
     triggered_ids: list[str] = []
 
+    from app.services.workflow.conditions import evaluate_conditions
+
     for wf in workflows:
         wf_config = wf.trigger_config or {}
         wf_events: list[str] = wf_config.get("events", [])
 
         # Escuchar el evento concreto o "any" (comodín)
         if event_name not in wf_events and "any" not in wf_events:
+            continue
+
+        # Evaluar conditions (gt, lt, eq, contains, AND/OR/NOT). Sin esto, un
+        # workflow con condition "amount > 5000" se disparaba para CUALQUIER
+        # invoice_created, ignorando el filtro y saturando el sistema.
+        if not evaluate_conditions(wf_config.get("conditions"), context):
+            _logger.debug(
+                "[EVENT_BUS] Workflow '%s' bloqueado por conditions no cumplidas.", wf.name
+            )
             continue
 
         # 3. Construir instrucción IA enriquecida con el contexto del evento
