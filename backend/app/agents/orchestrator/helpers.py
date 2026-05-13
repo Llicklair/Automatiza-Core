@@ -41,6 +41,122 @@ async def _unlock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID):
 _PDF_TOOL_NAMES = frozenset({"create_pdf_report", "create_pdf_text_report"})
 
 
+# Frases que indican que el LLM decidió que la operación requiere
+# aprobación humana antes de ejecutarse. Originalmente solo lo detectaba
+# el dispatcher de billing — pero los workflows pueden enrutarse a
+# cualquier dispatcher (custom, hr, etc.) y la creación de PendingApproval
+# debe ocurrir SIEMPRE que el LLM lo señale, no solo en billing.
+_APPROVAL_PHRASES = (
+    "aprobación requerida",
+    "requiere aprobación",
+    "requiere aprobacion",
+    "necesita aprobación",
+    "necesita aprobacion",
+    "pendiente de aprobación",
+    "pendiente de aprobacion",
+    "requires approval",
+    "requires human approval",
+)
+
+
+def _response_indicates_approval(text: str) -> bool:
+    if not text:
+        return False
+    lower = text.lower()
+    return any(phrase in lower for phrase in _APPROVAL_PHRASES)
+
+
+async def _ensure_pending_approval(
+    tenant_id: str,
+    task_id: str | None = None,
+    agent_results: list | None = None,
+    execution_id: str | None = None,
+) -> str | None:
+    """Crea PendingApproval si algún agent_result lo indica y no existe ya
+    una para esta task/execution. Idempotente: si billing.py ya la creó,
+    no duplica.
+
+    Args:
+        tenant_id: requerido.
+        task_id: PendingApproval enlazada a una Task (flujo normal).
+        execution_id: PendingApproval enlazada a un WorkflowExecution
+            (flujo node_engine). Al menos uno de task_id/execution_id debe
+            estar presente.
+        agent_results: lista de resultados a inspeccionar.
+
+    Returns: str(uuid) de la PendingApproval (nueva o existente), o None si
+    no se requería aprobación.
+    """
+    if not agent_results:
+        return None
+    if not task_id and not execution_id:
+        return None
+
+    # Buscar señal en CUALQUIER respuesta de agente (no solo billing)
+    triggering_text = ""
+    triggering_agent = ""
+    for step in agent_results:
+        if not isinstance(step, dict):
+            continue
+        out = step.get("output") or {}
+        # Si el dispatcher YA marcó approval_required, respetarlo
+        if out.get("action") == "approval_required" and out.get("approval_id"):
+            return out["approval_id"]
+        candidate = out.get("response") or step.get("summary") or ""
+        if _response_indicates_approval(candidate):
+            triggering_text = candidate
+            triggering_agent = step.get("agent", "?")
+            break
+
+    if not triggering_text:
+        return None
+
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.models import PendingApproval
+
+    try:
+        async with AsyncSessionLocal() as db:
+            # Idempotencia: si ya hay una PendingApproval para esta task o
+            # execution, reutilizar.
+            if task_id:
+                existing = await db.execute(
+                    select(PendingApproval).where(
+                        PendingApproval.task_id == uuid.UUID(task_id)
+                    )
+                )
+            else:
+                existing = await db.execute(
+                    select(PendingApproval).where(
+                        PendingApproval.execution_id == uuid.UUID(execution_id)
+                    )
+                )
+            row = existing.scalars().first()
+            if row:
+                return str(row.id)
+
+            approval = PendingApproval(
+                task_id=uuid.UUID(task_id) if task_id else None,
+                execution_id=uuid.UUID(execution_id) if execution_id else None,
+                tenant_id=uuid.UUID(tenant_id),
+                action_description=triggering_text[:500],
+                action_payload={"agent": triggering_agent, "agent_response": triggering_text},
+                risk_level="high",
+                expires_at=datetime.now(UTC) + timedelta(hours=2),
+                status="pending",
+            )
+            db.add(approval)
+            await db.commit()
+            await db.refresh(approval)
+            return str(approval.id)
+    except Exception:
+        logger.exception("Error creando PendingApproval centralizada")
+        return None
+
+
 def _messages_already_generated_pdf(messages: list) -> bool:
     """True si alguno de los messages del agente ya invocó una tool de PDF.
 
@@ -81,10 +197,21 @@ async def _save_ai_result_as_document(
     from app.services.pdf import generate_text_report_pdf
 
     try:
-        # Ruta de uploads
-        _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-        upload_dir = os.path.normpath(os.path.join(_THIS_DIR, "..", "uploads"))
-        os.makedirs(upload_dir, exist_ok=True)
+        # Cross-dispatcher dedup: si la task ya tiene un documento (creado por
+        # otro dispatcher o por una tool del agente), no añadir snapshot.
+        async with AsyncSessionLocal() as db_check:
+            existing = await db_check.execute(
+                select(TenantDocument).where(
+                    TenantDocument.tenant_id == uuid.UUID(tenant_id),
+                    TenantDocument.task_id == uuid.UUID(task_id),
+                ).limit(1)
+            )
+            if existing.scalars().first():
+                return
+
+        # Ruta de uploads — usa el resolver canónico (AppData/.../uploads/<cat>/)
+        from app.agents.agent_tools.reports import _resolve_upload_dir
+        upload_dir = _resolve_upload_dir(category)
 
         # Nombre de fichero determinista (ahora .pdf)
         # Si hay un reference_name (ej: "factura_123"), lo usamos para ser constantes
