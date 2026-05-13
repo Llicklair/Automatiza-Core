@@ -144,7 +144,13 @@ async def _create_invoice_async(
                     context={
                         "invoice_id": str(new_invoice.id),
                         "invoice_number": invoice_number,
+                        # Exponemos varios alias de monto porque los workflows
+                        # event-based del usuario usan el field "amount" en
+                        # sus conditions (lo natural en lenguaje), no
+                        # "amount_total". Mantenemos ambos para compatibilidad.
+                        "amount": float(total_amount),
                         "amount_total": float(total_amount),
+                        "amount_base": float(amount),
                         "client_name": resolved_name,
                         "client_nif": resolved_nif,
                         "concept": concept,
