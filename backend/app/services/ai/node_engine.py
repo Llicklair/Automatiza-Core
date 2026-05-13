@@ -317,6 +317,40 @@ class NodeEngine:
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["output"] = output
                 self.node_states[node_id]["completed_at"] = completed_at
+
+                # Detectar si el skill disparó "aprobación humana requerida"
+                # y crear PendingApproval enlazado al workflow execution.
+                try:
+                    from app.agents.orchestrator.helpers import (
+                        _ensure_pending_approval,
+                        _response_indicates_approval,
+                    )
+                    output_text = ""
+                    if isinstance(output, dict):
+                        output_text = (
+                            output.get("response")
+                            or output.get("summary")
+                            or output.get("result")
+                            or ""
+                        )
+                    elif isinstance(output, str):
+                        output_text = output
+                    if output_text and _response_indicates_approval(output_text):
+                        await _ensure_pending_approval(
+                            tenant_id=self.tenant_id,
+                            execution_id=self.execution_id,
+                            agent_results=[{
+                                "agent": str(node_agent),
+                                "output": {"response": output_text},
+                                "summary": output_text[:200],
+                            }],
+                        )
+                except Exception:
+                    _logger.warning(
+                        "Error creando PendingApproval para workflow execution %s",
+                        self.execution_id, exc_info=True,
+                    )
+
                 await self._emit_node_event({
                     "type": "workflow_node_completed",
                     "execution_id": self.execution_id,
