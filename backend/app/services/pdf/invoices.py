@@ -19,6 +19,7 @@ from app.services.pdf._invoice_sections import (
     _invoice_lines_table,
     _simple_header,
     _themed_header,
+    _verifactu_qr_block,
 )
 
 if REPORTLAB_AVAILABLE:
@@ -175,6 +176,9 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             elements.append(Paragraph("NOTAS", header_sty))
             elements.append(Spacer(1, 1.5 * mm))
             elements.append(Paragraph(str(notes), body_sty))
+
+    # ── QR VERIFACTU (si disponible) ──
+    elements.extend(_verifactu_qr_block(invoice_data.get("verifactu")))
 
     # ── PIE ──
     footer_text = (

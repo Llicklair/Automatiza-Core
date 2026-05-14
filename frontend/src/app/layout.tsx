@@ -23,6 +23,19 @@ export default async function RootLayout({
 
     return (
         <html lang={locale} suppressHydrationWarning>
+            <head>
+                {/* UI.DEN — aplica densidad antes de hidratar React para evitar flash. */}
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+try {
+  var d = localStorage.getItem('ui_density_v1');
+  document.documentElement.setAttribute('data-density', d === 'compact' ? 'compact' : 'comfortable');
+} catch (e) { /* ignore */ }
+`,
+                    }}
+                />
+            </head>
             <body className={`${inter.className} antialiased`}>
                 <NextIntlClientProvider messages={messages}>
                     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>

@@ -86,6 +86,7 @@ export function Sidebar() {
                         href={href}
                         onClick={(e) => handleNavClick(e, href)}
                         title={item.label}
+                        aria-label={item.label}
                         className={cn(
                             "flex items-center justify-center w-full h-9 rounded-md transition-colors",
                             containerStyle
@@ -121,6 +122,8 @@ export function Sidebar() {
             <div key={item.label}>
                 <button
                     onClick={() => toggleExpanded(item.label)}
+                    aria-expanded={expanded}
+                    aria-label={`${item.label} (${expanded ? "expandido" : "colapsado"})`}
                     className={cn(
                         "flex items-center gap-2.5 px-2.5 h-9 w-full rounded-md text-[13px] font-medium transition-colors",
                         active
@@ -223,6 +226,7 @@ export function Sidebar() {
                         href="/configuracion/empresa"
                         onClick={(e) => handleNavClick(e, "/configuracion/empresa")}
                         title="Configuración"
+                        aria-label="Configuración"
                         className={cn(
                             "flex items-center justify-center w-full h-9 rounded-md transition-colors",
                             settingsActive
@@ -252,6 +256,9 @@ export function Sidebar() {
                 <button
                     onClick={toggleCollapsed}
                     title={collapsed ? "Expandir menú" : "Colapsar menú"}
+                    aria-label={collapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
+                    aria-expanded={!collapsed}
+                    aria-controls="main-content"
                     className={cn(
                         "flex items-center h-9 rounded-md text-[13px] font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
                         collapsed ? "justify-center w-full" : "gap-2.5 px-2.5 w-full"

@@ -6,8 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from app.core.dependencies import require_role
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.responses import Response
+
+from app.core.dependencies import get_current_user, require_role
+from app.db.base import get_db
+from app.db.models.auth import User
 from app.services import backup as backup_service
+from app.services.billing.backfill_verifactu import backfill_tenant_verifactu_chain
+from app.services.system.diagnostic_bundle import build_diagnostic_bundle
+from app.services.system.preconditions import check_invoice_preconditions
 
 router = APIRouter(prefix="/system", tags=["system"])
 logger = logging.getLogger("frontend_errors")
@@ -120,3 +128,107 @@ async def delete_backup_endpoint(filename: str):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Backup no encontrado: {filename}")
     return None
+
+
+# ── CONT.KILL — kill-switch de precondiciones legales ──────────────────────
+
+
+@router.get("/preconditions")
+async def get_invoice_preconditions(
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Devuelve el estado de las precondiciones legales para facturación (CONT.KILL).
+
+    Verifica tablas críticas: `invoice_series` (FAC.NUM), `verifactu_chain`
+    (FAC.HASH), `fiscal_approval_log` (SEC.APR). Si falta alguna, las rutas
+    de creación de factura deben rechazar POST con 503.
+    """
+    return await check_invoice_preconditions(db)
+
+
+async def require_invoice_preconditions(
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Dependency inyectable en POST /invoices y similar.
+
+    Rechaza con HTTP 503 si alguna precondición legal falta. Esto previene
+    emitir facturas que no serían defendibles ante AEAT/inspección.
+    """
+    status_check = await check_invoice_preconditions(db)
+    if not status_check["ok"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "invoice_preconditions_failed",
+                "message": (
+                    "El sistema no cumple las precondiciones legales mínimas "
+                    "para emitir facturas. Faltan tablas críticas — "
+                    "ejecutar `alembic upgrade head`."
+                ),
+                "missing": status_check["missing"],
+            },
+        )
+
+
+# ── A.5 backfill Verifactu — recompone cadena retroactiva ──────────────────
+
+
+class BackfillVerifactuRequest(BaseModel):
+    nif_emisor: str = Field(..., min_length=8, max_length=20)
+
+
+class BackfillVerifactuResponse(BaseModel):
+    tenant_id: str
+    invoices_total: int
+    already_chained: int
+    backfilled: int
+    started_at: str
+    finished_at: str
+
+
+@router.post(
+    "/backfill/verifactu",
+    response_model=BackfillVerifactuResponse,
+    dependencies=[_admin_only],
+)
+async def backfill_verifactu_endpoint(
+    payload: BackfillVerifactuRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Reconstruye la cadena Verifactu del tenant del admin autenticado (A.5).
+
+    Operación idempotente — re-ejecutar es seguro. Solo admin: el backfill
+    firma hashes a posteriori, y solo el tenant que migró debería iniciarlo
+    tras haber revisado que los datos importados son correctos.
+    """
+    result = await backfill_tenant_verifactu_chain(
+        db,
+        tenant_id=user.tenant_id,
+        nif_emisor=payload.nif_emisor.upper().strip(),
+    )
+    await db.commit()
+    return result.to_dict()
+
+
+# ── CONT.LOG — bundle de diagnóstico exportable ────────────────────────────
+
+
+@router.get("/diagnostic-bundle")
+async def get_diagnostic_bundle(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Genera un ZIP con logs scrubbed + info de versión + esquema actual.
+
+    Diseñado para soporte L1/L2: el cliente lo descarga y lo envía sin
+    revelar PII. Los logs ya están scrubbed por `JSONFormatter`. La descarga
+    requiere autenticación.
+    """
+    zip_bytes = await build_diagnostic_bundle(db)
+    filename = f"automatizapyme-diagnostic-{user.tenant_id}.zip"
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -14,7 +14,14 @@ from app.db.models.models import Client, Invoice
 logger = logging.getLogger(__name__)
 
 
+from app.services.autonomy_gate import gated_tool
+
+
 @tool
+@gated_tool(
+    domain="banking_write",
+    summary_fn=lambda kw: f"Conciliar movimientos bancarios con facturas (tolerance: {kw.get('tolerance_days', 3)}d / {kw.get('tolerance_amount', 0.01)}€)",
+)
 async def reconcile_transactions(
     tenant_id: str, tolerance_days: int = 3, tolerance_amount: float = 0.01
 ) -> str:
@@ -27,6 +34,9 @@ async def reconcile_transactions(
         tenant_id: ID del tenant
         tolerance_days: Días de tolerancia entre fecha de transacción y fecha de factura (por defecto 3)
         tolerance_amount: Tolerancia en euros para considerar coincidencia de importe (por defecto 0.01)
+
+    Política de autonomía: domain=`banking_write` (default MANUAL).
+    Si el tenant no la ha cambiado, la acción NO se ejecuta y devuelve sugerencia.
     """
     return await _reconcile_transactions_async(tenant_id, tolerance_days, tolerance_amount)
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { getToken } from "@/lib/api/client";
 import type { DeliveryNote, DeliveryNoteCreate } from "@/lib/api/albaranes";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -87,7 +88,7 @@ export function useAlbaranes() {
     };
 
     const handleDownloadPdf = (id: string) => {
-        const token = localStorage.getItem("access_token");
+        const token = getToken();
         const base = process.env.NEXT_PUBLIC_API_URL || "";
         const url = `${base}${api.albaranes.pdfUrl(id)}`;
         const a = document.createElement("a");

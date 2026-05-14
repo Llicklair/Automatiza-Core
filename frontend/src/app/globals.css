@@ -90,6 +90,49 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* UI.DEN — variables de densidad. `comfortable` (default) prioriza
+     legibilidad; `compact` densifica para gestorías que consultan muchos
+     registros en pantalla. Cualquier componente que use estas variables
+     se ajusta automáticamente al cambiar el atributo `data-density` en
+     <html>. */
+  :root {
+    --density-row-py: 0.625rem;
+    --density-row-px: 1rem;
+    --density-table-py: 0.5rem;
+    --density-table-px: 0.75rem;
+    --density-card-p: 1.25rem;
+    --density-text-base: 0.875rem;  /* 14px */
+    --density-text-sm: 0.8125rem;   /* 13px */
+  }
+
+  html[data-density="compact"] {
+    --density-row-py: 0.375rem;
+    --density-row-px: 0.75rem;
+    --density-table-py: 0.25rem;
+    --density-table-px: 0.5rem;
+    --density-card-p: 0.875rem;
+    --density-text-base: 0.8125rem; /* 13px */
+    --density-text-sm: 0.75rem;     /* 12px */
+  }
+
+  .density-row {
+    padding-top: var(--density-row-py);
+    padding-bottom: var(--density-row-py);
+    padding-left: var(--density-row-px);
+    padding-right: var(--density-row-px);
+  }
+
+  .density-table-cell {
+    padding-top: var(--density-table-py);
+    padding-bottom: var(--density-table-py);
+    padding-left: var(--density-table-px);
+    padding-right: var(--density-table-px);
+  }
+
+  .density-card {
+    padding: var(--density-card-p);
+  }
 }
 
 /* Accessibility: visible focus rings */

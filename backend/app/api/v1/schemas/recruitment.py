@@ -31,6 +31,8 @@ class PositionResponse(BaseModel):
 
 
 class CandidateResponse(BaseModel):
+    # AI.SCO — `score` y `score_breakdown` no se exponen por cumplimiento
+    # Anexo III AI Act. Ver `docs/ai_act_scoping.md`.
     id: UUID
     position_id: UUID | None
     name: str
@@ -41,8 +43,6 @@ class CandidateResponse(BaseModel):
     languages: list | None
     education: str | None
     summary: str | None
-    score: float | None
-    score_breakdown: dict | None
     status: str
     cv_file_path: str | None
 

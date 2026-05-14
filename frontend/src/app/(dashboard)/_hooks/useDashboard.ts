@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type Task, type Approval, type Invoice, type GmailMessage, type DriveFile, type OutlookMessage, type OneDriveFile, type Employee, type AttendanceRecord } from "@/lib/api";
+import { getToken } from "@/lib/api/client";
 import { useNotificationStore } from "@/stores/notifications";
 
 function decodeJwtName(token: string): string {
@@ -59,7 +60,7 @@ export function useDashboard(): DashboardData {
     const refreshKey = useNotificationStore((s) => s.refreshKey);
 
     useEffect(() => {
-        const token = localStorage.getItem("access_token");
+        const token = getToken();
         if (token) setUserName(decodeJwtName(token));
     }, []);
 

@@ -9,6 +9,8 @@ from .common import (
     Column,
     DateTime,
     ForeignKey,
+    Integer,
+    Numeric,
     String,
     Text,
     relationship,
@@ -65,6 +67,49 @@ class AuditLog(Base):
     task = relationship("Task", back_populates="audit_entries")
 
 
+class AgentExecutionTrace(Base):
+    """Traza append-only por cada invocación de agente LLM (AI Act / SEC.WORM).
+
+    Cumple Art. 12 Reglamento UE 2024/1689 (logging automático ≥ 6 meses) y
+    refuerza la defensa Art. 6(3) — cada acción del agente queda registrada
+    con prompt+modelo+tokens para reconstrucción posterior.
+
+    Append-only en Postgres mediante triggers PL/pgSQL anti-UPDATE/DELETE
+    (ver migración 0012). En SQLite la inmutabilidad solo está enforced en
+    código (los tests verifican el patrón).
+
+    Hashes en lugar de prompts/outputs en plano para minimizar superficie
+    PII en logs y permitir comparación de regresión sin guardar el contenido
+    completo. Los prompts versionados viven en BD aparte (AI.4 gobernanza).
+    """
+
+    __tablename__ = "agent_execution_trace"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    execution_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=True, index=True)
+
+    agent_name = Column(String(100), nullable=False)
+    llm_provider = Column(String(50), nullable=True)
+    llm_model = Column(String(100), nullable=True)
+
+    prompt_hash = Column(String(64), nullable=True)  # SHA-256 del prompt completo
+    prompt_version = Column(String(100), nullable=True)  # commit hash / tag
+    tool_calls_json = Column(JSONB, nullable=True)
+    output_hash = Column(String(64), nullable=True)
+
+    tokens_in = Column(Integer, nullable=True)
+    tokens_out = Column(Integer, nullable=True)
+    cost_eur = Column(Numeric(10, 4), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+
+    status = Column(String(30), nullable=False, default="ok")  # ok | error | aborted
+    error_class = Column(String(100), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+
+
 class PendingApproval(Base):
     __tablename__ = "pending_approvals"
 
@@ -86,3 +131,46 @@ class PendingApproval(Base):
     status = Column(String(20), nullable=False, default="pending", index=True)
 
     task = relationship("Task", back_populates="pending_approvals")
+
+
+# Valores convencionales para `PendingApproval.risk_level` cuando se trata
+# de aprobación obligatoria humana para actos fiscales (SEC.APR).
+RISK_LEVEL_MANDATORY_HUMAN_FISCAL = "MANDATORY_HUMAN_FISCAL"
+
+
+class FiscalApprovalLog(Base):
+    """Log append-only de aprobaciones humanas de actos fiscales (SEC.APR).
+
+    Ningún modelo AEAT (303/130/347/390/111/190/...) puede salir hacia
+    presentación telemática sin un registro en esta tabla. El registro
+    captura: quién aprueba, qué borrador concreto se aprueba (hash), texto
+    de confirmación tipeado, IP, user-agent y timestamp.
+
+    Append-only enforced en Postgres mediante triggers PL/pgSQL
+    (migración 0013). Conservación mínima 5 años por LGT Art. 70.
+    """
+
+    __tablename__ = "fiscal_approval_log"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    pending_approval_id = Column(
+        UUID(as_uuid=True), ForeignKey("pending_approvals.id"), nullable=True, index=True
+    )
+
+    model_aeat = Column(String(10), nullable=False)  # "303", "130", "347", "390", "111", "190"
+    period_quarter = Column(Integer, nullable=True)  # 1..4 si trimestral
+    period_year = Column(Integer, nullable=False)
+
+    payload_hash = Column(String(64), nullable=False)  # SHA-256 del borrador exacto aprobado
+    pdf_path = Column(String(500), nullable=True)  # ruta al PDF firmado guardado
+    approval_text = Column(Text, nullable=False)  # texto literal tipeado por el usuario
+    decision = Column(String(20), nullable=False)  # "approved" | "rejected"
+    rejection_reason = Column(Text, nullable=True)
+
+    # Trazabilidad de quien firma (para juicio civil/contencioso-administrativo).
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)

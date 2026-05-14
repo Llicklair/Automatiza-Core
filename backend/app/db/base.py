@@ -34,6 +34,12 @@ AsyncSessionLocal = async_sessionmaker(
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         try:
+            # SEC.RLS — aplicar `SET LOCAL app.current_tenant` si hay tenant
+            # en el ContextVar (lo setea TenantContextMiddleware tras decodificar
+            # el JWT). En SQLite (tests) la función no hace nada.
+            from app.db.rls import apply_tenant_rls
+            await apply_tenant_rls(session)
+
             yield session
             await session.commit()
         except Exception:

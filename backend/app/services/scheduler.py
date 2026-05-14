@@ -77,6 +77,19 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # Diario a las 8:15: detección de tenants pendientes de backfill Verifactu (A.5).
+    # No ejecuta el backfill — solo emite warning auditable porque la nif_emisor
+    # debe confirmarla un humano admin.
+    from app.workers.backfill_alerts import check_pending_verifactu_backfills
+
+    scheduler.add_job(
+        check_pending_verifactu_backfills,
+        CronTrigger(hour=8, minute=15),
+        id="verifactu_backfill_check",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     logger.info("Scheduler: %d tareas periódicas registradas", len(scheduler.get_jobs()))
 
 

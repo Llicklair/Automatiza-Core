@@ -52,3 +52,92 @@ class TestAlembicMigrations:
                 f"Expected exactly 1 migration head, found {len(heads)}:\n"
                 + "\n".join(heads)
             )
+
+
+class TestMigrationFiles:
+    """QA.MIG — chequeos estáticos sobre los archivos de migración.
+
+    Cada migración debe declarar `upgrade()` y `downgrade()`. Sin
+    downgrade, un rollback en producción es imposible — un error de
+    diseño que captureamos en CI antes de mergear.
+    """
+
+    def _migration_files(self) -> list:
+        from pathlib import Path
+
+        versions_dir = Path(BACKEND_DIR) / "app" / "db" / "migrations" / "versions"
+        return sorted(versions_dir.glob("*.py"))
+
+    def test_hay_al_menos_una_migracion(self):
+        files = self._migration_files()
+        assert len(files) > 0, "No se encontraron migraciones en versions/"
+
+    def test_cada_migracion_define_upgrade_y_downgrade(self):
+        """Cada archivo debe contener `def upgrade()` y `def downgrade()`."""
+        missing: list[str] = []
+        for path in self._migration_files():
+            text = path.read_text(encoding="utf-8")
+            if "def upgrade(" not in text:
+                missing.append(f"{path.name}: falta upgrade()")
+            if "def downgrade(" not in text:
+                missing.append(f"{path.name}: falta downgrade()")
+        assert not missing, (
+            "Migraciones sin upgrade/downgrade completos:\n  - "
+            + "\n  - ".join(missing)
+        )
+
+    def test_cada_migracion_declara_revision_y_down_revision(self):
+        """`revision` y `down_revision` son obligatorios para encadenar."""
+        missing: list[str] = []
+        for path in self._migration_files():
+            text = path.read_text(encoding="utf-8")
+            if "revision = " not in text and "revision: str = " not in text:
+                missing.append(f"{path.name}: falta `revision`")
+            if "down_revision = " not in text and "down_revision: " not in text:
+                missing.append(f"{path.name}: falta `down_revision`")
+        assert not missing, "\n".join(missing)
+
+    def test_revisions_son_unicas(self):
+        """No puede haber dos migraciones con el mismo `revision = "..."`."""
+        import re
+
+        revisions: dict[str, str] = {}
+        duplicates: list[str] = []
+        for path in self._migration_files():
+            text = path.read_text(encoding="utf-8")
+            m = re.search(r'^revision\s*(?::\s*str\s*)?=\s*["\']([^"\']+)["\']',
+                          text, re.MULTILINE)
+            if not m:
+                continue
+            rev = m.group(1)
+            if rev in revisions:
+                duplicates.append(
+                    f"{rev}: {revisions[rev]} y {path.name}"
+                )
+            revisions[rev] = path.name
+        assert not duplicates, "Revisions duplicadas:\n  - " + "\n  - ".join(duplicates)
+
+    def test_downgrade_no_es_pass_vacio(self):
+        """Detecta `def downgrade(): pass` — señal de que el rollback no se pensó.
+
+        Excepciones legítimas: migraciones de tipo "data backfill" donde
+        el downgrade es realmente no-op. Esas deben documentarlo con un
+        comment o pragma `# downgrade-noop-justified`.
+        """
+        suspicious: list[str] = []
+        for path in self._migration_files():
+            text = path.read_text(encoding="utf-8")
+            # Captura `def downgrade(...) -> None:\n    pass\n` o similar.
+            if "def downgrade" in text:
+                # Busca el cuerpo aproximado
+                after = text.split("def downgrade", 1)[1]
+                # Primeras ~5 líneas tras la firma
+                head = "\n".join(after.splitlines()[:6])
+                if head.strip().endswith("pass") or "    pass\n" == head.splitlines()[-1] + "\n":
+                    if "downgrade-noop-justified" not in text:
+                        suspicious.append(path.name)
+        assert not suspicious, (
+            "Migraciones con downgrade() = pass sin justificación:\n  - "
+            + "\n  - ".join(suspicious)
+            + "\nAñade `# downgrade-noop-justified` si es intencional."
+        )

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { setTokens } from "@/lib/api/client";
 
 // ── Neural network canvas background ──────────────────────────────────────────
 function NeuralBackground() {
@@ -107,6 +108,7 @@ function NeuralBackground() {
     return (
         <canvas
             ref={canvasRef}
+            aria-hidden="true"
             className="fixed inset-0 w-full h-full pointer-events-none"
             style={{ zIndex: 0 }}
         />
@@ -128,9 +130,7 @@ export default function LoginPage() {
         setError("");
         try {
             const data = await api.auth.login(email, password);
-            localStorage.setItem("access_token", data.access_token);
-            localStorage.setItem("refresh_token", data.refresh_token);
-            document.cookie = "auth_flag=1; path=/; SameSite=Lax";
+            await setTokens(data.access_token, data.refresh_token);
             router.push("/");
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : t("errorLogin"));
@@ -170,13 +170,16 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-1.5">{t("email")}</label>
+                        <label htmlFor="login-email" className="block text-sm font-medium text-foreground mb-1.5">{t("email")}</label>
                         <input
+                            id="login-email"
                             type="email"
+                            autoComplete="email"
                             required
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             placeholder={t("emailPlaceholder")}
+                            aria-invalid={!!error}
                             className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10
                                        text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2
                                        focus:ring-indigo-500 focus:border-transparent transition"
@@ -184,13 +187,16 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-1.5">{t("password")}</label>
+                        <label htmlFor="login-password" className="block text-sm font-medium text-foreground mb-1.5">{t("password")}</label>
                         <input
+                            id="login-password"
                             type="password"
+                            autoComplete="current-password"
                             required
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder={t("passwordPlaceholder")}
+                            aria-invalid={!!error}
                             className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10
                                        text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2
                                        focus:ring-indigo-500 focus:border-transparent transition"
@@ -198,7 +204,7 @@ export default function LoginPage() {
                     </div>
 
                     {error && (
-                        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                        <div role="alert" aria-live="assertive" className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                             {error}
                         </div>
                     )}
@@ -213,7 +219,7 @@ export default function LoginPage() {
                     >
                         {loading ? (
                             <span className="inline-flex items-center justify-center gap-2">
-                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <svg aria-hidden="true" className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                 </svg>

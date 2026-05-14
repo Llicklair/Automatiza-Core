@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2, Check, AlertTriangle } from "lucide-react";
 
 import { api, type InvitationPublic } from "@/lib/api";
+import { setTokens } from "@/lib/api/client";
 
 const ROLE_LABEL: Record<string, string> = {
     admin: "Administrador",
@@ -75,9 +76,7 @@ export default function AceptarInvitacionPage() {
                 first_name: firstName.trim() || undefined,
                 last_name: lastName.trim() || undefined,
             });
-            localStorage.setItem("access_token", res.access_token);
-            localStorage.setItem("refresh_token", res.refresh_token);
-            document.cookie = "auth_flag=1; path=/; SameSite=Lax";
+            await setTokens(res.access_token, res.refresh_token);
             const dest = res.user.role === "employee" ? "/portal" : "/";
             router.push(dest);
         } catch (e) {

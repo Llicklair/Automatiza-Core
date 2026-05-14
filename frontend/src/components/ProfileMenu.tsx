@@ -7,12 +7,13 @@ import {
     User, Building, Mail, KeyRound, LogOut, ChevronDown, RefreshCw,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { getToken } from "@/lib/api/client";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function readJwt(): { name: string; email: string } {
     try {
-        const token = localStorage.getItem("access_token");
+        const token = getToken();
         if (!token) return { name: "", email: "" };
         const p = JSON.parse(atob(token.split(".")[1]));
         // sub es el UUID del usuario — nunca usarlo como nombre o email
@@ -41,7 +42,7 @@ export default function ProfileMenu() {
 
         // 2. Si falta el nombre en el JWT (token antiguo), pide /auth/me
         if (!jwtName) {
-            if (!localStorage.getItem("access_token")) return;
+            if (!getToken()) return;
             api.auth.me()
                 .then(data => {
                     setName(data.full_name || data.email?.split("@")[0] || "");

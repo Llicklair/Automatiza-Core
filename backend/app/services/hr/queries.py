@@ -169,13 +169,47 @@ ESTRUCTURA DEL FINIQUITO (sigue este orden):
 9. Lugar, fecha y nota discreta
 """,
     "termination": """
-ESTRUCTURA CARTA DE DESPIDO:
-1. Cabecera empresa
-2. Lugar y fecha
-3. Datos destinatario (trabajador)
-4. Cuerpo: causa de despido con fundamento legal (ET art. 52/54 segun sea objetivo/disciplinario)
-5. Efectos: fecha de efectividad, indemnizacion si procede
-6. Firma empresa
+⚠️ AI ACT COMPLIANCE (Reglamento UE 2024/1689, Anexo III punto 4): esta plantilla
+emite ÚNICAMENTE la estructura formal del documento. El LLM NO redacta el texto
+motivado de la causa del despido. La motivación debe ser redactada y revisada
+por un abogado laboralista. Ver docs/ai_act_scoping.md §2.
+
+ESTRUCTURA CARTA DE DESPIDO (plantilla vacía, structure-only):
+
+1. Cabecera empresa (razón social, NIF, domicilio).
+2. Lugar y fecha.
+3. Datos destinatario (trabajador: nombre, DNI/NIE, categoría).
+4. PÁRRAFO VACÍO PARA LA MOTIVACIÓN — inserta literalmente el placeholder:
+     "[INSERTAR AQUÍ LA MOTIVACIÓN DEL DESPIDO, REDACTADA Y REVISADA POR UN
+      ABOGADO LABORALISTA. ESTE DOCUMENTO NO SE PUEDE ENTREGAR AL TRABAJADOR
+      SIN COMPLETAR ESTE APARTADO.]"
+   NO redactes texto motivado. NO menciones hechos del trabajador. NO sugieras
+   causas. NO valores si encaja en Art. 52 o Art. 54 del Estatuto de los
+   Trabajadores.
+5. Marco legal genérico: incluye una referencia neutra a los Arts. 52 y 54
+   del Estatuto de los Trabajadores como marco normativo, SIN aplicarlos al
+   caso concreto. Ejemplo literal: "El presente despido se enmarca en los
+   supuestos previstos por los artículos 52 y 54 del Real Decreto Legislativo
+   2/2015, de 23 de octubre, por el que se aprueba el texto refundido de la
+   Ley del Estatuto de los Trabajadores."
+6. Efectos: placeholders para fecha de efectividad e indemnización.
+   NO calcules indemnización automáticamente — placeholder
+     "[FECHA EFECTIVIDAD: __/__/____]" y "[INDEMNIZACIÓN: __ días/año × __ años
+     × salario base = __ €  — calcular con abogado]".
+7. Firma empresa + lugar y fecha.
+8. Disclaimer al pie (texto literal):
+     "Este documento ha sido generado como plantilla formal por
+      AutomatizaPyme. La motivación de la causa de despido y los efectos
+      económicos deben ser validados por un abogado laboralista antes de su
+      entrega al trabajador. AutomatizaPyme no asume responsabilidad sobre
+      el contenido."
+
+PROHIBIDO en este tipo de documento:
+- Redactar la motivación de la causa del despido.
+- Mencionar hechos, conducta o rendimiento específicos del trabajador.
+- Sugerir o argumentar si la causa encaja en Art. 52 (objetivo) o Art. 54 (disciplinario).
+- Calcular indemnización automáticamente.
+- Valorar la procedencia o improcedencia del despido.
 """,
 }
 
@@ -368,13 +402,15 @@ async def list_positions(
 
 
 async def list_candidates(db: AsyncSession, tenant_id: UUID, position_id: UUID) -> list:
+    # AI.SCO — orden cronológico inverso (no ranking por score).
+    # Ver docs/ai_act_scoping.md §2 (Anexo III AI Act).
     result = await db.execute(
         select(Candidate)
         .where(
             Candidate.tenant_id == tenant_id,
             Candidate.position_id == position_id,
         )
-        .order_by(Candidate.score.desc().nullslast())
+        .order_by(Candidate.created_at.desc())
     )
     return list(result.scalars().all())
 

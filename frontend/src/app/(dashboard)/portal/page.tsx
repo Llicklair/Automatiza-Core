@@ -6,6 +6,7 @@ import {
     Play, StopCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { getToken } from "@/lib/api/client";
 import type { PortalData, LeaveRequest, Payroll, Expense, Employee } from "@/lib/api";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
@@ -316,7 +317,7 @@ export default function PortalPage() {
                     <p className="text-sm text-foreground font-medium">Tu cuenta no está vinculada a ningún empleado</p>
                     <p className="text-xs text-muted-foreground">
                         Pide al administrador que añada tu email ({" "}
-                        <span className="font-mono text-xs">{typeof window !== "undefined" ? (() => { try { const t = localStorage.getItem("access_token"); if (!t) return ""; return JSON.parse(atob(t.split(".")[1])).email; } catch { return ""; } })() : ""}</span>
+                        <span className="font-mono text-xs">{(() => { try { const t = getToken(); if (!t) return ""; return JSON.parse(atob(t.split(".")[1])).email; } catch { return ""; } })()}</span>
                         {" "}) a tu ficha de empleado.
                     </p>
                 </div>

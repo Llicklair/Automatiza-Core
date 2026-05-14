@@ -1,0 +1,78 @@
+# DIS.DEP — Dependabot config para escaneo automático de dependencias.
+# Política completa: docs/dependency_security.md
+version: 2
+updates:
+  # Backend Python
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "backend"
+    commit-message:
+      prefix: "deps(backend)"
+      include: "scope"
+    # Agrupar minor/patch para reducir ruido
+    groups:
+      backend-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Frontend Next.js
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "frontend"
+    commit-message:
+      prefix: "deps(frontend)"
+      include: "scope"
+    groups:
+      frontend-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Electron desktop
+  - package-ecosystem: "npm"
+    directory: "/desktop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "desktop"
+    commit-message:
+      prefix: "deps(desktop)"
+      include: "scope"
+    groups:
+      desktop-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "deps"
+      - "ci"
+    commit-message:
+      prefix: "deps(ci)"

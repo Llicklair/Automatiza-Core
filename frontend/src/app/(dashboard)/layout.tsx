@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -10,6 +10,8 @@ import { useToastStore } from "@/stores/toast";
 import { useNotificationStore } from "@/stores/notifications";
 import { Toaster } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
+import { getToken } from "@/lib/api/client";
+import { hydrateSecureStore } from "@/lib/secureStore";
 
 function decodeJwtName(token: string): string {
     try {
@@ -26,12 +28,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const showToast = useToastStore((s) => s.show);
     const pushNotification = useNotificationStore((s) => s.push);
     const triggerRefresh = useNotificationStore((s) => s.triggerRefresh);
+    const hydrateNotifications = useNotificationStore((s) => s.hydrate);
     const lastCheckRef = useRef<number>(Date.now() / 1000);
+    const [hydrated, setHydrated] = useState(false);
+
+    // SEC.JWT — hidratar tokens desde safeStorage (Electron) o localStorage (dev/web)
+    // antes de cualquier check de auth.
+    useEffect(() => {
+        hydrateSecureStore().finally(() => setHydrated(true));
+    }, []);
+
+    // UI.NOT — cargar notificaciones persistidas tras hidratar el token.
+    useEffect(() => {
+        if (!hydrated) return;
+        const token = getToken();
+        if (!token) return;
+        hydrateNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hydrated]);
 
     // Onboarding guard: redirect if company not configured yet
     useEffect(() => {
+        if (!hydrated) return;
         if (pathname === "/primeros-pasos") return;
-        const token = localStorage.getItem("access_token");
+        const token = getToken();
         if (!token) return;
         try {
             const payload = JSON.parse(atob(token.split(".")[1]));
@@ -44,11 +64,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         api.tenant.me().then(t => {
             if (!t.nif) router.push("/primeros-pasos");
         }).catch(() => {});
-    }, [pathname, router]);
+    }, [pathname, router, hydrated]);
 
     // Auth check + WebSocket notifications
     useEffect(() => {
-        const token = localStorage.getItem("access_token");
+        if (!hydrated) return;
+        const token = getToken();
         if (!token) { router.push("/login"); return; }
 
         const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -96,11 +117,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         return () => ws.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [router]);
+    }, [router, hydrated]);
 
     // Polling: workflow completions (30s)
     useEffect(() => {
-        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+        if (!hydrated) return;
+        const token = getToken();
         if (!token) return;
 
         const poll = async () => {
