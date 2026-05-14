@@ -28,7 +28,12 @@ export const NAV_SECTIONS: NavSection[] = [
     {
         items: [
             { label: "Inicio", icon: Home, href: "/" },
-            { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
+            {
+                label: "Primeros pasos", icon: Flag, subItems: [
+                    { label: "Bienvenida (wizard 4 pasos)", href: "/bienvenida" },
+                    { label: "Checklist completo", href: "/primeros-pasos" },
+                ],
+            },
             { label: "Mi portal", icon: UserCircle, href: "/portal" },
             { label: "Mi equipo", icon: Sparkles, href: "/mi-equipo", highlight: true },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones", highlight: true },
@@ -130,7 +135,12 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Asesorías", href: "/contabilidad/asesorias" },
                 ],
             },
-            { label: "Impuestos", icon: Scale, href: "/impuestos" },
+            {
+                label: "Impuestos", icon: Scale, subItems: [
+                    { label: "Resumen", href: "/impuestos" },
+                    { label: "Presentación asistida", href: "/impuestos/asistida" },
+                ],
+            },
         ],
     },
     {
@@ -163,11 +173,16 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Resumen", href: "/configuracion" },
                     { label: "Empresa", href: "/configuracion/empresa" },
                     { label: "Perfil", href: "/configuracion/perfil" },
+                    { label: "Preferencias", href: "/configuracion/preferencias" },
+                    { label: "Idioma", href: "/configuracion/idioma" },
                     { label: "Usuarios", href: "/configuracion/usuarios", adminOnly: true },
                     { label: "Mensajería", href: "/configuracion/integraciones" },
                     { label: "Firma digital", href: "/configuracion/firma-digital", adminOnly: true },
                     { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true },
                     { label: "Copias de seguridad", href: "/configuracion/backups", adminOnly: true },
+                    { label: "Apoderamiento AEAT", href: "/configuracion/regap", adminOnly: true },
+                    { label: "Modo Verifactu", href: "/configuracion/verifactu", adminOnly: true },
+                    { label: "Autonomía de agentes", href: "/configuracion/autonomia", adminOnly: true },
                     { label: "Actualizaciones", href: "/configuracion/actualizaciones", adminOnly: true },
                 ],
             },
@@ -201,4 +216,13 @@ Object.assign(ROUTE_LABELS, {
     "/configuracion/api-keys": "Claves API",
     "/configuracion/backups": "Copias de seguridad",
     "/configuracion/usuarios": "Usuarios",
+    "/configuracion/preferencias": "Preferencias",
+    "/configuracion/idioma": "Idioma",
+    "/configuracion/regap": "Apoderamiento AEAT",
+    "/configuracion/verifactu": "Modo Verifactu",
+    "/configuracion/autonomia": "Autonomía de agentes",
+    "/configuracion/firma-digital": "Firma digital",
+    "/bienvenida": "Bienvenida",
+    "/bienvenida/simulacion-303": "Simulación Modelo 303",
+    "/impuestos/asistida": "Presentación asistida (131 / 200)",
 });
