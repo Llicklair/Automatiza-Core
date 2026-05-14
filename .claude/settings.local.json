@@ -105,10 +105,12 @@
       "Bash(cp -f \"/c/Users/Marcos/Desktop/automatizacion de empresas/Automatiza-pyme-main/backend/app/db/migrations/versions/0006_employees_unique_nif_per_tenant.py\" \"app/db/migrations/versions/\")",
       "Bash(DATABASE_URL=\"postgresql+psycopg2://pyme_user:pyme_pass@localhost:5433/pyme_db\" \"/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic upgrade head)",
       "Bash(cat)",
-      "Bash(/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe /tmp/check.py)"
+      "Bash(/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe /tmp/check.py)",
+      "Bash(cp /tmp/backup_old.py \"c:/Users/Marcos/Desktop/automatizacion de empresas/Automatiza-pyme-main/backend/app/services/backup/legacy_local.py\" && wc -l \"c:/Users/Marcos/Desktop/automatizacion de empresas/Automatiza-pyme-main/backend/app/services/backup/legacy_local.py\")"
     ],
     "additionalDirectories": [
-      "C:\\Users\\Marcos\\PostgresData\\17"
+      "C:\\Users\\Marcos\\PostgresData\\17",
+      "\\tmp"
     ]
   }
 }
