@@ -175,9 +175,9 @@ export default function PresentacionAsistidaPage() {
                     <strong className="text-foreground">Cómo se usa:</strong>
                 </p>
                 <ol className="list-decimal list-inside space-y-1">
-                    <li>Pulsa "Descargar XML" en el modelo que vas a presentar.</li>
+                    <li>Pulsa &laquo;Descargar XML&raquo; en el modelo que vas a presentar.</li>
                     <li>Se abre la Sede Electrónica AEAT en otra pestaña.</li>
-                    <li>En Sede, elige "Predeclaración" → "Importar archivo" → selecciona el XML que acabas de descargar.</li>
+                    <li>En Sede, elige &laquo;Predeclaración&raquo; → &laquo;Importar archivo&raquo; → selecciona el XML que acabas de descargar.</li>
                     <li>Sede mostrará el modelo con los datos básicos rellenados. Completa el resto y presenta.</li>
                 </ol>
             </aside>
