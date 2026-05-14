@@ -16,6 +16,7 @@ Revises: 0015_metering
 """
 
 from alembic import op
+from sqlalchemy import text
 
 
 revision = "0016_sec_rls"
@@ -62,13 +63,15 @@ def upgrade() -> None:
     # Detectar dinámicamente todas las tablas con columna `tenant_id` para no
     # mantener una lista que se queda atrás cuando se añaden tablas nuevas.
     rows = bind.execute(
-        """
-        SELECT DISTINCT table_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND column_name = 'tenant_id'
-          AND data_type IN ('uuid', 'character varying', 'text');
-        """
+        text(
+            """
+            SELECT DISTINCT table_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND column_name = 'tenant_id'
+              AND data_type IN ('uuid', 'character varying', 'text');
+            """
+        )
     ).fetchall()
 
     tables = sorted({row[0] for row in rows})
