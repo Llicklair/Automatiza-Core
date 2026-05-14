@@ -86,7 +86,11 @@ async def _update_workflow_execution(task, db) -> None:
         return
     exec_res = await db.execute(select(WFExec).where(WFExec.id == uuid.UUID(wf_exec_id)))
     wf_exec = exec_res.scalar_one_or_none()
-    if not wf_exec or wf_exec.status != "running":
+    # Acepta también `pending`: el event_bus crea executions con `pending`
+    # (no `running`), por lo que sin esto el sync no actualizaba nunca y
+    # las executions event-driven quedaban en pending eternamente aunque
+    # la task completara done/failed.
+    if not wf_exec or wf_exec.status not in ("running", "pending"):
         return
 
     wf_exec.status = {"done": "success", "failed": "failed", "awaiting_approval": "paused"}.get(
