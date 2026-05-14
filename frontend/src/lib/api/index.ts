@@ -32,6 +32,12 @@ import { generativeUI } from "./generative_ui";
 import { alertsApi } from "./alerts";
 import { calendarUnified } from "./calendar_unified";
 import { users } from "./users";
+import { regap } from "./regap";
+import { autonomy } from "./autonomy";
+import { onboarding } from "./onboarding";
+import { notificationsApi } from "./notifications";
+import { verifactuConfig } from "./verifactuConfig";
+import { presentacion } from "./presentacion";
 import { request } from "./client";
 
 // ── Portal types ─────────────────────────────────────────────────────────────
@@ -83,6 +89,12 @@ export const api = {
     alerts: alertsApi,
     calendarUnified,
     users,
+    regap,
+    autonomy,
+    onboarding,
+    notifications: notificationsApi,
+    verifactuConfig,
+    presentacion,
     search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
     importBulk: {
         employees: (rows: Record<string, string>[]) =>
@@ -177,3 +189,9 @@ export type {
     InvitationAccept,
     InvitationAcceptResponse,
 } from "./users";
+export type { RegapStatus, RegapStatusValue, RegapAuthMethod } from "./regap";
+export type { AutonomyMode, PolicyEntry, PolicyList } from "./autonomy";
+export type { OnboardingState, OnboardingStepKey, Simulate303Result, Simulate303Row } from "./onboarding";
+export type { PersistentNotification, NotificationListResponse } from "./notifications";
+export type { VerifactuMode, VerifactuConfig } from "./verifactuConfig";
+export type { ModeloAsistido, PresentacionInfo } from "./presentacion";

@@ -4,7 +4,10 @@ Re-exports de los módulos del dominio para importación conveniente.
 """
 
 from app.services.ai.condition_evaluator import _resolve_field, evaluate_condition
-from app.services.ai.cv_parser import extract_cv_data, parse_cv_file, score_candidate
+# AI.SCO — `score_candidate` no se re-exporta en MVP. Función queda definida
+# en cv_parser.py para reintroducción v1.2 con full compliance Anexo III AI Act
+# (QMS, marcado CE, registro UE). Ver docs/ai_act_scoping.md.
+from app.services.ai.cv_parser import extract_cv_data, parse_cv_file
 from app.services.ai.employee import (
     AVAILABLE_SKILLS,
     create_activity,
@@ -37,10 +40,9 @@ __all__ = [
     # condition_evaluator
     "evaluate_condition",
     "_resolve_field",
-    # cv_parser
+    # cv_parser (score_candidate retirado en MVP — ver docs/ai_act_scoping.md)
     "extract_cv_data",
     "parse_cv_file",
-    "score_candidate",
     # employee
     "AVAILABLE_SKILLS",
     "create_activity",

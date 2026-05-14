@@ -4,7 +4,6 @@ Called by _invoice_write_tools.py — not exported as an agent tool.
 """
 
 import logging
-import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -76,11 +75,18 @@ async def _create_invoice_async(
     tax_amount = round(amount * Decimal(str(vat_rate)) / 100, 2)
     total_amount = amount + tax_amount
     inv_datetime = datetime(inv_date.year, inv_date.month, inv_date.day, tzinfo=UTC)
-    invoice_number = f"IA-{uuid.uuid4().hex[:8].upper()}"
+    # FAC.NUM — el número se asigna dentro de la transacción mediante
+    # `next_invoice_number()` con `pg_advisory_xact_lock` (RD 1619/2012 Art. 6.1).
     warnings = validation.warnings[:]
 
     async with AsyncSessionLocal() as db:
         try:
+            from app.services.billing.numbering import next_invoice_number
+
+            invoice_number = await next_invoice_number(
+                db, UUID(tenant_id), series="A", year=inv_date.year
+            )
+
             # Upsert cliente
             if resolved_client_id:
                 result = await db.execute(select(Client).where(Client.id == resolved_client_id))

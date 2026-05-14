@@ -72,6 +72,59 @@ class Invoice(Base):
     lines = relationship("InvoiceLine", back_populates="invoice", cascade="all, delete-orphan")
 
 
+class VerifactuRecord(Base):
+    """Registro Verifactu append-only encadenado por hash (RD 1007/2023 Art. 8).
+
+    Cada factura genera exactamente un registro (índice UNIQUE en `invoice_id`).
+    El `huella` se calcula como SHA-256 del payload canónico que incluye los
+    campos clave (NIF emisor, serie, número, fecha, importe) Y la `huella_anterior`
+    del último registro del mismo tenant. La cadena es independiente por tenant.
+
+    Append-only enforced en Postgres mediante triggers PL/pgSQL (ver migración
+    0011). En tests SQLite la inmutabilidad se verifica solo a nivel código.
+    """
+
+    __tablename__ = "verifactu_chain"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=False, unique=True)
+
+    huella = Column(String(64), nullable=False)
+    huella_anterior = Column(String(64), nullable=True)
+    payload_canonico = Column(Text, nullable=False)
+
+    nif_emisor = Column(String(20), nullable=False)
+    serie_factura = Column(String(16), nullable=False)
+    numero_factura = Column(String(100), nullable=False)
+    fecha_emision = Column(DateTime(timezone=True), nullable=False)
+    importe_total = Column(Numeric(12, 2), nullable=False)
+
+    is_backfilled = Column(Boolean, nullable=False, default=False)
+    backfilled_at = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    invoice = relationship("Invoice", foreign_keys=[invoice_id])
+
+
+class VerifactuConfig(Base):
+    """Configuración del modo de remisión Verifactu por tenant (FAC.MODE).
+
+    `mode` ∈ {voluntary, no_remission}. La ausencia de fila equivale al
+    default `no_remission`. Solo se persiste al editar desde Settings.
+    """
+
+    __tablename__ = "verifactu_config"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, unique=True, index=True)
+    mode = Column(String(32), nullable=False, default="no_remission")
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
 class InvoiceLine(Base):
     __tablename__ = "invoice_lines"
 

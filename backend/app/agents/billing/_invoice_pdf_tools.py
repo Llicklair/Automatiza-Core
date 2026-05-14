@@ -86,12 +86,8 @@ async def _generate_and_save_invoice_pdf(
         }
         pdf_bytes = generate_invoice_pdf(pdf_data, theme_config)
 
-        upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
-        if not os.path.exists(upload_dir) and os.name == "nt":
-            upload_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
-            )
-        os.makedirs(upload_dir, exist_ok=True)
+        from app.agents.agent_tools.reports import _resolve_upload_dir
+        upload_dir = _resolve_upload_dir("facturas")
 
         file_name = f"Factura_{invoice.invoice_number}.pdf"
         file_path = os.path.join(upload_dir, file_name)

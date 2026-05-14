@@ -1,6 +1,7 @@
 "use client";
 
-import { Bot, Loader2, MessageSquare } from "lucide-react";
+import { Bot, Loader2, MessageSquare, Square } from "lucide-react";
+import { AIDisclosureBanner } from "@/components/ai/AIDisclosureBanner";
 
 interface ChatSectionProps {
     chatMessages: { role: "user" | "assistant"; content: string }[];
@@ -9,13 +10,23 @@ interface ChatSectionProps {
     setChatQuery: (v: string) => void;
     chatLoading: boolean;
     onSend: () => void;
+    /** UI.AGT — resumen del último evento de progreso recibido por SSE. */
+    progressSummary?: string | null;
+    /** UI.AGT — handler para botón "Detener" (solo visible si streaming). */
+    onStop?: () => void;
+    /** UI.AGT — true mientras llegan eventos del task. */
+    isStreaming?: boolean;
 }
 
 export function ChatSection({
     chatMessages, setChatMessages, chatQuery, setChatQuery, chatLoading, onSend,
+    progressSummary, onStop, isStreaming,
 }: ChatSectionProps) {
     return (
         <div className="mb-8 bg-card border border-primary/20 rounded-2xl overflow-hidden shadow-lg shadow-primary/20">
+            <div className="px-5 pt-3">
+                <AIDisclosureBanner domain="mi-equipo" />
+            </div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-primary/20">
                 <div className="flex items-center gap-2 text-primary text-sm font-medium">
                     <Bot className="w-4 h-4" /> Asistente IA
@@ -47,12 +58,33 @@ export function ChatSection({
                         )
                     ))}
                     {chatLoading && (
-                        <div className="flex gap-2.5 items-center">
-                            <div className="p-1.5 rounded-lg bg-primary/20 flex-shrink-0">
+                        <div className="flex gap-2.5 items-start" aria-live="polite">
+                            <div className="p-1.5 rounded-lg bg-primary/20 flex-shrink-0 mt-0.5">
                                 <Bot className="w-3.5 h-3.5 text-primary" />
                             </div>
-                            <div className="bg-background border border-border rounded-2xl rounded-tl-sm px-4 py-2.5">
-                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            <div className="bg-background border border-border rounded-2xl rounded-tl-sm px-4 py-2.5 flex-1 max-w-[85%]">
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+                                    {progressSummary ? (
+                                        <span className="text-sm text-muted-foreground truncate">{progressSummary}</span>
+                                    ) : (
+                                        // Skeleton de 2 líneas mientras no llega progress.
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-2 w-3/4 rounded bg-muted animate-pulse" />
+                                            <div className="h-2 w-1/2 rounded bg-muted animate-pulse" />
+                                        </div>
+                                    )}
+                                    {isStreaming && onStop && (
+                                        <button
+                                            type="button"
+                                            onClick={onStop}
+                                            aria-label="Detener generación del agente"
+                                            className="ml-2 flex items-center gap-1 px-2 py-1 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex-shrink-0"
+                                        >
+                                            <Square className="w-3 h-3" /> Detener
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

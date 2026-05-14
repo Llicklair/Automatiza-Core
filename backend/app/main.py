@@ -8,6 +8,12 @@ from contextlib import asynccontextmanager
 
 # Python 3.14+ depreca asyncio.iscoroutinefunction; slowapi 0.1.x aún la usa.
 # Debe ir antes de cualquier import de slowapi.
+#
+# DIS.SHIM (deferred): retirar este shim cuando slowapi publique 1.0 (no existe
+# aún en PyPI a 2026-05-14, última versión = 0.1.9). Alternativas evaluadas:
+# - fastapi-limiter: requiere Redis como backend, no es drop-in.
+# - Mantener slowapi 0.1.9 con shim: solución actual.
+# Re-evaluar en cada release de slowapi o cuando se incorpore Redis al stack.
 if sys.version_info >= (3, 14):
     asyncio.iscoroutinefunction = inspect.iscoroutinefunction  # type: ignore[misc]
 
@@ -29,61 +35,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def _ensure_schema() -> None:
-    """Aplica columnas nuevas con IF NOT EXISTS — idempotente, sin dependencia de rutas."""
-    from sqlalchemy import text
-    from app.db.base import engine
-
-    statements = [
-        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS document_id UUID REFERENCES tenant_documents(id)",
-        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES invoices(id)",
-        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS payroll_id UUID REFERENCES payrolls(id)",
-        "ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS journal_entry_id UUID REFERENCES journal_entries(id)",
-        "CREATE INDEX IF NOT EXISTS ix_journal_entries_invoice_id ON journal_entries(invoice_id)",
-        "CREATE INDEX IF NOT EXISTS ix_journal_entries_payroll_id ON journal_entries(payroll_id)",
-        """CREATE TABLE IF NOT EXISTS generated_uis (
-            id UUID PRIMARY KEY,
-            tenant_id UUID NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            description TEXT,
-            prompt TEXT NOT NULL,
-            content_html TEXT NOT NULL,
-            is_pinned BOOLEAN NOT NULL DEFAULT TRUE,
-            metadata_json JSON,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        )""",
-        "CREATE INDEX IF NOT EXISTS ix_generated_uis_tenant_id ON generated_uis(tenant_id)",
-        """CREATE TABLE IF NOT EXISTS user_invitations (
-            id UUID PRIMARY KEY,
-            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-            email VARCHAR(255) NOT NULL,
-            role VARCHAR(50) NOT NULL DEFAULT 'employee',
-            token_hash VARCHAR(64) NOT NULL UNIQUE,
-            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-            used_at TIMESTAMP WITH TIME ZONE,
-            used_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
-            created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
-            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-        )""",
-        "CREATE INDEX IF NOT EXISTS ix_user_invitations_tenant_id ON user_invitations(tenant_id)",
-        "CREATE INDEX IF NOT EXISTS ix_user_invitations_email ON user_invitations(email)",
-        "CREATE INDEX IF NOT EXISTS ix_user_invitations_token_hash ON user_invitations(token_hash)",
-    ]
-    try:
-        async with engine.begin() as conn:
-            for stmt in statements:
-                await conn.execute(text(stmt))
-        logger.info("[SCHEMA] Columnas cross-domain verificadas/creadas OK")
-    except Exception as e:
-        logger.warning("[SCHEMA] Error aplicando schema: %s", e)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("%s v%s arrancando", settings.APP_NAME, settings.APP_VERSION)
-    # Aplicar columnas nuevas (idempotente)
-    await _ensure_schema()
+    # ALB.4 — el esquema lo aplica Alembic desde `desktop/python-manager.js:runMigrations()`
+    # antes de levantar el backend (ALB.5). El runtime ya NO emite DDL — toda
+    # evolución de esquema vive en `backend/app/db/migrations/versions/`.
+    # Recovery: tasks/executions zombi de reinicios previos.
+    # Debe ejecutarse ANTES del scheduler para que no se intente reanudar
+    # workflows huérfanos o ejecuciones colgadas.
+    from app.services.workflow.recovery import recover_stale_executions
+
+    await recover_stale_executions()
     # Arrancar scheduler
     from app.services.scheduler import start_scheduler, stop_scheduler
 

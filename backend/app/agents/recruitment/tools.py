@@ -89,11 +89,17 @@ async def list_positions(tenant_id: str, status: str = "open") -> str:
 
 @tool
 async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str:
-    """Procesa un CV (PDF): extrae datos, puntúa contra el puesto y guarda el candidato.
+    """Procesa un CV (PDF): extrae datos estructurados y guarda el candidato.
+
+    Esta tool NO puntúa ni clasifica candidatos por mérito o "fit" — esa función
+    está deshabilitada en MVP por cumplimiento Anexo III del Reglamento UE 2024/1689
+    (AI Act). La evaluación de candidatos es responsabilidad humana del recruiter.
+
     cv_file_path: ruta al archivo PDF del CV.
     position_id: UUID del puesto al que aplica.
     """
-    from app.services.ai.cv_parser import extract_cv_data, parse_cv_file, score_candidate
+    # AI.SCO — `score_candidate` no se invoca; ver docs/ai_act_scoping.md §2.
+    from app.services.ai.cv_parser import extract_cv_data, parse_cv_file
 
     cv_text = await parse_cv_file(cv_file_path)
     if not cv_text:
@@ -112,15 +118,6 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
         if not position:
             return f"Error: puesto {position_id} no encontrado."
 
-        pos_data = {
-            "title": position.title,
-            "department": position.department,
-            "required_skills": position.required_skills or [],
-            "experience_min_years": float(position.experience_min_years or 0),
-        }
-
-    scoring = await score_candidate(cv_data, pos_data)
-
     async with AsyncSessionLocal() as db:
         candidate = Candidate(
             tenant_id=UUID(tenant_id),
@@ -135,8 +132,6 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
             summary=cv_data.get("summary"),
             raw_cv_text=cv_text[:10000],
             cv_file_path=cv_file_path,
-            score=scoring.get("score", 0),
-            score_breakdown=scoring.get("breakdown"),
             status="new",
         )
         db.add(candidate)
@@ -152,10 +147,6 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
             "experience_years": float(candidate.experience_years)
             if candidate.experience_years
             else None,
-            "score": float(candidate.score) if candidate.score else 0,
-            "score_breakdown": scoring.get("breakdown", {}),
-            "strengths": scoring.get("strengths", []),
-            "gaps": scoring.get("gaps", []),
         },
         ensure_ascii=False,
     )
@@ -166,18 +157,20 @@ async def list_candidates(
     tenant_id: str,
     position_id: str = "",
     status: str = "all",
-    min_score: float = 0,
 ) -> str:
-    """Lista candidatos. Filtra por puesto, estado o puntuación mínima."""
+    """Lista candidatos. Filtra por puesto o estado. Orden cronológico inverso.
+
+    NOTA AI Act: esta tool no rankea candidatos por puntuación o "fit". El orden
+    es por fecha de aplicación (más reciente primero). La selección humana es
+    responsabilidad del recruiter.
+    """
     async with AsyncSessionLocal() as db:
         q = select(Candidate).where(Candidate.tenant_id == UUID(tenant_id))
         if position_id:
             q = q.where(Candidate.position_id == UUID(position_id))
         if status != "all":
             q = q.where(Candidate.status == status)
-        if min_score > 0:
-            q = q.where(Candidate.score >= min_score)
-        result = await db.execute(q.order_by(Candidate.score.desc().nullslast()))
+        result = await db.execute(q.order_by(Candidate.created_at.desc()))
         candidates = result.scalars().all()
 
     if not candidates:
@@ -185,10 +178,9 @@ async def list_candidates(
 
     lines = []
     for c in candidates:
-        score = f"{float(c.score):.0f}" if c.score else "—"
         skills = ", ".join((c.skills or [])[:5])
         lines.append(
-            f"- {c.name} | Score: {score} | Skills: {skills} | Estado: {c.status} | ID: {c.id}"
+            f"- {c.name} | Skills: {skills} | Estado: {c.status} | ID: {c.id}"
         )
     return "\n".join(lines)
 

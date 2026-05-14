@@ -1,0 +1,189 @@
+"""Tests para la cadena hash Verifactu (FAC.HASH) — RD 1007/2023 Art. 8."""
+from datetime import datetime, timezone
+from decimal import Decimal
+from uuid import uuid4
+
+import pytest
+
+from app.db.models.billing import Invoice, VerifactuRecord
+from app.db.models.crm import Client
+from app.services.billing.verifactu_chain import (
+    append_verifactu_record,
+    build_payload_canonico,
+    compute_huella,
+    verify_chain_integrity,
+)
+
+
+def _make_invoice(tenant_id, client_id, *, invoice_number: str, importe: Decimal) -> Invoice:
+    return Invoice(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        invoice_number=invoice_number,
+        date=datetime(2026, 5, 14, 10, 0, tzinfo=timezone.utc),
+        amount_base=importe,
+        tax_amount=Decimal("0.00"),
+        amount_total=importe,
+    )
+
+
+class TestBuildPayloadCanonico:
+    def test_formato_determinista(self):
+        a = build_payload_canonico(
+            "B12345678", "A", "A2026-0001",
+            "2026-05-14T10:00:00+00:00", Decimal("121.00"), None,
+        )
+        b = build_payload_canonico(
+            "B12345678", "A", "A2026-0001",
+            "2026-05-14T10:00:00+00:00", Decimal("121.00"), None,
+        )
+        assert a == b
+        assert "B12345678" in a
+        assert "A2026-0001" in a
+        assert "121.00" in a
+
+    def test_huella_anterior_vacia_si_none(self):
+        result = build_payload_canonico(
+            "B12345678", "A", "A2026-0001",
+            "2026-05-14T10:00:00+00:00", Decimal("121.00"), None,
+        )
+        assert result.endswith("|")
+
+    def test_importe_normalizado_2_decimales(self):
+        a = build_payload_canonico("X", "A", "1", "t", Decimal("121"), None)
+        b = build_payload_canonico("X", "A", "1", "t", Decimal("121.00"), None)
+        c = build_payload_canonico("X", "A", "1", "t", Decimal("121.000"), None)
+        assert a == b == c
+
+
+class TestComputeHuella:
+    def test_es_sha256_hex(self):
+        h = compute_huella("payload-prueba")
+        assert len(h) == 64
+        assert all(c in "0123456789abcdef" for c in h)
+
+    def test_determinista(self):
+        assert compute_huella("misma-cadena") == compute_huella("misma-cadena")
+
+    def test_cambio_detectable(self):
+        assert compute_huella("a") != compute_huella("a ")
+
+
+@pytest.mark.asyncio
+class TestAppendVerifactuRecord:
+    async def _setup_tenant_and_client(self, db, seed_tenant_and_user):
+        tenant, _user, _token = seed_tenant_and_user
+        client = Client(tenant_id=tenant.id, nif="B12345678", name="Acme SL")
+        db.add(client)
+        await db.flush()
+        return tenant, client
+
+    async def test_primer_registro_huella_anterior_es_none(
+        self, db, seed_tenant_and_user
+    ):
+        tenant, client = await self._setup_tenant_and_client(db, seed_tenant_and_user)
+        invoice = _make_invoice(tenant.id, client.id, invoice_number="A2026-0001", importe=Decimal("121.00"))
+        db.add(invoice)
+        await db.flush()
+
+        record = await append_verifactu_record(db, invoice=invoice, nif_emisor="B99999999")
+        await db.commit()
+
+        assert record.huella_anterior is None
+        assert len(record.huella) == 64
+        assert record.nif_emisor == "B99999999"
+        assert record.numero_factura == "A2026-0001"
+
+    async def test_segundo_registro_encadena_al_primero(
+        self, db, seed_tenant_and_user
+    ):
+        tenant, client = await self._setup_tenant_and_client(db, seed_tenant_and_user)
+        inv1 = _make_invoice(tenant.id, client.id, invoice_number="A2026-0001", importe=Decimal("100.00"))
+        inv2 = _make_invoice(tenant.id, client.id, invoice_number="A2026-0002", importe=Decimal("200.00"))
+        db.add_all([inv1, inv2])
+        await db.flush()
+
+        r1 = await append_verifactu_record(db, invoice=inv1, nif_emisor="B99999999")
+        await db.flush()
+        r2 = await append_verifactu_record(db, invoice=inv2, nif_emisor="B99999999")
+        await db.commit()
+
+        assert r1.huella_anterior is None
+        assert r2.huella_anterior == r1.huella
+        assert r2.huella != r1.huella
+
+    async def test_idempotencia_no_duplica_para_misma_factura(
+        self, db, seed_tenant_and_user
+    ):
+        tenant, client = await self._setup_tenant_and_client(db, seed_tenant_and_user)
+        inv = _make_invoice(tenant.id, client.id, invoice_number="A2026-0001", importe=Decimal("121.00"))
+        db.add(inv)
+        await db.flush()
+
+        r1 = await append_verifactu_record(db, invoice=inv, nif_emisor="B99999999")
+        await db.flush()
+        r2 = await append_verifactu_record(db, invoice=inv, nif_emisor="B99999999")
+        await db.commit()
+
+        assert r1.id == r2.id
+
+    async def test_cadenas_independientes_por_tenant(
+        self, db, seed_tenant_and_user, seed_second_tenant_and_user
+    ):
+        t1, _u1, _tok1 = seed_tenant_and_user
+        t2, _u2, _tok2 = seed_second_tenant_and_user
+        c1 = Client(tenant_id=t1.id, nif="B11111111", name="T1 Client")
+        c2 = Client(tenant_id=t2.id, nif="B22222222", name="T2 Client")
+        db.add_all([c1, c2])
+        await db.flush()
+
+        inv1 = _make_invoice(t1.id, c1.id, invoice_number="A2026-0001", importe=Decimal("100.00"))
+        inv2 = _make_invoice(t2.id, c2.id, invoice_number="A2026-0001", importe=Decimal("200.00"))
+        db.add_all([inv1, inv2])
+        await db.flush()
+
+        r1 = await append_verifactu_record(db, invoice=inv1, nif_emisor="B11111111")
+        r2 = await append_verifactu_record(db, invoice=inv2, nif_emisor="B22222222")
+        await db.commit()
+
+        # Ambos son primer registro de su tenant → huella_anterior None.
+        assert r1.huella_anterior is None
+        assert r2.huella_anterior is None
+        # Huellas distintas porque payloads distintos.
+        assert r1.huella != r2.huella
+
+    async def test_verify_chain_integrity_ok(self, db, seed_tenant_and_user):
+        tenant, client = await self._setup_tenant_and_client(db, seed_tenant_and_user)
+        invs = [
+            _make_invoice(tenant.id, client.id, invoice_number=f"A2026-{i:04d}", importe=Decimal(f"{i*10}.00"))
+            for i in range(1, 6)
+        ]
+        db.add_all(invs)
+        await db.flush()
+        for inv in invs:
+            await append_verifactu_record(db, invoice=inv, nif_emisor="B99999999")
+            await db.flush()
+        await db.commit()
+
+        ok, count = await verify_chain_integrity(db, tenant.id)
+        assert ok is True
+        assert count == 5
+
+    async def test_verify_chain_integrity_detecta_manipulacion(
+        self, db, seed_tenant_and_user
+    ):
+        # Manipulación: cambiar huella manualmente debe romper la verificación.
+        tenant, client = await self._setup_tenant_and_client(db, seed_tenant_and_user)
+        inv = _make_invoice(tenant.id, client.id, invoice_number="A2026-0001", importe=Decimal("121.00"))
+        db.add(inv)
+        await db.flush()
+        record = await append_verifactu_record(db, invoice=inv, nif_emisor="B99999999")
+        await db.flush()
+
+        # Simulamos manipulación: cambiar huella sin recomputar
+        record.huella = "0" * 64
+        await db.flush()
+
+        ok, count = await verify_chain_integrity(db, tenant.id)
+        assert ok is False
+        assert count == 1

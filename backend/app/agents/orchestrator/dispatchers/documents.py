@@ -80,16 +80,11 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
             "response": final_text,
         }
 
-        # No duplicar el PDF si el agente ya creó uno por su cuenta vía
-        # create_pdf_report / create_pdf_text_report.
-        if success and final_text and not _messages_already_generated_pdf(messages):
-            await _save_ai_result_as_document(
-                tenant_id=tenant_id,
-                task_id=state["task_id"],
-                category="documentos",
-                title=f"Análisis Documento — {state['task_id'][:8]}",
-                content=final_text,
-            )
+        # NOTA: el dispatcher de documents NO auto-guarda un PDF de "Análisis".
+        # El usuario ya tiene el documento original; un PDF de análisis genérico
+        # solo añade ruido al Gestor Documental. Si el agente quiere persistir
+        # algo concreto (clasificación, extracto), debe hacerlo vía sus tools
+        # (create_document, create_pdf_text_report) explícitamente.
 
         return {
             "subtask_id": subtask["id"],

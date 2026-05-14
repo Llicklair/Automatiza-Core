@@ -229,8 +229,14 @@ async def upload_cv(
     file_name: str,
     file_obj,
 ) -> Candidate:
-    """Parse a CV PDF, score the candidate, and persist."""
-    from app.services.ai.cv_parser import extract_cv_data, parse_cv_file, score_candidate
+    """Parse a CV PDF and persist the candidate.
+
+    NO realiza scoring automático del candidato — la evaluación de mérito es
+    responsabilidad humana del recruiter (cumplimiento Anexo III AI Act,
+    Reglamento UE 2024/1689). Ver `docs/ai_act_scoping.md`.
+    """
+    # AI.SCO — `score_candidate` no se invoca.
+    from app.services.ai.cv_parser import extract_cv_data, parse_cv_file
 
     # Verify position exists
     pos_result = await db.execute(
@@ -253,20 +259,12 @@ async def upload_cv(
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file_obj, f)
 
-    # Parse and score
+    # Parse only (no scoring)
     cv_text = await parse_cv_file(file_path)
     if not cv_text:
         raise ValueError("No se pudo extraer texto del PDF")
 
     cv_data = await extract_cv_data(cv_text)
-
-    pos_data = {
-        "title": position.title,
-        "department": position.department,
-        "required_skills": position.required_skills or [],
-        "experience_min_years": float(position.experience_min_years or 0),
-    }
-    scoring = await score_candidate(cv_data, pos_data)
 
     candidate = Candidate(
         tenant_id=tenant_id,
@@ -281,8 +279,6 @@ async def upload_cv(
         summary=cv_data.get("summary"),
         raw_cv_text=cv_text[:10000],
         cv_file_path=file_path,
-        score=scoring.get("score", 0),
-        score_breakdown=scoring.get("breakdown"),
         status="new",
     )
     db.add(candidate)

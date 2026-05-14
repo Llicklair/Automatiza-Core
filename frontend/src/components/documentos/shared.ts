@@ -1,9 +1,10 @@
 import { FileText, FileImage, FileArchive } from "lucide-react";
+import { getToken } from "@/lib/api/client";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
 export function authHeaders() {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
+    const token = getToken() ?? "";
     return { Authorization: `Bearer ${token}` };
 }
 

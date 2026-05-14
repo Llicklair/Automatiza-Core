@@ -20,7 +20,11 @@ from app.agents.agent_tools.documents import (
     update_existing_document,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
-from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
+# Documents agent NO genera informes PDF — esa responsabilidad recae en
+# los agentes de dominio (billing, hr, crm, compliance...). Cuando el
+# orchestrator decompone "Genera informe PDF" en sub-tareas y pasa por
+# documents, sin esta restricción ambos sub-agents llamaban a la tool y
+# se duplicaba el PDF resultante.
 from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
 from app.db.base import AsyncSessionLocal
@@ -395,8 +399,6 @@ tools = [
     get_document_content,
     get_tenant_knowledge,
     upsert_tenant_knowledge,
-    create_pdf_report,
-    create_pdf_text_report,
 ]
 
 

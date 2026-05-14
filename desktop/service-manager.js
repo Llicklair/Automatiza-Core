@@ -144,22 +144,76 @@ function killOrphanProcesses() {
 
 /**
  * Genera o recupera SECRET_KEY y TENANT_ENCRYPTION_KEY persistentes.
- * Se almacenan en APPDATA para que sobrevivan reinicios.
+ *
+ * SEC.KEY — claves generadas en el primer arranque del instalador y persistidas
+ * cifradas con Electron `safeStorage` (DPAPI/Keychain/libsecret). Si safeStorage
+ * no está disponible (dev mode, tests, fallback), se persisten en `secrets.json`
+ * en plano — solo recomendado para dev local.
+ *
+ * Migración: si existe el legacy `secrets.json` y safeStorage está disponible,
+ * las claves se reciclan, se reescriben cifradas en `secrets.dat`, y el JSON
+ * en plano se elimina.
  */
 function getOrCreateSecrets() {
-  const secretsPath = path.join(APPDATA_DIR, "secrets.json");
-  if (fs.existsSync(secretsPath)) {
+  const encPath = path.join(APPDATA_DIR, "secrets.dat");
+  const legacyJsonPath = path.join(APPDATA_DIR, "secrets.json");
+
+  // safeStorage solo accesible desde main process Electron. Defensivo:
+  let safeStorage = null;
+  try {
+    ({ safeStorage } = require("electron"));
+  } catch {
+    safeStorage = null;
+  }
+  const canEncrypt = !!(safeStorage && safeStorage.isEncryptionAvailable());
+
+  // Leer cifrado si existe y safeStorage disponible
+  if (canEncrypt && fs.existsSync(encPath)) {
     try {
-      return JSON.parse(fs.readFileSync(secretsPath, "utf8"));
+      const buffer = fs.readFileSync(encPath);
+      const plain = safeStorage.decryptString(buffer);
+      return JSON.parse(plain);
+    } catch {
+      // archivo corrupto — regenerar abajo
+    }
+  }
+
+  // Migración legacy JSON plano → cifrado
+  if (fs.existsSync(legacyJsonPath)) {
+    try {
+      const legacy = JSON.parse(fs.readFileSync(legacyJsonPath, "utf8"));
+      if (canEncrypt) {
+        try {
+          const encrypted = safeStorage.encryptString(JSON.stringify(legacy));
+          fs.writeFileSync(encPath, encrypted);
+          fs.unlinkSync(legacyJsonPath);
+          logBoot("[SEC.KEY] secrets.json migrado a secrets.dat cifrado");
+        } catch {}
+      }
+      return legacy;
     } catch {}
   }
+
   // Generar claves nuevas
   const crypto = require("crypto");
   const secrets = {
     SECRET_KEY: crypto.randomBytes(32).toString("hex"),
     TENANT_ENCRYPTION_KEY: crypto.randomBytes(32).toString("base64url"),
   };
-  try { fs.writeFileSync(secretsPath, JSON.stringify(secrets)); } catch {}
+
+  // Persistir cifrado si es posible
+  try {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    if (canEncrypt) {
+      const encrypted = safeStorage.encryptString(JSON.stringify(secrets));
+      fs.writeFileSync(encPath, encrypted);
+    } else {
+      // Fallback dev/test: JSON plano (con warning a quien revise el código).
+      fs.writeFileSync(legacyJsonPath, JSON.stringify(secrets));
+      logBoot("[SEC.KEY] WARN: safeStorage no disponible — claves persistidas en plano en secrets.json (dev mode)");
+    }
+  } catch {}
+
   return secrets;
 }
 

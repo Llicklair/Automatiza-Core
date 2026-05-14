@@ -4,6 +4,7 @@ from app.api.v1.routes import (
     accounting,
     admin,
     alerts,
+    backup_local,
     calendar,
     client_portal,
     advisory,
@@ -11,6 +12,7 @@ from app.api.v1.routes import (
     analytics,
     approvals,
     auth,
+    autonomy,
     banking,
     crm,
     documents,
@@ -21,6 +23,10 @@ from app.api.v1.routes import (
     integrations,
     llm_usage,
     messaging,
+    notifications,
+    onboarding_regap,
+    onboarding_wizard,
+    presentacion_asistida,
     projects,
     quotes,
     recruitment,
@@ -31,9 +37,12 @@ from app.api.v1.routes import (
     search,
     system,
     tasks,
+    telemetry,
     templates,
     tenant,
     users,
+    verifactu_config,
+    verify,
     workflows,
 )
 
@@ -73,3 +82,12 @@ api_router.include_router(import_bulk.router)
 api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
 api_router.include_router(calendar.router)
 api_router.include_router(client_portal.router)
+api_router.include_router(verify.router)
+api_router.include_router(telemetry.router)
+api_router.include_router(backup_local.router)
+api_router.include_router(onboarding_regap.router)
+api_router.include_router(onboarding_wizard.router)
+api_router.include_router(autonomy.router)
+api_router.include_router(notifications.router)
+api_router.include_router(verifactu_config.router)
+api_router.include_router(presentacion_asistida.router)

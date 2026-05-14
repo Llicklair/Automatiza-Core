@@ -86,7 +86,26 @@
       "Bash(Get-ChildItem -Path 'c:\\\\Users\\\\Marcos\\\\Desktop\\\\automatizacion de empresas\\\\Automatiza-pyme-main\\\\backend\\\\app\\\\db\\\\models' -File)",
       "Bash(Select-Object Name)",
       "Bash(\"C:\\\\Users\\\\Marcos\\\\AppData\\\\Roaming\\\\AutomatizaPyme\\\\pgsql\\\\bin\\\\psql.exe\" -U pyme_user -d pyme_db -p 5433 -c \"CREATE TABLE IF NOT EXISTS alert_logs \\(id UUID PRIMARY KEY DEFAULT gen_random_uuid\\(\\), tenant_id UUID NOT NULL REFERENCES tenants\\(id\\) ON DELETE CASCADE, alert_type VARCHAR\\(50\\) NOT NULL, entity_id VARCHAR\\(100\\) NOT NULL, entity_label VARCHAR\\(255\\) NOT NULL, severity VARCHAR\\(20\\) NOT NULL DEFAULT 'warning', sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW\\(\\), notified_ws BOOLEAN NOT NULL DEFAULT FALSE\\); CREATE INDEX IF NOT EXISTS ix_alert_logs_tenant_id ON alert_logs\\(tenant_id\\); CREATE INDEX IF NOT EXISTS ix_alert_logs_sent_at ON alert_logs\\(sent_at\\);\")",
-      "Bash(\"C:\\\\Users\\\\Marcos\\\\AppData\\\\Roaming\\\\AutomatizaPyme\\\\pgsql\\\\bin\\\\psql.exe\" -U pyme_user -d pyme_db -p 5433 -c \"CREATE TABLE IF NOT EXISTS client_portal_tokens \\(id UUID PRIMARY KEY DEFAULT gen_random_uuid\\(\\), client_id UUID NOT NULL REFERENCES clients\\(id\\) ON DELETE CASCADE, tenant_id UUID NOT NULL REFERENCES tenants\\(id\\) ON DELETE CASCADE, token_hash VARCHAR\\(64\\) NOT NULL UNIQUE, is_active BOOLEAN NOT NULL DEFAULT TRUE, expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW\\(\\), last_used_at TIMESTAMPTZ\\); CREATE INDEX IF NOT EXISTS ix_cpt_client_id ON client_portal_tokens\\(client_id\\); CREATE INDEX IF NOT EXISTS ix_cpt_tenant_id ON client_portal_tokens\\(tenant_id\\); CREATE INDEX IF NOT EXISTS ix_cpt_token_hash ON client_portal_tokens\\(token_hash\\);\")"
+      "Bash(\"C:\\\\Users\\\\Marcos\\\\AppData\\\\Roaming\\\\AutomatizaPyme\\\\pgsql\\\\bin\\\\psql.exe\" -U pyme_user -d pyme_db -p 5433 -c \"CREATE TABLE IF NOT EXISTS client_portal_tokens \\(id UUID PRIMARY KEY DEFAULT gen_random_uuid\\(\\), client_id UUID NOT NULL REFERENCES clients\\(id\\) ON DELETE CASCADE, tenant_id UUID NOT NULL REFERENCES tenants\\(id\\) ON DELETE CASCADE, token_hash VARCHAR\\(64\\) NOT NULL UNIQUE, is_active BOOLEAN NOT NULL DEFAULT TRUE, expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW\\(\\), last_used_at TIMESTAMPTZ\\); CREATE INDEX IF NOT EXISTS ix_cpt_client_id ON client_portal_tokens\\(client_id\\); CREATE INDEX IF NOT EXISTS ix_cpt_tenant_id ON client_portal_tokens\\(tenant_id\\); CREATE INDEX IF NOT EXISTS ix_cpt_token_hash ON client_portal_tokens\\(token_hash\\);\")",
+      "Bash(git fetch *)",
+      "Bash(git push *)",
+      "Bash(grep -v \":0$\")",
+      "Bash(grep -iE \"\\\\\\\\.\\(png|jpg|jpeg|webp|gif\\)$\")",
+      "Bash(\"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic current)",
+      "Bash(DATABASE_URL=\"postgresql+psycopg://pyme_user:pyme_pass@localhost:5433/pyme_db\" \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic -c backend/alembic.ini current)",
+      "Bash(DATABASE_URL=\"postgresql+psycopg://pyme_user:pyme_pass@localhost:5433/pyme_db\" \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic current)",
+      "Bash(DATABASE_URL=\"postgresql+psycopg2://pyme_user:pyme_pass@localhost:5433/pyme_db\" \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic current)",
+      "Bash(C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe -c ' *)",
+      "Bash(grep -iE \"\\\\\\\\.\\(png|jpg|jpeg\\)$\")",
+      "Bash(\"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" \"C:/Users/Marcos/Desktop/check.py\")",
+      "Bash(\"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" \"C:/Users/Marcos/Desktop/check2.py\")",
+      "Bash(\"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" \"C:/Users/Marcos/Desktop/verify.py\")",
+      "Bash(\"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" \"C:/Users/Marcos/Desktop/cancel.py\")",
+      "Bash(\"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" \"C:/Users/Marcos/Desktop/check3.py\")",
+      "Bash(cp -f \"/c/Users/Marcos/Desktop/automatizacion de empresas/Automatiza-pyme-main/backend/app/db/migrations/versions/0006_employees_unique_nif_per_tenant.py\" \"app/db/migrations/versions/\")",
+      "Bash(DATABASE_URL=\"postgresql+psycopg2://pyme_user:pyme_pass@localhost:5433/pyme_db\" \"/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic upgrade head)",
+      "Bash(cat)",
+      "Bash(/c/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe /tmp/check.py)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Marcos\\PostgresData\\17"

@@ -25,6 +25,27 @@ async def summarize_node(state: OrchestratorState) -> dict:
     if not results:
         return state
 
+    # Aprobación humana universal: si CUALQUIER agent_result indica que la
+    # operación requiere aprobación, garantizamos un PendingApproval
+    # (idempotente — billing.py ya la crea para casos directos). Esto cubre
+    # el caso en que un workflow se enrute a un dispatcher sin handler de
+    # aprobación (custom, hr, etc.) — antes la PendingApproval no se creaba.
+    try:
+        from app.agents.orchestrator.helpers import _ensure_pending_approval
+
+        approval_id = await _ensure_pending_approval(
+            tenant_id=str(state["tenant_id"]),
+            task_id=str(state["task_id"]),
+            agent_results=list(results),
+        )
+        if approval_id:
+            logger.info(
+                "[ORCHESTRATOR] aprobación humana detectada universalmente, approval=%s",
+                approval_id,
+            )
+    except Exception:
+        logger.exception("Error en check universal de aprobación")
+
     try:
         results_text = []
         for r in results:
@@ -34,7 +55,7 @@ async def summarize_node(state: OrchestratorState) -> dict:
             summary = r.get("summary", "")
             text = response if response else summary
             if text:
-                results_text.append(f"[{agent}]: {text[:500]}")
+                results_text.append(f"[{agent}]: {text[:8000]}")
 
         if not results_text:
             return state

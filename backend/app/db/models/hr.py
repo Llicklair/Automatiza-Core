@@ -246,8 +246,10 @@ class Candidate(Base):
     raw_cv_text = Column(Text)  # Texto completo extraído
 
     cv_file_path = Column(String(500))  # Ruta al PDF original
-    score = Column(Numeric(5, 2))  # 0-100 fit score
-    score_breakdown = Column(JSONB)  # {"skills": 80, "experience": 60, ...}
+    # AI.SCO — columnas `score` y `score_breakdown` retiradas en migración
+    # 0008_drop_candidate_ai_act_columns por cumplimiento Anexo III AI Act.
+    # Ver `docs/ai_act_scoping.md`. Reintroducción condicional v1.2 con
+    # compliance completo (QMS + marcado CE + registro UE).
 
     status = Column(String(50), default="new")  # new | reviewed | shortlisted | rejected | hired
     notes = Column(Text)

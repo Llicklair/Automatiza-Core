@@ -3,6 +3,7 @@
 import { Plus, RefreshCw, Trash2, Bot, Loader2 } from "lucide-react";
 import InfoBanner from "@/components/InfoBanner";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { CostModal } from "@/components/ai/CostModal";
 import { TaskRow } from "./TaskRow";
 import { ChatSection } from "./ChatSection";
 import { NewTaskModal } from "./NewTaskModal";
@@ -70,6 +71,9 @@ export function TaskPanel({ isActive }: TaskPanelProps) {
                 setChatQuery={tp.setChatQuery}
                 chatLoading={tp.chatLoading}
                 onSend={tp.handleChat}
+                progressSummary={tp.chatProgress}
+                onStop={tp.stopChat}
+                isStreaming={tp.chatStreaming}
             />
 
             {/* Modal nueva tarea */}
@@ -138,6 +142,15 @@ export function TaskPanel({ isActive }: TaskPanelProps) {
                     )}
                 </div>
             </div>
+
+            {/* UI.COST — modal post-abort con tokens y € estimados */}
+            {tp.costModal && (
+                <CostModal
+                    taskId={tp.costModal.taskId}
+                    reason={tp.costModal.reason}
+                    onClose={tp.closeCostModal}
+                />
+            )}
         </div>
         </ErrorBoundary>
     );

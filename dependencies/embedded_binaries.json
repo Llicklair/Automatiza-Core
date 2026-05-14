@@ -1,0 +1,33 @@
+{
+  "$schema": "./embedded_binaries.schema.json",
+  "_doc": "Binarios de terceros embebidos en el instalador Electron de AutomatizaPyme. Cada release verifica SHA-256 contra este manifest antes de empaquetar (DIS.SBOM). Los hashes se obtienen de la página oficial del proyecto.",
+  "binaries": [
+    {
+      "name": "postgresql",
+      "version": "17.0",
+      "platform": "windows-x64",
+      "sha256": "TBD-from-official-checksum",
+      "license": "PostgreSQL License",
+      "download_url": "https://get.enterprisedb.com/postgresql/postgresql-17.0-1-windows-x64-binaries.zip",
+      "notes": "Embedded portable distribution. SHA-256 a poblar desde la página de checksums oficial de EnterpriseDB en cada bump."
+    },
+    {
+      "name": "python-embeddable",
+      "version": "3.11.9",
+      "platform": "windows-amd64",
+      "sha256": "TBD-from-official-checksum",
+      "license": "PSF License",
+      "download_url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip",
+      "notes": "Python embeddable distribution incluida con el backend FastAPI."
+    },
+    {
+      "name": "electron",
+      "version": "33.0.0",
+      "platform": "windows-x64",
+      "sha256": "TBD-bundled-by-electron-builder",
+      "license": "MIT",
+      "download_url": "https://github.com/electron/electron/releases",
+      "notes": "Empaquetado por electron-builder; el SHA-256 final se computa sobre el binario distribuido tras code-signing."
+    }
+  ]
+}

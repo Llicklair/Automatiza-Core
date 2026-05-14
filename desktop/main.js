@@ -1,6 +1,66 @@
-const { app, BrowserWindow, dialog, shell, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, shell, ipcMain, Menu, safeStorage } = require("electron");
+const fs = require("fs");
 const path = require("path");
 const { autoUpdater } = require("electron-updater");
+
+// ── SEC.JWT — secure storage handlers ───────────────────────────────────────
+// Tokens JWT cifrados con safeStorage (DPAPI/Keychain/libsecret) en
+// `<userData>/secure/<key>.dat`. Whitelist de keys para evitar abuso del API.
+
+const SECURE_STORE_KEYS = new Set(["access_token", "refresh_token"]);
+
+function secureStoreFilePath(key) {
+  return path.join(app.getPath("userData"), "secure", `${key}.dat`);
+}
+
+function isSecureStoreAvailable() {
+  try {
+    return safeStorage.isEncryptionAvailable();
+  } catch {
+    return false;
+  }
+}
+
+ipcMain.handle("secure-store:is-available", () => isSecureStoreAvailable());
+
+ipcMain.handle("secure-store:get", (_event, key) => {
+  if (!SECURE_STORE_KEYS.has(key)) return null;
+  try {
+    if (!isSecureStoreAvailable()) return null;
+    const filePath = secureStoreFilePath(key);
+    if (!fs.existsSync(filePath)) return null;
+    const buffer = fs.readFileSync(filePath);
+    return safeStorage.decryptString(buffer);
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle("secure-store:set", (_event, key, value) => {
+  if (!SECURE_STORE_KEYS.has(key)) return false;
+  if (typeof value !== "string") return false;
+  try {
+    if (!isSecureStoreAvailable()) return false;
+    const filePath = secureStoreFilePath(key);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    const encrypted = safeStorage.encryptString(value);
+    fs.writeFileSync(filePath, encrypted);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle("secure-store:remove", (_event, key) => {
+  if (!SECURE_STORE_KEYS.has(key)) return false;
+  try {
+    const filePath = secureStoreFilePath(key);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+});
 
 const { startAll, stopAll, killOrphanProcesses, getBackendEnv, waitForHTTP } = require("./service-manager");
 const { stopBackend, startBackend } = require("./python-manager");
@@ -9,11 +69,31 @@ const { createTray, destroyTray } = require("./tray-manager");
 
 // ── Auto-updater ───────────────────────────────────────────────────────────
 
+// DIS.UPD — gestor del canal stable/beta persistido en electron-store.
+let updateChannelMgr = null;
+function _ensureUpdateChannelMgr() {
+  if (updateChannelMgr) return updateChannelMgr;
+  try {
+    const Store = require("electron-store");
+    const { createUpdateChannelManager } = require("./lib/update-channel");
+    const store = new Store({ name: "update-prefs" });
+    updateChannelMgr = createUpdateChannelManager({
+      store, autoUpdater, logger: (m) => console.log(m),
+    });
+  } catch (e) {
+    console.warn("update-channel manager no inicializado:", e.message);
+  }
+  return updateChannelMgr;
+}
+
 function setupAutoUpdater() {
   if (!app.isPackaged) return; // solo en builds empaquetados
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+
+  // DIS.UPD — aplica la preferencia de canal antes del primer check.
+  try { _ensureUpdateChannelMgr()?.apply(); } catch { /* swallow */ }
 
   autoUpdater.on("update-available", (info) => {
     mainWindow?.webContents.send("update-available", { version: info.version });
@@ -115,9 +195,20 @@ function createMainWindow() {
     }
   });
 
-  // F12 abre DevTools para diagnóstico
-  mainWindow.webContents.on("before-input-event", (_event, input) => {
-    if (input.key === "F12") {
+  // SEC.DEV — DevTools solo en builds no empaquetadas (dev).
+  // En producción se bloquean F12, Ctrl+Shift+I y Cmd+Opt+I.
+  mainWindow.webContents.on("before-input-event", (event, input) => {
+    const key = (input.key || "").toLowerCase();
+    const isDevToolsShortcut =
+      key === "f12" ||
+      ((input.control || input.meta) && input.shift && key === "i") ||
+      (input.alt && input.meta && key === "i");
+
+    if (!isDevToolsShortcut) return;
+
+    if (app.isPackaged) {
+      event.preventDefault();
+    } else {
       mainWindow.webContents.toggleDevTools();
     }
   });
@@ -201,7 +292,38 @@ ipcMain.handle("check-for-updates", async () => {
   });
 });
 
+// DIS.UPD — canal de actualización (stable/beta).
+ipcMain.handle("get-update-channel", () => {
+  const mgr = _ensureUpdateChannelMgr();
+  return mgr ? mgr.getChannel() : "stable";
+});
+
+ipcMain.handle("set-update-channel", (_event, channel) => {
+  const mgr = _ensureUpdateChannelMgr();
+  if (!mgr) return { ok: false, error: "manager no disponible" };
+  const applied = mgr.setChannel(channel);
+  // Triggar un re-check inmediato con el nuevo canal.
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates().catch((err) => {
+      mainWindow?.webContents.send("update-error", err.message);
+    });
+  }
+  return { ok: true, channel: applied };
+});
+
 ipcMain.handle("install-update", () => {
+  // DIS.SVC — paramos los servicios ANTES de quitAndInstall.
+  // Sin esto el instalador puede fallar al reemplazar binarios que el
+  // backend (uvicorn) tiene abiertos. Marcamos isQuitting=true para que
+  // el handler `close` no intercepte ocultando la ventana.
+  try {
+    isQuitting = true;
+    stopAll();
+  } catch (err) {
+    // No bloqueamos el update por un fallo de stop — el instalador lidiará
+    // con los handles bloqueados a coste de un primer arranque más lento.
+    console.warn("install-update: stopAll falló:", err.message);
+  }
   autoUpdater.quitAndInstall();
 });
 
@@ -247,7 +369,14 @@ if (!gotLock) {
 
   // ── App lifecycle ────────────────────────────────────────────────────────
 
-  app.whenReady().then(startup);
+  app.whenReady().then(() => {
+    // SEC.DEV — deshabilita el menú nativo en producción para cerrar
+    // el camino "View → Toggle DevTools" y similares.
+    if (app.isPackaged) {
+      Menu.setApplicationMenu(null);
+    }
+    return startup();
+  });
 
   app.on("before-quit", () => {
     isQuitting = true;

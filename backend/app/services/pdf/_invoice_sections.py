@@ -1,8 +1,14 @@
 """
 Helpers internos de construcción de secciones PDF para facturas.
 No importar directamente — usar app.services.pdf (paquete).
+
+I18N.PDF: cada helper acepta `locale` opcional (default `es`) y usa
+`app.i18n.translate()` para los labels visibles. El callsite externo
+(`generate_invoice_pdf`) pasa el locale resuelto desde
+`services.i18n.tenant_locale.resolve_locale()`.
 """
 
+from app.i18n import translate
 from app.services.documents._pdf_base import (
     REPORTLAB_AVAILABLE,
     _format_date,
@@ -24,16 +30,22 @@ if REPORTLAB_AVAILABLE:
     )
 
 
-def _invoice_lines_table(lines: list, header_sty, body_sty, right_sty, theme: dict) -> "Table":
-    """Tabla de líneas de factura reutilizable."""
+def _invoice_lines_table(
+    lines: list, header_sty, body_sty, right_sty, theme: dict,
+    locale: str = "es",
+) -> "Table":
+    """Tabla de líneas de factura reutilizable.
+
+    I18N.PDF: headers traducidos via `translate(key, locale)`.
+    """
     col_widths = [80 * mm, 20 * mm, 22 * mm, 20 * mm, 26 * mm]
     table_data = [
         [
-            Paragraph("Descripción", header_sty),
-            Paragraph("Cant.", header_sty),
-            Paragraph("Precio unit.", header_sty),
-            Paragraph("IVA", header_sty),
-            Paragraph("Total", right_sty),
+            Paragraph(translate("invoice.concept", locale), header_sty),
+            Paragraph(translate("invoice.quantity", locale), header_sty),
+            Paragraph(translate("invoice.unit_price", locale), header_sty),
+            Paragraph(translate("invoice.tax_rate", locale), header_sty),
+            Paragraph(translate("invoice.total", locale), right_sty),
         ]
     ]
     for ln in lines:
@@ -326,3 +338,67 @@ def _themed_header(
         elements.append(Spacer(1, 5 * mm))
 
     return elements
+
+
+def _verifactu_qr_block(verifactu: dict | None) -> list:
+    """Genera el bloque QR Verifactu para insertar en el PDF (FAC.QR).
+
+    `verifactu` debe ser un dict con `huella` (SHA-256 hex) y `verify_url`
+    (URL pública del endpoint `/verify/{huella}`). Si falta cualquiera de
+    los dos, no emite nada (la factura sigue siendo válida sin QR — el QR
+    solo aplica cuando hay registro Verifactu encadenado).
+    """
+    if not REPORTLAB_AVAILABLE or not verifactu:
+        return []
+    huella = verifactu.get("huella")
+    verify_url = verifactu.get("verify_url")
+    if not huella or not verify_url:
+        return []
+
+    # Import diferido — solo cuando hay datos Verifactu.
+    from reportlab.graphics.barcode.qr import QrCodeWidget
+    from reportlab.graphics.shapes import Drawing
+
+    qr = QrCodeWidget(verify_url)
+    qr_size = 25 * mm
+    bounds = qr.getBounds()
+    qr_w = bounds[2] - bounds[0]
+    qr_h = bounds[3] - bounds[1]
+    drawing = Drawing(qr_size, qr_size, transform=[qr_size / qr_w, 0, 0, qr_size / qr_h, 0, 0])
+    drawing.add(qr)
+
+    caption_sty = ParagraphStyle(
+        "V_caption",
+        fontSize=7,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#475569"),
+        alignment=TA_CENTER,
+    )
+    huella_sty = ParagraphStyle(
+        "V_huella",
+        fontSize=6,
+        fontName="Helvetica",
+        textColor=colors.HexColor("#94a3b8"),
+        alignment=TA_CENTER,
+    )
+
+    qr_cell = Table(
+        [
+            [drawing],
+            [Paragraph("Verifactu — Escanea para verificar", caption_sty)],
+            [Paragraph(f"<font face='Helvetica'>Huella: {huella[:16]}…</font>", huella_sty)],
+        ],
+        colWidths=[qr_size + 4 * mm],
+    )
+    qr_cell.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+
+    return [Spacer(1, 4 * mm), qr_cell, Spacer(1, 2 * mm)]

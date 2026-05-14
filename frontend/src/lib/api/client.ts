@@ -3,6 +3,12 @@
  * Handles JWT auth, token refresh, and blob downloads.
  */
 import { ApiError } from "./errors";
+import {
+    clearAllSecureTokens,
+    getCachedToken,
+    removeSecureToken,
+    setSecureToken,
+} from "../secureStore";
 
 // Runtime resolution — never bake a build-time URL that may go stale.
 // In the browser, derive from window.location so LAN access works automatically.
@@ -18,13 +24,37 @@ function parseDetail(raw: unknown): string {
     return JSON.stringify(raw);
 }
 
+/**
+ * SEC.JWT — `getToken()` se mantiene sincrónico leyendo del cache
+ * in-memory de `secureStore`. La hidratación inicial corre al boot
+ * (`hydrateSecureStore()` en el layout root).
+ */
 export function getToken(): string | null {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("access_token");
+    return getCachedToken("access_token");
+}
+
+/** Persiste un par de tokens nuevos (access + refresh) tras login o refresh. */
+export async function setTokens(accessToken: string, refreshToken: string): Promise<void> {
+    await Promise.all([
+        setSecureToken("access_token", accessToken),
+        setSecureToken("refresh_token", refreshToken),
+    ]);
+    if (typeof document !== "undefined") {
+        document.cookie = "auth_flag=1; path=/; SameSite=Lax";
+    }
+}
+
+/** Borra todos los tokens — usado en logout y fallos de refresh. */
+export async function clearTokens(): Promise<void> {
+    await clearAllSecureTokens();
+    if (typeof document !== "undefined") {
+        document.cookie = "auth_flag=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
 }
 
 async function tryRefresh(): Promise<boolean> {
-    const refresh = localStorage.getItem("refresh_token");
+    const refresh = getCachedToken("refresh_token");
     if (!refresh) return false;
     try {
         const res = await fetch(`${BASE}/api/v1/auth/refresh`, {
@@ -34,9 +64,7 @@ async function tryRefresh(): Promise<boolean> {
         });
         if (!res.ok) return false;
         const data = await res.json();
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("refresh_token", data.refresh_token);
-        document.cookie = "auth_flag=1; path=/; SameSite=Lax";
+        await setTokens(data.access_token, data.refresh_token);
         return true;
     } catch {
         return false;
@@ -66,8 +94,7 @@ export async function request<T>(
             return retry.json();
         }
         // Refresh falló → logout
-        localStorage.clear();
-        document.cookie = "auth_flag=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        await clearTokens();
         window.location.href = "/login";
         throw new Error("Sesión expirada");
     }
@@ -104,8 +131,7 @@ export async function requestUpload<T>(path: string, formData: FormData): Promis
                 body: formData,
             });
         } else {
-            localStorage.clear();
-            document.cookie = "auth_flag=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            await clearTokens();
             window.location.href = "/login";
             throw new Error("Sesión expirada");
         }

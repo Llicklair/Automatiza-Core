@@ -43,22 +43,21 @@ async def check_fiscal_deadlines(
             AEAT es nacional y no se filtra por tenant.
     """
     _ = tenant_id  # accepted but unused: AEAT calendar is the same for all tenants
+    data_stale = False
     try:
         vencimientos = get_proximos_vencimientos(days_ahead=days_ahead)
     except Exception as e:
-        logger.warning("Error obteniendo vencimientos fiscales, usando fallback: %s", e)
-        vencimientos = [
-            {
-                "nombre": "Modelo 303 (IVA Trimestral)",
-                "fecha_limite": "2026-04-20",
-                "dias_restantes": 32,
-            },
-            {
-                "nombre": "Modelo 111 (Retenciones)",
-                "fecha_limite": "2026-04-20",
-                "dias_restantes": 32,
-            },
-        ]
+        # CONT.0: nunca devolver fechas literales que pueden estar caducadas.
+        # Si el calendario fiscal no se puede cargar, marcar la respuesta como
+        # data_stale y delegar la consulta al usuario en sede AEAT.
+        logger.warning("Error obteniendo vencimientos fiscales: %s", e)
+        return (
+            "⚠️ No se ha podido cargar el calendario fiscal AEAT en este momento "
+            "(servicio temporalmente no disponible). "
+            "Para evitar mostrarte fechas potencialmente desactualizadas, consulta "
+            "directamente https://sede.agenciatributaria.gob.es/Sede/calendario-contribuyente.html "
+            "o reintenta esta consulta en unos minutos."
+        )
 
     if not vencimientos:
         return f"No hay vencimientos fiscales en los próximos {days_ahead} días."

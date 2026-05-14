@@ -80,3 +80,42 @@ class TenantDocument(Base):
 
     locked_by = Column(UUID(as_uuid=True), nullable=True)
     locked_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class TenantOnboarding(Base):
+    """Estado del wizard de onboarding focado (UI.ONB).
+
+    Un registro por tenant. 4 pasos booleanos + timestamps. La FSM no es
+    estricta — los pasos pueden completarse en cualquier orden o saltarse.
+    """
+
+    __tablename__ = "tenant_onboarding"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, unique=True, index=True)
+    step_company = Column(Boolean, nullable=False, default=False)
+    step_cert = Column(Boolean, nullable=False, default=False)
+    step_data = Column(Boolean, nullable=False, default=False)
+    step_use_case = Column(Boolean, nullable=False, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    skipped_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
+class AutonomyPolicy(Base):
+    """Política de autonomía por dominio (SEC.AUT).
+
+    Mode ∈ {AUTO, CONFIRM, MANUAL}. La ausencia de fila equivale al default
+    del dominio (ver `services/autonomy.py:DEFAULTS`).
+    """
+
+    __tablename__ = "autonomy_policy"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    domain = Column(String(64), nullable=False)
+    mode = Column(String(16), nullable=False)
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)

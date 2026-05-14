@@ -7,7 +7,9 @@ on:
     branches: [main]
 
 env:
-  PYTHON_VERSION: "3.11"
+  # QA.CI — Python exact match con el binario embebido en el instalador
+  # (`dependencies/embedded_binaries.json`). Bumpear ambos a la vez.
+  PYTHON_VERSION: "3.11.9"
   NODE_VERSION: "20"
 
 jobs:
@@ -45,7 +47,13 @@ jobs:
       - name: Ruff format check
         run: poetry run ruff format app/ --check
 
-      - name: Mypy type check
+      # QA.CI — mypy estricto solo en agents/ y services/ (consenso Ronda 32:
+      # las rutas API y migrations toleran tipos laxos por ahora). El resto
+      # sigue con check no-bloqueante para no quemar señal de error.
+      - name: Mypy strict en agents y services
+        run: poetry run mypy app/agents app/services --strict --ignore-missing-imports --no-error-summary
+
+      - name: Mypy resto del backend (no-bloqueante)
         run: poetry run mypy app/ --ignore-missing-imports
         continue-on-error: true
 
@@ -100,7 +108,7 @@ jobs:
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
           OPENAI_API_KEY: sk-test-fake-key
-        run: poetry run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-fail-under=50
+        run: poetry run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-fail-under=70
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -167,10 +175,34 @@ jobs:
           flags: frontend
         continue-on-error: true
 
+  frontend-a11y:
+    name: Frontend — Accessibility (WCAG 2.1 AA)
+    runs-on: ubuntu-latest
+    needs: frontend-lint
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run axe-core a11y suite
+        run: npm run test:a11y
+
   frontend-build:
     name: Frontend — Build
     runs-on: ubuntu-latest
-    needs: [frontend-lint, frontend-test]
+    needs: [frontend-lint, frontend-test, frontend-a11y]
     defaults:
       run:
         working-directory: frontend

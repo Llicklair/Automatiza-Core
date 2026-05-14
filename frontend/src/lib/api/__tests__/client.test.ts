@@ -9,12 +9,23 @@ vi.stubGlobal("fetch", fetchMock);
 let clientModule: typeof import("../client");
 let request: typeof import("../client").request;
 let getToken: typeof import("../client").getToken;
+let secureStoreModule: typeof import("../../secureStore");
 let BASE: string;
+
+// SEC.JWT — en jsdom (sin Electron), secureStore cae a localStorage fallback.
+// Los tests setean tokens vía `localStorage.setItem` y después llaman
+// `hydrateSecureStore()` para que el cache in-memory se sincronice.
+async function setupTokens(access: string | null, refresh: string | null) {
+    if (access) localStorage.setItem("access_token", access);
+    if (refresh) localStorage.setItem("refresh_token", refresh);
+    await secureStoreModule.hydrateSecureStore();
+}
 
 beforeEach(async () => {
     vi.resetModules();
     localStorage.clear();
     fetchMock.mockReset();
+    secureStoreModule = await import("../../secureStore");
     clientModule = await import("../client");
     request = clientModule.request;
     getToken = clientModule.getToken;
@@ -30,8 +41,8 @@ describe("getToken", () => {
         expect(getToken()).toBeNull();
     });
 
-    it("returns the stored access token", () => {
-        localStorage.setItem("access_token", "my-token");
+    it("returns the stored access token", async () => {
+        await setupTokens("my-token", null);
         expect(getToken()).toBe("my-token");
     });
 });
@@ -54,7 +65,7 @@ describe("request", () => {
     });
 
     it("includes Authorization header when token exists", async () => {
-        localStorage.setItem("access_token", "bearer-token");
+        await setupTokens("bearer-token", null);
 
         fetchMock.mockResolvedValueOnce({
             ok: true,
@@ -104,8 +115,7 @@ describe("request", () => {
     });
 
     it("on 401, attempts token refresh then retries", async () => {
-        localStorage.setItem("access_token", "expired-token");
-        localStorage.setItem("refresh_token", "valid-refresh");
+        await setupTokens("expired-token", "valid-refresh");
 
         // First call: 401
         fetchMock.mockResolvedValueOnce({
@@ -138,8 +148,7 @@ describe("request", () => {
     });
 
     it("on 401, if refresh fails, clears storage and redirects to /login", async () => {
-        localStorage.setItem("access_token", "expired");
-        localStorage.setItem("refresh_token", "bad-refresh");
+        await setupTokens("expired", "bad-refresh");
 
         // Original call: 401
         fetchMock.mockResolvedValueOnce({
@@ -176,7 +185,7 @@ describe("request", () => {
     });
 
     it("on 401 with no refresh_token, redirects to /login immediately", async () => {
-        localStorage.setItem("access_token", "expired");
+        await setupTokens("expired", null);
         // No refresh_token set
 
         fetchMock.mockResolvedValueOnce({
