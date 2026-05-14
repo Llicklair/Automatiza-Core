@@ -123,6 +123,16 @@ async def emit_event(
         db.add(execution)
         await db.flush()
 
+        # Backlink: el TaskRunner _update_workflow_execution sincroniza
+        # workflow_executions.status al completar la task SOLO si la task
+        # tiene additional_metadata.execution_id. Sin esto, las executions
+        # event-driven quedaban en `pending` aunque la task completara.
+        task.additional_metadata = {
+            "workflow_id": str(wf.id),
+            "execution_id": str(execution.id),
+            "event": event_name,
+        }
+
         # 6. Disparar tarea de forma asíncrona
         try:
             from app.services.workflow.task_dispatch import dispatch_orchestrator
