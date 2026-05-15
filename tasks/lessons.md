@@ -371,3 +371,47 @@ Si el LLM emitía `"12345678z"` (minúscula), el query buscaba `Employee.nif == 
 **Bug pendiente (no aplicado en esta iteración):** `agents/hr/tools.py` no aplica `_isolated()` al toolkit. Eso significa que el LLM de HR puede pasar un `tenant_id` arbitrario que no se sobrescribe por el ContextVar. No causó este bug específico (los duplicados estaban en el mismo tenant), pero es vector de prompt injection cross-tenant. Aplicar `_isolated()` requiere construir una lista `tools = [...]` (que HR no tiene exportada) — refactor pequeño pero fuera del scope de la sesión actual.
 
 **Aplicación:** Cualquier modelo SQLAlchemy con un campo "identificador real" (DNI, NIF, IBAN, MAC, IMEI, ISBN, license plate) sin UNIQUE constraint **es bug latente**. Auditoría rápida: `grep "class.*Base" db/models/` y por cada modelo verificar que los campos de negocio críticos tienen `unique=True` en el `Column(...)` o un partial UNIQUE INDEX en migración. Cualquier validación de unicidad escrita solo en código sin constraint complementaria en BD es defensa-en-profundidad ausente.
+
+---
+
+## 2026-05-15 — Reverso de movimientos de stock al borrar/desconfirmar albaranes (deuda técnica)
+
+**Contexto:** Step 4 del trabajo de inventario introdujo auto-descuento de stock cuando un albarán pasa a `confirmed` (genera un `StockMovement` de tipo `salida` con `reference=DELIVERY_NOTE:<id>`). El flujo opuesto **no está cubierto**:
+
+- `DELETE /albaranes/{id}` borra el albarán (cascade elimina sus líneas) pero NO devuelve el stock previamente descontado. El movimiento queda huérfano y el inventario queda artificialmente bajo.
+- `PATCH /albaranes/{id}/status` con `confirmed → draft` (regresión) tampoco crea movimiento compensatorio.
+
+**Por qué se dejó así en este round:** la introducción del auto-descuento es de bajo riesgo (aditiva), pero el reverso obliga a decidir:
+- ¿Quién está autorizado a desconfirmar un albarán? (impacta a tooltips y permisos)
+- ¿Generamos un `StockMovement` de tipo `entrada` con `reference=DELIVERY_NOTE_REVERSED:<id>`, o "anulamos" el original marcándolo como `voided`?
+- ¿Permitimos eliminar un albarán confirmado sin antes pasarlo a draft? (probablemente no — flujo seguro: forzar revert primero).
+
+**Regla:** Cuando un servicio crea efectos colaterales en otra tabla (stock_movements, journal_entries, audit_log), añadir la simetría de borrado/reversa en la misma iteración o, si se posterga, dejar (a) un test que falle con `xfail` documentando el caso, (b) entrada en `lessons.md`, (c) bloqueo defensivo: por ejemplo, `delete_albaran` rechaza con 409 si el status es `confirmed`/`delivered`, forzando al cliente a regresar a `draft` primero.
+
+**Aplicación pendiente:** O bien implementar reverso (issue futuro), o bien aplicar el bloqueo defensivo en `delete_albaran` y `update_albaran_status` (confirmed → draft) cuanto antes. Mientras tanto, el bug latente es: "tras borrar un albarán confirmado, el stock_quantity del producto queda menor que la realidad".
+
+---
+
+## 2026-05-15 — Doble barrel `lib/api.ts` y `lib/api/index.ts` — TS prefiere el archivo
+
+**Contexto:** Añadí `StockValuation` y `StockValuationByCategory` en `frontend/src/lib/api/erp.ts` y los re-exporté en `frontend/src/lib/api/index.ts`. Al importar desde un componente con `import { type StockValuation } from "@/lib/api"`, `tsc` daba:
+
+```
+error TS2305: Module '"@/lib/api"' has no exported member 'StockValuation'.
+```
+
+**Causa:** Existen dos archivos compitiendo por el alias `@/lib/api`:
+- `frontend/src/lib/api.ts` (archivo, shim de compatibilidad)
+- `frontend/src/lib/api/index.ts` (directorio + index, barrel "moderno")
+
+Node y TypeScript resuelven primero el **archivo `.ts`** sobre el `directorio/index.ts` cuando ambos existen. El `api.ts` shim re-exporta tipos uno a uno y NO usa `export *`, por lo que cualquier tipo nuevo en `api/erp.ts` queda invisible al consumidor hasta añadirlo también ahí.
+
+**Regla:** Cuando añadas un tipo nuevo en `frontend/src/lib/api/<modulo>.ts`, modifica **ambos barrels**:
+1. `frontend/src/lib/api/index.ts` (línea ~133 bloque `from "./erp"`)
+2. `frontend/src/lib/api.ts` (línea ~10 bloque `from "./api/erp"`)
+
+Lo mismo aplica si añades un nuevo método al objeto `api` — exporta en `index.ts` y verifica que `api.ts` también lo re-exporte (hoy solo hace `export { api } from "./api/index"`, así que los métodos del runtime sí se propagan; los **tipos** no).
+
+**Prevención más limpia (deuda):** Reemplazar el contenido de `frontend/src/lib/api.ts` por `export * from "./api/index";` para que todo lo de `index.ts` (runtime + tipos) se propague automáticamente. Riesgo: si hay tipos con nombres colisionados o que `api.ts` no quería exponer, podrían filtrarse. Auditar antes de hacerlo.
+
+**Aplicación:** Cualquier sesión que añada tipos al cliente API debe tocar los dos archivos hasta que se consolide el barrel.
