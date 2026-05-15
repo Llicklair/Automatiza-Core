@@ -138,7 +138,8 @@ export const NAV_SECTIONS: NavSection[] = [
             {
                 label: "Impuestos", icon: Scale, subItems: [
                     { label: "Resumen", href: "/impuestos" },
-                    { label: "Presentación asistida", href: "/impuestos/asistida" },
+                    { label: "Modelos AEAT (preview)", href: "/impuestos/modelos" },
+                    { label: "Presentación asistida (131/200)", href: "/impuestos/asistida" },
                 ],
             },
         ],
@@ -183,6 +184,7 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Apoderamiento AEAT", href: "/configuracion/regap", adminOnly: true },
                     { label: "Modo Verifactu", href: "/configuracion/verifactu", adminOnly: true },
                     { label: "Autonomía de agentes", href: "/configuracion/autonomia", adminOnly: true },
+                    { label: "Mantenimiento", href: "/configuracion/mantenimiento", adminOnly: true },
                     { label: "Actualizaciones", href: "/configuracion/actualizaciones", adminOnly: true },
                 ],
             },
@@ -222,7 +224,9 @@ Object.assign(ROUTE_LABELS, {
     "/configuracion/verifactu": "Modo Verifactu",
     "/configuracion/autonomia": "Autonomía de agentes",
     "/configuracion/firma-digital": "Firma digital",
+    "/configuracion/mantenimiento": "Mantenimiento",
     "/bienvenida": "Bienvenida",
     "/bienvenida/simulacion-303": "Simulación Modelo 303",
     "/impuestos/asistida": "Presentación asistida (131 / 200)",
+    "/impuestos/modelos": "Modelos AEAT (preview)",
 });

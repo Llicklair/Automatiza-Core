@@ -23,6 +23,7 @@ from app.api.v1.routes import (
     integrations,
     llm_usage,
     messaging,
+    modelos_aeat,
     notifications,
     onboarding_regap,
     onboarding_wizard,
@@ -91,3 +92,4 @@ api_router.include_router(autonomy.router)
 api_router.include_router(notifications.router)
 api_router.include_router(verifactu_config.router)
 api_router.include_router(presentacion_asistida.router)
+api_router.include_router(modelos_aeat.router)
