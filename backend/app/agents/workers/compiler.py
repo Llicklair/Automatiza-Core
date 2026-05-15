@@ -97,7 +97,17 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
             "Cuando una herramienta requiera tenant_id, usa el valor de arriba SIEMPRE. "
             "NUNCA pidas el tenant_id al usuario — ya lo tienes. "
             "Si una herramienta requiere user_id u otro identificador interno, "
-            "úsalo del contexto sin preguntar."
+            "úsalo del contexto sin preguntar.\n\n"
+            "--- FINALIZACIÓN DE TAREA ---\n"
+            "Cuando completes tu tarea principal (generar un documento, enviar un "
+            "mensaje, crear un registro, etc.), responde DIRECTAMENTE al usuario con "
+            "un breve mensaje de confirmación. NO intentes invocar herramientas de "
+            "'finalizar', 'marcar como completado', 'cerrar tarea' o similares — "
+            "esas herramientas no existen. El sistema marca la tarea como completada "
+            "automáticamente cuando emitas tu respuesta final. NUNCA empieces tu "
+            "respuesta final con la palabra 'Error' a menos que algo haya fallado "
+            "realmente; si el documento o acción se completó, comienza con "
+            "'✅', 'Listo', 'Hecho' o similar."
         )
         return (system_prompt_base or "") + runtime_ctx
 
