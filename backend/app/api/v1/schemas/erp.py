@@ -42,6 +42,7 @@ class ProductCreate(BaseModel):
     name: str
     description: str | None = None
     category: str | None = None
+    location: str | None = None
     unit: str = "ud"
     price: float = 0.0
     cost_price: float | None = None
@@ -97,6 +98,7 @@ class ProductUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     category: str | None = None
+    location: str | None = None
     unit: str | None = None
     price: float | None = None
     cost_price: float | None = None

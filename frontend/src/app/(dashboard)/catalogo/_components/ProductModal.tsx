@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 
 type FormState = {
     name: string; sku: string; barcode: string; description: string;
-    category: string; unit: string;
+    category: string; location: string; unit: string;
     price: string; cost_price: string; tax_percentage: string;
     item_type: string; is_active: boolean;
 };
@@ -78,6 +78,16 @@ export function ProductModal({ editingId, form, onChange, onSubmit, onClose, isS
                                 className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
                             />
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm text-muted-foreground mb-1.5">Ubicación en almacén</label>
+                        <input
+                            type="text"
+                            value={form.location}
+                            onChange={e => onChange({ ...form, location: e.target.value })}
+                            placeholder="Ej. Pasillo 1, Sección A-3, Estantería 4"
+                            className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                        />
                     </div>
                     <div>
                         <label className="block text-sm text-muted-foreground mb-1.5">Descripción</label>

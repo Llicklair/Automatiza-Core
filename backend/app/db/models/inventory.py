@@ -28,6 +28,7 @@ class Product(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text)
     category = Column(String(100), index=True)
+    location = Column(String(100), index=True)
     unit = Column(String(20), nullable=False, default="ud")
     price = Column(Numeric(10, 2), nullable=False, default=0)
     cost_price = Column(Numeric(10, 2))

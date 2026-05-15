@@ -7,14 +7,14 @@ import { showConfirm } from "@/stores/confirm";
 
 export type FormState = {
     name: string; sku: string; barcode: string; description: string;
-    category: string; unit: string;
+    category: string; location: string; unit: string;
     price: string; cost_price: string; tax_percentage: string;
     item_type: string; is_active: boolean;
 };
 
 const emptyForm = (): FormState => ({
     name: "", sku: "", barcode: "", description: "",
-    category: "", unit: "ud",
+    category: "", location: "", unit: "ud",
     price: "", cost_price: "", tax_percentage: "21",
     item_type: "product", is_active: true,
 });
@@ -48,6 +48,7 @@ export function useCatalogPage() {
             barcode: p.barcode || "",
             description: p.description || "",
             category: p.category || "",
+            location: p.location || "",
             unit: p.unit || "ud",
             price: String(p.price),
             cost_price: p.cost_price != null ? String(p.cost_price) : "",
@@ -67,6 +68,7 @@ export function useCatalogPage() {
             barcode: form.barcode || null,
             description: form.description || null,
             category: form.category || null,
+            location: form.location || null,
             unit: form.unit || "ud",
             price: parseFloat(form.price) || 0,
             cost_price: form.cost_price ? parseFloat(form.cost_price) : null,

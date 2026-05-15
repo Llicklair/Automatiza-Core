@@ -73,6 +73,15 @@ export default function StockPage() {
             },
         },
         {
+            accessorKey: "location",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Ubicación" />,
+            cell: ({ row }) => (
+                row.original.location
+                    ? <span className="text-sm text-foreground">{row.original.location}</span>
+                    : <span className="text-xs text-muted-foreground italic">—</span>
+            ),
+        },
+        {
             accessorKey: "stock_quantity",
             header: ({ column }) => <DataTableColumnHeader column={column} title="Stock actual" />,
             cell: ({ row }) => {

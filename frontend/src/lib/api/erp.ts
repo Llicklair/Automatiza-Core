@@ -56,6 +56,7 @@ export interface Product {
     name: string;
     description: string | null;
     category: string | null;
+    location: string | null;
     unit: string;
     price: number;
     cost_price: number | null;
