@@ -74,7 +74,11 @@ async def update_albaran_status(
 ):
     try:
         return await svc.update_albaran_status(
-            albaran_id, current_user.tenant_id, payload.status, db
+            albaran_id,
+            current_user.tenant_id,
+            payload.status,
+            db,
+            user_id=current_user.id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

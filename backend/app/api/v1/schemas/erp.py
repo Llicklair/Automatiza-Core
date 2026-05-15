@@ -38,12 +38,17 @@ class ClientResponse(BaseModel):
 class ProductCreate(BaseModel):
     item_type: str = "product"  # product | service
     sku: str | None = None
+    barcode: str | None = None
     name: str
     description: str | None = None
+    category: str | None = None
+    unit: str = "ud"
     price: float = 0.0
+    cost_price: float | None = None
     tax_percentage: float = 21.0
     stock_quantity: int = 0
     stock_min_alert: int = 0
+    is_active: bool = True
 
 
 class ProductResponse(ProductCreate):
@@ -88,12 +93,17 @@ class ClientUpdate(BaseModel):
 class ProductUpdate(BaseModel):
     item_type: str | None = None
     sku: str | None = None
+    barcode: str | None = None
     name: str | None = None
     description: str | None = None
+    category: str | None = None
+    unit: str | None = None
     price: float | None = None
+    cost_price: float | None = None
     tax_percentage: float | None = None
     stock_quantity: int | None = None
     stock_min_alert: int | None = None
+    is_active: bool | None = None
 
 
 class InvoiceStatusUpdate(BaseModel):
@@ -142,6 +152,7 @@ class InvoiceResponse(BaseModel):
 class StockMovementCreate(BaseModel):
     movement_type: str  # entrada | salida | ajuste
     quantity: int
+    unit_cost: float | None = None
     reference: str | None = None
     notes: str | None = None
 
@@ -152,12 +163,29 @@ class StockMovementResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     product_id: UUID
+    user_id: UUID | None = None
     movement_type: str
     quantity: int
     stock_after: int
+    unit_cost: float | None = None
     reference: str | None = None
     notes: str | None = None
     created_at: datetime
+
+
+class StockValuationByCategory(BaseModel):
+    category: str | None = None
+    units: int
+    value: float
+    product_count: int
+
+
+class StockValuationResponse(BaseModel):
+    total_value: float
+    total_units: int
+    product_count: int
+    missing_cost_price_count: int
+    by_category: list[StockValuationByCategory]
 
 
 # --- Pedidos de Venta ---

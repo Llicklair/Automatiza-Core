@@ -10,6 +10,7 @@ from app.api.v1.schemas.erp import (
     ProductUpdate,
     StockMovementCreate,
     StockMovementResponse,
+    StockValuationResponse,
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
@@ -28,10 +29,39 @@ async def list_products(
     request: Request,
     skip: int = 0,
     limit: int = Query(default=50, le=200),
+    q: str | None = Query(default=None, description="Búsqueda en nombre, SKU y código de barras"),
+    category: str | None = None,
+    is_active: bool | None = None,
+    status: str | None = Query(default=None, pattern="^(ok|low_stock|out_of_stock)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await svc.list_products(db, current_user.tenant_id, skip, limit)
+    return await svc.list_products(
+        db,
+        current_user.tenant_id,
+        skip,
+        limit,
+        q=q,
+        category=category,
+        is_active=is_active,
+        status=status,
+    )
+
+
+@router.get(
+    "/products/by-barcode/{code}", response_model=ProductResponse, tags=["inventory"]
+)
+@limiter.limit("60/minute")
+async def get_product_by_barcode(
+    request: Request,
+    code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    product = await svc.get_product_by_barcode(db, current_user.tenant_id, code)
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return product
 
 
 @router.patch("/products/{product_id}", response_model=ProductResponse, tags=["erp"])
@@ -81,6 +111,16 @@ async def create_product(
 # ─── Stock / Inventario ──────────────────────────────────────────────────────
 
 
+@router.get("/stock/valuation", response_model=StockValuationResponse, tags=["inventory"])
+@limiter.limit("10/minute")
+async def stock_valuation(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await svc.get_stock_valuation(db, current_user.tenant_id)
+
+
 @router.get(
     "/products/{product_id}/stock-movements",
     response_model=list[StockMovementResponse],
@@ -110,9 +150,11 @@ async def create_stock_movement(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    data = payload.model_dump()
+    data["user_id"] = current_user.id
     try:
         return await svc.create_stock_movement(
-            db, current_user.tenant_id, product_id, payload.model_dump()
+            db, current_user.tenant_id, product_id, data
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
