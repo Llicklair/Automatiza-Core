@@ -13,6 +13,8 @@ export type {
     InvoiceLine,
     Product,
     StockMovement,
+    StockValuation,
+    StockValuationByCategory,
     Quote,
     QuoteLine,
     SalesOrder,

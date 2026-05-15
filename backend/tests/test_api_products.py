@@ -111,3 +111,74 @@ class TestProducts:
         resp = await auth_client.get("/api/v1/products?skip=0&limit=2")
         assert resp.status_code == 200
         assert len(resp.json()) == 2
+
+
+class TestStockValuation:
+    @pytest.mark.asyncio
+    async def test_valuation_empty(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/v1/stock/valuation")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_value"] == 0
+        assert data["total_units"] == 0
+        assert data["product_count"] == 0
+        assert data["by_category"] == []
+
+    @pytest.mark.asyncio
+    async def test_valuation_sums_quantity_times_cost(self, auth_client: AsyncClient):
+        await auth_client.post(
+            "/api/v1/products",
+            json={"name": "Tornillo", "category": "ferreteria", "stock_quantity": 100, "cost_price": 0.5, "price": 1.0},
+        )
+        await auth_client.post(
+            "/api/v1/products",
+            json={"name": "Tuerca", "category": "ferreteria", "stock_quantity": 50, "cost_price": 0.2, "price": 0.5},
+        )
+        await auth_client.post(
+            "/api/v1/products",
+            json={"name": "Aceite", "category": "lubricantes", "stock_quantity": 10, "cost_price": 8.0, "price": 15.0},
+        )
+
+        resp = await auth_client.get("/api/v1/stock/valuation")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_units"] == 160
+        assert data["total_value"] == pytest.approx(100 * 0.5 + 50 * 0.2 + 10 * 8.0)
+        assert data["product_count"] == 3
+        assert data["missing_cost_price_count"] == 0
+        cats = {c["category"]: c for c in data["by_category"]}
+        assert cats["ferreteria"]["units"] == 150
+        assert cats["ferreteria"]["value"] == pytest.approx(60.0)
+        assert cats["lubricantes"]["units"] == 10
+        assert cats["lubricantes"]["value"] == pytest.approx(80.0)
+
+    @pytest.mark.asyncio
+    async def test_valuation_flags_missing_cost_price(self, auth_client: AsyncClient):
+        await auth_client.post(
+            "/api/v1/products",
+            json={"name": "Sin coste", "stock_quantity": 20},
+        )
+        resp = await auth_client.get("/api/v1/stock/valuation")
+        data = resp.json()
+        assert data["missing_cost_price_count"] == 1
+        assert data["total_value"] == 0
+        assert data["total_units"] == 20
+
+    @pytest.mark.asyncio
+    async def test_valuation_excludes_inactive(self, auth_client: AsyncClient):
+        await auth_client.post(
+            "/api/v1/products",
+            json={"name": "Activo", "stock_quantity": 5, "cost_price": 10.0},
+        )
+        create_resp = await auth_client.post(
+            "/api/v1/products",
+            json={"name": "Inactivo", "stock_quantity": 100, "cost_price": 99.0},
+        )
+        inactive_id = create_resp.json()["id"]
+        await auth_client.patch(f"/api/v1/products/{inactive_id}", json={"is_active": False})
+
+        resp = await auth_client.get("/api/v1/stock/valuation")
+        data = resp.json()
+        assert data["product_count"] == 1
+        assert data["total_units"] == 5
+        assert data["total_value"] == pytest.approx(50.0)

@@ -52,12 +52,17 @@ export interface Product {
     tenant_id: string;
     item_type: string;
     sku: string | null;
+    barcode: string | null;
     name: string;
     description: string | null;
+    category: string | null;
+    unit: string;
     price: number;
+    cost_price: number | null;
     tax_percentage: number;
     stock_quantity: number;
     stock_min_alert: number;
+    is_active: boolean;
     created_at: string;
     updated_at: string | null;
 }
@@ -66,12 +71,29 @@ export interface StockMovement {
     id: string;
     tenant_id: string;
     product_id: string;
+    user_id: string | null;
     movement_type: string;
     quantity: number;
     stock_after: number;
+    unit_cost: number | null;
     reference: string | null;
     notes: string | null;
     created_at: string;
+}
+
+export interface StockValuationByCategory {
+    category: string | null;
+    units: number;
+    value: number;
+    product_count: number;
+}
+
+export interface StockValuation {
+    total_value: number;
+    total_units: number;
+    product_count: number;
+    missing_cost_price_count: number;
+    by_category: StockValuationByCategory[];
 }
 
 export interface QuoteLine {
@@ -213,10 +235,27 @@ export const erp = {
             }),
     },
     products: {
-        list: (params?: { skip?: number; limit?: number }) => {
-            const q = new URLSearchParams(params as Record<string, string>).toString();
-            return request<Product[]>(`/api/v1/products${q ? "?" + q : ""}`);
+        list: (params?: {
+            skip?: number;
+            limit?: number;
+            q?: string;
+            category?: string;
+            is_active?: boolean;
+            status?: "ok" | "low_stock" | "out_of_stock";
+        }) => {
+            const filtered: Record<string, string> = {};
+            if (params) {
+                for (const [k, v] of Object.entries(params)) {
+                    if (v !== undefined && v !== null && v !== "") {
+                        filtered[k] = String(v);
+                    }
+                }
+            }
+            const qs = new URLSearchParams(filtered).toString();
+            return request<Product[]>(`/api/v1/products${qs ? "?" + qs : ""}`);
         },
+        byBarcode: (code: string) =>
+            request<Product>(`/api/v1/products/by-barcode/${encodeURIComponent(code)}`),
         create: (data: Partial<Product>) =>
             request<Product>("/api/v1/products", {
                 method: "POST",
@@ -303,6 +342,7 @@ export const erp = {
         run: (id: string) => request<Invoice>(`/api/v1/recurring-invoices/${id}/run`, { method: "POST" }),
     },
     stock: {
+        valuation: () => request<StockValuation>("/api/v1/stock/valuation"),
         movements: (productId: string) => request<StockMovement[]>(`/api/v1/products/${productId}/stock-movements`),
         addMovement: (productId: string, data: Partial<StockMovement>) =>
             request<StockMovement>(`/api/v1/products/${productId}/stock-movements`, {

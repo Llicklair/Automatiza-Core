@@ -192,9 +192,11 @@ async def create_stock_movement(
     movement = StockMovement(
         tenant_id=tenant_id,
         product_id=product_id,
+        user_id=data.get("user_id"),
         movement_type=movement_type,
         quantity=quantity,
         stock_after=new_stock,
+        unit_cost=data.get("unit_cost"),
         reference=data.get("reference"),
         notes=data.get("notes"),
     )
@@ -445,8 +447,77 @@ async def create_albaran(
     return result.scalar_one()
 
 
+def _albaran_stock_reference(albaran_id: UUID) -> str:
+    """Reference string used on StockMovement to mark deductions made by an
+    albarán confirmation. Used for idempotency lookup."""
+    return f"DELIVERY_NOTE:{albaran_id}"
+
+
+async def _deduct_stock_for_albaran(
+    db: AsyncSession, note: DeliveryNote, user_id: Optional[UUID]
+) -> None:
+    """Generate StockMovement(salida) rows for each line with a product_id.
+
+    Idempotent: if any movement with reference=DELIVERY_NOTE:<id> already
+    exists, this is a no-op. Raises ValueError if stock is insufficient.
+    Does NOT commit — the caller controls the transaction.
+    """
+    reference = _albaran_stock_reference(note.id)
+    existing = await db.execute(
+        select(StockMovement.id)
+        .where(
+            StockMovement.tenant_id == note.tenant_id,
+            StockMovement.reference == reference,
+        )
+        .limit(1)
+    )
+    if existing.scalar_one_or_none():
+        return
+
+    for line in note.lines:
+        if line.product_id is None:
+            continue
+        qty = int(line.quantity or 0)
+        if qty <= 0:
+            continue
+        product_res = await db.execute(
+            select(Product).where(
+                Product.id == line.product_id,
+                Product.tenant_id == note.tenant_id,
+            )
+        )
+        product = product_res.scalar_one_or_none()
+        if product is None:
+            continue
+        new_stock = int(product.stock_quantity) - qty
+        if new_stock < 0:
+            raise ValueError(
+                f"Stock insuficiente para '{product.name}' "
+                f"(disponible {product.stock_quantity}, solicitado {qty})"
+            )
+        product.stock_quantity = new_stock
+        db.add(
+            StockMovement(
+                tenant_id=note.tenant_id,
+                product_id=product.id,
+                user_id=user_id,
+                movement_type="salida",
+                quantity=qty,
+                stock_after=new_stock,
+                unit_cost=product.cost_price,
+                reference=reference,
+                notes=f"Albarán {note.albaran_number}",
+            )
+        )
+
+
 async def update_albaran_status(
-    albaran_id: UUID, tenant_id: UUID, new_status: str, db: AsyncSession
+    albaran_id: UUID,
+    tenant_id: UUID,
+    new_status: str,
+    db: AsyncSession,
+    *,
+    user_id: Optional[UUID] = None,
 ) -> DeliveryNote:
     if new_status not in VALID_STATUSES:
         raise ValueError("Estado no valido")
@@ -458,7 +529,13 @@ async def update_albaran_status(
     note = result.scalar_one_or_none()
     if not note:
         raise LookupError("Albaran no encontrado")
+
+    old_status = note.status
     note.status = new_status
+
+    if new_status == "confirmed" and old_status != "confirmed":
+        await _deduct_stock_for_albaran(db, note, user_id)
+
     await db.commit()
     await db.refresh(note)
     return note

@@ -25,7 +25,9 @@ from app.services.sales.commands import (
 from app.services.sales.queries import (
     get_albaran,
     get_albaran_pdf_data,
+    get_product_by_barcode,
     get_quote,
+    get_stock_valuation,
     list_albaranes,
     list_client_invoices,
     list_clients,
@@ -54,6 +56,8 @@ __all__ = [
     "create_product",
     "create_stock_movement",
     "delete_product",
+    "get_product_by_barcode",
+    "get_stock_valuation",
     "list_products",
     "list_stock_movements",
     "update_product",

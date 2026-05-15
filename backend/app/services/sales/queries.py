@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy import desc, select
+from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -86,16 +86,125 @@ async def list_client_invoices(
 
 
 async def list_products(
-    db: AsyncSession, tenant_id: UUID, skip: int = 0, limit: int = 50
+    db: AsyncSession,
+    tenant_id: UUID,
+    skip: int = 0,
+    limit: int = 50,
+    *,
+    q: str | None = None,
+    category: str | None = None,
+    is_active: bool | None = None,
+    status: str | None = None,
 ) -> list[Product]:
-    result = await db.execute(
-        select(Product)
-        .where(Product.tenant_id == tenant_id)
-        .order_by(desc(Product.created_at))
-        .offset(skip)
-        .limit(limit)
-    )
+    """List products with optional filters.
+
+    Filters (all optional, ANDed):
+      q: fuzzy match on name, sku, barcode (ILIKE %q%)
+      category: exact match
+      is_active: True/False
+      status: 'out_of_stock' | 'low_stock' | 'ok'
+    """
+    query = select(Product).where(Product.tenant_id == tenant_id)
+
+    if q:
+        like = f"%{q}%"
+        query = query.where(
+            or_(
+                Product.name.ilike(like),
+                Product.sku.ilike(like),
+                Product.barcode.ilike(like),
+            )
+        )
+    if category:
+        query = query.where(Product.category == category)
+    if is_active is not None:
+        query = query.where(Product.is_active == is_active)
+
+    if status == "out_of_stock":
+        query = query.where(Product.stock_quantity == 0)
+    elif status == "low_stock":
+        query = query.where(
+            and_(
+                Product.stock_quantity > 0,
+                Product.stock_min_alert > 0,
+                Product.stock_quantity <= Product.stock_min_alert,
+            )
+        )
+    elif status == "ok":
+        query = query.where(
+            or_(
+                Product.stock_min_alert == 0,
+                Product.stock_quantity > Product.stock_min_alert,
+            )
+        ).where(Product.stock_quantity > 0)
+
+    query = query.order_by(desc(Product.created_at)).offset(skip).limit(limit)
+    result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def get_product_by_barcode(
+    db: AsyncSession, tenant_id: UUID, barcode: str
+) -> Product | None:
+    result = await db.execute(
+        select(Product).where(
+            Product.tenant_id == tenant_id,
+            Product.barcode == barcode,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_stock_valuation(db: AsyncSession, tenant_id: UUID) -> dict:
+    """Compute inventory valuation grouped by category.
+
+    Considers only products with is_active=True. Each row contributes
+    stock_quantity * COALESCE(cost_price, 0) to the value. Products without
+    a cost_price are still counted but reported separately as
+    `missing_cost_price_count` so the user knows the value figure is partial.
+    """
+    line_value = Product.stock_quantity * func.coalesce(Product.cost_price, 0)
+    missing_cost = case((Product.cost_price.is_(None), 1), else_=0)
+
+    by_cat_q = (
+        select(
+            Product.category,
+            func.coalesce(func.sum(Product.stock_quantity), 0).label("units"),
+            func.coalesce(func.sum(line_value), 0).label("value"),
+            func.count(Product.id).label("product_count"),
+            func.coalesce(func.sum(missing_cost), 0).label("missing_cost_price_count"),
+        )
+        .where(
+            Product.tenant_id == tenant_id,
+            Product.is_active.is_(True),
+        )
+        .group_by(Product.category)
+        .order_by(desc("value"))
+    )
+    result = await db.execute(by_cat_q)
+    rows = result.all()
+
+    by_category = [
+        {
+            "category": r.category,
+            "units": int(r.units or 0),
+            "value": float(r.value or 0),
+            "product_count": int(r.product_count or 0),
+        }
+        for r in rows
+    ]
+    total_units = sum(r["units"] for r in by_category)
+    total_value = sum(r["value"] for r in by_category)
+    total_products = sum(r["product_count"] for r in by_category)
+    missing_cost = sum(int(r.missing_cost_price_count or 0) for r in rows)
+
+    return {
+        "total_value": total_value,
+        "total_units": total_units,
+        "product_count": total_products,
+        "missing_cost_price_count": missing_cost,
+        "by_category": by_category,
+    }
 
 
 async def list_stock_movements(
