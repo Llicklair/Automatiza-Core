@@ -19,7 +19,8 @@ export interface ScannerToken {
 
 export interface ScannedProduct {
     id: string;
-    sku: string;
+    sku: string | null;
+    barcode: string | null;
     name: string;
     description: string | null;
     price: number | null;
@@ -30,7 +31,8 @@ export interface ScannedProduct {
 
 export interface StockMovementResult {
     product_id: string;
-    sku: string;
+    sku: string | null;
+    barcode: string | null;
     name: string;
     movement_type: string;
     quantity: number;
@@ -45,7 +47,8 @@ export interface ScannerWhoami {
 }
 
 export interface ScannerStockMutation {
-    sku: string;
+    sku: string | null;
+    barcode?: string | null;
     stock_after: number;
     low_stock: boolean;
 }
@@ -85,22 +88,24 @@ export const mobileScanner = {
     whoami: (token: string) =>
         scannerFetch<ScannerWhoami>("/whoami", token),
 
-    scanProduct: (token: string, sku: string) =>
+    // `code` admite SKU o código de barras; el backend prueba barcode primero.
+    // El body mantiene la clave `sku` por retrocompatibilidad con la API.
+    scanProduct: (token: string, code: string) =>
         scannerFetch<ScannedProduct>("/scan-product", token, {
             method: "POST",
-            body: JSON.stringify({ sku }),
+            body: JSON.stringify({ sku: code }),
         }),
 
-    stockEntry: (token: string, sku: string, quantity: number) =>
+    stockEntry: (token: string, code: string, quantity: number) =>
         scannerFetch<ScannerStockMutation>("/stock-entry", token, {
             method: "POST",
-            body: JSON.stringify({ sku, quantity }),
+            body: JSON.stringify({ sku: code, quantity }),
         }),
 
-    stockExit: (token: string, sku: string, quantity: number) =>
+    stockExit: (token: string, code: string, quantity: number) =>
         scannerFetch<ScannerStockMutation>("/stock-exit", token, {
             method: "POST",
-            body: JSON.stringify({ sku, quantity }),
+            body: JSON.stringify({ sku: code, quantity }),
         }),
 
     confirmDelivery: (token: string, albaran_number: string) =>
