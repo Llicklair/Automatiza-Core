@@ -5,6 +5,7 @@ import {
     Server, Database, Cpu, Loader2, Terminal,
 } from "lucide-react";
 import { useActualizaciones } from "./_hooks/useActualizaciones";
+import { UpdateChannelSelector } from "@/components/settings/UpdateChannelSelector";
 
 function StatusRow({ icon, label, status, detail }: {
     icon: React.ReactNode;
@@ -221,6 +222,11 @@ export default function ActualizacionesPage() {
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                     Las migraciones de base de datos se aplican automáticamente en el reinicio. Tus datos nunca se pierden.
                 </div>
+            </div>
+
+            {/* DIS.UPD — Selector de canal stable/beta */}
+            <div className="bg-card border border-border rounded-2xl p-6">
+                <UpdateChannelSelector />
             </div>
         </div>
     );
