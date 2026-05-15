@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Package, ScanLine, ArrowRight, Boxes } from "lucide-react";
+import { ValuationWidget } from "./_components/ValuationWidget";
 
 const SECTIONS = [
     {
@@ -36,6 +37,8 @@ export default function InventarioPage() {
                     Control de stock y registro de movimientos por escáner de código.
                 </p>
             </div>
+
+            <ValuationWidget />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
                 {SECTIONS.map((s) => (

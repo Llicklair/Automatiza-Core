@@ -16,12 +16,21 @@ export interface MovementForm {
 export interface ProductForm {
     name: string;
     sku: string;
+    barcode: string;
+    category: string;
+    unit: string;
     price: number;
+    cost_price: number | null;
     stock_min_alert: number;
     description: string;
+    is_active: boolean;
 }
 
-const emptyProductForm: ProductForm = { name: "", sku: "", price: 0, stock_min_alert: 0, description: "" };
+const emptyProductForm: ProductForm = {
+    name: "", sku: "", barcode: "", category: "", unit: "ud",
+    price: 0, cost_price: null, stock_min_alert: 0,
+    description: "", is_active: true,
+};
 
 export function useStock() {
     const toast = useToastStore();
@@ -46,13 +55,28 @@ export function useStock() {
     const [alertValue, setAlertValue] = useState(0);
     const alertInputRef = useRef<HTMLInputElement>(null);
 
-    const load = () =>
-        api.erp.products.list({ limit: 200 })
+    const [query, setQuery] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("");
+    const [debouncedQuery, setDebouncedQuery] = useState("");
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+        return () => clearTimeout(t);
+    }, [query]);
+
+    const load = () => {
+        setLoading(true);
+        return api.erp.products.list({
+            limit: 200,
+            q: debouncedQuery || undefined,
+            category: categoryFilter || undefined,
+        })
             .then(data => setProducts(data.filter(p => p.item_type === "product")))
             .catch(err => logError("inventario/stock/page", err))
             .finally(() => setLoading(false));
+    };
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { load(); }, [debouncedQuery, categoryFilter]);
 
     useEffect(() => {
         if (editingAlertId && alertInputRef.current) alertInputRef.current.focus();
@@ -129,9 +153,14 @@ export function useStock() {
         setProductForm({
             name: product.name,
             sku: product.sku || "",
+            barcode: product.barcode || "",
+            category: product.category || "",
+            unit: product.unit || "ud",
             price: product.price,
+            cost_price: product.cost_price,
             stock_min_alert: product.stock_min_alert,
             description: product.description || "",
+            is_active: product.is_active,
         });
         setShowProductModal(true);
     };
@@ -139,12 +168,19 @@ export function useStock() {
     const handleProductSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSavingProduct(true);
+        const payload = {
+            ...productForm,
+            sku: productForm.sku || null,
+            barcode: productForm.barcode || null,
+            category: productForm.category || null,
+            description: productForm.description || null,
+        };
         try {
             if (editingProduct) {
-                await api.erp.products.update(editingProduct.id, productForm);
+                await api.erp.products.update(editingProduct.id, payload);
                 toast.success("Producto actualizado");
             } else {
-                await api.erp.products.create({ ...productForm, item_type: "product" });
+                await api.erp.products.create({ ...payload, item_type: "product" });
                 toast.success("Producto creado");
             }
             setShowProductModal(false);
@@ -181,6 +217,7 @@ export function useStock() {
         productForm, setProductForm, savingProduct,
         editingAlertId, setEditingAlertId, alertValue, setAlertValue,
         alertInputRef,
+        query, setQuery, categoryFilter, setCategoryFilter,
         handleMovement, handleProductSubmit, handleDelete, load,
         toggleExpand, openMovement, openCreateProduct, openEditProduct,
         startEditAlert, saveAlert,
