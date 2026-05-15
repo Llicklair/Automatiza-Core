@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 type FormState = {
-    name: string; sku: string; description: string;
-    price: string; tax_percentage: string; item_type: string;
+    name: string; sku: string; barcode: string; description: string;
+    category: string; unit: string;
+    price: string; cost_price: string; tax_percentage: string;
+    item_type: string; is_active: boolean;
 };
 
 interface Props {
@@ -55,6 +57,28 @@ export function ProductModal({ editingId, form, onChange, onSubmit, onClose, isS
                             />
                         </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-muted-foreground mb-1.5">Código de barras</label>
+                            <input
+                                type="text"
+                                value={form.barcode}
+                                onChange={e => onChange({ ...form, barcode: e.target.value })}
+                                placeholder="EAN / UPC (opcional)"
+                                className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary font-mono text-sm transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-muted-foreground mb-1.5">Categoría</label>
+                            <input
+                                type="text"
+                                value={form.category}
+                                onChange={e => onChange({ ...form, category: e.target.value })}
+                                placeholder="Ej. ferretería, oficina, ..."
+                                className="w-full bg-background border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                            />
+                        </div>
+                    </div>
                     <div>
                         <label className="block text-sm text-muted-foreground mb-1.5">Descripción</label>
                         <textarea
@@ -76,19 +100,21 @@ export function ProductModal({ editingId, form, onChange, onSubmit, onClose, isS
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-muted-foreground mb-1.5">Precio Base (*) *</label>
-                            <div className="relative">
-                                <DollarSign className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input
-                                    type="number"
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                    value={form.price}
-                                    onChange={e => onChange({ ...form, price: e.target.value })}
-                                    className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
-                                />
-                            </div>
+                            <label className="block text-sm text-muted-foreground mb-1.5">Unidad</label>
+                            <select
+                                value={form.unit}
+                                onChange={e => onChange({ ...form, unit: e.target.value })}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                            >
+                                <option value="ud">ud</option>
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="l">l</option>
+                                <option value="ml">ml</option>
+                                <option value="m">m</option>
+                                <option value="m2">m²</option>
+                                <option value="h">h</option>
+                            </select>
                         </div>
                         <div>
                             <label className="block text-sm text-muted-foreground mb-1.5">% IVA</label>
@@ -103,6 +129,50 @@ export function ProductModal({ editingId, form, onChange, onSubmit, onClose, isS
                                 <option value="0">0% (exento)</option>
                             </select>
                         </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-muted-foreground mb-1.5">Precio venta *</label>
+                            <div className="relative">
+                                <DollarSign className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="number"
+                                    required
+                                    min="0"
+                                    step="0.01"
+                                    value={form.price}
+                                    onChange={e => onChange({ ...form, price: e.target.value })}
+                                    className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm text-muted-foreground mb-1.5">Precio coste</label>
+                            <div className="relative">
+                                <DollarSign className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={form.cost_price}
+                                    onChange={e => onChange({ ...form, cost_price: e.target.value })}
+                                    placeholder="Para valoración de stock"
+                                    className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                        <input
+                            id="catalog-product-active"
+                            type="checkbox"
+                            checked={form.is_active}
+                            onChange={e => onChange({ ...form, is_active: e.target.checked })}
+                            className="h-4 w-4 rounded border-border accent-primary"
+                        />
+                        <label htmlFor="catalog-product-active" className="text-sm text-foreground cursor-pointer">
+                            Activo <span className="text-xs text-muted-foreground">(desactivar lo oculta del inventario operativo)</span>
+                        </label>
                     </div>
                     <div className="pt-4 flex justify-end gap-3">
                         <Button type="button" variant="outline" onClick={onClose}>

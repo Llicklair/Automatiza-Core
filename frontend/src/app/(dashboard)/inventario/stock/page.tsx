@@ -1,6 +1,7 @@
 "use client";
 
-import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { type Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
@@ -8,6 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -27,10 +29,25 @@ export default function StockPage() {
         productForm, setProductForm, savingProduct,
         editingAlertId, setEditingAlertId, alertValue, setAlertValue,
         alertInputRef,
+        query, setQuery, categoryFilter, setCategoryFilter,
         handleMovement, handleProductSubmit, handleDelete,
         toggleExpand, openMovement, openCreateProduct, openEditProduct,
         startEditAlert, saveAlert,
     } = useStock();
+
+    const seenCategoriesRef = useRef<Set<string>>(new Set());
+    const [categoryList, setCategoryList] = useState<string[]>([]);
+    useEffect(() => {
+        let changed = false;
+        for (const p of products) {
+            if (p.category && !seenCategoriesRef.current.has(p.category)) {
+                seenCategoriesRef.current.add(p.category);
+                changed = true;
+            }
+        }
+        if (changed) setCategoryList(Array.from(seenCategoriesRef.current).sort());
+    }, [products]);
+    const hasFilters = query.length > 0 || categoryFilter.length > 0;
 
     const totalStock = products.reduce((acc, p) => acc + (p.stock_quantity || 0), 0);
     const lowStock = products.filter(p => p.stock_min_alert > 0 && p.stock_quantity <= p.stock_min_alert).length;
@@ -234,12 +251,55 @@ export default function StockPage() {
                 />
             </div>
 
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Input
+                        type="text"
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        placeholder="Buscar por nombre, SKU o código de barras..."
+                        className="pl-9 pr-9"
+                    />
+                    {query && (
+                        <button
+                            type="button"
+                            onClick={() => setQuery("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                            aria-label="Limpiar búsqueda"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                </div>
+                <select
+                    value={categoryFilter}
+                    onChange={e => setCategoryFilter(e.target.value)}
+                    className="bg-background border border-border text-foreground text-sm rounded-md px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-ring transition-colors min-w-[180px]"
+                    aria-label="Filtrar por categoría"
+                >
+                    <option value="">Todas las categorías</option>
+                    {categoryList.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+                {hasFilters && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setQuery(""); setCategoryFilter(""); }}
+                        className="text-xs"
+                    >
+                        Limpiar filtros
+                    </Button>
+                )}
+            </div>
+
             <DataTable
                 columns={columns}
                 data={products}
                 isLoading={loading}
-                searchKey="name"
-                searchPlaceholder="Buscar producto o SKU..."
                 facetedFilters={[{ column: "status", title: "Estado", options: statusFilterOptions }]}
                 emptyMessage="Sin productos encontrados."
                 pageSize={20}
