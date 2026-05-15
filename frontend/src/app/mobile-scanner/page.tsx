@@ -16,7 +16,7 @@ function MobileScannerInner() {
     const [authenticated, setAuthenticated] = useState<boolean | null>(null);
     const [deviceInfo, setDeviceInfo] = useState<{ tenant_id: string; device: string } | null>(null);
 
-    const [sku, setSku] = useState("");
+    const [code, setCode] = useState("");
     const [product, setProduct] = useState<ScannedProduct | null>(null);
     const [loading, setLoading] = useState(false);
     const [quantity, setQuantity] = useState(1);
@@ -31,11 +31,13 @@ function MobileScannerInner() {
             .catch(() => setAuthenticated(false));
     }, [token]);
 
+    const productCode = () => product?.barcode || product?.sku || code.trim();
+
     const scanProduct = async () => {
-        if (!sku.trim()) return;
+        if (!code.trim()) return;
         setLoading(true); setProduct(null); setResult(null);
         try {
-            const data = await mobileScanner.scanProduct(token, sku.trim());
+            const data = await mobileScanner.scanProduct(token, code.trim());
             setProduct(data);
         } catch (e: any) {
             setResult({ success: false, message: e.message });
@@ -47,7 +49,7 @@ function MobileScannerInner() {
         if (!product) return;
         setLoading(true); setResult(null);
         try {
-            const data = await mobileScanner.stockEntry(token, product.sku, quantity);
+            const data = await mobileScanner.stockEntry(token, productCode(), quantity);
             setResult({ success: true, message: `+${quantity} → Stock: ${data.stock_after}`, data });
             setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
         } catch (e: any) { setResult({ success: false, message: e.message }); }
@@ -58,7 +60,7 @@ function MobileScannerInner() {
         if (!product) return;
         setLoading(true); setResult(null);
         try {
-            const data = await mobileScanner.stockExit(token, product.sku, quantity);
+            const data = await mobileScanner.stockExit(token, productCode(), quantity);
             setResult({ success: true, message: `-${quantity} → Stock: ${data.stock_after}`, data });
             setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
         } catch (e: any) { setResult({ success: false, message: e.message }); }
@@ -108,20 +110,20 @@ function MobileScannerInner() {
 
             {/* Product scan */}
             <div className="bg-card rounded-xl p-4 space-y-3">
-                <label className="text-xs font-medium text-muted-foreground">Buscar producto por SKU</label>
+                <label className="text-xs font-medium text-muted-foreground">Buscar producto por código</label>
                 <div className="flex gap-2">
                     <input
                         type="text"
-                        value={sku}
-                        onChange={(e) => setSku(e.target.value)}
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && scanProduct()}
-                        placeholder="Escanea o escribe SKU..."
+                        placeholder="Escanea código de barras o SKU..."
                         className="flex-1 bg-muted border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                         autoFocus
                     />
                     <button
                         onClick={scanProduct}
-                        disabled={loading || !sku.trim()}
+                        disabled={loading || !code.trim()}
                         className="px-3 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-foreground"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
@@ -135,7 +137,14 @@ function MobileScannerInner() {
                     <div className="flex items-start justify-between">
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">{product.name}</h3>
-                            <p className="text-[10px] text-muted-foreground">SKU: {product.sku}</p>
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                                {product.sku && (
+                                    <p className="text-[10px] text-muted-foreground font-mono">SKU: {product.sku}</p>
+                                )}
+                                {product.barcode && (
+                                    <p className="text-[10px] text-muted-foreground font-mono">EAN: {product.barcode}</p>
+                                )}
+                            </div>
                         </div>
                         <Package className="w-5 h-5 text-muted-foreground" />
                     </div>

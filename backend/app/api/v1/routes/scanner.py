@@ -73,7 +73,11 @@ async def scan_product(
     scanner=Depends(get_scanner_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Busca un producto por SKU y devuelve info + stock actual."""
+    """Busca un producto por código de barras o SKU y devuelve info + stock actual.
+
+    El campo `sku` del payload se mantiene por compatibilidad pero acepta
+    cualquier código (EAN/UPC o SKU). El servicio prueba barcode primero.
+    """
     try:
         return await svc.scan_product(db, UUID(scanner["tenant_id"]), payload.sku)
     except LookupError as exc:
@@ -88,7 +92,7 @@ async def stock_entry(
     scanner=Depends(get_scanner_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Registra entrada de stock desde el escáner móvil."""
+    """Registra entrada de stock desde el escáner móvil. `payload.sku` acepta barcode o SKU."""
     try:
         return await svc.record_movement(
             db,
@@ -111,7 +115,7 @@ async def stock_exit(
     scanner=Depends(get_scanner_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Registra salida de stock desde el escáner móvil."""
+    """Registra salida de stock desde el escáner móvil. `payload.sku` acepta barcode o SKU."""
     try:
         return await svc.record_movement(
             db,

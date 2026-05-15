@@ -6,7 +6,7 @@ Raises Python exceptions (ValueError, LookupError), never HTTPException.
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import DeliveryNote
@@ -15,21 +15,40 @@ from app.db.models.inventory import Product, StockMovement
 logger = logging.getLogger(__name__)
 
 
-async def scan_product(db: AsyncSession, tenant_id: UUID, sku: str) -> dict:
-    """Look up a product by SKU and return info + stock."""
+async def _find_product_by_code(
+    db: AsyncSession, tenant_id: UUID, code: str
+) -> Product | None:
+    """Find a product matching `code` against barcode first, then SKU.
+
+    Lookups are tenant-scoped. The barcode match takes precedence because
+    physical scanners emit EAN/UPC codes, which is the more specific identifier.
+    """
     result = await db.execute(
         select(Product).where(
             Product.tenant_id == tenant_id,
-            Product.sku == sku,
+            or_(Product.barcode == code, Product.sku == code),
         )
     )
-    product = result.scalars().first()
+    products = list(result.scalars().all())
+    if not products:
+        return None
+    # Prefer barcode match if multiple products share the same string across columns.
+    for p in products:
+        if p.barcode == code:
+            return p
+    return products[0]
+
+
+async def scan_product(db: AsyncSession, tenant_id: UUID, code: str) -> dict:
+    """Look up a product by barcode or SKU and return info + stock."""
+    product = await _find_product_by_code(db, tenant_id, code)
     if not product:
-        raise LookupError(f"Producto con SKU '{sku}' no encontrado")
+        raise LookupError(f"Producto con código '{code}' no encontrado")
 
     return {
         "id": str(product.id),
         "sku": product.sku,
+        "barcode": product.barcode,
         "name": product.name,
         "description": product.description,
         "price": float(product.price) if product.price else None,
@@ -46,22 +65,19 @@ async def scan_product(db: AsyncSession, tenant_id: UUID, sku: str) -> dict:
 async def record_movement(
     db: AsyncSession,
     tenant_id: UUID,
-    sku: str,
+    code: str,
     quantity: float,
     notes: str,
     movement_type: str,
     device: str,
 ) -> dict:
-    """Record a stock movement (entrada/salida) and update product quantity."""
-    result = await db.execute(
-        select(Product).where(
-            Product.tenant_id == tenant_id,
-            Product.sku == sku,
-        )
-    )
-    product = result.scalars().first()
+    """Record a stock movement (entrada/salida) and update product quantity.
+
+    `code` may be a barcode or a SKU — barcode is preferred when both match.
+    """
+    product = await _find_product_by_code(db, tenant_id, code)
     if not product:
-        raise LookupError(f"Producto con SKU '{sku}' no encontrado")
+        raise LookupError(f"Producto con código '{code}' no encontrado")
 
     current_stock = float(product.stock_quantity or 0)
     qty = abs(quantity)
@@ -89,6 +105,7 @@ async def record_movement(
     return {
         "product_id": str(product.id),
         "sku": product.sku,
+        "barcode": product.barcode,
         "name": product.name,
         "movement_type": movement_type,
         "quantity": qty,
