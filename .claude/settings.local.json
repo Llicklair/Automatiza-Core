@@ -113,7 +113,9 @@
       "Bash(PGPASSWORD=pyme_pass \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/psql.exe\" -U pyme_user -h localhost -p 5433 -d pyme_db -c \"\\\\dt\")",
       "Bash(cp \"c:/Users/Marcos/Desktop/automatizacion de empresas/Automatiza-pyme-main/backend/app/db/migrations/versions/0016_sec_rls.py\" \"C:/Users/Marcos/AppData/Local/Programs/automatizapyme-desktop/resources/project/backend/app/db/migrations/versions/0016_sec_rls.py\")",
       "Bash(PYTHONPATH=. DATABASE_URL=\"postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db\" SECRET_KEY=\"ci-test-key-not-prod\" TENANT_ENCRYPTION_KEY=\"ci-test-enc-key-1234567890abc\" \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" -m alembic upgrade head)",
-      "Bash(PGPASSWORD=pyme_pass \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/psql.exe\" -U pyme_user -h localhost -p 5433 -d pyme_db -c \"SELECT email, role, tenant_id FROM users;\")"
+      "Bash(PGPASSWORD=pyme_pass \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/pgsql/bin/psql.exe\" -U pyme_user -h localhost -p 5433 -d pyme_db -c \"SELECT email, role, tenant_id FROM users;\")",
+      "Bash(PYTHONIOENCODING=utf-8 \"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe\" scripts/seed_user_data.py --email marcosreciosanchez@gmail.com --password marcos3448 --base http://localhost:8080)",
+      "Bash(tee /tmp/seed.log)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Marcos\\PostgresData\\17",
