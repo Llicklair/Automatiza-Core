@@ -100,6 +100,7 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Resumen", href: "/inventario" },
                     { label: "Productos", href: "/catalogo" },
                     { label: "Stock", href: "/inventario/stock" },
+                    { label: "TPV", href: "/tpv" },
                     { label: "Escáner almacén", href: "/inventario/scanner" },
                 ],
             },
