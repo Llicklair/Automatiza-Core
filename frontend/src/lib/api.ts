@@ -64,3 +64,9 @@ export type {
     InvitationAccept,
     InvitationAcceptResponse,
 } from "./api/users";
+export type {
+    PosLine,
+    PosSession,
+    PosLineAdd,
+    PosCheckoutRequest,
+} from "./api/pos";

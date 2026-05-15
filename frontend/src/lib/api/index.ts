@@ -38,6 +38,7 @@ import { onboarding } from "./onboarding";
 import { notificationsApi } from "./notifications";
 import { verifactuConfig } from "./verifactuConfig";
 import { presentacion } from "./presentacion";
+import { pos } from "./pos";
 import { modelosAeat } from "./modelosAeat";
 import { request } from "./client";
 
@@ -96,6 +97,7 @@ export const api = {
     notifications: notificationsApi,
     verifactuConfig,
     presentacion,
+    pos,
     modelosAeat,
     search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
     importBulk: {
