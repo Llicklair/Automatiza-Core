@@ -227,9 +227,9 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
             raise
 
     try:
-        await asyncio.wait_for(_run(), timeout=300)
+        await asyncio.wait_for(_run(), timeout=900)
     except asyncio.TimeoutError:
-        logger.error("Timeout global (300s) en orquestador para tarea %s", task_id)
+        logger.error("Timeout global (900s) en orquestador para tarea %s", task_id)
         # OrchestratorTimeoutError extiende Exception (NO TimeoutError) para que
         # _is_transient_error NO lo considere retry-able. Un cuelgue del LLM
         # interno no se cura reintentando con la misma instrucción — solo
@@ -237,7 +237,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
         # sí siguen siendo transient (ConnectionError, OSError).
         from app.core.exceptions import OrchestratorTimeoutError
         raise OrchestratorTimeoutError(
-            f"Orquestador excedio el tiempo limite de 300s para tarea {task_id}"
+            f"Orquestador excedio el tiempo limite de 900s para tarea {task_id}"
         )
 
     result = final_state if final_state is not None else initial_state
