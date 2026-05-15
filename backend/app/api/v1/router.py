@@ -27,6 +27,7 @@ from app.api.v1.routes import (
     notifications,
     onboarding_regap,
     onboarding_wizard,
+    pos,
     presentacion_asistida,
     projects,
     quotes,
@@ -93,3 +94,4 @@ api_router.include_router(notifications.router)
 api_router.include_router(verifactu_config.router)
 api_router.include_router(presentacion_asistida.router)
 api_router.include_router(modelos_aeat.router)
+api_router.include_router(pos.router)

@@ -25,6 +25,7 @@ from .hr_documents import HRDocument  # noqa: F401
 from .inventory import Product, StockMovement  # noqa: F401
 from .notifications import Notification  # noqa: F401
 from .orders import PurchaseOrder, PurchaseOrderLine, SalesOrder, SalesOrderLine  # noqa: F401
+from .pos import PosSession, PosSessionLine  # noqa: F401
 from .projects import Project, ProjectTask  # noqa: F401
 from .tasks import AuditLog, PendingApproval, Task  # noqa: F401
 from .tenant import (  # noqa: F401
