@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from uuid import UUID
 
+from langchain_core.messages import ToolMessage
 from sqlalchemy import select
 
 from app.agents.orchestrator.dispatchers import DISPATCHER_MAP, _dispatch_skill
@@ -129,7 +130,20 @@ async def _invoke_dynamic_employee(
                 ),
                 "",
             )
-            success = not final_text.lower().startswith("error")
+            # Si alguna ToolMessage devolvió output sin error, consideramos el subtask
+            # exitoso aunque el LLM cierre con "Error..." (p. ej. al intentar llamar
+            # tools de "finalizar" que no existen). Sin esto, un PDF creado se marca
+            # como failed solo porque el LLM emitió un mensaje final desorientado.
+            successful_tool_calls = [
+                m for m in messages
+                if isinstance(m, ToolMessage)
+                and m.content
+                and not str(m.content).lower().startswith("error")
+            ]
+            if successful_tool_calls:
+                success = True
+            else:
+                success = bool(final_text) and not final_text.lower().startswith("error")
             try:
                 await log_activity(
                     db=db,
