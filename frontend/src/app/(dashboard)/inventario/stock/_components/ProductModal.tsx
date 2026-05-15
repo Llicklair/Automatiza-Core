@@ -92,6 +92,16 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                             </select>
                         </div>
                     </div>
+                    <div>
+                        <Label className="text-xs">Ubicación en almacén</Label>
+                        <Input
+                            type="text"
+                            value={productForm.location}
+                            onChange={e => setProductForm(f => ({ ...f, location: e.target.value }))}
+                            placeholder="Ej. Pasillo 1, Sección A-3, Estantería 4"
+                            className="mt-1.5"
+                        />
+                    </div>
                     <div className="grid grid-cols-3 gap-3">
                         <div>
                             <Label className="text-xs">Precio venta</Label>
