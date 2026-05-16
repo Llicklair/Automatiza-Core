@@ -38,14 +38,6 @@ logger = logging.getLogger(__name__)
 VALID_STATUSES = ("draft", "confirmed", "delivered")
 
 
-class AlbaranStateConflictError(Exception):
-    """Raised when an albarán operation is blocked by its current status.
-
-    Used as a defensive guard until reverse-stock movements are implemented:
-    confirmed/delivered albaranes can't be deleted or downgraded to draft
-    without leaving orphan StockMovement rows and inflated negative stock.
-    """
-
 # ---------------------------------------------------------------------------
 # client commands
 # ---------------------------------------------------------------------------
@@ -462,6 +454,13 @@ def _albaran_stock_reference(albaran_id: UUID) -> str:
     return f"DELIVERY_NOTE:{albaran_id}"
 
 
+def _albaran_stock_reverse_reference(albaran_id: UUID) -> str:
+    """Reference string for the compensating StockMovement(entrada) generated
+    when an albarán is downgraded from confirmed/delivered back to draft, or
+    deleted while in confirmed/delivered state."""
+    return f"DELIVERY_NOTE_REVERSED:{albaran_id}"
+
+
 async def _deduct_stock_for_albaran(
     db: AsyncSession, note: DeliveryNote, user_id: UUID | None
 ) -> None:
@@ -520,6 +519,80 @@ async def _deduct_stock_for_albaran(
         )
 
 
+async def _revert_stock_for_albaran(
+    db: AsyncSession, note: DeliveryNote, user_id: UUID | None
+) -> None:
+    """Generate StockMovement(entrada) rows to compensate a prior deduction.
+
+    Mirror of `_deduct_stock_for_albaran`: sums back the quantities that were
+    subtracted when the albarán was confirmed. Idempotent: if a movement with
+    `reference=DELIVERY_NOTE_REVERSED:<id>` already exists, this is a no-op.
+
+    Only acts on lines whose original deduction is recorded (i.e. the albarán
+    actually had a DELIVERY_NOTE:<id> StockMovement). If no original deduction
+    is found, returns silently — nothing to revert.
+
+    Does NOT commit — the caller controls the transaction.
+    """
+    forward_reference = _albaran_stock_reference(note.id)
+    reverse_reference = _albaran_stock_reverse_reference(note.id)
+
+    # Idempotency: bail if reversed already.
+    already_reversed = await db.execute(
+        select(StockMovement.id)
+        .where(
+            StockMovement.tenant_id == note.tenant_id,
+            StockMovement.reference == reverse_reference,
+        )
+        .limit(1)
+    )
+    if already_reversed.scalar_one_or_none():
+        return
+
+    # Sanity check: must have a forward deduction before reverting.
+    forward = await db.execute(
+        select(StockMovement.id)
+        .where(
+            StockMovement.tenant_id == note.tenant_id,
+            StockMovement.reference == forward_reference,
+        )
+        .limit(1)
+    )
+    if not forward.scalar_one_or_none():
+        return
+
+    for line in note.lines:
+        if line.product_id is None:
+            continue
+        qty = int(line.quantity or 0)
+        if qty <= 0:
+            continue
+        product_res = await db.execute(
+            select(Product).where(
+                Product.id == line.product_id,
+                Product.tenant_id == note.tenant_id,
+            )
+        )
+        product = product_res.scalar_one_or_none()
+        if product is None:
+            continue
+        new_stock = int(product.stock_quantity) + qty
+        product.stock_quantity = new_stock
+        db.add(
+            StockMovement(
+                tenant_id=note.tenant_id,
+                product_id=product.id,
+                user_id=user_id,
+                movement_type="entrada",
+                quantity=qty,
+                stock_after=new_stock,
+                unit_cost=product.cost_price,
+                reference=reverse_reference,
+                notes=f"Reversa albarán {note.albaran_number}",
+            )
+        )
+
+
 async def update_albaran_status(
     albaran_id: UUID,
     tenant_id: UUID,
@@ -540,43 +613,36 @@ async def update_albaran_status(
         raise LookupError("Albaran no encontrado")
 
     old_status = note.status
-
-    # Defensive guard: regressing from confirmed → draft would leave the
-    # stock-deduction StockMovement orphan, since we don't yet generate a
-    # compensating "entrada" movement. Block until reverse flow exists.
-    if old_status == "confirmed" and new_status == "draft":
-        raise AlbaranStateConflictError(
-            "No se puede regresar un albarán confirmado a borrador "
-            "(quedaría stock descontado sin movimiento compensatorio)."
-        )
-
     note.status = new_status
 
     if new_status == "confirmed" and old_status != "confirmed":
+        # Status sube a confirmed → descontar stock (idempotente).
         await _deduct_stock_for_albaran(db, note, user_id)
+    elif old_status in ("confirmed", "delivered") and new_status == "draft":
+        # Status baja a draft tras haber confirmado → revertir stock con
+        # movimiento entrada compensatorio (idempotente).
+        await _revert_stock_for_albaran(db, note, user_id)
 
     await db.commit()
     await db.refresh(note)
     return note
 
 
-async def delete_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) -> None:
+async def delete_albaran(
+    albaran_id: UUID, tenant_id: UUID, db: AsyncSession, *, user_id: UUID | None = None
+) -> None:
     result = await db.execute(
-        select(DeliveryNote).where(
-            DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == tenant_id
-        )
+        select(DeliveryNote)
+        .where(DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == tenant_id)
+        .options(selectinload(DeliveryNote.lines))
     )
     note = result.scalar_one_or_none()
     if not note:
         raise LookupError("Albaran no encontrado")
-    # Defensive guard: deleting a confirmed/delivered albarán would leave
-    # its StockMovement(salida) orphan and inflate negative stock. Block
-    # until the reverse-stock flow is implemented.
+    # Si el albarán había confirmado stock, generar el movimiento de entrada
+    # compensatorio antes de borrar para no dejar negative stock.
     if note.status in ("confirmed", "delivered"):
-        raise AlbaranStateConflictError(
-            f"No se puede eliminar un albarán en estado '{note.status}'. "
-            "Cancela o reversa el albarán antes de borrarlo."
-        )
+        await _revert_stock_for_albaran(db, note, user_id)
     await db.delete(note)
     await db.commit()
 

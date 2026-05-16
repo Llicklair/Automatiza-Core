@@ -405,7 +405,7 @@ langgraph/langchain).
 - [x] P0 #0 backup package reexports (test ahora importa de legacy_local)
 - [x] P0 #1 delete sin await
 - [x] P0 #2 test 5→7
-- [x] P0 #3 bloqueo defensivo albaran (409 confirmed/delivered) — reversa completa queda como tarea futura
+- [x] P0 #3 reversa COMPLETA: `_revert_stock_for_albaran` + delete con reverso automático (bloqueo 409 eliminado)
 - [x] P0 #4 no-redef + TypedDict casts
 - [x] P0 #5 fetch en mantenimiento → system.*
 - [x] P0 #6 exhaustive-deps (6 archivos con useCallback)
@@ -413,7 +413,7 @@ langgraph/langchain).
 - [~] P1 #8 funciones PDF gigantes (diferido — requiere smoke tests previos)
 - [~] P1 #9 dispatchers orchestrator (diferido — operaciones cohesivas, no switches)
 - [~] P1 #10 páginas frontend monolíticas (diferido — sin tests visuales)
-- [~] P1 #11 services→agents (resuelto, sólo queda mover check_agent_budget)
+- [x] P1 #11 services→agents (check_agent_budget movido a services/agent_budget.py, shim en agents/workers/)
 - [x] P2 #12 ruff --fix (607 fixes, 252 archivos)
 - [x] P2 #13 ruff manual (657 → 261, line-length 120, UP007+E741+E702 cero)
 - [x] P2 #14 TODOs documentados, `print()` en event_bus → `_logger.info`

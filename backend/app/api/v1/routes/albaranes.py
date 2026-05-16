@@ -79,8 +79,6 @@ async def update_albaran_status(
             db,
             user_id=current_user.id,
         )
-    except svc.AlbaranStateConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except LookupError as exc:
@@ -96,9 +94,9 @@ async def delete_albaran(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        await svc.delete_albaran(albaran_id, current_user.tenant_id, db)
-    except svc.AlbaranStateConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        await svc.delete_albaran(
+            albaran_id, current_user.tenant_id, db, user_id=current_user.id
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
