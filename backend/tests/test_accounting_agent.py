@@ -1,8 +1,8 @@
 """Tests for the accounting agent: graph structure, tools, and node logic."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from langchain_core.messages import AIMessage, HumanMessage
 
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 
 # ── Graph structure ───────────────────────────────────────────────────────────
 
@@ -27,9 +27,9 @@ def test_graph_entry_point():
 
 # ── Tools registration ────────────────────────────────────────────────────────
 
-def test_five_tools_registered():
+def test_seven_tools_registered():
     from app.agents.accounting.agent import tools
-    assert len(tools) == 5
+    assert len(tools) == 7
 
 
 def test_tool_names():
@@ -40,6 +40,8 @@ def test_tool_names():
     assert "get_account_balance" in names
     assert "get_profit_loss_summary" in names
     assert "list_fixed_assets" in names
+    assert "create_pdf_report" in names
+    assert "create_pdf_text_report" in names
 
 
 def test_tools_have_docstrings():

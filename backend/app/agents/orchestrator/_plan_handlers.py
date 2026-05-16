@@ -328,7 +328,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
     for idx, step in enumerate(plan_result.steps):
         agent = step.agent if step.agent in VALID_DOMAINS else "unknown"
         raw_deps = getattr(step, "needs_output_from", None) or []
-        params: dict = {"intent": step.instruction}
+        params = {"intent": step.instruction}
         emp_id = getattr(step, "employee_id", None)
         if agent == "custom" and emp_id and emp_id in valid_employee_ids:
             params["employee_id"] = emp_id
@@ -413,7 +413,7 @@ async def plan_node(state: OrchestratorState) -> dict:
                     plan = [
                         {
                             "id": "step_1",
-                            "agent": _emp.domain,
+                            "agent": str(_emp.domain),
                             "action": "process",
                             "params": {"intent": state["user_intent"]},
                             "depends_on": [],

@@ -161,7 +161,7 @@ async def run_workflow_agent(
                     )
 
                 if action == "delete":
-                    db.delete(existing_wf)
+                    await db.delete(existing_wf)
                     await db.commit()
                     return WorkflowAgentResult(
                         success=True, action="delete", workflow_id=str(existing_wf.id)

@@ -12,11 +12,10 @@ import os
 import time
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from app.services import backup as backup_module
+from app.services.backup import legacy_local as backup_module
 
 
 def test_parse_db_url_postgresql_asyncpg_format():

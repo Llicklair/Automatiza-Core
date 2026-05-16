@@ -540,7 +540,9 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
     if addressed_id:
         try:
             from uuid import UUID
+
             from sqlalchemy import select
+
             from app.db.base import AsyncSessionLocal
             from app.db.models.ai_employees import AIEmployee
 
@@ -556,7 +558,7 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
                 )
                 return {
                     **state,
-                    "classified_domain": _emp.domain,
+                    "classified_domain": str(_emp.domain),
                     "status": TaskStatus.PLANNING,
                     "iteration_count": state.get("iteration_count", 0) + 1,
                 }
