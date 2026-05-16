@@ -14,7 +14,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -88,7 +88,7 @@ export default function BienvenidaPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState<string | null>(null);
 
-    async function load() {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.onboarding.get();
@@ -98,11 +98,11 @@ export default function BienvenidaPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [toast]);
 
     useEffect(() => {
         load();
-    }, []);
+    }, [load]);
 
     async function toggleStep(step: OnboardingStepKey, value: boolean) {
         setBusy(step);

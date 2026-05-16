@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     AlertCircle,
     CheckCircle2,
@@ -39,7 +39,7 @@ export default function RegapWizardPage() {
     const [nifCliente, setNifCliente] = useState("");
     const toast = useToastStore();
 
-    async function load() {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.regap.get();
@@ -49,11 +49,11 @@ export default function RegapWizardPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [toast]);
 
     useEffect(() => {
         load();
-    }, []);
+    }, [load]);
 
     async function handleStartBranch(b: Branch) {
         const method: RegapAuthMethod =

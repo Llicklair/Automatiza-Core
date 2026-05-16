@@ -7,9 +7,9 @@ Read-only helpers are imported from queries.py where needed.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, date as date_type, datetime, timezone
+from datetime import UTC, datetime
+from datetime import date as date_type
 from decimal import Decimal
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
@@ -36,6 +36,15 @@ from app.services.sales.queries import _get_quote_or_raise, _quote_query_with_re
 logger = logging.getLogger(__name__)
 
 VALID_STATUSES = ("draft", "confirmed", "delivered")
+
+
+class AlbaranStateConflictError(Exception):
+    """Raised when an albarán operation is blocked by its current status.
+
+    Used as a defensive guard until reverse-stock movements are implemented:
+    confirmed/delivered albaranes can't be deleted or downgraded to draft
+    without leaving orphan StockMovement rows and inflated negative stock.
+    """
 
 # ---------------------------------------------------------------------------
 # client commands
@@ -392,9 +401,9 @@ async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
 
 async def create_albaran(
     tenant_id: UUID,
-    client_id: Optional[UUID],
-    entry_date: Optional[date_type],
-    notes: Optional[str],
+    client_id: UUID | None,
+    entry_date: date_type | None,
+    notes: str | None,
     lines: list,
     db: AsyncSession,
 ) -> DeliveryNote:
@@ -454,7 +463,7 @@ def _albaran_stock_reference(albaran_id: UUID) -> str:
 
 
 async def _deduct_stock_for_albaran(
-    db: AsyncSession, note: DeliveryNote, user_id: Optional[UUID]
+    db: AsyncSession, note: DeliveryNote, user_id: UUID | None
 ) -> None:
     """Generate StockMovement(salida) rows for each line with a product_id.
 
@@ -517,7 +526,7 @@ async def update_albaran_status(
     new_status: str,
     db: AsyncSession,
     *,
-    user_id: Optional[UUID] = None,
+    user_id: UUID | None = None,
 ) -> DeliveryNote:
     if new_status not in VALID_STATUSES:
         raise ValueError("Estado no valido")
@@ -531,6 +540,16 @@ async def update_albaran_status(
         raise LookupError("Albaran no encontrado")
 
     old_status = note.status
+
+    # Defensive guard: regressing from confirmed → draft would leave the
+    # stock-deduction StockMovement orphan, since we don't yet generate a
+    # compensating "entrada" movement. Block until reverse flow exists.
+    if old_status == "confirmed" and new_status == "draft":
+        raise AlbaranStateConflictError(
+            "No se puede regresar un albarán confirmado a borrador "
+            "(quedaría stock descontado sin movimiento compensatorio)."
+        )
+
     note.status = new_status
 
     if new_status == "confirmed" and old_status != "confirmed":
@@ -550,6 +569,14 @@ async def delete_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) ->
     note = result.scalar_one_or_none()
     if not note:
         raise LookupError("Albaran no encontrado")
+    # Defensive guard: deleting a confirmed/delivered albarán would leave
+    # its StockMovement(salida) orphan and inflate negative stock. Block
+    # until the reverse-stock flow is implemented.
+    if note.status in ("confirmed", "delivered"):
+        raise AlbaranStateConflictError(
+            f"No se puede eliminar un albarán en estado '{note.status}'. "
+            "Cancela o reversa el albarán antes de borrarlo."
+        )
     await db.delete(note)
     await db.commit()
 
@@ -575,7 +602,7 @@ async def create_purchase_order(
     order = PurchaseOrder(
         tenant_id=tenant_id,
         order_number=order_number,
-        date=data.pop("date", None) or datetime.now(timezone.utc),
+        date=data.pop("date", None) or datetime.now(UTC),
         amount_base=round(amount_base, 2),
         tax_amount=round(tax_amount, 2),
         amount_total=round(amount_base + tax_amount, 2),
@@ -665,7 +692,7 @@ async def create_sales_order(
     order = SalesOrder(
         tenant_id=tenant_id,
         order_number=order_number,
-        date=data.pop("date", None) or datetime.now(timezone.utc),
+        date=data.pop("date", None) or datetime.now(UTC),
         amount_base=round(amount_base, 2),
         tax_amount=round(tax_amount, 2),
         amount_total=round(amount_base + tax_amount, 2),

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Receipt, Plus, Check, X, Loader2, Download, Upload, Trash2, RefreshCw,
 } from "lucide-react";
@@ -83,7 +83,7 @@ export default function GastosPage() {
     const [actionId, setActionId] = useState<string | null>(null);
     const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setIsLoading(true);
         try {
             const [exp, emp] = await Promise.all([
@@ -94,9 +94,9 @@ export default function GastosPage() {
             setEmployees(emp);
         } catch { /* noop */ }
         finally { setIsLoading(false); }
-    };
+    }, [statusTab]);
 
-    useEffect(() => { load(); }, [statusTab]);
+    useEffect(() => { load(); }, [load]);
 
     const pendingTotal = expenses.filter((e) => e.status === "pending").reduce((s, e) => s + e.amount, 0);
     const pendingCount = expenses.filter((e) => e.status === "pending").length;

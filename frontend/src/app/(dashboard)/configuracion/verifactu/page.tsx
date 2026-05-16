@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Info, Loader2, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import type { VerifactuConfig, VerifactuMode } from "@/lib/api/verifactuConfig";
@@ -22,7 +22,7 @@ export default function VerifactuConfigPage() {
     const [busy, setBusy] = useState(false);
     const toast = useToastStore();
 
-    async function load() {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.verifactuConfig.get();
@@ -32,11 +32,11 @@ export default function VerifactuConfigPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [toast]);
 
     useEffect(() => {
         load();
-    }, []);
+    }, [load]);
 
     async function setMode(mode: VerifactuMode) {
         setBusy(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Product, type StockMovement } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { useConfirmStore } from "@/stores/confirm";
@@ -65,7 +65,7 @@ export function useStock() {
         return () => clearTimeout(t);
     }, [query]);
 
-    const load = () => {
+    const load = useCallback(() => {
         setLoading(true);
         return api.erp.products.list({
             limit: 200,
@@ -75,9 +75,9 @@ export function useStock() {
             .then(data => setProducts(data.filter(p => p.item_type === "product")))
             .catch(err => logError("inventario/stock/page", err))
             .finally(() => setLoading(false));
-    };
+    }, [debouncedQuery, categoryFilter]);
 
-    useEffect(() => { load(); }, [debouncedQuery, categoryFilter]);
+    useEffect(() => { load(); }, [load]);
 
     useEffect(() => {
         if (editingAlertId && alertInputRef.current) alertInputRef.current.focus();
