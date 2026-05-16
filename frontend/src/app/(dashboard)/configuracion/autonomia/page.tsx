@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, RotateCcw, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AutonomyMode, PolicyList } from "@/lib/api/autonomy";
@@ -51,7 +51,7 @@ export default function AutonomyPage() {
     const [busy, setBusy] = useState<string | null>(null);
     const toast = useToastStore();
 
-    async function load() {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.autonomy.list();
@@ -61,11 +61,11 @@ export default function AutonomyPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [toast]);
 
     useEffect(() => {
         load();
-    }, []);
+    }, [load]);
 
     async function changeMode(domain: string, mode: AutonomyMode) {
         setBusy(domain);

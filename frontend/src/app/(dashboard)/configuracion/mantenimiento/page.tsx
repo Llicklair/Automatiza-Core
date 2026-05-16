@@ -17,7 +17,7 @@ import {
     Loader2,
     Wrench,
 } from "lucide-react";
-import { BASE, getToken } from "@/lib/api/client";
+import { system } from "@/lib/api/system";
 import { useToastStore } from "@/stores/toast";
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -29,24 +29,9 @@ export default function MantenimientoPage() {
     const [backfillResult, setBackfillResult] = useState<unknown>(null);
 
     async function downloadBundle() {
-        const token = getToken();
-        if (!token) {
-            toast.show("No autenticado.", "error");
-            return;
-        }
         setBundleBusy(true);
         try {
-            const res = await fetch(`${BASE}/api/v1/system/diagnostic-bundle`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `automatizapyme-diagnostic-${Date.now()}.zip`;
-            a.click();
-            URL.revokeObjectURL(url);
+            await system.downloadDiagnosticBundle();
             toast.show("Bundle descargado. Envíalo al soporte.", "success");
         } catch (e: any) {
             toast.show(`Error: ${e.message}`, "error");
@@ -60,23 +45,9 @@ export default function MantenimientoPage() {
             toast.show("Indica el NIF emisor antes de iniciar.", "warning");
             return;
         }
-        const token = getToken();
-        if (!token) return;
         setBackfillBusy(true);
         try {
-            const res = await fetch(`${BASE}/api/v1/system/backfill/verifactu`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ nif_emisor: backfillNif.trim().toUpperCase() }),
-            });
-            if (!res.ok) {
-                const body = await res.text();
-                throw new Error(`HTTP ${res.status}: ${body}`);
-            }
-            const data = await res.json();
+            const data = await system.runVerifactuBackfill(backfillNif);
             setBackfillResult(data);
             toast.show("Backfill ejecutado.", "success");
         } catch (e: any) {
