@@ -26,7 +26,7 @@ MANUAL produce sugerencia sin tool call real.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -138,7 +138,7 @@ async def set_policy(
     if record is not None:
         record.mode = mode
         record.updated_by = updated_by
-        record.updated_at = datetime.now(timezone.utc)
+        record.updated_at = datetime.now(UTC)
     else:
         record = AutonomyPolicy(
             tenant_id=tenant_id,

@@ -6,14 +6,13 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.agents.agent_tools.semantic_search import (
     _cosine_distance,
     cosine_topk,
     is_missing_table_or_extension,
     similarity_from_distance,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestCosineDistance:

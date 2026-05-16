@@ -2,7 +2,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.services.i18n.tenant_locale import (
     get_tenant_locale,
     resolve_locale,
@@ -69,8 +68,8 @@ def test_invoice_lines_table_acepta_locale():
     from app.services.documents._pdf_base import REPORTLAB_AVAILABLE
     if not REPORTLAB_AVAILABLE:
         pytest.skip("reportlab no disponible en test env")
-    from reportlab.lib.styles import getSampleStyleSheet
     from app.services.pdf._invoice_sections import _invoice_lines_table
+    from reportlab.lib.styles import getSampleStyleSheet
 
     styles = getSampleStyleSheet()
     header_sty = styles["Normal"]

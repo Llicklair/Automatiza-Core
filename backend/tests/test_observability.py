@@ -3,7 +3,6 @@ import json
 import logging
 
 import pytest
-
 from app.core.observability import (
     StructuredFormatter,
     get_logger,

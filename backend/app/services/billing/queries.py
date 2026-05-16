@@ -5,7 +5,7 @@ No side effects: no INSERT/UPDATE/DELETE, no file writes, no commits.
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import desc, select
@@ -164,7 +164,7 @@ async def build_rectificative_pdf(
 
     data = {
         "number": f"FR-{(invoice.invoice_number or str(invoice.id)[:8]).upper()}",
-        "date": datetime.now(timezone.utc).isoformat(),
+        "date": datetime.now(UTC).isoformat(),
         "original_invoice": {
             "number": invoice.invoice_number or str(invoice.id)[:8],
             "date": invoice.date.isoformat() if invoice.date else "",

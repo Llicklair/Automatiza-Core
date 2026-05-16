@@ -17,7 +17,6 @@ from uuid import uuid4
 
 import pytest
 from langchain_core.messages import AIMessage
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -119,10 +118,11 @@ class TestBillingAgentE2E:
     async def test_list_invoices_flow(
         self, db: AsyncSession, seed_tenant_and_user
     ):
-        from app.agents.billing.agent import graph
-        from app.db.models.models import Client
-        from app.db.models.billing import Invoice
         from datetime import datetime
+
+        from app.agents.billing.agent import graph
+        from app.db.models.billing import Invoice
+        from app.db.models.models import Client
 
         tenant, _user, _token = seed_tenant_and_user
 

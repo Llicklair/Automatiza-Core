@@ -1,9 +1,14 @@
-﻿import sys, os
+﻿import sys
+
 sys.path.insert(0, r"C:\Users\Marcos\Desktop\atomatizacion de empresas\backend")
-import asyncio, pprint
-from sqlalchemy import select
+import asyncio
+import pprint
+
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Task, WorkflowExecution
+from sqlalchemy import select
+
+
 async def run():
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Task).order_by(Task.created_at.desc()).limit(1))

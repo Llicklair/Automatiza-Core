@@ -1,7 +1,8 @@
 """Tests para endpoints Recruitment /api/v1/recruitment/*."""
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 class TestRecruitmentPositions:

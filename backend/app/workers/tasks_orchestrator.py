@@ -123,7 +123,9 @@ async def resume_orchestrator(task_id: str):
 async def _set_agent_status(db, employee_id: str, tenant_id: str, status: str) -> None:
     """Actualiza el status de un AIEmployee en la sesión actual."""
     import uuid as _uuid
+
     from sqlalchemy import select as _select
+
     from app.db.models.ai_employees import AIEmployee
     result = await db.execute(
         _select(AIEmployee).where(

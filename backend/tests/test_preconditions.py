@@ -1,12 +1,11 @@
 """Tests para el kill-switch de precondiciones (CONT.KILL)."""
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.main import app
 from app.services.system.preconditions import (
     REQUIRED_TABLES,
     check_invoice_preconditions,
 )
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio

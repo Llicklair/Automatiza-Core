@@ -2,6 +2,7 @@
 import pytest
 from httpx import AsyncClient
 
+
 class TestUsers:
     @pytest.mark.asyncio
     async def test_list_users_unauthorized(self, client: AsyncClient):

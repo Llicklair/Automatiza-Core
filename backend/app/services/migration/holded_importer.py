@@ -17,11 +17,11 @@ APScheduler one-shot tras confirmación del wizard.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 from decimal import Decimal
 from typing import Any
 
 from app.services.migration.csv_importer import ImportRow
-
 
 HOLDED_BASE_URL = "https://api.holded.com/api/invoicing/v1"
 
@@ -55,7 +55,7 @@ def normalize_holded_invoice(doc: dict[str, Any]) -> ImportRow:
 
     Holded entrega importes en céntimos y date como timestamp Unix.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     def _from_cents(v: Any) -> Decimal | None:
         if v is None:
@@ -68,7 +68,7 @@ def normalize_holded_invoice(doc: dict[str, Any]) -> ImportRow:
     date_iso = None
     try:
         if doc.get("date"):
-            date_iso = datetime.fromtimestamp(int(doc["date"]), tz=timezone.utc).date().isoformat()
+            date_iso = datetime.fromtimestamp(int(doc["date"]), tz=UTC).date().isoformat()
     except (ValueError, TypeError, OSError):
         date_iso = None
 

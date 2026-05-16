@@ -7,11 +7,9 @@ Pasamos UUID objects directamente para que SQLAlchemy (SQLite) funcione.
 import uuid
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.services.workflow.activity import log_activity
 from app.db.models.ai_employees import ActivityEntry
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestActivityService:

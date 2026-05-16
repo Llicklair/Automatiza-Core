@@ -10,7 +10,6 @@ Revises: 0025_pos_sessions
 
 from alembic import op
 
-
 revision = "0026_product_location"
 down_revision = "0025_pos_sessions"
 branch_labels = None

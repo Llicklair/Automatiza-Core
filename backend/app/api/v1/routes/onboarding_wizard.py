@@ -13,8 +13,6 @@ from app.db.base import get_db
 from app.db.models.auth import User
 from app.services.onboarding.simulate_303 import simulate_modelo_303
 from app.services.onboarding.wizard import (
-    STEP_KEYS,
-    StepKey,
     get_state,
     reset,
     set_step,

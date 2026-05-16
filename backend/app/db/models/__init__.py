@@ -5,9 +5,16 @@ todas las tablas al inspeccionar Base.metadata.
 """
 
 from .accounting import BankTransaction, FixedAsset, JournalEntry, JournalLine  # noqa: F401
-from .alerts import AlertLog  # noqa: F401
 from .ai_employees import ActivityEntry, AgentSkill, AIEmployee, TokenLedger  # noqa: F401
-from .auth import ClientPortalToken, PasswordResetToken, Tenant, TenantRegapStatus, User, UserInvitation  # noqa: F401
+from .alerts import AlertLog  # noqa: F401
+from .auth import (  # noqa: F401
+    ClientPortalToken,
+    PasswordResetToken,
+    Tenant,
+    TenantRegapStatus,
+    User,
+    UserInvitation,
+)
 from .billing import (  # noqa: F401
     Invoice,
     InvoiceLine,

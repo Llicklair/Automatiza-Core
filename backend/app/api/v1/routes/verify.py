@@ -13,10 +13,9 @@ Cumplimiento: RD 1007/2023 Art. 8 — el sistema de emisión debe permitir
 verificar la integridad del registro de facturación a terceros legitimados.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
 
 from app.db.base import get_db
 from app.db.models.billing import VerifactuRecord

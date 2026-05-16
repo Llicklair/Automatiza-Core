@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 from sqlalchemy import func, select
 
 from app.db.base import AsyncSessionLocal
-from app.db.models.accounting import BankTransaction, FixedAsset, JournalEntry, JournalLine
+from app.db.models.accounting import FixedAsset, JournalEntry, JournalLine
 
 logger = logging.getLogger(__name__)
 

@@ -241,7 +241,7 @@ async def debug_llm(tenant_id, db: AsyncSession) -> dict:
         )
         info["response"] = response.content[:200]
         info["status"] = "OK"
-    except asyncio.TimeoutError:
+    except TimeoutError:
         info["status"] = "TIMEOUT (30s)"
     except Exception as e:
         info["status"] = f"ERROR: {type(e).__name__}: {str(e)}"

@@ -6,7 +6,6 @@ import os
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from cryptography.fernet import Fernet
 
@@ -22,13 +21,10 @@ os.environ["FRONTEND_URL"] = "http://localhost:3000"
 # base.py se ejecuta al importarse y crea un engine con pool_size (incompatible con SQLite).
 # Lo parcheamos ANTES de importar la app.
 
-from sqlalchemy import JSON, event
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
-
 # ── Hacer que JSONB compile como JSON en SQLite ──────────────────────────────
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 if not hasattr(SQLiteTypeCompiler, '_original_visit_JSON'):
     SQLiteTypeCompiler._original_visit_JSON = getattr(SQLiteTypeCompiler, 'visit_JSON', None)
@@ -39,8 +35,8 @@ def _visit_JSONB(self, type_, **kw):
 SQLiteTypeCompiler.visit_JSONB = _visit_JSONB
 
 # ── Hacer que BigInteger compile como INTEGER en SQLite (para autoincrement) ──
-from sqlalchemy import BigInteger, Integer, event as sa_event
-from sqlalchemy.dialects.sqlite.base import SQLiteDDLCompiler
+from sqlalchemy import BigInteger, Integer
+from sqlalchemy import event as sa_event
 
 _bigint_patch_registered = False
 
@@ -106,6 +102,7 @@ app.dependency_overrides[get_db] = _override_get_db
 
 # ── Desactivar rate limiting en tests ────────────────────────────────────────
 from app.middleware.rate_limit import limiter
+
 limiter.enabled = False
 
 

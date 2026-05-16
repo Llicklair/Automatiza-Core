@@ -1,8 +1,8 @@
 """Tests for AI Employees API — full CRUD, error paths, budget enforcement."""
-import pytest
-from httpx import AsyncClient
 from uuid import uuid4
 
+import pytest
+from httpx import AsyncClient
 
 # ── No auth ───────────────────────────────────────────────────────────────────
 

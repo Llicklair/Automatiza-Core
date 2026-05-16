@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -95,7 +95,7 @@ class AutonomyDecision:
             action_description=self.action_summary,
             action_payload=self.action_payload,
             risk_level=risk_level,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=expires_in_days),
+            expires_at=datetime.now(UTC) + timedelta(days=expires_in_days),
             status="pending",
         )
         db.add(approval)

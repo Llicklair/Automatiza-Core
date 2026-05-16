@@ -1,7 +1,8 @@
 """Tests para endpoints Sales Orders /api/v1/orders/*."""
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 from tests.conftest import _TestSessionLocal
 

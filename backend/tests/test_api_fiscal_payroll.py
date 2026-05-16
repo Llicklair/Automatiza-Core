@@ -5,10 +5,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from app.db.models.models import Client, Employee, Invoice, InvoiceLine, Tenant
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models.models import Client, Employee, Invoice, InvoiceLine, Tenant
 
 
 @pytest.mark.asyncio

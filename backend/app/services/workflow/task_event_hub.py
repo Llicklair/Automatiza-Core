@@ -24,7 +24,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import defaultdict
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 logger = logging.getLogger("task_event_hub")
 
@@ -83,7 +84,7 @@ class TaskEventHub:
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=timeout_seconds)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.info("task_event_hub stream timeout task=%s", task_id)
                     return
                 if event.get("__eos__"):

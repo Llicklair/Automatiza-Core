@@ -1,5 +1,7 @@
-import httpx
 import asyncio
+
+import httpx
+
 
 async def test():
     async with httpx.AsyncClient() as client:

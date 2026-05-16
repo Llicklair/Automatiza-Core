@@ -1,11 +1,9 @@
 """Tests para la cadena hash Verifactu (FAC.HASH) — RD 1007/2023 Art. 8."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
-
-from app.db.models.billing import Invoice, VerifactuRecord
+from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 from app.services.billing.verifactu_chain import (
     append_verifactu_record,
@@ -20,7 +18,7 @@ def _make_invoice(tenant_id, client_id, *, invoice_number: str, importe: Decimal
         tenant_id=tenant_id,
         client_id=client_id,
         invoice_number=invoice_number,
-        date=datetime(2026, 5, 14, 10, 0, tzinfo=timezone.utc),
+        date=datetime(2026, 5, 14, 10, 0, tzinfo=UTC),
         amount_base=importe,
         tax_amount=Decimal("0.00"),
         amount_total=importe,

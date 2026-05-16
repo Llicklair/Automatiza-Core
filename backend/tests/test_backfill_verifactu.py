@@ -1,9 +1,8 @@
 """Tests del backfill histórico Verifactu (A.5)."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-
 from app.db.models.billing import Invoice, VerifactuRecord
 from app.db.models.crm import Client
 from app.services.billing.backfill_verifactu import (
@@ -21,7 +20,7 @@ def _mk_invoice(tenant_id, client_id, *, invoice_number: str, importe: str, day:
         tenant_id=tenant_id,
         client_id=client_id,
         invoice_number=invoice_number,
-        date=datetime(2026, 1, day, 10, 0, tzinfo=timezone.utc),
+        date=datetime(2026, 1, day, 10, 0, tzinfo=UTC),
         amount_base=Decimal(importe),
         tax_amount=Decimal("0.00"),
         amount_total=Decimal(importe),

@@ -38,7 +38,7 @@ def generate_rgpd_registry_pdf(data: dict) -> bytes:
       data_categories, recipients, international_transfers, retention_period, security_measures
     """
     if not REPORTLAB_AVAILABLE:
-        return "REGISTRO RGPD\n".encode("utf-8")
+        return b"REGISTRO RGPD\n"
 
     s = _common_styles()
     C = s["C"]

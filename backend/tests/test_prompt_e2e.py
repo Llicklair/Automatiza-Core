@@ -12,10 +12,10 @@ Los tests LLM_REAL generan fixtures de "golden path" y "edge cases".
 Si un test falla, el mensaje indica qué comportamiento se esperaba y cuál salió.
 """
 
-import json
 import os
 import re
 from pathlib import Path
+
 import pytest
 
 PROMPTS_DIR = Path(__file__).parent.parent / "app" / "prompts"
@@ -457,10 +457,11 @@ class TestClassifierStructure:
     @pytest.mark.asyncio
     async def test_classifier_returns_valid_domain(self, seed_tenant_and_user, db):
         """El nodo classify debe devolver un domain string válido."""
-        import sys, uuid
+        import sys
+        import uuid
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from app.agents.orchestrator.state import OrchestratorState, TaskStatus, VALID_DOMAINS
         from app.agents.orchestrator.classifier import classify_node
+        from app.agents.orchestrator.state import VALID_DOMAINS, OrchestratorState, TaskStatus
 
         tenant, user, token = seed_tenant_and_user
         state = OrchestratorState(
@@ -485,10 +486,8 @@ class TestClassifierStructure:
     @pytest.mark.asyncio
     async def test_workflow_agent_creates_workflow_in_db(self, seed_tenant_and_user, db):
         """El workflow agent debe crear un Workflow en la BD."""
-        import sys, uuid
+        import sys
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from sqlalchemy import select
-        from app.db.models.models import Workflow
         from app.agents.workflow.agent import run_workflow_agent
 
         tenant, user, _ = seed_tenant_and_user
@@ -514,8 +513,9 @@ def _call_claude_sync(messages) -> str:
     Evita [System]: prefixes que Claude detecta como prompt injection.
     """
     import subprocess
-    from app.core.llm.claude_code import _neutral_cwd, _clean_env
-    from langchain_core.messages import SystemMessage, HumanMessage
+
+    from app.core.llm.claude_code import _clean_env, _neutral_cwd
+    from langchain_core.messages import SystemMessage
 
     if not _has_real_llm():
         pytest.skip("Claude CLI no disponible.")
@@ -574,8 +574,8 @@ class TestClassifierE2E:
 
     @pytest.mark.parametrize("user_input,expected_domain", CASES)
     def test_classifies_correctly(self, user_input, expected_domain, classifier_llm):
-        from langchain_core.messages import HumanMessage, SystemMessage
         from app.prompts import load_prompt
+        from langchain_core.messages import HumanMessage, SystemMessage
 
         prompt = load_prompt("classifier")
         got = _call_claude_sync([
@@ -985,8 +985,10 @@ def _run_agent_get_first_tool(
     import subprocess
     _setup_claude_bin()
     from app.core.llm.claude_code import (
-        _neutral_cwd, _clean_env,
-        _build_tool_system_prompt, _parse_tool_response,
+        _build_tool_system_prompt,
+        _clean_env,
+        _neutral_cwd,
+        _parse_tool_response,
     )
 
     tool_system = _build_tool_system_prompt(agent_tools)
@@ -1056,8 +1058,9 @@ def _run_billing_agent_get_first_tool(user_intent: str) -> dict:
     import sys
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from datetime import date
-    from app.prompts import load_prompt
+
     from app.agents.billing.tools import tools
+    from app.prompts import load_prompt
 
     agent_prompt = load_prompt("billing_agent").format(
         tenant_id="test-tenant",
@@ -1072,8 +1075,13 @@ def _run_hr_agent_get_first_tool(user_intent: str) -> dict:
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from app.agents.hr.prompts import build_system_prompt
     from app.agents.hr.tools import (
-        create_employee, calculate_and_create_payroll, generate_all_payrolls,
-        list_employees, list_payrolls, update_payroll, approve_payroll,
+        approve_payroll,
+        calculate_and_create_payroll,
+        create_employee,
+        generate_all_payrolls,
+        list_employees,
+        list_payrolls,
+        update_payroll,
     )
 
     agent_prompt = build_system_prompt("test-tenant")
@@ -1084,11 +1092,13 @@ def _run_hr_agent_get_first_tool(user_intent: str) -> dict:
 
 def _run_workflow_agent_get_json(user_intent: str) -> dict:
     """Ejecuta el workflow agent y devuelve el JSON parseado (síncrono)."""
-    import sys, json as _json, subprocess
+    import json as _json
+    import subprocess
+    import sys
     sys.path.insert(0, str(Path(__file__).parent.parent))
     _setup_claude_bin()
+    from app.core.llm.claude_code import _clean_env, _neutral_cwd
     from app.prompts import load_prompt
-    from app.core.llm.claude_code import _neutral_cwd, _clean_env
 
     agent_prompt = load_prompt("workflow_agent")
     full_prompt = f"{agent_prompt}\n\nUser request: {user_intent}"

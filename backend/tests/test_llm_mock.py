@@ -2,9 +2,8 @@
 import json
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-
 from app.core.llm.mock import MockChatModel
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 
 class TestMockChatModelBasics:

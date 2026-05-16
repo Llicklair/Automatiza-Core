@@ -2,7 +2,6 @@
 from decimal import Decimal
 
 import pytest
-
 from app.services.billing.metering import (
     CRON_CAP_GESTORIA_MAX,
     CRON_CAP_GESTORIA_PER_COMPANY,
@@ -57,7 +56,7 @@ class TestRecordInteraction:
     async def test_warning_a_partir_de_450(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
         # Saltamos al estado 450 directamente para no hacer 450 inserciones
-        from app.services.billing.metering import _get_or_create_interaction_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_interaction_row
 
         year, month = _current_period()
         row = await _get_or_create_interaction_row(db, tenant.id, year, month)
@@ -72,7 +71,7 @@ class TestRecordInteraction:
 
     async def test_overage_a_500(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
-        from app.services.billing.metering import _get_or_create_interaction_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_interaction_row
 
         year, month = _current_period()
         row = await _get_or_create_interaction_row(db, tenant.id, year, month)
@@ -89,7 +88,7 @@ class TestRecordInteraction:
 
     async def test_cobro_overage_por_extra(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
-        from app.services.billing.metering import _get_or_create_interaction_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_interaction_row
 
         year, month = _current_period()
         row = await _get_or_create_interaction_row(db, tenant.id, year, month)
@@ -106,7 +105,7 @@ class TestRecordInteraction:
 
     async def test_hard_cap_a_1000_extras(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
-        from app.services.billing.metering import _get_or_create_interaction_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_interaction_row
 
         year, month = _current_period()
         row = await _get_or_create_interaction_row(db, tenant.id, year, month)
@@ -121,7 +120,7 @@ class TestRecordInteraction:
     async def test_gestoria_sin_cap(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
         # Aún con count alto, gestoria no marca overage
-        from app.services.billing.metering import _get_or_create_interaction_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_interaction_row
 
         year, month = _current_period()
         row = await _get_or_create_interaction_row(db, tenant.id, year, month)
@@ -139,7 +138,7 @@ class TestRecordInteraction:
 class TestRecordCronExecution:
     async def test_pro_incrementa_hasta_cap(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
-        from app.services.billing.metering import _get_or_create_cron_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_cron_row
 
         year, month = _current_period()
         row = await _get_or_create_cron_row(db, tenant.id, year, month)
@@ -154,7 +153,7 @@ class TestRecordCronExecution:
 
     async def test_pro_rechaza_si_ya_en_cap(self, db, seed_tenant_and_user):
         tenant, _, _ = seed_tenant_and_user
-        from app.services.billing.metering import _get_or_create_cron_row, _current_period
+        from app.services.billing.metering import _current_period, _get_or_create_cron_row
 
         year, month = _current_period()
         row = await _get_or_create_cron_row(db, tenant.id, year, month)

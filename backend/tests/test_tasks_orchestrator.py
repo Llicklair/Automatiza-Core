@@ -7,22 +7,17 @@ end-to-end happy-path with _stream_and_log mocked.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
-from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db.models.ai_employees import AIEmployee, TokenLedger
 from app.db.models.auth import Tenant
 from app.db.models.models import Task, User
-from app.workers import _orchestrator_context as _ctx
 from app.workers import _orchestrator_state as _state
 from app.workers import tasks_orchestrator as _to
-
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # ── _is_transient_error (pure) ───────────────────────────────────────────────
 

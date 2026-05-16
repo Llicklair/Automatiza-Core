@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 test_all.py -- Test integral del sistema AutomatizaPyme con MockLLM.
 
@@ -10,7 +9,6 @@ Uso:
     py -X utf8 scripts/test_all.py [--url http://localhost:8080]
 """
 import argparse
-import json
 import sys
 import time
 

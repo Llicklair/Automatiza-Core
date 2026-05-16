@@ -20,7 +20,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
     if ext == ".csv":
         import csv
 
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
             sample = f.read(4096)
             f.seek(0)
             try:
@@ -49,7 +49,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
         return columns, rows, "excel"
 
     elif ext == ".json":
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json_mod.load(f)
         if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
             columns = list(data[0].keys())

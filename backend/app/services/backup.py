@@ -126,7 +126,7 @@ async def create_backup(backup_dir: Path | None = None) -> Path | None:
             stderr=asyncio.subprocess.PIPE,
         )
         _, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error("backup: pg_dump excedió 10 min y fue cancelado")
         if out_file.exists():
             out_file.unlink(missing_ok=True)
@@ -317,7 +317,7 @@ async def restore_backup(filename: str) -> dict[str, str | None]:
             stderr=asyncio.subprocess.PIPE,
         )
         _, stderr = await asyncio.wait_for(proc.communicate(), timeout=900)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {"status": "failed", "error": "pg_restore excedió 15 min"}
     except Exception as exc:
         return {"status": "failed", "error": str(exc)[:500]}

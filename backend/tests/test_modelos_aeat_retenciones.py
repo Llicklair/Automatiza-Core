@@ -1,9 +1,8 @@
 """Tests para los Modelos AEAT 111 (trimestral) y 190 (anual) — MOD.111/MOD.190."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-
 from app.db.models.hr import Employee, Payroll
 from app.services.reports.modelos_aeat import (
     build_modelo_111_data,
@@ -47,7 +46,7 @@ class TestModelo111:
         for month in (1, 2, 3):
             db.add(_payroll(
                 tenant.id, emp.id,
-                period_start=datetime(2026, month, 1, tzinfo=timezone.utc),
+                period_start=datetime(2026, month, 1, tzinfo=UTC),
                 base_irpf=Decimal("1500.00"),
                 irpf=Decimal("225.00"),
             ))
@@ -71,8 +70,8 @@ class TestModelo111:
         await db.flush()
 
         # 1 nómina en 1T y 1 en 2T → solo 1T debe aparecer en 1T 2026
-        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2026, 2, 1, tzinfo=timezone.utc)))
-        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2026, 5, 1, tzinfo=timezone.utc)))
+        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2026, 2, 1, tzinfo=UTC)))
+        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2026, 5, 1, tzinfo=UTC)))
         await db.commit()
 
         result_q1 = await build_modelo_111_data(db, tenant.id, quarter=1, year=2026)
@@ -87,8 +86,8 @@ class TestModelo111:
         db.add_all([e1, e2])
         await db.flush()
         for emp_id in (e1.id, e2.id):
-            db.add(_payroll(tenant.id, emp_id, period_start=datetime(2026, 2, 1, tzinfo=timezone.utc)))
-            db.add(_payroll(tenant.id, emp_id, period_start=datetime(2026, 3, 1, tzinfo=timezone.utc)))
+            db.add(_payroll(tenant.id, emp_id, period_start=datetime(2026, 2, 1, tzinfo=UTC)))
+            db.add(_payroll(tenant.id, emp_id, period_start=datetime(2026, 3, 1, tzinfo=UTC)))
         await db.commit()
 
         result = await build_modelo_111_data(db, tenant.id, quarter=1, year=2026)
@@ -121,7 +120,7 @@ class TestModelo190:
         for month in range(1, 13):
             db.add(_payroll(
                 tenant.id, emp.id,
-                period_start=datetime(2026, month, 1, tzinfo=timezone.utc),
+                period_start=datetime(2026, month, 1, tzinfo=UTC),
                 base_irpf=Decimal("2000.00"),
                 irpf=Decimal("300.00"),
             ))
@@ -143,9 +142,9 @@ class TestModelo190:
         db.add(emp)
         await db.flush()
 
-        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2025, 12, 1, tzinfo=timezone.utc)))
-        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2026, 1, 1, tzinfo=timezone.utc)))
-        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2027, 1, 1, tzinfo=timezone.utc)))
+        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2025, 12, 1, tzinfo=UTC)))
+        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2026, 1, 1, tzinfo=UTC)))
+        db.add(_payroll(tenant.id, emp.id, period_start=datetime(2027, 1, 1, tzinfo=UTC)))
         await db.commit()
 
         result_2026 = await build_modelo_190_data(db, tenant.id, year=2026)

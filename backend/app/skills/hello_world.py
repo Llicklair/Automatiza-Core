@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import Field
 
@@ -31,7 +31,7 @@ class HelloWorldSkill(BaseSkill):
     def input_schema(self):
         return HelloWorldInput
 
-    async def run(self, input_data: Dict[str, Any], tenant_id: str, **kwargs) -> Dict[str, Any]:
+    async def run(self, input_data: dict[str, Any], tenant_id: str, **kwargs) -> dict[str, Any]:
         """Ejecuta el saludo."""
         name = input_data.get("name", "Desconocido")
         uppercase = input_data.get("uppercase", False)

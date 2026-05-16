@@ -13,9 +13,9 @@ del contexto al crearse, por lo que requests concurrentes no se contaminan.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Iterator
 
 _current_tenant_ctx: ContextVar[str | None] = ContextVar(
     "current_tenant", default=None

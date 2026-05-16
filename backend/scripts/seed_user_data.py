@@ -42,7 +42,7 @@ def login(email: str, password: str):
         print(f"ERROR login: {r.status_code} — {r.text[:300]}")
         sys.exit(1)
     TOKEN = r.json()["access_token"]
-    print(f"Login OK — token obtained\n")
+    print("Login OK — token obtained\n")
 
 
 def iso(dt: datetime) -> str:

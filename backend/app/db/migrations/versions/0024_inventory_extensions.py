@@ -23,7 +23,6 @@ Revises: 0023_verifactu_config
 
 from alembic import op
 
-
 revision = "0024_inventory_extensions"
 down_revision = "0023_verifactu_config"
 branch_labels = None

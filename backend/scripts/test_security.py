@@ -180,7 +180,7 @@ async def _run_attack(conn, attack: dict, timeout: float) -> dict:
         final = await asyncio.wait_for(
             orchestrator.ainvoke(_state(attack["intent"], task_id)), timeout=timeout
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error = f"TIMEOUT >{timeout}s"
     except Exception as e:
         error = f"{type(e).__name__}: {e}"

@@ -24,7 +24,7 @@ Precio overage (en euros, sin IVA):
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -33,7 +33,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.metering import CronExecutionUsage, InteractionUsage
-
 
 # Constantes consensuadas
 INTERACTION_SOFT_CAP_PRO = 500
@@ -72,7 +71,7 @@ class CronCapStatus:
 
 
 def _current_period() -> tuple[int, int]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.year, now.month
 
 
@@ -130,7 +129,7 @@ async def record_interaction(
     year, month = _current_period()
     row = await _get_or_create_interaction_row(db, tenant_id, year, month)
     row.count += 1
-    row.last_recorded_at = datetime.now(timezone.utc)
+    row.last_recorded_at = datetime.now(UTC)
 
     # Tiers sin soft cap → status simple.
     if tier != "pro":
@@ -201,6 +200,6 @@ async def record_cron_execution(
         return CronCapStatus(count=row.count, cap=cap, cap_reached=True)
 
     row.count += 1
-    row.last_recorded_at = datetime.now(timezone.utc)
+    row.last_recorded_at = datetime.now(UTC)
     await db.flush()
     return CronCapStatus(count=row.count, cap=cap, cap_reached=row.count >= cap)

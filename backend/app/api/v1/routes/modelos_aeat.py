@@ -11,10 +11,9 @@ No firma ni presenta — solo calcula y expone. La presentación real corre via:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
@@ -32,7 +31,7 @@ router = APIRouter(prefix="/reports/modelos", tags=["modelos_aeat"])
 
 
 def _current_year() -> int:
-    return datetime.now(timezone.utc).year
+    return datetime.now(UTC).year
 
 
 @router.get("/130")

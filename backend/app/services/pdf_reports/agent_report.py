@@ -872,7 +872,7 @@ def _classify_blockquotes(html_body: str) -> str:
     """
     pattern = _re.compile(r"<blockquote>(.*?)</blockquote>", _re.DOTALL)
 
-    def repl(m: "_re.Match") -> str:
+    def repl(m: _re.Match) -> str:
         body = m.group(1)
         plain = _re.sub(r"<[^>]+>", "", body).strip().lower()
         if plain.startswith(("nota:", "info:", "información:", "informacion:")):

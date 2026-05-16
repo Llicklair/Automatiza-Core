@@ -17,13 +17,11 @@ routing puro o con seed de BD + mock del compile_dynamic_agent).
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from langchain_core.messages import AIMessage
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Helpers

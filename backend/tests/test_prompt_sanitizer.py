@@ -1,5 +1,4 @@
 """Tests para app.core.prompt_sanitizer."""
-import pytest
 
 from app.core.prompt_sanitizer import sanitize_user_input
 

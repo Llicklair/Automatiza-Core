@@ -16,7 +16,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="Europe/Madrid")
-_deferred_task: "asyncio.Task[None] | None" = None
+_deferred_task: asyncio.Task[None] | None = None
 
 
 def register_jobs() -> None:

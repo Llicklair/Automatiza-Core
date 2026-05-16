@@ -31,18 +31,16 @@ Crea un workflow con el siguiente grafo:
 
 """
 import asyncio
-import sys
 import os
-import uuid
+import sys
 
 # Ajustar path para importar desde backend/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 os.chdir(os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 from app.db.base import AsyncSessionLocal  # noqa: E402
-from app.db.models.models import Workflow   # noqa: E402
-from sqlalchemy import select               # noqa: E402
-
+from app.db.models.models import Workflow  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
 WORKFLOW_NAME = "[DEMO] FacturaciÃ³n avanzada ACME con aprobaciÃ³n"
 
@@ -208,7 +206,7 @@ async def seed():
         if old:
             db.delete(old)
             await db.flush()
-            print(f"  Workflow demo anterior eliminado.")
+            print("  Workflow demo anterior eliminado.")
 
         wf = Workflow(
             tenant_id=tenant.id,
@@ -233,21 +231,21 @@ async def seed():
         await db.commit()
         await db.refresh(wf)
 
-        print(f"")
+        print("")
         print(f"  Workflow creado: {wf.name}")
         print(f"  ID:             {wf.id}")
         print(f"  Tenant:         {tenant.name} ({tenant.id})")
         print(f"  Nodos:          {len(NODES)}")
         print(f"  Aristas:        {len(EDGES)}")
-        print(f"")
-        print(f"  Tipos de nodo:")
+        print("")
+        print("  Tipos de nodo:")
         for n in NODES:
             print(f"    [{n['type']:15s}] {n['id']:25s} â†’ {n['data'].get('label', '')}")
-        print(f"")
-        print(f"  Abre la UI en /automatizaciones y busca:")
+        print("")
+        print("  Abre la UI en /automatizaciones y busca:")
         print(f"    '{WORKFLOW_NAME}'")
-        print(f"")
-        print(f"  Pulsa el botÃ³n â–¶ para ejecutar y observa el grafo en tiempo real.")
+        print("")
+        print("  Pulsa el botÃ³n â–¶ para ejecutar y observa el grafo en tiempo real.")
 
 
 if __name__ == "__main__":

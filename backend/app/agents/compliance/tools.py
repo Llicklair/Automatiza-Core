@@ -23,7 +23,6 @@ from app.core.llm_factory import get_embedder, get_llm
 from app.core.prompt_sanitizer import sanitize_user_input
 from app.db.base import AsyncSessionLocal
 from app.db.models.auth import Tenant
-from app.db.models.embeddings import DocumentEmbedding
 from app.integrations.boe_scraper import BOEScraper, get_proximos_vencimientos
 
 logger = logging.getLogger(__name__)
@@ -244,4 +243,5 @@ tools = [
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar
 from app.agents.tenant_context import isolated as _isolated
+
 tools = _isolated(tools)

@@ -1,6 +1,5 @@
 """Tests para app.core.exceptions — Jerarquía de excepciones."""
 import pytest
-
 from app.core.exceptions import (
     AppException,
     ConflictError,

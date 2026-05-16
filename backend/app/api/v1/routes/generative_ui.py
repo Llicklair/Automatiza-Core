@@ -13,7 +13,6 @@ Endpoints:
   DELETE /generative-ui/{id}      — Elimina una interfaz
 """
 
-import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -53,7 +52,7 @@ async def generate_ui(
             db,
             title=payload.title,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(
             status_code=504,
             detail="El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.",

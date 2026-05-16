@@ -1,8 +1,8 @@
 ﻿from uuid import UUID
 
 from sqlalchemy import desc, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models.models import Project, ProjectTask
 

@@ -1,8 +1,9 @@
 """Tests para endpoints HR Documents /api/v1/hr/documents/*."""
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from unittest.mock import AsyncMock, patch
 
 
 class TestHRDocuments:

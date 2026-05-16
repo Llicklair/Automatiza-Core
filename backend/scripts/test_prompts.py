@@ -23,16 +23,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import os
 from dotenv import load_dotenv
 
 load_dotenv(ROOT.parent / ".env")
+
+from uuid import UUID as _UUID  # noqa: E402
 
 from app.agents.orchestrator import orchestrator  # noqa: E402
 from app.agents.orchestrator.state import TaskStatus  # noqa: E402
 from app.db.base import AsyncSessionLocal  # noqa: E402
 from app.db.models.tasks import Task  # noqa: E402
-from uuid import UUID as _UUID  # noqa: E402
 
 TENANT_ID = "9cd49fbb-355b-4b75-ad57-45ebe1c85749"
 USER_ID = "0d7e5ea1-5a91-4372-8de1-8e72a2e0085b"
@@ -124,8 +124,8 @@ async def _create_task_row(state: dict) -> None:
 
 
 async def _delete_task_row(task_id: str) -> None:
-    from sqlalchemy import delete
     from app.db.models.tasks import AuditLog
+    from sqlalchemy import delete
     async with AsyncSessionLocal() as db:
         await db.execute(delete(AuditLog).where(AuditLog.task_id == _UUID(task_id)))
         await db.execute(delete(Task).where(Task.id == _UUID(task_id)))
@@ -140,7 +140,7 @@ async def _run_one(case: dict, timeout: float) -> dict:
     final: dict = {}
     try:
         final = await asyncio.wait_for(orchestrator.ainvoke(state), timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error = f"TIMEOUT >{timeout}s"
     except Exception as e:
         error = f"{type(e).__name__}: {e}"

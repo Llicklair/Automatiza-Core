@@ -14,8 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services._tenant_schemas import LlmProviderConfig
 from app.db.models.models import Tenant, TenantLlmConfig
+from app.services._tenant_schemas import LlmProviderConfig
 from app.services.encryption import decrypt_credentials, encrypt_credentials
 
 ALLOWED_LLM_PROVIDERS = {"anthropic", "groq", "openai", "openrouter", "claude_code"}

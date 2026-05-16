@@ -2,8 +2,6 @@
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-
 from app.db.models.tasks import PendingApproval, Task
 from app.services.autonomy import set_policy
 from app.services.autonomy_gate import (
@@ -11,6 +9,7 @@ from app.services.autonomy_gate import (
     evaluate_autonomy,
     serialize_action_payload,
 )
+from sqlalchemy import select
 
 
 @pytest.mark.asyncio

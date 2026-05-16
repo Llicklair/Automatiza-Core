@@ -1,8 +1,7 @@
 """Tests para app.services.exec_log_store — buffer en memoria con TTL."""
 import time
-from unittest.mock import patch
 
-from app.services.exec_log_store import clear, get_all, push, _evict_expired, _logs, _expiry
+from app.services.exec_log_store import _expiry, _logs, clear, get_all, push
 
 
 class TestExecLogStore:

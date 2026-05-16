@@ -13,7 +13,7 @@ El advisory lock es preferible porque bloquea desde el primer SQL de la
 transacción y no requiere que la fila exista (caso "primera factura del año").
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select, text
@@ -40,7 +40,7 @@ async def next_invoice_number(
       4. Incrementa ``last_number`` y devuelve el número formateado.
     """
     if year is None:
-        year = datetime.now(timezone.utc).year
+        year = datetime.now(UTC).year
 
     dialect_name = db.bind.dialect.name if db.bind is not None else ""
 

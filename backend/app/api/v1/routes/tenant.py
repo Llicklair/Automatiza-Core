@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -174,7 +173,7 @@ async def upload_certificate(
         cert_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"Certificado inválido o contraseña incorrecta: {exc}")
 
-    from datetime import datetime, timezone
+    from datetime import datetime
     expires_at = datetime.fromisoformat(info["expires_at"])
 
     res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))

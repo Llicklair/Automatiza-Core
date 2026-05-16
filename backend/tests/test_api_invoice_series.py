@@ -4,11 +4,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from app.db.models.models import Client, InvoiceSeries
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models.models import Client, InvoiceSeries
 
 
 def _invoice_payload(*, lines: list[dict]) -> dict:

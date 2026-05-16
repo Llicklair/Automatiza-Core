@@ -13,7 +13,7 @@ backup `full`. No bloqueante — el cliente puede dismissir.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -21,7 +21,6 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.backup import BackupRecord
-
 
 BackupKind = Literal["full", "verifactu"]
 
@@ -97,7 +96,7 @@ async def backup_status_for_banner(
           "days_since_last": int | null
         }
     """
-    now_ts = now or datetime.now(timezone.utc)
+    now_ts = now or datetime.now(UTC)
     last_full = await get_last_backup(db, tenant_id=tenant_id, kind="full")
     last_vf = await get_last_backup(db, tenant_id=tenant_id, kind="verifactu")
 
@@ -107,7 +106,7 @@ async def backup_status_for_banner(
     if last_full_at is not None:
         # Asegurar tz awareness antes de restar
         if last_full_at.tzinfo is None:
-            last_full_at = last_full_at.replace(tzinfo=timezone.utc)
+            last_full_at = last_full_at.replace(tzinfo=UTC)
         days_since = (now_ts - last_full_at).days
         stale = days_since > threshold_days
 

@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -82,7 +82,7 @@ def main() -> int:
     args = p.parse_args()
 
     log_dir = Path(args.dir)
-    day = args.day or datetime.now(timezone.utc).date().isoformat()
+    day = args.day or datetime.now(UTC).date().isoformat()
     file = log_dir / f"{day}.jsonl"
 
     items = _load(file)

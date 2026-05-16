@@ -3,7 +3,6 @@
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
@@ -23,7 +22,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 class UserOut(BaseModel):
     id: str
     email: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     role: str
     is_active: bool
 
@@ -33,16 +32,16 @@ class UserOut(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
     role: str = "user"
 
 
 class UserUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    role: str | None = None
+    is_active: bool | None = None
 
 
 def _user_out(u: User) -> UserOut:
@@ -97,8 +96,8 @@ class InvitationOut(BaseModel):
     email: str
     role: str
     expires_at: datetime
-    used_at: Optional[datetime] = None
-    used_by_id: Optional[str] = None
+    used_at: datetime | None = None
+    used_by_id: str | None = None
     created_at: datetime
     status: str  # pending | used | expired
 
@@ -116,8 +115,8 @@ class InvitationPublic(BaseModel):
 
 class InvitationAccept(BaseModel):
     password: str = Field(min_length=8)
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 def _invitation_status(inv: UserInvitation) -> str:

@@ -1,9 +1,7 @@
 """Tests del helper de streaming token-a-token (UI.AGT v2)."""
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from app.services.ai.stream_tokens import stream_llm
 from app.services.workflow.task_event_hub import TaskEventHub
 
@@ -106,7 +104,7 @@ class TestStreamLLM:
             while True:
                 ev = await asyncio.wait_for(queue.get(), timeout=0.1)
                 events.append(ev)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
         assert len(events) == 3

@@ -10,11 +10,10 @@ from decimal import Decimal
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db.models.ai_employees import AIEmployee, TokenLedger
 from app.db.models.auth import Tenant
 from app.services.ai.employee_crud import get_employee_ledger, get_employee_spend
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest_asyncio.fixture

@@ -1,11 +1,10 @@
 """Unit tests for UsageTrackingCallback and token extraction logic."""
-import pytest
-from unittest.mock import MagicMock, patch
-from langchain_core.outputs import LLMResult, ChatGeneration
+from unittest.mock import MagicMock
 
+import pytest
 from app.core.llm_callbacks import UsageTrackingCallback, _extract_tokens
 from app.services import llm_usage_tracker
-
+from langchain_core.outputs import ChatGeneration, LLMResult
 
 TENANT = "test-tenant-callback"
 

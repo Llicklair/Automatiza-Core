@@ -1,7 +1,8 @@
 """Tests para endpoints Approvals /api/v1/approvals/*."""
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 class TestApprovals:

@@ -15,7 +15,6 @@ Revision ID: 0006_emp_unique_nif
 Revises: 0005_pdf_text_report_skill
 """
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0006_emp_unique_nif"

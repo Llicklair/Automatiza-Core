@@ -1,6 +1,5 @@
 """Tests para los endpoints de autenticación /api/v1/auth/*."""
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 
 

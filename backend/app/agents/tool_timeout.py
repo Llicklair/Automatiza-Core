@@ -61,7 +61,7 @@ def with_timeout(seconds: float = DEFAULT_TIMEOUT_SECONDS) -> Any:
                 result = await asyncio.wait_for(original(*args, **kwargs), timeout=seconds)
                 record_tool_execution(tool_name, "ok", time.monotonic() - start)
                 return result
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 record_tool_execution(tool_name, "timeout", time.monotonic() - start)
                 logger.warning(
                     "[TOOL-TIMEOUT] tool='%s' excedió %ss y fue cancelada",

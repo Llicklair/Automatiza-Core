@@ -5,7 +5,6 @@ ser no-op y el código de aplicación debe ejecutarse normalmente.
 """
 
 import pytest
-
 from app.services import cache
 
 

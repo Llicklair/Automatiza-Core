@@ -287,7 +287,7 @@ async def get_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) -> De
 
 async def get_albaran_pdf_data(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) -> tuple:
     """Return (pdf_bytes, albaran_number) for PDF generation."""
-    from typing import Any, Dict
+    from typing import Any
 
     note = await get_albaran(albaran_id, tenant_id, db)
 
@@ -311,7 +311,7 @@ async def get_albaran_pdf_data(albaran_id: UUID, tenant_id: UUID, db: AsyncSessi
     except Exception:
         pass
 
-    albaran_data: Dict[str, Any] = {
+    albaran_data: dict[str, Any] = {
         "albaran_number": note.albaran_number,
         "date": str(note.date),
         "status": note.status,

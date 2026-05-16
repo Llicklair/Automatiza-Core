@@ -2,6 +2,7 @@
 import pytest
 from httpx import AsyncClient
 
+
 class TestIntegrations:
     @pytest.mark.asyncio
     async def test_list_integrations_unauthorized(self, client: AsyncClient):

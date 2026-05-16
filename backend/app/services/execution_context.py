@@ -84,7 +84,7 @@ class ExecutionContext:
     tenant_knowledge: list[dict] = field(default_factory=list)
 
     @classmethod
-    def from_state(cls, state: dict) -> "ExecutionContext":
+    def from_state(cls, state: dict) -> ExecutionContext:
         """
         Construye el ExecutionContext desde el estado del orquestador.
         Extrae entidades de todos los agent_results previos.

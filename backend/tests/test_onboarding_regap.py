@@ -1,6 +1,5 @@
 """Tests del wizard REGAP (PRES.REG)."""
 import pytest
-
 from app.services.onboarding.regap import (
     get_regap_status,
     mark_power_granted,

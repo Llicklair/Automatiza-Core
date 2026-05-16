@@ -1,7 +1,7 @@
 """XAdES-BES digital signature for FacturaE 3.2.2."""
 import base64
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -62,7 +62,7 @@ def sign_xml(xml_bytes: bytes, p12_path: str, password: str) -> bytes:
     cert_digest = _sha256b64(cert_der)
     issuer_name = cert.issuer.rfc4514_string()
     serial_number = str(cert.serial_number)
-    signing_time = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    signing_time = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     sig_id = "Signature-Invoice"
     signed_props_id = "SignedProperties"

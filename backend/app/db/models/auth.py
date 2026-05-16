@@ -8,10 +8,10 @@ from .common import (
     DateTime,
     ForeignKey,
     String,
+    Text,
     relationship,
     utcnow,
     uuid,
-    Text,
 )
 
 

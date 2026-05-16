@@ -1,6 +1,5 @@
 """Tests para app.core.llm_factory — Fábrica centralizada de LLMs."""
 import pytest
-
 from app.core.llm.mock import MockChatModel
 from app.core.llm_factory import (
     _tenant_llm_ctx,

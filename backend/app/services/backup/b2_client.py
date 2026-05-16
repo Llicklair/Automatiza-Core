@@ -51,7 +51,7 @@ class B2Credentials:
     bucket_name: str
 
     @classmethod
-    def from_settings(cls) -> "B2Credentials":
+    def from_settings(cls) -> B2Credentials:
         from app.core.config import settings
 
         for attr in ("B2_KEY_ID", "B2_APPLICATION_KEY", "B2_BUCKET_ID", "B2_BUCKET_NAME"):

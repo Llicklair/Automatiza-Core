@@ -201,7 +201,7 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
     Genera PDF de factura rectificativa (Art. 15 RD 1619/2012).
     """
     if not REPORTLAB_AVAILABLE:
-        return f"FACTURA RECTIFICATIVA {data.get('number', '')}\n".encode("utf-8")
+        return f"FACTURA RECTIFICATIVA {data.get('number', '')}\n".encode()
 
     s = _common_styles()
     C = s["C"]
@@ -381,7 +381,7 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
     Genera PDF de factura con retención de IRPF.
     """
     if not REPORTLAB_AVAILABLE:
-        return f"FACTURA CON RETENCIÓN {data.get('number', '')}\n".encode("utf-8")
+        return f"FACTURA CON RETENCIÓN {data.get('number', '')}\n".encode()
 
     s = _common_styles()
     C = s["C"]

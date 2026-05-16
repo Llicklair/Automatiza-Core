@@ -3,7 +3,7 @@
 import re
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -82,7 +82,7 @@ async def generate_facturae_xml(
     inv_num = invoice.invoice_number or str(invoice.id)[:8]
     serie_match = re.match(r"([A-Za-z]+)", inv_num)
     serie = serie_match.group(1) if serie_match else "F"
-    issue_date = invoice.date.strftime("%Y-%m-%d") if invoice.date else datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    issue_date = invoice.date.strftime("%Y-%m-%d") if invoice.date else datetime.now(tz=UTC).strftime("%Y-%m-%d")
 
     # ── Tax breakdown by rate ─────────────────────────────────────────────────
     tax_groups: dict[str, dict] = defaultdict(lambda: {"base": Decimal("0"), "tax": Decimal("0")})
@@ -223,7 +223,7 @@ async def mark_verifactu_sent(
         raise ValueError("Factura no encontrada")
 
     invoice.verifactu_status = "sent"
-    invoice.verifactu_sent_at = datetime.now(tz=timezone.utc)
+    invoice.verifactu_sent_at = datetime.now(tz=UTC)
     await db.commit()
     return {
         "message": "Marcada como enviada a Verifactu (modo simulación)",

@@ -18,7 +18,7 @@ import os
 import platform
 import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +43,7 @@ async def build_diagnostic_bundle(db: AsyncSession) -> bytes:
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         # info.json
         info = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "app_name": settings.APP_NAME,
             "app_version": settings.APP_VERSION,
             "python_version": sys.version,

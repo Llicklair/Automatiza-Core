@@ -6,7 +6,7 @@ Solo permiten acceso a inventario y albaranes — nunca a facturación, RRHH, et
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -39,7 +39,7 @@ _BLOCKED_PREFIXES = (
 
 def create_scanner_token(tenant_id: str, user_id: str, device_name: str = "Scanner") -> dict:
     """Genera un JWT de corta vida con scope de scanner."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.SCANNER_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.SCANNER_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": "scanner_auth",
         "tenant_id": tenant_id,
@@ -47,7 +47,7 @@ def create_scanner_token(tenant_id: str, user_id: str, device_name: str = "Scann
         "device": device_name,
         "scope": settings.SCANNER_ALLOWED_SCOPES,
         "exp": expire,
-        "iat": datetime.now(timezone.utc),
+        "iat": datetime.now(UTC),
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return {

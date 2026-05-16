@@ -1,9 +1,10 @@
 """Tests for Reports API — uses the actual routes (company-snapshot, fiscal,
 cashflow, delinquency) instead of the non-existent paths the previous fakes tested.
 """
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 class TestReportsAuth:

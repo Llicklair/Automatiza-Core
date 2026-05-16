@@ -1,11 +1,9 @@
 """Tests para app.services.billing.invoice — CRUD de facturas."""
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models.models import Client, Invoice, Tenant
+import pytest
+from app.db.models.models import Client, Tenant
 from app.services.billing.invoice import (
     VALID_IVA,
     create_invoice,
@@ -14,7 +12,7 @@ from app.services.billing.invoice import (
     list_invoices,
     update_status,
 )
-
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,7 +44,7 @@ async def _create_basic_invoice(db, tenant, client, user_id=None, **extra):
     """Shortcut to create one invoice with a single line."""
     uid = user_id or uuid4()
     payload = {
-        "date": datetime.now(timezone.utc),
+        "date": datetime.now(UTC),
         "status": "draft",
         **extra,
     }
@@ -94,7 +92,7 @@ class TestCreateInvoice:
     async def test_invoice_with_discount(self, db: AsyncSession):
         tenant, client = await _seed_tenant_client(db)
         uid = uuid4()
-        payload = {"date": datetime.now(timezone.utc), "status": "draft"}
+        payload = {"date": datetime.now(UTC), "status": "draft"}
         lines = [
             {
                 "description": "Producto con descuento",
@@ -115,7 +113,7 @@ class TestCreateInvoice:
     async def test_invoice_with_zero_iva(self, db: AsyncSession):
         tenant, client = await _seed_tenant_client(db)
         uid = uuid4()
-        payload = {"date": datetime.now(timezone.utc), "status": "draft"}
+        payload = {"date": datetime.now(UTC), "status": "draft"}
         lines = [
             {
                 "description": "Producto exento",
@@ -132,7 +130,7 @@ class TestCreateInvoice:
     async def test_invoice_invalid_iva_raises(self, db: AsyncSession):
         tenant, client = await _seed_tenant_client(db)
         uid = uuid4()
-        payload = {"date": datetime.now(timezone.utc), "status": "draft"}
+        payload = {"date": datetime.now(UTC), "status": "draft"}
         lines = [
             {
                 "description": "Producto",
@@ -149,7 +147,7 @@ class TestCreateInvoice:
         tenant, client = await _seed_tenant_client(db)
         uid = uuid4()
         payload = {
-            "date": datetime.now(timezone.utc),
+            "date": datetime.now(UTC),
             "status": "draft",
             "invoice_number": "MANUAL-001",
         }
@@ -171,7 +169,7 @@ class TestCreateInvoice:
         tenant, client = await _seed_tenant_client(db)
         uid = uuid4()
         payload = {
-            "date": datetime.now(timezone.utc),
+            "date": datetime.now(UTC),
             "status": "draft",
             "amount_base": 9999.0,
             "tax_amount": 9999.0,

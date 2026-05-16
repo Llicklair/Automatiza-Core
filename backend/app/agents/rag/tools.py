@@ -20,6 +20,8 @@ from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant
 from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.agents.agent_tools.semantic_search import (
     cosine_topk,
+)
+from app.agents.agent_tools.semantic_search import (
     is_missing_table_or_extension as _is_missing_table_or_extension,
 )
 from app.core.llm_factory import get_embedder, get_llm

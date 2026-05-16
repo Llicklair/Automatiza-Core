@@ -4,8 +4,9 @@ Cada test verifica un journey realista de usuario que cruza varios
 endpoints, en contraste con los tests unitarios por endpoint.
 Sin LLM real: deterministas, rápidos, en SQLite en memoria.
 """
-import pytest
 from datetime import datetime
+
+import pytest
 from httpx import AsyncClient
 
 

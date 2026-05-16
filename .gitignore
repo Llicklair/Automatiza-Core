@@ -56,6 +56,8 @@ frontend/_node_modules_tmp/
 backend/_venv_tmp/
 backend/_mypy_cache_tmp/
 backend/_pytest_cache_tmp/
+pytest-of-Marcos/
+pytest-of-*/
 
 # Electron build artifacts
 desktop/dist/
