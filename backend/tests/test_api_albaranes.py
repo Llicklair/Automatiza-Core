@@ -265,3 +265,92 @@ class TestAlbaranesStockDeduction:
             f"/api/v1/albaranes/{albaran_id}/status", json={"status": "confirmed"}
         )
         assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_downgrade_to_draft_reverts_stock(self, auth_client: AsyncClient):
+        """Pasar de confirmed → draft genera StockMovement(entrada) compensatorio
+        y devuelve el stock al valor previo."""
+        product_id = await self._create_product(auth_client, "Prod-Revert", stock=10)
+        albaran_id = await self._create_albaran_with_product(
+            auth_client, product_id, quantity=4
+        )
+
+        # Confirma → stock 10 - 4 = 6 (verificado via stock_after del movimiento)
+        await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "confirmed"}
+        )
+
+        # Downgrade → debe generar entrada compensatoria, stock_after = 10
+        resp = await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "draft"}
+        )
+        assert resp.status_code == 200
+
+        movs = (await auth_client.get(
+            f"/api/v1/products/{product_id}/stock-movements"
+        )).json()
+        assert len(movs) == 2
+        types = {m["movement_type"] for m in movs}
+        assert types == {"salida", "entrada"}
+        salida = next(m for m in movs if m["movement_type"] == "salida")
+        reverse = next(m for m in movs if m["movement_type"] == "entrada")
+        assert salida["stock_after"] == 6
+        assert reverse["reference"] == f"DELIVERY_NOTE_REVERSED:{albaran_id}"
+        assert reverse["quantity"] == 4
+        assert reverse["stock_after"] == 10
+
+    @pytest.mark.asyncio
+    async def test_delete_confirmed_reverts_stock(self, auth_client: AsyncClient):
+        """Borrar un albarán confirmado genera reversa antes de borrar."""
+        product_id = await self._create_product(auth_client, "Prod-DelRev", stock=20)
+        albaran_id = await self._create_albaran_with_product(
+            auth_client, product_id, quantity=7
+        )
+        await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "confirmed"}
+        )
+
+        resp = await auth_client.delete(f"/api/v1/albaranes/{albaran_id}")
+        assert resp.status_code == 204
+
+        movs = (await auth_client.get(
+            f"/api/v1/products/{product_id}/stock-movements"
+        )).json()
+        types = sorted(m["movement_type"] for m in movs)
+        assert types == ["entrada", "salida"]
+        reverse = next(m for m in movs if m["movement_type"] == "entrada")
+        assert reverse["reference"] == f"DELIVERY_NOTE_REVERSED:{albaran_id}"
+        assert reverse["stock_after"] == 20
+
+    @pytest.mark.asyncio
+    async def test_revert_is_idempotent(self, auth_client: AsyncClient):
+        """Dos downgrades a draft no duplican el movimiento de entrada."""
+        product_id = await self._create_product(auth_client, "Prod-Idem", stock=10)
+        albaran_id = await self._create_albaran_with_product(
+            auth_client, product_id, quantity=3
+        )
+        await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "confirmed"}
+        )
+
+        await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "draft"}
+        )
+        # Re-confirmar y volver a downgrade. La idempotencia debe impedir
+        # un segundo StockMovement(entrada).
+        await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "confirmed"}
+        )
+        await auth_client.patch(
+            f"/api/v1/albaranes/{albaran_id}/status", json={"status": "draft"}
+        )
+
+        movs = (await auth_client.get(
+            f"/api/v1/products/{product_id}/stock-movements"
+        )).json()
+        # Idempotencia: 1 salida (DELIVERY_NOTE) + 1 entrada (DELIVERY_NOTE_REVERSED),
+        # sin duplicar a pesar de los ciclos confirmar/desconfirmar.
+        entradas = [m for m in movs if m["movement_type"] == "entrada"]
+        salidas = [m for m in movs if m["movement_type"] == "salida"]
+        assert len(entradas) == 1
+        assert len(salidas) == 1

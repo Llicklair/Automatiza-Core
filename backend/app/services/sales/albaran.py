@@ -1,6 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
 from app.services.sales.commands import (
-    AlbaranStateConflictError,
     create_albaran,
     delete_albaran,
     update_albaran_status,
@@ -14,5 +13,4 @@ __all__ = [
     "create_albaran",
     "update_albaran_status",
     "delete_albaran",
-    "AlbaranStateConflictError",
 ]

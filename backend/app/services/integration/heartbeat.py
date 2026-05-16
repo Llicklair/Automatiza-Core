@@ -21,8 +21,8 @@ from uuid import UUID
 
 from sqlalchemy import func, select, update
 
-from app.agents.workers import check_agent_budget
 from app.db.base import AsyncSessionLocal
+from app.services.agent_budget import check_agent_budget
 from app.db.models.ai_employees import ActivityEntry, AIEmployee
 from app.db.models.tasks import Task
 
