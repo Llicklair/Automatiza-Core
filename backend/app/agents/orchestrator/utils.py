@@ -24,7 +24,7 @@ def _format_summary(agent: str, output: dict, success: bool, error: str | None =
 
     if agent == "billing":
         action = output.get("action", "")
-        data = output.get("extracted_data") or {}
+        output.get("extracted_data") or {}
         if action == "approval_required":
             return "⏳ Pendiente de aprobación antes de procesar la factura."
         if action == "draft_created":

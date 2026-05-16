@@ -153,7 +153,6 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
 
     retrieved_chunks = []
     source_names = set()
-    semantic_disabled = False
 
     try:
         async with AsyncSessionLocal() as db:
@@ -216,12 +215,12 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
                         )
                 except Exception as ve:
                     if _is_missing_table_or_extension(ve):
-                        semantic_disabled = True
+                        pass
                     else:
                         raise
     except Exception as e:
         if _is_missing_table_or_extension(e):
-            semantic_disabled = True
+            pass
         else:
             return f"Error buscando documentos: {e}"
 

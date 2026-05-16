@@ -204,44 +204,110 @@ intencional (carga única en mount).
 
 ## P1 — Refactor estructural
 
-### 7. Rutas con demasiado código (regla "ZERO business logic" en routes/)
+### 7. Rutas con demasiado código (regla "ZERO business logic" en routes/) — DESCARTADO
 - `backend/app/api/v1/routes/hr.py` — 746 líneas
 - `backend/app/api/v1/routes/documents.py` — 518 líneas
 
-Las rutas deben validar + delegar. Extraer la lógica restante a
-`services/hr/` y `services/documents/`.
+**Revisado 2026-05-16:** falso positivo del criterio LOC. Ambos archivos
+**cumplen** la regla:
+- hr.py: 39 endpoints, 48 `svc.*`, 0 `db.execute/commit/select`.
+- documents.py: 15 endpoints, 26 `svc.*`, 0 `db.execute/commit/select`.
 
-### 8. Funciones gigantes (>200 líneas) en generadores PDF
+El tamaño se justifica por la cantidad de endpoints, no por business logic
+inflada. Promedio hr.py = 19 líneas/endpoint, razonable.
+
+Posible mejora cosmética (no urgente): partir hr.py en sub-routers por
+dominio (`hr_employees.py`, `hr_payroll.py`, `hr_attendance.py`,
+`hr_leave.py`, `hr_expenses.py`). Riesgo medio por cambios de imports,
+beneficio bajo. **Dejado en backlog sin priorizar.**
+
+### 8. Funciones gigantes (>200 líneas) en generadores PDF — DIFERIDO
 - `services/pdf_reports/_snapshot_monthly.py:32 generate_snapshot_pdf` — 464 líneas
 - `services/pdf/_payroll.py:32 generate_payroll_pdf` — 369 líneas
 - `services/pdf/albaranes.py:30 generate_albaran_pdf` — 242 líneas
 - `services/pdf_reports/_operational_treasury.py:59 generate_cashflow_report_pdf` — 241 líneas
 
-Partir por secciones del documento (header, body, footer, tablas).
+**Revisado 2026-05-16:** los 4 generadores están claramente seccionados con
+comentarios (cabecera, KPIs, gráficas, tablas, pie) pero **no hay tests
+visuales/snapshot** (`grep generate_*_pdf backend/tests/` no devuelve nada).
 
-### 9. Dispatchers del orchestrator demasiado largos
+Refactor cosmético sin tests visuales es **alto riesgo / bajo valor**: una
+regresión sutil en orden de flowables, márgenes o estilos sólo se detecta
+abriendo el PDF. La indirección de "saltar entre archivos" tampoco mejora
+la lectura cuando todo el flujo es secuencial.
+
+**Prerrequisito antes de refactor:** añadir smoke tests que al menos
+verifiquen que cada `generate_*_pdf` (a) no lanza excepción con datos
+mínimos válidos, (b) devuelve bytes que empiezan por `%PDF-`, (c) tiene
+>1000 bytes. Con eso, el refactor pasa a riesgo bajo.
+
+**Estado:** diferido al backlog. No bloquea ningún P0/P1 real.
+
+### 9. Dispatchers del orchestrator demasiado largos — DIFERIDO
 - `agents/orchestrator/dispatchers/reports.py:30 _dispatch_report` — 220 líneas
 - `agents/orchestrator/dispatchers/billing.py:20 _dispatch_billing` — 192 líneas
 - `agents/orchestrator/_plan_handlers.py:165 _plan_from_llm` — 189 líneas
 - `agents/orchestrator/_dispatch_handlers.py:452 dispatch_node` — 153 líneas
 
-Partir por acción concreta (`_dispatch_report_pdf`, `_dispatch_report_excel`).
+**Revisado 2026-05-16:** los dispatchers son operaciones cohesivas
+(cargar datos → LLM → generar artefacto → devolver `AgentResult`),
+no son switches con subacciones claras (`_dispatch_report` no tiene
+`if action == "pdf"` / `elif action == "excel"`).
 
-### 10. Páginas frontend monolíticas
+`grep _dispatch_report` en `backend/tests/` no devuelve nada — sólo
+`test_planner_custom_agents.py` toca el módulo lateralmente. Partir sin
+tests específicos del flow añade indirección sin reducir riesgo.
+
+**Caso especial:** `_plan_from_llm` (189 líneas) sí tiene subfases
+claras (caché-hit / caché-miss / validación de employee_ids / construcción
+del plan). Si en el futuro hay que tocarla, partir por subfase
+(`_plan_try_cache`, `_plan_call_llm`, `_plan_validate_employees`).
+
+**Estado:** diferido salvo que aparezca un cambio funcional que lo
+requiera. No bloquea ningún P0/P1 real.
+
+### 10. Páginas frontend monolíticas — DIFERIDO
 - `frontend/src/app/(dashboard)/portal/page.tsx` — 752 líneas
 - `frontend/src/app/(dashboard)/analitica/page.tsx` — 712 líneas
 
-Extraer subcomponentes y hooks en `_components/` y `_hooks/` locales.
+**Revisado 2026-05-16:** `portal/page.tsx` tiene 18 `useState` y 0
+subcomponentes inline — todo el JSX está en el `return` del único componente.
+Refactor real consistiría en extraer secciones (header, KPI cards, listas
+de nóminas/permisos/gastos) a subcomponentes en `_components/` con su propio
+estado o `useReducer`. Lo mismo aplica a `analitica/page.tsx`.
 
-### 11. Services importando agents (rompe pirámide)
-- `services/ai/node_dispatch.py`, `node_engine.py`, `node_graph_helpers.py`
-- `services/email_sender.py`
-- `services/integration/heartbeat.py`
-- `services/workflow/_execution.py`
+`tsc --noEmit` cubre errores de tipos al partir, pero **no hay tests
+visuales/snapshot** que detecten regresiones de estilo, layout o handlers
+mal cableados. Vitest en este repo cubre lógica unitaria (a11y tests
+existen pero no de páginas).
 
-Decisión pendiente: ¿servicios pueden invocar agents (vía orchestrator) o
-debe ser solo al revés? Si es "solo al revés", revertir la dependencia con
-callbacks o eventos.
+**Estado:** diferido. Mismo criterio que P1 #8/#9 — refactor cosmético sin
+red de seguridad. Reabrir cuando (a) haya snapshot tests con Playwright o
+similar, o (b) toque añadir una sección nueva a una de estas páginas.
+
+### 11. Services importando agents (rompe pirámide) — RESUELTO
+**Revisado 2026-05-16:** tras `ruff --fix` (que eliminó imports F401 no
+usados), la lista bajó de 6 a **2 archivos** con import real:
+
+1. `services/integration/heartbeat.py:24` → `check_agent_budget` from
+   `app.agents.workers`. **Acción:** mover `check_agent_budget` a
+   `services/common/budget_guard.py` o `services/budget/`. Es una utilidad
+   de cuota — no es responsabilidad de `agents/`. Pendiente.
+
+2. `services/workflow/_execution.py:11,12` → `_invoke_dispatcher`,
+   `call_tool` from `app.agents.orchestrator._dispatch_handlers` y
+   `app.agents.tool_registry`. **Decisión:** aceptado como excepción legítima.
+   `services/workflow/` ejecuta workflows definidos por usuario que invocan
+   agents dinámicamente — su responsabilidad es orchestration-aware por
+   diseño. No es violación, es el contrato.
+
+**Documentar en ARCHITECTURE.md:** añadir nota
+> "Excepción a la pirámide: `services/workflow/` puede importar de
+> `agents/orchestrator/` y `agents/tool_registry` porque su responsabilidad
+> es invocar agents desde workflows definidos por usuario."
+
+**Estado del item:** sólo queda mover `check_agent_budget` (medio día de
+trabajo, no urgente). El resto está resuelto.
 
 ---
 
@@ -343,15 +409,15 @@ langgraph/langchain).
 - [x] P0 #4 no-redef + TypedDict casts
 - [x] P0 #5 fetch en mantenimiento → system.*
 - [x] P0 #6 exhaustive-deps (6 archivos con useCallback)
-- [ ] P1 #7 rutas hr/documents
-- [ ] P1 #8 funciones PDF gigantes
-- [ ] P1 #9 dispatchers orchestrator
-- [ ] P1 #10 páginas frontend monolíticas
-- [ ] P1 #11 services→agents (decisión arquitectura)
+- [~] P1 #7 rutas hr/documents (descartado — cumplen regla, ver nota)
+- [~] P1 #8 funciones PDF gigantes (diferido — requiere smoke tests previos)
+- [~] P1 #9 dispatchers orchestrator (diferido — operaciones cohesivas, no switches)
+- [~] P1 #10 páginas frontend monolíticas (diferido — sin tests visuales)
+- [~] P1 #11 services→agents (resuelto, sólo queda mover check_agent_budget)
 - [x] P2 #12 ruff --fix (607 fixes, 252 archivos)
-- [ ] P2 #13 ruff manual (732 issues restantes)
-- [ ] P2 #14 TODOs / except Exception / print
-- [ ] P2 #15 doble barrel api
-- [ ] P2 #16 img → Image
-- [x] P3 #17 suite completa ejecutada (1206 pass, 16 fail en test_backup)
-- [ ] P3 #18 mypy stubs
+- [x] P2 #13 ruff manual (657 → 261, line-length 120, UP007+E741+E702 cero)
+- [x] P2 #14 TODOs documentados, `print()` en event_bus → `_logger.info`
+- [x] P2 #15 doble barrel api consolidado (`export * from "./api/index"`)
+- [x] P2 #16 img → Image (login + Sidebar; ESLint: 0 warnings 0 errors)
+- [x] P3 #17 suite completa ejecutada (1222 pass / 0 fail)
+- [x] P3 #18 mypy stubs overrides (pandas/lxml/jose/redis/celery/langfuse/prometheus_client/xhtml2pdf/opendataloader_pdf) — **mypy: 0 issues en 475 archivos**

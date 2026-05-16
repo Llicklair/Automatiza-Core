@@ -77,7 +77,7 @@ class TestSimulate303:
 
     def test_sample_lines_no_vacio(self):
         assert len(SAMPLE_LINES) > 0
-        devengadas = [l for l in SAMPLE_LINES if l.direction == "devengado"]
-        deducibles = [l for l in SAMPLE_LINES if l.direction == "deducible"]
+        devengadas = [ln for ln in SAMPLE_LINES if ln.direction == "devengado"]
+        deducibles = [ln for ln in SAMPLE_LINES if ln.direction == "deducible"]
         assert len(devengadas) > 0
         assert len(deducibles) > 0

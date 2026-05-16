@@ -111,7 +111,7 @@ class TestGatedTool:
             return "ok"
 
         with self._patched_session(db):
-            result = await fake_tool(tenant_id="not-a-uuid")
+            await fake_tool(tenant_id="not-a-uuid")
 
         assert called["count"] == 1
 

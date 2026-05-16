@@ -67,7 +67,6 @@ async def test_apply_default_uses_override_for_known_tool():
     assert "process_cv" in _TIMEOUT_OVERRIDES
     override = _TIMEOUT_OVERRIDES["process_cv"]
 
-    captured = {}
 
     async def slow(*args, **kwargs):
         # Simula tarea que tarda más que el default pero menos que el override.

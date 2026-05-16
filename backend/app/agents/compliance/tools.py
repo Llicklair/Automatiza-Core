@@ -42,7 +42,6 @@ async def check_fiscal_deadlines(
             AEAT es nacional y no se filtra por tenant.
     """
     _ = tenant_id  # accepted but unused: AEAT calendar is the same for all tenants
-    data_stale = False
     try:
         vencimientos = get_proximos_vencimientos(days_ahead=days_ahead)
     except Exception as e:

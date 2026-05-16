@@ -121,7 +121,7 @@ def seed_products():
 def seed_invoices(client_ids, product_ids):
     print("\n== Facturas emitidas ==")
     cust = [c for c in client_ids[:3] if c]
-    prods = [p for p in product_ids if p]
+    [p for p in product_ids if p]
 
     issued = [
         {"client_id": cust[0], "date": iso(TODAY - timedelta(days=60)),
@@ -412,7 +412,7 @@ def seed_crm(client_ids):
 def seed_projects(client_ids, employee_ids):
     print("\n== Proyectos ==")
     cust = [c for c in client_ids[:3] if c]
-    emps = [e for e in employee_ids if e]
+    [e for e in employee_ids if e]
 
     projects = [
         {"name": "Migración ERP Valdemar", "description": "Implantación completa del ERP para Construcciones Valdemar",

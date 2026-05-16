@@ -62,7 +62,7 @@ def _print_grouped(items: list[dict]) -> None:
         print(
             f"[{status:^9}] {run_id[:8]} | {model:>30s} | "
             f"{latency:>6.2f}s | tags={tags} | tools_called={tool_calls_done}"
-            if isinstance(latency, (int, float))
+            if isinstance(latency, int | float)
             else f"[{status:^9}] {run_id[:8]} | {model:>30s} | {'':>7s} | tags={tags} | tools_called={tool_calls_done}"
         )
         if first_msg:

@@ -167,7 +167,7 @@ async def update_line_quantity(
     if quantity <= 0:
         raise ValueError("La cantidad debe ser mayor que cero")
 
-    line = next((l for l in session.lines if l.id == line_id), None)
+    line = next((ln for ln in session.lines if ln.id == line_id), None)
     if not line:
         raise LookupError("Línea no encontrada")
     line.quantity = quantity
@@ -185,7 +185,7 @@ async def remove_line(
     session = await _get_session_for_user(db, tenant_id, session_id)
     if session.status != "open":
         raise ValueError("La sesión no está abierta")
-    line = next((l for l in session.lines if l.id == line_id), None)
+    line = next((ln for ln in session.lines if ln.id == line_id), None)
     if not line:
         raise LookupError("Línea no encontrada")
     await db.delete(line)
