@@ -292,7 +292,7 @@ async def _execute_one(
             is_rate_limit = (
                 "429" in err_str or "rate" in err_str.lower() or "quota" in err_str.lower()
             )
-            if attempt == 0 and (isinstance(e, (ConnectionError, OSError)) or is_rate_limit):
+            if attempt == 0 and (isinstance(e, ConnectionError | OSError) or is_rate_limit):
                 wait = 5 if is_rate_limit else 2
                 logger.warning(
                     "[ORCHESTRATOR] Error transitorio en '%s': %s. Reintentando en %ds...",

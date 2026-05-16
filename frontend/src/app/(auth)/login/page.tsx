@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
@@ -163,7 +164,14 @@ export default function LoginPage() {
             >
                 {/* Logo */}
                 <div className="mb-8 text-center">
-                    <img src="/logo.svg" alt="AutomatizaPyme" className="w-14 h-14 rounded-2xl mb-4 shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-400/30 mx-auto" />
+                    <Image
+                        src="/logo.svg"
+                        alt="AutomatizaPyme"
+                        width={56}
+                        height={56}
+                        priority
+                        className="w-14 h-14 rounded-2xl mb-4 shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-400/30 mx-auto"
+                    />
                     <h1 className="text-2xl font-bold text-foreground tracking-tight">AutomatizaPyme</h1>
                     <p className="mt-1 text-sm text-muted-foreground">{t("tagline")}</p>
                 </div>

@@ -80,7 +80,7 @@ def evaluate_condition(condition: dict, context: dict) -> bool:
     if operator == "contains":
         if isinstance(resolved, str) and isinstance(expected, str):
             return expected in resolved
-        if isinstance(resolved, (list, tuple)):
+        if isinstance(resolved, list | tuple):
             return expected in resolved
         return False
 

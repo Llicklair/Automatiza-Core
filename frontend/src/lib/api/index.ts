@@ -201,3 +201,4 @@ export type { OnboardingState, OnboardingStepKey, Simulate303Result, Simulate303
 export type { PersistentNotification, NotificationListResponse } from "./notifications";
 export type { VerifactuMode, VerifactuConfig } from "./verifactuConfig";
 export type { ModeloAsistido, PresentacionInfo } from "./presentacion";
+export type { PosLine, PosSession, PosLineAdd, PosCheckoutRequest } from "./pos";

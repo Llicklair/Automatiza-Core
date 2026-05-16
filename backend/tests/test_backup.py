@@ -123,7 +123,7 @@ async def test_create_backup_invokes_pg_dump_with_correct_flags(monkeypatch, tmp
     )
 
     # Crea el archivo "manualmente" para simular el pg_dump exitoso.
-    out = await backup_module.create_backup(backup_dir=tmp_path)
+    await backup_module.create_backup(backup_dir=tmp_path)
     # El proceso fake no escribe el archivo; esperamos que el código intente
     # abrir el .stat y eso fallará. Lo creamos antes de reflejar la realidad.
     # Simplificamos: el test asegura que los flags fueron correctos.

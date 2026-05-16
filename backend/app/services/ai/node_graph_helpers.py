@@ -179,7 +179,7 @@ def build_skill_dispatch(
                 summary = ", ".join(
                     f"{k}: {v}"
                     for k, v in output.items()
-                    if not isinstance(v, (dict, list)) or len(str(v)) < 200
+                    if not isinstance(v, dict | list) or len(str(v)) < 200
                 )
                 ctx_parts.append(f"Nodo {nid}: {summary}")
     enriched_intent = "\n".join(ctx_parts)

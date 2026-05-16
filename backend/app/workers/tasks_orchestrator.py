@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 def _is_transient_error(exc: Exception) -> bool:
     """Devuelve True si el error es transitorio (red, timeout, rate limit)."""
     err_str = str(exc).lower()
-    return isinstance(exc, (ConnectionError, OSError, TimeoutError)) or any(
+    return isinstance(exc, ConnectionError | OSError | TimeoutError) or any(
         kw in err_str
         for kw in (
             "429",

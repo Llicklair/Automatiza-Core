@@ -661,7 +661,7 @@ def _parse_markdown(body: str, st: dict) -> list:
     def flush_para():
         nonlocal para_lines
         if para_lines:
-            txt = " ".join(_md_inline(l.strip()) for l in para_lines if l.strip())
+            txt = " ".join(_md_inline(pl.strip()) for pl in para_lines if pl.strip())
             if txt:
                 flow.append(Paragraph(txt, s["p"]))
             para_lines = []
@@ -689,7 +689,8 @@ def _parse_markdown(body: str, st: dict) -> list:
         if stripped.startswith("|") and stripped.endswith("|") and i + 1 < len(lines):
             sep = lines[i + 1].strip()
             if _re.match(r"^\|?\s*:?-{2,}", sep) and "|" in sep:
-                flush_para(); flush_bullets()
+                flush_para()
+                flush_bullets()
                 # Recoger filas
                 rows: list[list[str]] = []
                 rows.append([c.strip() for c in stripped.strip("|").split("|")])
@@ -703,10 +704,14 @@ def _parse_markdown(body: str, st: dict) -> list:
 
         # Headings
         if stripped.startswith("### "):
-            flush_para(); flush_bullets(); flush_table()
+            flush_para()
+            flush_bullets()
+            flush_table()
             flow.append(Paragraph(_md_inline(stripped[4:]), s["h3"]))
         elif stripped.startswith("## "):
-            flush_para(); flush_bullets(); flush_table()
+            flush_para()
+            flush_bullets()
+            flush_table()
             flow.append(Paragraph(_md_inline(stripped[3:]), s["h2"]))
             # Línea separadora indigo fina debajo del H2 — refuerza jerarquía
             C = st["C"]
@@ -716,18 +721,23 @@ def _parse_markdown(body: str, st: dict) -> list:
                 spaceBefore=0, spaceAfter=10,
             ))
         elif stripped.startswith("# "):
-            flush_para(); flush_bullets(); flush_table()
+            flush_para()
+            flush_bullets()
+            flush_table()
             flow.append(Paragraph(_md_inline(stripped[2:]), s["h1"]))
         # HR
         elif stripped in ("---", "***", "___"):
-            flush_para(); flush_bullets(); flush_table()
+            flush_para()
+            flush_bullets()
+            flush_table()
             C = st["C"]
             flow.append(HRFlowable(width="100%", thickness=0.5,
                                    color=colors.HexColor(C["LINE"]),
                                    spaceBefore=4, spaceAfter=8))
         # Blockquote
         elif stripped.startswith(">"):
-            flush_para(); flush_bullets()
+            flush_para()
+            flush_bullets()
             flow.append(Paragraph(_md_inline(stripped.lstrip(">").strip()), s["quote"]))
         # Bullet list
         elif _re.match(r"^[-*]\s+", stripped):
@@ -739,14 +749,17 @@ def _parse_markdown(body: str, st: dict) -> list:
             bullets.append(_re.sub(r"^\d+\.\s+", "", stripped))
         # Línea vacía → separador
         elif not stripped:
-            flush_para(); flush_bullets()
+            flush_para()
+            flush_bullets()
         # Texto normal
         else:
             flush_bullets()
             para_lines.append(stripped)
         i += 1
 
-    flush_para(); flush_bullets(); flush_table()
+    flush_para()
+    flush_bullets()
+    flush_table()
     return flow
 
 

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pos", tags=["pos"])
 
 
-@router.get("/sessions/current", response_model=Optional[PosSessionResponse])
+@router.get("/sessions/current", response_model=PosSessionResponse | None)
 @limiter.limit("60/minute")
 async def get_current_session(
     request: Request,

@@ -27,7 +27,7 @@ async def run_node_engine(execution_id: str):
         return result
     except Exception as exc:
         logger.exception("Error en run_node_engine:%s", execution_id)
-        if isinstance(exc, (ConnectionError, OSError, TimeoutError)):
+        if isinstance(exc, ConnectionError | OSError | TimeoutError):
             await guard.release("run_node_engine", execution_id)
             # Reintento simple con backoff
             for attempt in range(3):
@@ -60,7 +60,7 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
         return result
     except Exception as exc:
         logger.exception("Error en resume_node_engine:%s", idempotency_key)
-        if isinstance(exc, (ConnectionError, OSError, TimeoutError)):
+        if isinstance(exc, ConnectionError | OSError | TimeoutError):
             await guard.release("resume_node_engine", idempotency_key)
             for attempt in range(3):
                 await asyncio.sleep(10 * (attempt + 1))

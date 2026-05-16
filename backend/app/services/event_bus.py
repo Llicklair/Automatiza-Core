@@ -88,7 +88,7 @@ async def emit_event(
         base_instruction = _build_instruction(wf)
         # Limitar contexto si es muy grande para no saturar el prompt
         safe_ctx = {
-            k: v for k, v in context.items() if not isinstance(v, (dict, list)) or len(str(v)) < 200
+            k: v for k, v in context.items() if not isinstance(v, dict | list) or len(str(v)) < 200
         }
         ctx_str = ", ".join(f"{k}: {v}" for k, v in safe_ctx.items())
 
@@ -139,8 +139,9 @@ async def emit_event(
 
             await dispatch_orchestrator(str(task.id))
             triggered_ids.append(str(wf.id))
-            print(
-                f"[EVENT_BUS] Evento '{event_name}' → workflow '{wf.name}' iniciado (Task {task.id})"
+            _logger.info(
+                "[EVENT_BUS] Evento '%s' -> workflow '%s' iniciado (Task %s)",
+                event_name, wf.name, task.id,
             )
         except Exception as e:
             execution.status = "failed"

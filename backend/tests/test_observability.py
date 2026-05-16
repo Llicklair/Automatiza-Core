@@ -127,7 +127,7 @@ class TestTraceLlmCall:
     def test_handles_exception_inside(self):
         """trace_llm_call should log even if an exception occurs inside."""
         with pytest.raises(RuntimeError):
-            with trace_llm_call(name="error_test") as ctx:
+            with trace_llm_call(name="error_test"):
                 raise RuntimeError("intentional")
 
 

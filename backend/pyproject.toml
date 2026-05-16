@@ -69,7 +69,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -118,6 +118,16 @@ module = [
     "sentence_transformers.*", "pgvector.*", "reportlab.*", "pypdf.*",
     "apscheduler.*", "slowapi.*", "croniter.*", "docxtpl.*", "mammoth.*",
     "htmldocx.*", "docx.*", "openpyxl.*", "tabula.*",
+    # Anadidos 2026-05-16 tras auditoria global (P3 #18):
+    "pandas", "pandas.*",
+    "lxml", "lxml.*",
+    "jose", "jose.*",
+    "redis", "redis.*", "redis.asyncio",
+    "celery", "celery.*",
+    "langfuse", "langfuse.*",
+    "prometheus_client", "prometheus_client.*",
+    "xhtml2pdf", "xhtml2pdf.*",
+    "opendataloader_pdf", "opendataloader_pdf.*",
 ]
 ignore_missing_imports = true
 

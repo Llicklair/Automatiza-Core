@@ -19,7 +19,7 @@ async def test_create_task_and_run_mock(client: AsyncClient, seed_tenant_and_use
     resp = await client.post("/api/v1/tasks", json=payload, headers=headers)
     assert resp.status_code == 201
     task_data = resp.json()
-    task_id = task_data["id"]
+    task_data["id"]
     assert task_data["status"] == "pending"
 
     # En un entorno real, TaskRunner procesaría esta tarea de forma asíncrona.

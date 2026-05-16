@@ -1360,8 +1360,8 @@ async def main():
         # ERP
         client_id, supplier_id = await test_clientes(client)
         prod_id, svc_id = await test_productos(client)
-        invoice_id = await test_facturas(client, client_id, prod_id)
-        quote_id = await test_presupuestos(client, client_id)
+        await test_facturas(client, client_id, prod_id)
+        await test_presupuestos(client, client_id)
         await test_pedidos_venta(client, client_id, prod_id)
         await test_pedidos_compra(client, supplier_id, prod_id)
         await test_recurrentes(client, client_id)

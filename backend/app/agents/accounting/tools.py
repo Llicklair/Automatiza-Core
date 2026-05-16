@@ -32,8 +32,8 @@ async def create_journal_entry(
         lines: Lista de líneas con account_code, account_name, debit, credit
     """
     try:
-        total_debit = sum(Decimal(str(l.get("debit", 0))) for l in lines)
-        total_credit = sum(Decimal(str(l.get("credit", 0))) for l in lines)
+        total_debit = sum(Decimal(str(ln.get("debit", 0))) for ln in lines)
+        total_credit = sum(Decimal(str(ln.get("credit", 0))) for ln in lines)
         if abs(total_debit - total_credit) > Decimal("0.01"):
             return f"Error: El asiento no cuadra. Débitos: {total_debit}, Créditos: {total_credit}. Deben ser iguales."
 
@@ -48,14 +48,14 @@ async def create_journal_entry(
             db.add(entry)
             await db.flush()
 
-            for l in lines:
+            for ln in lines:
                 db.add(JournalLine(
                     tenant_id=UUID(tenant_id),
                     entry_id=entry.id,
-                    account_code=str(l["account_code"]),
-                    account_name=l.get("account_name", ""),
-                    debit=Decimal(str(l.get("debit", 0))),
-                    credit=Decimal(str(l.get("credit", 0))),
+                    account_code=str(ln["account_code"]),
+                    account_name=ln.get("account_name", ""),
+                    debit=Decimal(str(ln.get("debit", 0))),
+                    credit=Decimal(str(ln.get("credit", 0))),
                 ))
 
             await db.commit()
