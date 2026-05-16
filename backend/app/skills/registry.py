@@ -2,7 +2,6 @@ import importlib
 import inspect
 import logging
 from pathlib import Path
-from typing import Dict, List
 
 from app.skills.base import BaseSkill
 
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 class SkillRegistry:
     """Registro y cargador dinámico de Skills (Habilidades Modulares)."""
 
-    _skills: Dict[str, BaseSkill] = {}
+    _skills: dict[str, BaseSkill] = {}
 
     @classmethod
     def register(cls, skill: BaseSkill):
@@ -28,7 +27,7 @@ class SkillRegistry:
         return cls._skills.get(name)
 
     @classmethod
-    def get_all_skills(cls) -> List[BaseSkill]:
+    def get_all_skills(cls) -> list[BaseSkill]:
         """Devuelve todas las Skills registradas."""
         return list(cls._skills.values())
 

@@ -71,7 +71,7 @@ async def download_backup(
             env={**__import__("os").environ, **env},
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(status_code=504, detail="pg_dump tardó demasiado (timeout 120s)")
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="pg_dump no está disponible en el servidor")
@@ -141,7 +141,7 @@ async def restore_backup(
             env={**__import__("os").environ, **env},
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(input=content), timeout=300)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(
             status_code=504, detail="La restauración tardó demasiado (timeout 5min)"
         )

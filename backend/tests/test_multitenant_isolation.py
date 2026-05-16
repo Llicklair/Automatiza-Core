@@ -4,10 +4,10 @@ Validates that tenant B cannot read, modify, or delete tenant A's data via
 the public API. Each test creates resources as tenant A and asserts that
 tenant B receives 404/empty/forbidden when trying to access them.
 """
-import pytest
-from httpx import AsyncClient
 from datetime import datetime
 
+import pytest
+from httpx import AsyncClient
 
 # ── Clients (CRM) ─────────────────────────────────────────────────────────────
 

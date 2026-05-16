@@ -1,6 +1,5 @@
 """Tests del servicio de autonomía por dominio (SEC.AUT)."""
 import pytest
-
 from app.services.autonomy import (
     DEFAULTS,
     KNOWN_DOMAINS,

@@ -11,7 +11,6 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
-
 from app.agents.orchestrator import _dispatch_handlers
 
 
@@ -57,7 +56,7 @@ async def test_records_failed_when_result_success_false(captured_runs, monkeypat
 
 async def test_records_timeout_and_reraises(captured_runs, monkeypatch):
     async def fake_impl(state, subtask, agent):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     monkeypatch.setattr(_dispatch_handlers, "_invoke_dispatcher_impl", fake_impl)
 

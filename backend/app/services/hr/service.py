@@ -1,65 +1,65 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
 from app.services.hr.commands import (
-    create_employee,
-    delete_employee,
-    update_employee,
+    approve_expense,
+    approve_leave_request,
     # payroll writes
     approve_payroll,
+    clock_in,
+    clock_out_attendance,
+    create_employee,
+    # expense writes
+    create_expense,
+    # leave request writes
+    create_leave_request,
     create_payroll,
     create_payroll_auto,
-    delete_payroll,
-    generate_and_save_payroll_pdf,
-    update_payroll,
+    delete_employee,
     # employee doc writes
     delete_employee_document,
-    upload_employee_document,
+    delete_expense,
+    delete_leave_request,
+    delete_payroll,
+    generate_and_save_payroll_pdf,
     # special docs
     generate_finiquito_pdf,
     generate_liquidacion_pdf,
     generate_registro_jornada,
+    reimburse_expense,
+    reject_expense,
+    reject_leave_request,
+    update_employee,
+    update_payroll,
+    upload_employee_document,
+    upload_expense_receipt,
     # schedule + attendance writes
     upsert_schedule,
-    clock_in,
-    clock_out_attendance,
-    # leave request writes
-    create_leave_request,
-    approve_leave_request,
-    reject_leave_request,
-    delete_leave_request,
-    # expense writes
-    create_expense,
-    approve_expense,
-    reject_expense,
-    reimburse_expense,
-    upload_expense_receipt,
-    delete_expense,
 )
 from app.services.hr.queries import (
     UPLOAD_DIR,
-    calc_payroll,
-    get_employee,
-    list_employees,
     # payroll reads
     build_payroll_pdf,
+    calc_payroll,
     download_payroll_pdf,
-    list_payrolls,
-    preview_payroll,
+    get_currently_working,
+    get_employee,
     # employee doc reads
     get_employee_document,
-    list_employee_documents,
-    read_document_file,
-    # special docs
-    load_employee_and_tenant,
-    # schedule + attendance reads
-    list_schedules,
     get_employee_schedule,
+    get_expense_receipt_path,
     list_attendance,
-    get_currently_working,
-    # leave request reads
-    list_leave_requests,
+    list_employee_documents,
+    list_employees,
     # expense reads
     list_expenses,
-    get_expense_receipt_path,
+    # leave request reads
+    list_leave_requests,
+    list_payrolls,
+    # schedule + attendance reads
+    list_schedules,
+    # special docs
+    load_employee_and_tenant,
+    preview_payroll,
+    read_document_file,
 )
 
 __all__ = [

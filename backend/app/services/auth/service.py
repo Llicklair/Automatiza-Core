@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.auth._schemas import UserCreate
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
@@ -18,6 +17,7 @@ from app.core.security import (
 )
 from app.db.models.models import PasswordResetToken, Tenant, User
 from app.services.audit import log_action
+from app.services.auth._schemas import UserCreate
 from app.services.auth.email_reset import send_password_reset_email
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

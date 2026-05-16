@@ -20,7 +20,7 @@ Texto de aprobación obligatorio (configurable por idioma futuro):
 
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -28,10 +28,9 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.tasks import (
+    RISK_LEVEL_MANDATORY_HUMAN_FISCAL,
     FiscalApprovalLog,
     PendingApproval,
-    RISK_LEVEL_MANDATORY_HUMAN_FISCAL,
-    Task,
 )
 
 
@@ -74,7 +73,7 @@ async def request_fiscal_approval(
         action_description=description,
         action_payload=payload,
         risk_level=RISK_LEVEL_MANDATORY_HUMAN_FISCAL,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=expires_in_days),
+        expires_at=datetime.now(UTC) + timedelta(days=expires_in_days),
         status="pending",
     )
     db.add(approval)
@@ -139,7 +138,7 @@ async def approve_fiscal(
 
     pending.status = "approved"
     pending.approved_by = user_id
-    pending.approved_at = datetime.now(timezone.utc)
+    pending.approved_at = datetime.now(UTC)
 
     # Crear el log append-only
     log = FiscalApprovalLog(

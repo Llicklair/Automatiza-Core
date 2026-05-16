@@ -11,7 +11,6 @@ Cubre los invariantes que la Fase 3 (RLS) va a asumir:
 import asyncio
 
 import pytest
-
 from app.core.tenant_context import (
     get_current_tenant,
     require_current_tenant,

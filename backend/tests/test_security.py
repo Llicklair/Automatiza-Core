@@ -1,8 +1,5 @@
 """Tests para app.core.security — hashing, tokens JWT."""
-import time
 from datetime import timedelta
-
-import pytest
 
 from app.core.security import (
     create_access_token,

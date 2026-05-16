@@ -14,7 +14,6 @@ from app.services.backup_local import (
     record_backup,
 )
 
-
 router = APIRouter(prefix="/backup-local", tags=["backup"])
 
 

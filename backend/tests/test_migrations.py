@@ -9,7 +9,6 @@ import sys
 
 import pytest
 
-
 PYTHON = sys.executable
 BACKEND_DIR = str(__import__("pathlib").Path(__file__).resolve().parent.parent)
 

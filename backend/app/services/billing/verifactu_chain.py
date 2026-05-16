@@ -76,7 +76,7 @@ async def _get_last_huella(db: AsyncSession, tenant_id: UUID) -> str | None:
 async def append_verifactu_record(
     db: AsyncSession,
     *,
-    invoice: "Invoice",
+    invoice: Invoice,
     nif_emisor: str,
 ) -> VerifactuRecord:
     """Genera y persiste el siguiente registro Verifactu encadenado.

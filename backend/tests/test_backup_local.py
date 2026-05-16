@@ -1,10 +1,7 @@
 """Tests para registro de backups locales (BAK.LOC + BAK.VF + BAK.UI)."""
-from datetime import datetime, timedelta, timezone
-from uuid import uuid4
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.db.models.backup import BackupRecord
 from app.main import app
 from app.services.backup_local import (
@@ -14,6 +11,7 @@ from app.services.backup_local import (
     get_last_backup,
     record_backup,
 )
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio
@@ -64,17 +62,17 @@ class TestGetLastBackup:
         old = BackupRecord(
             tenant_id=tenant.id, kind="full", destination_path="/a",
             size_bytes=1, sha256_hex="a" * 64, encryption_key_label="x",
-            created_at=datetime.now(timezone.utc) - timedelta(days=10),
+            created_at=datetime.now(UTC) - timedelta(days=10),
         )
         mid = BackupRecord(
             tenant_id=tenant.id, kind="full", destination_path="/b",
             size_bytes=2, sha256_hex="b" * 64, encryption_key_label="x",
-            created_at=datetime.now(timezone.utc) - timedelta(days=2),
+            created_at=datetime.now(UTC) - timedelta(days=2),
         )
         new = BackupRecord(
             tenant_id=tenant.id, kind="full", destination_path="/c",
             size_bytes=3, sha256_hex="c" * 64, encryption_key_label="x",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db.add_all([old, mid, new])
         await db.commit()
@@ -139,7 +137,7 @@ class TestBackupStatusForBanner:
         old = BackupRecord(
             tenant_id=tenant.id, kind="full", destination_path="/old",
             size_bytes=1, sha256_hex="o" * 64, encryption_key_label="x",
-            created_at=datetime.now(timezone.utc) - timedelta(days=BACKUP_STALE_THRESHOLD_DAYS + 3),
+            created_at=datetime.now(UTC) - timedelta(days=BACKUP_STALE_THRESHOLD_DAYS + 3),
         )
         db.add(old)
         await db.commit()

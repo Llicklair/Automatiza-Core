@@ -18,6 +18,8 @@ from typing import Any
 
 from app.core.tenant_context import (
     _current_tenant_ctx as _active_tenant_ctx,
+)
+from app.core.tenant_context import (
     get_current_tenant,
     set_current_tenant,
 )

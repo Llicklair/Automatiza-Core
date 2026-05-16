@@ -18,7 +18,6 @@ Revises: 0024_inventory_extensions
 
 from alembic import op
 
-
 revision = "0025_pos_sessions"
 down_revision = "0024_inventory_extensions"
 branch_labels = None

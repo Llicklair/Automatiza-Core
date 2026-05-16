@@ -3,12 +3,11 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from app.core.dependencies import get_current_user, require_role
+from app.core.security import create_access_token
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.dependencies import get_current_user, require_role
-from app.core.security import create_access_token
 
 
 def _mock_request(path: str = "/api/v1/test") -> MagicMock:

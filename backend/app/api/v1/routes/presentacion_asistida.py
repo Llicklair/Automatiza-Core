@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -13,7 +13,6 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import Tenant, User
 from app.services.presentacion.asistida import (
-    ModeloAsistido,
     TenantSummary,
     build_xml,
     get_sede_link,
@@ -67,7 +66,7 @@ async def download_xml(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
-    year = ejercicio or datetime.now(timezone.utc).year
+    year = ejercicio or datetime.now(UTC).year
     summary = TenantSummary(
         nif=tenant.nif or "",
         name=tenant.name or "",

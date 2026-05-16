@@ -1,6 +1,5 @@
 """Tests del simulador Modelo 303 (UI.SIM) — datos ejemplo, sin BD."""
 import pytest
-
 from app.services.onboarding.simulate_303 import (
     SAMPLE_LINES,
     simulate_modelo_303,

@@ -82,8 +82,8 @@ async def track_event(
         return False
 
     try:
-        from app.core.telemetry_scrubber import hash_tenant_id, scrub_event
         from app.core.config import settings
+        from app.core.telemetry_scrubber import hash_tenant_id, scrub_event
 
         # Pseudonimizar tenant_id con salt rotada (placeholder fijo para MVP;
         # en producción se carga rotación desde `settings.TELEMETRY_SALT`).
@@ -119,6 +119,7 @@ async def _send_to_posthog(
     está caído. El log local sirve de respaldo.
     """
     import httpx
+
     from app.core.config import settings
 
     host = getattr(settings, "POSTHOG_HOST", "https://eu.posthog.com")

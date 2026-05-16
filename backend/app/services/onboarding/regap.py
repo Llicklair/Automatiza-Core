@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -99,7 +99,7 @@ async def start_identification(
         record.status = "cert_pending"
     else:
         record.status = "identifying"
-    record.updated_at = datetime.now(timezone.utc)
+    record.updated_at = datetime.now(UTC)
     await db.flush()
     return record
 
@@ -119,7 +119,7 @@ async def mark_power_granted(
             f"avanzar a 'power_granted'"
         )
     record.status = "power_granted"
-    record.updated_at = datetime.now(timezone.utc)
+    record.updated_at = datetime.now(UTC)
     await db.flush()
     return record
 
@@ -134,7 +134,7 @@ async def _call_regap_consulta(nif_cliente: str, nif_apoderado: str) -> dict:
     """
     return {
         "mock": True,
-        "consulted_at": datetime.now(timezone.utc).isoformat(),
+        "consulted_at": datetime.now(UTC).isoformat(),
         "nif_cliente": nif_cliente,
         "nif_apoderado": nif_apoderado,
         "apoderamientos": [
@@ -170,7 +170,7 @@ async def verify_regap_consulta(
     record.verify_payload = json.dumps(payload)
     if vigente:
         record.status = "verified"
-        record.verified_at = datetime.now(timezone.utc)
+        record.verified_at = datetime.now(UTC)
         record.rejected_reason = None
     else:
         record.status = "rejected"
@@ -178,7 +178,7 @@ async def verify_regap_consulta(
             "La consulta REGAP no devolvió apoderamientos vigentes. "
             "Confirma que has completado el trámite en Sede AEAT y vuelve a intentar."
         )
-    record.updated_at = datetime.now(timezone.utc)
+    record.updated_at = datetime.now(UTC)
     await db.flush()
     return record
 
@@ -194,6 +194,6 @@ async def reset_regap(db: AsyncSession, *, tenant_id: UUID) -> TenantRegapStatus
     record.verify_payload = None
     record.verified_at = None
     record.rejected_reason = None
-    record.updated_at = datetime.now(timezone.utc)
+    record.updated_at = datetime.now(UTC)
     await db.flush()
     return record

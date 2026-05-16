@@ -1,8 +1,9 @@
 """Tests para endpoints Invoices /api/v1/invoices/* and /api/v1/clients/{id}/invoices."""
+from datetime import datetime
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from datetime import datetime
 
 
 class TestInvoicesNoAuth:

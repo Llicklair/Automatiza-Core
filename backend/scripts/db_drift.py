@@ -35,12 +35,12 @@ import os
 import sys
 from dataclasses import dataclass, field
 
-from sqlalchemy import inspect
-from sqlalchemy.ext.asyncio import create_async_engine
+import app.db.models  # noqa: F401 — registra modelos en el metadata
 
 # Carga todos los modelos para poblar Base.metadata.
 from app.db.base import Base  # noqa: F401
-import app.db.models  # noqa: F401 — registra modelos en el metadata
+from sqlalchemy import inspect
+from sqlalchemy.ext.asyncio import create_async_engine
 
 DEFAULT_DB_URL = os.environ.get(
     "DATABASE_URL",

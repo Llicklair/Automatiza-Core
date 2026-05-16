@@ -2,7 +2,6 @@
 import uuid
 
 import pytest
-
 from app.services.billing.numbering import next_invoice_number
 
 

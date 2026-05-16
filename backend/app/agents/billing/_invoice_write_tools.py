@@ -124,7 +124,7 @@ async def _update_invoice_async(
                 Decimal(str(new_vat))
                 if new_vat is not None
                 else (
-                    Decimal(str((float(invoice.tax_amount) / float(invoice.amount_base) * 100)))
+                    Decimal(str(float(invoice.tax_amount) / float(invoice.amount_base) * 100))
                     if invoice.amount_base and float(invoice.amount_base) > 0
                     else Decimal("21")
                 )

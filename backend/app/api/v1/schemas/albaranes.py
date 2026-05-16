@@ -2,14 +2,13 @@
 
 from datetime import date as date_type
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
 
 
 class DeliveryNoteLineCreate(BaseModel):
-    product_id: Optional[UUID] = None
+    product_id: UUID | None = None
     description: str
     quantity: float = 1
     unit_price: float = 0
@@ -17,11 +16,11 @@ class DeliveryNoteLineCreate(BaseModel):
 
 
 class DeliveryNoteCreate(BaseModel):
-    client_id: Optional[UUID] = None
-    client_name: Optional[str] = None
-    date: Optional[date_type] = None
-    notes: Optional[str] = None
-    lines: List[DeliveryNoteLineCreate] = []
+    client_id: UUID | None = None
+    client_name: str | None = None
+    date: date_type | None = None
+    notes: str | None = None
+    lines: list[DeliveryNoteLineCreate] = []
 
 
 class DeliveryNoteStatusUpdate(BaseModel):
@@ -30,7 +29,7 @@ class DeliveryNoteStatusUpdate(BaseModel):
 
 class DeliveryNoteLineResponse(BaseModel):
     id: UUID
-    product_id: Optional[UUID] = None
+    product_id: UUID | None = None
     description: str
     quantity: float
     unit_price: float
@@ -42,14 +41,14 @@ class DeliveryNoteLineResponse(BaseModel):
 class DeliveryNoteResponse(BaseModel):
     id: UUID
     tenant_id: UUID
-    client_id: Optional[UUID] = None
+    client_id: UUID | None = None
     albaran_number: str
     date: date_type
     status: str
-    notes: Optional[str] = None
+    notes: str | None = None
     amount_base: float
     tax_amount: float
     amount_total: float
-    created_at: Optional[datetime] = None
-    lines: List[DeliveryNoteLineResponse] = []
+    created_at: datetime | None = None
+    lines: list[DeliveryNoteLineResponse] = []
     model_config = {"from_attributes": True}

@@ -31,7 +31,6 @@ load_dotenv(ROOT.parent / ".env")
 os.environ.pop("GEMINI_API_KEY", None)
 os.environ.pop("DEFAULT_LLM_PROVIDER", None)
 
-from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
 
 TENANT_ID = "9cd49fbb-355b-4b75-ad57-45ebe1c85749"
 USER_ID = "0d7e5ea1-5a91-4372-8de1-8e72a2e0085b"
@@ -131,7 +130,7 @@ async def _run_one(agent_name: str, label: str, prompt: str, graph, timeout: flo
     final_state: dict = {}
     try:
         final_state = await asyncio.wait_for(graph.ainvoke(state), timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error = f"TIMEOUT >{timeout}s"
     except Exception as e:
         error = f"{type(e).__name__}: {e}"

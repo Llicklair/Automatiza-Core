@@ -1,8 +1,7 @@
 """Tests para cifrado E2E y retención de backup B2 (BAK.B2)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from app.services.backup import (
     BackupCandidate,
     apply_rolling_retention,
@@ -72,7 +71,7 @@ class TestRollingRetention:
         assert keep == purge == []
 
     def test_backup_de_hoy_se_conserva(self):
-        now = datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 14, 12, 0, tzinfo=UTC)
         c = BackupCandidate(key="a", created_at=now - timedelta(hours=1))
         keep, purge = apply_rolling_retention([c], now=now)
         assert keep == [c]
@@ -81,7 +80,7 @@ class TestRollingRetention:
     def test_backup_de_hace_60_dias_es_purgado_si_no_es_mensual(self):
         # 60 días atrás está fuera de la ventana diaria 30d. Si no es el
         # primer backup de su mes, se purga.
-        now = datetime(2026, 5, 14, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 14, tzinfo=UTC)
         c1 = BackupCandidate(key="a", created_at=now - timedelta(days=60, hours=2))
         c2 = BackupCandidate(key="b", created_at=now - timedelta(days=60))  # mismo día
         keep, purge = apply_rolling_retention([c1, c2], now=now)
@@ -91,29 +90,29 @@ class TestRollingRetention:
         assert c2 in purge
 
     def test_snapshot_mensual_de_hace_5_meses(self):
-        now = datetime(2026, 5, 14, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 14, tzinfo=UTC)
         # Backup de hace ~5 meses (diciembre 2025)
-        old = BackupCandidate(key="dic", created_at=datetime(2025, 12, 5, tzinfo=timezone.utc))
+        old = BackupCandidate(key="dic", created_at=datetime(2025, 12, 5, tzinfo=UTC))
         keep, purge = apply_rolling_retention([old], now=now)
         assert old in keep  # dentro de la ventana de 12 meses
 
     def test_snapshot_de_hace_2_anos_se_purga(self):
-        now = datetime(2026, 5, 14, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 14, tzinfo=UTC)
         very_old = BackupCandidate(
-            key="2024", created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            key="2024", created_at=datetime(2024, 1, 1, tzinfo=UTC),
         )
         keep, purge = apply_rolling_retention([very_old], now=now)
         assert very_old in purge
         assert keep == []
 
     def test_combina_diario_y_mensual_sin_duplicar(self):
-        now = datetime(2026, 5, 14, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 14, tzinfo=UTC)
         candidates = [
             BackupCandidate(key=f"d{i}", created_at=now - timedelta(days=i))
             for i in range(0, 35)  # 35 días, los 30 últimos son diarios
         ]
         # Añadimos un backup mensual viejo (hace 10 meses)
-        ten_months_ago = datetime(2025, 7, 1, tzinfo=timezone.utc)
+        ten_months_ago = datetime(2025, 7, 1, tzinfo=UTC)
         candidates.append(BackupCandidate(key="m10", created_at=ten_months_ago))
 
         keep, purge = apply_rolling_retention(candidates, now=now)

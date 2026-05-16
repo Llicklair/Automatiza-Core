@@ -1,5 +1,6 @@
 """Dispatcher contable (accounting agent)."""
 import logging
+
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 
 logger = logging.getLogger(__name__)

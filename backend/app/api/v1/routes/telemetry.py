@@ -7,7 +7,7 @@ Permite al usuario:
 Cumplimiento RGPD Art. 17 (derecho de supresión) + Art. 7 (revocabilidad).
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
@@ -82,7 +82,7 @@ async def revoke_my_telemetry(
         opt_out = TelemetryOptOut(
             tenant_id=user.tenant_id,
             requested_by=user.id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db.add(opt_out)
         await db.commit()

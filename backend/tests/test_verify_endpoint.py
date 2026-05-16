@@ -1,15 +1,13 @@
 """Tests para el endpoint público de verificación Verifactu (FAC.QR)."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 from app.main import app
 from app.services.billing.verifactu_chain import append_verifactu_record
+from httpx import ASGITransport, AsyncClient
 
 
 def _make_invoice(tenant_id, client_id, *, invoice_number: str, importe: Decimal) -> Invoice:
@@ -17,7 +15,7 @@ def _make_invoice(tenant_id, client_id, *, invoice_number: str, importe: Decimal
         tenant_id=tenant_id,
         client_id=client_id,
         invoice_number=invoice_number,
-        date=datetime(2026, 5, 14, 10, 0, tzinfo=timezone.utc),
+        date=datetime(2026, 5, 14, 10, 0, tzinfo=UTC),
         amount_base=importe,
         tax_amount=Decimal("0.00"),
         amount_total=importe,

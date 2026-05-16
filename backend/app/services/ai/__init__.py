@@ -4,6 +4,7 @@ Re-exports de los módulos del dominio para importación conveniente.
 """
 
 from app.services.ai.condition_evaluator import _resolve_field, evaluate_condition
+
 # AI.SCO — `score_candidate` no se re-exporta en MVP. Función queda definida
 # en cv_parser.py para reintroducción v1.2 con full compliance Anexo III AI Act
 # (QMS, marcado CE, registro UE). Ver docs/ai_act_scoping.md.

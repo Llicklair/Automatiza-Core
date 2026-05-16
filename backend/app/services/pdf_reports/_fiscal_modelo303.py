@@ -238,7 +238,7 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
     - vat_deducted: list of dict con rate, base, quota   (IVA deducible / compras)
     """
     if not REPORTLAB_AVAILABLE:
-        return f"MODELO 303 BORRADOR Q{data.get('quarter')}/{data.get('year')}\n".encode("utf-8")
+        return f"MODELO 303 BORRADOR Q{data.get('quarter')}/{data.get('year')}\n".encode()
 
     s = _common_styles()
     C = s["C"]

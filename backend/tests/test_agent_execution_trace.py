@@ -4,10 +4,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-
 from app.db.models.tasks import AgentExecutionTrace
 from app.services.observability.agent_trace import record_agent_execution
+from sqlalchemy import select
 
 
 @pytest.mark.asyncio

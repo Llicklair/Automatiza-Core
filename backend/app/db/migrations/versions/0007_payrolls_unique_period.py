@@ -20,7 +20,6 @@ Revision ID: 0007_payroll_unique
 Revises: 0006_emp_unique_nif
 """
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0007_payroll_unique"

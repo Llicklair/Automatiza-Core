@@ -11,7 +11,14 @@ from uuid import UUID
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.hr import Attendance, Candidate, Expense, LeaveRequest, RecruitmentPosition, WorkSchedule
+from app.db.models.hr import (
+    Attendance,
+    Candidate,
+    Expense,
+    LeaveRequest,
+    RecruitmentPosition,
+    WorkSchedule,
+)
 from app.db.models.hr_documents import HRDocument
 from app.db.models.models import Employee
 from app.prompts import load_prompt

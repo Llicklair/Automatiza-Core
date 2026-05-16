@@ -2,7 +2,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.services.analytics import CANONICAL_EVENTS, track_event
 
 
@@ -55,7 +54,6 @@ class TestTrackEvent:
     async def test_excepcion_interna_no_propaga(self, monkeypatch):
         # Forzamos un fallo en el scrubber para verificar que track_event
         # devuelve False en lugar de propagar.
-        from app.services.analytics import events as events_mod
 
         def _broken_scrub(*args, **kwargs):
             raise RuntimeError("boom")

@@ -5,7 +5,6 @@ Detecta el contexto del mensaje y genera respuestas apropiadas para cada agente.
 
 import json
 import re
-from typing import List
 from uuid import uuid4
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -68,17 +67,17 @@ class MockChatModel(BaseChatModel):
         return RunnableLambda(_invoke)
 
     def _generate(
-        self, messages: List[BaseMessage], stop=None, run_manager=None, **kwargs
+        self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs
     ) -> ChatResult:
         ai_msg = self._build_response(messages, kwargs)
         return ChatResult(generations=[ChatGeneration(message=ai_msg)])
 
     async def _agenerate(
-        self, messages: List[BaseMessage], stop=None, run_manager=None, **kwargs
+        self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs
     ) -> ChatResult:
         return self._generate(messages, stop, run_manager, **kwargs)
 
-    def _build_response(self, messages: List[BaseMessage], kwargs: dict) -> AIMessage:
+    def _build_response(self, messages: list[BaseMessage], kwargs: dict) -> AIMessage:
         full_text = " ".join(
             m.content if isinstance(m.content, str) else "" for m in messages
         ).lower()
@@ -293,7 +292,7 @@ class MockChatModel(BaseChatModel):
             }
         )
 
-    def _tool_call_response(self, full: str, tools: list, messages: List[BaseMessage]) -> AIMessage:
+    def _tool_call_response(self, full: str, tools: list, messages: list[BaseMessage]) -> AIMessage:
         """Genera una llamada a herramienta apropiada segun el contexto."""
         tenant_id = self._extract_tenant_id(messages)
 
@@ -383,7 +382,7 @@ class MockChatModel(BaseChatModel):
             content="He procesado tu solicitud. Todo esta en orden (respuesta simulada)."
         )
 
-    def _extract_tenant_id(self, messages: List[BaseMessage]) -> str:
+    def _extract_tenant_id(self, messages: list[BaseMessage]) -> str:
         """Extrae el tenant_id del contexto de los mensajes."""
         uuid_pattern = re.compile(
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE

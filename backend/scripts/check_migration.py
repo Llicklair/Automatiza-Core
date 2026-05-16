@@ -110,7 +110,7 @@ def check_staged() -> tuple[bool, str]:
     return False, (
         "FALLA: el commit modifica modelos SQLAlchemy con cambios estructurales "
         "pero NO incluye ninguna migración Alembic.\n\n"
-        f"Modelos afectados:\n"
+        "Modelos afectados:\n"
         + "\n".join(f"  - {f}" for f in significant_models)
         + "\n\nAcciones posibles:\n"
         "  1. Crear migración: `alembic revision --autogenerate -m 'descripción'`\n"

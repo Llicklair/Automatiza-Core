@@ -23,7 +23,7 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -106,10 +106,10 @@ class LLMTraceCallback(BaseCallbackHandler):
     # ── helpers ─────────────────────────────────────────────────────────
 
     def _today_path(self) -> Path:
-        return self.log_dir / f"{datetime.now(timezone.utc).date().isoformat()}.jsonl"
+        return self.log_dir / f"{datetime.now(UTC).date().isoformat()}.jsonl"
 
     def _write(self, record: dict[str, Any]) -> None:
-        record.setdefault("ts", datetime.now(timezone.utc).isoformat())
+        record.setdefault("ts", datetime.now(UTC).isoformat())
         try:
             line = json.dumps(record, ensure_ascii=False, default=str)
         except Exception as e:

@@ -23,7 +23,6 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 
-
 ImportKind = Literal["clients", "invoices"]
 
 

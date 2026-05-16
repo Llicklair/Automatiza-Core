@@ -1,7 +1,8 @@
 """Tests para endpoints Recurring Invoices /api/v1/recurring-invoices/*."""
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 from tests.conftest import _TestSessionLocal
 

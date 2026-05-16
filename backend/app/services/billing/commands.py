@@ -7,7 +7,7 @@ Read helpers are imported from queries.py to avoid duplication.
 import logging
 import os
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -30,7 +30,6 @@ from app.services.billing.queries import (
     VALID_IVA,
     _build_invoice_data,
     _load_invoice,
-    _load_tenant,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,7 @@ async def create_invoice(
     if manual_number:
         invoice_number = manual_number
     else:
-        invoice_year = datetime.now(timezone.utc).year
+        invoice_year = datetime.now(UTC).year
         series_result = await db.execute(
             select(InvoiceSeries)
             .where(
@@ -433,7 +432,7 @@ async def run_recurring(
     if not rec:
         return None
 
-    now = dt_module.datetime.now(dt_module.timezone.utc)
+    now = dt_module.datetime.now(dt_module.UTC)
     invoice_number = f"REC-{now.strftime('%Y%m%d%H%M%S')}"
 
     amount_base = 0.0

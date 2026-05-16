@@ -20,7 +20,7 @@ import os
 import re
 import shutil
 import uuid
-from typing import Any, List, Optional
+from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -177,7 +177,7 @@ def _build_tool_system_prompt(tools) -> str:
     )
 
 
-def _extract_json_from_text(text: str) -> Optional[str]:
+def _extract_json_from_text(text: str) -> str | None:
     """Intenta extraer JSON de tool_calls usando multiples estrategias de parseo."""
     # 1. Marcadores explicitos (mas fiable)
     match = _TOOL_CALL_RE.search(text)
@@ -303,7 +303,7 @@ def _parse_tool_response(text: str) -> AIMessage:
 # ---------------------------------------------------------------------------
 
 
-def _messages_to_prompt(messages: List[BaseMessage], tool_system: str = "") -> str:
+def _messages_to_prompt(messages: list[BaseMessage], tool_system: str = "") -> str:
     parts = []
     if tool_system:
         parts.append(f"[System]: {tool_system}")
@@ -394,8 +394,8 @@ class ClaudeCodeChatModel(BaseChatModel):
     # -- sync ----------------------------------------------------------------
     def _generate(
         self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
         **kwargs: Any,
     ) -> ChatResult:
         import subprocess
@@ -424,12 +424,12 @@ class ClaudeCodeChatModel(BaseChatModel):
     # -- async ----------------------------------------------------------------
     async def _agenerate(
         self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
-        proc: Optional[asyncio.subprocess.Process] = None
+        proc: asyncio.subprocess.Process | None = None
         text = ""
         try:
             proc = await _spawn_process()
@@ -440,7 +440,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             text = stdout.decode("utf-8", errors="replace").strip()
             if not text:
                 text = stderr.decode("utf-8", errors="replace").strip() or "Sin respuesta del CLI"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Crítico: matar el subprocess explícitamente. En Windows, asyncio
             # no cancela el read syscall de proc.communicate, así que la
             # corrutina queda colgada eternamente si no cerramos los fd
@@ -459,7 +459,7 @@ class ClaudeCodeChatModel(BaseChatModel):
                 # damos por perdido — ya devolvemos el error al caller.
                 try:
                     await asyncio.wait_for(proc.wait(), timeout=5)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     _log.warning(
                         "[ClaudeCode] subprocess no terminó tras kill+5s, posible zombie pid=%s",
                         getattr(proc, "pid", "?"),

@@ -6,8 +6,6 @@ en vez de propagar 'Error en búsqueda semántica: relation
 """
 from __future__ import annotations
 
-import pytest
-
 
 class _FakeUndefinedTable(Exception):
     sqlstate = "42P01"

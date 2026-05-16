@@ -3,11 +3,9 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.responses import Response
 
 from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db

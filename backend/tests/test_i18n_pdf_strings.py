@@ -1,8 +1,6 @@
 """Tests de internacionalización de strings PDF (I18N.PDF)."""
-import pytest
 
 from app.i18n import (
-    DEFAULT_LOCALE,
     SUPPORTED_LOCALES,
     get_locale_or_default,
     translate,

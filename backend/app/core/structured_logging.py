@@ -22,7 +22,7 @@ estos archivos JSONL y los empaqueta en un ZIP exportable.
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -42,7 +42,7 @@ class JSONFormatter(logging.Formatter):
         message = scrub_text(message) or ""
 
         entry: dict[str, object] = {
-            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": message,

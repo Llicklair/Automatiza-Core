@@ -13,7 +13,7 @@ Esta función opera sobre listas en memoria — no hace red ni I/O.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 
 @dataclass(frozen=True)
@@ -48,7 +48,7 @@ def apply_rolling_retention(
     if not candidates:
         return [], []
 
-    now_ts = now or datetime.now(timezone.utc)
+    now_ts = now or datetime.now(UTC)
     daily_cutoff = now_ts - timedelta(days=daily_window_days)
 
     sorted_candidates = sorted(candidates, key=lambda c: c.created_at)
@@ -56,7 +56,7 @@ def apply_rolling_retention(
 
     # Regla 1: ventana diaria
     for c in sorted_candidates:
-        c_ts = c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=timezone.utc)
+        c_ts = c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=UTC)
         if c_ts >= daily_cutoff:
             keep_set.add(c.key)
 
@@ -64,7 +64,7 @@ def apply_rolling_retention(
     # dentro de la ventana de N meses hacia atrás.
     monthly_first: dict[tuple[int, int], BackupCandidate] = {}
     for c in sorted_candidates:
-        c_ts = c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=timezone.utc)
+        c_ts = c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=UTC)
         ym = (c_ts.year, c_ts.month)
         if ym not in monthly_first:
             monthly_first[ym] = c

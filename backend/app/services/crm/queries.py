@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import Activity, Event, Opportunity, Reservation
 
-
 # ---- Opportunities ----
 
 

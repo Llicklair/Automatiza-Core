@@ -1,16 +1,16 @@
 """Tests para app.middleware.scanner_auth — Tokens de escáner móvil."""
 import time
+from datetime import UTC
 
 import jwt
 import pytest
-from fastapi import HTTPException
-
 from app.core.config import settings
 from app.middleware.scanner_auth import (
     create_scanner_token,
     decode_scanner_token,
     is_scanner_token,
 )
+from fastapi import HTTPException
 
 
 class TestCreateScannerToken:
@@ -57,15 +57,15 @@ class TestDecodeScannerToken:
         assert payload["tenant_id"] == "tenant-1"
 
     def test_expired_token_raises_401(self):
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         expired_payload = {
             "sub": "scanner_auth",
             "tenant_id": "t-1",
             "user_id": "u-1",
             "scope": "inventory:read",
-            "exp": datetime.now(timezone.utc) - timedelta(minutes=5),
-            "iat": datetime.now(timezone.utc) - timedelta(minutes=10),
+            "exp": datetime.now(UTC) - timedelta(minutes=5),
+            "iat": datetime.now(UTC) - timedelta(minutes=10),
         }
         expired_token = jwt.encode(
             expired_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
@@ -107,6 +107,7 @@ class TestIsScannerToken:
 
     def test_regular_token_returns_false(self):
         from unittest.mock import MagicMock
+
         from app.core.security import create_access_token
 
         token = create_access_token({"sub": "user-123", "role": "admin"})

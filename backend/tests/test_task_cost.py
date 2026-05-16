@@ -3,7 +3,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-
 from app.db.models.tasks import AgentExecutionTrace, Task
 from app.services.ai.task_cost import summarize_task_cost
 

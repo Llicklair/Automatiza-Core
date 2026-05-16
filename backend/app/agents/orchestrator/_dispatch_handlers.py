@@ -163,7 +163,7 @@ async def _invoke_dynamic_employee(
                 "output": {"action": "completed" if success else "failed", "response": final_text},
                 "error": None if success else final_text,
             }
-        except asyncio.TimeoutError:
+        except TimeoutError:
             employee.status = "idle"
             await db.commit()
             logger.exception(
@@ -245,7 +245,7 @@ async def _invoke_dispatcher(
         result = await _invoke_dispatcher_impl(enriched_state, subtask, agent_name)
         status = "success" if result and result.get("success") else "failed"
         return result
-    except asyncio.TimeoutError:
+    except TimeoutError:
         status = "timeout"
         raise
     finally:
@@ -273,7 +273,7 @@ async def _execute_one(
         try:
             result = await _invoke_dispatcher(enriched_state, subtask, agent_name)
             return idx, subtask, result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             if attempt == 0:
                 logger.warning(
                     "[ORCHESTRATOR] Timeout en agente '%s', reintentando (1/1)...", agent_name

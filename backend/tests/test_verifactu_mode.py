@@ -2,7 +2,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.services.billing.verifactu_mode import (
     DEFAULT_MODE,
     get_config,

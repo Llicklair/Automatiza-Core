@@ -9,7 +9,6 @@ Cubre los 3 caminos:
 import importlib.util
 
 import pytest
-
 from app.core import llm_callbacks
 
 _langfuse_available = (

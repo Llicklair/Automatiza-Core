@@ -1,9 +1,7 @@
 """Tests del decorator `gated_tool` (AI.AGT wiring)."""
-from unittest.mock import AsyncMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import patch
 
 import pytest
-
 from app.services.autonomy import set_policy
 from app.services.autonomy_gate import gated_tool
 

@@ -1,7 +1,8 @@
 """Tests para endpoints CRM /api/v1/crm/*."""
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 class TestOpportunities:
@@ -15,6 +16,7 @@ class TestOpportunities:
     async def test_create_opportunity(self, auth_client: AsyncClient, seed_tenant_and_user):
         tenant, user, _ = seed_tenant_and_user
         from app.db.models.models import Client
+
         from tests.conftest import _TestSessionLocal
         async with _TestSessionLocal() as db:
             client_record = Client(tenant_id=tenant.id, name="Cliente Test", nif="B99999999")

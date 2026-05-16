@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -35,7 +35,7 @@ class BaseSkill(ABC):
         pass
 
     @abstractmethod
-    async def run(self, input_data: Dict[str, Any], tenant_id: str, **kwargs) -> Dict[str, Any]:
+    async def run(self, input_data: dict[str, Any], tenant_id: str, **kwargs) -> dict[str, Any]:
         """
         Ejecuta la acción de la Skill.
 

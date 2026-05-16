@@ -41,4 +41,5 @@ __all__ = ["tools"]
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar
 from app.agents.tenant_context import isolated as _isolated
+
 tools = _isolated(tools)

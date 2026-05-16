@@ -12,9 +12,8 @@ Precondiciones verificadas:
   humana puede registrarse cuando proceda.
 """
 
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 REQUIRED_TABLES = ("invoice_series", "verifactu_chain", "fiscal_approval_log")
 

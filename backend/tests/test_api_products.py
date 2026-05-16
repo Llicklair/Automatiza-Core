@@ -1,7 +1,8 @@
 """Tests para endpoints Products /api/v1/products/*."""
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 class TestProductsNoAuth:

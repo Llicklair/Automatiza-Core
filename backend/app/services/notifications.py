@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -90,7 +90,7 @@ async def mark_read(
             Notification.tenant_id == tenant_id,
             Notification.read_at.is_(None),
         )
-        .values(read_at=datetime.now(timezone.utc))
+        .values(read_at=datetime.now(UTC))
     )
     return result.rowcount > 0
 
@@ -99,7 +99,7 @@ async def mark_all_read(
     db: AsyncSession, *, tenant_id: UUID, user_id: UUID | None = None
 ) -> int:
     """Marca todas las no leídas como leídas. Devuelve cuántas cambiaron."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = (
         update(Notification)
         .where(

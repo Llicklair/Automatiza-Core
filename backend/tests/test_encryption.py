@@ -1,6 +1,5 @@
 """Tests para app.services.encryption."""
 import pytest
-
 from app.services.encryption import decrypt_credentials, encrypt_credentials
 
 

@@ -105,7 +105,7 @@ def hash_tenant_id(tenant_id: str, salt: str) -> str:
     El salt debe rotarse por incidente (consensuado en Ronda 6) para que la
     AEPD no pueda argumentar "trazabilidad cruzada entre informes".
     """
-    return hashlib.sha256(f"{salt}:{tenant_id}".encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(f"{salt}:{tenant_id}".encode()).hexdigest()[:16]
 
 
 def scrub_event(event: dict[str, Any]) -> dict[str, Any]:

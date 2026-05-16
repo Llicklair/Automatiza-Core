@@ -9,7 +9,7 @@ El caller comprueba el retorno y termina el grafo si es False.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +32,7 @@ async def check_agent_budget(employee_id: str, db: AsyncSession) -> bool:
     if employee.budget_limit_usd is None:
         return True  # Sin límite configurado
 
-    first_of_month = datetime.now(timezone.utc).replace(
+    first_of_month = datetime.now(UTC).replace(
         day=1, hour=0, minute=0, second=0, microsecond=0
     )
     monthly_spend_result = await db.execute(

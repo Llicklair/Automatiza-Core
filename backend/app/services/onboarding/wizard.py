@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -42,7 +42,7 @@ def _maybe_complete(record: TenantOnboarding) -> None:
         and record.step_use_case
     )
     if all_done and record.completed_at is None:
-        record.completed_at = datetime.now(timezone.utc)
+        record.completed_at = datetime.now(UTC)
 
 
 async def set_step(
@@ -59,7 +59,7 @@ async def set_step(
 
     attr = f"step_{step}"
     setattr(record, attr, value)
-    record.updated_at = datetime.now(timezone.utc)
+    record.updated_at = datetime.now(UTC)
     _maybe_complete(record)
     await db.flush()
     return record
@@ -74,8 +74,8 @@ async def skip_to_end(db: AsyncSession, *, tenant_id: UUID) -> TenantOnboarding:
     """
     record = await get_state(db, tenant_id=tenant_id)
     if record.skipped_at is None:
-        record.skipped_at = datetime.now(timezone.utc)
-        record.updated_at = datetime.now(timezone.utc)
+        record.skipped_at = datetime.now(UTC)
+        record.updated_at = datetime.now(UTC)
     await db.flush()
     return record
 
@@ -89,7 +89,7 @@ async def reset(db: AsyncSession, *, tenant_id: UUID) -> TenantOnboarding:
     record.step_use_case = False
     record.completed_at = None
     record.skipped_at = None
-    record.updated_at = datetime.now(timezone.utc)
+    record.updated_at = datetime.now(UTC)
     await db.flush()
     return record
 

@@ -9,10 +9,10 @@ traducciones CA/EU/GL son stubs hasta I18N.TR (DEC.11 agencia).
 """
 
 from .pdf_strings import (
-    SUPPORTED_LOCALES,
     DEFAULT_LOCALE,
-    translate,
+    SUPPORTED_LOCALES,
     get_locale_or_default,
+    translate,
 )
 
 __all__ = [

@@ -18,7 +18,6 @@ Revises: 0015_metering
 from alembic import op
 from sqlalchemy import text
 
-
 revision = "0016_sec_rls"
 down_revision = "0015_metering"
 branch_labels = None

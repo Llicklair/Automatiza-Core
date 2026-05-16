@@ -17,7 +17,6 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.hr import (
-    AttendanceResponse,
     ClockInRequest,
     EmployeeCreate,
     EmployeeResponse,

@@ -77,9 +77,9 @@ class GoogleDriveClient:
                 f"{json.dumps(metadata)}\r\n"
                 f"--{boundary}\r\n"
                 f"Content-Type: {mime_type}\r\n\r\n"
-            ).encode("utf-8")
+            ).encode()
             + content
-            + f"\r\n--{boundary}--".encode("utf-8")
+            + f"\r\n--{boundary}--".encode()
         )
 
         resp = await self._client.post(

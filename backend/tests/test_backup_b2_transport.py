@@ -1,10 +1,7 @@
 """Tests del cliente HTTPS Backblaze B2 (BAK.B2 transport)."""
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
 import pytest
-
 from app.services.backup import b2_client
 
 

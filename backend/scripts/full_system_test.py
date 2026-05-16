@@ -7,8 +7,6 @@
 """
 
 import asyncio
-import json
-import time
 from datetime import date, datetime, timedelta
 
 import httpx
@@ -696,7 +694,7 @@ async def test_rrhh(client: httpx.AsyncClient) -> str:
             "status": "paid",
         })
         if r.status_code == 201:
-            ok("Crear nómina", f"bruto=4000€ deducción=900€ neto=3100€")
+            ok("Crear nómina", "bruto=4000€ deducción=900€ neto=3100€")
         else:
             fail("Crear nómina", r.text[:100])
 
@@ -1292,7 +1290,7 @@ def print_summary():
 
     if failed > 0:
         print(f"  {'─'*50}")
-        print(f"  PRUEBAS FALLIDAS:")
+        print("  PRUEBAS FALLIDAS:")
         for r in results:
             if r["status"] == "FAIL":
                 print(f"    {FAIL} [{r['section']}] {r['detail']}")

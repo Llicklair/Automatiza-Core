@@ -12,12 +12,10 @@ Casos cubiertos:
 - Flujo combinado: secuencia create_invoice (futuro) + verifactu se
   recupera de un fallo intermedio.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import func, select
-
 from app.db.models.billing import Invoice, VerifactuRecord
 from app.db.models.crm import Client
 from app.services.billing.numbering import next_invoice_number
@@ -25,6 +23,7 @@ from app.services.billing.verifactu_chain import (
     append_verifactu_record,
     verify_chain_integrity,
 )
+from sqlalchemy import func, select
 
 
 def _invoice(tenant_id, client_id, *, num: str, importe: str = "121.00") -> Invoice:
@@ -32,7 +31,7 @@ def _invoice(tenant_id, client_id, *, num: str, importe: str = "121.00") -> Invo
         tenant_id=tenant_id,
         client_id=client_id,
         invoice_number=num,
-        date=datetime(2026, 1, 15, 10, 0, tzinfo=timezone.utc),
+        date=datetime(2026, 1, 15, 10, 0, tzinfo=UTC),
         amount_base=Decimal(importe),
         tax_amount=Decimal("0.00"),
         amount_total=Decimal(importe),

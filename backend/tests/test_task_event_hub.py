@@ -2,7 +2,6 @@
 import asyncio
 
 import pytest
-
 from app.services.workflow.task_event_hub import TaskEventHub
 
 

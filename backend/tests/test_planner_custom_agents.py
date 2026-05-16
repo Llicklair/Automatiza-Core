@@ -16,13 +16,11 @@ por el usuario aparezca como opción en el plan multi-step generado:
 from __future__ import annotations
 
 import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 # ─── Helpers de planner ──────────────────────────────────────────────────────
 
@@ -294,7 +292,7 @@ class TestDispatcherErrorPropagation:
             "app.agents.workers.check_agent_budget", new=fake_budget
         ), patch(
             "app.agents.orchestrator._dispatch_handlers.asyncio.wait_for",
-            new=AsyncMock(side_effect=asyncio.TimeoutError()),
+            new=AsyncMock(side_effect=TimeoutError()),
         ):
             result = await _invoke_dynamic_employee(
                 enriched_state={

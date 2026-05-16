@@ -1,14 +1,14 @@
 """Unit tests for make_cached_system_message and _resolve_active_provider."""
-import pytest
 from unittest.mock import MagicMock
-from langchain_core.messages import SystemMessage
 
+import pytest
 from app.core.llm_factory import (
-    make_cached_system_message,
     _resolve_active_provider,
-    set_tenant_llm_context,
     _tenant_llm_ctx,
+    make_cached_system_message,
+    set_tenant_llm_context,
 )
+from langchain_core.messages import SystemMessage
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,5 @@
 """Tests del wizard onboarding focado (UI.ONB)."""
 import pytest
-
 from app.services.onboarding.wizard import (
     get_state,
     reset,

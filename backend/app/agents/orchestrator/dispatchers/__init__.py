@@ -2,6 +2,7 @@
 Dispatcher registry — centraliza el mapeo agent_name → función dispatcher.
 """
 
+from app.agents.orchestrator.dispatchers.accounting import _dispatch_accounting
 from app.agents.orchestrator.dispatchers.banking import _dispatch_banking
 from app.agents.orchestrator.dispatchers.billing import _dispatch_billing
 from app.agents.orchestrator.dispatchers.chat import _dispatch_chat
@@ -19,7 +20,6 @@ from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_team,
     _dispatch_workflow,
 )
-from app.agents.orchestrator.dispatchers.accounting import _dispatch_accounting
 from app.agents.orchestrator.dispatchers.reports import _dispatch_report
 
 # Registro de dispatchers: agent_name → callable(state, subtask) -> AgentResult

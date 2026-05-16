@@ -1,5 +1,6 @@
-from cryptography.fernet import Fernet
 import secrets
+
+from cryptography.fernet import Fernet
 
 print("=== Claves generadas para .env ===")
 print(f"SECRET_KEY={secrets.token_hex(32)}")

@@ -1,8 +1,8 @@
 """Tests para importadores MIG.1 (CSV) + MIG.2 (Holded) + MIG.3 (wizard)."""
+from datetime import UTC
 from decimal import Decimal
 
 import pytest
-
 from app.services.migration.csv_importer import (
     _detect_separator,
     _parse_decimal,
@@ -13,7 +13,6 @@ from app.services.migration.holded_importer import (
     normalize_holded_invoice,
 )
 from app.services.migration.wizard import import_clients
-
 
 # ── MIG.1 — CSV importer ────────────────────────────────────────────────────
 
@@ -110,8 +109,8 @@ class TestHoldedNormalizers:
         assert "sin NIF ni nombre" in row.errors[0]
 
     def test_normalize_invoice_centimos_a_euros(self):
-        from datetime import datetime, timezone
-        ts = int(datetime(2026, 5, 14, tzinfo=timezone.utc).timestamp())
+        from datetime import datetime
+        ts = int(datetime(2026, 5, 14, tzinfo=UTC).timestamp())
         doc = {
             "docNumber": "A2026-0001",
             "date": ts,

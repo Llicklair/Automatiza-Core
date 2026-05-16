@@ -20,10 +20,9 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload as jl
 
-from app.db.models.models import Invoice, Payroll, Tenant
 from app.db.models.crm import Client
 from app.db.models.hr import Employee
-
+from app.db.models.models import Invoice, Payroll, Tenant
 
 # Umbral legal del Modelo 347 (operaciones con terceros).
 MODELO_347_THRESHOLD = Decimal("3005.06")

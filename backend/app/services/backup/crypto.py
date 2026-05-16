@@ -22,12 +22,11 @@ metadata adicional — basta con tener el password.
 
 from __future__ import annotations
 
-import os
 import secrets
+
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-
 
 _PBKDF2_ITERATIONS = 1_000_000  # ~1.2s en CPU moderna — coste deliberado
 _SALT_BYTES = 16

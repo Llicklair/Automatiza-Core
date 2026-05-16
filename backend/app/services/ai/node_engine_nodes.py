@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-async def execute_skill_node(engine: "NodeEngine", node: dict, db: AsyncSession) -> dict:
+async def execute_skill_node(engine: NodeEngine, node: dict, db: AsyncSession) -> dict:
     """Ejecuta un nodo skill reutilizando las funciones _dispatch_* del orchestrator."""
     domain, instruction, subtask, mini_state = _build_skill_dispatch(engine, node)
     result = await _dispatch_agent(engine, domain, mini_state, subtask)
@@ -65,7 +65,7 @@ async def execute_skill_node(engine: "NodeEngine", node: dict, db: AsyncSession)
     return result.get("output", {})
 
 
-async def run_agent_parallel(engine: "NodeEngine", node: dict) -> dict:
+async def run_agent_parallel(engine: NodeEngine, node: dict) -> dict:
     """
     Ejecuta un nodo skill sin sesión DB compartida (para asyncio.gather).
     Devuelve el dict node_state actualizado.
@@ -108,7 +108,7 @@ async def run_agent_parallel(engine: "NodeEngine", node: dict) -> dict:
         }
 
 
-def execute_conditional_node(engine: "NodeEngine", node: dict) -> str:
+def execute_conditional_node(engine: NodeEngine, node: dict) -> str:
     """Evalúa la condición y devuelve 'true' o 'false'."""
     data = node.get("data", {})
     condition = data.get("condition", {})
@@ -132,7 +132,7 @@ def execute_conditional_node(engine: "NodeEngine", node: dict) -> str:
     return "true" if result else "false"
 
 
-async def execute_delay_node(engine: "NodeEngine", node: dict, db: AsyncSession) -> dict:
+async def execute_delay_node(engine: NodeEngine, node: dict, db: AsyncSession) -> dict:
     """Programa un resume tras delay_seconds."""
     data = node.get("data", {})
     delay_seconds = int(data.get("delay_seconds", 10))
@@ -160,7 +160,7 @@ async def execute_delay_node(engine: "NodeEngine", node: dict, db: AsyncSession)
     return {"suspend": True}
 
 
-async def execute_approval_gate(engine: "NodeEngine", node: dict, db: AsyncSession) -> dict:
+async def execute_approval_gate(engine: NodeEngine, node: dict, db: AsyncSession) -> dict:
     """Crea PendingApproval y pausa la ejecución."""
     data = node.get("data", {})
     description = (
@@ -199,7 +199,7 @@ async def execute_approval_gate(engine: "NodeEngine", node: dict, db: AsyncSessi
 
 
 def _build_skill_dispatch(
-    engine: "NodeEngine", node: dict, extra_meta: dict | None = None
+    engine: NodeEngine, node: dict, extra_meta: dict | None = None
 ) -> tuple[str, str, dict, dict]:
     return build_skill_dispatch(
         node,
@@ -212,7 +212,7 @@ def _build_skill_dispatch(
     )
 
 
-async def _dispatch_agent(engine: "NodeEngine", domain: str, state: dict, subtask: dict) -> dict:
+async def _dispatch_agent(engine: NodeEngine, domain: str, state: dict, subtask: dict) -> dict:
     from app.services.ai.node_dispatch import dispatch_agent
 
     return await dispatch_agent(domain, state, subtask)

@@ -11,7 +11,6 @@ is to widen the type annotation so the schema accepts both shapes.
 """
 from __future__ import annotations
 
-
 from app.agents.email.tools import send_email
 
 

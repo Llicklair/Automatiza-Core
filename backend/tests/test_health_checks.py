@@ -3,12 +3,9 @@
 import importlib.util
 import os
 import time
-from datetime import timedelta
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from app.services import health
 
 _redis_available = importlib.util.find_spec("redis") is not None

@@ -8,13 +8,20 @@ import logging
 import os
 import shutil
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.hr import Attendance, Candidate, Expense, LeaveRequest, RecruitmentPosition, WorkSchedule
+from app.db.models.hr import (
+    Attendance,
+    Candidate,
+    Expense,
+    LeaveRequest,
+    RecruitmentPosition,
+    WorkSchedule,
+)
 from app.db.models.hr_documents import HRDocument
 from app.db.models.models import Employee
 from app.services.event_bus import emit_event
@@ -187,7 +194,7 @@ async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
         raise ValueError("Documento no encontrado")
 
     doc.status = "approved"
-    doc.approved_at = datetime.now(timezone.utc)
+    doc.approved_at = datetime.now(UTC)
     await db.commit()
     return {"id": str(doc.id), "status": "approved", "approved_at": doc.approved_at.isoformat()}
 
@@ -427,14 +434,14 @@ async def clock_out_attendance(db: AsyncSession, tenant_id, attendance_id: UUID)
     if record.clock_out is not None:
         raise ValueError("Este fichaje ya tiene salida registrada")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     record.clock_out = now
     await db.commit()
     await db.refresh(record)
 
     # Auto-generate JornadaRecord (RD 8/2019)
     try:
-        hora_entrada = record.clock_in.astimezone(timezone.utc).strftime("%H:%M")
+        hora_entrada = record.clock_in.astimezone(UTC).strftime("%H:%M")
         hora_salida = now.strftime("%H:%M")
         mins = (now - record.clock_in).total_seconds() / 60
         horas = round(mins / 60, 2)
@@ -465,6 +472,7 @@ async def clock_out_attendance(db: AsyncSession, tenant_id, attendance_id: UUID)
 async def _ws_notify(tenant_id, message: str, notif_type: str = "info") -> None:
     try:
         import asyncio
+
         from app.api.ws.notifications import manager
         asyncio.create_task(
             manager.broadcast_to_tenant(

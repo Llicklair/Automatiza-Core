@@ -8,7 +8,7 @@ migrar a Redis usando los mismos métodos públicos.
 
 import threading
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 _lock = threading.Lock()
 
@@ -40,7 +40,7 @@ def record(
     """Registra una llamada LLM. Thread-safe. Falla silenciosamente."""
     if not tenant_id or tokens_in + tokens_out == 0:
         return
-    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    month = datetime.now(UTC).strftime("%Y-%m")
     prov = (provider or "unknown").lower()
     ag = agent or "unknown"
     try:

@@ -2,7 +2,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.services import notifications as svc
 
 

@@ -13,8 +13,9 @@ Uso:
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
-from typing import Any, Callable, Coroutine
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select

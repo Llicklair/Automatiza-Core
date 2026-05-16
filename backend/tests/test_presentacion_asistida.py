@@ -1,6 +1,5 @@
 """Tests de presentación asistida (PRES.ASS)."""
 import pytest
-
 from app.services.presentacion.asistida import (
     SEDE_AEAT_LINKS,
     TenantSummary,

@@ -7,7 +7,6 @@ parsing UUID, integración con ContextVar).
 from uuid import uuid4
 
 import pytest
-
 from app.core.tenant_context import set_current_tenant, tenant_context
 from app.db.rls import apply_tenant_rls
 

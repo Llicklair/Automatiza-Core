@@ -22,7 +22,7 @@ quedan vacíos para que el usuario los rellene.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from xml.sax.saxutils import escape
 
@@ -51,7 +51,7 @@ def _xml_escape(value: str) -> str:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def build_modelo_131_xml(tenant: TenantSummary) -> str:
@@ -59,7 +59,7 @@ def build_modelo_131_xml(tenant: TenantSummary) -> str:
 
     Esquema simplificado — el usuario completa importes y módulos en Sede.
     """
-    year = tenant.fiscal_year or datetime.now(timezone.utc).year
+    year = tenant.fiscal_year or datetime.now(UTC).year
     quarter = tenant.quarter or 1
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -88,7 +88,7 @@ def build_modelo_200_xml(tenant: TenantSummary) -> str:
 
     Solo cabecera + identificación. La liquidación se rellena en Sede.
     """
-    year = tenant.fiscal_year or datetime.now(timezone.utc).year
+    year = tenant.fiscal_year or datetime.now(UTC).year
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<Modelo200 xmlns="http://www.agenciatributaria.gob.es/predeclaracion">\n'

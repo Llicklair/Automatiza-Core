@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -110,7 +110,7 @@ async def backfill_tenant_verifactu_chain(
     Devuelve un `BackfillResult` con métricas. Es seguro re-ejecutar (las
     facturas ya encadenadas se saltan).
     """
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
 
     # Lock por tenant para evitar dos backfills concurrentes.
     dialect_name = db.bind.dialect.name if db.bind is not None else ""
@@ -163,7 +163,7 @@ async def backfill_tenant_verifactu_chain(
         last_huella = last_q.scalar_one_or_none()
 
     backfilled_count = 0
-    backfilled_at = datetime.now(timezone.utc)
+    backfilled_at = datetime.now(UTC)
 
     for invoice in invoices:
         if invoice.id in existing_by_invoice:
@@ -205,7 +205,7 @@ async def backfill_tenant_verifactu_chain(
         backfilled_count += 1
 
     await db.flush()
-    finished_at = datetime.now(timezone.utc)
+    finished_at = datetime.now(UTC)
 
     logger.info(
         "verifactu_backfill tenant=%s invoices_total=%d already_chained=%d backfilled=%d",

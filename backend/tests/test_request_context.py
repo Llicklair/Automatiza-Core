@@ -13,7 +13,6 @@ import json
 import logging
 
 import pytest
-
 from app.core.observability import StructuredFormatter, trace_llm_call
 from app.core.request_context import (
     get_current_request_id,

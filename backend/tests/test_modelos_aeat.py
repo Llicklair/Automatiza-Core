@@ -1,9 +1,8 @@
 """Tests para los modelos AEAT 130, 347 y 390 (MOD.* sprint 4)."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-
 from app.db.models.billing import Invoice, InvoiceLine
 from app.db.models.crm import Client
 from app.services.reports.modelos_aeat import (
@@ -48,13 +47,13 @@ class TestModelo130:
         inv_ingreso = _make_invoice(
             tenant.id, client.id,
             total=Decimal("1210"), base=Decimal("1000"), tax=Decimal("210"),
-            fecha=datetime(2026, 2, 15, tzinfo=timezone.utc),
+            fecha=datetime(2026, 2, 15, tzinfo=UTC),
             tipo="issued",
         )
         inv_gasto = _make_invoice(
             tenant.id, client.id,
             total=Decimal("242"), base=Decimal("200"), tax=Decimal("42"),
-            fecha=datetime(2026, 2, 20, tzinfo=timezone.utc),
+            fecha=datetime(2026, 2, 20, tzinfo=UTC),
             tipo="received",
         )
         db.add_all([inv_ingreso, inv_gasto])
@@ -78,7 +77,7 @@ class TestModelo130:
         inv_gasto = _make_invoice(
             tenant.id, client.id,
             total=Decimal("605"), base=Decimal("500"), tax=Decimal("105"),
-            fecha=datetime(2026, 2, 1, tzinfo=timezone.utc),
+            fecha=datetime(2026, 2, 1, tzinfo=UTC),
             tipo="received",
         )
         db.add(inv_gasto)
@@ -107,9 +106,9 @@ class TestModelo347:
         # c2: 1000€ → NO supera umbral
         invs = [
             _make_invoice(tenant.id, c1.id, total=Decimal("4000"), base=Decimal("3306"), tax=Decimal("694"),
-                          fecha=datetime(2026, 6, 1, tzinfo=timezone.utc), tipo="issued"),
+                          fecha=datetime(2026, 6, 1, tzinfo=UTC), tipo="issued"),
             _make_invoice(tenant.id, c2.id, total=Decimal("1000"), base=Decimal("826"), tax=Decimal("174"),
-                          fecha=datetime(2026, 6, 1, tzinfo=timezone.utc), tipo="issued"),
+                          fecha=datetime(2026, 6, 1, tzinfo=UTC), tipo="issued"),
         ]
         db.add_all(invs)
         await db.commit()
@@ -130,13 +129,13 @@ class TestModelo347:
         # Cuatro facturas de la misma contraparte mixtas (emitidas + recibidas)
         invs = [
             _make_invoice(tenant.id, cp.id, total=Decimal("2000"), base=Decimal("1653"), tax=Decimal("347"),
-                          fecha=datetime(2026, 3, 1, tzinfo=timezone.utc), tipo="issued"),
+                          fecha=datetime(2026, 3, 1, tzinfo=UTC), tipo="issued"),
             _make_invoice(tenant.id, cp.id, total=Decimal("2000"), base=Decimal("1653"), tax=Decimal("347"),
-                          fecha=datetime(2026, 9, 1, tzinfo=timezone.utc), tipo="issued"),
+                          fecha=datetime(2026, 9, 1, tzinfo=UTC), tipo="issued"),
             _make_invoice(tenant.id, cp.id, total=Decimal("1500"), base=Decimal("1240"), tax=Decimal("260"),
-                          fecha=datetime(2026, 4, 1, tzinfo=timezone.utc), tipo="received"),
+                          fecha=datetime(2026, 4, 1, tzinfo=UTC), tipo="received"),
             _make_invoice(tenant.id, cp.id, total=Decimal("2000"), base=Decimal("1653"), tax=Decimal("347"),
-                          fecha=datetime(2026, 10, 1, tzinfo=timezone.utc), tipo="received"),
+                          fecha=datetime(2026, 10, 1, tzinfo=UTC), tipo="received"),
         ]
         db.add_all(invs)
         await db.commit()
@@ -160,7 +159,7 @@ class TestModelo390:
         # Una factura emitida con base 1000 al 21%
         inv = _make_invoice(
             tenant.id, c.id, total=Decimal("1210"), base=Decimal("1000"), tax=Decimal("210"),
-            fecha=datetime(2026, 5, 1, tzinfo=timezone.utc), tipo="issued",
+            fecha=datetime(2026, 5, 1, tzinfo=UTC), tipo="issued",
         )
         db.add(inv)
         await db.flush()

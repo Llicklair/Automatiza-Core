@@ -21,9 +21,7 @@ import json
 from typing import get_type_hints
 
 import pytest
-
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-
 
 # Schema canónico — congelado en este test. Cambiar AgentResult o
 # OrchestratorState exige actualizar este test y revisar en PR.

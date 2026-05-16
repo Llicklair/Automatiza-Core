@@ -2,7 +2,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from app.services.migration import holded_client as hc
 from app.services.migration.holded_importer import HoldedCredentials
 

@@ -15,15 +15,22 @@ from datetime import UTC, datetime, timedelta
 # ── Setup path ────────────────────────────────────────────────────────────────
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.core.config import settings
+from app.db.models.models import (
+    Activity,
+    BankTransaction,
+    Client,
+    Employee,
+    Invoice,
+    InvoiceLine,
+    Opportunity,
+    Payroll,
+    Product,
+    User,
+)
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.core.config import settings
-from app.db.models.models import (
-    Activity, BankTransaction, Client, Employee, Invoice, InvoiceLine,
-    Opportunity, Payroll, Product, Tenant, User,
-)
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -344,7 +351,7 @@ async def seed(reset: bool = False):
         print(f"  • {len(facturas_emitidas)} facturas emitidas + {len(facturas_recibidas)} recibidas")
         print(f"  • {len(EMPLEADOS)} empleados + {len(EMPLEADOS[:4]) * 3} nóminas")
         print(f"  • {len(oportunidades)} oportunidades CRM + {len(actividades)} actividades")
-        print(f"  • 20 movimientos bancarios")
+        print("  • 20 movimientos bancarios")
         print("")
         print("  Dashboard: http://localhost:3000")
         print("  Usuario:   demo@automatizapyme.com / Demo1234!")

@@ -10,7 +10,8 @@ Uso:
 """
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from app.agents.tenant_context import enforce_tenant
 from app.agents.tool_timeout import apply_default_timeout

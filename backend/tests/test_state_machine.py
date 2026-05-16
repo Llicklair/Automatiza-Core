@@ -1,6 +1,5 @@
 """Tests para app.services.state_machine."""
 import pytest
-
 from app.services.state_machine import (
     InvalidTransitionError,
     allowed_next_states,

@@ -553,7 +553,7 @@ def generate_fiscal_report_pdf(snap: dict, company_name: str, period: str) -> by
       snap["iva"], snap["irpf"], snap["impuesto_sociedades"], snap["resumen_ejecutivo"]
     """
     if not REPORTLAB_AVAILABLE:
-        return f"Informe Fiscal {period}\n{snap.get('resumen_ejecutivo', '')}".encode("utf-8")
+        return f"Informe Fiscal {period}\n{snap.get('resumen_ejecutivo', '')}".encode()
 
     iva = snap.get("iva", {})
     irpf = snap.get("irpf", {})

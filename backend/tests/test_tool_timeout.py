@@ -7,11 +7,9 @@ sync no se ven afectadas, y que el mensaje de error es informativo
 
 import asyncio
 
-import pytest
-
 from app.agents.tool_timeout import (
-    DEFAULT_TIMEOUT_SECONDS,
     _TIMEOUT_OVERRIDES,
+    DEFAULT_TIMEOUT_SECONDS,
     apply_default_timeout,
     with_timeout,
 )

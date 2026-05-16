@@ -20,6 +20,7 @@ from app.agents.agent_tools.documents import (
     update_existing_document,
 )
 from app.agents.agent_tools.knowledge import get_tenant_knowledge, upsert_tenant_knowledge
+
 # Documents agent NO genera informes PDF — esa responsabilidad recae en
 # los agentes de dominio (billing, hr, crm, compliance...). Cuando el
 # orchestrator decompone "Genera informe PDF" en sub-tareas y pasa por
@@ -404,4 +405,5 @@ tools = [
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar
 from app.agents.tenant_context import isolated as _isolated
+
 tools = _isolated(tools)

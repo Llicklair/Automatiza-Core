@@ -72,7 +72,7 @@ def generate_cashflow_report_pdf(data: dict) -> bytes:
     - pending_receivables: list of dict con client_name, invoice_number, due_date, amount
     """
     if not REPORTLAB_AVAILABLE:
-        return "INFORME DE TESORERÍA\n".encode("utf-8")
+        return "INFORME DE TESORERÍA\n".encode()
 
     s = _common_styles()
     C = s["C"]
@@ -318,7 +318,7 @@ def generate_delinquency_report_pdf(data: dict) -> bytes:
       days_overdue, amount, collection_status
     """
     if not REPORTLAB_AVAILABLE:
-        return "INFORME DE MOROSIDAD\n".encode("utf-8")
+        return b"INFORME DE MOROSIDAD\n"
 
     s = _common_styles()
     C = s["C"]

@@ -6,7 +6,7 @@ Handles export_erp_data and list_available_datasets.
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from langchain_core.tools import tool
 
@@ -40,7 +40,7 @@ async def export_erp_data(tenant_id: str, datasets: str = "todos", user_request:
 
 async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request: str = "") -> str:
     os.makedirs(UPLOADS_DIR, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_filename = f"informe_{ts}.xlsx"
     output_path = os.path.join(UPLOADS_DIR, output_filename)
 

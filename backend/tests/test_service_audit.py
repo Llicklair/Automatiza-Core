@@ -1,10 +1,9 @@
 """Tests para app.services.audit — logging inmutable de acciones."""
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.services.audit import log_action, log_llm_call
 from app.db.models.models import AuditLog
+from app.services.audit import log_action, log_llm_call
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestAuditService:

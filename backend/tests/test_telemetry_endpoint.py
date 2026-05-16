@@ -1,10 +1,9 @@
 """Tests para el endpoint de telemetría (AI.REV)."""
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-
 from app.db.models.auth import TelemetryOptOut
 from app.main import app
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 
 @pytest.mark.asyncio

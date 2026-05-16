@@ -5,11 +5,10 @@ import logging
 import zipfile
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.core.structured_logging import JSONFormatter, get_log_dir
 from app.main import app
 from app.services.system.diagnostic_bundle import build_diagnostic_bundle
+from httpx import ASGITransport, AsyncClient
 
 
 class TestJSONFormatter:

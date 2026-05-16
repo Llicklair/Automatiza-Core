@@ -1,11 +1,7 @@
 """Tests para SEC.APR — MANDATORY_HUMAN_FISCAL + FiscalApprovalLog."""
-from uuid import uuid4
 
 import pytest
-
 from app.db.models.tasks import (
-    FiscalApprovalLog,
-    PendingApproval,
     RISK_LEVEL_MANDATORY_HUMAN_FISCAL,
     Task,
 )
