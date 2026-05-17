@@ -1,27 +1,19 @@
-"""
-Documents agent package.
+"""Documents agent package.
+
+Public API: the compiled ``graph`` plus the individual ``@tool`` functions
+consumed by ``app.agents.tool_registry``. Internal nodes, the uncompiled
+workflow and the system prompt are intentionally NOT re-exported (CLAUDE.md
+agent boundary).
 """
 
-from .agent import (
-    DOCUMENTS_SYSTEM_PROMPT,
-    documents_agent_node,
-    documents_finalize_node,
-    graph,
-    workflow,
-)
+from .agent import graph
 from .tools import (
     classify_document,
     search_documents_semantic,
-    tools,
 )
 
 __all__ = [
     "graph",
-    "workflow",
-    "documents_agent_node",
-    "documents_finalize_node",
-    "DOCUMENTS_SYSTEM_PROMPT",
-    "tools",
     "classify_document",
     "search_documents_semantic",
 ]

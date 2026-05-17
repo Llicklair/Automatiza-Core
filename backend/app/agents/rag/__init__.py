@@ -1,27 +1,19 @@
-"""
-RAG agent package.
+"""RAG agent package.
+
+Public API: the compiled ``graph`` plus the individual ``@tool`` functions
+consumed by ``app.agents.tool_registry``. Internal nodes, the uncompiled
+workflow and the system prompt are intentionally NOT re-exported (CLAUDE.md
+agent boundary).
 """
 
-from .agent import (
-    RAG_SYSTEM_PROMPT,
-    graph,
-    rag_agent_node,
-    rag_finalize_node,
-    workflow,
-)
+from .agent import graph
 from .tools import (
     answer_from_documents,
     search_documents,
-    tools,
 )
 
 __all__ = [
     "graph",
-    "workflow",
-    "rag_agent_node",
-    "rag_finalize_node",
-    "RAG_SYSTEM_PROMPT",
-    "tools",
     "search_documents",
     "answer_from_documents",
 ]

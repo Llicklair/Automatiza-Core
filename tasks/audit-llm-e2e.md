@@ -5,6 +5,11 @@
 **Método:** Glob + Grep + lectura selectiva. Sin runtime.
 
 > **Addendum 2026-05-05:** Ver sección 13 al final — hallazgo runtime adicional descubierto al implementar tests E2E: el nodo `finalize` estaba declarado pero desconectado en los grafos de hr/billing/banking/accounting. Ya arreglado.
+>
+> **Addendum 2026-05-17:** Re-verificados los 3 hallazgos 🔴 Alto.
+> - **#1 Tools sin docstring → ✅ RESUELTO**: `create_opportunity`, `update_opportunity_stage`, `create_client` (crm), `send_email` (email), `create_position`, `list_candidates` (recruitment) ya tienen docstring (commits posteriores los añadieron, con notas AI Act en recruitment).
+> - **#2 `__init__.py` limpieza → 🟠 PARCIAL**: aplicada Opción A (mecánica, riesgo bajo) en 10 paquetes (banking, billing, compliance, crm, documents, excel, hr, marketing, rag, recruitment). Se conservan los símbolos consumidos externamente (`graph` por los dispatchers, tools individuales por `tool_registry.py`) y se eliminan `*_agent_node`, `*_finalize_node`, `workflow` uncompiled, `*_SYSTEM_PROMPT`, lista `tools`. Tests verificados verde. **Opción B (refactor completo con `run_agent()` envolviendo `AgentResult`) queda pendiente — se hace junto con #3.**
+> - **#3 `AgentResult` en `agent.py` → 🔴 PENDIENTE**: 12/14 siguen devolviendo `{"status": "done", "agent_results": [...]}` desde `finalize`. Mitigación a nivel dispatcher sigue activa, no es bug. Plan dedicado en `tasks/todo.md` con coste real estimado (~5-7h, no 3-4h, por el entrelazado con `tool_registry` y dispatchers).
 
 ---
 
@@ -13,10 +18,10 @@
 | Área | Estado | Nota |
 |------|--------|------|
 | Configuración LLM centralizada | ✅ Sólido | `core/llm_factory.py` con multi-provider, prompt caching, per-tenant config |
-| Contrato `AgentResult` | 🔴 **Crítico** | Solo 2 de 14 dominios lo usan en `agent.py` (email, workflow) |
-| `__init__.py` exports limpios | 🔴 **Crítico** | 12 de 14 violan la regla "solo `run_agent`" |
+| Contrato `AgentResult` | 🔴 **Crítico** | Solo 2 de 14 dominios lo usan en `agent.py` (email, workflow) — pendiente refactor combinado |
+| `__init__.py` exports limpios | 🟠 **Parcial** | Opción A aplicada 2026-05-17 (símbolos internos retirados); Opción B pendiente con #3 |
 | Aislamiento entre agentes | ✅ OK | Sin imports cruzados directos; `agent_tools/` es shared correctamente |
-| Tools con docstring | 🟠 Parcial | 6 `@tool` sin docstring (LLM no sabe qué hacen) |
+| Tools con docstring | ✅ OK | 6 huérfanas detectadas en 2026-05-05 ya tienen docstring (verificado 2026-05-17) |
 | Dispatcher orchestrator | ✅ OK | 17 dominios mapeados con fallback `success=False` |
 | Frontend → backend | ✅ OK | Cero `fetch()` directo fuera de `lib/api/*` |
 | Tests E2E reales | 🟠 Parcial | Mayoría son tests de routes, no agentes con LLM real |
