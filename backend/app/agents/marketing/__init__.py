@@ -1,22 +1,15 @@
-"""
-Marketing agent package.
+"""Marketing agent package.
+
+Public API: the compiled ``graph`` plus the individual ``@tool`` functions
+consumed by ``app.agents.tool_registry``. Internal nodes, the uncompiled
+workflow and the system prompt are intentionally NOT re-exported (CLAUDE.md
+agent boundary).
 """
 
-from .agent import (
-    MARKETING_SYSTEM_PROMPT,
-    graph,
-    marketing_agent_node,
-    marketing_finalize_node,
-    workflow,
-)
-from .tools import get_product_catalog, tools
+from .agent import graph
+from .tools import get_product_catalog
 
 __all__ = [
     "graph",
-    "workflow",
-    "marketing_agent_node",
-    "marketing_finalize_node",
-    "MARKETING_SYSTEM_PROMPT",
-    "tools",
     "get_product_catalog",
 ]

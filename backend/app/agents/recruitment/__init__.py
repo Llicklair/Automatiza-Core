@@ -1,30 +1,22 @@
-"""
-Recruitment agent package.
+"""Recruitment agent package.
+
+Public API: the compiled ``graph`` plus the individual ``@tool`` functions
+consumed by ``app.agents.tool_registry``. Internal nodes, the uncompiled
+workflow and the system prompt are intentionally NOT re-exported (CLAUDE.md
+agent boundary).
 """
 
-from .agent import (
-    RECRUITMENT_SYSTEM_PROMPT,
-    graph,
-    recruitment_agent_node,
-    recruitment_finalize_node,
-    workflow,
-)
+from .agent import graph
 from .tools import (
     create_position,
     list_candidates,
     list_positions,
     process_cv,
-    tools,
     update_candidate_status,
 )
 
 __all__ = [
     "graph",
-    "workflow",
-    "recruitment_agent_node",
-    "recruitment_finalize_node",
-    "RECRUITMENT_SYSTEM_PROMPT",
-    "tools",
     "create_position",
     "list_positions",
     "process_cv",

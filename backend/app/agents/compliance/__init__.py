@@ -1,28 +1,20 @@
-"""
-Compliance agent package.
+"""Compliance agent package.
+
+Public API: the compiled ``graph`` plus the individual ``@tool`` functions
+consumed by ``app.agents.tool_registry``. Internal nodes, the uncompiled
+workflow and the system prompt are intentionally NOT re-exported (CLAUDE.md
+agent boundary).
 """
 
-from .agent import (
-    COMPLIANCE_SYSTEM_PROMPT,
-    compliance_agent_node,
-    compliance_finalize_node,
-    graph,
-    workflow,
-)
+from .agent import graph
 from .tools import (
     check_boe_news,
     check_fiscal_deadlines,
     fiscal_query,
-    tools,
 )
 
 __all__ = [
     "graph",
-    "workflow",
-    "compliance_agent_node",
-    "compliance_finalize_node",
-    "COMPLIANCE_SYSTEM_PROMPT",
-    "tools",
     "check_fiscal_deadlines",
     "check_boe_news",
     "fiscal_query",
