@@ -2,9 +2,38 @@
 
 > **Fuente**: consensuado en `DISCUSION_OTRA_IA.md` (31 rondas IA-1 ↔ IA-2). Backlog operativo detallado en [`tasks/backlog.md`](./backlog.md).
 
+---
+
+## Addendum 2026-05-17 — Estado real verificado
+
+Auditoría rápida del código vs el roadmap (commit `16b6e2d`):
+
+**Milestones técnicos cumplidos antes de su fecha-tope** (`tasks/backlog.md` ya los marca DONE):
+
+| Milestone | Fecha original | Estado real |
+|---|---|---|
+| **M1 — Fundación** | 22-may | ✅ **CUMPLIDO** — Alembic baseline + AI.AUDIT + SEC.JWT (47 tests) + FAC.NUM con `pg_advisory_xact_lock` (87 tests) + SEC.KEY rotación |
+| **M2 — Verifactu firmable** | 5-jun | ✅ **CUMPLIDO** — FAC.HASH (`0011_verifactu_chain` + triggers anti-UPDATE/DELETE, 12 tests) + FAC.QR (`/verify/{huella}` + QR en PDF, 7 tests) + FAC.MODE (8 tests) |
+| **M3 — Verifactu certificado** | 12-jun | 🟠 PENDIENTE — `FAC.TST` (5d dev1) requiere cert pruebas FNMT online (PRES.HOM, 10 min) |
+| **M4 — 5 modelos generables** | 19-jun | 🟠 PARCIAL — los modelos se generan; `MOD.130/347/390/111/190` necesitan revisión contra fixture AEAT |
+| **M5 — Soft launch beta** | 25-jun | 🔴 Bloqueado por DEC.04 (Code Signing EV) |
+| **M6-M9 PRES homologación/producción** | 3-jul → 17-jul | 🔴 **Bloqueado por trámites externos**: PRES.0 (alta colaborador social AEAT vía gestor, 1-6 sem cal) + DEC.14, DEC.15, DEC.16, DEC.17 |
+| **M10 — Comercial** | 22-jul | dependiente de M5-M9 |
+
+**Cuello de botella real**: ya no es código. Son las 17 decisiones humanas (DEC.01-DEC.17) más los trámites con AEAT/FNMT que el código no puede acelerar.
+
+**Único item técnico TODO sin bloqueos externos**: `QA.E2E` — tests Playwright (signup → factura → 303). ~2 días dev. El resto del backlog técnico está DONE o depende de cert FNMT / alta colaborador.
+
+**Acción inmediata recomendada**:
+1. Lunes 18-may: firmar DEC.02, contratar abogado (DEC.06), contratar gestor (DEC.14a). Cualquiera de los 3 sin cerrar bloquea el `critical path`.
+2. Martes 19-may: pedir cert pruebas FNMT online (10 min, gratis, gestor). Desbloquea M3+M4+M5.
+3. En paralelo (devs): empezar `QA.E2E` Playwright.
+
+---
+
 ## §1 Supuestos
 
-- **Hoy**: 2026-05-14 (jueves).
+- **Hoy**: 2026-05-17 (domingo).
 - **Rama decisión 2**: **autónomo** (responsabilidad civil ilimitada del fundador, asumida en póliza RC específica).
 - **Equipo dev**: **3 devs** (1 backend senior + 1 fullstack + 1 frontend/UX).
 - **Gestor profesional**: contratado para acelerar alta colaborador social AEAT (4 sem en lugar de 8).
@@ -235,8 +264,8 @@ Landing pública + onboarding abierto + pricing 39/65/159€. Tier Gestoría dis
 
 | Milestone | Fecha objetivo | Criterio |
 |---|---|---|
-| M1 — Fundación | 22-may | Alembic baseline + AI.AUDIT + JWT en safeStorage + numeración correlativa funcionando |
-| M2 — Verifactu firmable | 5-jun | Cadena hash funcionando + QR en PDF + endpoint `/verify` |
+| ✅ M1 — Fundación | 22-may | **CUMPLIDO 2026-05-17** — Alembic baseline + AI.AUDIT + SEC.JWT (47/47 tests) + FAC.NUM `pg_advisory_xact_lock` (87 tests) + SEC.KEY rotación |
+| ✅ M2 — Verifactu firmable | 5-jun | **CUMPLIDO 2026-05-17** — FAC.HASH (`0011_verifactu_chain`, 12 tests) + FAC.QR (`/verify/{huella}` + QR PDF, 7 tests) + FAC.MODE (8 tests) |
 | M3 — Verifactu certificado | 12-jun | Tests pasan contra cert AEAT pruebas |
 | M4 — 5 modelos generables | 19-jun | 303, 130, 347, 390, 111, 190 emitidos contra fixture |
 | M5 — Soft launch beta | 25-jun | 3-5 amigos usando build firmada con auto-update |
