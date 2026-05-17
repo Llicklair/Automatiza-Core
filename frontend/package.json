@@ -10,7 +10,10 @@
         "test": "vitest",
         "test:ci": "vitest run --coverage",
         "test:ui": "vitest --ui",
-        "test:a11y": "vitest run src/test/a11y"
+        "test:a11y": "vitest run src/test/a11y",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:debug": "playwright test --debug"
     },
     "dependencies": {
         "@radix-ui/react-avatar": "^1.1.11",
@@ -49,6 +52,7 @@
         "zustand": "^4.5.7"
     },
     "devDependencies": {
+        "@playwright/test": "^1.48.2",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
         "@testing-library/user-event": "^14.6.1",

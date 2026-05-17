@@ -59,6 +59,12 @@ backend/_pytest_cache_tmp/
 pytest-of-Marcos/
 pytest-of-*/
 
+# Playwright (E2E tests)
+frontend/e2e/.results/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.playwright/
+
 # Electron build artifacts
 desktop/dist/
 
