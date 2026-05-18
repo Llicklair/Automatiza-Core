@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Copy, Link2, ShieldOff, Loader2, ExternalLink } from "lucide-react";
+import { Copy, Link2, ShieldOff, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Client } from "@/lib/api/erp";
 import { clientPortalAdmin } from "@/lib/api/client_portal";
@@ -38,6 +38,7 @@ export default function PortalClientesPage() {
     const [generating, setGenerating] = useState<string | null>(null);
     const [revoking, setRevoking] = useState<string | null>(null);
     const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+    const [generatedUrlIsLocal, setGeneratedUrlIsLocal] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const loadStatuses = useCallback(async (clientList: Client[]) => {
@@ -63,12 +64,43 @@ export default function PortalClientesPage() {
         })();
     }, [loadStatuses]);
 
+    const isUrlLocalOnly = (url: string) => {
+        try {
+            const { hostname } = new URL(url);
+            return (
+                hostname === "localhost" ||
+                hostname === "127.0.0.1" ||
+                hostname === "::1" ||
+                hostname.endsWith(".local")
+            );
+        } catch {
+            return true;
+        }
+    };
+
     const handleGenerate = async (client: Client) => {
+        const current = statuses[client.id];
+        const hasActive =
+            current?.has_token && current.expires_at && new Date(current.expires_at) > new Date();
+        if (hasActive) {
+            const ok = confirm(
+                "Al regenerar el enlace, el anterior dejará de funcionar inmediatamente. " +
+                "Si ya se lo habías enviado al cliente, tendrás que mandarle el nuevo. ¿Continuar?"
+            );
+            if (!ok) return;
+        }
+
         setGenerating(client.id);
         try {
             const res = await clientPortalAdmin.generateToken(client.id);
-            const url = `${window.location.origin}/portal-cliente?token=${res.raw_token}`;
+            // El backend devuelve portal_url si PORTAL_PUBLIC_URL está configurada.
+            // Si no, caemos a window.location.origin (que solo sirve si admin y cliente
+            // comparten red/máquina — útil para piloto local, no para producción).
+            const url =
+                res.portal_url ??
+                `${window.location.origin}/portal-cliente?token=${res.raw_token}`;
             setGeneratedUrl(url);
+            setGeneratedUrlIsLocal(isUrlLocalOnly(url));
             const updated = await clientPortalAdmin.getTokenStatus(client.id);
             setStatuses((prev) => ({ ...prev, [client.id]: updated }));
         } catch {
@@ -201,7 +233,7 @@ export default function PortalClientesPage() {
                 </div>
             )}
 
-            <Dialog open={!!generatedUrl} onOpenChange={() => { setGeneratedUrl(null); setCopied(false); }}>
+            <Dialog open={!!generatedUrl} onOpenChange={() => { setGeneratedUrl(null); setCopied(false); setGeneratedUrlIsLocal(false); }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Enlace generado</DialogTitle>
@@ -209,6 +241,20 @@ export default function PortalClientesPage() {
                     <p className="text-sm text-muted-foreground">
                         Comparte este enlace con el cliente. Es válido 90 días y da acceso a sus facturas y presupuestos.
                     </p>
+                    {generatedUrlIsLocal && (
+                        <div className="flex gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs text-amber-200">
+                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
+                            <div className="space-y-1">
+                                <p className="font-medium">Este enlace solo funciona en esta máquina o red local.</p>
+                                <p className="text-amber-200/80">
+                                    Tu cliente no podrá abrirlo desde su casa. Configura{" "}
+                                    <code className="px-1 rounded bg-amber-500/20">PORTAL_PUBLIC_URL</code>{" "}
+                                    en el archivo <code className="px-1 rounded bg-amber-500/20">.env</code>{" "}
+                                    con la URL pública del portal (Cloudflare Tunnel, dominio propio o IP fija).
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     <div className="p-3 rounded-lg bg-muted/50 font-mono text-xs break-all">
                         {generatedUrl}
                     </div>

@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     PORT: int = 8080
     FRONTEND_URL: str = "http://localhost:3000"  # Acepta múltiples orígenes separados por coma
+    # URL pública del portal de clientes (la que verán los clientes finales al abrir el enlace).
+    # Si está vacía, el frontend cae a window.location.origin con advertencia. En producción debe
+    # apuntar a la URL accesible desde internet (Cloudflare Tunnel, dominio propio, IP fija…).
+    PORTAL_PUBLIC_URL: str = ""
 
     @model_validator(mode="after")
     def check_secrets(self):

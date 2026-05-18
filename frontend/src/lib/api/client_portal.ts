@@ -38,7 +38,7 @@ export const clientPortalAdmin = {
     getTokenStatus: (clientId: string) =>
         request<PortalTokenStatus>(`/api/v1/client-portal/admin/tokens/${clientId}`),
     generateToken: (clientId: string, daysValid = 90) =>
-        request<{ raw_token: string; expires_at: string; message: string }>(
+        request<{ raw_token: string; portal_url: string | null; expires_at: string; message: string }>(
             `/api/v1/client-portal/admin/tokens/${clientId}?days_valid=${daysValid}`,
             { method: "POST" }
         ),
