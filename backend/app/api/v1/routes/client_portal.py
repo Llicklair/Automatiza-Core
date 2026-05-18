@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.dependencies import get_current_client_portal, get_current_user
 from app.core.security import create_client_portal_access_token
 from app.db.base import get_db
@@ -90,8 +91,14 @@ async def generate_portal_token(
     db.add(new_token)
     await db.commit()
 
+    # Construir la URL pública del portal si está configurada. Si no, devolver None
+    # y dejar que el frontend caiga al fallback con advertencia.
+    public_base = (settings.PORTAL_PUBLIC_URL or "").rstrip("/")
+    portal_url = f"{public_base}/portal-cliente?token={raw_token}" if public_base else None
+
     return {
         "raw_token": raw_token,
+        "portal_url": portal_url,
         "expires_at": new_token.expires_at.isoformat(),
         "message": f"Enlace de portal válido {days_valid} días",
     }
