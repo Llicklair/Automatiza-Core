@@ -75,4 +75,5 @@ backups/
 !frontend/src/app/**/backups/**
 .gitnexus
 .claude/worktrees/
+.claude/settings.local.json
 backend/scripts/_runs/
