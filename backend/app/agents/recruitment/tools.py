@@ -208,7 +208,71 @@ async def update_candidate_status(tenant_id: str, candidate_id: str, new_status:
         return f"Candidato {c.name}: {old} → {new_status}"
 
 
-tools = [create_position, list_positions, process_cv, list_candidates, update_candidate_status, create_pdf_report, create_pdf_text_report]
+@tool
+async def create_candidate(
+    tenant_id: str,
+    name: str,
+    email: str = "",
+    phone: str = "",
+    position_id: str = "",
+) -> str:
+    """Da de alta un candidato manualmente con datos básicos (sin CV).
+
+    Úsala cuando el usuario quiere registrar un candidato a partir de su nombre
+    y datos de contacto, sin tener todavía un CV en disco. Para crear un
+    candidato A PARTIR DE un PDF de CV, usa `process_cv` en su lugar.
+
+    Args:
+        tenant_id: UUID del tenant.
+        name: nombre completo del candidato (obligatorio).
+        email: email de contacto (opcional).
+        phone: teléfono (opcional).
+        position_id: UUID del puesto al que aplica (opcional). Si vacío, queda
+            sin asignar y se puede actualizar después.
+
+    NOTA AI Act: esta tool NO puntúa ni rankea al candidato. Solo registra los
+    datos básicos. La evaluación es responsabilidad humana.
+    """
+    if not name or not name.strip():
+        return "Error: el nombre del candidato es obligatorio."
+
+    pos_uuid = None
+    if position_id:
+        try:
+            pos_uuid = UUID(position_id)
+        except ValueError:
+            return f"Error: position_id '{position_id}' no es un UUID válido."
+
+    async with AsyncSessionLocal() as db:
+        if pos_uuid:
+            pos = await db.get(RecruitmentPosition, pos_uuid)
+            if not pos or str(pos.tenant_id) != tenant_id:
+                return f"Error: puesto {position_id} no encontrado en este tenant."
+
+        cand = Candidate(
+            tenant_id=UUID(tenant_id),
+            name=name.strip(),
+            email=email.strip() or None,
+            phone=phone.strip() or None,
+            position_id=pos_uuid,
+        )
+        db.add(cand)
+        await db.commit()
+        await db.refresh(cand)
+        return json.dumps(
+            {
+                "id": str(cand.id),
+                "name": cand.name,
+                "email": cand.email,
+                "phone": cand.phone,
+                "position_id": str(cand.position_id) if cand.position_id else None,
+                "status": cand.status,
+            },
+            ensure_ascii=False,
+        )
+
+
+tools = [create_position, list_positions, process_cv, create_candidate, list_candidates, update_candidate_status, create_pdf_report, create_pdf_text_report]
 
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar

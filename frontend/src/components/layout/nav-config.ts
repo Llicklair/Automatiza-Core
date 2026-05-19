@@ -4,7 +4,7 @@ import {
     Home, Flag, ShoppingCart, Briefcase, Building2, Calendar,
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
     BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
-    Activity, Wand2, FileSearch, Clock, Timer, UserCircle, Receipt,
+    Activity, FileSearch, Clock, Timer, UserCircle, Receipt,
     Mail, FileSpreadsheet, AlertTriangle, FolderKanban,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -37,7 +37,6 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Mi portal", icon: UserCircle, href: "/portal" },
             { label: "Mi equipo", icon: Sparkles, href: "/mi-equipo", highlight: true },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones", highlight: true },
-            { label: "Sandbox IA", icon: Wand2, href: "/sandbox" },
             { label: "Calendario", icon: Calendar, href: "/calendario" },
             { label: "Bandeja", icon: Activity, href: "/bandeja" },
         ],

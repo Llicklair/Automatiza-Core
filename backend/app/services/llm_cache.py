@@ -89,6 +89,11 @@ class LLMCache:
                 "response": response,
                 "provider": provider,
                 "tenant_id": tenant_id,
+                # Guardamos el intent original normalizado para permitir
+                # invalidación por prefijo ("classify:*", "plan:*", …) desde
+                # flush_prefix. Sin esto la clave es un sha256 opaco y no se
+                # puede filtrar por familia.
+                "intent": intent,
                 "metadata": metadata or {},
             }
         )
@@ -106,6 +111,35 @@ class LLMCache:
         key = _make_key(tenant_id, intent, provider)
         with _lock:
             _cache.pop(key, None)
+
+    async def flush_prefix(self, prefix: str, tenant_id: str | None = None) -> int:
+        """Invalida todas las entradas cuyo `intent` original empiece por `prefix`.
+
+        Útil para purgar familias enteras del cache (p.ej. ``classify:*`` tras
+        cambiar las reglas de keywords, ``plan:*`` tras tocar el prompt del
+        planner). Si `tenant_id` es None, purga across todos los tenants.
+
+        Devuelve el número de entradas eliminadas.
+        """
+        count = 0
+        _evict_expired()
+        with _lock:
+            keys_to_delete = []
+            for key, (payload_json, _) in _cache.items():
+                try:
+                    data = json.loads(payload_json)
+                except json.JSONDecodeError:
+                    logger.warning("Skipping corrupted cache entry (invalid JSON), key=%s", key)
+                    continue
+                if tenant_id is not None and data.get("tenant_id") != tenant_id:
+                    continue
+                intent = data.get("intent") or ""
+                if isinstance(intent, str) and intent.startswith(prefix):
+                    keys_to_delete.append(key)
+            for k in keys_to_delete:
+                del _cache[k]
+                count += 1
+        return count
 
     async def flush_tenant(self, tenant_id: str) -> int:
         count = 0

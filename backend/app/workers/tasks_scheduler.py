@@ -157,7 +157,8 @@ async def _dispatch_workflow(
             meta=meta,
         )
         try:
-            await dispatch_orchestrator(str(task.id))
+            # Fase 3 (RLS): propagamos tenant_id explícito al dispatcher.
+            await dispatch_orchestrator(str(task.id), tenant_id=str(wf.tenant_id))
             if guard and idempotency_key:
                 await guard.mark_executed("workflow_beat", idempotency_key)
         except Exception as e:
@@ -185,7 +186,12 @@ async def _check_scheduled_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        # Fase 3 (RLS): esta lectura inicial es CROSS-TENANT por diseño
+        # (APScheduler es global, no atado a un tenant). El listener RLS
+        # se desactiva temporalmente con set_current_tenant(None) y cada
+        # workflow re-establece su tenant_id antes de cualquier operación
+        # que toque datos del tenant.
+        set_current_tenant(None)
         for wf in await get_active_scheduled_workflows(db):
             if not _should_run_now(wf.trigger_config or {}, now_local):
                 continue
@@ -241,7 +247,10 @@ async def _catchup_missed_workflows():
     now_local = datetime.now(_MADRID_TZ)
 
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        # Fase 3 (RLS): lectura inicial cross-tenant intencionada (catchup
+        # es global). Cada iteración fija set_current_tenant antes de
+        # operar sobre datos del tenant correspondiente.
+        set_current_tenant(None)
         for wf in await get_active_scheduled_workflows(db):
             cron_expr = (wf.trigger_config or {}).get("cron")
             if not cron_expr:
@@ -298,7 +307,11 @@ async def _process_recurring_invoices():
     interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
 
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
+        # Fase 3 (RLS): lectura inicial cross-tenant intencionada (este job
+        # diario abarca todas las plantillas recurrentes de todos los tenants).
+        # Antes de generar cada Invoice se fija set_current_tenant(rec.tenant_id)
+        # dentro del loop.
+        set_current_tenant(None)
         result = await db.execute(
             select(RecurringInvoice).where(
                 RecurringInvoice.is_active.is_(True),

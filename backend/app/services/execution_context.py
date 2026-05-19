@@ -23,8 +23,140 @@ Uso (en dispatch_node, antes de llamar al agente):
 
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+# ─── Configuración de cap para texto libre del step previo ────────────────────
+#
+# Cuando un agente devuelve markdown libre (rag/chat/recruitment/custom/summary)
+# y no hay claves estructuradas en `_EXTRACTABLE_KEYS`, propagamos el cuerpo de
+# `response` al siguiente step. El cap evita inflar el prompt:
+#
+#   - Target ≈ 1k tokens del modelo destino.
+#   - Si `tiktoken` está disponible, se trunca por tokens reales.
+#   - Si no, se estima 4 chars/token → 4000 chars como cap por defecto.
+#
+# Elegimos 4000 (vs el 400 antiguo) porque era el cuello de botella reportado
+# en lessons 2026-05-18: respuestas como "Factura IA-001 creada por 1815€…"
+# se truncaban a 400 chars y el step N+1 perdía contexto. 4000 cubre la
+# inmensa mayoría de respuestas operativas sin disparar latencia del LLM
+# downstream (con prompts de ~6-8k tokens totales seguimos lejos del context
+# window de Sonnet/Haiku).
+_RESPONSE_PREVIEW_CAP_CHARS = 4000
+_RESPONSE_PREVIEW_CAP_TOKENS = 1000
+
+
+def _truncate_response_text(text: str) -> str:
+    """Trunca `text` a un cap razonable (~1k tokens). Usa tiktoken si está."""
+    cleaned = text.strip()
+    if not cleaned:
+        return cleaned
+    try:  # pragma: no cover — tiktoken puede no estar instalado
+        import tiktoken  # type: ignore
+
+        enc = tiktoken.get_encoding("cl100k_base")
+        tokens = enc.encode(cleaned)
+        if len(tokens) <= _RESPONSE_PREVIEW_CAP_TOKENS:
+            return cleaned
+        truncated = enc.decode(tokens[:_RESPONSE_PREVIEW_CAP_TOKENS])
+        return truncated.rstrip() + "…"
+    except Exception:
+        if len(cleaned) <= _RESPONSE_PREVIEW_CAP_CHARS:
+            return cleaned
+        return cleaned[:_RESPONSE_PREVIEW_CAP_CHARS].rstrip() + "…"
+
+
+# ─── Parser ligero de claves obvias en markdown ───────────────────────────────
+#
+# Cuando el agente devuelve texto humano ("Factura: IA-2026-0001 creada para
+# Acme SL"), extraemos los pares más comunes vía regex y los añadimos a
+# `key_data`. NO sustituye a los outputs estructurados — sólo es un fallback
+# para respuestas en prosa.
+
+# Etiquetas markdown frecuentes → clave canónica de _EXTRACTABLE_KEYS.
+_MARKDOWN_LABELS: dict[str, str] = {
+    "factura": "invoice_number",
+    "nº factura": "invoice_number",
+    "numero de factura": "invoice_number",
+    "número de factura": "invoice_number",
+    "cliente": "client_name",
+    "nif": "client_nif",
+    "cif": "client_nif",
+    "empleado": "employee_name",
+    "nómina": "payroll_id",
+    "nomina": "payroll_id",
+    "documento": "document_id",
+    "archivo": "file_name",
+    "fichero": "file_name",
+    "oportunidad": "opportunity_id",
+    "lead": "lead_name",
+    "transacción": "transaction_id",
+    "transaccion": "transaction_id",
+    "cuenta": "bank_account",
+    "iban": "bank_account",
+    "concepto": "concept",
+    "id": "document_id",
+}
+
+# Detecta "<Etiqueta>: <valor>" en texto plano o markdown ("**Factura:** IA-001").
+# Acepta opcional **/__/* a ambos lados de la etiqueta, ":" o "—" como separador.
+_MD_KV_RE = re.compile(
+    r"(?:^|\n|[•\-]\s*)"                # inicio de línea o bullet
+    r"[\*_]{0,2}\s*"                    # opcional negrita/cursiva apertura
+    r"([A-Za-zÁÉÍÓÚáéíóúÑñ ºª]+?)"     # etiqueta
+    r"\s*[\*_]{0,2}\s*"                 # opcional negrita/cursiva cierre
+    r"[:\-–—]"                          # separador
+    r"\s*[\*_]{0,2}\s*"                 # opcional negrita post-separador (**Factura:** valor)
+    r"([^\n]+?)"                        # valor (resto de la línea)
+    r"(?=\n|$)",
+)
+
+# UUID v4-ish (acepta cualquier forma estándar 8-4-4-4-12 hex).
+_UUID_RE = re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")
+
+
+def _parse_markdown_entities(text: str) -> dict[str, Any]:
+    """Extrae pares clave→valor obvios de un markdown/texto libre.
+
+    Reconoce patrones "Etiqueta: valor", incluyendo variantes con negrita
+    (**Factura:** IA-001). Mapea la etiqueta a una clave canónica de
+    `_EXTRACTABLE_KEYS` cuando se identifica; si no, ignora la línea.
+
+    Devuelve `{}` si no se extrae nada. Pensado como FALLBACK — no debe
+    sobrescribir entidades estructuradas que ya estén en `output`.
+    """
+    if not text:
+        return {}
+    found: dict[str, Any] = {}
+    for m in _MD_KV_RE.finditer(text):
+        label_raw = m.group(1).strip().lower().strip("*_ ")
+        value = m.group(2).strip().strip("*_ .,;")
+        if not value or len(value) > 300:
+            continue
+        canonical = _MARKDOWN_LABELS.get(label_raw)
+        if canonical is None:
+            # También probamos sin espacios internos por si la etiqueta vino
+            # como "ID factura" → buscar "id" o "factura" como heurística.
+            words = label_raw.split()
+            if len(words) <= 2:
+                for w in words:
+                    canonical = _MARKDOWN_LABELS.get(w)
+                    if canonical:
+                        break
+        if canonical and canonical not in found:
+            found[canonical] = value
+    # Si encontramos un UUID y no había document_id/invoice_id explícito, úsalo.
+    if "document_id" not in found and "invoice_id" not in found:
+        uuid_match = _UUID_RE.search(text)
+        if uuid_match:
+            found.setdefault("document_id", uuid_match.group(0))
+    return found
+
 
 # ─── Entidades que se extraen automáticamente de los resultados ───────────────
 
@@ -123,11 +255,39 @@ class ExecutionContext:
         action = output.get("action", "ejecutado")
         key_data = {k: v for k, v in output.items() if k in _EXTRACTABLE_KEYS and v}
 
+        # Capturar el texto humano del agente (response) cuando exista. Sin esto,
+        # cuando el output no contiene claves estructuradas en _EXTRACTABLE_KEYS
+        # (mayoría de casos: rag, chat, recruitment, custom, summary) el siguiente
+        # step recibe "Paso N (agent): action ✅" sin DATOS, y el LLM del step N+1
+        # responde "no tengo acceso a los datos del paso N".
+        response_text = output.get("response") or output.get("summary") or output.get("result")
+        response_preview = None
+        if isinstance(response_text, str) and response_text.strip():
+            # Cap basado en tokens del modelo destino (≈1k tokens). Antes 400
+            # chars truncaba respuestas legítimas (lessons 2026-05-18). Si el
+            # output es estructurado, este preview no se renderiza (ver
+            # build_enriched_intent); sólo se usa como fallback de prosa.
+            response_preview = _truncate_response_text(response_text)
+
+            # Parser ligero de markdown: extrae "Factura: IA-001", "Cliente: X",
+            # UUIDs, etc. Sólo si no había la clave ya estructurada en `output`
+            # (no pisamos datos canónicos).
+            try:
+                md_entities = _parse_markdown_entities(response_text)
+            except Exception as e:  # pragma: no cover — defensivo
+                logger.debug("Markdown parser falló: %s", e)
+                md_entities = {}
+            for k, v in md_entities.items():
+                # Sólo añadir si NO existía ya (vía _extract_entities arriba).
+                if k not in self.entities:
+                    self.entities[k] = v
+
         summary = {
             "agent": agent,
             "action": action,
             "success": success,
             "key_data": key_data,
+            "response_preview": response_preview,
         }
 
         self.step_summaries.append(summary)
@@ -169,6 +329,13 @@ class ExecutionContext:
             lines.append(f"Paso {i} ({step['agent']}): {step['action']} {status_icon}")
             for k, v in step["key_data"].items():
                 lines.append(f"  · {k}: {v}")
+            # Si no hay key_data estructurado pero sí hay texto de respuesta,
+            # incluirlo para que el siguiente agente vea qué dijo el anterior.
+            preview = step.get("response_preview")
+            if preview and not step["key_data"]:
+                # Indentar a 2 espacios para legibilidad del LLM
+                indented = "\n  ".join(preview.splitlines())
+                lines.append(f"  respuesta: {indented}")
 
         if self.entities:
             lines.append("")

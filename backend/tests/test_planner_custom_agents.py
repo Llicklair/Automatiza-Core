@@ -33,7 +33,7 @@ class TestCustomEmployeesHelpers:
         from app.agents.orchestrator._plan_handlers import (
             _load_tenant_custom_employees,
         )
-        from app.db.models.ai_employees import AIEmployee
+        from app.db.models.ai_employees import AgentSkill, AIEmployee
 
         tenant, _user, _token = seed_tenant_and_user
 
@@ -53,6 +53,9 @@ class TestCustomEmployeesHelpers:
             system_prompt="...", icon="x", avatar_color="#fff",
         )
         db.add_all([builtin, custom_active, custom_inactive])
+        await db.flush()
+        # Health-check del _load (2026-05-19) exige >=1 skill por custom activo.
+        db.add(AgentSkill(employee_id=custom_active.id, tool_module="billing.create_invoice"))
         await db.commit()
 
         result = await _load_tenant_custom_employees(str(tenant.id))

@@ -287,8 +287,10 @@ async def instruct_employee(
     # Sin esto la task queda pending eterno: el TaskRunner solo procesa lo que
     # se le despacha explícitamente (mismo patrón que el resto de creators de
     # tasks coordinator: workflow/_execution, event_bus, messaging, etc.).
+    # Fase 3 (RLS): propagamos tenant_id al worker para fijar el ContextVar
+    # antes de la SELECT de bootstrap de la Task.
     from app.services.workflow.task_dispatch import dispatch_orchestrator
-    await dispatch_orchestrator(str(task.id))
+    await dispatch_orchestrator(str(task.id), tenant_id=str(tenant_id))
 
     return {"task_id": str(task.id), "status": "queued", "employee": employee.name}
 

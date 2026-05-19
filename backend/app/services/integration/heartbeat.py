@@ -160,7 +160,8 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
                 await db.commit()
 
             try:
-                await dispatch_orchestrator(str(tid))
+                # Fase 3 (RLS): tenant_uuid es la tenancy de la task reclamada.
+                await dispatch_orchestrator(str(tid), tenant_id=str(tenant_uuid))
                 dispatched += 1
             except Exception as exc:
                 logger.exception("Heartbeat: error despachando tarea %s: %s", tid, exc)

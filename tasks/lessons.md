@@ -4,6 +4,106 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-05-18 — VALID_DOMAINS y DISPATCHER_MAP deben estar en sync
+
+**Contexto**: Bug SC-4 — `"Dame el resumen contable del mes"` clasificaba
+como `chat` aunque las keywords correctamente lo enrutaban a `report`. El
+`DISPATCHER_MAP` (dispatchers/__init__.py:38) tenía registrado el dispatcher
+`"report"`, pero `VALID_DOMAINS` (state.py:70-89) NO incluía `"report"`. El
+`classify_node` filtra contra VALID_DOMAINS y descarta cualquier dominio no
+listado → fallback a `chat`.
+
+**Patrón**: hay 3 puntos donde un dominio nuevo debe existir:
+1. `VALID_DOMAINS` en `app/agents/orchestrator/state.py`
+2. `DISPATCHER_MAP` en `app/agents/orchestrator/dispatchers/__init__.py`
+3. Keywords en `_KEYWORD_MAP` y/o `_STRONG_KEYWORDS` en
+   `app/agents/orchestrator/classifier.py`
+
+Si falta cualquiera de los 3, el dominio queda silenciosamente inaccesible.
+
+**Regla**: al añadir un dominio al orchestrator, comprobar los 3 sitios.
+Mantener la lista de dominios sincronizada — idealmente derivar
+DISPATCHER_MAP keys de VALID_DOMAINS en lugar de duplicar la definición.
+
+## 2026-05-19 — Falso positivo: LLM aluciona "no estoy en este contexto" y el agente marca done
+
+**Contexto**: Iter 1 email/A, prompt `iter1_email_search` = "Busca el último email que envié a Lucía sobre el contrato". El clasificador acertó (`email`), el dispatcher invocó al agente email, pero el LLM (Claude) respondió en texto plano: *"Lo siento, pero las herramientas de correo electrónico (check_inbox, check_unread, etc.) no están disponibles en mi contexto actual de Claude Code. Estas herramientas son parte del sistema de Automati[zaPyme]..."*. El log lo detectó (`[ClaudeCode] Claude menciono tools [...] en texto pero no uso el formato correcto`) **pero igualmente devolvió `agent_results[0].success=true` y `status=done`**. La UI le diría al usuario "OK" cuando no se ejecutó ninguna búsqueda.
+
+Los otros 2 prompts del mismo run (`iter1_email_send`, `iter1_email_summarize`) sí invocaron tools correctamente (en modo DEMO porque tenant no tiene OAuth en DB) — el problema está en el prompt 3 específicamente, no en el flujo email general.
+
+**Patrón**: cuando el LLM se rehúsa a invocar tools y devuelve texto explicativo, el wrapper de Claude (`_dispatch_handlers` rama custom o el adaptador del agente email) trata el texto como output válido y propaga `success=true`. La detección heurística `[ClaudeCode] Claude menciono tools […]` existe en logs pero **no marca el step como fallido**.
+
+**Regla**: cualquier respuesta del LLM que matchee el patrón "menciono tools en texto pero no uso el formato correcto" debe degradarse a `AgentResult(success=False, error="llm_refused_tool_use")`. Buscar la fuente del log `[ClaudeCode]` (probablemente en algún adaptador de Claude en `agents/email/` o en un helper común) y añadir la regla allí. Verificar también si el system prompt menciona "Claude Code" — el LLM se confunde de identidad.
+
+**Prevención durante iteraciones futuras**: si un step termina con `error` no nulo PERO `success=true`, marcarlo como sospechoso en el reporte. Añadir al `_format_row` del smoke un flag visible para este caso.
+
+## 2026-05-18 — AIEmployees custom interceptan el dispatch antes que el builtin
+
+**Contexto**: tras fixear SC-1 (CRM-create), el smoke completo expuso SC-9:
+`billing_simple` ahora falla con timeout 900s porque el `plan_node`
+(_plan_handlers.py:438-462) detecta un AIEmployee custom de domain=billing
+("yolanda sanchez" en el tenant AutomatizaPyme) y enruta el plan a
+`agent="custom"` en lugar del builtin billing. Yolanda tiene system_prompt
+o skills rotas → hangup.
+
+**Patrón**: la presencia de un AIEmployee custom **siempre** desvía el
+tráfico del builtin, aunque el custom esté inoperante. Eso significa que
+arreglar un bug aguas arriba (clasificación) puede exponer bugs aguas
+abajo en customs olvidados.
+
+**Regla**: al probar el orchestrator end-to-end, sembrar tenants limpios
+o auditar los AIEmployees custom existentes antes de interpretar timeouts.
+Considerar añadir health-check al lookup de customs en
+`_plan_handlers.py` que omita aquellos marcados como obsoletos o con
+skills inexistentes.
+
+## 2026-05-18 — ExecutionContext sólo propaga claves estructuradas (response text se pierde)
+
+**Contexto**: Bug SC-10 — el plan multi-step de coordinator fallaba en el
+step 2 con "no tengo acceso a los datos del paso 1". El mecanismo
+`ExecutionContext` SÍ enriquece el intent del siguiente agente, pero
+sólo extrae claves listadas en `_EXTRACTABLE_KEYS` del output de los
+pasos previos (invoice_id, client_name, employee_id, etc.).
+
+Como los agentes devuelven `{"action": "completed", "response":
+"<markdown con los datos>"}` y los datos están EMBEBIDOS en el texto
+markdown del `response`, `_extract_entities` no encuentra ninguna clave
+estructurada → `key_data = {}` → el contexto enriquecido para el step
+N+1 es sólo `"Paso 1 (rag): completed ✅"` sin datos.
+
+**Patrón**: cualquier feature que dependa de pasar contexto entre steps
+de un plan multi-agent requiere que el agente productor exponga claves
+estructuradas en su output O que el consumidor reciba el texto del
+`response` previo.
+
+**Regla**: al añadir un nuevo agent/dispatcher cuyo output debe alimentar
+a otro agent en un plan coordinator, comprobar que el output incluye
+claves en `_EXTRACTABLE_KEYS` (o ampliar la lista). Como fallback, el
+fix de SC-10 ya incluye `response_preview` (800 chars) en el enriched
+intent cuando no hay key_data — usar como red de seguridad, no como
+mecanismo principal.
+
+## 2026-05-18 — El classifier cachea 24h por defecto
+
+**Contexto**: tras cada cambio al `_KEYWORD_MAP` o `_STRONG_KEYWORDS` en
+classifier.py, las primeras corridas seguían devolviendo el dominio viejo
+porque `_CACHE_TTL_CLASSIFY = 86400` (24h) y el cache key es
+`f"classify:{_normalize_for_cache(intent)}"`. Sin invalidar el cache,
+imposible validar un fix de clasificación.
+
+**Patrón**: cualquier cambio a las reglas del classifier requiere
+invalidar el cache `classify:*` del tenant antes de re-testear, o
+esperar 24h.
+
+**Regla**: en sesiones de iteración sobre el classifier, mantener a mano
+un script `clear_classify_cache.py` (ver `c:\tmp\` en mi sesión) que
+itere los prompts conocidos e invoque `llm_cache.invalidate()`. Para
+una sesión profesional, plantearse exponer un endpoint admin
+`DELETE /admin/llm-cache?prefix=classify` o un flag `--no-cache` al
+script smoke.
+
+---
+
 ## 2026-05-02 — Verificar hallazgos de subagentes Explore antes de actuar
 
 **Contexto:** Durante la auditoría Fase 1 de multi-tenancy (`docs/multitenancy/tenant_scoped_tables.md`), un subagente Explore reportó tres "hallazgos críticos". Al leer el código real, dos de los tres eran falsos positivos:
@@ -61,31 +161,28 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 **Aplicación:** Revisar con grep `await db\.delete\(` y `await db\.add\(` en cualquier codebase SQLAlchemy async antes de hacer merge a main.
 
-## 2026-05-08 — Bug pendiente: custom employee timeout no se propaga
+## 2026-05-08 — Bug RESUELTO 2026-05-19: custom employee timeout no se propaga
 
-**Síntoma**: tasks dirigidas al CTO custom (`Marcos Recio`, domain=custom) tardan
-~8 minutos en pasar de `executing` a `failed` aunque el timeout interno
-configurado en `_invoke_dynamic_employee` es 300s.
+**Síntoma original**: tasks dirigidas al CTO custom tardaban ~8 minutos en pasar
+de `executing` a `failed` aunque el timeout interno en `_invoke_dynamic_employee`
+era 300s.
 
-**Lo que SÍ pasa**: al final, el task acaba en `failed` con error
-"Error: Claude Code CLI no respondio en el tiempo limite". Es decir, el
-timeout SÍ se dispara — pero se queda colgado en alguna parte del cleanup
-(probablemente `await db.commit()` o `log_activity` post-timeout).
+**Causa raíz confirmada (hipótesis 1)**: tras `TimeoutError` en
+`graph.ainvoke()`, la sesión BD del handler podía quedar sucia (otros nodos del
+graph hicieron writes sin commit). El `await db.commit()` posterior para marcar
+`employee.status = "idle"` esperaba locks indefinidamente.
 
-**Lo que NO pasa**: el wait_for(300s) que envuelve `graph.ainvoke()` no
-parece propagarse hasta el polling externo en menos de ~480s.
+**Fix aplicado 2026-05-19** en
+`backend/app/agents/orchestrator/_dispatch_handlers.py`:
+- Helper `_release_employee(db, employee, label)` que hace `rollback()` PRIMERO
+  (limpia estado sucio), luego `commit()` envuelto en `wait_for(10s)` —
+  cualquier fallo del cleanup queda log y no bloquea la propagación del error
+  original.
+- Aplicado en ambos `except` (`TimeoutError` y `Exception`) de
+  `_invoke_dynamic_employee`.
 
-**Hipótesis a investigar**:
-1. Tras el TimeoutError, `employee.status = "idle"` + `db.commit()` puede
-   bloquearse si la sesión de BD quedó sucia.
-2. El subprocess `claude_code` sigue corriendo en background tras
-   `subprocess.run(timeout=...)` y eso bloquea el event loop.
-3. La excepción se traga en algún sitio antes de propagarse al TaskRunner.
-
-**Cómo reproducirlo**:
-1. Pedir al CTO un informe extenso ("informe de e-commerce B2B 2026 con tablas...")
-2. Observar que `tenant_documents` no recibe el PDF inmediatamente y la
-   task queda en `executing` mucho más allá de los 300s configurados.
+**Hipótesis 2 (subprocess zombie)** ya estaba mitigada por el fix de
+`claude_code._agenerate` (kill+wait en TimeoutError, 2026-05-09).
 
 ## 2026-05-08 — Bug pendiente: custom employee timeout no se propaga
 

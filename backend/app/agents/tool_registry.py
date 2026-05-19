@@ -136,6 +136,7 @@ def _build_registry() -> dict[str, Callable]:
 
     # — recruitment —
     from app.agents.recruitment import (
+        create_candidate,
         create_position,
         list_candidates,
         list_positions,
@@ -146,6 +147,7 @@ def _build_registry() -> dict[str, Callable]:
     registry["create_position"] = create_position
     registry["list_positions"] = list_positions
     registry["process_cv"] = process_cv
+    registry["create_candidate"] = create_candidate
     registry["list_candidates"] = list_candidates
     registry["update_candidate_status"] = update_candidate_status
 

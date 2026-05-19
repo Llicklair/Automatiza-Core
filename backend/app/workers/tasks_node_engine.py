@@ -11,8 +11,13 @@ from app.services.idempotency import IdempotencyGuard
 logger = logging.getLogger(__name__)
 
 
-async def run_node_engine(execution_id: str):
-    """Ejecuta un workflow via el motor de nodos (grafos con condicionales, delays, etc.)."""
+async def run_node_engine(execution_id: str, tenant_id: str | None = None):
+    """Ejecuta un workflow via el motor de nodos (grafos con condicionales, delays, etc.).
+
+    Fase 3 (RLS): `tenant_id` se recibe del dispatcher cuando es conocido,
+    permitiendo fijar el ContextVar antes de la query de bootstrap. Si es
+    None se hace fallback al tenant_id de la fila de WorkflowExecution.
+    """
     guard = IdempotencyGuard()
 
     if await guard.already_executed("run_node_engine", execution_id):
@@ -20,7 +25,7 @@ async def run_node_engine(execution_id: str):
         return {"skipped": True, "reason": "already_executed"}
 
     try:
-        result = await _run_node_engine(execution_id)
+        result = await _run_node_engine(execution_id, tenant_id)
         await guard.mark_executed(
             "run_node_engine", execution_id, {"status": result.get("status", "unknown")}
         )
@@ -33,7 +38,7 @@ async def run_node_engine(execution_id: str):
             for attempt in range(3):
                 await asyncio.sleep(30 * (attempt + 1))
                 try:
-                    result = await _run_node_engine(execution_id)
+                    result = await _run_node_engine(execution_id, tenant_id)
                     await guard.mark_executed(
                         "run_node_engine", execution_id, {"status": result.get("status", "unknown")}
                     )
@@ -43,8 +48,11 @@ async def run_node_engine(execution_id: str):
         raise exc
 
 
-async def resume_node_engine(execution_id: str, from_node_id: str):
-    """Reanuda un workflow del motor de nodos tras delay o approval."""
+async def resume_node_engine(execution_id: str, from_node_id: str, tenant_id: str | None = None):
+    """Reanuda un workflow del motor de nodos tras delay o approval.
+
+    Fase 3 (RLS): ver run_node_engine para la semántica de tenant_id.
+    """
     guard = IdempotencyGuard()
 
     idempotency_key = f"{execution_id}:{from_node_id}"
@@ -53,7 +61,7 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
         return {"skipped": True, "reason": "already_executed"}
 
     try:
-        result = await _resume_node_engine(execution_id, from_node_id)
+        result = await _resume_node_engine(execution_id, from_node_id, tenant_id)
         await guard.mark_executed(
             "resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")}
         )
@@ -65,7 +73,7 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
             for attempt in range(3):
                 await asyncio.sleep(10 * (attempt + 1))
                 try:
-                    result = await _resume_node_engine(execution_id, from_node_id)
+                    result = await _resume_node_engine(execution_id, from_node_id, tenant_id)
                     await guard.mark_executed(
                         "resume_node_engine",
                         idempotency_key,
@@ -77,7 +85,7 @@ async def resume_node_engine(execution_id: str, from_node_id: str):
         raise exc
 
 
-async def _run_node_engine(execution_id: str):
+async def _run_node_engine(execution_id: str, tenant_id: str | None = None):
     import uuid as _uuid
 
     from sqlalchemy import select
@@ -87,9 +95,12 @@ async def _run_node_engine(execution_id: str):
     from app.db.models.models import WorkflowExecution
     from app.services.ai.node_engine import NodeEngine
 
+    # Fase 3 (RLS): fijar tenant_id en el ContextVar ANTES de la query de
+    # bootstrap si el dispatcher lo conoce, para que RLS también cubra esta SELECT.
+    if tenant_id:
+        set_current_tenant(tenant_id)
+
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
-        # para que la query de bootstrap también corra con contexto de tenant.
         result = await db.execute(
             select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id))
         )
@@ -97,19 +108,22 @@ async def _run_node_engine(execution_id: str):
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
 
-        set_current_tenant(str(execution.tenant_id))
+        # Defensa en profundidad: reafirmamos con el tenant real de la fila
+        # (cubre el caso en que el dispatcher no haya propagado tenant_id).
+        resolved_tenant = str(execution.tenant_id)
+        set_current_tenant(resolved_tenant)
 
         engine = NodeEngine(
             workflow_id=str(execution.workflow_id),
             execution_id=execution_id,
-            tenant_id=str(execution.tenant_id),
+            tenant_id=resolved_tenant,
             user_id=None,
             trigger_payload=execution.trigger_payload,
         )
         return await engine.run(db)
 
 
-async def _resume_node_engine(execution_id: str, from_node_id: str):
+async def _resume_node_engine(execution_id: str, from_node_id: str, tenant_id: str | None = None):
     import uuid as _uuid
 
     from sqlalchemy import select
@@ -119,9 +133,11 @@ async def _resume_node_engine(execution_id: str, from_node_id: str):
     from app.db.models.models import WorkflowExecution
     from app.services.ai.node_engine import NodeEngine
 
+    # Fase 3 (RLS): ver _run_node_engine.
+    if tenant_id:
+        set_current_tenant(tenant_id)
+
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
-        # para que la query de bootstrap también corra con contexto de tenant.
         result = await db.execute(
             select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id))
         )
@@ -129,12 +145,13 @@ async def _resume_node_engine(execution_id: str, from_node_id: str):
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
 
-        set_current_tenant(str(execution.tenant_id))
+        resolved_tenant = str(execution.tenant_id)
+        set_current_tenant(resolved_tenant)
 
         engine = NodeEngine(
             workflow_id=str(execution.workflow_id),
             execution_id=execution_id,
-            tenant_id=str(execution.tenant_id),
+            tenant_id=resolved_tenant,
             user_id=None,
             trigger_payload=execution.trigger_payload,
         )

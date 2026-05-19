@@ -36,6 +36,9 @@ EXPECTED_AGENT_RESULT_FIELDS: frozenset[str] = frozenset({
 
 # Agentes esperados del MVP — cada paquete debe importarse sin fallo y
 # exportar al menos `graph` o `workflow` (entry point LangGraph).
+# NOTA 2026-05-19: `validators` se movió a `agents/shared/validators/`
+# (no es un agente, son utilidades) y `uploads` se trasladó a
+# `backend/data/uploads/` (no es un paquete Python, son PDFs del usuario).
 EXPECTED_AGENTS: tuple[str, ...] = (
     "billing",
     "accounting",
@@ -47,10 +50,8 @@ EXPECTED_AGENTS: tuple[str, ...] = (
     "documents",
     "email",
     "rag",
-    "validators",
     "compliance",
     "excel",
-    "uploads",
     "orchestrator",
 )
 

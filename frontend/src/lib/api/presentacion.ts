@@ -1,7 +1,7 @@
 /**
  * PRES.ASS — cliente de presentación asistida AEAT (Modelos 131 y 200).
  */
-import { BASE, getToken, request } from "./client";
+import { fetchBlob, request } from "./client";
 
 export type ModeloAsistido = "131" | "200";
 
@@ -24,17 +24,11 @@ export const presentacion = {
         modelo: ModeloAsistido,
         params?: { ejercicio?: number; trimestre?: number },
     ): Promise<void> => {
-        const token = getToken();
-        if (!token) throw new Error("No autenticado");
         const qs = new URLSearchParams();
         if (params?.ejercicio) qs.append("ejercicio", String(params.ejercicio));
         if (params?.trimestre) qs.append("trimestre", String(params.trimestre));
-        const url = `${BASE}/api/v1/presentacion/asistida/xml/${modelo}${qs.toString() ? "?" + qs : ""}`;
-        const res = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error(`Error descargando XML: ${res.status}`);
-        const blob = await res.blob();
+        const path = `/api/v1/presentacion/asistida/xml/${modelo}${qs.toString() ? "?" + qs : ""}`;
+        const blob = await fetchBlob(path);
         const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objectUrl;

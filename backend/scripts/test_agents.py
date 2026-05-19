@@ -1,4 +1,23 @@
-"""Harness de testeo de agentes individuales (sin orchestrator).
+"""[DEPRECATED] Harness de testeo de agentes individuales (sin orchestrator).
+
+⚠️  DEPRECATED — duplica cobertura de la suite pytest oficial y puede
+divergir. Equivalentes en `backend/tests/`:
+
+  - test_accounting_agent.py
+  - test_agent_execution_trace.py
+  - test_agent_metrics.py
+  - test_e2e_agent_flows.py
+  - test_api_recruitment.py (recruitment)
+  - test_api_email.py (email)
+  - test_compliance_tools_signatures.py (compliance)
+
+Ejecutar suite pytest equivalente:
+    cd backend && pytest tests/test_e2e_agent_flows.py -v
+
+Este harness queda como utilidad de exploración manual rápida; **no añadir
+nuevos asserts aquí** — escribirlos en `backend/tests/` con fixtures reales.
+
+---
 
 Invoca el grafo LangGraph compilado de cada agente directamente con prompts
 acción + edge cases. Útil para detectar fallos de tools, prompts o respuestas

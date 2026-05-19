@@ -67,8 +67,13 @@ async def _retry(label: str, task_id: str, fn, guard, *, attempts: int, backoff_
     raise exc
 
 
-async def execute_orchestrator(task_id: str):
-    """Ejecuta el orquestador LangGraph para una tarea dada."""
+async def execute_orchestrator(task_id: str, tenant_id: str | None = None):
+    """Ejecuta el orquestador LangGraph para una tarea dada.
+
+    Fase 3 (RLS): `tenant_id` se recibe del dispatcher cuando es conocido.
+    Permite fijar el ContextVar antes de la SELECT de bootstrap de la Task.
+    Si es None, se hace fallback al tenant_id de la fila (comportamiento previo).
+    """
     guard = IdempotencyGuard()
 
     if await guard.already_executed("run_orchestrator", task_id):
@@ -76,7 +81,7 @@ async def execute_orchestrator(task_id: str):
         return {"skipped": True, "reason": "already_executed"}
 
     try:
-        result = await _execute_orchestrator(task_id)
+        result = await _execute_orchestrator(task_id, tenant_id)
         await guard.mark_executed("run_orchestrator", task_id, {"status": "done"})
         return result
     except Exception as exc:
@@ -86,7 +91,7 @@ async def execute_orchestrator(task_id: str):
             return await _retry(
                 "run_orchestrator",
                 task_id,
-                lambda: _execute_orchestrator(task_id),
+                lambda: _execute_orchestrator(task_id, tenant_id),
                 guard,
                 attempts=3,
                 backoff_base=30,
@@ -95,8 +100,11 @@ async def execute_orchestrator(task_id: str):
         raise
 
 
-async def resume_orchestrator(task_id: str):
-    """Reanuda el orquestador tras una aprobacion humana."""
+async def resume_orchestrator(task_id: str, tenant_id: str | None = None):
+    """Reanuda el orquestador tras una aprobacion humana.
+
+    Fase 3 (RLS): ver execute_orchestrator para la semántica de tenant_id.
+    """
     guard = IdempotencyGuard()
 
     if await guard.already_executed("resume_orchestrator", task_id):
@@ -104,7 +112,7 @@ async def resume_orchestrator(task_id: str):
         return {"skipped": True, "reason": "already_executed"}
 
     try:
-        result = await _resume_orchestrator(task_id)
+        result = await _resume_orchestrator(task_id, tenant_id)
         await guard.mark_executed("resume_orchestrator", task_id, {"status": "done"})
         return result
     except Exception:
@@ -113,7 +121,7 @@ async def resume_orchestrator(task_id: str):
         return await _retry(
             "resume_orchestrator",
             task_id,
-            lambda: _resume_orchestrator(task_id),
+            lambda: _resume_orchestrator(task_id, tenant_id),
             guard,
             attempts=3,
             backoff_base=10,
@@ -165,13 +173,22 @@ async def _broadcast(manager, tenant_id: str, payload: dict) -> None:
         logger.debug("WS broadcast error: %s", exc)
 
 
-async def _execute_orchestrator(task_id: str):
-    """Coordina: cargar tarea -> construir estado -> stream LangGraph -> persistir."""
+async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None):
+    """Coordina: cargar tarea -> construir estado -> stream LangGraph -> persistir.
+
+    Fase 3 (RLS): si el dispatcher pasó `tenant_id_hint` lo fijamos en el
+    ContextVar ANTES de la SELECT de bootstrap, de modo que RLS cubra la
+    propia consulta de Task. La fila de DB sigue siendo la fuente de verdad
+    y reafirma el contexto inmediatamente después (defensa en profundidad).
+    """
     from app.agents.orchestrator import orchestrator
     from app.api.ws.notifications import manager
 
+    if tenant_id_hint:
+        set_current_tenant(tenant_id_hint)
+        set_current_task(task_id)
+
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         task = await _load_and_start_task(task_id, db)
         if not task:
             return
@@ -245,15 +262,20 @@ async def _execute_orchestrator(task_id: str):
             })
 
 
-async def _resume_orchestrator(task_id: str):
+async def _resume_orchestrator(task_id: str, tenant_id_hint: str | None = None):
     """
     Reanuda la ejecucion despues de una aprobacion humana.
     Coordina: cargar tarea/approval -> crear factura -> re-invocar LangGraph.
+
+    Fase 3 (RLS): ver _execute_orchestrator para la semántica de tenant_id_hint.
     """
     from app.agents.orchestrator import OrchestratorState, TaskStatus, orchestrator
 
+    if tenant_id_hint:
+        set_current_tenant(tenant_id_hint)
+        set_current_task(task_id)
+
     async with AsyncSessionLocal() as db:
-        # TODO Fase 3 (RLS): pasar tenant_id explícito al worker desde el dispatcher
         result = await _load_task_and_approval(task_id, db)
         if not result:
             return

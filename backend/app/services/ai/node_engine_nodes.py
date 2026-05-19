@@ -149,10 +149,12 @@ async def execute_delay_node(engine: NodeEngine, node: dict, db: AsyncSession) -
         await db.flush()
 
     try:
+        # Fase 3 (RLS): el engine conoce su tenant_id — lo propagamos.
         await dispatch_resume_node_engine(
             engine.execution_id,
             node_id,
             delay_seconds=delay_seconds,
+            tenant_id=str(engine.tenant_id) if getattr(engine, "tenant_id", None) else None,
         )
     except Exception as e:
         _logger.error("Error scheduling delay resume: %s", e)

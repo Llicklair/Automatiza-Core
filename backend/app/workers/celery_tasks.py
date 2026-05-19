@@ -23,12 +23,16 @@ if celery_app is not None:
         default_retry_delay=10,
         acks_late=True,
     )
-    def celery_execute_orchestrator(self, task_id: str) -> None:
-        """Run execute_orchestrator(task_id) inside a fresh event loop."""
+    def celery_execute_orchestrator(self, task_id: str, tenant_id: str | None = None) -> None:
+        """Run execute_orchestrator(task_id) inside a fresh event loop.
+
+        Fase 3 (RLS): `tenant_id` se propaga desde el dispatcher para que el
+        worker fije el ContextVar ANTES de la query de bootstrap.
+        """
         from app.workers.tasks_orchestrator import execute_orchestrator
 
         try:
-            asyncio.run(execute_orchestrator(task_id))
+            asyncio.run(execute_orchestrator(task_id, tenant_id))
         except Exception as exc:
             _log.exception("celery_execute_orchestrator falló para task_id=%s", task_id)
             raise self.retry(exc=exc)
@@ -40,12 +44,15 @@ if celery_app is not None:
         default_retry_delay=5,
         acks_late=True,
     )
-    def celery_resume_orchestrator(self, task_id: str) -> None:
-        """Run resume_orchestrator(task_id) inside a fresh event loop."""
+    def celery_resume_orchestrator(self, task_id: str, tenant_id: str | None = None) -> None:
+        """Run resume_orchestrator(task_id) inside a fresh event loop.
+
+        Fase 3 (RLS): `tenant_id` opcional para propagación temprana del contexto.
+        """
         from app.workers.tasks_orchestrator import resume_orchestrator
 
         try:
-            asyncio.run(resume_orchestrator(task_id))
+            asyncio.run(resume_orchestrator(task_id, tenant_id))
         except Exception as exc:
             _log.exception("celery_resume_orchestrator falló para task_id=%s", task_id)
             raise self.retry(exc=exc)

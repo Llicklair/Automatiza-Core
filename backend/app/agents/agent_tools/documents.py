@@ -265,11 +265,24 @@ async def get_document_content(tenant_id: str, document_id: str) -> str:
             if not doc:
                 return f"Documento {document_id} no encontrado."
 
-            if doc.file_path and os.path.exists(doc.file_path):
+            # Extensiones binarias: leer como utf-8 garantiza UnicodeDecodeError.
+            # Saltamos directo a parsed_content (que ya contiene el texto extraído
+            # por OCR/parser cuando el documento se subió).
+            _BINARY_EXTS = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp",
+                            ".xlsx", ".xls", ".docx", ".doc", ".pptx", ".zip")
+            _is_binary = doc.file_path and doc.file_path.lower().endswith(_BINARY_EXTS)
+
+            if doc.file_path and os.path.exists(doc.file_path) and not _is_binary:
                 try:
                     with open(doc.file_path, encoding="utf-8") as f:
                         content = f.read()
                     return f"Contenido de '{doc.file_name}':\n\n{content[:3000]}{'...(truncado)' if len(content) > 3000 else ''}"
+                except UnicodeDecodeError:
+                    # Archivo no era texto pese a extensión "segura". Fallback silencioso.
+                    _logger.debug(
+                        "File %s no es UTF-8 válido, usando parsed_content",
+                        doc.file_path,
+                    )
                 except Exception:
                     _logger.warning(
                         "Failed to read file %s from disk, falling back to DB",

@@ -10,16 +10,16 @@ from app.agents.orchestrator.dispatchers.compliance import _dispatch_compliance
 from app.agents.orchestrator.dispatchers.crm import _dispatch_crm
 from app.agents.orchestrator.dispatchers.documents import _dispatch_documents
 from app.agents.orchestrator.dispatchers.hr import _dispatch_hr
+from app.agents.orchestrator.dispatchers.marketing import _dispatch_marketing
 from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_email,
     _dispatch_excel,
-    _dispatch_marketing,
     _dispatch_rag,
-    _dispatch_recruitment,
     _dispatch_skill,
     _dispatch_team,
     _dispatch_workflow,
 )
+from app.agents.orchestrator.dispatchers.recruitment import _dispatch_recruitment
 from app.agents.orchestrator.dispatchers.reports import _dispatch_report
 
 # Registro de dispatchers: agent_name → callable(state, subtask) -> AgentResult

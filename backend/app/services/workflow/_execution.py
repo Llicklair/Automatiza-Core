@@ -268,7 +268,10 @@ async def resume_execution(
     if not execution.current_node_id:
         raise ValueError("No se puede determinar el nodo desde el que reanudar")
 
-    await dispatch_resume_node_engine(str(execution_id), execution.current_node_id)
+    # Fase 3 (RLS): propagamos tenant_id al worker.
+    await dispatch_resume_node_engine(
+        str(execution_id), execution.current_node_id, tenant_id=str(tenant_id)
+    )
     execution.result_log = f"Reanudacion programada desde nodo {execution.current_node_id}."
 
     await db.commit()

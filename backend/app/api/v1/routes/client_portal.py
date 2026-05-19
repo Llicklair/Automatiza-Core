@@ -1,7 +1,5 @@
 """Portal externo de clientes — autenticación por token + vista de facturas."""
-import hashlib
-import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,12 +17,9 @@ from app.db.models.crm import Client
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as invoice_svc
+from app.services.client_portal.tokens import hash_token, issue_token
 
 router = APIRouter(prefix="/client-portal", tags=["client-portal"])
-
-
-def _hash_token(raw: str) -> str:
-    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 # ── Admin: generar / revocar token para un cliente ───────────────────────────
@@ -62,7 +57,7 @@ async def generate_portal_token(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Verify client belongs to tenant
+    # Verify client belongs to tenant (validación de transporte)
     cl_res = await db.execute(
         select(Client).where(Client.id == client_id, Client.tenant_id == current_user.tenant_id)
     )
@@ -70,26 +65,12 @@ async def generate_portal_token(
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    # Revoke existing tokens
-    existing = await db.execute(
-        select(ClientPortalToken).where(
-            ClientPortalToken.client_id == client_id,
-            ClientPortalToken.tenant_id == current_user.tenant_id,
-        )
-    )
-    for old in existing.scalars():
-        old.is_active = False
-
-    raw_token = secrets.token_urlsafe(32)
-    new_token = ClientPortalToken(
+    raw_token, new_token = await issue_token(
         client_id=client_id,
         tenant_id=current_user.tenant_id,
-        token_hash=_hash_token(raw_token),
-        is_active=True,
-        expires_at=datetime.now(UTC) + timedelta(days=days_valid),
+        days_valid=days_valid,
+        db=db,
     )
-    db.add(new_token)
-    await db.commit()
 
     # Construir la URL pública del portal si está configurada. Si no, devolver None
     # y dejar que el frontend caiga al fallback con advertencia.
@@ -136,7 +117,7 @@ async def authenticate_portal(
     if not raw_token:
         raise HTTPException(status_code=400, detail="Token requerido")
 
-    token_hash = _hash_token(raw_token)
+    token_hash = hash_token(raw_token)
     now = datetime.now(UTC)
 
     res = await db.execute(

@@ -1,4 +1,23 @@
-"""Harness de testeo del orquestador y sus agentes.
+"""[DEPRECATED] Harness de testeo del orquestador y sus agentes por prompts.
+
+⚠️  DEPRECATED — duplica fixtures de la suite pytest oficial y puede
+divergir. Equivalentes en `backend/tests/`:
+
+  - test_prompt_snapshots.py     (snapshots por categoría)
+  - test_prompt_e2e.py           (e2e prompt → plan → dispatch)
+  - test_orchestrator_contract.py (clasificador + planner)
+  - test_planner_robustness.py   (edge cases del planner)
+  - test_routing_seam.py         (routing → dispatchers)
+  - test_tasks_orchestrator.py   (task lifecycle)
+
+Ejecutar:
+    cd backend && pytest tests/test_prompt_e2e.py tests/test_orchestrator_contract.py -v
+
+Mantener este harness para iteración local rápida sobre prompts con `--only`;
+**no añadir nuevos prompts aquí como única fuente de verdad** — replicarlos
+en `backend/tests/` para que el CI los proteja.
+
+---
 
 Invoca el grafo LangGraph directamente (sin HTTP) con una batería categorizada
 de prompts y captura clasificación, plan, dispatchers usados y outputs para

@@ -30,6 +30,16 @@ from pydantic import ConfigDict
 
 _log = logging.getLogger(__name__)
 
+
+class LLMRefusedToolUseError(RuntimeError):
+    """Claude mencionó tools en texto + frase de rechazo en lugar de invocarlas.
+
+    Levantado por `_process_response` para evitar el falso positivo donde la
+    respuesta-texto se trataba como salida válida del agente. El dispatcher la
+    convierte en AgentResult(success=False).
+    """
+
+
 TIMEOUT = 290  # segundos — 10s antes que el dispatcher (300s) para que el
               # error útil "CLI no respondió" aparezca primero, no el del wrapper.
 
@@ -375,12 +385,31 @@ class ClaudeCodeChatModel(BaseChatModel):
     def _process_response(self, text: str) -> ChatResult:
         if self._bound_tools:
             msg = _parse_tool_response(text)
-            # Log para debugging: si tenia tools pero no parseo ninguna
             if not msg.tool_calls and self._bound_tools:
-                # Verificar si Claude estaba intentando llamar una tool pero con formato incorrecto
                 tool_names = {t.name for t in self._bound_tools}
                 mentioned = [n for n in tool_names if n in text]
                 if mentioned:
+                    low = text.lower()
+                    refusal = any(
+                        phr in low
+                        for phr in (
+                            "no están disponibles",
+                            "no estan disponibles",
+                            "not available",
+                            "claude code",
+                            "no tengo acceso",
+                            "i don't have access",
+                            "i do not have access",
+                        )
+                    )
+                    if refusal:
+                        _log.error(
+                            "[ClaudeCode] LLM REFUSED tool use. Mentioned %s. Head: %s",
+                            mentioned, text[:300],
+                        )
+                        raise LLMRefusedToolUseError(
+                            f"LLM mencionó tools {mentioned} pero rehusó invocarlas: {text[:200]}"
+                        )
                     _log.warning(
                         "[ClaudeCode] Claude menciono tools %s en texto pero no uso el formato correcto. "
                         "Respuesta (primeros 200 chars): %s",

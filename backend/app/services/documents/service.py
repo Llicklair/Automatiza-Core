@@ -79,7 +79,8 @@ async def _dispatch_task(
         await db.commit()
         await db.refresh(doc)
 
-        await dispatch_orchestrator(str(task.id))
+        # Fase 3 (RLS): propagamos tenant_id al worker.
+        await dispatch_orchestrator(str(task.id), tenant_id=str(tenant_id))
     except Exception as e:
         logger.warning("Orchestrator dispatch falló para doc %s: %s", doc.id, e)
 

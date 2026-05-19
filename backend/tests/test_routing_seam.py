@@ -184,7 +184,7 @@ async def test_plan_node_single_domain_swaps_to_custom(
     """Si classify devuelve 'billing' y hay UN custom de billing, plan_node debe
     sustituir el built-in por agent='custom' + params.employee_id=<uuid>."""
     from app.agents.orchestrator._plan_handlers import plan_node
-    from app.db.models.ai_employees import AIEmployee
+    from app.db.models.ai_employees import AgentSkill, AIEmployee
 
     tenant, _user, _token = seed_tenant_and_user
 
@@ -200,6 +200,9 @@ async def test_plan_node_single_domain_swaps_to_custom(
         is_builtin=False,
     )
     db.add(yolanda)
+    await db.flush()
+    # Health-check del _load (2026-05-19) exige >=1 skill por custom activo.
+    db.add(AgentSkill(employee_id=yolanda.id, tool_module="billing.list_invoices"))
     await db.commit()
 
     state = {

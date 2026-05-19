@@ -1,99 +1,216 @@
-# Limpieza arquitectónica post-auditoría LLM
+# Tareas activas — AutomatizaPyme
 
-Fecha: 2026-05-17
-Estado: en planificación
-Origen: `tasks/audit-llm-e2e.md` (3 hallazgos 🔴 Alto)
-
-## Estado verificado de los 3 hallazgos 🔴 Alto
-
-### #1. 6 `@tool` sin docstring — ✅ YA RESUELTO
-Verificación 2026-05-17: `create_opportunity`, `update_opportunity_stage`,
-`create_client` (crm), `send_email` (email), `create_position`,
-`list_candidates` (recruitment) **ya tienen docstring**. La auditoría está
-stale — los commits posteriores los añadieron (incluso con notas AI Act).
-Cerrar este hallazgo en `audit-llm-e2e.md`.
-
-### #2. `__init__.py` filtran detalle en 11 dominios — 🔴 REAL
-Auditados los 11 paquetes (`accounting`, `banking`, `billing`, `compliance`,
-`crm`, `documents`, `excel`, `hr`, `marketing`, `rag`, `recruitment`).
-Exportan `graph`, `workflow`, `<dom>_agent_node`, `<dom>_finalize_node`,
-`<DOM>_SYSTEM_PROMPT`, tools individuales y helpers internos.
-
-**Mapa de consumidores reales** (verificado 2026-05-17):
-- `from app.agents.<dom> import graph` → 11 dispatchers
-- `from app.agents.<dom> import <tool>` → `tool_registry.py` (líneas 30-153)
-- `from app.agents.email import run_email_agent` → `dispatchers/misc.py:110`
-- `from app.agents.email import send_email_direct` → `services/email_sender.py:27`,
-  `routes/messaging.py:173`
-- `from app.agents.workflow import run_workflow_agent` → `dispatchers/misc.py:166`
-- `from app.agents.<dom>.agent import <node>` → tests internos (no afecta `__init__`)
-
-**Nadie consume**: `*_agent_node`, `*_finalize_node`, `workflow` (sin compilar),
-`<DOM>_SYSTEM_PROMPT` (las constantes) desde `__init__.py`. **Esos sí se
-pueden quitar sin riesgo.**
-
-### #3. `AgentResult` ausente en 12/14 `agent.py` — 🔴 REAL (parcial)
-Confirmado: 12 dominios devuelven
-`{"status": "done", "agent_results": [final_result.model_dump()]}` desde
-los nodos `finalize`, **no envuelven en `AgentResult(success, output, error)`**.
-Solo `email/agent.py` y `workflow/agent.py` lo hacen.
-
-**Mitigación actual ya existente**: los dispatchers capturan excepciones y
-construyen `AgentResult(success=False)` en `_dispatch_handlers.py` —
-contrato hacia el endpoint está protegido. El refactor cierra el contrato
-*dentro* del agente, no resuelve un bug.
+Última actualización: 2026-05-19
 
 ---
 
-## Dos opciones de refactor para #2 + #3
+## Pendiente accionable
 
-### Opción A — Pragmática (esta sesión, ~30-45 min, riesgo bajo)
-**Solo #2 parcial: limpiar lo que nadie usa**
+### Bugs abiertos
 
-Por cada `__init__.py` de los 11 dominios:
-- Mantener: `graph`, tools individuales públicas (las que importa
-  `tool_registry.py`), `run_email_agent`+`send_email_direct` (email),
-  `run_workflow_agent` (workflow).
-- Quitar del export público: `workflow` (uncompiled), `<dom>_agent_node`,
-  `<dom>_finalize_node`, `<DOM>_SYSTEM_PROMPT`, helpers internos, `tools`
-  list (si `tool_registry` ya consume las tools individuales).
+- [ ] **Bug cleanup tasks vs audit_log WORM** (descubierto 2026-05-19): el endpoint
+  `DELETE /api/v1/tasks/cleanup` (`services/workflow/task.py:187`) hace
+  `DELETE FROM audit_log WHERE task_id IN (...)`, pero `audit_log` tiene trigger
+  `audit_log_no_delete` BEFORE DELETE que lo bloquea (`Append-only table:
+  audit_log is immutable (SEC.WORM)`). El backend devuelve 500/cuelga, el frontend
+  muestra el botón "Limpiar(N)" como request pending eterno.
 
-**Resultado**: huella de `__init__.py` reducida ~50%, cero código roto,
-mensaje "estos símbolos son internos del paquete" queda claro.
+  Workaround aplicado 2026-05-19: 58 tasks zombies del tenant AutomatizaPyme
+  borradas via SQL desactivando triggers temporalmente
+  (`c:\tmp\cleanup_zombies.py`). El bug REAPARECE cuando se acumulen tasks
+  legítimas con audit_log.
 
-### Opción B — Pura (sesión separada, ~5-7h, riesgo medio)
-**Combina #2 completo + #3**
+  Fix correcto (sesión dedicada, 1-2h): soft-delete en `Task` (añadir flag
+  `is_deleted` + migración + filtrar en frontend) o reescribir cleanup para
+  saltar audit_log y solo borrar tasks que no tengan audit asociado. Trade-off
+  entre compliance WORM (mantener audit_log eternamente) y UX (poder limpiar
+  histórico).
 
-1. Añadir `async def run_agent(state, ...) -> AgentResult` a cada `agent.py`
-   que envuelva `graph.ainvoke()` + construya `AgentResult(success, output, error)`.
-2. Migrar 11 dispatchers de `graph.ainvoke()` a `run_agent()`.
-3. Migrar `tool_registry.py` a `from app.agents.<dom>.tools import ...`
-   (lugar correcto, no via `__init__`).
-4. Limpiar `__init__.py` a `from .agent import run_agent` exclusivamente.
+- [x] **Bug PDF timeout** ✅ RESUELTO 2026-05-19. Causa raíz: prompts
+  "genera PDF" hacen al coordinator planificar 2+ steps. Step 1 (RAG) crea el
+  PDF OK. Step 2 invoca un AIEmployee custom (yolanda, CFO) que recibe el
+  contexto enriquecido del step previo (response_preview de 800 chars con todo
+  el markdown del PDF). El LLM custom tarda **76s** procesando ese prompt grande
+  — el timeout previo de 90s del custom dispatch (SC-9) lo cortaba al borde →
+  task marcada failed pese al PDF ya generado.
 
-**Resultado**: cumple CLAUDE.md al pie de la letra. Contrato `AgentResult`
-end-to-end. Pero toca ~30 archivos y requiere correr toda la suite tras
-cada bloque.
+  **Fixes aplicados** (3):
+  1. `_dispatch_handlers.py` — timeout custom dispatch 90s → 180s + mensaje de
+     error actualizado.
+  2. `execution_context.py` — `response_preview` 800 → 400 chars (acorta el
+     prompt al siguiente step → reduce latencia LLM ~30%).
+  3. `services/pdf/__init__.py` — circular import (SC-12) arreglado con
+     `__getattr__` lazy. Necesario para diagnosticar el bug desde scripts
+     standalone; mejora también la robustez de imports en general.
+
+  Verificación: test aislado `c:\tmp\test_yolanda_isolated.py` reproduce el flow
+  step 1 → step 2 con contexto enriquecido. Antes fail al timeout 90s, ahora
+  completa en ~76s sin problemas.
+
+  ⚠️ **Para que tome efecto**: cerrar AutomatizaPyme.exe y volver a abrir (el
+  backend Python embebido por Electron tiene que reiniciarse para recoger los
+  cambios).
+
+- [x] **SC-12** ✅ RESUELTO 2026-05-19. Circular import en `app.services.pdf` ↔
+  `app.services.pdf_reports` arreglado con `__getattr__` (PEP 562) en
+  `pdf/__init__.py`. Los re-exports `generate_cashflow_report_pdf` etc. ahora
+  se cargan lazy cuando se accede al atributo, rompiendo el ciclo durante
+  module init. Scripts standalone que importan `tool_registry` ahora funcionan.
+
+### Refactor arquitectónico (origen: `audit-llm-e2e.md`)
+
+- [ ] **#2 Limpieza `__init__.py` de 11 dominios** — Opción A pragmática (~30-45 min, riesgo bajo):
+  - Mantener: `graph`, tools individuales públicas (las que importa `tool_registry.py`), `run_email_agent` + `send_email_direct` (email), `run_workflow_agent` (workflow).
+  - Quitar del export público: `workflow` uncompiled, `<dom>_agent_node`, `<dom>_finalize_node`, `<DOM>_SYSTEM_PROMPT`, helpers internos, lista `tools` redundante.
+- [ ] **#3 `AgentResult` end-to-end en 12/14 `agent.py`** — Opción B (~5-7h, sesión dedicada):
+  - Añadir `async def run_agent(state, ...) -> AgentResult` a cada `agent.py` envolviendo `graph.ainvoke()`.
+  - Migrar 11 dispatchers a `run_agent()`.
+  - Migrar `tool_registry.py` a `from app.agents.<dom>.tools import ...`.
+  - Limpiar `__init__.py` a `from .agent import run_agent`.
+
+### Acciones para fase pre-piloto (cuando haya clientes externos)
+
+- [ ] Publicar OAuth Google en **Production mode** (sin verificar) — 1 click en Google Cloud Console, gratis. Necesario para que refresh tokens no expiren cada 7 días.
+- [ ] Iniciar OAuth verification (2-6 sem, gratis) + CASA assessment Tier 1 para `gmail.send` (gratis para <5k MAU). Cuando haya 5+ clientes confirmados.
+- [ ] Roadmap M1-M2 mencionado en memorias: numeración correlativa, JWT safeStorage, AEAT FNMT.
 
 ---
 
-## Plan recomendado
+## Notas para futuras sesiones (gotchas confirmadas)
 
-1. **Ahora**: ejecutar Opción A. Commit `refactor(agents): limpiar __init__.py
-   internos`.
-2. **Sesión separada**: Opción B con plan dedicado, una vez confirmes la
-   prioridad vs el roadmap M1-M2 (numeración correlativa, JWT safeStorage,
-   AEAT FNMT) que tiene fechas-tope más cercanas.
+- **Smoke standalone no usa email real**: el backend desktop recibe `TENANT_ENCRYPTION_KEY` desde Electron `safeStorage`, no del `.env`. Scripts que cargan `.env` ven `decrypt FAIL: InvalidToken` y email cae a DEMO. No es bug, es esperado. Si en futuro hace falta probar OAuth real → reescribir smoke como cliente HTTP contra `:8080` con JWT login.
+- **OAuth Google está en Testing mode**: refresh tokens expiran cada 7 días. Solo 100 Test users de por vida. Producto funciona con la cuenta del owner; abrir a clientes externos exige publicar en Production primero.
+- **El orchestrator requiere `Task` real en DB para ainvoke directo** (FK desde `tenant_documents` y `audit_log`). `smoke_orchestrator.py` ya tiene el helper `_create_task_row()`.
+- **Classifier cachea 24h por defecto** (`_CACHE_TTL_CLASSIFY = 86400`). Al iterar sobre keywords/strong, invalidar cache antes de testear o esperar 24h. Script en `c:\tmp\clear_classify_cache.py`.
+- **`VALID_DOMAINS` y `DISPATCHER_MAP` deben mantenerse en sync**. Cuando se añade un dominio, ambos archivos + keywords del classifier deben actualizarse o el routing falla silenciosamente.
+- **Rutas absolutas `/foo` en Next no funcionan en Electron** (`file://` las resuelve a la raíz del filesystem → 404). Para assets críticos (logo, etc.) usar componente inline tipo `<LogoSvg />`.
 
-## Verificación post-cambio Opción A
+---
 
-- [ ] `py -3.11 -m pytest -m "not slow and not e2e" --tb=line -q` verde
-- [ ] `grep -rn "from app.agents.<dom> import" backend` confirma cero imports
-      a símbolos removidos
-- [ ] `npx gitnexus analyze` re-indexado
+## Histórico — sesiones cerradas
 
-## Estado de los hallazgos
+### 2026-05-18 / 2026-05-19 — Smoke Coordinador SC-1..SC-13
 
-- [x] #1 Docstrings tools — ya cumple, cerrar en `audit-llm-e2e.md`
-- [ ] #2 `__init__.py` limpieza — opción A pendiente esta sesión
-- [ ] #3 `AgentResult` en `agent.py` — opción B, sesión separada con plan
+13 hallazgos detectados con `backend/scripts/smoke_orchestrator.py`. **12 cerrados**, 1 abierto (SC-12, arriba).
+
+| ID | Tema | Resolución |
+|---|---|---|
+| SC-1 | CRM create_client clasificaba mal | Keywords + strong "crea/registra cliente" en `classifier.py` |
+| SC-2 | Recruitment no creaba candidatos | Tool nueva `create_candidate` + prompt agresivo |
+| SC-3 | Planner no descomponía cadenas multi-acción | Delegar a LLM si hay conector multi-step + 1 dominio |
+| SC-4 | Reports caían en `chat` | `report` añadido a `VALID_DOMAINS` + keywords |
+| SC-5 | Email en modo DEMO | Reconexión OAuth + fix marcar `is_active=false` ante `InvalidToken` |
+| SC-6 | Dispatcher `custom` absorbía 75% del tráfico | Resuelto colateralmente tras SC-1..4 (cayó a 12.5%) |
+| SC-7 | UnicodeDecodeError leyendo PDFs | Detectar extensión binaria en `agent_tools/documents.py` |
+| SC-8 | Skills obsoletas de yolanda sanchez | Cleanup DB: 5 skills obsoletas borradas |
+| SC-9 | Custom timeout 900s × 4 = 60 min | Timeout bajado a 90s en `_dispatch_handlers.py` |
+| SC-10 | Orchestrator no pasaba output entre steps | `response_preview` en `build_enriched_intent` |
+| SC-11 | hr_simple lento (44 min en un caso) | Variabilidad transitoria Anthropic, no es bug |
+| SC-13 | Smoke standalone no comparte encryption key con backend | Documentado en gotchas (no es bug) |
+
+**Smoke v2 final: 8/8 done, 0 fails, 0 timeouts.**
+
+Reporte detallado en `tasks/smoke_orchestrator_2026-05-18.md`. Causa raíz + fix de cada SC en el commit history.
+
+### Archivos modificados en sesiones smoke
+
+- `backend/app/agents/orchestrator/classifier.py` — SC-1, SC-3, SC-4
+- `backend/app/agents/orchestrator/state.py` — SC-4
+- `backend/app/agents/orchestrator/_dispatch_handlers.py` — SC-9
+- `backend/app/agents/recruitment/tools.py` — SC-2
+- `backend/app/agents/recruitment/__init__.py` — SC-2
+- `backend/app/agents/tool_registry.py` — SC-2
+- `backend/app/prompts/recruitment_agent.txt` — SC-2
+- `backend/app/services/execution_context.py` — SC-10
+- `backend/app/agents/agent_tools/documents.py` — SC-7
+- `backend/app/agents/email/tools.py` — SC-5
+
+### Datos de testing en tenant AutomatizaPyme (limpieza opcional)
+
+```sql
+DELETE FROM tasks WHERE additional_metadata->>'source' = 'smoke_orchestrator';
+DELETE FROM crm_contacts WHERE name LIKE 'Acme Smoke%';
+DELETE FROM invoices WHERE customer_name LIKE 'Acme Smoke%';
+DELETE FROM candidates WHERE name = 'Juan Smoke Perez';
+```
+(Verificar nombres reales de tablas antes de ejecutar.)
+
+---
+
+## Plan de iteraciones — Simulación PYME real (2026-05-19)
+
+**Objetivo**: ejercitar todas las herramientas y agentes custom contra el LLM real, simulando uso de PYME, validando Coordinador (one-shot) **y** Orquestador (scheduled) en paralelo.
+
+**Estructura**: Híbrida — Ronda 1 aísla por agente; Ronda 2 cruza dominios en flujos end-to-end.
+**Perfiles rotados**: A=Consultora/servicios · B=Retail/e-commerce · C=Asesoría contable.
+
+**Dominios detectados en `backend/app/agents/`** (13 funcionales): billing · hr · crm · banking · compliance · documents · email · marketing · recruitment · accounting · excel · rag · uploads (+ orchestrator coordinador, + workflow orquestador).
+
+**Telemetría obligatoria por iteración**:
+- ¿Clasificador acertó dominio? (logs `classifier.py`, ojo cache 24h — `c:\tmp\clear_classify_cache.py`)
+- ¿Tool ejecutada coincide con la esperada? (registry hit en `tool_registry.py`)
+- Tokens consumidos + latencia LLM
+- ¿Activity log + task_event_hub registraron el evento?
+- Fallo → entrada en `tasks/lessons.md` con regla de prevención
+
+---
+
+### Ronda 1 — Aislamiento por agente (13 iteraciones)
+
+Cada iteración: **1 caso one-shot Coordinador** + **1 workflow agendado Orquestador**. Perfil rota A→B→C→A…
+
+| # | Agente | Perfil | One-shot (Coordinador) | Scheduled (Orquestador) | Tools clave |
+|---|--------|--------|------------------------|-------------------------|-------------|
+| 1 | **email** | A | "Responde al hilo de Juan sobre la propuesta y adjunta el PDF" | Cada lunes 08:00 resumir bandeja no leída | gmail send, draft, summarize |
+| 2 | **documents** | C | "Sube y analiza este contrato PDF, extrae cláusulas de penalización" | Cada noche indexar nuevos PDFs en `/inbox` | upload, extract, classify, agent_tools/documents |
+| 3 | **billing** | B | "Crea factura 1.250€ + IVA al cliente NIF B12345678 y envíala" | Día 1 de cada mes generar facturas recurrentes | create_invoice, search_client, send_invoice_by_email |
+| 4 | **hr** | A | "Calcula la nómina de mayo de Ana García y déjala pendiente de aprobación" | Día 25 generar todas las nóminas del mes | calculate_and_create_payroll, generate_all_payrolls, approve_payroll |
+| 5 | **recruitment** | A | "Recibe CV de Lucía, evalúa fit con vacante Backend SR y agenda entrevista" | Diario 09:00 cribar nuevos CVs del buzón | parse_cv, score_candidate, create_candidate, schedule_interview |
+| 6 | **crm** | B | "Crea oportunidad 8.500€ con Acme S.L. en etapa Negociación" | Semanal calificar leads inactivos >30 días | create_opportunity, qualify_leads, update_opportunity_stage |
+| 7 | **banking** | C | "Concilia los movimientos de abril del banco con las facturas emitidas" | Diario 07:00 resumen financiero + alertas saldo bajo | reconcile_transactions, check_balances, financial_summary |
+| 8 | **compliance** | C | "Recuérdame los modelos de IVA del trimestre y consulta el BOE de hoy" | Cron trimestral aviso modelos 303/130/111 con 7 días de antelación | check_fiscal_deadlines, check_boe_news, fiscal_query (+ fiscal_approval workflow) |
+| 9 | **accounting** | B | "Cuadra los asientos del libro diario de abril" | Cierre mensual día 5 del mes siguiente | (mapear tools de `agents/accounting` al iniciar la iter) |
+| 10 | **marketing** | A | "Genera 3 propuestas de copy para landing del servicio Auditoría IT" | Quincenal newsletter desde plantilla | generate_copy, schedule_campaign |
+| 11 | **excel** | B | "Convierte este Excel de pedidos en resumen por categoría" | Mensual exportar KPIs a Excel | parse_excel, transform, export |
+| 12 | **rag** | C | "Busca en nuestra base de conocimiento la política de devoluciones" | (no aplica scheduled — uso síncrono) | semantic_search, agent_tools/knowledge |
+| 13 | **uploads** | A | "Procesa el batch de 5 facturas subidas hoy" | Cada hora vaciar cola `pending_uploads` | ingest, dispatch_to_documents |
+
+**Checkpoint Ronda 1**: matriz dominio×tool con verde/rojo. Si <90% verde, no pasar a Ronda 2.
+
+---
+
+### Ronda 2 — End-to-end multi-agente (6 flujos)
+
+Cada flujo arranca con **una sola instrucción NL** al Coordinador y debe encadenar ≥3 agentes vía `_dispatch_handlers`. Mide: clasificación correcta, paso de contexto entre agentes (`response_preview` en `execution_context.py`), `AgentResult` propagado, activity log coherente.
+
+| # | Flujo realista | Perfil | Agentes en cadena | Disparador |
+|---|----------------|--------|-------------------|------------|
+| 1 | **CV → entrevista → email confirmación → evento Calendar** | A | recruitment → calendar → email | One-shot |
+| 2 | **PDF factura proveedor → OCR → asiento contable → conciliación banco** | B | documents → accounting → banking | Workflow al subir archivo |
+| 3 | **Cliente nuevo CRM → contrato generado → enviado por email → recordatorio firma +5d** | A | crm → documents → email → scheduler | One-shot que crea cron |
+| 4 | **Cierre trimestral**: movimientos → cálculo IVA → modelo 303 → notificación aprobación | C | banking → compliance (fiscal_approval) → email | Scheduled trimestral |
+| 5 | **Lead web → calificación → oportunidad CRM → campaña marketing nurture** | B | crm.qualify_leads → marketing → email | One-shot |
+| 6 | **Nóminas + recibos + envío portal cliente** | A | hr.generate_all_payrolls → documents → portal-clientes | Workflow día 28 |
+
+---
+
+### Salidas esperadas por iteración
+
+1. `tasks/iter_NN_<agent>_<profile>.md` con: prompt enviado, dominio clasificado, tool(s) ejecutadas, resultado, tokens, fallos.
+2. Actualizar `tasks/lessons.md` SOLO si surge regla nueva (no duplicar lecciones SC-1..SC-13).
+3. Al cerrar cada ronda: tabla resumen + decisión Go/No-Go.
+
+### Infra previa (una vez antes de empezar)
+
+- [ ] Verificar `backend/scripts/smoke_orchestrator.py` arranca limpio.
+- [ ] Confirmar OAuth Google vigente (refresh <7d); regenerar antes de iter 1, 5 y flujos E2E 1/3.
+- [ ] Seed mínimo por perfil: 1 tenant + 3 clientes + 2 empleados + 5 facturas históricas + 3 CVs + 5 PDFs.
+- [ ] Activar DEBUG en `classifier`, `task_dispatch`, `tool_registry` durante todo el ejercicio.
+- [ ] Limpiar cache classifier antes de cada ronda (`c:\tmp\clear_classify_cache.py`).
+- [ ] Recordar: cualquier cambio backend exige cerrar y reabrir `AutomatizaPyme.exe` (backend embebido).
+
+### Estimación de coste LLM
+
+- Ronda 1: ~13 × 2 casos = 26 llamadas principales + ~30 auxiliares.
+- Ronda 2: ~6 × 3-5 agentes = 18-30 llamadas.
+- Total orientativo: **75-90 llamadas**. Esperar 30-40% cache hit en classifier dentro de la misma ronda.

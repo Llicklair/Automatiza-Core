@@ -60,7 +60,11 @@ async def _check_balances_async(tenant_id: str) -> str:
                 if importe < ALERT_THRESHOLDS["saldo_minimo_eur"]:
                     alertas.append(f"⚠️ Saldo bajo: {importe:.2f}€ en {details.get('iban', acc_id)}")
             except Exception as e:
-                saldos.append(f"- Cuenta {acc_id}: Error ({e})")
+                logger.exception(
+                    "[banking] error obteniendo saldos cuenta acc_id=%s tenant=%s",
+                    acc_id, getattr(tenant_id, "hex", tenant_id),
+                )
+                saldos.append(f"- Cuenta {acc_id}: Error ({type(e).__name__}: {e})")
     finally:
         await client.close()
 

@@ -155,7 +155,8 @@ async def import_tabular_file(
         await db.refresh(doc)
         task_id = task.id
 
-        await dispatch_orchestrator(str(task.id))
+        # Fase 3 (RLS): propagamos tenant_id al worker.
+        await dispatch_orchestrator(str(task.id), tenant_id=str(tenant_id))
     except Exception as e:
         logger.warning("Orchestrator dispatch falló en import para doc %s: %s", doc.id, e)
 

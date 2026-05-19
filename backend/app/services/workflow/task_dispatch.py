@@ -4,6 +4,12 @@ Dispatch de tareas.
 Cuando REDIS_URL está configurado, las tareas se enolan en Celery (workers
 separados con reintentos). En caso contrario se ejecutan en proceso con
 asyncio (comportamiento original, sin regresión).
+
+Fase 3 (RLS): todas las funciones aceptan `tenant_id` opcional. Cuando el
+caller lo conoce (scheduler, event_bus, instruct_employee...) lo propaga
+para que el worker pueda fijar el ContextVar ANTES de la query de
+bootstrap. Si es None, el worker hace fallback al tenant_id de la fila
+recuperada desde la DB (comportamiento previo).
 """
 import logging
 
@@ -18,33 +24,35 @@ def _celery_available() -> bool:
     return celery_app is not None and bool(settings.REDIS_URL)
 
 
-async def dispatch_orchestrator(task_id: str) -> None:
+async def dispatch_orchestrator(task_id: str, tenant_id: str | None = None) -> None:
     if _celery_available():
         from app.workers.celery_tasks import celery_execute_orchestrator
-        celery_execute_orchestrator.delay(task_id)
+        celery_execute_orchestrator.delay(task_id, tenant_id)
         _log.info("Tarea %s encolada en Celery (queue=orchestrator)", task_id)
     else:
         from app.workers.tasks_orchestrator import execute_orchestrator
-        await task_runner.submit("run_orchestrator", execute_orchestrator(task_id), task_id)
+        await task_runner.submit(
+            "run_orchestrator", execute_orchestrator(task_id, tenant_id), task_id
+        )
 
 
-async def dispatch_resume_orchestrator(task_id: str) -> None:
+async def dispatch_resume_orchestrator(task_id: str, tenant_id: str | None = None) -> None:
     if _celery_available():
         from app.workers.celery_tasks import celery_resume_orchestrator
-        celery_resume_orchestrator.delay(task_id)
+        celery_resume_orchestrator.delay(task_id, tenant_id)
         _log.info("Reanudación %s encolada en Celery", task_id)
     else:
         from app.workers.tasks_orchestrator import resume_orchestrator
         await task_runner.submit(
-            "resume_orchestrator", resume_orchestrator(task_id), f"resume:{task_id}"
+            "resume_orchestrator", resume_orchestrator(task_id, tenant_id), f"resume:{task_id}"
         )
 
 
-async def dispatch_node_engine(execution_id: str) -> None:
+async def dispatch_node_engine(execution_id: str, tenant_id: str | None = None) -> None:
     from app.workers.tasks_node_engine import run_node_engine
 
     await task_runner.submit(
-        "run_node_engine", run_node_engine(execution_id), f"node:{execution_id}"
+        "run_node_engine", run_node_engine(execution_id, tenant_id), f"node:{execution_id}"
     )
 
 
@@ -52,6 +60,7 @@ async def dispatch_resume_node_engine(
     execution_id: str,
     from_node_id: str,
     delay_seconds: float = 0,
+    tenant_id: str | None = None,
 ) -> None:
     from app.workers.tasks_node_engine import resume_node_engine
 
@@ -60,14 +69,14 @@ async def dispatch_resume_node_engine(
     if delay_seconds > 0:
         await task_runner.submit_delayed(
             "resume_node_engine",
-            resume_node_engine(execution_id, from_node_id),
+            resume_node_engine(execution_id, from_node_id, tenant_id),
             task_key,
             delay_seconds,
         )
     else:
         await task_runner.submit(
             "resume_node_engine",
-            resume_node_engine(execution_id, from_node_id),
+            resume_node_engine(execution_id, from_node_id, tenant_id),
             task_key,
         )
 
