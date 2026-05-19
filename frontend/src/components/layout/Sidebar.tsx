@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
+import { LogoSvg } from "@/components/ui/logo-svg";
 import Link from "next/link";
 import { Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -200,12 +200,9 @@ export function Sidebar() {
         >
             {/* Logo block */}
             <div className="flex items-center gap-2.5 px-4 py-4 border-b border-sidebar-border">
-                <Image
-                    src="/logo.svg"
-                    alt="AutomatizaPyme"
-                    width={28}
-                    height={28}
-                    className="h-7 w-7 flex-shrink-0"
+                <LogoSvg
+                    size={28}
+                    className="flex-shrink-0 rounded-md overflow-hidden"
                 />
                 {!collapsed && (
                     <span className="text-sm font-semibold text-sidebar-foreground truncate">

@@ -137,7 +137,8 @@ async def emit_event(
         try:
             from app.services.workflow.task_dispatch import dispatch_orchestrator
 
-            await dispatch_orchestrator(str(task.id))
+            # Fase 3 (RLS): propagamos tenant_id del workflow al worker.
+            await dispatch_orchestrator(str(task.id), tenant_id=str(wf.tenant_id))
             triggered_ids.append(str(wf.id))
             _logger.info(
                 "[EVENT_BUS] Evento '%s' -> workflow '%s' iniciado (Task %s)",

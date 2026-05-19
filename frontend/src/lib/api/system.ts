@@ -1,4 +1,4 @@
-import { BASE, fetchBlob, getToken, request } from "./client";
+import { fetchBlob, request } from "./client";
 
 export interface SystemInfo {
     status: string;
@@ -32,14 +32,8 @@ export interface VerifactuBackfillResult {
 }
 
 export const system = {
-    health: async (): Promise<SystemInfo> => {
-        const token = getToken();
-        const res = await fetch(`${BASE}/health`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) throw new Error("No se pudo conectar al servidor");
-        return res.json();
-    },
+    // `/health` no lleva prefix /api/v1 — `request()` lo encadena tal cual a BASE.
+    health: (): Promise<SystemInfo> => request<SystemInfo>("/health"),
 
     listBackups: (): Promise<BackupItem[]> =>
         request<BackupItem[]>("/api/v1/system/backups"),
@@ -60,13 +54,9 @@ export const system = {
         ),
 
     downloadBackup: async (filename: string): Promise<void> => {
-        const token = getToken();
-        const url = `${BASE}/api/v1/system/backups/${encodeURIComponent(filename)}/download`;
-        const res = await fetch(url, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const blob = await res.blob();
+        const blob = await fetchBlob(
+            `/api/v1/system/backups/${encodeURIComponent(filename)}/download`,
+        );
         const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objectUrl;

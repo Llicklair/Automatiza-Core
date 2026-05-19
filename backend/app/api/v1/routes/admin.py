@@ -155,3 +155,30 @@ async def restore_backup(
 
     logger.info("Base de datos restaurada por usuario %s", current_user.email)
     return {"ok": True, "message": "Base de datos restaurada correctamente"}
+
+
+# ── LLM cache invalidation ────────────────────────────────────────────────────
+
+
+@router.delete("/llm-cache")
+@limiter.limit("10/minute")
+async def invalidate_llm_cache(
+    request: Request,
+    prefix: str = "classify:",
+    current_user: User = Depends(require_role("admin")),
+):
+    """Invalida entradas del cache LLM por prefijo de intent.
+
+    Default ``prefix=classify:`` purga las clasificaciones del orquestador
+    (útil tras tocar ``_KEYWORD_MAP`` o ``_STRONG_KEYWORDS`` sin esperar al TTL).
+    Pasar ``?prefix=plan:`` para purgar las decomposiciones del planner, etc.
+    Solo admin.
+    """
+    from app.services.llm_cache import llm_cache
+
+    removed = await llm_cache.flush_prefix(prefix)
+    logger.info(
+        "LLM cache invalidado por admin %s: prefix=%r entradas=%d",
+        current_user.email, prefix, removed,
+    )
+    return {"ok": True, "prefix": prefix, "removed": removed}

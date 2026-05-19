@@ -142,7 +142,8 @@ async def process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: i
             task_id = str(task.id)
 
         # 2. Dispatch to orchestrator
-        await dispatch_orchestrator(task_id)
+        # Fase 3 (RLS): propagamos tenant_id al worker.
+        await dispatch_orchestrator(task_id, tenant_id=str(tenant_id))
 
         # 3. Poll until task finishes (max 120s)
         response_text = "Tu solicitud está siendo procesada."

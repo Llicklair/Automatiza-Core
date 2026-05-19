@@ -1,9 +1,25 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║          AUTOMATIZAPYME — TEST INTEGRAL DEL SISTEMA                         ║
-║  Simula el cerebro IA probando TODAS las funcionalidades via API             ║
-║  Ejecutar: python scripts/full_system_test.py                                 ║
+║   [DEPRECATED]  AUTOMATIZAPYME — TEST INTEGRAL DEL SISTEMA                  ║
+║   Simula el cerebro IA probando TODAS las funcionalidades via API            ║
+║   Ejecutar: python scripts/full_system_test.py                                ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
+
+⚠️  DEPRECATED — needs migration to pytest/ — see backlog.
+
+Este script (1394 LoC) cubre un barrido HTTP de TODOS los endpoints del
+backend con fixtures inline. La suite pytest oficial tiene cobertura
+parcial equivalente pero no exhaustiva del barrido completo:
+
+  - test_e2e_happy_path.py / test_e2e_agent_flows.py — flujos clave
+  - test_api_*.py (≈ 40 archivos)                    — por dominio
+
+No existe en `backend/tests/` un único equivalente que reproduzca la
+secuencia completa de este script. Acción pendiente (backlog):
+descomponerlo en tests pytest individuales y borrarlo.
+
+Mientras tanto, **no añadir nuevos endpoints aquí** — escribir el test
+en `backend/tests/test_api_<dominio>.py`.
 """
 
 import asyncio

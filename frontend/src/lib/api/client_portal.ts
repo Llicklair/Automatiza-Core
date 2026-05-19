@@ -1,4 +1,12 @@
-import { request, downloadBlob } from "./client";
+import { request } from "./client";
+
+// ── EXCEPCIÓN a "todo via client.ts" ─────────────────────────────────────────
+// El portal de clientes usa un JWT propio almacenado en `sessionStorage`
+// bajo `PORTAL_TOKEN_KEY`, distinto del JWT del usuario empresa (que vive
+// en `secureStore`). `client.ts.request()` adjuntaría el JWT empresa y
+// rompería este flujo de auth alternativo (similar a `taskStream` y al
+// QR-auth de `scanner.ts`). Por eso `portalRequest`, `authenticate` y
+// `downloadInvoicePdf` se quedan con `fetch` directo.
 
 export interface PortalTokenStatus {
     has_token: boolean;

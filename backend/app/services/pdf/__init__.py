@@ -42,12 +42,28 @@ from app.services.pdf.parser import (  # noqa: F401
     parse_pdf,
 )
 
-# ── Reports ──────────────────────────────────────────────────────────────────
-from app.services.pdf_reports import (  # noqa: F401
-    generate_cashflow_report_pdf,
-    generate_delinquency_report_pdf,
-    generate_modelo_303_pdf,
-    generate_rgpd_registry_pdf,
-    generate_snapshot_pdf,
-    generate_text_report_pdf,
-)
+# ── Reports (lazy re-export para evitar ciclo pdf ↔ pdf_reports) ────────────
+# pdf_reports importa indirectamente de pdf.parser via services.documents.smart_chunker.
+# Antes hacíamos un import top-level aquí que cerraba el ciclo y reventaba a
+# scripts standalone con `ImportError: cannot import name 'generate_cashflow_report_pdf'
+# from partially initialized module 'app.services.pdf_reports'`. En el backend
+# producción no se notaba porque el orden de imports lo evitaba por suerte.
+# Con __getattr__ (PEP 562) cargamos pdf_reports solo cuando alguien accede a
+# uno de estos símbolos, rompiendo el ciclo en module init.
+_LAZY_REPORT_EXPORTS = {
+    "generate_cashflow_report_pdf",
+    "generate_delinquency_report_pdf",
+    "generate_modelo_303_pdf",
+    "generate_rgpd_registry_pdf",
+    "generate_snapshot_pdf",
+    "generate_text_report_pdf",
+}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_REPORT_EXPORTS:
+        import importlib
+
+        mod = importlib.import_module("app.services.pdf_reports")
+        return getattr(mod, name)
+    raise AttributeError(f"module 'app.services.pdf' has no attribute {name!r}")

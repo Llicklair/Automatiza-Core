@@ -10,7 +10,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from app.agents.validators.billing import validate_invoice_data
+from app.agents.shared.validators.billing import validate_invoice_data
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Invoice, InvoiceLine
 

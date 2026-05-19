@@ -136,18 +136,24 @@ async def cleanup_all(db: AsyncSession, tenant_id: UUID) -> int:
 async def _resume_after_approval(approval: PendingApproval, db: AsyncSession) -> None:
     """Reanuda el flujo tras una aprobación — NodeEngine o LangGraph."""
     try:
+        # Fase 3 (RLS): el PendingApproval ya está scoped por tenant — lo propagamos
+        # al dispatcher para que el worker fije el ContextVar antes del bootstrap.
+        tenant_id = str(approval.tenant_id) if approval.tenant_id else None
+
         if approval.execution_id:
             payload = approval.action_payload or {}
             node_id = payload.get("node_id")
             if node_id:
                 from app.services.workflow.task_dispatch import dispatch_resume_node_engine
 
-                await dispatch_resume_node_engine(str(approval.execution_id), node_id)
+                await dispatch_resume_node_engine(
+                    str(approval.execution_id), node_id, tenant_id=tenant_id
+                )
                 return
 
         from app.services.workflow.task_dispatch import dispatch_resume_orchestrator
 
-        await dispatch_resume_orchestrator(str(approval.task_id))
+        await dispatch_resume_orchestrator(str(approval.task_id), tenant_id=tenant_id)
     except Exception as e:
         logger.warning(
             "Error al reanudar flujo tras aprobación (task_id=%s): %s", approval.task_id, e

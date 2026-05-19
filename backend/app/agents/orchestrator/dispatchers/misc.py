@@ -205,20 +205,6 @@ async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentRe
         }
 
 
-async def _dispatch_recruitment(state: OrchestratorState, subtask: dict) -> AgentResult:
-    """Invoca el agente de reclutamiento autónomo."""
-    from app.agents.recruitment import graph
-
-    return await _run_graph_agent(graph, state, subtask, "recruitment", "reclutamiento")
-
-
-async def _dispatch_marketing(state: OrchestratorState, subtask: dict) -> AgentResult:
-    """Invoca el agente de marketing autónomo."""
-    from app.agents.marketing import graph
-
-    return await _run_graph_agent(graph, state, subtask, "marketing", "marketing")
-
-
 async def _dispatch_team(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Crea un empleado IA a partir de la descripción en lenguaje natural."""
     tenant_id = state["tenant_id"]

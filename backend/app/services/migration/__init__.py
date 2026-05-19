@@ -1,5 +1,11 @@
 """Importadores (MIG.* sprint 7)."""
 
+from app.services.migration.bulk_import import (
+    BulkImportResult,
+    import_clients_rows,
+    import_employees_rows,
+    import_products_rows,
+)
 from app.services.migration.csv_importer import (
     CANONICAL_HEADERS,
     ImportPreview,
@@ -18,6 +24,7 @@ from app.services.migration.wizard import (
 )
 
 __all__ = [
+    "BulkImportResult",
     "CANONICAL_HEADERS",
     "ERROR_RATIO_THRESHOLD",
     "HoldedCredentials",
@@ -25,6 +32,9 @@ __all__ = [
     "ImportResult",
     "ImportRow",
     "import_clients",
+    "import_clients_rows",
+    "import_employees_rows",
+    "import_products_rows",
     "normalize_holded_contact",
     "normalize_holded_invoice",
     "parse_csv",

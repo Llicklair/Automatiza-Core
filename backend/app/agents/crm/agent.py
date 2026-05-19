@@ -12,32 +12,14 @@ from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm, make_cached_system_message
 
+from .prompts import CRM_SYSTEM_PROMPT
 from .tools import tools
 
 
 async def crm_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
         sys_msg = make_cached_system_message(
-            "Eres el Agente Comercial (CRM) de la empresa automatizada.\n"
-            "Gestionas las etapas de los leads, cualificas oportunidades y consultas la cartera de clientes.\n"
-            "Tus herramientas:\n"
-            "1. search_client: para buscar clientes por nombre o NIF (consultas tipo "
-            "'¿quién es el cliente con NIF X?', 'datos del cliente Y'). Devuelve nombre, "
-            "NIF, email e ID. Es la primera tool a usar para cualquier consulta de cliente.\n"
-            "2. create_client: para dar de alta un cliente nuevo en el sistema.\n"
-            "3. list_opportunities: para ver embudos y prospectos.\n"
-            "4. qualify_leads: para analizar leads nuevos y rankear a quién contactar.\n"
-            "5. update_opportunity_stage: para avanzar deals (won/lost/qualified).\n"
-            "6. create_opportunity: si descubres una nueva vía de negocio en un cliente.\n"
-            "7. create_document: para generar informes en texto o csv y guardarlos en el Gestor Documental.\n"
-            "8. Herramientas documentales (list_tenant_documents, get_document_content) "
-            "por si necesitas leer emails escaneados, contratos, que contengan información clave.\n"
-            "9. Para INFORMES COMERCIALES PROFUNDOS (análisis de pipeline, conversión, ranking de clientes, "
-            "previsión de ventas) usa `create_pdf_text_report(title, body)` con body en markdown "
-            "(## H2, listas, tablas pipe, **negritas**). EXTENSIÓN: apunta a 4-6 páginas con "
-            "detalle generoso, secciones desarrolladas y conclusiones razonadas. "
-            "Para apuntes simples sigue con `create_document`.\n"
-            f"Tú respondes y decides a partir del ID de Tenant actual: {state.get('tenant_id')}."
+            CRM_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id"))
         )
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]

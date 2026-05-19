@@ -105,6 +105,13 @@ class Settings(BaseSettings):
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 
+    # Cache del clasificador de intenciones (orchestrator/classifier.py).
+    # Las clasificaciones se memoizan por (tenant, intent normalizado) con este TTL.
+    # En desarrollo conviene bajarlo (p.ej. 60s) para iterar sobre _KEYWORD_MAP /
+    # _STRONG_KEYWORDS sin esperar 24h ni hacer flush manual del cache. Para
+    # invalidar el cache en caliente sin reiniciar, usar DELETE /api/v1/admin/llm-cache.
+    CLASSIFY_CACHE_TTL_SECONDS: int = 86400
+
 
 @lru_cache
 def get_settings() -> Settings:

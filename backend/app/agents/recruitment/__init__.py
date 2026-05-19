@@ -8,6 +8,7 @@ agent boundary).
 
 from .agent import graph
 from .tools import (
+    create_candidate,
     create_position,
     list_candidates,
     list_positions,
@@ -20,6 +21,7 @@ __all__ = [
     "create_position",
     "list_positions",
     "process_cv",
+    "create_candidate",
     "list_candidates",
     "update_candidate_status",
 ]

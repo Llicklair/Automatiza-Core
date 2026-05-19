@@ -37,6 +37,27 @@
 
 **Regla**: Las capas solo se comunican hacia abajo. Una ruta nunca importa un modelo de BD directamente. Un agente nunca importa una ruta.
 
+### 1.1 Tipos de Service — Domain vs Infra
+
+Dentro de `services/` conviven dos categorías muy distintas. Reconocerlas evita confusión y rompe la idea (errónea) de que *todo* servicio debe recibir `db: AsyncSession`.
+
+| Tipo | Lifecycle | Recibe `db`? | Propósito | Ejemplos |
+|------|-----------|--------------|-----------|----------|
+| **Domain service** | una instancia *por request* (stateless) | Sí, inyectado | Lógica de negocio reutilizable que no pertenece a un agente; siempre toca BD y respeta multi-tenant | `services/billing/*`, `services/hr/*`, `services/sales/*`, `services/client_service.py` |
+| **Infra service** | **singleton de proceso** (stateful, vive lo que vive el worker) | No | Infraestructura transversal: caches, scheduling, pub-sub, deduplicación, métricas — *no es CRUD*, no toca BD del cliente con `tenant_id` | `services/cache`, `services/scheduler`, `services/ws_relay`, `services/idempotency`, `services/llm_cache`, `services/llm_usage_tracker`, `services/exec_log_store` |
+
+**¿Por qué un infra service no viola la regla de capas?**
+
+La regla "los servicios reciben `db: AsyncSession` por parámetro" (sección 7) protege un invariante concreto: **una transacción por request, sin sesión global**. Esa regla aplica a código que lee/escribe datos de negocio del tenant — es decir, a *domain services*.
+
+Un infra service no lee datos de negocio: gestiona memoria de proceso (cache LRU), planifica jobs (APScheduler), relaya websockets, o anota uso de tokens del LLM. Su estado vive en el worker, no en Postgres. Inyectarle una `AsyncSession` no tendría sentido — no hay transacción que cerrar. Por eso es legítimo que sea un singleton importable: el riesgo que la sección 7 mitiga (sesiones paralelas que rompen transacciones) no existe aquí.
+
+**Reglas para ambos tipos**:
+
+- Un domain service **siempre** filtra por `tenant_id`. Un infra service que toque algo tenant-aware (p. ej. `idempotency` con clave compuesta) lo recibe como parámetro, nunca lo asume.
+- Un infra service **nunca** importa modelos ORM (`db/models/`). Si necesita persistencia (logs, métricas), usa su propia tabla técnica desacoplada de los modelos de negocio.
+- Un agente puede importar ambos. Una ruta también. La diferencia está en *cómo* lo instancian: `await domain_service.fn(db, tenant_id, ...)` vs `from app.services.cache import cache; cache.get(...)`.
+
 ---
 
 ## 2. Contrato del módulo agente

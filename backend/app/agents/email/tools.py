@@ -100,7 +100,22 @@ async def _get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
             if not integration:
                 return None
 
-            creds = decrypt_credentials(integration.encrypted_credentials)
+            try:
+                creds = decrypt_credentials(integration.encrypted_credentials)
+            except Exception as dec_exc:
+                # La encryption key cambió desde que se guardaron los tokens:
+                # los datos son irrecuperables. Marcar la integración como
+                # inactive para forzar reconexión vía /integrations/google/auth-url
+                # y evitar que cada llamada al email agent vuelva a fallar igual.
+                integration.is_active = False
+                await db.commit()
+                logger.error(
+                    "[OAUTH] Credenciales %s del tenant %s no se pueden desencriptar "
+                    "(la encryption key cambió). Marcada inactive. El usuario debe "
+                    "reconectar en /integrations/google/auth-url. Error: %s: %s",
+                    integration_type, tenant_id, type(dec_exc).__name__, dec_exc,
+                )
+                return None
             access_token = creds.get("access_token")
             refresh_token = creds.get("refresh_token")
 

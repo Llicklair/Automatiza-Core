@@ -11,11 +11,9 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm, make_cached_system_message
-from app.prompts import load_prompt
 
+from .prompts import COMPLIANCE_SYSTEM_PROMPT
 from .tools import tools
-
-COMPLIANCE_SYSTEM_PROMPT = load_prompt("compliance_agent")
 
 
 async def compliance_agent_node(state: AgentState):

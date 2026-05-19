@@ -38,6 +38,28 @@ def _make_error_result(
     }
 
 
+async def _release_employee(db, employee, *, label: str) -> None:
+    """Marca el employee como idle y commitea, acotado a 10s.
+
+    En timeout/error de graph.ainvoke la sesión puede quedar sucia (otros
+    nodos del graph hicieron writes sin commit) y el commit posterior
+    queda esperando locks. Sin acotar este cleanup, el TimeoutError de
+    180s tardaba ~8min en propagarse al TaskRunner.
+    """
+    try:
+        await db.rollback()
+    except Exception:
+        pass
+    try:
+        employee.status = "idle"
+        await asyncio.wait_for(db.commit(), timeout=10)
+    except Exception as commit_err:
+        logger.warning(
+            "[ORCHESTRATOR] cleanup post-%s para employee '%s' falló (status no actualizado): %s",
+            label, getattr(employee, "name", "?"), commit_err,
+        )
+
+
 async def _invoke_dynamic_employee(
     enriched_state: dict,
     subtask: dict,
@@ -104,6 +126,14 @@ async def _invoke_dynamic_employee(
                 or enriched_state.get("current_intent")
                 or enriched_state.get("user_intent", "")
             )
+            # 180s: holgura para LLM custom con contexto enriquecido del
+            # coordinator (response_preview del step previo puede inflar el
+            # prompt y los LLM tardan 70-90s en esos casos). Reproducido
+            # 2026-05-19: bug PDF timeout donde step 1 (rag) generaba el PDF
+            # OK, step 2 (custom yolanda CFO) recibía el contexto enriquecido
+            # con el markdown del PDF y tardaba 76s — el timeout previo de 90s
+            # lo cortaba al borde. Histórico: era 900s antes de SC-9 (un graph
+            # colgado consumía 15 min/intento × retries = 60 min por prompt).
             result_state = await asyncio.wait_for(
                 graph.ainvoke(
                     {
@@ -117,7 +147,7 @@ async def _invoke_dynamic_employee(
                         "status": "running",
                     }
                 ),
-                timeout=900,
+                timeout=180,
             )
             messages = result_state.get("messages", [])
             final_text = next(
@@ -164,27 +194,29 @@ async def _invoke_dynamic_employee(
                 "error": None if success else final_text,
             }
         except TimeoutError:
-            employee.status = "idle"
-            await db.commit()
+            # Cleanup acotado: rollback antes del commit (graph.ainvoke pudo
+            # dejar la sesión sucia → commit cuelga indefinidamente). Lessons
+            # 2026-05-08: el timeout interno de 180s tardaba ~8min en
+            # propagarse porque el commit post-timeout esperaba locks de
+            # sesiones internas del graph.
+            await _release_employee(db, employee, label="timeout")
             logger.exception(
-                "Timeout (900s) en dynamic employee '%s'", employee.name
+                "Timeout (180s) en dynamic employee '%s'", employee.name
             )
             return _make_error_result(
                 subtask,
                 agent_name,
                 action="failed",
                 error=(
-                    f"Timeout de 900s al ejecutar el agente custom '{employee.name}'. "
-                    "El system_prompt o el modelo LLM tardaron demasiado en responder."
+                    f"Timeout de 180s al ejecutar el agente custom '{employee.name}'. "
+                    "Probablemente su system_prompt está mal configurado, las skills "
+                    "asignadas no existen, o el contexto del paso previo es demasiado "
+                    "grande. Revisa el employee en /ai-employees."
                 ),
             )
         except Exception as e:
-            employee.status = "idle"
-            await db.commit()
+            await _release_employee(db, employee, label="error")
             logger.exception("Error en dynamic employee '%s'", employee.name)
-            # Algunas excepciones (TimeoutError, ConnectionError sin args, etc.)
-            # tienen str(e) == "". Garantizamos un mensaje útil para que el plan
-            # no propague 'error: ""' al usuario.
             msg = str(e).strip() or f"{type(e).__name__} (sin mensaje)"
             return _make_error_result(
                 subtask, agent_name, action="failed", error=msg

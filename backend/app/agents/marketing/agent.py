@@ -8,11 +8,9 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
 from app.core.llm_factory import get_llm, make_cached_system_message
-from app.prompts import load_prompt
 
+from .prompts import MARKETING_SYSTEM_PROMPT
 from .tools import tools
-
-MARKETING_SYSTEM_PROMPT = load_prompt("marketing_agent")
 
 
 async def marketing_agent_node(state: AgentState) -> dict:

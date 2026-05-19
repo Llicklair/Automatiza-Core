@@ -1,6 +1,27 @@
 #!/usr/bin/env python3
 """
-test_all.py -- Test integral del sistema AutomatizaPyme con MockLLM.
+[DEPRECATED] test_all.py -- Test integral del sistema AutomatizaPyme con MockLLM.
+
+⚠️  DEPRECATED — este script duplica fixtures de la suite pytest oficial y
+puede divergir en cualquier momento. La cobertura equivalente vive en:
+
+  - backend/tests/test_api_auth.py            (autenticación)
+  - backend/tests/test_api_invoices.py        (billing)
+  - backend/tests/test_api_hr_full.py         (hr)
+  - backend/tests/test_api_crm.py             (crm)
+  - backend/tests/test_api_workflows.py       (automatizaciones)
+  - backend/tests/test_api_approvals.py       (aprobaciones)
+  - backend/tests/test_service_audit.py       (auditoría)
+  - backend/tests/test_scanner_auth.py        (escáner)
+  - backend/tests/test_e2e_happy_path.py      (flujo integral)
+
+Ejecutar la suite pytest equivalente:
+    cd backend && pytest tests/test_e2e_happy_path.py -v
+
+Este script se conserva como referencia histórica del modo "smoke por HTTP"
+con MockLLM; **no añadir nuevos checks aquí** — moverlos a `backend/tests/`.
+
+---
 
 Prueba: autenticacion, tareas IA (billing, hr, crm, compliance, documents),
 automatizaciones (workflows + executions), aprobaciones, auditoria y escaner.

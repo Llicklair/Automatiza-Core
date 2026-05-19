@@ -1,4 +1,23 @@
-"""Harness de seguridad / adversarial.
+"""[DEPRECATED] Harness de seguridad / adversarial.
+
+⚠️  DEPRECATED — duplica cobertura de la suite pytest oficial y puede
+divergir. Equivalentes en `backend/tests/`:
+
+  - test_security.py                 (suite principal seguridad)
+  - test_multitenant_isolation.py    (cross-tenant)
+  - test_prompt_sanitizer.py         (prompt injection sanitizer)
+  - test_token_ledger_isolation.py   (privilege/exfiltration)
+  - test_rls.py                      (Row-Level Security)
+  - test_planner_robustness.py       (custom agent abuse)
+
+Ejecutar:
+    cd backend && pytest tests/test_security.py tests/test_multitenant_isolation.py -v
+
+Este script queda como suite de smoke adversarial manual contra el grafo
+en vivo; **no añadir nuevos vectores aquí** — añadirlos en
+`backend/tests/test_security.py` para que entren en CI.
+
+---
 
 Ataca el orchestrator desde tenant A intentando:
   1. Cross-tenant: leer/modificar datos del tenant B

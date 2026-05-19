@@ -67,6 +67,13 @@ export const scanner = {
 };
 
 // ── Mobile-scanner flow (QR-token auth) ───────────────────────────────────────
+//
+// EXCEPCIÓN A "todo via client.ts": el mobile-scanner se autentica con un
+// QR-token efímero pasado por URL, NO con el JWT de la sesión desktop.
+// `client.ts.request()` adjuntaría el JWT del usuario y rompería esta API,
+// que precisamente NO debe enviar credenciales de la sesión principal.
+// Igual que `taskStream.ts`, esta usa un canal de auth alternativo y queda
+// fuera del enrutado por `client.ts`.
 
 async function scannerFetch<T>(path: string, token: string, opts: RequestInit = {}): Promise<T> {
     const res = await fetch(`${BASE}/api/v1/scanner${path}`, {

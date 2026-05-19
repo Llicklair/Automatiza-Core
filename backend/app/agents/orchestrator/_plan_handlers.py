@@ -26,9 +26,72 @@ from app.services.llm_cache import llm_cache
 logger = logging.getLogger(__name__)
 
 
+async def _employee_passes_health_check(
+    emp: AIEmployee, db, *, builtin_fallback_domain: str | None = None
+) -> bool:
+    """Health-check pre-dispatch para AIEmployees custom.
+
+    Un empleado custom se considera SANO (apto para interceptar un dominio
+    builtin) sólo si:
+      1. status no es 'blocked' (idle/working/paused se aceptan; blocked NO).
+      2. Tiene system_prompt no vacío (sin prompt el agente entra en bucle).
+      3. Tiene al menos una entrada en AgentSkill (sin skills no puede operar).
+
+    Si falla cualquier criterio se loguea un WARNING con el motivo y la
+    función devuelve False — el caller debe hacer fallback al builtin.
+
+    Devuelve True si el empleado es apto para ser dispatched.
+    """
+    from sqlalchemy import func
+
+    from app.db.models.ai_employees import AgentSkill
+
+    reasons: list[str] = []
+
+    if (emp.status or "").lower() == "blocked":
+        reasons.append(f"status={emp.status!r}")
+
+    if not (emp.system_prompt or "").strip():
+        reasons.append("system_prompt vacío")
+
+    try:
+        skills_count_row = await db.execute(
+            select(func.count(AgentSkill.id)).where(AgentSkill.employee_id == emp.id)
+        )
+        skills_count = int(skills_count_row.scalar() or 0)
+    except Exception as e:
+        # Si la query falla preferimos NO bloquear al empleado por seguridad de
+        # disponibilidad (mejor intentar el custom que dejar al tenant sin nada).
+        logger.debug(
+            "[HEALTH] No se pudo contar skills de '%s' (%s): %s", emp.name, emp.id, e
+        )
+        skills_count = -1  # señal: no se pudo verificar
+
+    if skills_count == 0:
+        reasons.append("sin AgentSkill registradas")
+
+    if reasons:
+        logger.warning(
+            "AIEmployee '%s' (%s) custom omitido por health-check (%s), "
+            "usando builtin '%s'",
+            emp.name,
+            emp.id,
+            "; ".join(reasons),
+            builtin_fallback_domain or emp.domain,
+        )
+        return False
+    return True
+
+
 async def _load_tenant_custom_employees(tenant_id: str) -> list[AIEmployee]:
     """Devuelve los AIEmployees custom (no builtin) y activos del tenant.
     Lista ordenada por nombre para que el cache key sea estable.
+
+    Fase health-check: además del filtro SQL básico (no builtin + status
+    idle/working) aplicamos _employee_passes_health_check para descartar
+    empleados con prompt vacío o sin skills. Esto evita que un AIEmployee
+    custom mal configurado intercepte el dispatch de un builtin y produzca
+    timeouts (ver lessons 2026-05-18).
     """
     if not tenant_id:
         return []
@@ -43,7 +106,12 @@ async def _load_tenant_custom_employees(tenant_id: str) -> list[AIEmployee]:
                 )
                 .order_by(AIEmployee.name)
             )
-            return list(result.scalars().all())
+            candidates = list(result.scalars().all())
+            healthy: list[AIEmployee] = []
+            for emp in candidates:
+                if await _employee_passes_health_check(emp, db):
+                    healthy.append(emp)
+            return healthy
     except Exception as e:
         logger.debug("[PLAN] No se pudieron cargar custom employees: %s", e)
         return []

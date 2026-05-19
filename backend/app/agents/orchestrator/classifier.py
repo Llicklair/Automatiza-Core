@@ -1,6 +1,22 @@
 """
 Clasificador de intenciones del orquestador.
 Incluye clasificación por LLM (semántica) y fallback por palabras clave.
+
+Cache de clasificaciones
+------------------------
+Cada (tenant_id, intent normalizado) se memoiza en el `llm_cache` con clave
+``classify:<intent_normalizado>`` y TTL configurable vía la variable de entorno
+``CLASSIFY_CACHE_TTL_SECONDS`` (settings.CLASSIFY_CACHE_TTL_SECONDS, default
+86400s = 24h). Esto evita recalcular la clasificación para intents recurrentes
+("crea factura …", "qué tal va …") y elimina la llamada al LLM en el caso
+común.
+
+Trade-off: si modificas `_KEYWORD_MAP` o `_STRONG_KEYWORDS` y un tenant ya
+tiene clasificaciones cacheadas, seguirá viendo el dominio antiguo hasta que
+expire el TTL. En desarrollo conviene bajar la variable de entorno
+(``CLASSIFY_CACHE_TTL_SECONDS=60``) o invalidar el cache en caliente con
+``DELETE /api/v1/admin/llm-cache`` (requiere rol admin), que purga todas las
+entradas con prefijo ``classify:`` para todos los tenants.
 """
 
 import logging
@@ -11,6 +27,7 @@ from app.agents.orchestrator.state import (
     OrchestratorState,
     TaskStatus,
 )
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -105,8 +122,17 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "cliente potencial",
         "nuevo cliente",
         "alta de cliente",
+        "alta del cliente",
         "añade un cliente",
+        "añadir cliente",
         "registra un cliente",
+        "registrar cliente",
+        "crea un cliente",
+        "crear cliente",
+        "crea cliente",
+        "agrega un cliente",
+        "agregar cliente",
+        "da de alta un cliente",
         "presupuestar",
         "reunión comercial",
         "embudo",
@@ -224,6 +250,12 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "informe mensual",
         "snapshot",
         "resumen del mes",
+        "resumen mensual",
+        "resumen contable",
+        "resumen del trimestre",
+        "resumen trimestral",
+        "resumen anual",
+        "resumen del año",
         "estado de la empresa",
         "informe completo",
         "informe empresarial",
@@ -231,7 +263,8 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "cierre mensual",
         "genera el informe",
         "informe de gestión",
-        "resumen mensual",
+        "dame el resumen",
+        "dame un resumen",
     ],
     "chat": [
         "qué es",
@@ -348,7 +381,20 @@ _STRONG_KEYWORDS: dict[str, list[str]] = {
         "balance de situación", "pérdidas y ganancias", "cuenta contable",
         "inmovilizado", "activo fijo", "amortización del inmovilizado",
     ],
-    "report": ["informe mensual", "snapshot", "estado de la empresa", "cierre mensual"],
+    "report": ["informe mensual", "snapshot", "estado de la empresa", "cierre mensual",
+               "resumen contable", "resumen del mes", "resumen mensual",
+               "resumen del trimestre", "resumen trimestral", "resumen anual"],
+    # CRM-create antes de billing — "factura" es strong de billing y dispararía
+    # en prompts como "crea cliente y emítele factura"; pero el conector multi-step
+    # ya delega ese caso al LLM (path coordinator). Aquí cubrimos los CRM-create
+    # puros que sin esto caían al LLM y este los clasificaba mal como billing.
+    "crm": [
+        "crea un cliente", "crear cliente", "crea cliente",
+        "registra un cliente", "registrar cliente",
+        "añade un cliente", "añadir cliente",
+        "da de alta un cliente", "alta del cliente", "alta de cliente",
+        "agrega un cliente", "agregar cliente",
+    ],
     # Dominios "objeto/recurso" al final (pueden aparecer como complemento de acción)
     "hr": ["nómina", "nóminas", "da de alta empleado", "alta del empleado",
            "alta de empleado"],
@@ -415,12 +461,25 @@ def _keyword_classify(intent_lower: str) -> str:
         other_domains = [d for d in scores if d != strong]
         if other_domains and _has_multi_step_connector(intent_lower):
             return "coordinator"
+        # Strong matchea un dominio pero hay conector multi-step y los keywords
+        # no detectaron el segundo dominio (p.ej. "manda recordatorios por email"
+        # no matchea ninguna keyword del map email). Delegar al LLM para que
+        # decida si descomponer — evita resolver con un dominio único que pierde
+        # el resto de acciones encadenadas.
+        if _has_multi_step_connector(intent_lower):
+            return "unknown"
         return strong
 
     if scores:
         # Multi-step: dos o más dominios distintos + conector de secuencia → coordinator
         if len(scores) >= 2 and _has_multi_step_connector(intent_lower):
             return "coordinator"
+
+        # Mismo razonamiento que en la rama strong: conector multi-step explícito
+        # con un solo dominio detectado → delegar al LLM por si hay acciones
+        # encadenadas que las keywords no capturaron.
+        if _has_multi_step_connector(intent_lower):
+            return "unknown"
 
         sorted_doms = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         top, top_score = sorted_doms[0]
@@ -504,7 +563,11 @@ async def _resolve_custom_employee(state: OrchestratorState, intent_lower: str) 
     return None
 
 
-_CACHE_TTL_CLASSIFY = 86400  # 24 h — los patrones de clasificación no cambian a menudo
+# TTL del cache de clasificaciones. Configurable vía settings.CLASSIFY_CACHE_TTL_SECONDS
+# (env var CLASSIFY_CACHE_TTL_SECONDS). Default 86400s (24h). Ver docstring del módulo
+# para detalles y endpoint de invalidación.
+def _classify_cache_ttl() -> int:
+    return settings.CLASSIFY_CACHE_TTL_SECONDS
 
 
 async def classify_node(state: OrchestratorState) -> OrchestratorState:
@@ -624,7 +687,7 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
     # ── Paso 5: cachear el resultado (cualquier vía: keyword o LLM) ──────────
     try:
         await llm_cache.set(
-            tenant_id, cache_key, domain, ttl_override=_CACHE_TTL_CLASSIFY
+            tenant_id, cache_key, domain, ttl_override=_classify_cache_ttl()
         )
     except Exception as e:
         logger.debug("No se pudo cachear classification: %s", e)

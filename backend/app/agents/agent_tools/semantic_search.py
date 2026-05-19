@@ -12,6 +12,7 @@ pgvector y/o limitar por categoría/fecha antes del ranking.
 """
 from __future__ import annotations
 
+import logging
 import math
 import uuid
 from collections.abc import Sequence
@@ -19,6 +20,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 
 from app.db.models.embeddings import DocumentEmbedding
+
+_logger = logging.getLogger(__name__)
 
 
 def _cosine_distance(a: Sequence[float], b: Sequence[float]) -> float:
@@ -91,9 +94,22 @@ async def cosine_topk(
                 import json as _json
 
                 emb = _json.loads(emb)
-            except Exception:
+            except (ValueError, TypeError) as parse_err:
+                _logger.warning(
+                    "[semantic_search] embedding corrupto en row id=%s doc_id=%s tenant=%s: %s",
+                    getattr(row, "id", "?"),
+                    getattr(row, "document_id", "?"),
+                    getattr(row, "tenant_id", "?"),
+                    parse_err,
+                )
                 continue
         if not isinstance(emb, list):
+            _logger.warning(
+                "[semantic_search] embedding type inesperado %s en row id=%s doc_id=%s",
+                type(emb).__name__,
+                getattr(row, "id", "?"),
+                getattr(row, "document_id", "?"),
+            )
             continue
         scored.append((row, _cosine_distance(query_vector, emb)))
 

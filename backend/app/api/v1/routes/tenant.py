@@ -125,8 +125,6 @@ async def claude_code_logout(
 
 # ── Firma digital (certificado PKCS#12) ──────────────────────────────────────
 
-_CERT_DIR = Path("uploads/certs")
-
 
 @router.get("/certificate", tags=["tenant"])
 @limiter.limit("20/minute")
@@ -158,36 +156,24 @@ async def upload_certificate(
     if not file.filename or not file.filename.lower().endswith((".p12", ".pfx")):
         raise HTTPException(status_code=400, detail="El archivo debe ser .p12 o .pfx")
 
-    cert_dir = _CERT_DIR / str(current_user.tenant_id)
-    cert_dir.mkdir(parents=True, exist_ok=True)
-    cert_path = cert_dir / "cert.p12"
-
     content = await file.read()
-    cert_path.write_bytes(content)
 
-    # Validate and extract metadata
+    from app.services.tenant.certificates import CertificateError, install_certificate
+
     try:
-        from app.services.billing.xades_signer import load_certificate_info
-        info = load_certificate_info(str(cert_path), password)
-    except Exception as exc:
-        cert_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail=f"Certificado inválido o contraseña incorrecta: {exc}")
-
-    from datetime import datetime
-    expires_at = datetime.fromisoformat(info["expires_at"])
-
-    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = res.scalar_one_or_none()
-    tenant.cert_path = str(cert_path)
-    tenant.cert_password = password
-    tenant.cert_subject = info["subject"]
-    tenant.cert_expires_at = expires_at
-    await db.commit()
+        info = await install_certificate(
+            file_bytes=content,
+            password=password,
+            tenant_id=current_user.tenant_id,
+            db=db,
+        )
+    except CertificateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     return {
         "message": "Certificado cargado correctamente",
-        "cert_subject": info["subject"],
-        "cert_expires_at": info["expires_at"],
+        "cert_subject": info.subject,
+        "cert_expires_at": info.expires_at.isoformat(),
     }
 
 
