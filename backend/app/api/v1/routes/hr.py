@@ -612,6 +612,32 @@ async def create_expense(
     return _expense_row(exp)
 
 
+@router.post("/expenses/scan", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
+async def scan_expense_receipt(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """OCR + IA: extrae datos de un ticket y devuelve un borrador de gasto.
+
+    No crea nada en BD. El frontend muestra el borrador para que el usuario
+    revise/edite antes de llamar a POST /expenses para confirmar.
+    """
+    from app.services.ocr import ReceiptExtractionError, extract_receipt_data
+
+    content = await file.read()
+    mime = file.content_type or "image/jpeg"
+    try:
+        data = await extract_receipt_data(content, mime)
+    except ReceiptExtractionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logging.getLogger(__name__).exception("Fallo procesando ticket")
+        raise HTTPException(status_code=500, detail=f"Error procesando ticket: {e}")
+    return data.to_dict()
+
+
 @router.post("/expenses/{expense_id}/approve")
 @limiter.limit("30/minute")
 async def approve_expense(

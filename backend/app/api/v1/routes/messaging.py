@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.messaging import TelegramConnectResponse
@@ -441,3 +441,104 @@ async def email_message_detail(
             await client.close()
 
     raise HTTPException(status_code=400, detail="No hay proveedor de email configurado")
+
+
+# ─── IA: clasificación de bandeja + redacción de borradores ───────────────────
+
+
+class _ClassifyMessageIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    # "from" es palabra reservada en Python → usar alias
+    from_: str = Field(default="", alias="from")
+    subject: str = ""
+    snippet: str = ""
+
+
+class _ClassifyRequest(BaseModel):
+    messages: list[_ClassifyMessageIn]
+
+
+@router.post("/email/classify")
+@limiter.limit("10/minute")
+async def classify_email_inbox(
+    request: Request,
+    payload: _ClassifyRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Clasifica una lista de emails (urgencia, categoría, requiere respuesta)."""
+    from app.services.email_ai import EmailAIError, classify_messages
+
+    try:
+        results = await classify_messages([
+            {"id": m.id, "from": m.from_, "subject": m.subject, "snippet": m.snippet}
+            for m in payload.messages
+        ])
+    except EmailAIError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.exception("Error clasificando bandeja")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"items": [r.to_dict() for r in results]}
+
+
+class _DraftRequest(BaseModel):
+    message_id: str
+    context: str | None = None
+
+
+@router.post("/email/draft-reply")
+@limiter.limit("20/minute")
+async def draft_email_reply(
+    request: Request,
+    payload: _DraftRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Redacta un borrador de respuesta para el mensaje con id dado.
+
+    Reusa el handler de /email/messages/{id} para obtener el cuerpo completo
+    y pasa el contexto opcional a la IA.
+    """
+    from app.agents.email.tools import _get_oauth_token
+    from app.services.email_ai import EmailAIError, draft_reply
+
+    tenant_id = str(current_user.tenant_id)
+
+    full_msg: dict | None = None
+    for provider, ClientCls in [("gmail", "GmailClient"), ("outlook", "OutlookClient")]:
+        token = await _get_oauth_token(tenant_id, provider)
+        if not token:
+            continue
+        if provider == "gmail":
+            from app.integrations.gmail_client import GmailClient
+            client = GmailClient(token)
+        else:
+            from app.integrations.outlook_client import OutlookClient
+            client = OutlookClient(token)
+        try:
+            full_msg = await client.get_message(payload.message_id)
+        except Exception:
+            full_msg = None
+        finally:
+            await client.close()
+        if full_msg:
+            break
+
+    if not full_msg:
+        raise HTTPException(status_code=404, detail="Mensaje no encontrado o sin proveedor de email")
+
+    try:
+        draft = await draft_reply(
+            full_msg,
+            context=payload.context or "",
+            user_full_name=getattr(current_user, "full_name", None),
+        )
+    except EmailAIError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.exception("Error redactando borrador")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return draft.to_dict()

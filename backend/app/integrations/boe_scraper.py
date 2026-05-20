@@ -221,23 +221,158 @@ def get_calendario_fiscal(year: int) -> list[dict]:
         }
     )
 
+    # Modelo 349 — Operaciones intracomunitarias (trimestral)
+    for trimestre, inicio, fin, limite in trimestres_303:
+        eventos.append(
+            {
+                "modelo": "349",
+                "nombre": f"Operaciones intracomunitarias {trimestre} {year}",
+                "descripcion": f"Resumen entregas/adquisiciones UE {trimestre}.",
+                "fecha_limite": limite,
+                "periodo": trimestre,
+                "tipo": "intracomunitario",
+                "urgente_dias": 15,
+            }
+        )
+
+    # Modelo 115 — Retenciones alquileres urbanos (trimestral)
+    for trimestre, inicio, fin, limite in trimestres_303:
+        eventos.append(
+            {
+                "modelo": "115",
+                "nombre": f"Retenciones alquileres {trimestre} {year}",
+                "descripcion": f"Retenciones IRPF arrendamientos inmuebles urbanos {trimestre}.",
+                "fecha_limite": limite,
+                "periodo": trimestre,
+                "tipo": "retenciones_alquiler",
+                "urgente_dias": 15,
+            }
+        )
+
+    # Modelo 180 — Resumen anual retenciones alquileres
+    eventos.append(
+        {
+            "modelo": "180",
+            "nombre": f"Resumen Alquileres {year}",
+            "descripcion": f"Resumen anual retenciones arrendamientos {year}.",
+            "fecha_limite": f"{year + 1}-01-31",
+            "periodo": "Anual",
+            "tipo": "retenciones_alquiler_anual",
+            "urgente_dias": 30,
+        }
+    )
+
+    # Modelo 200 — Impuesto Sociedades (cierre ejercicio + 6 meses + 25 días)
+    eventos.append(
+        {
+            "modelo": "200",
+            "nombre": f"Impuesto Sociedades {year}",
+            "descripcion": f"Declaración anual IS ejercicio {year}. Sólo sociedades.",
+            "fecha_limite": f"{year + 1}-07-25",
+            "periodo": "Anual",
+            "tipo": "sociedades",
+            "urgente_dias": 30,
+        }
+    )
+
+    # Modelo 202 — Pago fraccionado Sociedades (abril, octubre, diciembre)
+    for label, mes in [("1P", "04"), ("2P", "10"), ("3P", "12")]:
+        eventos.append(
+            {
+                "modelo": "202",
+                "nombre": f"Pago fraccionado IS {label} {year}",
+                "descripcion": f"Pago a cuenta Impuesto Sociedades {label}.",
+                "fecha_limite": f"{year}-{mes}-20",
+                "periodo": label,
+                "tipo": "sociedades_fraccionado",
+                "urgente_dias": 15,
+            }
+        )
+
+    # Modelo 232 — Operaciones vinculadas y paraísos fiscales (anual)
+    eventos.append(
+        {
+            "modelo": "232",
+            "nombre": f"Operaciones vinculadas {year}",
+            "descripcion": "Informativa sobre operaciones con partes vinculadas y paraísos fiscales.",
+            "fecha_limite": f"{year + 1}-11-30",
+            "periodo": "Anual",
+            "tipo": "informativo_anual",
+            "urgente_dias": 30,
+        }
+    )
+
+    # Modelo 720 — Declaración bienes en el extranjero (anual, 1T)
+    eventos.append(
+        {
+            "modelo": "720",
+            "nombre": f"Bienes en el extranjero {year}",
+            "descripcion": "Informativa anual sobre bienes y derechos situados en el extranjero.",
+            "fecha_limite": f"{year + 1}-03-31",
+            "periodo": "Anual",
+            "tipo": "informativo_anual",
+            "urgente_dias": 30,
+        }
+    )
+
+    # Modelo 100 — Renta IRPF (campaña anual abril–junio)
+    eventos.append(
+        {
+            "modelo": "100",
+            "nombre": f"Declaración Renta {year}",
+            "descripcion": f"Campaña IRPF ejercicio {year}. Cierre habitual: 30 junio.",
+            "fecha_limite": f"{year + 1}-06-30",
+            "periodo": "Anual",
+            "tipo": "renta",
+            "urgente_dias": 30,
+        }
+    )
+
+    # Seguridad Social — TC1/TC2 mensual (último día del mes siguiente)
+    import calendar as _cal
+    for mes in range(1, 13):
+        mes_siguiente = mes + 1 if mes < 12 else 1
+        anyo_siguiente = year if mes < 12 else year + 1
+        ultimo_dia = _cal.monthrange(anyo_siguiente, mes_siguiente)[1]
+        eventos.append(
+            {
+                "modelo": "TC",
+                "nombre": f"Seguros Sociales {mes:02d}/{year}",
+                "descripcion": f"Liquidación mensual TGSS (RNT/RLC). Cotizaciones {mes:02d}/{year}.",
+                "fecha_limite": f"{anyo_siguiente}-{mes_siguiente:02d}-{ultimo_dia:02d}",
+                "periodo": f"M{mes:02d}",
+                "tipo": "seg_social",
+                "urgente_dias": 10,
+            }
+        )
+
     return sorted(eventos, key=lambda x: x["fecha_limite"])
 
 
-def get_proximos_vencimientos(days_ahead: int = 60) -> list[dict]:
-    """Filtra los vencimientos fiscales de los próximos N días."""
+def get_proximos_vencimientos(days_ahead: int = 90, min_count: int = 5) -> list[dict]:
+    """Filtra los vencimientos fiscales de los próximos N días.
+
+    Garantiza al menos `min_count` resultados aunque caigan más allá del rango,
+    para evitar pantallas vacías entre trimestres (p.ej. en mayo, el siguiente
+    vencimiento clave cae +61d y un rango de 60 días lo dejaría fuera).
+    """
     today = date.today()
     year = today.year
     calendario = get_calendario_fiscal(year) + get_calendario_fiscal(year + 1)
 
-    proximos = []
+    futuros = []
     for evento in calendario:
         try:
             fecha = date.fromisoformat(evento["fecha_limite"])
         except ValueError:
             continue
         delta = (fecha - today).days
-        if 0 <= delta <= days_ahead:
-            proximos.append({**evento, "dias_restantes": delta})
+        if delta < 0:
+            continue
+        futuros.append({**evento, "dias_restantes": delta})
 
-    return sorted(proximos, key=lambda x: x["dias_restantes"])
+    futuros.sort(key=lambda x: x["dias_restantes"])
+    en_rango = [e for e in futuros if e["dias_restantes"] <= days_ahead]
+    if len(en_rango) >= min_count:
+        return en_rango
+    return futuros[:min_count]

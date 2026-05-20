@@ -210,10 +210,59 @@ async def unreconcile_transaction(
     return {"message": "Conciliación deshecha", "status": "ok"}
 
 
+def _score_match(tx, inv, tx_amount: float) -> int:
+    """Puntúa un candidato de conciliación (0-100).
+
+    Reglas:
+      - Importe exacto (±0.02€): +50  (base; sin esto no es candidato)
+      - Fecha factura dentro de ventana razonable: +30 si <=15 días, +15 si <=45 días
+      - Nombre cliente aparece en el concepto bancario: +30 (gran señal)
+      - Número factura aparece en el concepto: +20
+    """
+    score = 50  # filtro previo garantiza importe exacto
+    desc = (tx.description or "").lower()
+
+    if inv.date and tx.date:
+        days = abs((tx.date - inv.date).days)
+        if days <= 15:
+            score += 30
+        elif days <= 45:
+            score += 15
+
+    if inv.client and inv.client.name:
+        client_name = inv.client.name.lower().strip()
+        if client_name and (
+            client_name in desc
+            or any(tok for tok in client_name.split() if len(tok) >= 4 and tok in desc)
+        ):
+            score += 30
+
+    if inv.invoice_number:
+        inv_num = str(inv.invoice_number).lower()
+        if inv_num and inv_num in desc:
+            score += 20
+
+    return min(score, 100)
+
+
+def _candidates_for(tx, invoices, used_ids: set[str]) -> list:
+    """Devuelve invoices candidatos rankeados (importe coincide + ranking por score)."""
+    tx_amount = abs(float(tx.amount))
+    cands = []
+    for inv in invoices:
+        if str(inv.id) in used_ids:
+            continue
+        if abs(abs(float(inv.amount_total)) - tx_amount) > 0.02:
+            continue
+        cands.append((inv, _score_match(tx, inv, tx_amount)))
+    cands.sort(key=lambda x: -x[1])
+    return cands
+
+
 async def get_reconciliation_suggestions(
     db: AsyncSession, tenant_id: uuid.UUID
 ) -> list[dict]:
-    """Return unreconciled transactions with invoice suggestions matched by amount (±0.02€)."""
+    """Sugerencias de conciliación rankeadas por score (importe + fecha + cliente + nº factura)."""
     tx_res = await db.execute(
         select(BankTransaction)
         .where(BankTransaction.tenant_id == tenant_id, BankTransaction.status == "unreconciled")
@@ -226,11 +275,11 @@ async def get_reconciliation_suggestions(
         .options(selectinload(Invoice.client))
         .where(Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"]))
     )
-    invoices = inv_res.scalars().all()
+    invoices = list(inv_res.scalars().all())
 
     out = []
     for tx in txs:
-        tx_amount = abs(float(tx.amount))
+        ranked = _candidates_for(tx, invoices, used_ids=set())
         matched = [
             {
                 "id": str(inv.id),
@@ -239,9 +288,9 @@ async def get_reconciliation_suggestions(
                 "client_name": inv.client.name if inv.client else None,
                 "status": inv.status,
                 "date": inv.date.isoformat() if inv.date else None,
+                "score": score,
             }
-            for inv in invoices
-            if abs(abs(float(inv.amount_total)) - tx_amount) <= 0.02
+            for inv, score in ranked
         ]
         out.append({
             "tx": {
@@ -258,7 +307,13 @@ async def get_reconciliation_suggestions(
 async def auto_reconcile(
     db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID
 ) -> dict:
-    """Auto-match transactions that have exactly one invoice matching by amount."""
+    """Auto-concilia movimientos con candidato claramente ganador.
+
+    Casa cuando:
+      - hay un solo candidato por importe, o
+      - el top tiene score >= 80 y el segundo está al menos 30 puntos por debajo
+        (ganador claro: importe exacto + fecha próxima + cliente/factura en concepto)
+    """
     tx_res = await db.execute(
         select(BankTransaction).where(
             BankTransaction.tenant_id == tenant_id,
@@ -268,9 +323,9 @@ async def auto_reconcile(
     txs = tx_res.scalars().all()
 
     inv_res = await db.execute(
-        select(Invoice).where(
-            Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"])
-        )
+        select(Invoice)
+        .options(selectinload(Invoice.client))
+        .where(Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"]))
     )
     invoices = list(inv_res.scalars().all())
 
@@ -278,19 +333,25 @@ async def auto_reconcile(
     used_ids: set[str] = set()
 
     for tx in txs:
-        tx_amount = abs(float(tx.amount))
-        candidates = [
-            inv for inv in invoices
-            if str(inv.id) not in used_ids
-            and abs(abs(float(inv.amount_total)) - tx_amount) <= 0.02
-        ]
-        if len(candidates) == 1:
-            inv = candidates[0]
-            tx.invoice_id = inv.id
+        ranked = _candidates_for(tx, invoices, used_ids)
+        if not ranked:
+            continue
+
+        winner = None
+        if len(ranked) == 1:
+            winner = ranked[0][0]
+        else:
+            top_inv, top_score = ranked[0]
+            _, second_score = ranked[1]
+            if top_score >= 80 and (top_score - second_score) >= 30:
+                winner = top_inv
+
+        if winner is not None:
+            tx.invoice_id = winner.id
             tx.status = "reconciled"
-            if can_transition("Invoice", inv.status, "paid"):
-                inv.status = "paid"
-            used_ids.add(str(inv.id))
+            if can_transition("Invoice", winner.status, "paid"):
+                winner.status = "paid"
+            used_ids.add(str(winner.id))
             matched_count += 1
 
     if matched_count > 0:
