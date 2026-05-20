@@ -63,7 +63,6 @@ class TestProjectTasks:
         assert data["project_id"] is None
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Route lazy-loads project relationship — MissingGreenlet in async SQLite")
     async def test_create_task_in_project(self, auth_client: AsyncClient):
         proj_resp = await auth_client.post("/api/v1/projects", json={"name": "Proj"})
         proj_id = proj_resp.json()["id"]

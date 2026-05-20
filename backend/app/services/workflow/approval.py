@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import as_aware
 from app.db.models.models import PendingApproval, Task, WorkflowExecution
 from app.services.audit import log_action
 
@@ -50,7 +51,8 @@ async def decide(
         raise ValueError(f"Ya fue resuelta: {approval.status}")
 
     now = datetime.now(UTC)
-    if approval.expires_at < now:
+    expires_at = as_aware(approval.expires_at)
+    if expires_at is not None and expires_at < now:
         approval.status = "expired"
         await db.commit()
         raise TimeoutError("La aprobación ha expirado")

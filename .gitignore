@@ -16,6 +16,9 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Node / Next.js
 node_modules/
@@ -36,6 +39,11 @@ backend/data/uploads/
 # Logs
 *.log
 logs/
+
+# Windows shell artifact: cuando un comando con `>/dev/null` se ejecuta en
+# PowerShell (en vez de bash/MSYS), Windows lo interpreta como un fichero
+# llamado `nul`. No es tracking-worthy, no usarlo nunca como nombre real.
+/nul
 
 # OS
 .DS_Store

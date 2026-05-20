@@ -69,8 +69,11 @@ async def cleanup_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
-    """Elimina TODAS las tareas del tenant. Las activas se cancelan primero.
-    Solo admin: operación destructiva sobre el workflow del tenant."""
+    """Oculta TODAS las tareas del tenant via soft-delete (is_deleted=True).
+
+    Las activas se cancelan primero. Los registros audit_log y
+    agent_execution_trace asociados quedan intactos (cumplimiento WORM).
+    Solo admin: operación destructiva sobre la vista del workflow."""
     return await svc.cleanup_tasks(db, tenant_id=current_user.tenant_id)
 
 

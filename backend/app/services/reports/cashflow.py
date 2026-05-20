@@ -29,9 +29,10 @@ async def build_cashflow_data(
     tenant_obj = tenant_q.scalar_one_or_none()
     company_name = tenant_obj.name if tenant_obj else "Mi Empresa"
 
-    # Facturas emitidas pendientes (cobros previstos)
+    # Facturas emitidas pendientes (cobros previstos) — eager-load client
+    # para evitar N+1 en el bucle "recv_detail" más abajo.
     issued_pending_q = await db.execute(
-        select(Invoice).where(
+        select(Invoice).options(jl(Invoice.client)).where(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "issued",
@@ -39,7 +40,7 @@ async def build_cashflow_data(
             )
         )
     )
-    issued_pending = issued_pending_q.scalars().all()
+    issued_pending = issued_pending_q.unique().scalars().all()
 
     # Facturas recibidas pendientes (pagos previstos)
     received_pending_q = await db.execute(
@@ -110,21 +111,17 @@ async def build_cashflow_data(
             }
         )
 
-    # Pending receivables detail
+    # Pending receivables detail (client ya viene eager-loaded del outer query)
     recv_detail = []
     for inv in sorted(issued_pending, key=lambda x: float(x.amount_total or 0), reverse=True)[:10]:
-        inv_q = await db.execute(
-            select(Invoice).options(jl(Invoice.client)).where(Invoice.id == inv.id)
-        )
-        inv_full = inv_q.unique().scalar_one()
         recv_detail.append(
             {
-                "client_name": inv_full.client.name if inv_full.client else "—",
-                "invoice_number": inv_full.invoice_number or str(inv_full.id)[:8],
-                "due_date": (inv_full.due_date or inv_full.date).isoformat()
-                if (inv_full.due_date or inv_full.date)
+                "client_name": inv.client.name if inv.client else "—",
+                "invoice_number": inv.invoice_number or str(inv.id)[:8],
+                "due_date": (inv.due_date or inv.date).isoformat()
+                if (inv.due_date or inv.date)
                 else "",
-                "amount": float(inv_full.amount_total or 0),
+                "amount": float(inv.amount_total or 0),
             }
         )
 

@@ -12,7 +12,6 @@ from app.db.models.models import (
     AuditLog,
     PendingApproval,
     Task,
-    TenantDocument,
     WorkflowExecution,
 )
 
@@ -34,7 +33,11 @@ async def _build_conversation_history(
 
     for _ in range(max_turns):
         result = await db.execute(
-            select(Task).where(Task.id == current_id, Task.tenant_id == tenant_id)
+            select(Task).where(
+                Task.id == current_id,
+                Task.tenant_id == tenant_id,
+                Task.is_deleted.is_(False),
+            )
         )
         task = result.scalar_one_or_none()
         if not task:
@@ -117,7 +120,7 @@ async def list_tasks(
 ) -> list[Task]:
     query = (
         select(Task)
-        .where(Task.tenant_id == tenant_id)
+        .where(Task.tenant_id == tenant_id, Task.is_deleted.is_(False))
         .order_by(desc(Task.created_at))
         .offset(skip)
         .limit(limit)
@@ -130,7 +133,13 @@ async def list_tasks(
 
 
 async def get_task(db: AsyncSession, *, task_id: UUID, tenant_id: UUID) -> Task:
-    result = await db.execute(select(Task).where(Task.id == task_id, Task.tenant_id == tenant_id))
+    result = await db.execute(
+        select(Task).where(
+            Task.id == task_id,
+            Task.tenant_id == tenant_id,
+            Task.is_deleted.is_(False),
+        )
+    )
     task = result.scalar_one_or_none()
     if not task:
         raise LookupError("Tarea no encontrada")
@@ -155,7 +164,22 @@ async def cancel_task(db: AsyncSession, *, task_id: UUID, tenant_id: UUID) -> No
 
 
 async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
-    ids_result = await db.execute(select(Task.id, Task.status).where(Task.tenant_id == tenant_id))
+    """Soft-delete las tasks visibles del tenant.
+
+    Marca `is_deleted=True` en lugar de DELETE FROM tasks porque:
+      - audit_log tiene trigger WORM (mig 0012) que rechaza DELETE/UPDATE.
+      - DELETE en tasks rompería FK desde audit_log (no nullable ON DELETE).
+
+    Las queries de listado (`list_tasks`, `get_task`) filtran is_deleted=False,
+    así que la UI deja de verlas pero los audit_log apuntan a registros
+    existentes (no rotos). Tareas activas se cancelan primero.
+    """
+    ids_result = await db.execute(
+        select(Task.id, Task.status).where(
+            Task.tenant_id == tenant_id,
+            Task.is_deleted.is_(False),
+        )
+    )
     rows = ids_result.fetchall()
     if not rows:
         return {"deleted": 0, "cancelled": 0}
@@ -172,7 +196,6 @@ async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
                 await cancel_task_dispatch(str(tid))
         except Exception as e:
             logger.error("Error al revocar tareas: %s", e)
-        await db.execute(sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled"))
         cancelled = len(active_ids)
 
     await db.execute(
@@ -184,23 +207,20 @@ async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
         .values(status="cancelled")
     )
 
-    await db.execute(
-        sql_delete(AuditLog).where(
-            AuditLog.task_id.in_(task_ids),
-            AuditLog.tenant_id == tenant_id,
-        )
-    )
+    # pending_approvals no es WORM: las podemos borrar sin problema.
     await db.execute(sql_delete(PendingApproval).where(PendingApproval.task_id.in_(task_ids)))
+
+    # Primero cancelar las activas (cambia status), luego soft-delete todas.
+    # Conservamos los registros para no romper FK desde audit_log y
+    # agent_execution_trace (ambas WORM, mig 0012).
+    if active_ids:
+        await db.execute(
+            sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled")
+        )
     await db.execute(
-        sql_update(TenantDocument).where(TenantDocument.task_id.in_(task_ids)).values(task_id=None)
-    )
-    await db.execute(
-        sql_update(WorkflowExecution)
-        .where(WorkflowExecution.task_id.in_(task_ids))
-        .values(task_id=None)
+        sql_update(Task).where(Task.id.in_(task_ids)).values(is_deleted=True)
     )
 
-    await db.execute(sql_delete(Task).where(Task.id.in_(task_ids)))
     await db.commit()
 
     return {"deleted": len(task_ids), "cancelled": cancelled}

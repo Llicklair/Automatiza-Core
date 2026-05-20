@@ -9,6 +9,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import as_aware
 from app.core.dependencies import get_current_user, require_role
 from app.core.security import create_access_token, create_refresh_token
 from app.db.base import get_db
@@ -122,7 +123,8 @@ class InvitationAccept(BaseModel):
 def _invitation_status(inv: UserInvitation) -> str:
     if inv.used_at is not None:
         return "used"
-    if inv.expires_at and inv.expires_at < datetime.now(UTC):
+    expires_at = as_aware(inv.expires_at)
+    if expires_at and expires_at < datetime.now(UTC):
         return "expired"
     return "pending"
 
@@ -215,7 +217,7 @@ async def get_invitation_public(token: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Invitación no encontrada")
     if inv.used_at is not None:
         raise HTTPException(status_code=410, detail="La invitación ya fue utilizada")
-    if inv.expires_at < datetime.now(UTC):
+    if as_aware(inv.expires_at) < datetime.now(UTC):
         raise HTTPException(status_code=410, detail="La invitación ha caducado")
     return InvitationPublic(email=inv.email, role=inv.role, expires_at=inv.expires_at)
 
@@ -231,7 +233,7 @@ async def accept_invitation(
         raise HTTPException(status_code=404, detail="Invitación no encontrada")
     if inv.used_at is not None:
         raise HTTPException(status_code=410, detail="La invitación ya fue utilizada")
-    if inv.expires_at < datetime.now(UTC):
+    if as_aware(inv.expires_at) < datetime.now(UTC):
         raise HTTPException(status_code=410, detail="La invitación ha caducado")
 
     # Reject if a user already has this email (defense against race / manual creation)

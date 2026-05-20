@@ -289,13 +289,20 @@ class TestDispatcherErrorPropagation:
             return True
 
         # Bajamos timeout a 0.1s con monkeypatch para no esperar 180s reales.
+        # IMPORTANTE: cerrar la coroutine recibida antes de lanzar TimeoutError;
+        # si no, queda "never awaited" y genera RuntimeWarning.
+        async def _fake_wait_for(coro, timeout=None):
+            if hasattr(coro, "close"):
+                coro.close()
+            raise TimeoutError()
+
         with patch(
             "app.agents.workers.compile_dynamic_agent", new=fake_compile
         ), patch(
             "app.agents.workers.check_agent_budget", new=fake_budget
         ), patch(
             "app.agents.orchestrator._dispatch_handlers.asyncio.wait_for",
-            new=AsyncMock(side_effect=TimeoutError()),
+            new=_fake_wait_for,
         ):
             result = await _invoke_dynamic_employee(
                 enriched_state={
