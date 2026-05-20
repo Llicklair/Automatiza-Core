@@ -3,6 +3,7 @@
 import { FileDown, Plus, BookOpen, Trash2 } from "lucide-react";
 import { useLibroDiario } from "./_hooks/useLibroDiario";
 import { AsientoModal } from "./_components/AsientoModal";
+import { CierreLibrosCard } from "./_components/CierreLibrosCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +33,8 @@ export default function LibroDiarioPage() {
                     </div>
                 }
             />
+
+            <CierreLibrosCard />
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
                 {loading ? (

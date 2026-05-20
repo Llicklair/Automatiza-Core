@@ -96,3 +96,32 @@ class FixedAsset(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     tenant = relationship("Tenant")
+
+
+class AccountingPeriod(Base):
+    """Cierre contable de un periodo (mes, trimestre o ejercicio).
+
+    Cuando un periodo está cerrado (`status='closed'`), no se permiten
+    nuevos asientos, edición ni borrado de los existentes dentro del rango
+    de fechas del periodo. Reabrir requiere motivo y queda auditado.
+    """
+
+    __tablename__ = "accounting_periods"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+
+    year = Column(Integer, nullable=False)
+    kind = Column(String(16), nullable=False)            # 'month' | 'quarter' | 'year'
+    period_index = Column(Integer, nullable=False)       # 1..12 mes, 1..4 trimestre, 0 año
+
+    status = Column(String(16), nullable=False, default="closed")  # 'closed' | 'reopened'
+    closed_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    closed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reopened_at = Column(DateTime(timezone=True), nullable=True)
+    reopened_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reopen_reason = Column(String(500), nullable=True)
+    notes = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    tenant = relationship("Tenant")

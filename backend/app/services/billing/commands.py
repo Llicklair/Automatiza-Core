@@ -141,6 +141,12 @@ async def create_invoice(
     if lines_data and new_invoice.amount_total == 0:
         logger.warning("Factura creada con importe 0 para cliente %s", client_id)
 
+    # Verifactu: si el tenant está en modo "voluntary" creamos la entrada
+    # encadenada ANTES del commit, así la factura y su huella son atómicas.
+    # En modo "no_remission" no hace nada.
+    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+    await maybe_append_verifactu_record(db, invoice=new_invoice)
+
     await db.commit()
 
     result = await db.execute(
@@ -249,6 +255,13 @@ async def create_journal_entry(
             f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})"
         )
 
+    # Bloquear escritura si el periodo está cerrado
+    from app.services.accounting import PeriodClosedError, is_date_locked
+    _date_for_check = date.date() if hasattr(date, "date") and callable(getattr(date, "date")) else date
+    locked, label = await is_date_locked(db, tenant_id, _date_for_check)
+    if locked:
+        raise PeriodClosedError(label or "?", target_date=_date_for_check if hasattr(_date_for_check, "isoformat") else None)
+
     new_entry = JournalEntry(
         tenant_id=tenant_id,
         date=date,
@@ -294,6 +307,14 @@ async def delete_journal_entry(
     entry = result.scalar_one_or_none()
     if not entry:
         raise LookupError("Asiento no encontrado")
+
+    # Bloquear borrado si el periodo está cerrado
+    from app.services.accounting import PeriodClosedError, is_date_locked
+    _date_for_check = entry.date.date() if hasattr(entry.date, "date") and callable(getattr(entry.date, "date")) else entry.date
+    locked, label = await is_date_locked(db, tenant_id, _date_for_check)
+    if locked:
+        raise PeriodClosedError(label or "?", target_date=_date_for_check)
+
     await db.delete(entry)
     await db.commit()
 

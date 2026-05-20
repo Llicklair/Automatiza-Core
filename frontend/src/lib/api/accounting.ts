@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { downloadBlob, request } from "./client";
 
 export interface JournalLine {
     id: string;
@@ -38,6 +38,20 @@ export interface FixedAsset {
     created_at: string;
 }
 
+export type AccountingPeriodKind = "month" | "quarter" | "year";
+
+export interface AccountingPeriod {
+    id: string;
+    year: number;
+    kind: AccountingPeriodKind;
+    period_index: number;
+    status: "closed" | "reopened";
+    closed_at: string | null;
+    reopened_at: string | null;
+    reopen_reason: string | null;
+    notes: string | null;
+}
+
 export const accounting = {
     journal: {
         list: () => request<JournalEntry[]>("/api/v1/accounting/journal"),
@@ -50,4 +64,29 @@ export const accounting = {
         update: (id: string, data: Partial<FixedAsset>) => request<FixedAsset>(`/api/v1/accounting/assets/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
         delete: (id: string) => request(`/api/v1/accounting/assets/${id}`, { method: "DELETE" }),
     },
+    periods: {
+        list: (year?: number) =>
+            request<{ items: AccountingPeriod[] }>(`/api/v1/accounting/periods${year ? `?year=${year}` : ""}`),
+        close: (data: { year: number; kind: AccountingPeriodKind; period_index: number; notes?: string }) =>
+            request<AccountingPeriod>("/api/v1/accounting/periods/close", {
+                method: "POST",
+                body: JSON.stringify(data),
+            }),
+        reopen: (id: string, reason: string) =>
+            request<AccountingPeriod>(`/api/v1/accounting/periods/${id}/reopen`, {
+                method: "POST",
+                body: JSON.stringify({ reason }),
+            }),
+        checkLocked: (target: string) =>
+            request<{ locked: boolean; period_label: string | null }>(`/api/v1/accounting/check-locked?target=${target}`),
+    },
+    libroDiarioPdf: (start: string, end: string) =>
+        downloadBlob(`/api/v1/accounting/libro-diario.pdf?start=${start}&end=${end}`,
+            `LibroDiario_${start}_${end}.pdf`),
+    libroMayorPdf: (start: string, end: string) =>
+        downloadBlob(`/api/v1/accounting/libro-mayor.pdf?start=${start}&end=${end}`,
+            `LibroMayor_${start}_${end}.pdf`),
+    cuentasAnualesPdf: (start: string, end: string) =>
+        downloadBlob(`/api/v1/accounting/cuentas-anuales.pdf?start=${start}&end=${end}`,
+            `CuentasAnuales_${start}_${end}.pdf`),
 };
