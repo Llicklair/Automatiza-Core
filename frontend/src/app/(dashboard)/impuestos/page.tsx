@@ -16,6 +16,7 @@ import { EventCard } from "./_components/EventCard";
 import { ConsultaRapida } from "./_components/ConsultaRapida";
 import { LibroRegistroExport } from "./_components/LibroRegistroExport";
 import { Expediente303Drawer } from "./_components/Expediente303Drawer";
+import { PresentacionesPanel } from "./_components/PresentacionesPanel";
 
 function currentQuarterYear(): { quarter: number; year: number } {
     const d = new Date();
@@ -62,6 +63,9 @@ export default function ImpuestosPage() {
                 </TabsContent>
 
                 <TabsContent value="calendario" className="space-y-6">
+                    {/* Panel general de presentación electrónica (todos los modelos) */}
+                    <PresentacionesPanel />
+
                     {/* Expediente Modelo 303 — atajo prominente */}
                     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
                         <CardContent className="p-5 flex items-start justify-between gap-4 flex-wrap">

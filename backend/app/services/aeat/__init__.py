@@ -26,6 +26,7 @@ from app.services.aeat.expediente_303 import (
     build_expediente_303,
 )
 from app.services.aeat.modelo_303_xml import build_modelo_303_xml
+from app.services.aeat.modelo_xml_generico import build_modelo_xml_generic
 from app.services.aeat.presentation_service import (
     PresentationError,
     create_presentation,
@@ -41,6 +42,7 @@ __all__ = [
     "Casilla303",
     "build_casillas_303",
     "build_modelo_303_xml",
+    "build_modelo_xml_generic",
     "build_expediente_303",
     "ExpedienteError",
     # Certificado (Fase C)

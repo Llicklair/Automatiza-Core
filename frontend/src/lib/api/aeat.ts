@@ -60,6 +60,16 @@ export const aeat = {
                 `/api/v1/aeat/presentations/303-from-quarter?quarter=${quarter}&year=${year}&environment=${environment}`,
                 { method: "POST" },
             ),
+        createQuarterly: (modelCode: "111" | "130", quarter: number, year: number, environment: "preproduccion" | "produccion" = "preproduccion") =>
+            request<AeatPresentation>(
+                `/api/v1/aeat/presentations/quarterly-from-period?model_code=${modelCode}&quarter=${quarter}&year=${year}&environment=${environment}`,
+                { method: "POST" },
+            ),
+        createYearly: (modelCode: "190" | "347" | "390", year: number, environment: "preproduccion" | "produccion" = "preproduccion") =>
+            request<AeatPresentation>(
+                `/api/v1/aeat/presentations/yearly-from-period?model_code=${modelCode}&year=${year}&environment=${environment}`,
+                { method: "POST" },
+            ),
         submit: (id: string, dryRun = true) =>
             request<AeatPresentation>(
                 `/api/v1/aeat/presentations/${id}/submit?dry_run=${dryRun}`,
