@@ -168,6 +168,8 @@ async def create_303_from_quarter(
 _QUARTERLY_BUILDERS = {
     "111": "build_modelo_111_data",
     "130": "build_modelo_130_data",
+    "115": "build_modelo_115_data",
+    "349": "build_modelo_349_data",
 }
 
 _YEARLY_BUILDERS = {
@@ -207,7 +209,7 @@ async def _build_xml_generic(
 @limiter.limit("20/minute")
 async def create_quarterly_presentation(
     request: Request,
-    model_code: str = Query(..., description="111 | 130"),
+    model_code: str = Query(..., description="111 | 130 | 115 | 349"),
     quarter: int = Query(ge=1, le=4),
     year: int = Query(...),
     environment: str = Query("preproduccion"),

@@ -10,7 +10,7 @@ import type { AeatCertificate, AeatPresentation } from "@/lib/api/aeat";
 import { useToastStore } from "@/stores/toast";
 import { CertificateUploadModal } from "./CertificateUploadModal";
 
-type ModelCode = "303" | "130" | "111" | "190" | "347" | "390";
+type ModelCode = "303" | "130" | "111" | "115" | "349" | "190" | "347" | "390";
 type Periodicity = "quarterly" | "yearly";
 
 interface ModelMeta {
@@ -24,6 +24,8 @@ const MODELS: ModelMeta[] = [
     { code: "303", nombre: "IVA trimestral",          periodicidad: "quarterly", descripcion: "Autoliquidación de IVA del trimestre." },
     { code: "130", nombre: "IRPF fraccionado",        periodicidad: "quarterly", descripcion: "Pago fraccionado IRPF estimación directa." },
     { code: "111", nombre: "Retenciones IRPF",        periodicidad: "quarterly", descripcion: "Retenciones a trabajadores y profesionales." },
+    { code: "115", nombre: "Retenciones alquileres",  periodicidad: "quarterly", descripcion: "Retenciones 19% sobre arrendamientos de inmuebles urbanos." },
+    { code: "349", nombre: "Intracomunitarias",       periodicidad: "quarterly", descripcion: "Operaciones con clientes/proveedores UE (NIF intracomunitario)." },
     { code: "390", nombre: "Resumen anual IVA",       periodicidad: "yearly",    descripcion: "Consolidación anual de los 4 trimestres del 303." },
     { code: "190", nombre: "Resumen anual retenciones", periodicidad: "yearly",  descripcion: "Resumen anual de retenciones IRPF (consolida 111)." },
     { code: "347", nombre: "Operaciones con terceros", periodicidad: "yearly",   descripcion: "Contrapartes con operaciones >3.005,06€ anuales." },
@@ -91,7 +93,7 @@ export function PresentacionesPanel() {
                 created = await api.aeat.presentations.create303FromQuarter(quarter, year, "preproduccion");
             } else if (meta.periodicidad === "quarterly") {
                 created = await api.aeat.presentations.createQuarterly(
-                    modelCode as "111" | "130", quarter, year, "preproduccion",
+                    modelCode as "111" | "130" | "115" | "349", quarter, year, "preproduccion",
                 );
             } else {
                 created = await api.aeat.presentations.createYearly(
