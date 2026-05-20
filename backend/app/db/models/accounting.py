@@ -1,5 +1,7 @@
 """Modelos contables: Asientos, Transacciones bancarias e Inmovilizado."""
 
+from sqlalchemy import LargeBinary
+
 from .common import (
     UUID,
     Base,
@@ -7,6 +9,7 @@ from .common import (
     Date,
     DateTime,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     Text,
@@ -123,5 +126,64 @@ class AccountingPeriod(Base):
     reopen_reason = Column(String(500), nullable=True)
     notes = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    tenant = relationship("Tenant")
+
+
+class TenantCertificate(Base):
+    """Certificado digital del tenant para firma de presentaciones AEAT.
+
+    El contenido .pfx y la contraseña se guardan cifrados con la clave Fernet
+    global (`TENANT_ENCRYPTION_KEY`). Solo se descifran en memoria al firmar.
+    """
+
+    __tablename__ = "tenant_certificates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    label = Column(String(120), nullable=False)
+    subject_cn = Column(String(255), nullable=True)
+    issuer_cn = Column(String(255), nullable=True)
+    valid_from = Column(DateTime(timezone=True), nullable=True)
+    valid_until = Column(DateTime(timezone=True), nullable=True)
+    serial_number = Column(String(80), nullable=True)
+    sha256_fingerprint = Column(String(80), nullable=True)
+    encrypted_pfx = Column(LargeBinary, nullable=False)
+    encrypted_password = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="active")
+    uploaded_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    uploaded_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    notes = Column(String(500), nullable=True)
+
+    tenant = relationship("Tenant")
+
+
+class AeatPresentation(Base):
+    """Registro auditado de cada intento de presentación electrónica a la SEDE AEAT."""
+
+    __tablename__ = "aeat_presentations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+
+    model_code = Column(String(10), nullable=False)
+    year = Column(Integer, nullable=False)
+    period = Column(String(10), nullable=False)
+    environment = Column(String(20), nullable=False, default="preproduccion")
+    status = Column(String(30), nullable=False, default="pending")
+
+    xml_unsigned = Column(Text, nullable=True)
+    xml_signed = Column(Text, nullable=True)
+    response_raw = Column(Text, nullable=True)
+    csv_justificante = Column(String(80), nullable=True)
+    error_code = Column(String(40), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
     tenant = relationship("Tenant")

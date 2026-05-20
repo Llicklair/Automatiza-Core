@@ -8,6 +8,7 @@ import {
 import { api } from "@/lib/api";
 import type { Modelo303Expediente } from "@/lib/api/reports";
 import { useToastStore } from "@/stores/toast";
+import { PresentacionElectronicaPanel } from "./PresentacionElectronicaPanel";
 
 interface Props {
     quarter: number;
@@ -238,8 +239,10 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                                 </a>
                             </div>
 
+                            <PresentacionElectronicaPanel quarter={quarter} year={year} />
+
                             <div className="text-[11px] text-muted-foreground border-t border-border pt-3">
-                                Recordatorio: este expediente NO se envía a la AEAT desde la app. Tú lo presentas en la SEDE con tu certificado o cl@ve. La presentación electrónica directa estará disponible en una próxima fase.
+                                El expediente (PDF + XML + casillas) sirve para presentar manualmente en la SEDE. El panel de presentación electrónica está en <b>beta</b> con dry-run por defecto.
                             </div>
                         </>
                     )}

@@ -40,6 +40,7 @@ import { verifactuConfig } from "./verifactuConfig";
 import { presentacion } from "./presentacion";
 import { pos } from "./pos";
 import { modelosAeat } from "./modelosAeat";
+import { aeat } from "./aeat";
 import { request } from "./client";
 
 // ── Portal types ─────────────────────────────────────────────────────────────
@@ -99,6 +100,7 @@ export const api = {
     presentacion,
     pos,
     modelosAeat,
+    aeat,
     search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
     importBulk: {
         employees: (rows: Record<string, string>[]) =>
@@ -150,15 +152,29 @@ export type {
     RecurringLineItem,
 } from "./erp";
 export type { BankTransaction, InvoiceSuggestion, ReconciliationSuggestion } from "./banking";
-export type { AnalyticsDashboard } from "./analytics";
-export type { AnalyticsCashflowEntry } from "./analytics";
-export type { AnalyticsTopCliente } from "./analytics";
-export type { AnalyticsEstadoFactura } from "./analytics";
-export type { AnalyticsFacturas } from "./analytics";
-export type { AnalyticsRRHH } from "./analytics";
-export type { AnalyticsBanca } from "./analytics";
-export type { AnalyticsIA } from "./analytics";
-export type { AnalyticsClientes } from "./analytics";
+export type {
+    AnalyticsDashboard,
+    AnalyticsCashflowEntry,
+    AnalyticsTopCliente,
+    AnalyticsEstadoFactura,
+    AnalyticsFacturas,
+    AnalyticsRRHH,
+    AnalyticsRRHHDept,
+    AnalyticsBanca,
+    AnalyticsIA,
+    AnalyticsIAAgente,
+    AnalyticsIATopError,
+    AnalyticsIADetalle,
+    AnalyticsClientes,
+    AnalyticsIVAEntry,
+    AnalyticsTopProducto,
+    AnalyticsDiaSemana,
+    AnalyticsVentasDetalle,
+    AnalyticsAgingBucket,
+    AnalyticsAgingBuckets,
+    AgingBucketKey,
+    AnalyticsCobrosPagos,
+} from "./analytics";
 export type { Opportunity, Activity, EventItem, Reservation } from "./crm";
 export type { Employee, Payroll, PayrollCalculation, WorkSchedule, AttendanceRecord, LeaveRequest, Expense } from "./hr";
 export type { Project, ProjectTask } from "./projects";

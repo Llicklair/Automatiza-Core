@@ -4,6 +4,7 @@ from app.api.v1.routes import (
     accounting,
     admin,
     advisory,
+    aeat_presentation,
     ai_employees,
     alerts,
     analytics,
@@ -94,4 +95,5 @@ api_router.include_router(notifications.router)
 api_router.include_router(verifactu_config.router)
 api_router.include_router(presentacion_asistida.router)
 api_router.include_router(modelos_aeat.router)
+api_router.include_router(aeat_presentation.router)
 api_router.include_router(pos.router)
