@@ -10,17 +10,6 @@ import { NAV_SECTIONS, type NavItem, type NavSection } from "./nav-config";
 import { useSidebar } from "./_hooks/useSidebar";
 import { useUserRole } from "@/hooks/useUserRole";
 
-function ProBadge() {
-    return (
-        <span
-            title="Incluido en el plan Premium"
-            className="ml-auto flex-shrink-0 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-500 border border-amber-400/30 uppercase tracking-wider"
-        >
-            PRO
-        </span>
-    );
-}
-
 export function Sidebar() {
     const {
         collapsed,
@@ -124,7 +113,6 @@ export function Sidebar() {
                     >
                         <Icon className={iconClass} />
                         <span className={labelClass}>{item.label}</span>
-                        {item.premium && <ProBadge />}
                     </Link>
                 </div>
             );
@@ -162,14 +150,13 @@ export function Sidebar() {
                                     href={sub.href}
                                     onClick={(e) => handleNavClick(e, sub.href)}
                                     className={cn(
-                                        "flex items-center gap-1.5 h-8 px-2 rounded-md text-[13px] transition-colors",
+                                        "flex items-center h-8 px-2 rounded-md text-[13px] transition-colors",
                                         subActive
                                             ? "bg-primary/15 text-primary font-medium"
                                             : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                                     )}
                                 >
                                     <span className="truncate">{sub.label}</span>
-                                    {sub.premium && <ProBadge />}
                                 </Link>
                             );
                         })}
