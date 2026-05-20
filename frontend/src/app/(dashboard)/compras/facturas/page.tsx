@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDownToLine, CheckCircle2, Clock, Plus, Inbox, Trash2 } from "lucide-react";
+import { ArrowDownToLine, CheckCircle2, Clock, Plus, Inbox, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { type Invoice } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -34,8 +34,23 @@ export default function FacturasRecibidasPage() {
         invStatus, setInvStatus,
         submitting,
         totalPendiente, totalPagado30,
-        resetModal, handleRegister, handleStatusChange, handleDeleteInvoice,
+        resetModal, handleRegister, handleScan, handleStatusChange, handleDeleteInvoice,
     } = useFacturasRecibidas();
+
+    const [scanning, setScanning] = useState(false);
+
+    const onFileSelected = async (file: File) => {
+        if (!file) return;
+        if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+            return;
+        }
+        setScanning(true);
+        try {
+            await handleScan(file);
+        } finally {
+            setScanning(false);
+        }
+    };
 
     const columns = useMemo<ColumnDef<Invoice, any>[]>(() => [
         {
@@ -119,9 +134,29 @@ export default function FacturasRecibidasPage() {
                 title="Facturas Recibidas"
                 description="Gestiona tus compras, gastos y proveedores."
                 actions={
-                    <Button onClick={() => setShowModal(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Registrar Factura
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <label
+                            className={`inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 px-3 h-9 text-sm font-medium cursor-pointer transition-colors ${scanning ? "opacity-50 pointer-events-none" : ""}`}
+                            title="Sube una factura PDF o foto. La IA extrae proveedor, líneas, IVA y vencimiento y la registra automáticamente."
+                        >
+                            {scanning
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Leyendo factura…</>
+                                : <><Sparkles className="h-4 w-4" /> Escanear factura</>}
+                            <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) onFileSelected(f);
+                                    e.target.value = "";
+                                }}
+                            />
+                        </label>
+                        <Button onClick={() => setShowModal(true)}>
+                            <Plus className="mr-2 h-4 w-4" /> Registrar Factura
+                        </Button>
+                    </div>
                 }
             />
 

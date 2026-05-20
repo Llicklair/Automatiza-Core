@@ -1,4 +1,34 @@
-import { request, downloadBlob } from "./client";
+import { request, downloadBlob, requestUpload } from "./client";
+
+export interface ScannedInvoiceLine {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_percentage: number;
+    total: number;
+}
+
+export interface ScannedInvoice {
+    emisor: {
+        nif: string;
+        name: string;
+        address: string | null;
+        city: string | null;
+        postal_code: string | null;
+    };
+    invoice_number: string;
+    issue_date: string;
+    due_date: string | null;
+    lines: ScannedInvoiceLine[];
+    amount_base: number;
+    tax_amount: number;
+    amount_total: number;
+    currency: string;
+    payment_method: string | null;
+    iban: string | null;
+    confidence: number;
+    warnings: string[];
+}
 
 export interface Client {
     id: string;
@@ -288,6 +318,11 @@ export const erp = {
             }),
         delete: (id: string) =>
             request<void>(`/api/v1/invoices/${id}`, { method: "DELETE" }),
+        scan: (file: File) => {
+            const fd = new FormData();
+            fd.append("file", file);
+            return requestUpload<ScannedInvoice>("/api/v1/invoices/scan", fd);
+        },
         downloadPdf: (id: string, invoiceNumber: string | null) =>
             downloadBlob(`/api/v1/invoices/${id}/pdf`, `Factura_${invoiceNumber || id.slice(0, 8)}.pdf`),
         downloadFacturae: (id: string, invoiceNumber: string | null) =>
