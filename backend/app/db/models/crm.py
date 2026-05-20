@@ -1,5 +1,7 @@
 """Modelos CRM: Clientes, Oportunidades y Actividades."""
 
+from sqlalchemy import Index, text
+
 from .common import (
     JSONB,
     UUID,
@@ -18,6 +20,20 @@ from .common import (
 
 class Client(Base):
     __tablename__ = "clients"
+
+    # Partial UNIQUE: un cliente con NIF determinado solo puede existir una vez
+    # por tenant. Particulares sin NIF (None) o nif='' se permiten múltiples
+    # (esos no entran en Modelo 347, no rompen reports). Cierra race condition
+    # del upsert en agents/billing/_invoice_create_async.py.
+    __table_args__ = (
+        Index(
+            "clients_unique_nif_per_tenant",
+            "tenant_id", "nif",
+            unique=True,
+            postgresql_where=text("nif IS NOT NULL AND nif <> ''"),
+            sqlite_where=text("nif IS NOT NULL AND nif != ''"),
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)

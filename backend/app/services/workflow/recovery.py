@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
+from app.core.datetime_utils import as_aware
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Task, WorkflowExecution
 
@@ -63,7 +64,7 @@ async def recover_stale_executions() -> dict[str, int]:
             stale_tasks = [
                 t
                 for t in candidates
-                if t.started_at < zombie_cutoff
+                if (as_aware(t.started_at) or now) < zombie_cutoff
                 or (t.plan is None and not (t.agent_results or []))
             ]
             for t in stale_tasks:

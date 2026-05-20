@@ -440,7 +440,10 @@ async def _load_recent_tasks_context(tenant_id: str) -> str:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(Task)
-                .where(Task.tenant_id == UUID(tenant_id))
+                .where(
+                    Task.tenant_id == UUID(tenant_id),
+                    Task.is_deleted.is_(False),
+                )
                 .order_by(desc(Task.created_at))
                 .limit(10)
             )

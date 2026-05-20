@@ -215,8 +215,17 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
                 await _set_agent_status(db, employee_id, tenant_id, "idle")
                 try:
                     await db.commit()
-                except Exception:
-                    pass
+                except Exception as commit_err:
+                    # Commit en cleanup de error: si falla, el AIEmployee queda con
+                    # status="working" colgado y el siguiente health-check lo bloqueará.
+                    # No volvemos a lanzar (la excepción original es la importante),
+                    # pero sí logueamos para que el operador pueda detectar la fuga.
+                    logger.warning(
+                        "Commit fallido restaurando status='idle' del empleado %s "
+                        "tras error en orchestrator (task=%s, tenant=%s): %s: %s",
+                        employee_id, task_id, tenant_id,
+                        type(commit_err).__name__, commit_err,
+                    )
                 await _broadcast(manager, tenant_id, {
                     "type": "agent_status_changed", "employee_id": employee_id, "status": "idle",
                 })

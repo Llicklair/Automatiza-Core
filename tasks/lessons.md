@@ -4,6 +4,80 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-05-19 — tz-naive vs tz-aware datetime: SQLite no preserva tzinfo en TIMESTAMPTZ
+
+**Contexto**: Bug encontrado en 6 sitios distintos en la misma sesión.
+Patrón: `if obj.expires_at < datetime.now(UTC):` donde `obj` viene del ORM
+y `expires_at` está declarado como `Column(DateTime(timezone=True))`. En
+Postgres con asyncpg, el atributo llega tz-aware → comparación OK. En
+SQLite con aiosqlite, el atributo llega tz-naive (la pérdida ocurre en el
+driver) → `TypeError: can't compare offset-naive and offset-aware datetimes`.
+
+**Sitios afectados** (descubiertos por coverage + grep estático):
+- `services/workflow/recovery.py` (Task.started_at)
+- `services/workflow/approval.py` (PendingApproval.expires_at)
+- `api/v1/routes/users.py` x3 (UserInvitation.expires_at)
+- `services/auth/service.py` (PasswordResetToken.expires_at)
+
+**Patrón antipatrón**:
+```python
+if reset_token.expires_at < datetime.now(UTC):  # ← BUG si driver naive
+    raise ValueError("expirado")
+```
+
+**Patrón correcto**:
+```python
+from app.core.datetime_utils import as_aware
+if as_aware(reset_token.expires_at) < datetime.now(UTC):
+    raise ValueError("expirado")
+```
+
+**Regla**:
+1. Cualquier comparación Python-side de un `datetime` que venga del ORM
+   contra `datetime.now(UTC)` debe pasar por `as_aware()` (helper en
+   `app/core/datetime_utils.py`).
+2. Comparaciones en SQLAlchemy `where()` clauses son SQL nativo, no
+   Python — no necesitan coerción (la BD maneja la comparación).
+3. Cuando se añada una columna `DateTime(timezone=True)` nueva, verificar
+   que todos los `if x.col < now` consumidores usan `as_aware`.
+
+**Por qué `expire_on_commit=False` no ayuda**: `expire_on_commit` controla
+si los atributos se invalidan tras commit, no cómo el driver devuelve los
+valores. El bug es del driver SQLite, no del session lifecycle.
+
+## 2026-05-19 — DELETE/UPDATE en tablas WORM requiere soft-delete en la tabla origen, no en la WORM
+
+**Contexto**: `cleanup_tasks` (`services/workflow/task.py`) intentaba
+`DELETE FROM audit_log WHERE task_id IN (...)` y luego `DELETE FROM tasks`.
+La migración `0012_sec_worm_audit.py` crea triggers PL/pgSQL
+(`audit_log_no_update`, `audit_log_no_delete`) que rechazan ambas operaciones
+con `RAISE EXCEPTION 'Append-only table: % is immutable (SEC.WORM)'`. El
+endpoint colgaba 500 y la UI mostraba "Limpiar(N)" en pending eterno.
+
+**Causa raíz**: pensar el cleanup como un DELETE físico cuando hay tablas
+satélite con WORM. Tres opciones evaluadas:
+1. `ON DELETE SET NULL` en la FK `audit_log.task_id` → **no sirve**: la
+   acción CASCADE/SET NULL dispara igualmente los triggers `BEFORE UPDATE`.
+2. Saltar `audit_log` y solo borrar tasks sin audit → recurre al mismo
+   problema cuando hay FKs apuntando.
+3. **Soft-delete en `tasks`** (flag `is_deleted`) → preserva todos los
+   registros WORM y sus FKs, oculta la task de las consultas de listado.
+
+**Regla**:
+1. Antes de añadir un DELETE o UPDATE a una tabla, comprobar si ella o sus
+   referenciantes son WORM (buscar trigger `sec_worm_reject_mutation` o tabla
+   con `Append-only` en docstring). La lista actual: `audit_log`,
+   `agent_execution_trace`, `verifactu_chain`, `fiscal_approval_log`.
+2. Si hay relación WORM, modelar el "borrado" como `is_deleted=True` en la
+   tabla NO-WORM y filtrar `is_deleted=False` en todas las lecturas
+   relevantes (`list_*`, `get_*`, contextos enriquecidos).
+3. Las FKs entre la tabla soft-deletable y la WORM se preservan; no hace
+   falta `NULL out` los referenciantes.
+
+**Aplicación**: revisar el resto de endpoints que hacen DELETE masivo
+contra tablas con audit_log/agent_execution_trace asociado. Mismo patrón
+aplicable si en el futuro hay cleanup por tenant, por execution_id, etc.
+
 ## 2026-05-18 — VALID_DOMAINS y DISPATCHER_MAP deben estar en sync
 
 **Contexto**: Bug SC-4 — `"Dame el resumen contable del mes"` clasificaba

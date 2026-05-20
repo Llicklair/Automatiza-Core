@@ -32,8 +32,10 @@ async def aggregate_fiscal(
     from app.services.reports.summaries import generate_resumen_fiscal
 
     # ── IVA: Repercutido (ventas/emitidas) ──
+    # Eager-load Invoice.lines en el outer query — antes había un N+1 que
+    # hacía una SELECT por factura para cargar lines (lessons 2026-05-19).
     issued_q = await db.execute(
-        select(Invoice).where(
+        select(Invoice).options(jl(Invoice.lines)).where(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "issued",
@@ -42,16 +44,12 @@ async def aggregate_fiscal(
             )
         )
     )
-    issued_invoices = issued_q.scalars().all()
+    issued_invoices = issued_q.unique().scalars().all()
 
     vat_rep: dict[float, float] = {}
     base_rep: dict[float, float] = {}
     for inv in issued_invoices:
-        lines_q = await db.execute(
-            select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
-        )
-        inv_wl = lines_q.unique().scalar_one()
-        for line in inv_wl.lines or []:
+        for line in inv.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -61,7 +59,7 @@ async def aggregate_fiscal(
 
     # ── IVA: Soportado (compras/recibidas) ──
     received_q = await db.execute(
-        select(Invoice).where(
+        select(Invoice).options(jl(Invoice.lines)).where(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "received",
@@ -70,16 +68,12 @@ async def aggregate_fiscal(
             )
         )
     )
-    received_invoices = received_q.scalars().all()
+    received_invoices = received_q.unique().scalars().all()
 
     vat_sop: dict[float, float] = {}
     base_sop: dict[float, float] = {}
     for inv in received_invoices:
-        lines_q = await db.execute(
-            select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
-        )
-        inv_wl = lines_q.unique().scalar_one()
-        for line in inv_wl.lines or []:
+        for line in inv.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -180,9 +174,9 @@ async def build_modelo_303_data(
     tenant_name = tenant_obj.name if tenant_obj else "Mi Empresa"
     tenant_nif = tenant_obj.nif if tenant_obj else "B00000000"
 
-    # IVA devengado (ventas)
+    # IVA devengado (ventas) — eager-load lines (antes N+1)
     issued_q = await db.execute(
-        select(Invoice).where(
+        select(Invoice).options(jl(Invoice.lines)).where(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "issued",
@@ -191,15 +185,11 @@ async def build_modelo_303_data(
             )
         )
     )
-    issued_invoices = issued_q.scalars().all()
+    issued_invoices = issued_q.unique().scalars().all()
 
     vat_collected_map: dict[float, dict] = {}
     for inv in issued_invoices:
-        lines_q = await db.execute(
-            select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
-        )
-        inv_with_lines = lines_q.unique().scalar_one()
-        for line in inv_with_lines.lines or []:
+        for line in inv.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:
@@ -210,9 +200,9 @@ async def build_modelo_303_data(
             vat_collected_map[rate]["base"] += base
             vat_collected_map[rate]["quota"] += quota
 
-    # IVA deducible (compras)
+    # IVA deducible (compras) — eager-load lines (antes N+1)
     received_q = await db.execute(
-        select(Invoice).where(
+        select(Invoice).options(jl(Invoice.lines)).where(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "received",
@@ -221,15 +211,11 @@ async def build_modelo_303_data(
             )
         )
     )
-    received_invoices = received_q.scalars().all()
+    received_invoices = received_q.unique().scalars().all()
 
     vat_deducted_map: dict[float, dict] = {}
     for inv in received_invoices:
-        lines_q = await db.execute(
-            select(Invoice).options(jl(Invoice.lines)).where(Invoice.id == inv.id)
-        )
-        inv_with_lines = lines_q.unique().scalar_one()
-        for line in inv_with_lines.lines or []:
+        for line in inv.lines or []:
             rate = float(line.tax_percentage or 21)
             base = float(line.quantity or 1) * float(line.unit_price or 0)
             if line.discount_percentage:

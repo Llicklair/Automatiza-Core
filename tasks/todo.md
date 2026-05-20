@@ -8,23 +8,14 @@
 
 ### Bugs abiertos
 
-- [ ] **Bug cleanup tasks vs audit_log WORM** (descubierto 2026-05-19): el endpoint
-  `DELETE /api/v1/tasks/cleanup` (`services/workflow/task.py:187`) hace
-  `DELETE FROM audit_log WHERE task_id IN (...)`, pero `audit_log` tiene trigger
-  `audit_log_no_delete` BEFORE DELETE que lo bloquea (`Append-only table:
-  audit_log is immutable (SEC.WORM)`). El backend devuelve 500/cuelga, el frontend
-  muestra el botón "Limpiar(N)" como request pending eterno.
-
-  Workaround aplicado 2026-05-19: 58 tasks zombies del tenant AutomatizaPyme
-  borradas via SQL desactivando triggers temporalmente
-  (`c:\tmp\cleanup_zombies.py`). El bug REAPARECE cuando se acumulen tasks
-  legítimas con audit_log.
-
-  Fix correcto (sesión dedicada, 1-2h): soft-delete en `Task` (añadir flag
-  `is_deleted` + migración + filtrar en frontend) o reescribir cleanup para
-  saltar audit_log y solo borrar tasks que no tengan audit asociado. Trade-off
-  entre compliance WORM (mantener audit_log eternamente) y UX (poder limpiar
-  histórico).
+- [x] **Bug cleanup tasks vs audit_log WORM** ✅ RESUELTO 2026-05-19 (iteración tarde).
+  Fix: soft-delete en `Task` (nueva columna `is_deleted` + migración
+  `0027_tasks_is_deleted`). El servicio `cleanup_tasks` ya no DELETE; marca
+  `is_deleted=True` y deja audit_log intacto (cumplimiento WORM preservado).
+  Consultas (`list_tasks`, `get_task`, `_build_conversation_history`,
+  `_load_recent_tasks_context`) ahora filtran `is_deleted=False`. Cubierto por
+  7 tests nuevos en `tests/test_service_workflow_task.py`. Docstring del
+  endpoint actualizado para reflejar el nuevo contrato.
 
 - [x] **Bug PDF timeout** ✅ RESUELTO 2026-05-19. Causa raíz: prompts
   "genera PDF" hacen al coordinator planificar 2+ steps. Step 1 (RAG) crea el
@@ -59,9 +50,15 @@
 
 ### Refactor arquitectónico (origen: `audit-llm-e2e.md`)
 
-- [ ] **#2 Limpieza `__init__.py` de 11 dominios** — Opción A pragmática (~30-45 min, riesgo bajo):
-  - Mantener: `graph`, tools individuales públicas (las que importa `tool_registry.py`), `run_email_agent` + `send_email_direct` (email), `run_workflow_agent` (workflow).
-  - Quitar del export público: `workflow` uncompiled, `<dom>_agent_node`, `<dom>_finalize_node`, `<DOM>_SYSTEM_PROMPT`, helpers internos, lista `tools` redundante.
+- [x] **#2 Limpieza `__init__.py` de 11 dominios** ✅ CERRADO 2026-05-19 (iteración tarde).
+  El barrido anterior dejó pendiente `orchestrator/__init__.py` (re-exportaba
+  todos los nodos del grafo + dispatchers internos + tipos auxiliares). Ahora
+  expone solo `orchestrator`, `OrchestratorState`, `TaskStatus` — verificado
+  con `grep` que esos son los únicos símbolos consumidos desde fuera del
+  paquete. Submódulos (`_dispatch_handlers`, `state`, `dispatchers`, etc.)
+  siguen accesibles vía path completo. Resto de paquetes (banking, billing,
+  compliance, crm, documents, hr, marketing, rag, recruitment, workflow,
+  email, accounting) ya estaban en estado mínimo desde el commit 16b6e2d.
 - [ ] **#3 `AgentResult` end-to-end en 12/14 `agent.py`** — Opción B (~5-7h, sesión dedicada):
   - Añadir `async def run_agent(state, ...) -> AgentResult` a cada `agent.py` envolviendo `graph.ainvoke()`.
   - Migrar 11 dispatchers a `run_agent()`.

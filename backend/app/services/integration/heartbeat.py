@@ -227,8 +227,14 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
                     update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle")
                 )
                 await db.commit()
-        except Exception:
-            pass
+        except Exception as recovery_err:
+            # Recovery del status del empleado falló — quedará en "working" colgado.
+            # Health-check pre-dispatch lo bloqueará en próximas invocaciones.
+            logger.warning(
+                "No se pudo restaurar status='idle' del empleado %s tras fallo de "
+                "heartbeat: %s: %s",
+                employee_id, type(recovery_err).__name__, recovery_err,
+            )
 
 
 # ─── Bootstrap en Startup ─────────────────────────────────────────────────────

@@ -40,6 +40,11 @@ class Task(Base):
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
 
+    # Soft-delete: cleanup_tasks() marca is_deleted=True en lugar de DELETE
+    # para no romper FK desde audit_log (tabla WORM, mig 0012). Las queries de
+    # listado filtran is_deleted=False.
+    is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
+
     tenant = relationship("Tenant", back_populates="tasks")
     audit_entries = relationship("AuditLog", back_populates="task")
     pending_approvals = relationship("PendingApproval", back_populates="task")

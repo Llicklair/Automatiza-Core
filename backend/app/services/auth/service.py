@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.datetime_utils import as_aware
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -173,7 +174,7 @@ async def reset_password(token: str, new_password: str, db: AsyncSession) -> dic
         raise ValueError("Enlace inválido o expirado.")
     if reset_token.used_at is not None:
         raise ValueError("Este enlace ya fue utilizado.")
-    if reset_token.expires_at < datetime.now(UTC):
+    if as_aware(reset_token.expires_at) < datetime.now(UTC):
         raise ValueError("El enlace ha expirado. Solicita uno nuevo.")
 
     # Actualizar contraseña
