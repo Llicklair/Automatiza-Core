@@ -451,3 +451,235 @@ async def build_modelo_390_data(
         "num_facturas_emitidas": len(issued),
         "num_facturas_recibidas": len(received),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Modelo 115 — Retenciones IRPF de arrendamientos urbanos (trimestral)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Tipo de retención vigente (19% desde 2016). Confirmar anualmente.
+TIPO_RETENCION_115 = Decimal("19.0")
+
+# Palabras clave para detectar alquileres en facturas recibidas. Heurístico —
+# se afinará cuando exista campo `category` o flag explícito en Invoice.
+_KEYWORDS_ALQUILER = (
+    "alquiler", "arrendamiento", "renta inmueble", "renta local",
+    "renta oficina", "renta nave", "lease", "leasing inmobiliario",
+)
+
+
+def _is_alquiler(text: str | None) -> bool:
+    if not text:
+        return False
+    low = text.lower()
+    return any(kw in low for kw in _KEYWORDS_ALQUILER)
+
+
+async def build_modelo_115_data(
+    db: AsyncSession,
+    tenant_id: UUID,
+    quarter: int,
+    year: int,
+) -> dict[str, Any]:
+    """Modelo 115 — retenciones e ingresos a cuenta de rendimientos del capital
+    inmobiliario (alquileres de inmuebles urbanos).
+
+    Heurístico v1: detecta facturas RECIBIDAS cuya descripción o notas
+    contengan palabras clave de arrendamiento ("alquiler", "arrendamiento"…).
+    Para cada una calcula 19% sobre la base imponible.
+
+    LIMITACIÓN: la app no tiene un flag "tipo: alquiler" en facturas, así que
+    la detección puede dar falsos negativos si el proveedor no escribe la
+    palabra clave en el concepto. Recomendado validar la lista antes de
+    presentar.
+    """
+    if quarter not in (1, 2, 3, 4):
+        raise ValueError("quarter debe ser 1, 2, 3 o 4")
+
+    quarter_months = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
+    m_start, m_end = quarter_months[quarter]
+    start = date(year, m_start, 1)
+    end = date(year, m_end, monthrange(year, m_end)[1])
+
+    tenant_name, tenant_nif = await _get_tenant_info(db, tenant_id)
+
+    facturas = await _invoices_in_period(
+        db, tenant_id, invoice_type="received", start=start, end=end,
+    )
+
+    # Cargar clientes (=proveedores en facturas recibidas) para enriquecer
+    proveedor_ids = {f.client_id for f in facturas if f.client_id}
+    proveedores_by_id: dict[Any, Client] = {}
+    if proveedor_ids:
+        pq = await db.execute(select(Client).where(Client.id.in_(proveedor_ids)))
+        proveedores_by_id = {c.id: c for c in pq.scalars().all()}
+
+    arrendadores: list[dict[str, Any]] = []
+    total_base = Decimal("0")
+    total_retencion = Decimal("0")
+
+    for inv in facturas:
+        # Buscar en notes, terms y en cualquier descripción de línea
+        texto = " ".join(filter(None, [
+            inv.notes, inv.terms,
+            *[ln.description for ln in (inv.lines or [])],
+        ]))
+        if not _is_alquiler(texto):
+            continue
+
+        base = Decimal(str(inv.amount_base or 0))
+        retencion = (base * TIPO_RETENCION_115 / Decimal("100")).quantize(Decimal("0.01"))
+        prov = proveedores_by_id.get(inv.client_id)
+        arrendadores.append({
+            "invoice_id": str(inv.id),
+            "invoice_number": inv.invoice_number,
+            "nif_arrendador": (prov.nif if prov else None) or "",
+            "nombre_arrendador": (prov.name if prov else None) or "",
+            "fecha": inv.date.date().isoformat() if hasattr(inv.date, "date") else str(inv.date)[:10],
+            "concepto": (inv.notes or (inv.lines[0].description if inv.lines else "") or "")[:160],
+            "base_retencion": float(base),
+            "retencion_practicada": float(retencion),
+        })
+        total_base += base
+        total_retencion += retencion
+
+    arrendadores.sort(key=lambda x: (x["nif_arrendador"], x["fecha"]))
+
+    return {
+        "modelo": "115",
+        "ejercicio": year,
+        "periodo": f"{quarter}T",
+        "tenant": {"name": tenant_name, "nif": tenant_nif},
+        "tipo_retencion_pct": float(TIPO_RETENCION_115),
+        "arrendadores": arrendadores,
+        "num_arrendadores": len({a["nif_arrendador"] for a in arrendadores if a["nif_arrendador"]}),
+        "num_facturas": len(arrendadores),
+        "total_base_retenciones": float(total_base),
+        "total_retencion_practicada": float(total_retencion),
+        "deteccion": "heuristico_keywords",
+        "_warning": (
+            "Detección heurística por palabras clave en concepto/notas. "
+            "Revisa la lista antes de presentar; pueden faltar alquileres si el proveedor "
+            "no usa términos como 'alquiler' o 'arrendamiento' en la factura."
+        ),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Modelo 349 — Operaciones intracomunitarias (trimestral)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Prefijos de país UE para detectar NIF intracomunitarios.
+# ES queda excluido (es operación interior, no entra en el 349).
+_UE_PREFIXES = {
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "EL",
+    "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO",
+    "SK", "SI", "SE",
+}
+
+
+def _detect_pais_ue(nif: str | None) -> str | None:
+    """Devuelve el código de país UE si el NIF empieza por uno conocido."""
+    if not nif:
+        return None
+    n = nif.strip().upper()
+    if len(n) < 3:
+        return None
+    prefix = n[:2]
+    return prefix if prefix in _UE_PREFIXES else None
+
+
+async def build_modelo_349_data(
+    db: AsyncSession,
+    tenant_id: UUID,
+    quarter: int,
+    year: int,
+) -> dict[str, Any]:
+    """Modelo 349 — declaración recapitulativa de operaciones intracomunitarias.
+
+    Detecta facturas EMITIDAS y RECIBIDAS cuyo cliente/proveedor tenga un NIF
+    que empiece por un prefijo de país UE distinto de ES. Agrupa por
+    contraparte y tipo de operación:
+      - E (Entrega de bienes) → facturas emitidas
+      - A (Adquisición de bienes) → facturas recibidas
+
+    LIMITACIÓN: la app no distingue bienes vs servicios. Asumimos bienes (E/A).
+    Para servicios (S/I/T) habría que añadir un campo de naturaleza a las
+    líneas de factura. Documentado como mejora futura.
+    """
+    if quarter not in (1, 2, 3, 4):
+        raise ValueError("quarter debe ser 1, 2, 3 o 4")
+
+    quarter_months = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
+    m_start, m_end = quarter_months[quarter]
+    start = date(year, m_start, 1)
+    end = date(year, m_end, monthrange(year, m_end)[1])
+
+    tenant_name, tenant_nif = await _get_tenant_info(db, tenant_id)
+
+    emitidas = await _invoices_in_period(
+        db, tenant_id, invoice_type="issued", start=start, end=end,
+    )
+    recibidas = await _invoices_in_period(
+        db, tenant_id, invoice_type="received", start=start, end=end,
+    )
+
+    todos_cli_ids = {f.client_id for f in emitidas + recibidas if f.client_id}
+    cli_by_id: dict[Any, Client] = {}
+    if todos_cli_ids:
+        cq = await db.execute(select(Client).where(Client.id.in_(todos_cli_ids)))
+        cli_by_id = {c.id: c for c in cq.scalars().all()}
+
+    # Agrupar por (nif, tipo_operacion)
+    by_key: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def _add(inv: Invoice, tipo: str) -> None:
+        cli = cli_by_id.get(inv.client_id)
+        nif = (cli.nif if cli else None) or ""
+        pais = _detect_pais_ue(nif)
+        if not pais:
+            return
+        key = (nif, tipo)
+        entry = by_key.setdefault(key, {
+            "nif_intracomunitario": nif,
+            "pais_codigo": pais,
+            "nombre_contraparte": (cli.name if cli else None) or "",
+            "tipo_operacion": tipo,
+            "base_imponible": Decimal("0"),
+            "num_operaciones": 0,
+        })
+        entry["base_imponible"] += Decimal(str(inv.amount_base or 0))
+        entry["num_operaciones"] += 1
+
+    for f in emitidas:
+        _add(f, "E")
+    for f in recibidas:
+        _add(f, "A")
+
+    operaciones = [
+        {
+            **v,
+            "base_imponible": float(v["base_imponible"]),
+        }
+        for v in by_key.values()
+    ]
+    operaciones.sort(key=lambda x: (x["pais_codigo"], x["tipo_operacion"], x["nif_intracomunitario"]))
+
+    total = sum(Decimal(str(op["base_imponible"])) for op in operaciones)
+
+    return {
+        "modelo": "349",
+        "ejercicio": year,
+        "periodo": f"{quarter}T",
+        "tenant": {"name": tenant_name, "nif": tenant_nif},
+        "operaciones": operaciones,
+        "num_operadores": len({op["nif_intracomunitario"] for op in operaciones}),
+        "num_lineas": len(operaciones),
+        "total_base_imponible": float(total),
+        "deteccion": "prefijo_nif_pais_ue",
+        "_warning": (
+            "Detección por prefijo de NIF (DE, FR, IT…). Solo entrega/adquisición "
+            "de bienes (E/A) — los servicios intracomunitarios (S/I/T) requieren "
+            "campo adicional en líneas de factura."
+        ),
+    }
