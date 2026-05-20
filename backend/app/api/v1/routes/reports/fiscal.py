@@ -101,6 +101,24 @@ async def generate_modelo_303(
     )
 
 
+@router.get("/modelo-303/expediente")
+async def get_modelo_303_expediente(
+    quarter: int = Query(ge=1, le=4, description="Trimestre (1-4)"),
+    year: int = Query(default=2026, description="Año fiscal"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Expediente listo para presentar el 303 en la SEDE AEAT.
+
+    Devuelve casillas oficiales rellenadas + XML auxiliar + checklist de pasos
+    a seguir + URL al PDF. NO presenta a la SEDE (eso requiere certificado del
+    declarante; ver Fase C del roadmap).
+    """
+    from app.services.aeat import build_expediente_303
+
+    return await build_expediente_303(db, current_user.tenant_id, quarter, year)
+
+
 @router.get("/libro-registro")
 async def export_libro_registro(
     year: int = Query(description="Ano fiscal (p.ej. 2026)"),

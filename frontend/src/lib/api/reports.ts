@@ -75,6 +75,40 @@ export interface FiscalSnapshot {
     resumen_ejecutivo: string;
 }
 
+export interface Casilla303 {
+    codigo: string;
+    descripcion: string;
+    valor: number;
+    editable: boolean;
+    nota: string | null;
+}
+
+export interface ChecklistStep {
+    n: number;
+    titulo: string;
+    detalle: string;
+    completado: boolean;
+}
+
+export interface Modelo303Expediente {
+    tenant: { name: string; nif: string };
+    quarter: number;
+    year: number;
+    periodo: string;
+    casillas: Casilla303[];
+    resumen: {
+        total_devengado: number;
+        total_deducible: number;
+        resultado: number;
+        signo: "ingresar" | "compensar" | "cero";
+    };
+    xml: string;
+    xml_filename: string;
+    xml_base64: string;
+    pdf_url: string;
+    checklist: ChecklistStep[];
+}
+
 export const reports = {
     snapshot: (month?: string) =>
         request<CompanySnapshot>(`/api/v1/reports/company-snapshot${month ? `?month=${month}` : ""}`),
@@ -89,6 +123,10 @@ export const reports = {
     delete: (id: string) => request(`/api/v1/reports/${id}`, { method: "DELETE" }),
     libroRegistro: (year: number, type: "emitidas" | "recibidas" = "emitidas") =>
         downloadBlob(`/api/v1/reports/libro-registro?year=${year}&type=${type}`, `LibroRegistro_${type}_${year}.csv`),
+    modelo303Pdf: (quarter: number, year: number) =>
+        downloadBlob(`/api/v1/reports/modelo-303?quarter=${quarter}&year=${year}`, `Modelo303_Q${quarter}_${year}.pdf`),
+    modelo303Expediente: (quarter: number, year: number) =>
+        request<Modelo303Expediente>(`/api/v1/reports/modelo-303/expediente?quarter=${quarter}&year=${year}`),
 };
 
 export const advisory = {

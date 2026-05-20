@@ -1,21 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import {
     CalendarClock, AlertTriangle, CheckCircle2,
-    Loader2, ChevronRight, Clock, ReceiptText, MessageSquare,
+    Loader2, ChevronRight, Clock, ReceiptText, MessageSquare, Sparkles,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { useImpuestos } from "./_hooks/useImpuestos";
 import { EventCard } from "./_components/EventCard";
 import { ConsultaRapida } from "./_components/ConsultaRapida";
 import { LibroRegistroExport } from "./_components/LibroRegistroExport";
+import { Expediente303Drawer } from "./_components/Expediente303Drawer";
+
+function currentQuarterYear(): { quarter: number; year: number } {
+    const d = new Date();
+    return { quarter: Math.floor(d.getMonth() / 3) + 1, year: d.getFullYear() };
+}
 
 export default function ImpuestosPage() {
     const { events, loading, error, urgentes, proximos } = useImpuestos();
+    const [exp303Open, setExp303Open] = useState(false);
+    const [exp303Q, setExp303Q] = useState(currentQuarterYear());
 
     return (
         <div className="p-6 space-y-6">
@@ -52,6 +62,44 @@ export default function ImpuestosPage() {
                 </TabsContent>
 
                 <TabsContent value="calendario" className="space-y-6">
+                    {/* Expediente Modelo 303 — atajo prominente */}
+                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
+                        <CardContent className="p-5 flex items-start justify-between gap-4 flex-wrap">
+                            <div className="flex items-start gap-3 flex-1 min-w-[280px]">
+                                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                                    <Sparkles className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-foreground">
+                                        Expediente Modelo 303 — listo para presentar
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 max-w-prose">
+                                        Casillas oficiales rellenadas desde tus facturas, XML auxiliar, PDF y checklist paso a paso para presentar tú mismo en la SEDE AEAT.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={`${exp303Q.quarter}-${exp303Q.year}`}
+                                    onChange={(e) => {
+                                        const [q, y] = e.target.value.split("-").map(Number);
+                                        setExp303Q({ quarter: q, year: y });
+                                    }}
+                                    className="h-9 px-2 rounded-md border border-border bg-card text-sm"
+                                >
+                                    {[1, 2, 3, 4].map((q) => (
+                                        <option key={`${q}-${exp303Q.year}`} value={`${q}-${exp303Q.year}`}>
+                                            {q}T {exp303Q.year}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Button onClick={() => setExp303Open(true)} className="h-9">
+                                    Generar expediente
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <KpiCard
                             title="Vencimientos urgentes"
@@ -133,6 +181,13 @@ export default function ImpuestosPage() {
                     )}
                 </TabsContent>
             </Tabs>
+
+            <Expediente303Drawer
+                quarter={exp303Q.quarter}
+                year={exp303Q.year}
+                open={exp303Open}
+                onClose={() => setExp303Open(false)}
+            />
         </div>
     );
 }
