@@ -16,7 +16,6 @@ from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_excel,
     _dispatch_rag,
     _dispatch_skill,
-    _dispatch_team,
     _dispatch_workflow,
 )
 from app.agents.orchestrator.dispatchers.recruitment import _dispatch_recruitment
@@ -40,7 +39,6 @@ DISPATCHER_MAP = {
     "marketing": _dispatch_marketing,
     "skill": _dispatch_skill,
     "chat": _dispatch_chat,
-    "team": _dispatch_team,
 }
 
 __all__ = [
@@ -61,5 +59,4 @@ __all__ = [
     "_dispatch_marketing",
     "_dispatch_skill",
     "_dispatch_chat",
-    "_dispatch_team",
 ]

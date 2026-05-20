@@ -4,6 +4,78 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-05-20 — Electron arranca `alembic upgrade head` en silencio: fallos quedan invisibles
+
+**Contexto**: Aplicando la migración 0029 (AIEmployee contract) tras una sesión
+de smoke testing, `alembic_version` estaba en `0027_tasks_is_deleted`.
+Faltaba aplicar **dos** migraciones (0028 y 0029), pese a que el usuario
+había arrancado AutomatizaPyme.exe en sesiones previas — y Electron está
+configurado para correr `alembic upgrade head` al arranque en
+`desktop/python-manager.js:360`.
+
+Lo que pasó: 0028 (UNIQUE(tenant_id, nif) en clients) tiene un guard
+defensivo que lanza `RuntimeError` si hay duplicados pre-existentes
+(documentado en su docstring). El smoke testing había creado 6 clientes
+duplicados en el tenant del usuario — el guard se disparó cada vez que
+Electron arrancó, alembic abortó, y 0029 nunca tuvo oportunidad de aplicarse.
+**Pero el usuario no vio nada** porque los logs de migración van al output
+de Python embebido, que el wrapper Electron no escala a la UI.
+
+**Patrón antipatrón**:
+1. Migraciones con guards defensivos que pueden `raise` están bien — el
+   problema es que el wrapper que las ejecuta no propaga el fallo a la UI.
+2. El usuario percibe que la app arranca "normal" y no se entera de que
+   la BD está atascada en una revisión vieja. Bugs futuros relacionados
+   con columnas faltantes se atribuyen a otra cosa.
+
+**Regla de prevención**:
+1. **El wrapper de migraciones Electron debe surfacing fallos**: cualquier
+   `RuntimeError` o exit code distinto de 0 de `alembic upgrade head` debe
+   bloquear el arranque del backend O mostrar una notificación visible al
+   usuario ("La base de datos no se ha podido actualizar: <razón>").
+2. **Endpoint admin de health**: `/api/v1/admin/db-status` que devuelva
+   `current_revision` vs `head_revision` para detectar drift desde fuera.
+   Equivalente al `system_status_check` que ya existe pero específico para
+   alembic.
+3. **Migraciones que `raise` deben dejar una marca persistente**: e.g.,
+   escribir un fichero `migrations_blocked.txt` en `APPDATA/AutomatizaPyme/`
+   con el último error, que el frontend pueda leer y mostrar.
+
+**Aplicación**: revisar `desktop/python-manager.js` para asegurar que el
+output de `command.upgrade()` se inspecciona y se notifica. Hasta que esté:
+cualquier sesión de testing intensivo (smoke, seed) debe terminar con un
+`alembic current` manual para verificar el estado de la BD antes de cerrar.
+
+---
+
+## 2026-05-20 — `UPDATE ... WHERE col = ANY(%s)` con UUID requiere cast explícito
+
+**Contexto**: el script de merge de clientes duplicados (resolución previa
+a 0028) usaba `UPDATE invoices SET client_id = %s WHERE client_id = ANY(%s)`
+pasando una lista Python de objetos `uuid.UUID`. Postgres respondió:
+*"operator does not exist: uuid = text"*. La transacción rollback y nada
+quedó tocado, pero el patrón es trampa: psycopg2 serializa la lista como
+`text[]` por defecto, no como `uuid[]`.
+
+**Patrón antipatrón**:
+- Asumir que psycopg2 detecta el tipo del array por el tipo de sus items.
+- Mismatch UUID/TEXT se silencia hasta runtime; tests con SQLite no lo
+  detectan (SQLite no distingue tipos como Postgres).
+
+**Regla de prevención**:
+1. Para `ANY(%s)` con columnas tipadas, **siempre castear** en SQL:
+   `ANY(%s::uuid[])`, `ANY(%s::int[])`, etc. Es defensivo y barato.
+2. Pasar los items como strings cuando se castea (`[str(u) for u in uuids]`).
+   psycopg2 los promociona correctamente al tipo target del cast.
+3. Mismo patrón aplica a JOINs/comparaciones con función SQL que devuelva
+   text: si hay riesgo de mismatch tipo con la columna, cast explícito.
+
+**Aplicación**: revisión rápida de scripts/migraciones que usen `ANY(%s)`
+con tipos custom (UUID, ENUM, JSONB). Si no llevan cast, son bug latente
+contra Postgres real.
+
+---
+
 ## 2026-05-19 — tz-naive vs tz-aware datetime: SQLite no preserva tzinfo en TIMESTAMPTZ
 
 **Contexto**: Bug encontrado en 6 sitios distintos en la misma sesión.

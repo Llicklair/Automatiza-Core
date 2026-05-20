@@ -1,6 +1,86 @@
 # Tareas activas — AutomatizaPyme
 
-Última actualización: 2026-05-19
+Última actualización: 2026-05-20
+
+---
+
+## Decisión arquitectónica 2026-05-20 — Principio ERP + Contrato del AIEmployee custom
+
+**Contexto**: revisión de tres dudas de diseño (sección AEAT, garantías del
+principio ERP "IA accede a todo", razón de ser de los AIEmployees custom).
+
+**Decisiones**:
+
+1. **Sección "Cumplimiento fiscal ES (AEAT)" unificada** — agrupa Verifactu,
+   SII, Factura electrónica (Facturae B2B Crea y Crece + B2G FACe) y modelos
+   periódicos (303, 390, 111, 130, 347, 349). Piezas compartidas (NIF/CIF,
+   firma, XAdES, WORM chain) no se duplican.
+
+2. **El "agente general" del principio ERP es el Coordinador existente**
+   (`agents/orchestrator/`, inversión de nombre con `services/workflow/` ya
+   documentada en CLAUDE.md). No hace falta crear un agente nuevo — hace
+   falta **auditar exhaustividad**. Tres puntos de sincronización obligatorios
+   ([lessons.md:81](lessons.md#L81)):
+   - `VALID_DOMAINS` (state.py)
+   - `DISPATCHER_MAP` (dispatchers/__init__.py)
+   - `_KEYWORD_MAP` / `_STRONG_KEYWORDS` (classifier.py)
+
+   **Hallazgo inmediato** (descubierto preparando el audit): `team` está en
+   `DISPATCHER_MAP` pero NO en `VALID_DOMAINS` → dominio inalcanzable
+   silenciosamente. Mismo patrón antipatrón que SC-4 (reports).
+
+3. **Contrato mínimo del AIEmployee custom**: para justificar existir frente
+   a `default + system_prompt_addendum`, debe aportar al menos **2 de 4**
+   capacidades. Si solo aporta tono/expertise textual → se degrada a
+   "Perfil" (UI más simple, sin la promesa de autonomía).
+
+   | Capacidad | Campo BD | Tipo |
+   |---|---|---|
+   | Scope filter persistente | `scope` | JSONB nullable |
+   | Memoria persistente | `memory_enabled` + tabla `employee_memory` | bool + tabla |
+   | Knowledge base privada | `knowledge_enabled` + filtro RAG por employee | bool |
+   | Workflows predefinidos | `workflows` | JSONB nullable |
+
+   El bug Yolanda Sánchez ([lessons.md:114](lessons.md#L114)) — custom
+   roto que intercepta routing del builtin con cero valor añadido — es
+   exactamente lo que este contrato previene.
+
+### Tareas concretas derivadas
+
+- [ ] **Audit script `scripts/audit_domain_completeness.py`** ✅ CREADO 2026-05-20.
+  Cruza VALID_DOMAINS × DISPATCHER_MAP × _KEYWORD_MAP × tools registradas en
+  `tool_registry.py`. Salida tabla + exit code 1 si hay asimetría. Ejecutar
+  en pre-commit y antes de cualquier PR que añada un dominio nuevo.
+
+- [ ] **Migración `0029_aiemployee_contract`** ✅ CREADA 2026-05-20.
+  Añade columnas `scope` (JSONB), `memory_enabled` (Bool default False),
+  `knowledge_enabled` (Bool default False), `workflows` (JSONB) a
+  `ai_employees`. Modelo SQLAlchemy actualizado. Tablas `employee_memory` y
+  filtro RAG por employee se introducen en migraciones posteriores cuando
+  toque implementar las capacidades.
+
+- [x] **Eliminado `team` de DISPATCHER_MAP** ✅ 2026-05-20.
+  `_dispatch_team` era dead code (zero callers externos). Removidas las 4
+  referencias en `dispatchers/__init__.py` + función borrada en `misc.py`.
+  Audit script vuelve a 0 críticos.
+
+- [x] **Migración 0028 + 0029 aplicada en BD del usuario** ✅ 2026-05-20.
+  alembic_version: `0029_aiemployee_contract`. Dedup previo necesario:
+  smoke testing había creado 6 clientes duplicados en tenant
+  "AutomatizaPyme" (9cd49fbb) que bloqueaban 0028. Mergeados 4 grupos
+  coherentes + resuelto el caso B11223344 (NIF reasignado: Tech Innovations
+  pasó a NIF=NULL, Clínica Dental Montserrat quedó como único owner del NIF).
+  Total: 41 FKs repuntadas, 5 clientes borrados, 1 cliente con NIF a NULL.
+
+- [ ] **UI: split "Empleado IA" vs "Perfil"** — al crear un empleado custom,
+  formulario obliga a marcar ≥2 de las 4 capacidades del contrato; si solo
+  tono/expertise, el flujo redirige al alta de "Perfil". Pendiente de
+  diseño UX (no bloqueante para backend).
+
+- [ ] **Aplicar el contrato a customs existentes**: auditoría DB de los
+  AIEmployees actuales (`is_builtin=False`) — los que no cumplan el contrato
+  se marcan como "Perfil" en una migración data-only o se rellenan con
+  scope/workflows si el usuario los reconoce como verdaderos empleados.
 
 ---
 
