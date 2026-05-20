@@ -1,4 +1,4 @@
-# Reporte de iteración autónoma — 2026-05-19 (tarde, 8 rondas)
+# Reporte de iteración autónoma — 2026-05-19 (tarde, 12 rondas)
 
 > Sesión solicitada por el usuario: iterar sobre el código sin supervisión
 > ~3h para arreglar bugs, limpiar, refactorizar y detectar deficiencias.
@@ -268,6 +268,9 @@ $ npx tsc --noEmit
    afecta a `accept_invitation` → `as_aware()`
 8. **`services/auth/service.py:176` tz-naive vs tz-aware** (latente) —
    afecta a password reset → `as_aware()`
+9. **`task_runner.submit` coro never awaited en duplicados** (latente,
+   descubierto con `-W error::RuntimeWarning`) — RuntimeWarning constante
+   en logs cuando el dispatcher reencolaba tasks en vuelo → `coro.close()`
 
 ## Archivos modificados — resumen final
 
@@ -446,6 +449,161 @@ adicionales — todos con resultado negativo (no son bugs):
 **Hallazgo positivo**: el código está limpio en los antipatrones Python
 clásicos. Los bugs que encontré (tz-naive, WORM, race condition Client)
 eran patrones más sutiles, no fallos de estilo básico.
+
+## Ronda 9 — Cobertura `services/workflow/_execution.py` (11% → ~75%)
+
+Núcleo de ejecución de workflows (run/cancel/resume + deterministic vs
+reasoning dispatch). Pre-iteración: 11% coverage, 421 líneas, 11 funciones.
+
+### 9.1 — 25 tests nuevos (test_service_workflow_execution.py)
+
+**Funciones puras** (sin DB):
+- `_build_ai_instruction`: 6 tests — instruction → intent → description → name → default. Caso especial: `action_config=None` no crashea.
+- `_infer_domain`: 4 tests — agent="coordinator" → "coordinator", resto → "orchestrator".
+
+**Sync helper**:
+- `_run_deterministic_step`: 5 tests — sin tool (error), happy path con call_tool mockeado, `$prev` se sustituye en params, `tenant_id` se inyecta si falta, exception se captura en result sin propagar.
+
+**Async helpers/orquestación**:
+- `execute_deterministic_steps`: 3 tests — lista vacía, secuencia que propaga `prev_output` entre steps, mix deterministic + reasoning (con `_run_reasoning_step` mockeado).
+- `cancel_execution`: 3 tests — cancela running OK, devuelve None si no existe, rechaza estados terminales.
+- `run_workflow`: 4 tests — ValueError si no existe, si desactivado, si ya hay ejecución en curso, happy path reasoning con `dispatch_orchestrator` mockeado.
+
+### 9.2 — Resultado
+
+**0 bugs nuevos encontrados** — el módulo estaba correctamente implementado.
+La cobertura subió de 11% a ~75%. Lo que queda sin tests: node_engine path
+(`has_advanced_nodes` true), `run_workflow_with_context`, `resume_execution`,
+`_run_reasoning_step` — todos requieren mockear `_invoke_dispatcher` o
+`dispatch_node_engine`. Esfuerzo: ~30 min adicionales si se quiere llegar
+a ~95%.
+
+**Test focused subset** (workflow/task/audit/approval): 248 passed, 0 failures.
+
+## Ronda 10 — Cobertura `services/workflow/_ui_graph.py` (8% → ~95%)
+
+Generación de grafos UI (ReactFlow) para preview de workflows. Lógica
+pura sin DB ni LLM — 5 funciones, 341 líneas. Pre-iteración solo 8%.
+
+### 10.1 — 31 tests nuevos (test_service_workflow_ui_graph.py)
+
+- `_per_domain_instruction`: 6 tests — single vs multi mode, dominio
+  conocido vs desconocido, master None/vacío, **guard contra olvidar
+  añadir un dominio nuevo a `_DOMAIN_DIRECTIVES`**.
+- `plan_to_ui_graph`: 8 tests — plan vacío, single step, sin deps →
+  trigger, deps → edges, capas topológicas (y posicional crece con
+  profundidad), trigger labels (event/schedule/manual/desconocido →
+  fallback), agent desconocido → titlecase fallback, description
+  recortada a 120 chars.
+- `_pick_employee`: 4 tests — lista vacía/None, **custom gana sobre
+  builtin**, solo builtin, sin match.
+- `_skill_data`: 5 tests — sin employees → default label, custom →
+  domain="custom", builtin → domain=agent (no "custom"), multi=True
+  aplica directiva, employees None no crashea.
+- `generate_preview_nodes`: 7 tests — payload mínimo (1 skill), sin
+  keywords → "Agente IA" genérico, multi-dominio añade nodo de
+  consolidación, employees inyectados, trigger_type event_based,
+  description se concatena a instruction para detección, action_config
+  None no crashea.
+
+### 10.2 — Resultado
+
+**0 bugs reales encontrados** — el módulo estaba correctamente
+implementado. Los 2 fallos iniciales eran expectativas mías mal
+calibradas: con `multi=True` la directiva del dominio se aplica aunque
+master esté vacío (comportamiento intencional — el agente recibe la
+directiva aunque no haya contexto adicional).
+
+### 10.3 — Hallazgo positivo lateral
+
+El test `test_todas_las_directivas_existen` actúa como **guard de
+cobertura conceptual**: si alguien añade un nuevo dominio a
+`_INSTRUCTION_TO_AGENT` pero olvida añadir su directiva a
+`_DOMAIN_DIRECTIVES`, el test fallará. Cierra la clase de "fugas
+silenciosas" del tipo *2026-05-18 — VALID_DOMAINS y DISPATCHER_MAP
+deben estar en sync* documentada en `tasks/lessons.md`.
+
+**Suite focalizada** (workflow/execution/task/audit/approval/ui_graph/
+datetime_utils): 286 passed, 0 failures.
+
+## Ronda 11 — Cobertura `_nlp.py` + `task_runner.py` (10º bug arreglado)
+
+### 11.1 — `_nlp.py` extra (17% → ~95%)
+
+`test_service_workflow_parse_nl.py` ya cubría `parse_natural_language`
+con 5 tests. Faltaban `_load_tenant_employees` y `fire_event`. **14 tests
+nuevos** en `test_service_workflow_nlp_extra.py`:
+
+- `_load_tenant_employees`: tenant None/vacío → [], filtra status activos
+  (idle/working/pending_setup), aislamiento tenant, DB error → [] sin
+  crash (best-effort).
+- `fire_event`: sin workflows → [], workflow inactivo no dispara, evento
+  no coincide → skip, evento `"any"` matchea cualquiera, conditions
+  bloquean dispatch, conditions verdaderas lanzan, path deterministic vs
+  reasoning, aislamiento tenant.
+
+**0 bugs encontrados** — código correcto.
+
+### 11.2 — `task_runner.py` (10 tests + bug latente arreglado)
+
+In-process async task runner (cada workflow/task pasa por aquí en deploys
+single-process desktop). Cobertura previa esencialmente cero.
+
+**10 tests nuevos** cubren submit + duplicado, cancel happy/inexistente/
+terminada, is_running/active_count, submit_delayed, exception →
+`_mark_task_failed`, doble-error no crashea, shutdown cancela pendientes.
+
+**Bug latente arreglado** (descubierto con `-W error::RuntimeWarning`):
+
+```python
+# task_runner.py:submit() — antes:
+if task_id in self._tasks and not self._tasks[task_id].done():
+    logger.warning("Tarea %s ya en ejecución, ignorando duplicado", task_id)
+    return  # ← `coro` queda sin awaitar → RuntimeWarning en logs
+```
+
+En producción, cada vez que el dispatcher intentaba reencolar una task
+ya en vuelo, se generaba un `RuntimeWarning: coroutine was never
+awaited` en los logs. Cosmético (no rompe nada) pero ruido constante.
+
+**Fix**: `coro.close()` antes de `return` para liberar la corutina
+rechazada limpiamente.
+
+### 11.3 — Suite focalizada
+
+`workflow|execution|task|audit|approval|ui_graph|datetime_utils|nlp|runner`:
+**310 passed**, 0 failures, 1 warning (pydantic v2 legacy config, no
+relacionado).
+
+## Ronda 12 — Cobertura `scheduler.py` (36% → ~95%)
+
+7 helpers DB que la capa scheduler usa para encapsular SQLAlchemy fuera
+del worker APScheduler (`tasks_scheduler.py`). 113 líneas, todos
+async + tenant-aware.
+
+### 12.1 — 13 tests nuevos
+
+- `get_active_scheduled_workflows`: filtra `is_active=True AND
+  trigger_type=schedule_based`, descarta inactivos/event_based/manual
+- `has_active_execution`: True para running/pending, False para terminales
+  (success/failed/cancelled) y para workflows sin ejecuciones
+- `get_last_execution`: ordena por `started_at desc`, None si no hay
+- `create_execution`: inserta + flush (sin commit), propaga `tenant_id`
+  del workflow al execution
+- `create_task_for_execution`: crea Task con `created_by=None` (scheduler
+  no tiene usuario), vincula `execution.task_id`
+- `get_stuck_executions`: filtra `status=running AND started_at < cutoff`,
+  excluye recientes y otros estados
+- `mark_executions_failed`: marca status=failed + completed_at, appendea
+  note al result_log existente, lista vacía OK
+
+### 12.2 — Resultado
+
+**0 bugs encontrados** — código correcto. Cobertura subió de 36% a ~95%.
+
+**Suite focalizada**:
+`workflow|execution|task|audit|approval|ui_graph|datetime_utils|nlp|runner|scheduler`:
+**325 passed**, 0 failures.
 
 ## Follow-ups pendientes (no aplicados, documentados)
 
