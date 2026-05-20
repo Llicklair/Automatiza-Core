@@ -188,21 +188,33 @@ export function ConciliacionTab() {
                                             <span className="text-xs text-muted-foreground italic">Sin coincidencias</span>
                                         ) : (
                                             <>
-                                                {suggs.length > 0 && (
-                                                    <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                                                        {suggs.length} sugerencia{suggs.length > 1 ? "s" : ""}
-                                                    </span>
-                                                )}
+                                                {suggs.length > 0 && (() => {
+                                                    const topScore = suggs[0]?.score ?? 0;
+                                                    const tone = topScore >= 80
+                                                        ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                                        : topScore >= 50
+                                                            ? "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                                                            : "text-muted-foreground bg-muted/30 border-border";
+                                                    return (
+                                                        <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${tone}`} title={`Confianza del mejor candidato`}>
+                                                            {suggs.length} sugerencia{suggs.length > 1 ? "s" : ""}{topScore ? ` · ${topScore}%` : ""}
+                                                        </span>
+                                                    );
+                                                })()}
                                                 <select
                                                     value={sel}
                                                     onChange={(e) => setSelectedInvoice((prev) => ({ ...prev, [tx.id]: e.target.value }))}
-                                                    className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary/50 max-w-[280px]"
+                                                    className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary/50 max-w-[320px]"
                                                 >
-                                                    {invoicePool.map((inv) => (
-                                                        <option key={inv.id} value={inv.id}>
-                                                            {inv.invoice_number ?? "S/N"} · {fmt(inv.amount_total)}{inv.client_name ? ` · ${inv.client_name}` : ""}
-                                                        </option>
-                                                    ))}
+                                                    {invoicePool.map((inv) => {
+                                                        const suggested = suggs.find(s => s.id === inv.id);
+                                                        const scoreLabel = suggested?.score ? ` · ★${suggested.score}` : "";
+                                                        return (
+                                                            <option key={inv.id} value={inv.id}>
+                                                                {inv.invoice_number ?? "S/N"} · {fmt(inv.amount_total)}{inv.client_name ? ` · ${inv.client_name}` : ""}{scoreLabel}
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </select>
                                             </>
                                         )}

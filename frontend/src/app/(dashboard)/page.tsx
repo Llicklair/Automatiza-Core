@@ -12,6 +12,7 @@ import { AiActivitySection } from "./_components/AiActivitySection";
 import { ApprovalsSection } from "./_components/ApprovalsSection";
 import { RrhhWidget } from "./_components/RrhhWidget";
 import { LiveTeamSection } from "./_components/LiveTeamSection";
+import { MorningBrief } from "./_components/MorningBrief";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
@@ -38,6 +39,8 @@ export default function DashboardPage() {
                     Aquí tienes el resumen financiero y operativo de tu negocio.
                 </p>
             </div>
+
+            <MorningBrief />
 
             <AiChatBar />
 
