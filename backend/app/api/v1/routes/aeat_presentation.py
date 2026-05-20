@@ -165,6 +165,99 @@ async def create_303_from_quarter(
     return presentation_to_dict(p)
 
 
+_QUARTERLY_BUILDERS = {
+    "111": "build_modelo_111_data",
+    "130": "build_modelo_130_data",
+}
+
+_YEARLY_BUILDERS = {
+    "190": "build_modelo_190_data",
+    "347": "build_modelo_347_data",
+    "390": "build_modelo_390_data",
+}
+
+
+async def _build_xml_generic(
+    db, tenant_id, model_code: str, year: int, period: str, quarter: int | None,
+) -> str:
+    """Construye XML auxiliar reusando los builders de services.reports.modelos_aeat."""
+    from app.services.aeat import build_modelo_xml_generic
+    from app.services.reports import modelos_aeat as _ma
+
+    if model_code in _QUARTERLY_BUILDERS:
+        builder = getattr(_ma, _QUARTERLY_BUILDERS[model_code])
+        if quarter is None:
+            raise PresentationError(f"Modelo {model_code} requiere quarter")
+        data = await builder(db, tenant_id, quarter, year)
+    elif model_code in _YEARLY_BUILDERS:
+        builder = getattr(_ma, _YEARLY_BUILDERS[model_code])
+        data = await builder(db, tenant_id, year)
+    else:
+        raise PresentationError(f"Modelo {model_code} sin builder de datos.")
+
+    tenant = data.get("tenant") if isinstance(data, dict) else None
+    return build_modelo_xml_generic(
+        modelo=model_code, year=year, period=period, data=data,
+        tenant_name=(tenant or {}).get("name", ""),
+        tenant_nif=(tenant or {}).get("nif", ""),
+    )
+
+
+@router.post("/presentations/quarterly-from-period", status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
+async def create_quarterly_presentation(
+    request: Request,
+    model_code: str = Query(..., description="111 | 130"),
+    quarter: int = Query(ge=1, le=4),
+    year: int = Query(...),
+    environment: str = Query("preproduccion"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Atajo para modelos trimestrales (111, 130). Construye XML y crea presentación."""
+    if model_code not in _QUARTERLY_BUILDERS:
+        raise HTTPException(status_code=400, detail=f"Modelo trimestral no soportado: {model_code}")
+    try:
+        xml_str = await _build_xml_generic(
+            db, current_user.tenant_id, model_code, year, f"{quarter}T", quarter,
+        )
+        p = await create_presentation(
+            db, current_user.tenant_id, current_user.id,
+            model_code=model_code, year=year, period=f"{quarter}T",
+            xml_unsigned=xml_str, environment=environment,
+        )
+    except PresentationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return presentation_to_dict(p)
+
+
+@router.post("/presentations/yearly-from-period", status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
+async def create_yearly_presentation(
+    request: Request,
+    model_code: str = Query(..., description="190 | 347 | 390"),
+    year: int = Query(...),
+    environment: str = Query("preproduccion"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Atajo para modelos anuales (190, 347, 390)."""
+    if model_code not in _YEARLY_BUILDERS:
+        raise HTTPException(status_code=400, detail=f"Modelo anual no soportado: {model_code}")
+    try:
+        xml_str = await _build_xml_generic(
+            db, current_user.tenant_id, model_code, year, "A", None,
+        )
+        p = await create_presentation(
+            db, current_user.tenant_id, current_user.id,
+            model_code=model_code, year=year, period="A",
+            xml_unsigned=xml_str, environment=environment,
+        )
+    except PresentationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return presentation_to_dict(p)
+
+
 @router.post("/presentations/{presentation_id}/submit")
 @limiter.limit("5/minute")
 async def submit_presentation_endpoint(
