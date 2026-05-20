@@ -27,6 +27,10 @@ class TaskRunner:
         """Lanza una corrutina como tarea de fondo, indexada por task_id."""
         if task_id in self._tasks and not self._tasks[task_id].done():
             logger.warning("Tarea %s ya en ejecución, ignorando duplicado", task_id)
+            # Cerrar la corutina rechazada — sin esto Python emite
+            # "coroutine was never awaited" RuntimeWarning en logs.
+            if hasattr(coro, "close"):
+                coro.close()
             return
 
         async def _wrapper():
