@@ -189,6 +189,21 @@ export const hr = {
             formData.append("file", file);
             return requestUpload<Expense>(`/api/v1/hr/expenses/${id}/receipt`, formData);
         },
+        scanReceipt: (file: File) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            return requestUpload<{
+                amount: number;
+                vat_amount: number | null;
+                vat_rate: number | null;
+                date: string;
+                merchant: string;
+                merchant_nif: string | null;
+                category: string;
+                description: string;
+                confidence: number;
+            }>(`/api/v1/hr/expenses/scan`, formData);
+        },
         downloadReceipt: (id: string, filename: string) =>
             downloadBlob(`/api/v1/hr/expenses/${id}/receipt`, filename),
         delete: (id: string) =>

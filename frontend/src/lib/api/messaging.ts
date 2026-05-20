@@ -71,6 +71,25 @@ export interface DriveFile {
     is_folder: boolean;
 }
 
+export type EmailCategory =
+    | "urgente" | "factura" | "consulta" | "proveedor"
+    | "rrhh" | "marketing" | "spam" | "otro";
+
+export interface EmailClassification {
+    id: string;
+    category: EmailCategory;
+    urgency: number;        // 1-5
+    requires_reply: boolean;
+    suggested_action: string;
+}
+
+export interface EmailDraftResult {
+    subject: string;
+    body: string;
+    confidence: number;
+    warnings: string[];
+}
+
 export const messaging = {
     telegram: {
         connect: () =>
@@ -99,6 +118,16 @@ export const messaging = {
             request<InboxResponse>(`/api/v1/messaging/email/inbox?limit=${limit}`),
         getMessage: (id: string) =>
             request<EmailDetail>(`/api/v1/messaging/email/messages/${encodeURIComponent(id)}`),
+        classify: (messages: Pick<InboxMessage, "id" | "from" | "subject" | "snippet">[]) =>
+            request<{ items: EmailClassification[] }>("/api/v1/messaging/email/classify", {
+                method: "POST",
+                body: JSON.stringify({ messages }),
+            }),
+        draftReply: (messageId: string, context?: string) =>
+            request<EmailDraftResult>("/api/v1/messaging/email/draft-reply", {
+                method: "POST",
+                body: JSON.stringify({ message_id: messageId, context }),
+            }),
     },
     drive: {
         list: (folder = "root", q = "") => {

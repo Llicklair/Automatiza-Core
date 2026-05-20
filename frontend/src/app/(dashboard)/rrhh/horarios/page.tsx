@@ -127,10 +127,31 @@ export default function HorariosPage() {
                 </div>
             )}
 
+            {employees.length > 0 && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground flex items-start gap-3">
+                    <Clock className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <p className="font-medium">Cómo editar un horario manualmente</p>
+                        <p className="text-muted-foreground text-xs mt-0.5">
+                            Marca el <span className="text-foreground font-medium">check de cada día laborable</span> y luego edita las horas de entrada/salida. Los días en gris son libres. Pulsa <span className="text-foreground font-medium">Guardar</span> después de cambiar.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="space-y-4">
                 {employees.map((emp) => {
                     const grid = grids[emp.id] ?? {};
                     const weeklyHours = calcWeeklyHours(grid);
+                    const applyWeekdays = () => {
+                        for (let i = 0; i < 5; i++) {
+                            updateCell(emp.id, i, "active", true);
+                            updateCell(emp.id, i, "start_time", "09:00");
+                            updateCell(emp.id, i, "end_time", "17:00");
+                        }
+                        updateCell(emp.id, 5, "active", false);
+                        updateCell(emp.id, 6, "active", false);
+                    };
                     return (
                         <Card key={emp.id}>
                             <CardContent className="p-5">
@@ -144,10 +165,19 @@ export default function HorariosPage() {
                                             <p className="text-xs text-muted-foreground">{emp.role || emp.department || "—"}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <Badge variant="secondary" className="text-xs">
                                             {weeklyHours.toFixed(1)}h / semana
                                         </Badge>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-xs h-8 text-muted-foreground hover:text-foreground"
+                                            onClick={applyWeekdays}
+                                            title="Marca lunes a viernes de 09:00 a 17:00 y deja libre el fin de semana"
+                                        >
+                                            L–V 9 a 17
+                                        </Button>
                                         <Button
                                             size="sm"
                                             variant="outline"
@@ -165,31 +195,50 @@ export default function HorariosPage() {
                                 <div className="grid grid-cols-7 gap-2">
                                     {DAYS.map((label, i) => {
                                         const day = grid[i] ?? { start_time: "09:00", end_time: "17:00", active: false };
+                                        const cellId = `cell-${emp.id}-${i}`;
                                         return (
-                                            <div key={i} className="flex flex-col gap-1.5">
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-xs font-medium ${day.active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                                            <div
+                                                key={i}
+                                                className={`flex flex-col gap-1.5 rounded-lg border p-2 transition-colors ${
+                                                    day.active
+                                                        ? "border-primary/30 bg-primary/5"
+                                                        : "border-dashed border-border bg-muted/20"
+                                                }`}
+                                            >
+                                                <label
+                                                    htmlFor={cellId}
+                                                    className="flex items-center justify-between cursor-pointer select-none gap-1"
+                                                    title={day.active ? "Día laborable. Desmarca para libranza." : "Día libre. Marca para asignar horario."}
+                                                >
+                                                    <span className={`text-xs font-semibold ${day.active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
                                                     <input
+                                                        id={cellId}
                                                         type="checkbox"
                                                         checked={day.active}
                                                         onChange={(e) => updateCell(emp.id, i, "active", e.target.checked)}
-                                                        className="h-3.5 w-3.5 rounded accent-primary"
+                                                        className="h-4 w-4 rounded accent-primary cursor-pointer"
                                                     />
-                                                </div>
-                                                <Input
-                                                    type="time"
-                                                    value={day.start_time}
-                                                    disabled={!day.active}
-                                                    onChange={(e) => updateCell(emp.id, i, "start_time", e.target.value)}
-                                                    className="h-8 text-xs px-2 disabled:opacity-40"
-                                                />
-                                                <Input
-                                                    type="time"
-                                                    value={day.end_time}
-                                                    disabled={!day.active}
-                                                    onChange={(e) => updateCell(emp.id, i, "end_time", e.target.value)}
-                                                    className="h-8 text-xs px-2 disabled:opacity-40"
-                                                />
+                                                </label>
+                                                {day.active ? (
+                                                    <>
+                                                        <Input
+                                                            type="time"
+                                                            value={day.start_time}
+                                                            onChange={(e) => updateCell(emp.id, i, "start_time", e.target.value)}
+                                                            className="h-8 text-xs px-2"
+                                                        />
+                                                        <Input
+                                                            type="time"
+                                                            value={day.end_time}
+                                                            onChange={(e) => updateCell(emp.id, i, "end_time", e.target.value)}
+                                                            className="h-8 text-xs px-2"
+                                                        />
+                                                    </>
+                                                ) : (
+                                                    <div className="flex-1 flex items-center justify-center text-[11px] uppercase tracking-wider text-muted-foreground/60 py-1">
+                                                        Libre
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}

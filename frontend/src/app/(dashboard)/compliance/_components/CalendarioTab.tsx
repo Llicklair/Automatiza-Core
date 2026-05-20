@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { AlertTriangle, CalendarClock, MessageSquare, Loader2 } from "lucide-react";
-import { executeTaskAndWait, type Vencimiento } from "../_hooks/useCompliance";
+import { api } from "@/lib/api";
+import { type Vencimiento } from "../_hooks/useCompliance";
 
 function VencimientoCard({ v, urgent }: { v: Vencimiento; urgent?: boolean }) {
     return (
@@ -38,14 +39,22 @@ export function CalendarioTab() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        executeTaskAndWait("compliance", "vencimientos fiscales próximos 60 días")
-            .then((results: any) => {
-                setVencimientos(results?.vencimientos || []);
-                setAlertas(results?.alertas || []);
+        api.advisory.calendar(90)
+            .then((data) => {
+                const list = (data || []) as Vencimiento[];
+                setVencimientos(list);
+                // Alertas derivadas client-side: lista de modelos que vencen
+                // en los próximos `urgente_dias` días.
+                const urgentes = list.filter(v => v.dias_restantes <= v.urgente_dias);
+                setAlertas(
+                    urgentes.map(v =>
+                        `Modelo ${v.modelo} (${v.nombre}) vence en ${v.dias_restantes} día${v.dias_restantes === 1 ? "" : "s"}.`,
+                    ),
+                );
                 setLoading(false);
             })
             .catch((err) => {
-                setError(err.message);
+                setError(err instanceof Error ? err.message : "Error al cargar el calendario");
                 setLoading(false);
             });
     }, []);
@@ -76,7 +85,7 @@ export function CalendarioTab() {
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 mb-6">
                     <h2 className="text-sm font-medium text-primary mb-3 flex items-center gap-2">
                         <MessageSquare className="w-4 h-4" />
-                        Avisos del Asesor Fiscal
+                        Avisos urgentes
                     </h2>
                     <ul className="space-y-2 text-sm text-foreground list-disc pl-5">
                         {alertas.map((alerta, i) => (

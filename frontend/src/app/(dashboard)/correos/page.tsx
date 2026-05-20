@@ -1,9 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Mail, Send, Bot, AlertCircle, CheckCircle2, Loader2, Paperclip, X, FileText, Inbox, RefreshCw, HardDrive, Folder } from "lucide-react";
+import { Mail, Send, Bot, AlertCircle, CheckCircle2, Loader2, Paperclip, X, FileText, Inbox, RefreshCw, HardDrive, Folder, Sparkles, Flame, FileSpreadsheet, MessageSquare, Truck, Users, Megaphone, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { EmailStatus, InboxMessage, EmailDetail, DriveFile } from "@/lib/api/messaging";
+import type { EmailStatus, InboxMessage, EmailDetail, DriveFile, EmailClassification, EmailCategory } from "@/lib/api/messaging";
+
+const CATEGORY_META: Record<EmailCategory, { label: string; icon: typeof Mail; tone: string }> = {
+    urgente:   { label: "Urgente",    icon: Flame,           tone: "bg-rose-500/15 text-rose-500 border-rose-500/30" },
+    factura:   { label: "Factura",    icon: FileSpreadsheet, tone: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" },
+    consulta:  { label: "Consulta",   icon: MessageSquare,   tone: "bg-primary/15 text-primary border-primary/30" },
+    proveedor: { label: "Proveedor",  icon: Truck,           tone: "bg-amber-500/15 text-amber-500 border-amber-500/30" },
+    rrhh:      { label: "RRHH",       icon: Users,           tone: "bg-violet-500/15 text-violet-500 border-violet-500/30" },
+    marketing: { label: "Marketing",  icon: Megaphone,       tone: "bg-muted text-muted-foreground border-border" },
+    spam:      { label: "Spam",       icon: Trash2,          tone: "bg-muted/40 text-muted-foreground/70 border-border line-through" },
+    otro:      { label: "Otro",       icon: Mail,            tone: "bg-muted text-muted-foreground border-border" },
+};
 import type { Document } from "@/lib/api/documents";
 
 function formatBytes(bytes: number): string {
@@ -51,6 +62,10 @@ export default function CorreosPage() {
     const [inboxLoading, setInboxLoading] = useState(false);
     const [inboxProvider, setInboxProvider] = useState<"gmail" | "outlook" | null>(null);
     const [selectedMsg, setSelectedMsg] = useState<EmailDetail | null>(null);
+    const [classMap, setClassMap] = useState<Record<string, EmailClassification>>({});
+    const [classLoading, setClassLoading] = useState(false);
+    const [draftLoading, setDraftLoading] = useState(false);
+    const [draftError, setDraftError] = useState<string | null>(null);
     const [bodyLoading, setBodyLoading] = useState(false);
 
     // Drive picker
@@ -67,12 +82,50 @@ export default function CorreosPage() {
         api.messaging.email.status().then(setStatus).catch(() => null);
     }, []);
 
+    async function classifyInbox(msgs: InboxMessage[]) {
+        if (msgs.length === 0) return;
+        setClassLoading(true);
+        try {
+            const res = await api.messaging.email.classify(
+                msgs.map((m) => ({ id: m.id, from: m.from, subject: m.subject, snippet: m.snippet })),
+            );
+            const map: Record<string, EmailClassification> = {};
+            for (const item of res.items) map[item.id] = item;
+            setClassMap(map);
+        } catch {
+            // Silencioso: la bandeja sigue funcional sin clasificación.
+        } finally {
+            setClassLoading(false);
+        }
+    }
+
+    async function handleDraftReply() {
+        if (!selectedMsg) return;
+        setDraftLoading(true);
+        setDraftError(null);
+        try {
+            const draft = await api.messaging.email.draftReply(selectedMsg.id);
+            // Pre-rellenar composer y cambiar de pestaña
+            setTo(selectedMsg.from);
+            setSubject(draft.subject || `Re: ${selectedMsg.subject}`);
+            setBody(draft.body);
+            setSelectedMsg(null);
+            setActiveTab("componer");
+        } catch (e) {
+            setDraftError(e instanceof Error ? e.message : "No se pudo redactar el borrador");
+        } finally {
+            setDraftLoading(false);
+        }
+    }
+
     async function loadInbox() {
         setInboxLoading(true);
         try {
             const res = await api.messaging.email.inbox(20);
             setInboxMessages(res.messages);
             setInboxProvider(res.provider);
+            // Lanzar clasificación IA en segundo plano (no bloquea la UI)
+            classifyInbox(res.messages);
         } catch (err) {
             setResult({ ok: false, message: err instanceof Error ? err.message : "Error al cargar la bandeja" });
             setInboxMessages([]);
@@ -294,33 +347,45 @@ export default function CorreosPage() {
 
                     {inboxMessages && inboxMessages.length > 0 && (
                         <ul className="rounded-lg border border-border overflow-hidden divide-y divide-border">
-                            {inboxMessages.map((m) => (
-                                <li key={m.id}>
-                                    <button
-                                        type="button"
-                                        onClick={() => openMessage(m.id)}
-                                        className="w-full text-left px-4 py-3 hover:bg-muted/30 transition-colors flex items-start gap-3"
-                                    >
-                                        {m.unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-violet-500 shrink-0" aria-label="No leído" />}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-sm truncate ${m.unread ? "font-semibold text-foreground" : "text-foreground"}`}>
-                                                    {m.from || "(sin remitente)"}
-                                                </span>
-                                                <span className="text-[11px] text-muted-foreground ml-auto shrink-0 tabular-nums">
-                                                    {formatDate(m.date)}
-                                                </span>
+                            {inboxMessages.map((m) => {
+                                const cls = classMap[m.id];
+                                const meta = cls ? CATEGORY_META[cls.category] : null;
+                                const CatIcon = meta?.icon;
+                                return (
+                                    <li key={m.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => openMessage(m.id)}
+                                            className="w-full text-left px-4 py-3 hover:bg-muted/30 transition-colors flex items-start gap-3"
+                                        >
+                                            {m.unread && <span className="mt-1.5 w-2 h-2 rounded-full bg-violet-500 shrink-0" aria-label="No leído" />}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-sm truncate ${m.unread ? "font-semibold text-foreground" : "text-foreground"}`}>
+                                                        {m.from || "(sin remitente)"}
+                                                    </span>
+                                                    {meta && CatIcon && (
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded border uppercase tracking-wider ${meta.tone}`}>
+                                                            <CatIcon className="w-3 h-3" />
+                                                            {meta.label}
+                                                            {cls.urgency >= 4 && <span className="ml-0.5">·{cls.urgency}/5</span>}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-[11px] text-muted-foreground ml-auto shrink-0 tabular-nums">
+                                                        {formatDate(m.date)}
+                                                    </span>
+                                                </div>
+                                                <p className={`text-sm truncate ${m.unread ? "text-foreground" : "text-muted-foreground"}`}>
+                                                    {m.subject || "(sin asunto)"}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                                    {cls?.suggested_action ? `🤖 ${cls.suggested_action}` : m.snippet}
+                                                </p>
                                             </div>
-                                            <p className={`text-sm truncate ${m.unread ? "text-foreground" : "text-muted-foreground"}`}>
-                                                {m.subject || "(sin asunto)"}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                                {m.snippet}
-                                            </p>
-                                        </div>
-                                    </button>
-                                </li>
-                            ))}
+                                        </button>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
 
@@ -366,6 +431,22 @@ export default function CorreosPage() {
                                             : <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">{selectedMsg.body}</pre>
                                     )}
                                 </div>
+                                {selectedMsg && (
+                                    <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+                                        <div className="text-xs text-muted-foreground">
+                                            {draftError ? <span className="text-rose-400">{draftError}</span> : "Genera un borrador y revísalo antes de enviar."}
+                                        </div>
+                                        <button
+                                            onClick={handleDraftReply}
+                                            disabled={draftLoading}
+                                            className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:brightness-110 transition disabled:opacity-50"
+                                        >
+                                            {draftLoading
+                                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Redactando…</>
+                                                : <><Sparkles className="w-4 h-4" /> Borrador IA</>}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

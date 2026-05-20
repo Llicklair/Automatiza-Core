@@ -5,7 +5,7 @@ import {
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
     BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
     Activity, FileSearch, Clock, Timer, UserCircle, Receipt,
-    Mail, FileSpreadsheet, AlertTriangle, FolderKanban,
+    Mail, FileSpreadsheet, AlertTriangle, FolderKanban, BadgeCheck, Stamp,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -16,7 +16,9 @@ export type NavItem = {
     adminOnly?: boolean;
     /** Marca el item como núcleo de la app (Mi equipo, Automatizaciones, etc.) — se renderiza con un color destacado en el sidebar. */
     highlight?: boolean;
-    subItems?: { label: string; href: string; adminOnly?: boolean }[];
+    /** Funcionalidad incluida en el plan Premium. Se muestra con un badge "PRO" en el sidebar. */
+    premium?: boolean;
+    subItems?: { label: string; href: string; adminOnly?: boolean; premium?: boolean }[];
 };
 
 export type NavSection = {
@@ -85,8 +87,8 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Resumen", href: "/rrhh" },
                     { label: "Empleados", href: "/rrhh/empleados" },
                     { label: "Nóminas", href: "/rrhh/nominas" },
-                    { label: "Reclutamiento", href: "/rrhh/reclutamiento" },
-                    { label: "Análisis de CV", href: "/rrhh/analisis-cv" },
+                    { label: "Reclutamiento", href: "/rrhh/reclutamiento", premium: true },
+                    { label: "Análisis de CV", href: "/rrhh/analisis-cv", premium: true },
                     { label: "Gestoría Documental", href: "/rrhh/documentos" },
                     { label: "Horarios", href: "/rrhh/horarios" },
                     { label: "Fichajes", href: "/rrhh/fichajes" },
@@ -99,8 +101,8 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Resumen", href: "/inventario" },
                     { label: "Productos", href: "/catalogo" },
                     { label: "Stock", href: "/inventario/stock" },
-                    { label: "TPV", href: "/tpv" },
-                    { label: "Escáner almacén", href: "/inventario/scanner" },
+                    { label: "TPV", href: "/tpv", premium: true },
+                    { label: "Escáner almacén", href: "/inventario/scanner", premium: true },
                 ],
             },
             {
@@ -119,9 +121,9 @@ export const NAV_SECTIONS: NavSection[] = [
                 label: "Tesorería", icon: Landmark, subItems: [
                     { label: "Resumen", href: "/tesoreria" },
                     { label: "Cuentas", href: "/banca" },
-                    { label: "Cashflow", href: "/tesoreria/cashflow" },
+                    { label: "Cashflow", href: "/tesoreria/cashflow", premium: true },
                     { label: "Pagos y cobros", href: "/tesoreria/pagos-y-cobros" },
-                    { label: "Remesas", href: "/tesoreria/remesas" },
+                    { label: "Remesas", href: "/tesoreria/remesas", premium: true },
                 ],
             },
             {
@@ -132,24 +134,32 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "P&G", href: "/contabilidad/perdidas-y-ganancias" },
                     { label: "Balance", href: "/contabilidad/balance-de-situacion" },
                     { label: "Activos", href: "/contabilidad/activos" },
-                    { label: "Asesorías", href: "/contabilidad/asesorias" },
+                    { label: "Asesorías", href: "/contabilidad/asesorias", premium: true },
                 ],
             },
             {
                 label: "Impuestos", icon: Scale, subItems: [
                     { label: "Resumen", href: "/impuestos" },
                     { label: "Modelos AEAT (preview)", href: "/impuestos/modelos" },
-                    { label: "Presentación asistida (131/200)", href: "/impuestos/asistida" },
+                    { label: "Presentación asistida (131/200)", href: "/impuestos/asistida", premium: true },
                 ],
             },
+        ],
+    },
+    {
+        title: "Verifactu",
+        items: [
+            { label: "Modo Verifactu", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true },
+            { label: "Apoderamiento AEAT", icon: Stamp, href: "/configuracion/regap", adminOnly: true, premium: true },
+            { label: "Firma digital", icon: ShieldCheck, href: "/configuracion/firma-digital", adminOnly: true, premium: true },
         ],
     },
     {
         title: "Análisis",
         items: [
             { label: "Analítica", icon: PieChart, href: "/analitica" },
-            { label: "Informes IA", icon: BarChart3, href: "/informes" },
-            { label: "Marketing", icon: Megaphone, href: "/marketing" },
+            { label: "Informes IA", icon: BarChart3, href: "/informes", premium: true },
+            { label: "Marketing", icon: Megaphone, href: "/marketing", premium: true },
             { label: "Alertas", icon: AlertTriangle, href: "/alertas" },
         ],
     },
@@ -157,7 +167,7 @@ export const NAV_SECTIONS: NavSection[] = [
         title: "Gobierno",
         items: [
             { label: "Compliance", icon: ShieldCheck, href: "/compliance", adminOnly: true },
-            { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true },
+            { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true, premium: true },
         ],
     },
     {
@@ -167,7 +177,7 @@ export const NAV_SECTIONS: NavSection[] = [
             { label: "Escáner", icon: ScanLine, href: "/escaner" },
             { label: "Documentos", icon: FileText, href: "/documentos" },
             { label: "Correos", icon: Mail, href: "/correos" },
-            { label: "Importar Excel", icon: FileSpreadsheet, href: "/excel" },
+            { label: "Importar Excel", icon: FileSpreadsheet, href: "/excel", premium: true },
             { label: "Integraciones", icon: Plug, href: "/integraciones" },
             {
                 label: "Configuración", icon: Settings, subItems: [
@@ -178,12 +188,9 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Idioma", href: "/configuracion/idioma" },
                     { label: "Usuarios", href: "/configuracion/usuarios", adminOnly: true },
                     { label: "Mensajería", href: "/configuracion/integraciones" },
-                    { label: "Firma digital", href: "/configuracion/firma-digital", adminOnly: true },
-                    { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true },
+                    { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true, premium: true },
                     { label: "Copias de seguridad", href: "/configuracion/backups", adminOnly: true },
-                    { label: "Apoderamiento AEAT", href: "/configuracion/regap", adminOnly: true },
-                    { label: "Modo Verifactu", href: "/configuracion/verifactu", adminOnly: true },
-                    { label: "Autonomía de agentes", href: "/configuracion/autonomia", adminOnly: true },
+                    { label: "Autonomía de agentes", href: "/configuracion/autonomia", adminOnly: true, premium: true },
                     { label: "Mantenimiento", href: "/configuracion/mantenimiento", adminOnly: true },
                     { label: "Actualizaciones", href: "/configuracion/actualizaciones", adminOnly: true },
                 ],

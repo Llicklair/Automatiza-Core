@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Receipt, Plus, Check, X, Loader2, Download, Upload, Trash2, RefreshCw,
+    Receipt, Plus, Check, X, Loader2, Download, Upload, Trash2, RefreshCw, Camera, Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useToastStore } from "@/stores/toast";
 import type { Expense, Employee } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,46 @@ export default function GastosPage() {
 
     const [actionId, setActionId] = useState<string | null>(null);
     const [uploadingId, setUploadingId] = useState<string | null>(null);
+    const [scanning, setScanning] = useState(false);
+    const [scanConfidence, setScanConfidence] = useState<number | null>(null);
+    const [scanMerchant, setScanMerchant] = useState<string | null>(null);
+    const toast = useToastStore();
+
+    const handleScanTicket = useCallback(async (file: File) => {
+        if (!file.type.startsWith("image/")) {
+            toast.error("Solo se aceptan imágenes (JPG, PNG, WEBP).");
+            return;
+        }
+        setScanning(true);
+        setScanConfidence(null);
+        setScanMerchant(null);
+        try {
+            const draft = await api.hr.expenses.scanReceipt(file);
+            const employeeId = employees.length > 0 ? employees[0].id : "";
+            setForm({
+                employee_id: employeeId,
+                amount: draft.amount.toFixed(2),
+                category: draft.category || "otro",
+                description: draft.description || `Ticket de ${draft.merchant}`,
+                date: draft.date,
+                notes: [
+                    draft.merchant && `Comercio: ${draft.merchant}`,
+                    draft.merchant_nif && `NIF: ${draft.merchant_nif}`,
+                    draft.vat_amount != null && `IVA: ${draft.vat_amount.toFixed(2)} €${draft.vat_rate ? ` (${draft.vat_rate}%)` : ""}`,
+                ].filter(Boolean).join(" · "),
+            });
+            setScanConfidence(draft.confidence);
+            setScanMerchant(draft.merchant);
+            setFormError(null);
+            setShowCreate(true);
+            toast.success(`Ticket leído: ${draft.merchant} · ${draft.amount.toFixed(2)} €`);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : "No se pudo leer el ticket";
+            toast.error(msg);
+        } finally {
+            setScanning(false);
+        }
+    }, [employees, toast]);
 
     const load = useCallback(async () => {
         setIsLoading(true);
@@ -151,9 +192,27 @@ export default function GastosPage() {
                 description="Aprueba y reembolsa dietas y gastos de empleados."
                 icon={Receipt}
                 actions={
-                    <Button onClick={() => { setShowCreate(true); setFormError(null); setForm(emptyForm()); }}>
-                        <Plus className="mr-2 h-4 w-4" /> Nuevo gasto
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <label className={`inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 px-3 h-9 text-sm font-medium cursor-pointer transition-colors ${scanning ? "opacity-50 pointer-events-none" : ""}`}>
+                            {scanning
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Leyendo ticket…</>
+                                : <><Sparkles className="h-4 w-4" /> Escanear ticket</>}
+                            <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                capture="environment"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleScanTicket(f);
+                                    e.target.value = "";
+                                }}
+                            />
+                        </label>
+                        <Button onClick={() => { setShowCreate(true); setFormError(null); setForm(emptyForm()); setScanConfidence(null); setScanMerchant(null); }}>
+                            <Plus className="mr-2 h-4 w-4" /> Nuevo gasto
+                        </Button>
+                    </div>
                 }
             />
 
@@ -310,7 +369,17 @@ export default function GastosPage() {
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Nuevo gasto</DialogTitle>
+                        <DialogTitle>{scanConfidence !== null ? "Revisar gasto escaneado" : "Nuevo gasto"}</DialogTitle>
+                        {scanConfidence !== null && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                {scanMerchant ? `Detectado: ${scanMerchant}.` : "Datos extraídos del ticket."}
+                                <span className={`ml-1 font-medium ${scanConfidence >= 0.8 ? "text-emerald-500" : scanConfidence >= 0.5 ? "text-amber-500" : "text-rose-500"}`}>
+                                    Confianza {(scanConfidence * 100).toFixed(0)}%
+                                </span>
+                                <span className="text-muted-foreground/70">· revisa antes de guardar</span>
+                            </div>
+                        )}
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">

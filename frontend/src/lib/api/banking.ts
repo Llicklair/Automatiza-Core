@@ -17,6 +17,8 @@ export interface InvoiceSuggestion {
     client_name: string | null;
     status: string;
     date: string | null;
+    /** 0-100 — confianza del matching (importe + fecha + cliente + nº factura). */
+    score?: number;
 }
 
 export interface ReconciliationSuggestion {
