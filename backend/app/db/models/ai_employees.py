@@ -37,6 +37,14 @@ class AIEmployee(Base):
     doc_folder = Column(
         String(200), nullable=True
     )  # carpeta de documentación asignada por el coordinador
+
+    # Contrato mínimo del custom (≥2 de 4 capacidades verificables —
+    # aplicación en capa de servicios, no a nivel BD).
+    scope = Column(JSONB, nullable=True)  # {clients, categories, filters}
+    memory_enabled = Column(Boolean, nullable=False, default=False)
+    knowledge_enabled = Column(Boolean, nullable=False, default=False)
+    workflows = Column(JSONB, nullable=True)  # [{name, cron, steps}]
+
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
