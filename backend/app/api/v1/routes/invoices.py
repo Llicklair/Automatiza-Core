@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,33 @@ from app.services.event_bus import emit_event
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.post("/invoices/scan", status_code=status.HTTP_200_OK, tags=["erp"])
+@limiter.limit("10/minute")
+async def scan_invoice(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """OCR + IA sobre una factura recibida (imagen o PDF).
+
+    Devuelve un borrador estructurado con emisor, líneas, IVA, vencimiento y
+    avisos de incoherencia. NO crea nada en BD — el frontend confirma con
+    POST /clients/{client_id}/invoices tras revisar/editar.
+    """
+    from app.services.ocr import InvoiceExtractionError, extract_invoice_data
+
+    content = await file.read()
+    mime = file.content_type or "image/jpeg"
+    try:
+        data = await extract_invoice_data(content, mime)
+    except InvoiceExtractionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.exception("Fallo procesando factura recibida")
+        raise HTTPException(status_code=500, detail=f"Error procesando factura: {e}")
+    return data.to_dict()
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])

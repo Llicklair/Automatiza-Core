@@ -76,6 +76,71 @@ export function useFacturasRecibidas() {
         }
     };
 
+    const handleScan = useCallback(async (file: File) => {
+        try {
+            const draft = await api.erp.invoices.scan(file);
+
+            const nif = (draft.emisor?.nif || "").trim().toUpperCase();
+            let supplier = nif
+                ? clients.find(c => (c.nif || "").trim().toUpperCase() === nif)
+                : undefined;
+
+            if (!supplier && draft.emisor?.name) {
+                try {
+                    supplier = await api.erp.clients.create({
+                        name: draft.emisor.name,
+                        nif: nif || undefined,
+                        address: draft.emisor.address ?? undefined,
+                        city: draft.emisor.city ?? undefined,
+                        postal_code: draft.emisor.postal_code ?? undefined,
+                        client_type: "supplier",
+                    } as any);
+                    setClients(prev => [...prev, supplier!]);
+                    toast.info(`Proveedor creado: ${supplier.name}`);
+                } catch {
+                    // si falla por duplicado u otro motivo, caemos al modal
+                }
+            }
+
+            const lines = (draft.lines || []).map(ln => ({
+                description: ln.description || "Concepto",
+                quantity: ln.quantity || 1,
+                unit_price: ln.unit_price || 0,
+                discount_percentage: 0,
+                tax_percentage: ln.tax_percentage ?? 21,
+            }));
+
+            if (supplier && lines.length > 0) {
+                const inv = await api.erp.invoices.create(supplier.id, {
+                    invoice_number: draft.invoice_number || null,
+                    date: new Date(draft.issue_date).toISOString(),
+                    due_date: draft.due_date ? new Date(draft.due_date).toISOString() : null,
+                    status: "pending",
+                    invoice_type: "received",
+                    lines,
+                } as any);
+                setInvoices(prev => [inv, ...prev]);
+                const conf = Math.round((draft.confidence ?? 0.5) * 100);
+                toast.success(
+                    `Factura registrada: ${draft.emisor.name} · ${draft.amount_total.toFixed(2)} € (confianza ${conf}%)`,
+                );
+                draft.warnings?.forEach(w => toast.warning(w));
+            } else {
+                if (supplier) { setSupplierId(supplier.id); setUseExisting(true); }
+                else { setSupplierName(draft.emisor?.name || ""); setUseExisting(false); }
+                setInvoiceNumber(draft.invoice_number || "");
+                setAmount(draft.amount_base.toFixed(2));
+                setTaxPct(String(lines[0]?.tax_percentage ?? 21));
+                setDate(draft.issue_date.slice(0, 10));
+                setDueDate(draft.due_date ? draft.due_date.slice(0, 10) : "");
+                setShowModal(true);
+                toast.info("Revisa los datos antes de confirmar");
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "No se pudo leer la factura");
+        }
+    }, [clients, toast]);
+
     const handleStatusChange = useCallback(async (invId: string, nextStatus: string) => {
         try {
             const updated = await api.erp.invoices.updateStatus(invId, nextStatus);
@@ -121,6 +186,6 @@ export function useFacturasRecibidas() {
         invStatus, setInvStatus,
         submitting,
         totalPendiente, totalPagado30,
-        resetModal, handleRegister, handleStatusChange, handleDeleteInvoice,
+        resetModal, handleRegister, handleScan, handleStatusChange, handleDeleteInvoice,
     };
 }
