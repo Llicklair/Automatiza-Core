@@ -5,8 +5,13 @@ Re-exporta desde los sub-módulos:
   - employee_provisioning: seed built-in, provisioning LLM en background
 """
 
+from app.services.ai.employee_contract import (
+    count_capabilities,
+    validate_employee_contract,
+)
 from app.services.ai.employee_crud import (
     AVAILABLE_SKILLS,
+    EmployeeContractError,
     create_activity,
     create_employee,
     delete_employee,
@@ -30,6 +35,8 @@ from app.services.ai.employee_provisioning import (
 
 __all__ = [
     "AVAILABLE_SKILLS",
+    "EmployeeContractError",
+    "count_capabilities",
     "create_activity",
     "create_employee",
     "delete_employee",
@@ -47,4 +54,5 @@ __all__ = [
     "update_appearance",
     "update_icon",
     "update_status",
+    "validate_employee_contract",
 ]

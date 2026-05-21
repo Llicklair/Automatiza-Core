@@ -3,6 +3,7 @@
 Tablas:
   - ai_employees    — Perfiles de agentes virtuales por tenant
   - agent_skills    — Mapping many-to-many de tools autorizadas por empleado
+  - employee_memory — Memoria persistente clave/valor del empleado
   - token_ledger    — Log inmutable de costes LLM por invocación
   - activity_feed   — Timeline cronológico de acciones completadas por agentes
 """
@@ -46,6 +47,40 @@ class AIEmployee(Base):
     workflows = Column(JSONB, nullable=True)  # [{name, cron, steps}]
 
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class EmployeeMemory(Base):
+    """Memoria persistente clave/valor del AIEmployee.
+
+    Una entrada por (employee_id, key). `value` es JSONB libre para que el
+    agente decida la forma (lista, dict, string). `importance` permite poda
+    futura (descartar entradas de baja importancia cuando crezca).
+
+    Sólo se usa si `ai_employees.memory_enabled = True`.
+    """
+
+    __tablename__ = "employee_memory"
+    __table_args__ = (
+        # uq_employee_memory_employee_key declarada en la migración 0032
+        {},
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ai_employees.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    key = Column(String(160), nullable=False)
+    value = Column(JSONB, nullable=False)
+    importance = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
 class AgentSkill(Base):

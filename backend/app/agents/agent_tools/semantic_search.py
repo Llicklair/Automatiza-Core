@@ -50,6 +50,7 @@ async def cosine_topk(
     top_k: int = 5,
     jurisdiction: str | None = None,
     include_no_jurisdiction: bool = True,
+    employee_id: str | None = None,
 ) -> list[tuple[DocumentEmbedding, float]]:
     """Devuelve los top_k DocumentEmbedding del tenant ordenados por
     proximidad coseno al query_vector.
@@ -62,6 +63,11 @@ async def cosine_topk(
         jurisdiction: si se especifica, filtra por jurisdicción.
         include_no_jurisdiction: si True y se filtra jurisdiction, también
             incluye filas con jurisdiction=NULL (datos legacy).
+        employee_id: si se pasa, el resultado incluye embeddings públicos
+            del tenant (employee_id IS NULL) **y** los privados de ese
+            empleado. Si es None, sólo se devuelven los públicos. Sólo
+            tiene efecto si el empleado tiene `knowledge_enabled=True`
+            (la decisión la toma la capa que invoca esta función).
 
     Returns:
         Lista de (DocumentEmbedding, distance) en orden ascendente de
@@ -80,6 +86,16 @@ async def cosine_topk(
             )
         else:
             stmt = stmt.where(DocumentEmbedding.jurisdiction == jurisdiction)
+
+    if employee_id is None:
+        stmt = stmt.where(DocumentEmbedding.employee_id.is_(None))
+    else:
+        stmt = stmt.where(
+            sa.or_(
+                DocumentEmbedding.employee_id.is_(None),
+                DocumentEmbedding.employee_id == uuid.UUID(employee_id),
+            )
+        )
 
     result = await db.execute(stmt)
     rows: list[DocumentEmbedding] = list(result.scalars().all())
