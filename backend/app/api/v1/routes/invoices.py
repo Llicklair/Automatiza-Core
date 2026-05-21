@@ -29,6 +29,7 @@ router = APIRouter()
 async def scan_invoice(
     request: Request,
     file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """OCR + IA sobre una factura recibida (imagen o PDF).
@@ -36,19 +37,100 @@ async def scan_invoice(
     Devuelve un borrador estructurado con emisor, líneas, IVA, vencimiento y
     avisos de incoherencia. NO crea nada en BD — el frontend confirma con
     POST /clients/{client_id}/invoices tras revisar/editar.
+
+    Optimización F2.5 (aprendizaje por proveedor):
+      1. Cache por hash → 0 tokens si el mismo PDF ya se escaneó.
+      2. Few-shot del NIF → extracción más precisa en proveedores recurrentes.
+      3. Overrides aprendidos → aplica correcciones del usuario.
     """
     from app.services.ocr import InvoiceExtractionError, extract_invoice_data
+    from app.services.ocr.supplier_learning import (
+        apply_template_overrides,
+        build_few_shot_block,
+        file_sha256,
+        get_template,
+        lookup_cached,
+        record_extraction,
+        save_to_cache,
+    )
 
     content = await file.read()
     mime = file.content_type or "image/jpeg"
+
+    file_hash = file_sha256(content)
+    cached = await lookup_cached(db, current_user.tenant_id, file_hash)
+    if cached is not None:
+        logger.info("scan_invoice cache hit hash=%s", file_hash[:12])
+        return cached
+
     try:
-        data = await extract_invoice_data(content, mime)
+        data = await extract_invoice_data(
+            content,
+            mime,
+            few_shot_hint=None,  # se completa abajo si hay template
+        )
     except InvoiceExtractionError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.exception("Fallo procesando factura recibida")
         raise HTTPException(status_code=500, detail=f"Error procesando factura: {e}")
-    return data.to_dict()
+
+    payload = data.to_dict()
+    nif = (payload.get("emisor") or {}).get("nif")
+
+    if nif:
+        template = await get_template(db, current_user.tenant_id, nif)
+        if template is not None:
+            # Re-llamamos con few-shot SÓLO si la confianza es baja y hay template
+            if (payload.get("confidence") or 0) < 0.85:
+                hint = build_few_shot_block(template)
+                if hint:
+                    try:
+                        data = await extract_invoice_data(content, mime, few_shot_hint=hint)
+                        payload = data.to_dict()
+                    except Exception as e:
+                        logger.warning("Re-extracción con few-shot falló: %s", e)
+            payload = apply_template_overrides(payload, template)
+
+        await record_extraction(db, current_user.tenant_id, payload)
+
+    await save_to_cache(
+        db,
+        current_user.tenant_id,
+        file_hash=file_hash,
+        file_size=len(content),
+        mime_type=mime,
+        extracted_data=payload,
+    )
+    return payload
+
+
+@router.post("/invoices/scan/learn", status_code=status.HTTP_200_OK, tags=["erp"])
+@limiter.limit("30/minute")
+async def learn_scan_correction(
+    request: Request,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Guarda los overrides aprendidos cuando el usuario corrige una
+    extracción del escáner.
+
+    Body: {"supplier_nif": str, "original": dict, "corrected": dict}.
+    Devuelve el diff de overrides persistidos.
+    """
+    from app.services.ocr.supplier_learning import save_correction
+
+    nif = (payload or {}).get("supplier_nif")
+    original = (payload or {}).get("original") or {}
+    corrected = (payload or {}).get("corrected") or {}
+    if not nif:
+        raise HTTPException(status_code=422, detail="supplier_nif requerido.")
+
+    diff = await save_correction(
+        db, current_user.tenant_id, nif, original=original, corrected=corrected
+    )
+    return {"saved": bool(diff), "overrides": diff}
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])

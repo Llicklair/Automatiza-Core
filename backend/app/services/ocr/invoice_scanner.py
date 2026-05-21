@@ -226,10 +226,23 @@ def _build_invoice(payload: dict) -> InvoiceExtracted:
     )
 
 
-async def extract_invoice_data(image_bytes: bytes, mime_type: str) -> InvoiceExtracted:
+async def extract_invoice_data(
+    image_bytes: bytes,
+    mime_type: str,
+    *,
+    few_shot_hint: str | None = None,
+) -> InvoiceExtracted:
     """Procesa imagen o PDF de factura recibida y devuelve estructura completa.
 
     No crea el Invoice — devuelve borrador para que el frontend lo confirme.
+
+    Args:
+        image_bytes: bytes del PNG/JPG/WEBP/PDF.
+        mime_type: MIME del archivo.
+        few_shot_hint: texto opcional con contexto del proveedor (extracción
+            previa) que se añade al prompt como hint orientativo. Lo genera
+            `supplier_learning.build_few_shot_block` cuando el NIF tiene
+            template guardado.
     """
     if mime_type not in SUPPORTED_MIME:
         raise InvoiceExtractionError(
@@ -268,6 +281,10 @@ async def extract_invoice_data(image_bytes: bytes, mime_type: str) -> InvoiceExt
             "source": {"type": "base64", "media_type": mime_type, "data": image_b64},
         }
 
+    user_text = "Extrae los datos de esta factura recibida según el formato pedido."
+    if few_shot_hint:
+        user_text = few_shot_hint + "\n\n" + user_text
+
     resp = await client.messages.create(
         model=model,
         max_tokens=2500,
@@ -276,7 +293,7 @@ async def extract_invoice_data(image_bytes: bytes, mime_type: str) -> InvoiceExt
             "role": "user",
             "content": [
                 content_block,
-                {"type": "text", "text": "Extrae los datos de esta factura recibida según el formato pedido."},
+                {"type": "text", "text": user_text},
             ],
         }],
     )

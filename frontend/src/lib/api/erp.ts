@@ -323,6 +323,18 @@ export const erp = {
             fd.append("file", file);
             return requestUpload<ScannedInvoice>("/api/v1/invoices/scan", fd);
         },
+        /** Aprendizaje OCR (F2.5): el usuario corrigió una extracción → guardar
+         * overrides para que las próximas facturas del mismo NIF salgan
+         * mejor sin coste extra de LLM. */
+        learnScanCorrection: (params: {
+            supplier_nif: string;
+            original: ScannedInvoice;
+            corrected: ScannedInvoice;
+        }) =>
+            request<{ saved: boolean; overrides: Record<string, unknown> }>(
+                "/api/v1/invoices/scan/learn",
+                { method: "POST", body: JSON.stringify(params) },
+            ),
         downloadPdf: (id: string, invoiceNumber: string | null) =>
             downloadBlob(`/api/v1/invoices/${id}/pdf`, `Factura_${invoiceNumber || id.slice(0, 8)}.pdf`),
         downloadFacturae: (id: string, invoiceNumber: string | null) =>
