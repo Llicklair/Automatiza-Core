@@ -119,6 +119,34 @@ async def get_reconciliation_suggestions(
     return await svc.get_reconciliation_suggestions(db, current_user.tenant_id)
 
 
+@router.post("/reconciliation/reject")
+@limiter.limit("30/minute")
+async def reject_reconciliation_suggestion(
+    request: Request,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rechaza una sugerencia tx↔factura. El par no volverá a aparecer (F2.6).
+
+    Body: {"transaction_id": str, "invoice_id": str, "reason": str|null}
+    """
+    try:
+        tx_id = uuid.UUID(str(payload.get("transaction_id")))
+        inv_id = uuid.UUID(str(payload.get("invoice_id")))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422, detail="transaction_id e invoice_id deben ser UUIDs."
+        )
+    return await svc.reject_reconciliation_suggestion(
+        db,
+        current_user.tenant_id,
+        tx_id,
+        inv_id,
+        reason=(payload.get("reason") or None),
+    )
+
+
 @router.post("/reconciliation/auto-match")
 @limiter.limit("10/minute")
 async def auto_reconcile(

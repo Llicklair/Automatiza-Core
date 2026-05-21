@@ -10,6 +10,20 @@ export interface BankTransaction {
     invoice_id: string | null;
 }
 
+/** Razón legible por la que un par tx↔factura ha sumado puntos (F2.6). */
+export interface MatchReason {
+    code:
+        | "amount_exact"
+        | "date_within_15d"
+        | "date_within_45d"
+        | "client_name_match"
+        | "client_token_match"
+        | "invoice_number_match"
+        | string;
+    label: string;
+    points: number;
+}
+
 export interface InvoiceSuggestion {
     id: string;
     invoice_number: string | null;
@@ -19,6 +33,8 @@ export interface InvoiceSuggestion {
     date: string | null;
     /** 0-100 — confianza del matching (importe + fecha + cliente + nº factura). */
     score?: number;
+    /** Desglose de las razones detrás del score (F2.6 — explicabilidad). */
+    reasons?: MatchReason[];
 }
 
 export interface ReconciliationSuggestion {
@@ -42,5 +58,11 @@ export const banking = {
     reconciliation: {
         suggestions: () => request<ReconciliationSuggestion[]>("/api/v1/banking/reconciliation/suggestions"),
         autoMatch: () => request<{ matched: number; total: number }>("/api/v1/banking/reconciliation/auto-match", { method: "POST" }),
+        /** Marca un par (tx, factura) como rechazado para que no vuelva a sugerirse (F2.6). */
+        reject: (transaction_id: string, invoice_id: string, reason?: string) =>
+            request<{ rejected: boolean; new: boolean }>("/api/v1/banking/reconciliation/reject", {
+                method: "POST",
+                body: JSON.stringify({ transaction_id, invoice_id, reason }),
+            }),
     },
 };

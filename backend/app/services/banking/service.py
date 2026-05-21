@@ -210,43 +210,86 @@ async def unreconcile_transaction(
     return {"message": "Conciliación deshecha", "status": "ok"}
 
 
-def _score_match(tx, inv, tx_amount: float) -> int:
-    """Puntúa un candidato de conciliación (0-100).
+_LEGAL_SUFFIXES = (" s.l.", " sl", " s.a.", " sa", " s.l.u.", " slu", " sccl", " coop")
 
-    Reglas:
+
+def _normalize_client_name(name: str) -> str:
+    """Elimina sufijos societarios y caracteres no alfanuméricos para mejorar
+    el matching contra el concepto del movimiento bancario."""
+    s = (name or "").lower().strip()
+    for suf in _LEGAL_SUFFIXES:
+        if s.endswith(suf):
+            s = s[: -len(suf)].strip()
+            break
+    return s
+
+
+def _explain_match(tx, inv, tx_amount: float) -> tuple[int, list[dict]]:
+    """Puntúa un candidato (0-100) y devuelve las razones legibles.
+
+    Cada razón tiene la forma {code, label, points}. El frontend las muestra
+    como "Este movimiento = factura X porque ..." (F2.6 explicabilidad).
+
+    Reglas (mismas que antes, ahora desglosadas):
       - Importe exacto (±0.02€): +50  (base; sin esto no es candidato)
       - Fecha factura dentro de ventana razonable: +30 si <=15 días, +15 si <=45 días
       - Nombre cliente aparece en el concepto bancario: +30 (gran señal)
       - Número factura aparece en el concepto: +20
     """
-    score = 50  # filtro previo garantiza importe exacto
+    score = 50
+    reasons: list[dict] = [
+        {"code": "amount_exact", "label": f"Importe exacto ({tx_amount:.2f} €)", "points": 50}
+    ]
     desc = (tx.description or "").lower()
 
     if inv.date and tx.date:
         days = abs((tx.date - inv.date).days)
         if days <= 15:
             score += 30
+            reasons.append(
+                {"code": "date_within_15d", "label": f"Fecha próxima ({days} día(s))", "points": 30}
+            )
         elif days <= 45:
             score += 15
+            reasons.append(
+                {"code": "date_within_45d", "label": f"Fecha aceptable ({days} día(s))", "points": 15}
+            )
 
     if inv.client and inv.client.name:
-        client_name = inv.client.name.lower().strip()
-        if client_name and (
-            client_name in desc
-            or any(tok for tok in client_name.split() if len(tok) >= 4 and tok in desc)
-        ):
-            score += 30
+        client_name = _normalize_client_name(inv.client.name)
+        if client_name:
+            tokens = [tok for tok in client_name.split() if len(tok) >= 4]
+            matched_token = next((tok for tok in tokens if tok in desc), None)
+            if client_name in desc:
+                score += 30
+                reasons.append(
+                    {"code": "client_name_match", "label": f"Cliente '{inv.client.name}' en el concepto", "points": 30}
+                )
+            elif matched_token:
+                score += 30
+                reasons.append(
+                    {"code": "client_token_match", "label": f"Cliente reconocido por '{matched_token}' en el concepto", "points": 30}
+                )
 
     if inv.invoice_number:
         inv_num = str(inv.invoice_number).lower()
         if inv_num and inv_num in desc:
             score += 20
+            reasons.append(
+                {"code": "invoice_number_match", "label": f"Nº factura {inv.invoice_number} en el concepto", "points": 20}
+            )
 
-    return min(score, 100)
+    return min(score, 100), reasons
+
+
+def _score_match(tx, inv, tx_amount: float) -> int:
+    """Compat: mantiene la firma antigua devolviendo sólo el score."""
+    score, _ = _explain_match(tx, inv, tx_amount)
+    return score
 
 
 def _candidates_for(tx, invoices, used_ids: set[str]) -> list:
-    """Devuelve invoices candidatos rankeados (importe coincide + ranking por score)."""
+    """Devuelve invoices candidatos con (inv, score, reasons)."""
     tx_amount = abs(float(tx.amount))
     cands = []
     for inv in invoices:
@@ -254,7 +297,8 @@ def _candidates_for(tx, invoices, used_ids: set[str]) -> list:
             continue
         if abs(abs(float(inv.amount_total)) - tx_amount) > 0.02:
             continue
-        cands.append((inv, _score_match(tx, inv, tx_amount)))
+        score, reasons = _explain_match(tx, inv, tx_amount)
+        cands.append((inv, score, reasons))
     cands.sort(key=lambda x: -x[1])
     return cands
 
@@ -277,9 +321,16 @@ async def get_reconciliation_suggestions(
     )
     invoices = list(inv_res.scalars().all())
 
+    # F2.6 — descartar pares (tx, invoice) que el usuario ya rechazó antes.
+    rejected_pairs = await _load_rejected_pairs(db, tenant_id)
+
     out = []
     for tx in txs:
-        ranked = _candidates_for(tx, invoices, used_ids=set())
+        ranked = [
+            (inv, score, reasons)
+            for inv, score, reasons in _candidates_for(tx, invoices, used_ids=set())
+            if (str(tx.id), str(inv.id)) not in rejected_pairs
+        ]
         matched = [
             {
                 "id": str(inv.id),
@@ -289,8 +340,9 @@ async def get_reconciliation_suggestions(
                 "status": inv.status,
                 "date": inv.date.isoformat() if inv.date else None,
                 "score": score,
+                "reasons": reasons,
             }
-            for inv, score in ranked
+            for inv, score, reasons in ranked
         ]
         out.append({
             "tx": {
@@ -331,9 +383,14 @@ async def auto_reconcile(
 
     matched_count = 0
     used_ids: set[str] = set()
+    rejected_pairs = await _load_rejected_pairs(db, tenant_id)
 
     for tx in txs:
-        ranked = _candidates_for(tx, invoices, used_ids)
+        ranked = [
+            (inv, score, reasons)
+            for inv, score, reasons in _candidates_for(tx, invoices, used_ids)
+            if (str(tx.id), str(inv.id)) not in rejected_pairs
+        ]
         if not ranked:
             continue
 
@@ -341,8 +398,8 @@ async def auto_reconcile(
         if len(ranked) == 1:
             winner = ranked[0][0]
         else:
-            top_inv, top_score = ranked[0]
-            _, second_score = ranked[1]
+            top_inv, top_score, _ = ranked[0]
+            _, second_score, _ = ranked[1]
             if top_score >= 80 and (top_score - second_score) >= 30:
                 winner = top_inv
 
@@ -359,6 +416,66 @@ async def auto_reconcile(
         await emit_event(db, tenant_id, user_id, "banking_auto_reconciled", {"count": matched_count})
 
     return {"matched": matched_count, "total": len(txs)}
+
+
+# ─── F2.6 — Rechazos persistentes ───────────────────────────────────────
+
+
+async def _load_rejected_pairs(db: AsyncSession, tenant_id: uuid.UUID) -> set[tuple[str, str]]:
+    """Carga el conjunto de (tx_id, invoice_id) que el usuario rechazó.
+
+    Devuelve un set vacío si la tabla aún no está migrada (compat al rodar
+    sin la 0034 — degrada con elegancia).
+    """
+    from app.db.models.reconciliation import ReconciliationRejection
+
+    try:
+        res = await db.execute(
+            select(
+                ReconciliationRejection.transaction_id,
+                ReconciliationRejection.invoice_id,
+            ).where(ReconciliationRejection.tenant_id == tenant_id)
+        )
+        return {(str(tx), str(inv)) for tx, inv in res.all()}
+    except Exception:
+        return set()
+
+
+async def reject_reconciliation_suggestion(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    transaction_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    reason: str | None = None,
+) -> dict:
+    """Marca un par (tx, invoice) como rechazado por el usuario para que no
+    vuelva a sugerirse. Idempotente (upsert por par).
+    """
+    from app.db.models.reconciliation import ReconciliationRejection
+
+    existing = await db.execute(
+        select(ReconciliationRejection).where(
+            ReconciliationRejection.tenant_id == tenant_id,
+            ReconciliationRejection.transaction_id == transaction_id,
+            ReconciliationRejection.invoice_id == invoice_id,
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row is None:
+        db.add(
+            ReconciliationRejection(
+                tenant_id=tenant_id,
+                transaction_id=transaction_id,
+                invoice_id=invoice_id,
+                reason=reason,
+            )
+        )
+        await db.commit()
+        return {"rejected": True, "new": True}
+    if reason and not row.reason:
+        row.reason = reason
+        await db.commit()
+    return {"rejected": True, "new": False}
 
 
 async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
