@@ -683,3 +683,111 @@ async def build_modelo_349_data(
             "campo adicional en líneas de factura."
         ),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Modelo 200 — Impuesto sobre Sociedades (F2.8)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Tipo general del Impuesto sobre Sociedades en España.
+# (RD-Ley 4/2013 + Ley 27/2014). Algunos casos especiales:
+#   - 23% para entidades de reducida dimensión (cifra negocio < 1M€) — desde 2023.
+#   - 15% durante 2 ejercicios para entidades de nueva creación.
+# El cálculo abajo expone los tipos disponibles y el usuario puede sobreescribir
+# `tipo_impositivo_pct` cuando llame al endpoint.
+TIPO_IS_GENERAL = Decimal("25")
+TIPO_IS_REDUCIDO = Decimal("23")  # ERD < 1M cifra negocio
+TIPO_IS_NUEVA_CREACION = Decimal("15")
+UMBRAL_ERD = Decimal("1000000")  # 1M€ — frontera ERD
+
+
+async def build_modelo_200_data(
+    db: AsyncSession,
+    tenant_id: UUID,
+    year: int,
+    *,
+    tipo_impositivo_pct: Decimal | float | None = None,
+    pagos_fraccionados_pagados: Decimal | float = 0,
+) -> dict[str, Any]:
+    """Agrega datos para el Modelo 200 — Impuesto sobre Sociedades.
+
+    **MVP**. El cálculo oficial del 200 incluye ajustes fiscales (provisiones,
+    deterioros, amortizaciones aceleradas, compensación de BINs, deducciones
+    por I+D+i, etc.) que requieren información no estructurada en el ERP.
+    Esta función calcula un PREVIEW útil para que la pyme estime la cuota:
+
+        Ingresos del ejercicio (facturas emitidas)
+      - Gastos del ejercicio (facturas recibidas + coste empresa nóminas)
+      = Resultado contable preliminar
+      ─ ajustes fiscales (0 por defecto, declarables por el usuario en el frontend)
+      = Base imponible
+      × tipo impositivo
+      = Cuota íntegra
+      - retenciones soportadas
+      - pagos fraccionados (Modelo 202 ya presentados)
+      = Resultado de la declaración
+
+    Si la cifra de negocio del año es < 1M€ y no se ha indicado tipo, se
+    aplica el tipo reducido del 23% por defecto.
+    """
+    start = date(year, 1, 1)
+    end = date(year, 12, 31)
+    tenant_name, tenant_nif = await _get_tenant_info(db, tenant_id)
+
+    issued = await _invoices_in_period(db, tenant_id, invoice_type="issued", start=start, end=end)
+    received = await _invoices_in_period(db, tenant_id, invoice_type="received", start=start, end=end)
+    payrolls = await _payrolls_in_period(db, tenant_id, start=start, end=end)
+
+    cifra_negocio = sum((Decimal(i.amount_base or 0) for i in issued), Decimal(0))
+    gastos_facturas = sum((Decimal(i.amount_base or 0) for i in received), Decimal(0))
+
+    # Coste empresa de nómina ≈ bruto + cuotas empresa (SS empresarial). Si
+    # cuotas_empresa_json no está, asumimos 30% del bruto como estimación.
+    coste_nominas = Decimal(0)
+    for p in payrolls:
+        bruto = Decimal(p.gross_salary or p.base_salary or 0)
+        cuotas = p.cuotas_empresa_json or {}
+        if isinstance(cuotas, dict) and cuotas:
+            ss_empresa = sum(Decimal(str(v or 0)) for v in cuotas.values())
+        else:
+            ss_empresa = bruto * Decimal("0.30")
+        coste_nominas += bruto + ss_empresa
+
+    resultado_contable = cifra_negocio - gastos_facturas - coste_nominas
+
+    if tipo_impositivo_pct is None:
+        tipo = TIPO_IS_REDUCIDO if cifra_negocio < UMBRAL_ERD else TIPO_IS_GENERAL
+    else:
+        tipo = Decimal(str(tipo_impositivo_pct))
+
+    base_imponible = resultado_contable  # ajustes fiscales = 0 en MVP
+    cuota_integra = max(Decimal(0), base_imponible * tipo / Decimal(100))
+
+    pagos = Decimal(str(pagos_fraccionados_pagados or 0))
+    resultado_declaracion = cuota_integra - pagos
+
+    return {
+        "modelo": "200",
+        "ejercicio": year,
+        "tenant": {"name": tenant_name, "nif": tenant_nif},
+        "cifra_negocio": float(cifra_negocio),
+        "gastos_facturas": float(gastos_facturas),
+        "coste_nominas": float(coste_nominas),
+        "resultado_contable": float(round(resultado_contable, 2)),
+        "ajustes_fiscales": 0.0,
+        "base_imponible": float(round(base_imponible, 2)),
+        "tipo_impositivo_pct": float(tipo),
+        "cuota_integra": float(round(cuota_integra, 2)),
+        "pagos_fraccionados_pagados": float(pagos),
+        "resultado_declaracion": float(round(resultado_declaracion, 2)),
+        "signo": (
+            "ingresar" if resultado_declaracion > 0
+            else "devolver" if resultado_declaracion < 0
+            else "cero"
+        ),
+        "_warning": (
+            "Preview no oficial. El Modelo 200 real exige ajustes fiscales "
+            "(provisiones, amortizaciones aceleradas, compensación BINs, "
+            "deducciones I+D+i…) que deben revisarse con asesor antes de presentar."
+        ),
+    }
