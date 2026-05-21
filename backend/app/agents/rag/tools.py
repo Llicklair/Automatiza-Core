@@ -38,7 +38,12 @@ _SEMANTIC_DISABLED_NOTE = (
 
 
 @tool
-async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
+async def search_documents(
+    tenant_id: str,
+    query: str,
+    top_k: int = 5,
+    employee_id: str | None = None,
+) -> str:
     """
     Busca fragmentos relevantes en los documentos del tenant usando búsqueda
     híbrida: nombre de archivo + búsqueda semántica con pgvector.
@@ -47,6 +52,9 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
         tenant_id: ID del tenant
         query: Texto de búsqueda en lenguaje natural
         top_k: Número máximo de fragmentos a devolver (por defecto 5)
+        employee_id: si se pasa, además del corpus público del tenant se
+            incluyen los embeddings privados de ese empleado (capacidad
+            `knowledge_enabled` del contrato custom).
     """
     from app.db.models.models import TenantDocument
 
@@ -94,6 +102,7 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
                         query_vector=query_vector,
                         top_k=top_k,
                         jurisdiction=jurisdiction,
+                        employee_id=employee_id,
                     )
                     for match, _dist in scored:
                         doc_name_res = await db.execute(
@@ -140,7 +149,12 @@ async def search_documents(tenant_id: str, query: str, top_k: int = 5) -> str:
 
 
 @tool
-async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -> str:
+async def answer_from_documents(
+    tenant_id: str,
+    question: str,
+    top_k: int = 5,
+    employee_id: str | None = None,
+) -> str:
     """
     Responde una pregunta basándose ÚNICAMENTE en los documentos almacenados.
 
@@ -148,6 +162,8 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
         tenant_id: ID del tenant
         question: Pregunta del usuario en lenguaje natural
         top_k: Número de fragmentos de contexto a usar (por defecto 5)
+        employee_id: si se pasa, además del corpus público se incluyen los
+            embeddings privados de ese empleado (`knowledge_enabled`).
     """
     from app.db.models.models import TenantDocument
 
@@ -194,6 +210,7 @@ async def answer_from_documents(tenant_id: str, question: str, top_k: int = 5) -
                         query_vector=query_vector,
                         top_k=top_k,
                         jurisdiction=jurisdiction,
+                        employee_id=employee_id,
                     )
                     for match, _dist in scored:
                         doc_name_res = await db.execute(

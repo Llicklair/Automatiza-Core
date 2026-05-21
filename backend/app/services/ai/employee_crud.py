@@ -76,6 +76,10 @@ def to_out(e: AIEmployee) -> dict:
         "doc_folder": e.doc_folder,
         "icon": e.icon,
         "avatar_color": e.avatar_color,
+        "scope": e.scope,
+        "memory_enabled": bool(e.memory_enabled),
+        "knowledge_enabled": bool(e.knowledge_enabled),
+        "workflows": e.workflows,
     }
 
 
@@ -99,14 +103,40 @@ async def list_employees(tenant_id, db: AsyncSession) -> list[dict]:
     return [to_out(e) for e in result.scalars().all()]
 
 
+class EmployeeContractError(ValueError):
+    """El custom no cumple el contrato mínimo de capacidades."""
+
+
 async def create_employee(
     name: str,
     role_description: str,
     budget_limit_usd: float,
     tenant_id,
     db: AsyncSession,
+    *,
+    scope: dict | None = None,
+    memory_enabled: bool = False,
+    knowledge_enabled: bool = False,
+    workflows: list | None = None,
 ) -> tuple[dict, str]:
-    """Crea empleado. Retorna (out_dict, employee_id) para que la ruta lance el BG task."""
+    """Crea empleado custom. Aplica el contrato (≥2 de 4 capacidades).
+
+    Si el contrato no se cumple, lanza `EmployeeContractError` y la ruta
+    responde 422 invitando a crear un "Perfil" en su lugar.
+
+    Retorna (out_dict, employee_id) para que la ruta lance el BG task.
+    """
+    from app.services.ai.employee_contract import validate_employee_contract
+
+    ok, msg = validate_employee_contract(
+        scope=scope,
+        memory_enabled=memory_enabled,
+        knowledge_enabled=knowledge_enabled,
+        workflows=workflows,
+    )
+    if not ok:
+        raise EmployeeContractError(msg)
+
     name_slug = name.lower().replace(" ", "-")
     employee = AIEmployee(
         id=uuid.uuid4(),
@@ -123,6 +153,10 @@ async def create_employee(
         doc_folder=f"agentes/{name_slug}-{str(uuid.uuid4())[:8]}",
         status="pending_setup",
         is_builtin=False,
+        scope=scope,
+        memory_enabled=memory_enabled,
+        knowledge_enabled=knowledge_enabled,
+        workflows=workflows,
     )
     db.add(employee)
     await db.commit()

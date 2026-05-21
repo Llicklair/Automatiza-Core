@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.db.base import Base
@@ -13,6 +13,15 @@ class DocumentEmbedding(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id = Column(String, index=True, nullable=False)
     tenant_id = Column(UUID(as_uuid=True), index=True, nullable=False)
+
+    # NULL = base de conocimiento del tenant (visible para todos los empleados).
+    # Valor = embedding privado del empleado (sólo si knowledge_enabled).
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ai_employees.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     chunk_index = Column(String, nullable=False)  # Para mantener el orden original de los trozos
     text_content = Column(Text, nullable=False)  # El texto extraído
