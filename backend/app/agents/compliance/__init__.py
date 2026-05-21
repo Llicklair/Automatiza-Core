@@ -10,6 +10,7 @@ from .agent import graph
 from .tools import (
     check_boe_news,
     check_fiscal_deadlines,
+    check_quarter_preventive,
     fiscal_query,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "graph",
     "check_fiscal_deadlines",
     "check_boe_news",
+    "check_quarter_preventive",
     "fiscal_query",
 ]

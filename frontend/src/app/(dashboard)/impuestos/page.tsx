@@ -17,6 +17,7 @@ import { ConsultaRapida } from "./_components/ConsultaRapida";
 import { LibroRegistroExport } from "./_components/LibroRegistroExport";
 import { Expediente303Drawer } from "./_components/Expediente303Drawer";
 import { PresentacionesPanel } from "./_components/PresentacionesPanel";
+import { PreventiveCheckCard } from "./_components/PreventiveCheckCard";
 
 function currentQuarterYear(): { quarter: number; year: number } {
     const d = new Date();
@@ -103,6 +104,9 @@ export default function ImpuestosPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Asistente fiscal preventivo del trimestre seleccionado */}
+                    <PreventiveCheckCard quarter={exp303Q.quarter} year={exp303Q.year} />
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <KpiCard

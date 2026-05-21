@@ -11,6 +11,23 @@ export interface ModeloAeatResult {
     [key: string]: unknown;
 }
 
+export type PreventiveSeverity = "high" | "medium" | "low";
+
+export interface PreventiveFinding {
+    code: string;
+    severity: PreventiveSeverity;
+    message: string;
+    suggested_action: string;
+    source_invoice_ids: string[];
+}
+
+export interface PreventiveCheckResult {
+    quarter: number;
+    year: number;
+    findings: PreventiveFinding[];
+    count_by_severity: Record<PreventiveSeverity, number>;
+}
+
 export const modelosAeat = {
     /** Modelo 130 — IRPF estimación directa, trimestral. */
     m130: (quarter: number, year?: number) => {
@@ -50,6 +67,31 @@ export const modelosAeat = {
         if (year) qs.append("year", String(year));
         return request<ModeloAeatResult>(
             `/api/v1/reports/modelos/390${qs.toString() ? "?" + qs : ""}`,
+        );
+    },
+
+    /** Modelo 200 — Impuesto sobre Sociedades (preview anual, F2.8). */
+    m200: (
+        year?: number,
+        opts?: { tipo_impositivo_pct?: number; pagos_fraccionados_pagados?: number },
+    ) => {
+        const qs = new URLSearchParams();
+        if (year) qs.append("year", String(year));
+        if (opts?.tipo_impositivo_pct !== undefined)
+            qs.append("tipo_impositivo_pct", String(opts.tipo_impositivo_pct));
+        if (opts?.pagos_fraccionados_pagados !== undefined)
+            qs.append("pagos_fraccionados_pagados", String(opts.pagos_fraccionados_pagados));
+        return request<ModeloAeatResult>(
+            `/api/v1/reports/modelos/200${qs.toString() ? "?" + qs : ""}`,
+        );
+    },
+
+    /** Asistente fiscal preventivo — riesgos antes de cerrar el 303. */
+    preventiveCheck: (quarter: number, year?: number) => {
+        const qs = new URLSearchParams({ quarter: String(quarter) });
+        if (year) qs.append("year", String(year));
+        return request<PreventiveCheckResult>(
+            `/api/v1/reports/modelos/preventive-check?${qs}`,
         );
     },
 };

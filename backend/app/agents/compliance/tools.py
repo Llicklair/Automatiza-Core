@@ -226,10 +226,55 @@ INSTRUCCIONES:
         return "No he podido procesar tu consulta. Consulta directamente con tu asesor fiscal."
 
 
+@tool
+async def check_quarter_preventive(tenant_id: str, quarter: int, year: int) -> str:
+    """Asistente fiscal preventivo: detecta riesgos antes de cerrar el 303.
+
+    Cruza facturas emitidas y recibidas del trimestre con el simulador y
+    devuelve hallazgos accionables (NIF de proveedor faltante, facturas
+    descuadradas, drafts olvidados, Verifactu sin registro, etc.).
+
+    Args:
+        tenant_id: UUID del tenant.
+        quarter: trimestre 1-4.
+        year: año del periodo (ej. 2026).
+    """
+    from app.services.aeat.preventive_check import check_quarter
+
+    try:
+        tid = uuid.UUID(tenant_id)
+    except (TypeError, ValueError):
+        return "FAIL: tenant_id no es UUID válido"
+    if quarter not in (1, 2, 3, 4):
+        return f"FAIL: trimestre inválido ({quarter}). Usa 1, 2, 3 o 4."
+
+    async with AsyncSessionLocal() as db:
+        findings = await check_quarter(db, tid, quarter, int(year))
+
+    if not findings:
+        return (
+            f"Sin riesgos detectados para {quarter}T {year}. El trimestre "
+            f"parece listo para presentar el 303."
+        )
+
+    lines = [f"Hallazgos preventivos {quarter}T {year} ({len(findings)}):", ""]
+    for f in findings:
+        icon = {"high": "🔴", "medium": "🟡", "low": "🔵"}.get(f.severity, "•")
+        lines.append(f"{icon} [{f.code}] {f.message}")
+        lines.append(f"   → {f.suggested_action}")
+        if f.source_invoice_ids:
+            preview = ", ".join(f.source_invoice_ids[:3])
+            more = f" (+{len(f.source_invoice_ids) - 3} más)" if len(f.source_invoice_ids) > 3 else ""
+            lines.append(f"   Facturas: {preview}{more}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
 tools = [
     check_fiscal_deadlines,
     check_boe_news,
     fiscal_query,
+    check_quarter_preventive,
     create_document,
     list_tenant_documents,
     get_document_content,

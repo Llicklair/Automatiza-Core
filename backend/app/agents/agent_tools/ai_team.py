@@ -59,6 +59,7 @@ AVAILABLE_SKILLS = [
     "compliance.check_fiscal_deadlines",
     "compliance.fiscal_query",
     "compliance.check_boe_news",
+    "compliance.check_quarter_preventive",
     # excel
     "excel.import_excel",
     "excel.read_excel",
@@ -75,6 +76,10 @@ AVAILABLE_SKILLS = [
     "rag.get_tenant_knowledge",
     "rag.upsert_tenant_knowledge",
     "rag.get_product_catalog",
+    # memoria persistente del empleado (sólo activa si memory_enabled=True)
+    "memory.remember",
+    "memory.recall",
+    "memory.recall_all",
 ]
 
 VALID_EMPLOYEE_DOMAINS = {

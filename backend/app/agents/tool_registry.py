@@ -90,10 +90,12 @@ def _build_registry() -> dict[str, Callable]:
 
     # — compliance —
     from app.agents.compliance import check_boe_news, check_fiscal_deadlines, fiscal_query
+    from app.agents.compliance.tools import check_quarter_preventive
 
     registry["check_fiscal_deadlines"] = check_fiscal_deadlines
     registry["check_boe_news"] = check_boe_news
     registry["fiscal_query"] = fiscal_query
+    registry["check_quarter_preventive"] = check_quarter_preventive
 
     # — documents —
     from app.agents.documents import classify_document, search_documents_semantic
@@ -173,6 +175,13 @@ def _build_registry() -> dict[str, Callable]:
     from app.agents.agent_tools.ai_team import create_ai_employee_from_description
 
     registry["create_ai_employee_from_description"] = create_ai_employee_from_description
+
+    # — memoria persistente de AIEmployee (sólo si memory_enabled=True) —
+    from app.agents.agent_tools.memory import recall, recall_all, remember
+
+    registry["remember"] = remember
+    registry["recall"] = recall
+    registry["recall_all"] = recall_all
 
     # — pdf reports —
     from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
