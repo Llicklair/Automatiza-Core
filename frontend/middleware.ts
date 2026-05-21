@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Middleware de autenticación: protege todas las rutas del dashboard.
  * Redirige a /login si no hay access_token en las cookies.
  */
-const PUBLIC_PATHS = ["/login", "/register", "/api", "/_next", "/favicon.ico"];
+const PUBLIC_PATHS = ["/login", "/registro", "/forgot-password", "/api", "/_next", "/favicon.ico"];
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
