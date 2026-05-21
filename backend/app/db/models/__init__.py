@@ -5,7 +5,13 @@ todas las tablas al inspeccionar Base.metadata.
 """
 
 from .accounting import BankTransaction, FixedAsset, JournalEntry, JournalLine  # noqa: F401
-from .ai_employees import ActivityEntry, AgentSkill, AIEmployee, TokenLedger  # noqa: F401
+from .ai_employees import (  # noqa: F401
+    ActivityEntry,
+    AgentSkill,
+    AIEmployee,
+    EmployeeMemory,
+    TokenLedger,
+)
 from .alerts import AlertLog  # noqa: F401
 from .auth import (  # noqa: F401
     ClientPortalToken,
@@ -34,6 +40,9 @@ from .notifications import Notification  # noqa: F401
 from .orders import PurchaseOrder, PurchaseOrderLine, SalesOrder, SalesOrderLine  # noqa: F401
 from .pos import PosSession, PosSessionLine  # noqa: F401
 from .projects import Project, ProjectTask  # noqa: F401
+from .reconciliation import ReconciliationRejection  # noqa: F401
+from .signed_document import SignedDocument  # noqa: F401
+from .supplier_learning import InvoiceScanCache, SupplierInvoiceTemplate  # noqa: F401
 from .tasks import AuditLog, PendingApproval, Task  # noqa: F401
 from .tenant import (  # noqa: F401
     AutonomyPolicy,
@@ -43,4 +52,5 @@ from .tenant import (  # noqa: F401
     TenantLlmConfig,
     TenantOnboarding,
 )
+from .workflow_template import WorkflowTemplate  # noqa: F401
 from .workflows import DomainEvent, Workflow, WorkflowExecution  # noqa: F401
