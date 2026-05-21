@@ -588,7 +588,8 @@ python smoke_tasks_workflows.py   # Tareas IA de ejemplo
 ### Hot-reload al exe instalado
 
 ```bash
-cd desktop && npm run sync
+cd desktop && npm run sync           # Sincroniza cambios al exe instalado
+cd desktop && npm run sync:rebuild   # Igual + rebuild del frontend antes de copiar
 ```
 
 ### Tests
