@@ -165,6 +165,17 @@ async def _create_invoice_async(
             except Exception as ev_err:
                 warnings.append(f"Evento invoice_created no emitido: {ev_err}")
 
+            # Verifactu: si el tenant está en modo "voluntary" añade el registro
+            # encadenado para que el PDF lleve QR (RD 1007/2023 Art. 8).
+            # En modo "no_remission" no hace nada.
+            try:
+                from app.services.billing.verifactu_chain import (
+                    maybe_append_verifactu_record,
+                )
+                await maybe_append_verifactu_record(db, invoice=new_invoice)
+            except Exception as vf_err:
+                warnings.append(f"Verifactu no encadenado: {vf_err}")
+
             await db.commit()
             await db.refresh(new_invoice)
         except Exception as e:

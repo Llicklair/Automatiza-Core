@@ -143,6 +143,41 @@ async def append_verifactu_record(
     return record
 
 
+async def maybe_append_verifactu_record(
+    db: AsyncSession,
+    *,
+    invoice: Invoice,
+) -> VerifactuRecord | None:
+    """Si el tenant está en modo Verifactu "voluntary", añade la entrada
+    encadenada para esta factura. Si está en "no_remission" no hace nada.
+
+    Carga el NIF emisor desde el Tenant para construir la huella canónica.
+    El caller debe estar dentro de una transacción abierta (no hace commit).
+    Idempotente: si ya hay registro para la factura, devuelve el existente.
+
+    Devuelve el `VerifactuRecord` creado/existente, o `None` si el tenant
+    está en modo `no_remission`.
+    """
+    from app.db.models.auth import Tenant
+    from app.services.billing.verifactu_mode import should_remit
+
+    if not await should_remit(db, tenant_id=invoice.tenant_id):
+        return None
+
+    tenant = await db.get(Tenant, invoice.tenant_id)
+    if tenant is None or not tenant.nif:
+        # Sin NIF del emisor no podemos firmar el payload canónico.
+        # Lo dejamos pasar (la factura sigue siendo válida) pero avisamos.
+        import logging
+        logging.getLogger(__name__).warning(
+            "Verifactu: tenant %s sin NIF, omitiendo cadena para factura %s",
+            invoice.tenant_id, invoice.id,
+        )
+        return None
+
+    return await append_verifactu_record(db, invoice=invoice, nif_emisor=tenant.nif)
+
+
 async def verify_chain_integrity(db: AsyncSession, tenant_id: UUID) -> tuple[bool, int]:
     """Recorre la cadena completa del tenant y verifica integridad.
 
