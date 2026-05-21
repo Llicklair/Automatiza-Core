@@ -3,14 +3,16 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-from app.db.models.billing import Invoice
+from app.db.models.billing import Invoice, VerifactuRecord
 from app.db.models.crm import Client
 from app.services.billing.verifactu_chain import (
     append_verifactu_record,
     build_payload_canonico,
     compute_huella,
+    maybe_append_verifactu_record,
     verify_chain_integrity,
 )
+from sqlalchemy import select
 
 
 def _make_invoice(tenant_id, client_id, *, invoice_number: str, importe: Decimal) -> Invoice:
@@ -185,3 +187,49 @@ class TestAppendVerifactuRecord:
         ok, count = await verify_chain_integrity(db, tenant.id)
         assert ok is False
         assert count == 1
+
+
+@pytest.mark.asyncio
+class TestMaybeAppendVerifactuRecord:
+    """Regresión: ambos paths de creación de factura (servicio y agente)
+    DEBEN encadenar el registro Verifactu cuando el modo del tenant es
+    'voluntary'. Sin esto el PDF sale sin QR (RD 1007/2023 Art. 8 FAC.QR).
+    """
+
+    async def test_modo_no_remission_no_crea_registro(self, db, seed_tenant_and_user):
+        tenant, _user, _token = seed_tenant_and_user
+        client = Client(tenant_id=tenant.id, nif="B12345678", name="Acme SL")
+        db.add(client)
+        await db.flush()
+        invoice = _make_invoice(tenant.id, client.id, invoice_number="A2026-0001", importe=Decimal("121.00"))
+        db.add(invoice)
+        await db.flush()
+
+        # Sin VerifactuConfig el tenant arranca en 'no_remission' → no debe encadenar.
+        result = await maybe_append_verifactu_record(db, invoice=invoice)
+        assert result is None
+        chain = await db.execute(
+            select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice.id)
+        )
+        assert chain.scalar_one_or_none() is None
+
+    async def test_modo_voluntary_si_crea_registro(self, db, seed_tenant_and_user):
+        from app.services.billing.verifactu_mode import set_mode
+
+        tenant, _user, _token = seed_tenant_and_user
+        client = Client(tenant_id=tenant.id, nif="B12345678", name="Acme SL")
+        db.add(client)
+        await db.flush()
+        invoice = _make_invoice(tenant.id, client.id, invoice_number="A2026-0001", importe=Decimal("121.00"))
+        db.add(invoice)
+        await db.flush()
+
+        await set_mode(db, tenant_id=tenant.id, mode="voluntary")
+        result = await maybe_append_verifactu_record(db, invoice=invoice)
+        await db.commit()
+
+        assert result is not None
+        assert len(result.huella) == 64
+        # nif_emisor sale del Tenant, no de un parámetro: cubre el bug original
+        # (cualquiera de los dos paths de creación olvidaba pasarlo).
+        assert result.nif_emisor == tenant.nif
