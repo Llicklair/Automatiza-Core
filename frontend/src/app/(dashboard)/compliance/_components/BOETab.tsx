@@ -1,123 +1,175 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Newspaper, MessageSquare, Loader2 } from "lucide-react";
-import { executeTaskAndWait } from "../_hooks/useCompliance";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Newspaper, Loader2, RefreshCw, ExternalLink } from "lucide-react";
+import { api } from "@/lib/api";
+
+interface BoeItem {
+    identificador?: string;
+    titulo: string;
+    descripcion?: string;
+    url?: string;
+    fecha?: string;
+    relevante_pyme?: boolean;
+    error?: string;
+}
+
+type Seccion = "fiscal" | "laboral" | "mercantil";
+
+const SECCION_LABELS: Record<Seccion, string> = {
+    fiscal: "Fiscal",
+    laboral: "Laboral",
+    mercantil: "Mercantil",
+};
 
 export function BOETab() {
-    const [loading, setLoading] = useState(false);
-    const [statusText, setStatusText] = useState("");
-    const [triggered, setTriggered] = useState(false);
-    const [results, setResults] = useState<any>(null);
+    const [seccion, setSeccion] = useState<Seccion>("fiscal");
+    const [items, setItems] = useState<BoeItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [soloPyme, setSoloPyme] = useState(false);
 
-    async function fetchBOE() {
-        setLoading(true); setTriggered(true); setError(null);
+    async function fetchBOE(s: Seccion) {
+        setLoading(true);
+        setError(null);
         try {
-            const data = await executeTaskAndWait(
-                "compliance",
-                "novedades BOE regulación fiscal pyme",
-                (msg) => setStatusText(msg)
-            );
-            setResults(data);
-        } catch (err: any) {
-            setError(err.message);
+            const data = (await api.advisory.boe(s, 15)) as BoeItem[];
+            // El backend devuelve [{error, seccion}] si falla la descarga del RSS
+            if (data.length === 1 && data[0].error) {
+                setError(`El BOE no respondió: ${data[0].error}`);
+                setItems([]);
+            } else {
+                setItems(data);
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Error desconocido al consultar el BOE");
+            setItems([]);
         } finally {
             setLoading(false);
         }
     }
 
+    useEffect(() => {
+        fetchBOE(seccion);
+    }, [seccion]);
+
+    const visibles = soloPyme ? items.filter(i => i.relevante_pyme) : items;
+    const totalRelevantes = items.filter(i => i.relevante_pyme).length;
+
     return (
         <div className="space-y-6">
-            {!triggered && !results && !error ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <Newspaper className="w-12 h-12 text-muted-foreground mb-4" />
-                    <p className="text-foreground font-medium mb-2">Novedades del BOE</p>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                        El agente consultará el BOE y te resumirá las novedades relevantes para tu empresa
+            {/* Controles */}
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="flex gap-1 rounded-lg bg-muted border border-border p-1">
+                    {(Object.keys(SECCION_LABELS) as Seccion[]).map(s => (
+                        <button
+                            key={s}
+                            onClick={() => setSeccion(s)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                                seccion === s
+                                    ? "bg-card text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            {SECCION_LABELS[s]}
+                        </button>
+                    ))}
+                </div>
+
+                {totalRelevantes > 0 && (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={soloPyme}
+                            onChange={e => setSoloPyme(e.target.checked)}
+                            className="rounded border-border"
+                        />
+                        Solo PYMEs ({totalRelevantes})
+                    </label>
+                )}
+
+                <button
+                    onClick={() => fetchBOE(seccion)}
+                    disabled={loading}
+                    className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+                    title="Refrescar"
+                >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                    Refrescar
+                </button>
+            </div>
+
+            {/* Resultado */}
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+                    <Loader2 className="w-7 h-7 animate-spin text-primary" />
+                    <p className="text-sm">Cargando novedades del BOE...</p>
+                </div>
+            ) : error ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 space-y-3">
+                    <p className="text-red-400 text-sm font-medium flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" /> Error al consultar el BOE
                     </p>
+                    <p className="text-muted-foreground text-sm">{error}</p>
                     <button
-                        onClick={fetchBOE}
-                        className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary text-foreground text-sm font-medium transition"
+                        onClick={() => fetchBOE(seccion)}
+                        className="text-xs text-primary hover:underline"
                     >
-                        Consultar novedades
+                        Volver a intentar
                     </button>
                 </div>
-            ) : (
-                <div className="rounded-xl border border-border bg-card p-6">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-10 gap-4 text-muted-foreground">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                            <p className="text-sm font-medium">{statusText || "El agente está conectando con el BOE..."}</p>
-                            <p className="text-xs text-muted-foreground max-w-xs text-center">
-                                Esto puede tardar unos segundos mientras la IA lee y resume el Boletín Oficial del Estado.
-                            </p>
-                        </div>
-                    ) : error ? (
-                        <div className="space-y-4">
-                            <p className="text-red-400 text-sm font-medium flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4" /> Error al consultar el BOE
-                            </p>
-                            <p className="text-muted-foreground text-sm">{error}</p>
-                            <button
-                                onClick={() => { setTriggered(false); setError(null); }}
-                                className="text-xs text-primary hover:text-primary transition"
-                            >
-                                Volver a intentar
-                            </button>
-                        </div>
-                    ) : results ? (
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="text-foreground font-medium mb-2 flex items-center gap-2">
-                                    <MessageSquare className="w-4 h-4 text-primary" />
-                                    Resumen del Asesor (IA)
-                                </h3>
-                                <div className="p-4 bg-card rounded-lg border border-border">
-                                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                                        {results.resumen_boe || "No hay resumen disponible."}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {results.boe_novedades && results.boe_novedades.length > 0 && (
-                                <div>
-                                    <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                                        Fuentes Originales ({results.boe_novedades.length})
-                                    </h3>
-                                    <ul className="space-y-3">
-                                        {results.boe_novedades.map((norma: any, i: number) => (
-                                            <li key={i} className="flex flex-col gap-1 p-3 rounded-md bg-card/50 border border-border">
-                                                <a
-                                                    href={norma.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm font-medium text-primary hover:underline"
-                                                >
-                                                    {norma.titulo}
-                                                </a>
-                                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                                    {norma.descripcion}
-                                                </p>
-                                                <div className="flex gap-2 mt-1">
-                                                    <span className="text-[10px] text-muted-foreground font-mono">{norma.identificador}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{norma.fecha}</span>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-
-                            <button
-                                onClick={fetchBOE}
-                                className="text-xs text-muted-foreground hover:text-foreground transition mt-4"
-                            >
-                                Actualizar de nuevo
-                            </button>
-                        </div>
-                    ) : null}
+            ) : visibles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                    <Newspaper className="w-10 h-10 mb-3" />
+                    <p className="text-sm">
+                        {soloPyme
+                            ? "Sin novedades específicas para PYMEs en esta sección."
+                            : "No hay novedades publicadas en esta sección."}
+                    </p>
                 </div>
+            ) : (
+                <ul className="space-y-3">
+                    {visibles.map((item, i) => (
+                        <li
+                            key={item.identificador || i}
+                            className={`rounded-xl border p-4 transition ${
+                                item.relevante_pyme
+                                    ? "border-primary/30 bg-primary/5"
+                                    : "border-border bg-card"
+                            }`}
+                        >
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                                <div className="flex-1 min-w-0">
+                                    <a
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-medium text-foreground hover:text-primary hover:underline flex items-start gap-2 group"
+                                    >
+                                        <span>{item.titulo}</span>
+                                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary shrink-0 mt-0.5" />
+                                    </a>
+                                </div>
+                                {item.relevante_pyme && (
+                                    <span className="shrink-0 text-[10px] uppercase tracking-wide font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
+                                        Relevante PYME
+                                    </span>
+                                )}
+                            </div>
+                            {item.descripcion && (
+                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                    {item.descripcion}
+                                </p>
+                            )}
+                            <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                                {item.identificador && (
+                                    <span className="font-mono">{item.identificador}</span>
+                                )}
+                                {item.fecha && <span>{item.fecha}</span>}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
             )}
         </div>
     );

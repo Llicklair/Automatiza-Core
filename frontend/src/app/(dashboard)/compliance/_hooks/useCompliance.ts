@@ -15,15 +15,29 @@ export interface Vencimiento {
     urgente_dias: number;
 }
 
+// Timeout duro de polling. El agente IA puede tardar, pero si supera este
+// umbral lo más probable es un cuelgue (LLM caído, scraper bloqueado, etc.).
+const TASK_POLL_TIMEOUT_MS = 90_000;
+const TASK_POLL_INTERVAL_MS = 2_000;
+const TERMINAL_STATUSES = new Set(["done", "failed", "awaiting_approval"]);
+
 export async function executeTaskAndWait(domain: string, intent: string, onProgress?: (msg: string) => void) {
     const task = await api.tasks.create(domain, intent);
     let currentTask = task;
+    const start = Date.now();
 
-    while (currentTask.status === "pending" || currentTask.status === "executing") {
-        await new Promise(r => setTimeout(r, 2000));
+    while (!TERMINAL_STATUSES.has(currentTask.status)) {
+        if (Date.now() - start > TASK_POLL_TIMEOUT_MS) {
+            throw new Error(
+                `La consulta está tardando demasiado (>${TASK_POLL_TIMEOUT_MS / 1000}s). ` +
+                "Puede que el agente esté sobrecargado. Vuelve a intentarlo en unos segundos.",
+            );
+        }
+        await new Promise(r => setTimeout(r, TASK_POLL_INTERVAL_MS));
         currentTask = await api.tasks.get(task.id);
-        if (onProgress && currentTask.status === "executing") {
-            onProgress("Procesando información...");
+        if (onProgress) {
+            const elapsed = Math.round((Date.now() - start) / 1000);
+            onProgress(`Procesando información... (${elapsed}s)`);
         }
     }
 
