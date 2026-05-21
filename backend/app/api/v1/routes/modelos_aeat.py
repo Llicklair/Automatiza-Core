@@ -23,6 +23,7 @@ from app.services.reports.modelos_aeat import (
     build_modelo_111_data,
     build_modelo_130_data,
     build_modelo_190_data,
+    build_modelo_200_data,
     build_modelo_347_data,
     build_modelo_390_data,
 )
@@ -89,3 +90,50 @@ async def get_modelo_390(
     """Modelo 390 — Resumen anual IVA (4×303)."""
     y = year or _current_year()
     return await build_modelo_390_data(db, user.tenant_id, y)
+
+
+@router.get("/200")
+async def get_modelo_200(
+    year: int = Query(default=None),
+    tipo_impositivo_pct: float | None = Query(default=None, ge=0, le=100),
+    pagos_fraccionados_pagados: float = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Modelo 200 — Impuesto sobre Sociedades (preview anual)."""
+    y = year or (_current_year() - 1)  # por defecto, ejercicio anterior cerrado
+    return await build_modelo_200_data(
+        db,
+        user.tenant_id,
+        y,
+        tipo_impositivo_pct=tipo_impositivo_pct,
+        pagos_fraccionados_pagados=pagos_fraccionados_pagados,
+    )
+
+
+@router.get("/preventive-check")
+async def get_preventive_check(
+    quarter: int = Query(..., ge=1, le=4),
+    year: int = Query(default=None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Asistente fiscal preventivo — detecta riesgos del trimestre antes
+    de cerrar el 303. Cruza facturas emitidas y recibidas con el simulador
+    y devuelve hallazgos accionables (NIF de proveedor faltante, facturas
+    descuadradas, drafts olvidados, Verifactu sin registro, etc.).
+    """
+    from app.services.aeat.preventive_check import check_quarter
+
+    y = year or _current_year()
+    findings = await check_quarter(db, user.tenant_id, quarter, y)
+    return {
+        "quarter": quarter,
+        "year": y,
+        "findings": [f.to_dict() for f in findings],
+        "count_by_severity": {
+            "high": sum(1 for f in findings if f.severity == "high"),
+            "medium": sum(1 for f in findings if f.severity == "medium"),
+            "low": sum(1 for f in findings if f.severity == "low"),
+        },
+    }
