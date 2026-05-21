@@ -41,6 +41,10 @@ import { presentacion } from "./presentacion";
 import { pos } from "./pos";
 import { modelosAeat } from "./modelosAeat";
 import { aeat } from "./aeat";
+import { treasury } from "./treasury";
+import { collections } from "./collections";
+import { marketplace } from "./marketplace";
+import { signing } from "./signing";
 import { request } from "./client";
 
 // ── Portal types ─────────────────────────────────────────────────────────────
@@ -101,6 +105,10 @@ export const api = {
     pos,
     modelosAeat,
     aeat,
+    treasury,
+    collections,
+    marketplace,
+    signing,
     search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
     importBulk: {
         employees: (rows: Record<string, string>[]) =>

@@ -15,6 +15,7 @@ from app.api.v1.routes import (
     banking,
     calendar,
     client_portal,
+    collections,
     crm,
     documents,
     erp,
@@ -24,6 +25,7 @@ from app.api.v1.routes import (
     import_bulk,
     integrations,
     llm_usage,
+    marketplace,
     messaging,
     modelos_aeat,
     notifications,
@@ -38,11 +40,13 @@ from app.api.v1.routes import (
     reports,
     scanner,
     search,
+    signing,
     system,
     tasks,
     telemetry,
     templates,
     tenant,
+    treasury,
     users,
     verifactu_config,
     verify,
@@ -60,6 +64,10 @@ api_router.include_router(documents.router)
 api_router.include_router(erp.router)
 api_router.include_router(crm.router)
 api_router.include_router(banking.router, prefix="/banking")
+api_router.include_router(treasury.router)
+api_router.include_router(collections.router)
+api_router.include_router(marketplace.router)
+api_router.include_router(signing.router)
 api_router.include_router(hr.router)
 api_router.include_router(projects.router)
 api_router.include_router(accounting.router)
