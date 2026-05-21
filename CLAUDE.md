@@ -76,7 +76,7 @@ reading code, treat `agents/orchestrator/` as "Coordinador" and
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Automatiza-pyme-main** (7887 symbols, 19784 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Automatiza-pyme-main** (9153 symbols, 23075 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
