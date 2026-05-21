@@ -1,6 +1,40 @@
 # Tareas activas — AutomatizaPyme
 
-Última actualización: 2026-05-20
+Última actualización: 2026-05-21
+
+---
+
+## Roadmap 11 mejoras — alineado 2026-05-21
+
+**Decisión usuario**: orden Fase 1 → 2 → 3, **sin servicios externos de pago** (eIDAS con AutoFirma del Estado, no QTSP).
+
+### Fase 1 — Quick wins en código (objetivo: 1-2 sem)
+
+- [~] **F1.1 Audit Coordinador exhaustivo** — script `scripts/audit_domain_completeness.py` ✅ creado 2026-05-20. `team` eliminado ✅. Falta: ejecutar audit completo y cerrar cualquier asimetría residual (`VALID_DOMAINS` × `DISPATCHER_MAP` × `_KEYWORD_MAP` × tools).
+- [~] **F1.2 Contrato AIEmployee con 4 capacidades reales** — migración 0029 ✅ aplicada. Faltan: (a) tabla `employee_memory` + RAG filter por employee, (b) UI split Empleado/Perfil, (c) data-migration de customs existentes (líneas 75-83).
+- [⚠️ ACCIÓN USUARIO] **F1.3 OAuth Google → Production mode** — bloqueante para piloto.
+  Pasos exactos (30 s):
+  1. https://console.cloud.google.com/apis/credentials/consent
+  2. Seleccionar el proyecto OAuth de AutomatizaPyme
+  3. En "Publishing status" pulsar **"PUBLISH APP"** → "Confirm"
+  4. Estado pasa de *Testing* a *In production* (sin verificar).
+  Resultado: refresh tokens dejan de caducar a 7 días, los usuarios fuera del listado Test users pueden hacer login (ven warning "Google hasn't verified" — aceptable hasta tener 5+ clientes y meterse en OAuth verification, que es F1.3-bis cuando toque).
+- [ ] **F1.4 Asistente fiscal preventivo** — cruce facturas recibidas vs 303 simulado antes de cerrar trimestre, alerta de IVA deducible olvidado, IRPF retenido descuadrado, etc. Reusa `services/aeat/` + agente compliance. Output: nuevo widget en `/impuestos` + push notif.
+
+### Fase 2 — Subir nivel a motores ya construidos (objetivo: 3-4 sem)
+
+- [ ] **F2.5 OCR con aprendizaje por proveedor** — template store en BD por NIF emisor. Primera vez: extracción LLM + guarda layout (bounding boxes de campos clave). Siguientes facturas del mismo NIF: extracción regex sobre el layout aprendido, sin LLM. Meta: >95% precisión, ~0 tokens en proveedores repetidos.
+- [ ] **F2.6 Conciliación bancaria explicable** — `services/banking/reconciliation.py` ya tiene scoring (commit 581068a). Falta: sugerencia "Este movimiento = factura #1234 porque {monto exacto, fecha ±3d, concepto contiene NIF}" + un-click aceptar/rechazar + aprendizaje del rechazo.
+- [ ] **F2.7 Tesorería Beta → Producción** — cashflow proyectado real (cobros pendientes + pagos previstos), remesas SEPA XML (Pain.001.001.03 cobros, Pain.008.001.02 adeudos), simulador de tesorería.
+- [ ] **F2.8 Modelo 100 sociedades** — mismo patrón que 303 (builder + presentación AEAT + WORM). Cubre S.L. enteras, no solo autónomos.
+
+### Fase 3 — Capacidades nuevas con dependencias externas (objetivo: 1-3 meses)
+
+- [ ] **F3.9 Inteligencia de cobros** — predictor de morosidad sobre histórico (días-medios-cobro por cliente, % facturas vencidas, ticket medio). Recordatorios escalonados: aviso amistoso D-3, recordatorio D+0, requerimiento D+15, intereses D+30. ML simple (logistic regression sobre features de cliente) si no hay datos suficientes → ranking por reglas.
+- [ ] **F3.10 Marketplace de workflows** — catálogo curado + import/export YAML + moderación. Empaqueta workflows existentes (`gestoria_mensual`, `cierre_trimestral`) como plantillas reutilizables. Network effect sin centralizar datos.
+- [ ] **F3.11 Firma electrónica eIDAS (AutoFirma)** — integración con AutoFirma del Estado (gratis). RRHH ya genera contratos, falta: invocar AutoFirma → certificado FNMT del usuario → PAdES (PDF firmado) + sello de tiempo TSA gratuito @firma. Sustituye Signaturit en escenarios B2B simples.
+
+---
 
 ---
 
