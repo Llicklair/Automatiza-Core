@@ -15,9 +15,12 @@ import uuid
 from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import desc, func, not_, select
+from sqlalchemy import case, desc, extract, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.billing import InvoiceLine
+from app.db.models.hr import Expense, JornadaRecord, LeaveRequest
+from app.db.models.inventory import Product
 from app.db.models.models import (
     BankTransaction,
     Client,
@@ -26,6 +29,7 @@ from app.db.models.models import (
     Payroll,
     Task,
 )
+from app.db.models.tasks import AgentExecutionTrace
 from app.services.cache import cached_json
 
 # TTL del dashboard: 5 min. Valor de compromiso entre frescura percibida
@@ -79,7 +83,7 @@ def _dashboard_cache_key(
     start: date,
     end: date,
 ) -> str:
-    return f"dashboard:v1:{tenant_id}:{period}:{start}:{end}"
+    return f"dashboard:v4:{tenant_id}:{period}:{start}:{end}"
 
 
 @cached_json(key=_dashboard_cache_key, ttl_seconds=_DASHBOARD_TTL_SECONDS)
@@ -330,6 +334,288 @@ async def get_dashboard(
     )
     nuevos_clientes_periodo = int((await db.execute(new_clients_q)).scalar() or 0)
 
+    # ── Ventas: ticket medio, IVA, top productos, día de la semana ──────
+    ticket_medio_periodo = (
+        round(ingresos_periodo / int(emitidas_periodo or 0), 2)
+        if int(emitidas_periodo or 0) > 0
+        else 0.0
+    )
+
+    # IVA breakdown: agrupado por tax_percentage (sólo facturas emitidas del periodo)
+    # coalesce sobre discount_percentage por seguridad si llega NULL en datos antiguos.
+    iva_rate_expr = func.coalesce(InvoiceLine.tax_percentage, 0)
+    iva_q = (
+        select(
+            iva_rate_expr.label("rate"),
+            func.coalesce(
+                func.sum(
+                    InvoiceLine.quantity
+                    * InvoiceLine.unit_price
+                    * (1 - func.coalesce(InvoiceLine.discount_percentage, 0) / 100)
+                ),
+                0,
+            ).label("base"),
+            func.coalesce(func.sum(InvoiceLine.total), 0).label("total_con_iva"),
+        )
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "issued",
+            Invoice.status != "cancelled",
+            Invoice.date >= start,
+            Invoice.date <= end,
+        )
+        .group_by(iva_rate_expr)
+        .order_by(desc("total_con_iva"))
+    )
+    iva_breakdown = [
+        {
+            "rate": float(rate or 0),
+            "base": round(float(base or 0), 2),
+            "iva": round(float(total or 0) - float(base or 0), 2),
+            "total": round(float(total or 0), 2),
+        }
+        for rate, base, total in (await db.execute(iva_q)).all()
+    ]
+
+    # Top productos del periodo. Usa Product.name si la línea tiene product_id,
+    # si no cae al description (líneas libres). Así contamos también facturación
+    # de servicios/items sin catalogar.
+    # Importante: GROUP BY usa la expresión completa, no el alias.
+    # PostgreSQL rechaza `GROUP BY <alias>` cuando el alias envuelve columnas
+    # no agregadas con COALESCE; exige las columnas en el GROUP BY explícito.
+    product_name = func.coalesce(Product.name, InvoiceLine.description, "Sin nombre")
+    top_prod_q = (
+        select(
+            product_name.label("name"),
+            func.coalesce(func.sum(InvoiceLine.quantity), 0).label("cantidad"),
+            func.coalesce(func.sum(InvoiceLine.total), 0).label("total"),
+        )
+        .select_from(InvoiceLine)
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .outerjoin(Product, Product.id == InvoiceLine.product_id)
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "issued",
+            Invoice.status != "cancelled",
+            Invoice.date >= start,
+            Invoice.date <= end,
+        )
+        .group_by(product_name)
+        .order_by(desc("total"))
+        .limit(5)
+    )
+    top_productos = [
+        {
+            "name": name or "Sin nombre",
+            "cantidad": float(cant or 0),
+            "total": round(float(tot or 0), 2),
+        }
+        for name, cant, tot in (await db.execute(top_prod_q)).all()
+    ]
+
+    # Facturación por día de la semana (1=Lunes … 7=Domingo en isodow Postgres)
+    dow_expr = extract("isodow", Invoice.date)
+    dow_q = (
+        select(
+            dow_expr.label("dow"),
+            func.coalesce(func.sum(Invoice.amount_total), 0).label("total"),
+            func.count().label("n"),
+        )
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type == "issued",
+            Invoice.status != "cancelled",
+            Invoice.date >= start,
+            Invoice.date <= end,
+        )
+        .group_by(dow_expr)
+        .order_by(dow_expr)
+    )
+    _DOW_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    dow_rows = {int(r[0]): (float(r[1] or 0), int(r[2] or 0)) for r in (await db.execute(dow_q)).all()}
+    por_dia_semana = [
+        {
+            "dia": _DOW_LABELS[i],
+            "ingresos": round(dow_rows.get(i + 1, (0.0, 0))[0], 2),
+            "n": dow_rows.get(i + 1, (0.0, 0))[1],
+        }
+        for i in range(7)
+    ]
+
+    # ── Aging cobros / pagos (facturas con due_date vencido o por vencer) ─
+    def _aging_query(tipo: str):
+        bucket_expr = case(
+            (func.date(Invoice.due_date) - today <= -90, "vencido_90"),
+            (func.date(Invoice.due_date) - today <= -60, "vencido_60_90"),
+            (func.date(Invoice.due_date) - today <= -30, "vencido_30_60"),
+            (func.date(Invoice.due_date) - today <= 0, "vencido_0_30"),
+            (func.date(Invoice.due_date) - today <= 30, "vence_0_30"),
+            else_="vence_30plus",
+        )
+        return (
+            select(
+                bucket_expr.label("bucket"),
+                func.count().label("n"),
+                func.coalesce(func.sum(Invoice.amount_total), 0).label("importe"),
+            )
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_type == tipo,
+                Invoice.status == "issued",
+                Invoice.due_date.is_not(None),
+            )
+            .group_by(bucket_expr)
+        )
+
+    _BUCKETS = ["vencido_90", "vencido_60_90", "vencido_30_60", "vencido_0_30", "vence_0_30", "vence_30plus"]
+    aging_cobros = {b: {"n": 0, "importe": 0.0} for b in _BUCKETS}
+    for b, n, imp in (await db.execute(_aging_query("issued"))).all():
+        if b in aging_cobros:
+            aging_cobros[b] = {"n": int(n or 0), "importe": round(float(imp or 0), 2)}
+
+    aging_pagos = {b: {"n": 0, "importe": 0.0} for b in _BUCKETS}
+    for b, n, imp in (await db.execute(_aging_query("received"))).all():
+        if b in aging_pagos:
+            aging_pagos[b] = {"n": int(n or 0), "importe": round(float(imp or 0), 2)}
+
+    # ── DSO / DPO (días) ─────────────────────────────────────────────────
+    dias_periodo = (end - start).days + 1
+    importe_pendiente_pago = sum(v["importe"] for v in aging_pagos.values())
+    dso_dias = (
+        round((importe_pendiente_cobro / ingresos_periodo) * dias_periodo, 1)
+        if ingresos_periodo > 0 else 0.0
+    )
+    dpo_dias = (
+        round((importe_pendiente_pago / gastos_periodo) * dias_periodo, 1)
+        if gastos_periodo > 0 else 0.0
+    )
+
+    # ── RRHH detalle ─────────────────────────────────────────────────────
+    coste_medio_empleado = (
+        round(coste_nominas / empleados_activos, 2) if empleados_activos > 0 else 0.0
+    )
+
+    dept_q = (
+        select(
+            func.coalesce(Employee.department, "Sin departamento").label("dept"),
+            func.count().label("n"),
+            func.coalesce(func.sum(Employee.base_salary), 0).label("salarios"),
+        )
+        .where(Employee.tenant_id == tenant_id, Employee.status == "active")
+        .group_by("dept")
+        .order_by(desc("n"))
+    )
+    rrhh_por_departamento = [
+        {"departamento": d, "empleados": int(n or 0), "coste_base": round(float(s or 0), 2)}
+        for d, n, s in (await db.execute(dept_q)).all()
+    ]
+
+    # Horas ordinarias / extra del periodo
+    horas_q = select(
+        func.coalesce(func.sum(JornadaRecord.horas_ordinarias), 0),
+        func.coalesce(func.sum(JornadaRecord.horas_extra), 0),
+    ).where(
+        JornadaRecord.tenant_id == tenant_id,
+        JornadaRecord.fecha >= start,
+        JornadaRecord.fecha <= end,
+    )
+    horas_ord_t, horas_ext_t = (await db.execute(horas_q)).one()
+
+    # Vacaciones / ausencias
+    vac_pend_q = select(func.count()).where(
+        LeaveRequest.tenant_id == tenant_id,
+        LeaveRequest.status == "pending",
+    )
+    vac_pendientes = int((await db.execute(vac_pend_q)).scalar() or 0)
+
+    vac_aprob_q = select(func.count()).where(
+        LeaveRequest.tenant_id == tenant_id,
+        LeaveRequest.status == "approved",
+        LeaveRequest.start_date <= end,
+        LeaveRequest.end_date >= start,
+    )
+    vac_aprobadas_periodo = int((await db.execute(vac_aprob_q)).scalar() or 0)
+
+    # Gastos pendientes
+    gastos_pend_q = select(
+        func.count(),
+        func.coalesce(func.sum(Expense.amount), 0),
+    ).where(
+        Expense.tenant_id == tenant_id,
+        Expense.status == "pending",
+    )
+    gastos_pend_n, gastos_pend_imp = (await db.execute(gastos_pend_q)).one()
+
+    # ── IA: desglose por agente (AgentExecutionTrace en el periodo) ──────
+    period_start_dt = datetime.combine(start, datetime.min.time())
+    period_end_dt = datetime.combine(end, datetime.max.time())
+
+    agent_q = (
+        select(
+            AgentExecutionTrace.agent_name,
+            func.count().label("n"),
+            func.sum(case((AgentExecutionTrace.status == "ok", 1), else_=0)).label("ok_n"),
+            func.coalesce(func.sum(AgentExecutionTrace.tokens_in), 0).label("tin"),
+            func.coalesce(func.sum(AgentExecutionTrace.tokens_out), 0).label("tout"),
+            func.coalesce(func.sum(AgentExecutionTrace.cost_eur), 0).label("cost"),
+            func.coalesce(func.avg(AgentExecutionTrace.duration_ms), 0).label("avg_ms"),
+        )
+        .where(
+            AgentExecutionTrace.tenant_id == tenant_id,
+            AgentExecutionTrace.created_at >= period_start_dt,
+            AgentExecutionTrace.created_at <= period_end_dt,
+        )
+        .group_by(AgentExecutionTrace.agent_name)
+        .order_by(desc("n"))
+        .limit(10)
+    )
+    ia_por_agente = []
+    tokens_total_periodo = 0
+    coste_total_periodo = 0.0
+    tiempo_total_ms = 0.0
+    tiempo_total_n = 0
+    for agent, n, ok_n, tin, tout, cost, avg_ms in (await db.execute(agent_q)).all():
+        n_int = int(n or 0)
+        ok_int = int(ok_n or 0)
+        ia_por_agente.append({
+            "agent": agent or "desconocido",
+            "ejecuciones": n_int,
+            "exito_pct": round((ok_int / n_int) * 100, 1) if n_int > 0 else 0.0,
+            "tokens_in": int(tin or 0),
+            "tokens_out": int(tout or 0),
+            "coste_eur": round(float(cost or 0), 4),
+            "duracion_media_ms": int(float(avg_ms or 0)),
+        })
+        tokens_total_periodo += int(tin or 0) + int(tout or 0)
+        coste_total_periodo += float(cost or 0)
+        tiempo_total_ms += float(avg_ms or 0) * n_int
+        tiempo_total_n += n_int
+
+    tiempo_medio_ms = int(tiempo_total_ms / tiempo_total_n) if tiempo_total_n > 0 else 0
+
+    # Top errores (error_class) del periodo
+    err_q = (
+        select(
+            AgentExecutionTrace.error_class,
+            func.count().label("n"),
+        )
+        .where(
+            AgentExecutionTrace.tenant_id == tenant_id,
+            AgentExecutionTrace.status == "error",
+            AgentExecutionTrace.created_at >= period_start_dt,
+            AgentExecutionTrace.created_at <= period_end_dt,
+            AgentExecutionTrace.error_class.is_not(None),
+        )
+        .group_by(AgentExecutionTrace.error_class)
+        .order_by(desc("n"))
+        .limit(5)
+    )
+    top_errores_ia = [
+        {"error": ec or "desconocido", "count": int(n or 0)}
+        for ec, n in (await db.execute(err_q)).all()
+    ]
+
     # ── Empty-state flag (no hay facturas registradas) ───────────────────
     is_empty = emitidas_count == 0 and recibidas_count == 0
 
@@ -356,8 +642,21 @@ async def get_dashboard(
             "borradores_count": borradores_count,
             "canceladas_count": canceladas_count,
             "importe_pendiente_cobro": round(importe_pendiente_cobro, 2),
+            "importe_pendiente_pago": round(importe_pendiente_pago, 2),
             "vencen_proximos_7d": vencen_proximos_count,
             "importe_vencen_proximos_7d": round(vencen_proximos_amount, 2),
+            "ticket_medio_periodo": ticket_medio_periodo,
+        },
+        "ventas_detalle": {
+            "iva_breakdown": iva_breakdown,
+            "top_productos": top_productos,
+            "por_dia_semana": por_dia_semana,
+        },
+        "cobros_pagos": {
+            "aging_cobros": aging_cobros,
+            "aging_pagos": aging_pagos,
+            "dso_dias": dso_dias,
+            "dpo_dias": dpo_dias,
         },
         "cashflow": cashflow,
         "top_clientes": top_clientes,
@@ -365,8 +664,16 @@ async def get_dashboard(
         "rrhh": {
             "empleados_activos": empleados_activos,
             "coste_nominas_periodo": round(coste_nominas, 2),
+            "coste_medio_empleado": coste_medio_empleado,
             "nominas_pagadas": nominas_pagadas,
             "nominas_pendientes": nominas_pendientes,
+            "por_departamento": rrhh_por_departamento,
+            "horas_ordinarias_periodo": round(float(horas_ord_t or 0), 2),
+            "horas_extra_periodo": round(float(horas_ext_t or 0), 2),
+            "vacaciones_pendientes": vac_pendientes,
+            "vacaciones_aprobadas_periodo": vac_aprobadas_periodo,
+            "gastos_pendientes_count": int(gastos_pend_n or 0),
+            "gastos_pendientes_importe": round(float(gastos_pend_imp or 0), 2),
         },
         "banca": {
             "saldo_actual": round(saldo_actual, 2),
@@ -384,6 +691,13 @@ async def get_dashboard(
             "tasks_pending": tasks_pending,
             "tasks_success_rate": tasks_success_rate,
             "tasks_periodo": tasks_periodo,
+            "tokens_total_periodo": tokens_total_periodo,
+            "coste_total_periodo_eur": round(coste_total_periodo, 4),
+            "tiempo_medio_ms": tiempo_medio_ms,
+        },
+        "ia_detalle": {
+            "por_agente": ia_por_agente,
+            "top_errores": top_errores_ia,
         },
         "clientes": {
             "total": total_clientes,
