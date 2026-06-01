@@ -2,7 +2,8 @@
 name = "automatizacion-backend"
 version = "0.1.0"
 description = "SaaS de automatización administrativa multiagente para PYMEs"
-authors = ["Tu Nombre <tu@email.com>"]
+authors = ["Marcos Recio <marcosreciosanchez@gmail.com>"]
+license = "Proprietary"
 readme = "README.md"
 packages = [{ include = "app" }]
 
