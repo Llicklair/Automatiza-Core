@@ -2,6 +2,8 @@
     "name": "automatizacion-frontend",
     "version": "0.1.0",
     "private": true,
+    "author": "Marcos Recio <marcosreciosanchez@gmail.com>",
+    "license": "UNLICENSED",
     "scripts": {
         "dev": "next dev",
         "build": "next build",
