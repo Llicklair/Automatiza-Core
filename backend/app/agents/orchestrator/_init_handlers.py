@@ -50,7 +50,7 @@ async def init_tenant_node(state: OrchestratorState) -> dict:
                         ),
                     }
                 _tenant_llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
-                set_tenant_llm_context(_tenant_llm)
+                set_tenant_llm_context(_tenant_llm, provider)
                 logger.info("[INIT] LLM del tenant cargado: provider=%s", provider)
             else:
                 logger.info("[INIT] Sin config LLM para tenant %s, usando global", tenant_id)
