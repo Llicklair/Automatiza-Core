@@ -17,6 +17,17 @@ os.environ["ENVIRONMENT"] = "testing"
 os.environ["DEBUG"] = "true"
 os.environ["FRONTEND_URL"] = "http://localhost:3000"
 
+# Evita que pytest cree 'pytest-of-<user>' en la raíz del repo: si TEMP/TMP no
+# están en el entorno, tempfile.gettempdir() cae al cwd (la raíz) como último
+# recurso. Forzamos un temp real solo cuando falta toda variable de entorno.
+if not (os.environ.get("TMPDIR") or os.environ.get("TEMP") or os.environ.get("TMP")):
+    import tempfile
+
+    _tmp = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "Temp")
+    os.makedirs(_tmp, exist_ok=True)
+    os.environ["TEMP"] = os.environ["TMP"] = _tmp
+    tempfile.tempdir = _tmp
+
 # ── Parchear el engine de base.py para que use SQLite ────────────────────────
 # base.py se ejecuta al importarse y crea un engine con pool_size (incompatible con SQLite).
 # Lo parcheamos ANTES de importar la app.
