@@ -71,6 +71,25 @@ async function tryRefresh(): Promise<boolean> {
     }
 }
 
+/**
+ * `fetch` que convierte fallos de red (TypeError "Failed to fetch", DNS,
+ * CORS, offline) en un `ApiError` con status 0 y `errorType: "network_error"`.
+ * Así toda la app puede manejar errores con `instanceof ApiError` sin que se
+ * escape un `TypeError` crudo al boundary global.
+ */
+async function safeFetch(input: string, init?: RequestInit): Promise<Response> {
+    try {
+        return await fetch(input, init);
+    } catch {
+        throw new ApiError(
+            0,
+            "No se pudo conectar con el servidor. Comprueba tu conexión a internet.",
+            undefined,
+            "network_error",
+        );
+    }
+}
+
 export async function request<T>(
     path: string,
     options: RequestInit = {}
@@ -82,21 +101,29 @@ export async function request<T>(
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${BASE}${path}`, { ...options, headers });
+    const res = await safeFetch(`${BASE}${path}`, { ...options, headers });
 
     if (res.status === 401) {
         // Token expirado — intentar refresh
         const refreshed = await tryRefresh();
         if (refreshed) {
             headers["Authorization"] = `Bearer ${getToken()}`;
-            const retry = await fetch(`${BASE}${path}`, { ...options, headers });
-            if (!retry.ok) throw new Error(await retry.text());
+            const retry = await safeFetch(`${BASE}${path}`, { ...options, headers });
+            if (!retry.ok) {
+                const err = await retry.json().catch(() => ({ detail: retry.statusText }));
+                throw new ApiError(
+                    retry.status,
+                    parseDetail(err.detail ?? "Error desconocido"),
+                    err.request_id,
+                    err.type,
+                );
+            }
             return retry.json();
         }
         // Refresh falló → logout
         await clearTokens();
         window.location.href = "/login";
-        throw new Error("Sesión expirada");
+        throw new ApiError(401, "Sesión expirada", undefined, "session_expired");
     }
 
     if (!res.ok) {
@@ -115,7 +142,7 @@ export async function request<T>(
 
 export async function requestUpload<T>(path: string, formData: FormData): Promise<T> {
     let token = getToken();
-    let res = await fetch(`${BASE}${path}`, {
+    let res = await safeFetch(`${BASE}${path}`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -125,7 +152,7 @@ export async function requestUpload<T>(path: string, formData: FormData): Promis
         const refreshed = await tryRefresh();
         if (refreshed) {
             token = getToken();
-            res = await fetch(`${BASE}${path}`, {
+            res = await safeFetch(`${BASE}${path}`, {
                 method: "POST",
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
                 body: formData,
@@ -133,7 +160,7 @@ export async function requestUpload<T>(path: string, formData: FormData): Promis
         } else {
             await clearTokens();
             window.location.href = "/login";
-            throw new Error("Sesión expirada");
+            throw new ApiError(401, "Sesión expirada", undefined, "session_expired");
         }
     }
 
@@ -155,25 +182,27 @@ export async function fetchBlob(path: string, init?: RequestInit): Promise<Blob>
     let token = getToken();
     const auth = (): Record<string, string> => token ? { Authorization: `Bearer ${token}` } : {};
     const headers = () => ({ ...(init?.headers as Record<string, string>), ...auth() });
-    let res = await fetch(`${BASE}${path}`, { ...init, headers: headers() });
+    let res = await safeFetch(`${BASE}${path}`, { ...init, headers: headers() });
     if (res.status === 401) {
         const refreshed = await tryRefresh();
         if (refreshed) {
             token = getToken();
-            res = await fetch(`${BASE}${path}`, { ...init, headers: headers() });
+            res = await safeFetch(`${BASE}${path}`, { ...init, headers: headers() });
         }
     }
     if (!res.ok) {
         let detail = "Error al obtener el archivo";
-        try { const err = await res.json(); detail = err.detail || detail; } catch { /* no json body */ }
-        throw new Error(detail);
+        let errorType: string | undefined;
+        let requestId: string | undefined;
+        try { const err = await res.json(); detail = err.detail || detail; errorType = err.type; requestId = err.request_id; } catch { /* no json body */ }
+        throw new ApiError(res.status, parseDetail(detail), requestId, errorType);
     }
     return res.blob();
 }
 
 export async function downloadBlob(path: string, filename: string): Promise<void> {
     let token = getToken();
-    let res = await fetch(`${BASE}${path}`, {
+    let res = await safeFetch(`${BASE}${path}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
@@ -182,7 +211,7 @@ export async function downloadBlob(path: string, filename: string): Promise<void
         const refreshed = await tryRefresh();
         if (refreshed) {
             token = getToken();
-            res = await fetch(`${BASE}${path}`, {
+            res = await safeFetch(`${BASE}${path}`, {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
         }
@@ -190,11 +219,15 @@ export async function downloadBlob(path: string, filename: string): Promise<void
 
     if (!res.ok) {
         let detail = "Error al descargar el archivo";
+        let errorType: string | undefined;
+        let requestId: string | undefined;
         try {
             const err = await res.json();
             detail = err.detail || detail;
+            errorType = err.type;
+            requestId = err.request_id;
         } catch { /* no json body */ }
-        throw new Error(detail);
+        throw new ApiError(res.status, parseDetail(detail), requestId, errorType);
     }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
