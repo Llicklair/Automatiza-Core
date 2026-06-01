@@ -261,6 +261,26 @@ async def update_status(
     return to_out(employee)
 
 
+async def update_budget(
+    employee_id: str,
+    tenant_id,
+    budget_limit_usd: float | None,
+    db: AsyncSession,
+) -> dict | None:
+    """Actualiza el límite de gasto mensual (USD) del empleado.
+
+    `None` desactiva el límite (sin tope). El hard-stop y el aviso al 80% lo
+    aplica el heartbeat vía `get_budget_status`.
+    """
+    employee = await _get_employee(employee_id, tenant_id, db)
+    if not employee:
+        return None
+    employee.budget_limit_usd = budget_limit_usd
+    await db.commit()
+    await db.refresh(employee)
+    return to_out(employee)
+
+
 async def delete_employee(employee_id: str, tenant_id, db: AsyncSession) -> bool:
     employee = await _get_employee(employee_id, tenant_id, db)
     if not employee:

@@ -10,6 +10,7 @@ from app.api.v1.schemas.ai_employees import (
     ActivityEntryCreate,
     ActivityEntryOut,
     AIEmployeeAppearanceUpdate,
+    AIEmployeeBudgetUpdate,
     AIEmployeeCreate,
     AIEmployeeIconUpdate,
     AIEmployeeOut,
@@ -152,6 +153,21 @@ async def update_employee_appearance(
         payload.icon,
         payload.avatar_color,
         db,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    return result
+
+
+@router.patch("/ai-employees/{employee_id}/budget", response_model=AIEmployeeOut)
+async def update_employee_budget(
+    employee_id: str,
+    payload: AIEmployeeBudgetUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await svc.update_budget(
+        employee_id, current_user.tenant_id, payload.budget_limit_usd, db
     )
     if not result:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")

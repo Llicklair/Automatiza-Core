@@ -25,6 +25,7 @@ from app.services.ai.employee_crud import (
     record_token_usage,
     to_out,
     update_appearance,
+    update_budget,
     update_icon,
     update_status,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "seed_builtin",
     "to_out",
     "update_appearance",
+    "update_budget",
     "update_icon",
     "update_status",
     "validate_employee_contract",

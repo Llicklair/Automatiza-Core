@@ -12,6 +12,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/api/client";
 import { hydrateSecureStore } from "@/lib/secureStore";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
 
 function decodeJwtName(token: string): string {
     try {
@@ -66,58 +68,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }).catch(() => {});
     }, [pathname, router, hydrated]);
 
-    // Auth check + WebSocket notifications
-    useEffect(() => {
-        if (!hydrated) return;
-        const token = getToken();
-        if (!token) { router.push("/login"); return; }
+    // Auth guard: redirige a /login si no hay token (extraído a hook propio).
+    useAuthGuard(hydrated);
 
-        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsDomain = process.env.NEXT_PUBLIC_WS_URL || `${wsProtocol}//${window.location.hostname}:8080/ws`;
-        const ws = new WebSocket(`${wsDomain}/notifications?token=${token}`);
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === "task_progress") {
-                    const { step, total_steps, agent, summary, success } = data;
-                    const agentLabel = agent ? `[${agent}]` : "";
-                    const progressLabel = total_steps > 1 ? ` (${step}/${total_steps})` : "";
-                    const msg = summary ? `${agentLabel}${progressLabel} ${summary}` : `${agentLabel}${progressLabel} Paso completado.`;
-                    const toastType = success ? "info" : "warning";
-                    showToast(msg, toastType);
-                    pushNotification(msg, toastType as any);
-                    if (step === total_steps) triggerRefresh();
-                    return;
-                }
-                if (data.type === "hr_notification") {
-                    const msg = data.message as string || "Notificación RRHH";
-                    const nType = (data.notif_type as string) || "info";
-                    showToast(msg, nType as any);
-                    pushNotification(msg, nType as any);
-                    triggerRefresh();
-                    return;
-                }
-                if (data.type === "event" && data.event) {
-                    const eventMessages: Record<string, string> = {
-                        invoice_created: `Factura ${data.context?.invoice_number || "generada"} creada`,
-                        employee_created: `Empleado ${data.context?.employee_name || "nuevo"} registrado`,
-                        document_uploaded: "Documento subido. Procesando...",
-                        document_processed: `Documento ${data.context?.original_name || ""} procesado.`,
-                        task_completed: "Tarea IA finalizada con éxito.",
-                        approval_approved: `Aprobación procesada.${data.workflow_count ? ` ${data.workflow_count} automatizaciones disparadas.` : ""}`,
-                    };
-                    const msg = eventMessages[data.event] || `Nuevo evento: ${data.event.replace(/_/g, " ")}`;
-                    showToast(msg, "info");
-                    pushNotification(msg, "info");
-                    triggerRefresh();
-                }
-            } catch { /* ignorar mensajes malformados */ }
-        };
-
-        return () => ws.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [router, hydrated]);
+    // WebSocket de notificaciones (extraído a useNotificationSocket, con
+    // reconexión automática). Se activa al hidratar el token.
+    useNotificationSocket({
+        task_progress: (data) => {
+            const { step, total_steps, agent, summary, success } = data as any;
+            const agentLabel = agent ? `[${agent}]` : "";
+            const progressLabel = total_steps > 1 ? ` (${step}/${total_steps})` : "";
+            const msg = summary ? `${agentLabel}${progressLabel} ${summary}` : `${agentLabel}${progressLabel} Paso completado.`;
+            const toastType = success ? "info" : "warning";
+            showToast(msg, toastType as any);
+            pushNotification(msg, toastType as any);
+            if (step === total_steps) triggerRefresh();
+        },
+        hr_notification: (data) => {
+            const msg = (data.message as string) || "Notificación RRHH";
+            const nType = (data.notif_type as string) || "info";
+            showToast(msg, nType as any);
+            pushNotification(msg, nType as any);
+            triggerRefresh();
+        },
+        event: (data) => {
+            if (!data.event) return;
+            const ctx = (data.context as Record<string, any>) || {};
+            const eventMessages: Record<string, string> = {
+                invoice_created: `Factura ${ctx.invoice_number || "generada"} creada`,
+                employee_created: `Empleado ${ctx.employee_name || "nuevo"} registrado`,
+                document_uploaded: "Documento subido. Procesando...",
+                document_processed: `Documento ${ctx.original_name || ""} procesado.`,
+                task_completed: "Tarea IA finalizada con éxito.",
+                approval_approved: `Aprobación procesada.${data.workflow_count ? ` ${data.workflow_count} automatizaciones disparadas.` : ""}`,
+            };
+            const ev = data.event as string;
+            const msg = eventMessages[ev] || `Nuevo evento: ${ev.replace(/_/g, " ")}`;
+            showToast(msg, "info");
+            pushNotification(msg, "info");
+            triggerRefresh();
+        },
+        // Aviso blando al 80% del presupuesto mensual de un empleado IA.
+        budget_warning: (data) => {
+            const name = (data.employee_name as string) || "Un empleado IA";
+            const pct = Math.round(((data.ratio as number) || 0) * 100);
+            const msg = `${name} ha consumido el ${pct}% de su presupuesto mensual de IA.`;
+            showToast(msg, "warning");
+            pushNotification(msg, "warning");
+        },
+        // Hard-stop: presupuesto agotado, el empleado se ha pausado.
+        budget_exhausted: (data) => {
+            const name = (data.employee_name as string) || "Un empleado IA";
+            const msg = `${name} agotó su presupuesto mensual de IA y se ha pausado. Sube su límite en Mi Equipo para reactivarlo.`;
+            showToast(msg, "error");
+            pushNotification(msg, "error");
+            triggerRefresh();
+        },
+    }, hydrated);
 
     // Polling: workflow completions (30s)
     useEffect(() => {

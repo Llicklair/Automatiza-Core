@@ -22,7 +22,7 @@ from uuid import UUID
 from sqlalchemy import func, select, update
 
 from app.db.base import AsyncSessionLocal
-from app.services.agent_budget import check_agent_budget
+from app.services.agent_budget import get_budget_status
 from app.db.models.ai_employees import ActivityEntry, AIEmployee
 from app.db.models.tasks import Task
 
@@ -30,6 +30,31 @@ logger = logging.getLogger(__name__)
 
 HEARTBEAT_INTERVAL_SECONDS = 300  # 5 minutos
 HEARTBEAT_MAX_DISPATCH_PER_CYCLE = 5  # evita inundar el TaskRunner en un solo tick
+
+# Dedupe en memoria del aviso blando de presupuesto (80%): el heartbeat corre
+# cada 5 min, así que sin esto el toast saltaría en cada tick. Se resetea al
+# pausar/reactivar el empleado (el set se limpia en (un)register).
+_budget_warned: set[str] = set()
+
+
+async def _ws_notify_budget(tenant_id: str, employee_id: str, event_type: str, budget: dict) -> None:
+    """Empuja un evento de presupuesto al canal WS del tenant (best-effort)."""
+    try:
+        from app.api.ws.notifications import manager
+
+        await manager.broadcast_to_tenant(
+            str(tenant_id),
+            {
+                "type": event_type,
+                "employee_id": str(employee_id),
+                "employee_name": budget.get("name"),
+                "spend_usd": round(budget.get("spend_usd") or 0, 2),
+                "limit_usd": budget.get("limit_usd"),
+                "ratio": round(budget.get("ratio") or 0, 2),
+            },
+        )
+    except Exception as exc:
+        logger.debug("WS budget notify falló (silenciado): %s", exc)
 
 
 def get_scheduler():
@@ -62,6 +87,7 @@ def register_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
         max_instances=1,
         misfire_grace_time=60,
     )
+    _budget_warned.discard(employee_id)
     logger.debug("Heartbeat registrado para empleado %s", employee_id)
 
 
@@ -101,10 +127,20 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
                 unregister_employee_heartbeat(employee_id)
                 return
 
-            if not await check_agent_budget(employee_id, db):
+            budget = await get_budget_status(employee_id, db)
+            if budget and budget["state"] == "exhausted":
+                await db.execute(
+                    update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="paused")
+                )
+                await db.commit()
+                await _ws_notify_budget(tenant_id, employee_id, "budget_exhausted", budget)
+                _budget_warned.discard(employee_id)
                 unregister_employee_heartbeat(employee_id)
                 logger.info("Heartbeat cancelado: presupuesto agotado para %s", employee_id)
                 return
+            if budget and budget["state"] == "warning" and employee_id not in _budget_warned:
+                _budget_warned.add(employee_id)
+                await _ws_notify_budget(tenant_id, employee_id, "budget_warning", budget)
 
             domain = employee.domain
             employee_name = employee.name

@@ -10,6 +10,7 @@ Módulos internos:
 
 import logging
 from contextvars import ContextVar
+from functools import lru_cache
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -26,15 +27,36 @@ _log = logging.getLogger(__name__)
 _tenant_llm_ctx: ContextVar = ContextVar("_tenant_llm_ctx", default=None)
 
 
-def set_tenant_llm_context(llm) -> None:
-    """Almacena el LLM resuelto del tenant en el contexto async actual."""
-    _tenant_llm_ctx.set(llm)
+@lru_cache(maxsize=1)
+def _mock_fallback() -> MockChatModel:
+    """Singleton perezoso del LLM simulado.
+
+    MockChatModel no tiene estado mutable por instancia, así que reutilizar una
+    única instancia evita asignarla en cada llamada a get_llm() (28 callers) — la
+    asignación previa era trabajo muerto en el camino caliente de producción.
+    """
+    return MockChatModel()
+
+
+def set_tenant_llm_context(llm, provider: str | None = None) -> None:
+    """Almacena el LLM resuelto del tenant (y su provider) en el contexto async actual.
+
+    `provider` se declara explícitamente en construcción para que la identidad
+    del proveedor no dependa de introspeccionar `type(llm).__module__` (un
+    detalle interno de LangChain que cambia entre versiones). Si se omite, se
+    cae a la introspección legacy por compatibilidad.
+    """
+    _tenant_llm_ctx.set((llm, provider))
 
 
 def _resolve_active_provider() -> str:
     """Determina el provider LLM activo: ContextVar del tenant o config global."""
-    ctx_llm = _tenant_llm_ctx.get()
-    if ctx_llm is not None:
+    ctx = _tenant_llm_ctx.get()
+    if ctx is not None:
+        ctx_llm, provider_tag = ctx
+        if provider_tag:
+            return provider_tag.lower()
+        # Fallback legacy: deducir por el módulo de la clase del LLM
         module = getattr(type(ctx_llm), "__module__", "") or ""
         if "anthropic" in module.lower():
             return "anthropic"
@@ -76,12 +98,13 @@ def get_llm(
     # Si hay un LLM de tenant precargado (vía set_tenant_llm_context) y no se fuerza un provider,
     # usarlo directamente para respetar la configuración del usuario en la UI.
     if provider is None:
-        ctx_llm = _tenant_llm_ctx.get()
-        if ctx_llm is not None:
+        ctx = _tenant_llm_ctx.get()
+        if ctx is not None:
+            ctx_llm, _ = ctx
             return _attach_trace(ctx_llm)
 
     selected_provider = provider or settings.DEFAULT_LLM_PROVIDER.lower()
-    mock_fallback = MockChatModel()
+    mock_fallback = _mock_fallback()
 
     base_fallbacks: list[BaseChatModel] = (
         [mock_fallback] if settings.ENVIRONMENT == "testing" else []
@@ -124,7 +147,7 @@ def get_llm(
         return _attach_trace(ClaudeCodeChatModel())
 
     elif selected_provider == "mock":
-        return _attach_trace(MockChatModel())
+        return _attach_trace(_mock_fallback())
 
     else:
         logging.getLogger(__name__).warning(
@@ -400,7 +423,7 @@ def _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_f
 def _build_openrouter(temperature, format_output, max_tokens, base_fallbacks):
     try:
         if not settings.OPENROUTER_API_KEY:
-            return MockChatModel()
+            return _mock_fallback()
 
         models = [
             "qwen/qwen3-235b-a22b-thinking-2507",
