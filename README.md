@@ -592,6 +592,46 @@ cd desktop && npm run sync           # Sincroniza cambios al exe instalado
 cd desktop && npm run sync:rebuild   # Igual + rebuild del frontend antes de copiar
 ```
 
+### Auto-update y releases
+
+El desktop usa `electron-updater` con provider GitHub (`desktop/package.json` →
+`build.publish`). El wiring de código está completo: `main.js` →
+`lib/update-channel.js` (canales `stable`/`beta`) → `electron-updater` →
+`checkForUpdates()` al arranque y `quitAndInstall()` vía IPC.
+
+**Build de release:**
+
+```bash
+cd frontend && npm run build   # build de producción (.next)
+cd desktop && npm run dist     # electron-builder → dist/*.exe + latest.yml + app-update.yml
+```
+
+**⚠️ Antes de publicar una release distribuible (3 requisitos):**
+
+1. **El `app-update.yml` se hornea en build-time** desde `build.publish`. Un
+   instalador buscará updates en el `owner/repo` que tenía esa config al
+   construirse — cambiar el destino exige **reconstruir**, no basta editar el repo.
+2. **Repo de releases público.** `electron-updater` no puede actualizar clientes
+   desde un repo **privado** sin un token embebido en la app (inseguro). Para
+   distribución real, publica en un repo público (p.ej. `automatizapyme-releases`)
+   o usa otro canal (S3/genérico). El repo de código puede seguir privado.
+3. **Sanear `.env`.** `build.extraResources` copia `../.env` dentro del
+   instalador. En producción el `.env` empaquetado debe llevar **placeholders**;
+   los secretos reales (API keys, `SECRET_KEY`, encryption key) se resuelven en
+   runtime vía Electron `safeStorage`, nunca horneados en el artefacto.
+
+**Publicar** (tras cubrir lo anterior y subir la versión en `package.json`):
+
+```bash
+# electron-builder publica si GH_TOKEN está seteado y se pasa --publish always,
+# o manualmente con gh:
+gh release create v1.0.1 "dist/AutomatizaPyme Setup 1.0.1.exe" \
+  "dist/latest.yml" -R <owner>/<repo-releases>
+```
+
+El updater solo dispara la actualización si la versión publicada es **mayor**
+que la instalada.
+
 ### Tests
 
 ```bash
