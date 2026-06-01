@@ -15,9 +15,40 @@ from app.celery_app import celery_app
 _log = logging.getLogger(__name__)
 
 if celery_app is not None:
+    from celery import Task as _CeleryTask
+
+    class _OrchestratorTask(_CeleryTask):
+        """Base task con dead-letter: cuando se agotan los reintentos (o falla de
+        forma terminal), marca la Task de dominio como `failed` en BD.
+
+        Sin esto, al agotar los retries Celery marca su propia task como FAILURE
+        pero la fila Task del usuario se queda en `running` para siempre → el
+        usuario observa un spinner eterno. El `task_id` de dominio viaja en
+        `args[0]` (o en el kwarg `task_id`).
+        """
+
+        def on_failure(self, exc, task_id, args, kwargs, einfo):  # noqa: ANN001
+            domain_task_id = (args[0] if args else None) or kwargs.get("task_id")
+            if not domain_task_id:
+                return
+            from app.workers._orchestrator_state import _mark_task_failed
+
+            try:
+                asyncio.run(_mark_task_failed(str(domain_task_id), str(exc)))
+                _log.error(
+                    "[DEAD-LETTER] Task de dominio %s marcada como failed tras agotar reintentos: %s",
+                    domain_task_id,
+                    exc,
+                )
+            except Exception:
+                _log.exception(
+                    "[DEAD-LETTER] No se pudo marcar la task de dominio %s como failed",
+                    domain_task_id,
+                )
 
     @celery_app.task(
         name="execute_orchestrator",
+        base=_OrchestratorTask,
         bind=True,
         max_retries=3,
         default_retry_delay=10,
@@ -39,6 +70,7 @@ if celery_app is not None:
 
     @celery_app.task(
         name="resume_orchestrator",
+        base=_OrchestratorTask,
         bind=True,
         max_retries=2,
         default_retry_delay=5,
