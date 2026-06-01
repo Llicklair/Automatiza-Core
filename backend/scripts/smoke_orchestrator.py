@@ -346,7 +346,11 @@ def _verdict(r: dict) -> str:
     reached_done = bool(r.get("ok")) and status in _DONE_STATES
 
     if is_negative:
-        return "PASS" if not reached_done else "FAIL"
+        if not reached_done:
+            return "PASS"  # pidió aclaración o falló elegante
+        # Llegó a done: aceptable solo si declinó conversando (dominio chat),
+        # NO si dispatchó un dominio real como si la tarea imposible fuera viable.
+        return "PASS" if r.get("classified_domain") in ("chat", None) else "FAIL"
 
     if r.get("exception"):
         return "FAIL"
@@ -489,7 +493,7 @@ async def main() -> int:
     print(f"Veredicto global: {passed} PASS / {failed} FAIL de {len(results)}")
 
     if args.strict and failed > 0:
-        print(f"STRICT: {failed} prompt(s) con veredicto FAIL → exit 1", flush=True)
+        print(f"STRICT: {failed} prompt(s) con veredicto FAIL -> exit 1", flush=True)
         return 1
     return 0
 
