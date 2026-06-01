@@ -74,6 +74,7 @@ async def _build_portal_payload(
         select(Payroll)
         .where(Payroll.employee_id == employee.id, Payroll.tenant_id == tenant_id)
         .order_by(Payroll.issue_date.desc())
+        .limit(60)
     )
     payrolls = payrolls_res.scalars().all()
 
@@ -84,6 +85,7 @@ async def _build_portal_payload(
             LeaveRequest.tenant_id == tenant_id,
         )
         .order_by(LeaveRequest.created_at.desc())
+        .limit(100)
     )
     leaves = leaves_res.scalars().all()
 
