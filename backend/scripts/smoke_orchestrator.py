@@ -49,6 +49,13 @@ os.environ.pop("DEFAULT_LLM_PROVIDER", None)
 TENANT_ID = "9cd49fbb-355b-4b75-ad57-45ebe1c85749"
 USER_ID = "0d7e5ea1-5a91-4372-8de1-8e72a2e0085b"
 
+# Casos negativos: el Coordinador NO debe "completar" estos con tools alucinadas.
+# Se espera que pida aclaración, falle elegante o no marque la task como done.
+NEGATIVE_IDS = {"ambiguous", "impossible"}
+
+# Estados que consideramos "completado con éxito".
+_DONE_STATES = {"done", "DONE", "TaskStatus.DONE"}
+
 
 # (id, prompt, comentario corto sobre que valida)
 PROMPTS: list[tuple[str, str, str]] = [
@@ -326,6 +333,29 @@ def _preview(output) -> str:
     return s[:200] + ("..." if len(s) > 200 else "")
 
 
+def _verdict(r: dict) -> str:
+    """Veredicto estricto PASS/FAIL para que el smoke sea un test, no un reporte.
+
+    - Caso negativo (NEGATIVE_IDS): PASS si NO se completó como done (esperamos
+      aclaración o fallo elegante), FAIL si se marcó done alucinando tools.
+    - Caso positivo: FAIL si hubo excepción, si el status no es done, o si algún
+      agente del plan devolvió success=False. PASS en otro caso.
+    """
+    is_negative = r["id"] in NEGATIVE_IDS
+    status = r.get("status")
+    reached_done = bool(r.get("ok")) and status in _DONE_STATES
+
+    if is_negative:
+        return "PASS" if not reached_done else "FAIL"
+
+    if r.get("exception"):
+        return "FAIL"
+    if not reached_done:
+        return "FAIL"
+    failed_agents = [a for a in (r.get("agent_results") or []) if not a.get("success")]
+    return "FAIL" if failed_agents else "PASS"
+
+
 def _format_row(r: dict) -> str:
     status = r.get("status") or ("EXC" if r.get("exception") else "?")
     domain = r.get("classified_domain") or "-"
@@ -345,7 +375,7 @@ def _format_row(r: dict) -> str:
             errors = "ok"
     else:
         errors = "-"
-    return f"| {r['id']} | {status} | {domain} | {steps} | {t} | {errors} |"
+    return f"| {r['id']} | {_verdict(r)} | {status} | {domain} | {steps} | {t} | {errors} |"
 
 
 def _write_report(results: list[dict], sent_emails: list[dict]) -> Path:
@@ -364,10 +394,13 @@ def _write_report(results: list[dict], sent_emails: list[dict]) -> Path:
         "",
         "## Resumen",
         "",
-        "| ID | Status | Dominio | Steps | t(s) | Errores |",
-        "|---|---|---|---|---|---|",
+        "| ID | Veredicto | Status | Dominio | Steps | t(s) | Errores |",
+        "|---|---|---|---|---|---|---|",
     ]
     lines += [_format_row(r) for r in results]
+    passed = sum(1 for r in results if _verdict(r) == "PASS")
+    failed = sum(1 for r in results if _verdict(r) == "FAIL")
+    lines += ["", f"**Veredicto global: {passed} PASS / {failed} FAIL de {len(results)}**"]
 
     lines += ["", "## Detalle por prompt", ""]
     for r in results:
@@ -393,6 +426,11 @@ async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", help="CSV de ids de prompts a ejecutar")
     parser.add_argument("--skip", help="CSV de ids de prompts a saltar")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Devuelve exit code 1 si algún prompt obtiene veredicto FAIL (modo test).",
+    )
     args = parser.parse_args()
 
     only = set((args.only or "").split(",")) if args.only else None
@@ -436,16 +474,23 @@ async def main() -> int:
             print(f"[{pid}] ejecutando ({len(ptext)} chars)...", flush=True)
             r = await run_one(orchestrator, pid, ptext, comment)
             results.append(r)
-            mark = "OK" if r.get("ok") and r.get("status") in ("done", "DONE", "TaskStatus.DONE") else "WARN"
+            verdict = _verdict(r)
             print(
-                f"  -> {mark} status={r.get('status')} domain={r.get('classified_domain')} "
+                f"  -> {verdict} status={r.get('status')} domain={r.get('classified_domain')} "
                 f"steps={r.get('plan_size')} t={r.get('elapsed_s')}s",
                 flush=True,
             )
 
     report = _write_report(results, sent_emails)
+    passed = sum(1 for r in results if _verdict(r) == "PASS")
+    failed = sum(1 for r in results if _verdict(r) == "FAIL")
     print(f"\nReporte: {report}")
     print(f"Emails interceptados: {len(sent_emails)}")
+    print(f"Veredicto global: {passed} PASS / {failed} FAIL de {len(results)}")
+
+    if args.strict and failed > 0:
+        print(f"STRICT: {failed} prompt(s) con veredicto FAIL → exit 1", flush=True)
+        return 1
     return 0
 
 

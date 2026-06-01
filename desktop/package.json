@@ -48,8 +48,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "TU_USUARIO_GITHUB",
-      "repo": "automatizapyme-desktop"
+      "owner": "Llicklair",
+      "repo": "Automatiza-pyme"
     },
     "files": [
       "main.js",

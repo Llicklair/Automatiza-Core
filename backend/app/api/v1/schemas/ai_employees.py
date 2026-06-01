@@ -66,6 +66,12 @@ class AIEmployeeAppearanceUpdate(BaseModel):
     avatar_color: str | None = None
 
 
+class AIEmployeeBudgetUpdate(BaseModel):
+    """Actualiza el tope de gasto mensual. `null` = sin límite."""
+
+    budget_limit_usd: float | None = Field(default=None, ge=0)
+
+
 class InstructPayload(BaseModel):
     message: str
 

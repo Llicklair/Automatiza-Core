@@ -51,7 +51,15 @@ export const aiEmployees = {
     list: () =>
         request<AIEmployee[]>("/api/v1/ai-employees"),
 
-    create: (data: { name: string; role_description: string; budget_limit_usd?: number }) =>
+    create: (data: {
+        name: string;
+        role_description: string;
+        budget_limit_usd?: number;
+        scope?: Record<string, any> | null;
+        memory_enabled?: boolean;
+        knowledge_enabled?: boolean;
+        workflows?: Array<Record<string, any>> | null;
+    }) =>
         request<AIEmployee>("/api/v1/ai-employees", { method: "POST", body: JSON.stringify(data) }),
 
     delete: (id: string) =>
@@ -59,6 +67,13 @@ export const aiEmployees = {
 
     updateStatus: (id: string, status: "idle" | "paused") =>
         request<AIEmployee>(`/api/v1/ai-employees/${id}/status?new_status=${status}`, { method: "PATCH" }),
+
+    /** Ajusta el tope de gasto mensual (USD). `null` = sin límite. */
+    updateBudget: (id: string, budget_limit_usd: number | null) =>
+        request<AIEmployee>(`/api/v1/ai-employees/${id}/budget`, {
+            method: "PATCH",
+            body: JSON.stringify({ budget_limit_usd }),
+        }),
 
     updateIcon: (id: string, icon: string) =>
         request<AIEmployee>(`/api/v1/ai-employees/${id}/icon`, { method: "PATCH", body: JSON.stringify({ icon }) }),

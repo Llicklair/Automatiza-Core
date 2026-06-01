@@ -9,6 +9,10 @@ para no romper:
 - Tests que parchean `app.agents.workers.check_agent_budget`
   (test_planner_custom_agents.py).
 """
-from app.services.agent_budget import check_agent_budget, record_token_usage
+from app.services.agent_budget import (
+    check_agent_budget,
+    get_budget_status,
+    record_token_usage,
+)
 
-__all__ = ["check_agent_budget", "record_token_usage"]
+__all__ = ["check_agent_budget", "get_budget_status", "record_token_usage"]

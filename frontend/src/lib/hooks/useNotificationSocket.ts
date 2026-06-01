@@ -9,12 +9,20 @@ type MessageHandler = (msg: Record<string, unknown>) => void;
  * Connects to /ws/notifications and dispatches messages by type.
  * handlers: { "agent_status_changed": fn, "activity_new": fn, ... }
  * Re-connects automatically on close (unless unmounted).
+ *
+ * `enabled` (default true) gates the connection: pass `false` until the auth
+ * token is hydrated so the layout-level mount doesn't bail out before the token
+ * exists. When it flips to true the effect re-runs and connects.
  */
-export function useNotificationSocket(handlers: Record<string, MessageHandler>) {
+export function useNotificationSocket(
+    handlers: Record<string, MessageHandler>,
+    enabled: boolean = true,
+) {
     const handlersRef = useRef(handlers);
     handlersRef.current = handlers;
 
     useEffect(() => {
+        if (!enabled) return;
         let ws: WebSocket | null = null;
         let destroyed = false;
 
@@ -52,5 +60,5 @@ export function useNotificationSocket(handlers: Record<string, MessageHandler>) 
             destroyed = true;
             ws?.close();
         };
-    }, []);
+    }, [enabled]);
 }

@@ -1,6 +1,25 @@
 # Tareas activas — AutomatizaPyme
 
-Última actualización: 2026-05-21
+Última actualización: 2026-06-01
+
+---
+
+## Consejo Report 2026-06-01 — Implementación (en curso)
+
+Alcance aprobado: **todo el plan (1,4,5,6,9,10) + extraer hooks primero**.
+Constraints: #3 hub files congelados · #7 descartado · #11 diferido.
+
+Orden de ejecución (menor → mayor riesgo):
+
+- [x] **#9** Allocation muerta en `llm_factory.get_llm` → singleton perezoso `_mock_fallback()` (lru_cache). SAFE. ✅
+- [x] **Refactor seam** en `DashboardLayout`: extraído `useAuthGuard` (NEW en `src/hooks/`) + WS migrado a `useNotificationSocket` (con flag `enabled` para hidratación). ✅
+- [x] **#6** Degradación LLM visible: `errors.ts` (`isConnectivityError`+`AI_DEGRADATION_MESSAGE`) + `GlobalErrorListener` muestra toast (throttle 30s). NO se sobrecargó `AIDisclosureBanner` (banner legal AI Act ≠ estado de disponibilidad). ✅
+- [x] **#4** Spending cap + alerta 80%: `get_budget_status` en `agent_budget.py` (estados ok/warning/exhausted), endpoint PATCH `/ai-employees/{id}/budget` + `aiEmployees.updateBudget`. Dashboard de coste = diferido (next-quarter). ✅
+- [x] **#10** WS push `budget_warning` (80%) y `budget_exhausted` (100%) desde heartbeat; handlers en layout.tsx. ✅
+- [~] **#1** `smoke_orchestrator.py` reforzado con veredicto PASS/FAIL + `--strict` (exit 1). ✅ código. ⏳ ejecución end-to-end pendiente: requiere Postgres arriba (DSN rechaza conexión ahora) + API key LLM. Acción usuario.
+- [x] **#5** Auto-update: wiring de código verificado OK (main.js→update-channel.js→electron-updater→github, stable/beta, checkForUpdates, quitAndInstall). ✅ `desktop/package.json` → `publish.owner = "Llicklair"`, `repo = "Automatiza-pyme"` (mismo repo que origin). Pendiente runtime: publicar un GitHub Release con artefactos + `latest.yml` y versión > 1.0.0 para que el updater detecte la actualización.
+
+Notas de verificación: `orchestrator/tools.py` NO existe (no tocado); DashboardLayout perf-claim refutada (zustand ya aísla) → refactor por SRP/seams. tsc frontend ✅; `test_planner_custom_agents` 11/11 ✅.
 
 ---
 
