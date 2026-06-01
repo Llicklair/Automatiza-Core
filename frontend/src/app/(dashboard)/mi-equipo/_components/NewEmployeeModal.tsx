@@ -17,7 +17,12 @@ export function NewEmployeeModal({ onClose, onCreated }: { onClose: () => void; 
             || `Agente ${rol.trim()}`;
         setLoading(true); setError(null);
         try {
-            await api.aiEmployees.create({ name: fullName, role_description: rol.trim() });
+            await api.aiEmployees.create({
+                name: fullName,
+                role_description: rol.trim(),
+                memory_enabled: true,
+                knowledge_enabled: true,
+            });
             onCreated(); onClose();
         } catch (e: any) { setError(e?.message ?? "Error al crear empleado"); }
         finally { setLoading(false); }
