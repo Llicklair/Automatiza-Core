@@ -13,6 +13,7 @@ import { ApprovalsSection } from "./_components/ApprovalsSection";
 import { RrhhWidget } from "./_components/RrhhWidget";
 import { LiveTeamSection } from "./_components/LiveTeamSection";
 import { MorningBrief } from "./_components/MorningBrief";
+import { UsageWidget } from "./_components/UsageWidget";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
@@ -60,6 +61,7 @@ export default function DashboardPage() {
 
                 {/* Columna Derecha Estrecha */}
                 <div className="space-y-6">
+                    <UsageWidget />
                     <RrhhWidget loading={loading} employees={employees} working={workingNow} />
                     <AiActivitySection loading={loading} tasks={tasks} />
                     <ApprovalsSection loading={loading} approvals={approvals} />
