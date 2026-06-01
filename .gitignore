@@ -50,7 +50,7 @@ logs/
 Thumbs.db
 
 # IDE
-.vscode/settings.json
+.vscode/
 .idea/
 
 # Caches pip/local
