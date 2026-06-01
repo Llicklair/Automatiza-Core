@@ -1,3 +1,7 @@
+/*
+ * Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+ * SPDX-License-Identifier: LicenseRef-Proprietary
+ */
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";

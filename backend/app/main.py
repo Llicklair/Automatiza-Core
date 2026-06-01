@@ -1,3 +1,5 @@
+# Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+# SPDX-License-Identifier: LicenseRef-Proprietary
 """Aplicación principal FastAPI."""
 
 import asyncio

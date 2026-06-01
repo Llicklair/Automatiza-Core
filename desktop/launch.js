@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+// SPDX-License-Identifier: LicenseRef-Proprietary
 /**
  * Launcher que limpia ELECTRON_RUN_AS_NODE antes de arrancar Electron.
  * VS Code setea esta variable porque él mismo es una app Electron,

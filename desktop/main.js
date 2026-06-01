@@ -1,3 +1,7 @@
+/*
+ * Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+ * SPDX-License-Identifier: LicenseRef-Proprietary
+ */
 const { app, BrowserWindow, dialog, shell, ipcMain, Menu, safeStorage } = require("electron");
 const fs = require("fs");
 const path = require("path");
