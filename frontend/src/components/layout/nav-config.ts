@@ -86,7 +86,6 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Empleados", href: "/rrhh/empleados" },
                     { label: "Nóminas", href: "/rrhh/nominas" },
                     { label: "Reclutamiento", href: "/rrhh/reclutamiento" },
-                    { label: "Análisis de CV", href: "/rrhh/analisis-cv" },
                     { label: "Gestoría Documental", href: "/rrhh/documentos" },
                     { label: "Horarios", href: "/rrhh/horarios" },
                     { label: "Fichajes", href: "/rrhh/fichajes" },

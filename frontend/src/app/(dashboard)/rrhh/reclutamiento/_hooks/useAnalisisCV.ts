@@ -21,22 +21,25 @@ export function useAnalisisCV() {
     const [result, setResult]       = useState<CVAnalysisResult | null>(null);
     const [error, setError]         = useState<string | null>(null);
     const [fileName, setFileName]   = useState<string | null>(null);
+    // Conservamos el File analizado para poder crear el candidato en una vacante
+    // sin volver a pedirlo (el flujo conectado lo reusa vía uploadCV).
+    const [file, setFile]           = useState<File | null>(null);
 
-    const analyzeFile = async (file: File) => {
-        if (!file.name.toLowerCase().endsWith(".pdf")) { setError("Solo se aceptan archivos PDF"); return; }
-        setAnalyzing(true); setError(null); setResult(null); setFileName(file.name);
+    const analyzeFile = async (f: File) => {
+        if (!f.name.toLowerCase().endsWith(".pdf")) { setError("Solo se aceptan archivos PDF"); return; }
+        setAnalyzing(true); setError(null); setResult(null); setFileName(f.name); setFile(f);
         try {
             const form = new FormData();
-            form.append("file", file);
+            form.append("file", f);
             const data = await requestUpload<CVAnalysisResult>("/api/v1/recruitment/analyze-cv", form);
             setResult(data);
-        } catch (e: any) { setError(e?.message ?? "Error al analizar el CV"); }
+        } catch (e: any) { setError(e?.message ?? "Error al analizar el CV"); setFile(null); }
         finally { setAnalyzing(false); }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) analyzeFile(file);
+        const f = e.target.files?.[0];
+        if (f) analyzeFile(f);
         if (fileRef.current) fileRef.current.value = "";
     };
 
@@ -47,6 +50,8 @@ export function useAnalisisCV() {
         if (f) analyzeFile(f);
     };
 
+    const reset = () => { setResult(null); setError(null); setFileName(null); setFile(null); };
+
     return {
         fileRef,
         dragging, setDragging,
@@ -54,8 +59,10 @@ export function useAnalisisCV() {
         result,
         error,
         fileName,
+        file,
         handleFileChange,
         handleDrop,
         triggerFileInput: () => fileRef.current?.click(),
+        reset,
     };
 }
