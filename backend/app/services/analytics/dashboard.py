@@ -86,6 +86,18 @@ def _dashboard_cache_key(
     return f"dashboard:v4:{tenant_id}:{period}:{start}:{end}"
 
 
+async def latest_period_with_data(db: AsyncSession, tenant_id: uuid.UUID) -> str | None:
+    """Último mes (YYYY-MM) con alguna factura del tenant; None si no hay ninguna.
+
+    Permite que el dashboard abra por defecto en el mes con actividad más reciente
+    en vez del mes natural en curso —que suele estar vacío a principio de mes y
+    hace parecer que 'no hay datos' aunque sí los haya en meses anteriores.
+    """
+    res = await db.execute(select(func.max(Invoice.date)).where(Invoice.tenant_id == tenant_id))
+    dt = res.scalar()
+    return dt.strftime("%Y-%m") if dt else None
+
+
 @cached_json(key=_dashboard_cache_key, ttl_seconds=_DASHBOARD_TTL_SECONDS)
 async def get_dashboard(
     db: AsyncSession,

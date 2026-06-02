@@ -53,13 +53,11 @@ const EMPTY_DASHBOARD: AnalyticsDashboard = {
     clientes: { total: 0, nuevos_periodo: 0 },
 };
 
-function currentMonth(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export function useAnalitica() {
-    const [period, setPeriod] = useState<string>(currentMonth());
+    // Vacío = no enviar periodo → el backend abre en el último mes con datos
+    // (evita el dashboard "vacío" a principio de mes). Se sincroniza con la
+    // respuesta en la primera carga; luego el selector manda.
+    const [period, setPeriod] = useState<string>("");
     const [data, setData] = useState<AnalyticsDashboard>(EMPTY_DASHBOARD);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -68,7 +66,12 @@ export function useAnalitica() {
         setLoading(true);
         setError(null);
         api.analytics.dashboard(p)
-            .then(setData)
+            .then((d) => {
+                setData(d);
+                // En la carga inicial (period vacío) adoptamos el periodo que
+                // eligió el backend (último mes con datos) para el selector.
+                setPeriod((prev) => prev || d.period);
+            })
             .catch((e: Error) => {
                 setError(e.message || "Error cargando analítica");
                 setData(EMPTY_DASHBOARD);
