@@ -102,6 +102,11 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = ""  # Vacío → %APPDATA%/AutomatizaPyme/backups (default por OS)
     BACKUP_RETENTION_DAYS: int = 7
 
+    # Tope de gasto LLM mensual AGREGADO por tenant (USD). None/0 → desactivado.
+    # Complementa el límite por empleado IA (AIEmployee.budget_limit_usd). Lo
+    # comprueba check_tenant_budget antes del dispatch del orquestador.
+    TENANT_MONTHLY_LLM_BUDGET_USD: float | None = None
+
     # Entorno
     ENVIRONMENT: str = "development"  # development | staging | production
 

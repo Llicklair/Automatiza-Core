@@ -234,6 +234,21 @@ async def _invoke_dispatcher_impl(
         from app.agents.tenant_context import set_active_tenant
         set_active_tenant(_tid)
 
+        # Tope de gasto LLM agregado por tenant. Solo consulta la DB si el tope
+        # está configurado (por defecto desactivado → cero overhead).
+        from app.core.config import settings
+        if settings.TENANT_MONTHLY_LLM_BUDGET_USD:
+            from app.services.agent_budget import check_tenant_budget
+            async with AsyncSessionLocal() as _db:
+                if not await check_tenant_budget(_tid, _db):
+                    return _make_error_result(
+                        subtask,
+                        agent_name,
+                        action="failed",
+                        error="Presupuesto mensual de IA del tenant agotado. "
+                        "Contacta con tu administrador.",
+                    )
+
     dispatcher_fn = DISPATCHER_MAP.get(agent_name)
     if dispatcher_fn:
         # 180s alineado con custom employees. Builtin agents pueden necesitar
