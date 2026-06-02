@@ -9,7 +9,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services.analytics import get_dashboard
+from app.services.analytics import get_dashboard, latest_period_with_data
 from app.services.reports import parse_month
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -21,14 +21,18 @@ async def get_analytics_dashboard(
     request: Request,
     period: str = Query(
         default=None,
-        description="Periodo en formato YYYY-MM. Por defecto: mes actual.",
+        description="Periodo en formato YYYY-MM. Por defecto: último mes con datos.",
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve el snapshot agregado del dashboard analítico para el periodo indicado."""
     if not period:
-        period = date.today().strftime("%Y-%m")
+        # Sin periodo explícito: abrir en el último mes con actividad (evita que
+        # el dashboard salga "vacío" a principio de mes). Fallback al mes actual.
+        period = await latest_period_with_data(db, current_user.tenant_id) or date.today().strftime(
+            "%Y-%m"
+        )
 
     try:
         start, end = parse_month(period)
