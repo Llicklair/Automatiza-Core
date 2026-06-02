@@ -1,0 +1,16 @@
+# CODEOWNERS — reviewer-gate para módulos "hub" de alto fan-in.
+#
+# Estos archivos los importan decenas o cientos de módulos; cambiar su
+# interfaz tiene blast-radius amplio. Requieren revisión explícita antes de
+# tocarlos (ver consejo-report 2026-06-01 y CLAUDE.md "Layer boundaries").
+#
+# Formato: <patrón>  <owner>. El último patrón que casa gana.
+
+# Backend hubs
+backend/app/db/models/models.py      @Llicklair   # ~139 importadores
+backend/app/core/dependencies.py     @Llicklair   # 58 importadores
+
+# Frontend hubs
+frontend/src/lib/api/client.ts       @Llicklair   # base HTTP única (JWT/refresh)
+frontend/src/lib/api.ts              @Llicklair   # barrel raíz de la API (~177 importadores)
+frontend/src/lib/api/               @Llicklair   # módulos de dominio de la API

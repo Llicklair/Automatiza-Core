@@ -44,6 +44,9 @@ export default function WorkflowCard({
     // Runtime info por nodo (WS): timer en vivo, agente, instrucción.
     const rt = useWorkflowExecution(activeExec?.id || null);
     const lastExec = wfExecs[0];
+    // La última ejecución fue una recuperación de una ventana programada que
+    // se perdió mientras el backend estaba apagado (catchup al arrancar).
+    const lastWasRecovered = lastExec?.trigger_payload?.source === "catchup";
 
     // Construir capas de nodos para el mapa visual
     const nodeLayers: any[][] = (() => {
@@ -90,6 +93,12 @@ export default function WorkflowCard({
                         )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                        {lastWasRecovered && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium text-sky-400 bg-sky-500/10 border-sky-500/20"
+                                title="Recuperó una ejecución programada que se perdió mientras la app estaba cerrada">
+                                Recuperada
+                            </span>
+                        )}
                         {lastExec && (
                             <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${(EXEC_STATUS[lastExec.status] ?? EXEC_STATUS.pending).cls}`}>
                                 {(EXEC_STATUS[lastExec.status] ?? EXEC_STATUS.pending).label}

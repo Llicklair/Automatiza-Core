@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.security import decode_token
 from app.core.tenant_context import set_current_tenant
@@ -50,7 +51,12 @@ async def get_current_user(
     if user_id is None:
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.id == UUID(user_id)))
+    # Eager-load tenant: get_current_tenant() accede a user.tenant; sin esto la
+    # relación lazy dispara un segundo SELECT (o MissingGreenlet en async) en
+    # cada request autenticado.
+    result = await db.execute(
+        select(User).where(User.id == UUID(user_id)).options(joinedload(User.tenant))
+    )
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception
