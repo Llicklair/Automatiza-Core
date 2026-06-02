@@ -161,6 +161,12 @@ omit = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# Por defecto excluimos los tests `e2e` (LLM real vía Claude CLI — no
+# deterministas: dependen de qué tool elige el modelo) y los `slow`
+# (migraciones). Así el run por defecto y CI son estables y rápidos.
+# Para ejecutarlos a propósito: `pytest -m e2e` o `pytest -m slow`
+# (el -m de la línea de comandos sobreescribe este addopts).
+addopts = "-m 'not e2e and not slow'"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "e2e: end-to-end tests requiring Claude CLI (deselect with '-m \"not e2e\"')",
