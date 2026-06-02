@@ -160,29 +160,43 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
                     content=final_text,
                 )
 
-        # Manejar aprobación humana
+        # Manejar aprobación humana. La tool create_invoice ya creó un
+        # PendingApproval ESTRUCTURADO ({"kind":"create_invoice","params":...})
+        # al superar el umbral; lo reutilizamos para no duplicar y para que al
+        # aprobar se ejecute la acción real. Fallback a texto solo si no existe.
         if is_approval:
+            from sqlalchemy import select
+
             from app.db.base import AsyncSessionLocal
             from app.db.models.models import PendingApproval
 
             async with AsyncSessionLocal() as db:
-                approval = PendingApproval(
-                    task_id=uuid.UUID(state["task_id"]),
-                    tenant_id=uuid.UUID(tenant_id),
-                    action_description=final_text[:500],
-                    action_payload={"intent": intent, "agent_response": final_text},
-                    risk_level="high",
-                    expires_at=datetime.now(UTC) + timedelta(hours=2),
+                res = await db.execute(
+                    select(PendingApproval).where(
+                        PendingApproval.task_id == uuid.UUID(state["task_id"]),
+                        PendingApproval.status == "pending",
+                    )
                 )
-                db.add(approval)
-                await db.commit()
-                await db.refresh(approval)
+                approval = res.scalars().first()
+                if approval is None:
+                    approval = PendingApproval(
+                        task_id=uuid.UUID(state["task_id"]),
+                        tenant_id=uuid.UUID(tenant_id),
+                        action_description=final_text[:500],
+                        action_payload={"intent": intent, "agent_response": final_text},
+                        risk_level="high",
+                        expires_at=datetime.now(UTC) + timedelta(hours=2),
+                    )
+                    db.add(approval)
+                    await db.commit()
+                    await db.refresh(approval)
+                approval_id = str(approval.id)
 
             return {
                 "subtask_id": subtask["id"],
                 "agent": "billing",
                 "success": True,
-                "output": {"action": "approval_required", "approval_id": str(approval.id)},
+                "output": {"action": "approval_required", "approval_id": approval_id},
                 "summary": final_text[:200],
                 "error": None,
             }

@@ -169,6 +169,14 @@ async def _approve_payroll_async(
 
                 total_net = sum((Decimal(str(p.net_salary or 0)) for p in payrolls), Decimal(0))
                 if total_net > APPROVAL_THRESHOLD_EUR:
+                    from app.services.workflow.approval_actions import create_action_approval
+
+                    await create_action_approval(
+                        tenant_id=tenant_id,
+                        kind="approve_payroll",
+                        params={"approve_all": True, "month": month, "year": year},
+                        summary=f"Aprobar {len(payrolls)} nóminas de {month}/{year} ({total_net:.2f}€)",
+                    )
                     return (
                         f"APROBACIÓN REQUERIDA: El total de {len(payrolls)} nóminas de "
                         f"{month}/{year} ({total_net:.2f}€) supera el umbral de "
@@ -211,6 +219,14 @@ async def _approve_payroll_async(
                     return f"Error: La nómina ya está en estado '{payroll.status}', no se puede aprobar."
 
                 if Decimal(str(payroll.net_salary or 0)) > APPROVAL_THRESHOLD_EUR:
+                    from app.services.workflow.approval_actions import create_action_approval
+
+                    await create_action_approval(
+                        tenant_id=tenant_id,
+                        kind="approve_payroll",
+                        params={"payroll_id": payroll_id},
+                        summary=f"Aprobar nómina {payroll_id[:8]}... ({float(payroll.net_salary):.2f}€)",
+                    )
                     return (
                         f"APROBACIÓN REQUERIDA: La nómina {payroll_id[:8]}... "
                         f"({float(payroll.net_salary):.2f}€) supera el umbral de "

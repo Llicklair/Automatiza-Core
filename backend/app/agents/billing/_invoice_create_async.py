@@ -64,7 +64,22 @@ async def _create_invoice_async(
 
     # Aprobación humana si supera el umbral compartido
     if amount > APPROVAL_THRESHOLD_EUR:
+        from app.services.workflow.approval_actions import create_action_approval
+
         tax = round(amount * Decimal(str(vat_rate)) / 100, 2)
+        await create_action_approval(
+            tenant_id=tenant_id,
+            kind="create_invoice",
+            params={
+                "amount_base": str(amount),
+                "vat_rate": float(vat_rate),
+                "concept": concept,
+                "client_nif": resolved_nif,
+                "client_name": resolved_name,
+                "invoice_date": inv_date.isoformat(),
+            },
+            summary=f"Factura a {resolved_name} por {amount + tax}€ ({concept})",
+        )
         return (
             f"APROBACIÓN REQUERIDA: La factura supera el umbral de {APPROVAL_THRESHOLD_EUR:.0f}€.\n"
             f"Cliente: {resolved_name} (NIF: {resolved_nif})\nConcepto: {concept}\n"
