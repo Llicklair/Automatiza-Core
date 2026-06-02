@@ -70,6 +70,10 @@ class WorkflowExecution(Base):
     started_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     completed_at = Column(DateTime(timezone=True))
 
+    # True una vez que un fallo de esta ejecución ya generó su notificación, para
+    # que el sweep `check_failed_workflow_executions` no avise dos veces.
+    notified = Column(Boolean, nullable=False, default=False, server_default="false")
+
     workflow = relationship("Workflow", back_populates="executions")
     tenant = relationship("Tenant")
 
