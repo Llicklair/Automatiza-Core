@@ -2,28 +2,28 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Scale, FileText, Send } from "lucide-react";
-import { ResumenPanel } from "./ResumenPanel";
-import { ModelosPanel } from "./ModelosPanel";
-import { AsistidaPanel } from "./AsistidaPanel";
+import { Clock, Timer, Umbrella } from "lucide-react";
+import { HorariosPanel } from "../horarios/HorariosPanel";
+import { FichajesPanel } from "../fichajes/FichajesPanel";
+import { VacacionesPanel } from "../vacaciones/VacacionesPanel";
 
-type Tab = "resumen" | "modelos" | "asistida";
+type Tab = "horarios" | "fichajes" | "vacaciones";
 
-export default function ImpuestosPage() {
+export default function JornadaPage() {
     const searchParams = useSearchParams();
     const initial = searchParams.get("tab");
     const [tab, setTab] = useState<Tab>(
-        initial === "modelos" || initial === "asistida" ? initial : "resumen"
+        initial === "fichajes" || initial === "vacaciones" ? initial : "horarios"
     );
 
-    const tabs: { key: Tab; label: string; icon: typeof Scale }[] = [
-        { key: "resumen", label: "Resumen", icon: Scale },
-        { key: "modelos", label: "Modelos AEAT", icon: FileText },
-        { key: "asistida", label: "Presentación asistida", icon: Send },
+    const tabs: { key: Tab; label: string; icon: typeof Clock }[] = [
+        { key: "horarios", label: "Horarios", icon: Clock },
+        { key: "fichajes", label: "Fichajes", icon: Timer },
+        { key: "vacaciones", label: "Vacaciones", icon: Umbrella },
     ];
 
     return (
-        <div className="p-6 max-w-5xl space-y-6">
+        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             <div className="flex items-center gap-1 border-b border-border">
                 {tabs.map(t => {
                     const Icon = t.icon;
@@ -43,9 +43,9 @@ export default function ImpuestosPage() {
                 })}
             </div>
 
-            {tab === "resumen" && <ResumenPanel />}
-            {tab === "modelos" && <ModelosPanel />}
-            {tab === "asistida" && <AsistidaPanel />}
+            {tab === "horarios" && <HorariosPanel />}
+            {tab === "fichajes" && <FichajesPanel />}
+            {tab === "vacaciones" && <VacacionesPanel />}
         </div>
     );
 }

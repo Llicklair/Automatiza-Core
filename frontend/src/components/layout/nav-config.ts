@@ -5,7 +5,7 @@ import {
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
     BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
     Activity, FileSearch, Clock, Timer, UserCircle, Receipt,
-    Mail, AlertTriangle, FolderKanban, BadgeCheck, Stamp,
+    Mail, AlertTriangle, FolderKanban, BadgeCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -87,9 +87,7 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Nóminas", href: "/rrhh/nominas" },
                     { label: "Reclutamiento", href: "/rrhh/reclutamiento" },
                     { label: "Gestoría Documental", href: "/rrhh/documentos" },
-                    { label: "Horarios", href: "/rrhh/horarios" },
-                    { label: "Fichajes", href: "/rrhh/fichajes" },
-                    { label: "Vacaciones", href: "/rrhh/vacaciones" },
+                    { label: "Jornada y ausencias", href: "/rrhh/jornada" },
                     { label: "Gastos", href: "/rrhh/gastos" },
                 ],
             },
@@ -134,21 +132,13 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Asesorías", href: "/contabilidad/asesorias" },
                 ],
             },
-            {
-                label: "Impuestos", icon: Scale, subItems: [
-                    { label: "Resumen", href: "/impuestos" },
-                    { label: "Modelos AEAT (preview)", href: "/impuestos/modelos" },
-                    { label: "Presentación asistida (131/200)", href: "/impuestos/asistida" },
-                ],
-            },
+            { label: "Impuestos", icon: Scale, href: "/impuestos" },
         ],
     },
     {
         title: "Verifactu",
         items: [
-            { label: "Modo Verifactu", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true },
-            { label: "Apoderamiento AEAT", icon: Stamp, href: "/configuracion/regap", adminOnly: true },
-            { label: "Firma digital", icon: ShieldCheck, href: "/configuracion/firma-digital", adminOnly: true },
+            { label: "Configuración fiscal (AEAT)", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true },
         ],
     },
     {
