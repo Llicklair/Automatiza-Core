@@ -38,6 +38,9 @@ from .hr import Candidate, Employee, Payroll, RecruitmentPosition  # noqa: F401
 # --- Inventory ---
 from .inventory import Product, StockMovement  # noqa: F401
 
+# --- LLM usage (snapshot persistente del tracker) ---
+from .llm_usage import LlmUsageMonthly  # noqa: F401
+
 # --- Orders ---
 from .orders import PurchaseOrder, PurchaseOrderLine, SalesOrder, SalesOrderLine  # noqa: F401
 

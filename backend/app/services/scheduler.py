@@ -54,6 +54,18 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # Cada 10 minutos: volcar el consumo LLM en memoria a la DB (snapshot) para
+    # que el dashboard sobreviva a una caída entre apagados gráciles.
+    from app.services.llm_usage_tracker import persist_to_db as _persist_llm_usage
+
+    scheduler.add_job(
+        _persist_llm_usage,
+        IntervalTrigger(minutes=10),
+        id="persist_llm_usage",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     # Diario a las 8:30 (Europe/Madrid): alertas automáticas de negocio
     from app.services.alerts import run_daily_alerts
 

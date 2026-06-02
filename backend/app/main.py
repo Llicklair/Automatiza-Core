@@ -49,6 +49,10 @@ async def lifespan(app: FastAPI):
     from app.services.workflow.recovery import recover_stale_executions
 
     await recover_stale_executions()
+    # Restaurar el consumo LLM persistido para que el dashboard sobreviva al reinicio.
+    from app.services import llm_usage_tracker
+
+    await llm_usage_tracker.load_from_db()
     # Arrancar scheduler
     from app.services.scheduler import start_scheduler, stop_scheduler
 
@@ -59,6 +63,7 @@ async def lifespan(app: FastAPI):
     yield
     # Parar scheduler, relay y tareas en vuelo
     await stop_ws_relay()
+    await llm_usage_tracker.persist_to_db()
     await stop_scheduler()
     from app.services.workflow.task_runner import task_runner
 
@@ -293,9 +298,14 @@ async def lifecycle_shutdown(request: Request):
         return JSONResponse({"detail": "Forbidden"}, status_code=403)
 
     logger.info("[LIFECYCLE] Apagado grácil solicitado por %s", client_host)
+    from app.services import llm_usage_tracker
     from app.services.scheduler import stop_scheduler
     from app.services.workflow.task_runner import task_runner
 
+    try:
+        await llm_usage_tracker.persist_to_db()
+    except Exception as e:
+        logger.warning("[LIFECYCLE] persist_to_db falló: %s", e)
     try:
         await stop_scheduler()
     except Exception as e:

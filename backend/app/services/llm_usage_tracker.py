@@ -132,3 +132,115 @@ def flush_tenant(tenant_id: str) -> None:
     """Elimina todos los datos del tenant (útil en tests)."""
     with _lock:
         _store.pop(tenant_id, None)
+
+
+def _snapshot() -> list[dict]:
+    """Copia plana del store: filas (tenant, month, agent, provider, counts)."""
+    rows: list[dict] = []
+    with _lock:
+        for tenant_id, months in _store.items():
+            for month, agents in months.items():
+                for agent, providers in agents.items():
+                    for provider, counts in providers.items():
+                        rows.append({
+                            "tenant_id": tenant_id,
+                            "month": month,
+                            "agent": agent,
+                            "provider": provider,
+                            "calls": counts["calls"],
+                            "tokens_in": counts["tokens_in"],
+                            "tokens_out": counts["tokens_out"],
+                        })
+    return rows
+
+
+async def persist_to_db() -> int:
+    """Vuelca el store en memoria a `llm_usage_monthly` (valores ABSOLUTOS).
+
+    Idempotente: hace upsert SET (no incrementa), así que recargar y volver a
+    volcar no duplica. Falla silenciosamente (best-effort).
+    """
+    import uuid as _uuid
+    from datetime import datetime as _dt
+
+    from sqlalchemy import select
+
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.llm_usage import LlmUsageMonthly
+
+    rows = _snapshot()
+    if not rows:
+        return 0
+    written = 0
+    try:
+        async with AsyncSessionLocal() as db:
+            for r in rows:
+                res = await db.execute(
+                    select(LlmUsageMonthly).where(
+                        LlmUsageMonthly.tenant_id == _uuid.UUID(r["tenant_id"]),
+                        LlmUsageMonthly.month == r["month"],
+                        LlmUsageMonthly.agent == r["agent"],
+                        LlmUsageMonthly.provider == r["provider"],
+                    )
+                )
+                existing = res.scalar_one_or_none()
+                if existing:
+                    existing.calls = r["calls"]
+                    existing.tokens_in = r["tokens_in"]
+                    existing.tokens_out = r["tokens_out"]
+                    existing.updated_at = _dt.now(UTC)
+                else:
+                    db.add(LlmUsageMonthly(
+                        tenant_id=_uuid.UUID(r["tenant_id"]),
+                        month=r["month"],
+                        agent=r["agent"],
+                        provider=r["provider"],
+                        calls=r["calls"],
+                        tokens_in=r["tokens_in"],
+                        tokens_out=r["tokens_out"],
+                        updated_at=_dt.now(UTC),
+                    ))
+                written += 1
+            await db.commit()
+    except Exception:  # noqa: BLE001 — persistencia best-effort, no debe tumbar el shutdown
+        return 0
+    return written
+
+
+async def load_from_db(months: int = _MAX_MONTHS_PER_TENANT) -> int:
+    """Carga los últimos `months` meses desde `llm_usage_monthly` al store.
+
+    Se llama una vez al arrancar para restaurar el dashboard tras un reinicio.
+    """
+    from sqlalchemy import select
+
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.llm_usage import LlmUsageMonthly
+
+    # Meses recientes a restaurar (YYYY-MM de hoy hacia atrás).
+    now = datetime.now(UTC)
+    keep = set()
+    y, m = now.year, now.month
+    for _ in range(months):
+        keep.add(f"{y:04d}-{m:02d}")
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+
+    loaded = 0
+    try:
+        async with AsyncSessionLocal() as db:
+            res = await db.execute(select(LlmUsageMonthly))
+            with _lock:
+                for row in res.scalars().all():
+                    if row.month not in keep:
+                        continue
+                    bucket = _store[str(row.tenant_id)][row.month][row.agent][row.provider]
+                    bucket["calls"] = int(row.calls or 0)
+                    bucket["tokens_in"] = int(row.tokens_in or 0)
+                    bucket["tokens_out"] = int(row.tokens_out or 0)
+                    loaded += 1
+    except Exception:  # noqa: BLE001 — si falla, el tracker sigue vacío (no fatal)
+        return 0
+    return loaded
