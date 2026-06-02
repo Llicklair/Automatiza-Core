@@ -5,7 +5,7 @@ import {
     Users2, PieChart, Building, BookOpen, Bell, CheckCircle2, X, ScanLine,
     BarChart3, Sparkles, Settings, Layers, Download, Megaphone, Bot,
     Activity, FileSearch, Clock, Timer, UserCircle, Receipt,
-    Mail, FileSpreadsheet, AlertTriangle, FolderKanban, BadgeCheck, Stamp,
+    Mail, AlertTriangle, FolderKanban, BadgeCheck, Stamp,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -171,10 +171,9 @@ export const NAV_SECTIONS: NavSection[] = [
         title: "Herramientas",
         items: [
             { label: "Plantillas", icon: Layers, href: "/plantillas" },
-            { label: "Escáner", icon: ScanLine, href: "/escaner" },
+            { label: "Escáner e importación", icon: ScanLine, href: "/escaner" },
             { label: "Documentos", icon: FileText, href: "/documentos" },
             { label: "Correos", icon: Mail, href: "/correos" },
-            { label: "Importar Excel", icon: FileSpreadsheet, href: "/excel" },
             { label: "Integraciones", icon: Plug, href: "/integraciones" },
             {
                 label: "Configuración", icon: Settings, subItems: [

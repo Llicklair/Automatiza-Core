@@ -1,11 +1,16 @@
 "use client";
 
-import { ScanLine, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ScanLine, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { useEscaner, getElectronAPI } from "./_hooks/useEscaner";
 import LanToggle from "./_components/LanToggle";
 import DropZone from "./_components/DropZone";
 import SelectedFilesList from "./_components/SelectedFilesList";
 import ScanResults from "./_components/ScanResults";
+import { ExcelImportPanel } from "./_components/ExcelImportPanel";
+
+type Tab = "escaner" | "excel";
 
 export default function EscanerPage() {
     const {
@@ -15,37 +20,71 @@ export default function EscanerPage() {
         handleFiles, removeFile, handleScan, grouped,
     } = useEscaner();
 
+    const searchParams = useSearchParams();
+    const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "excel" ? "excel" : "escaner");
+
+    const tabs: { key: Tab; label: string; icon: typeof ScanLine }[] = [
+        { key: "escaner", label: "Escáner", icon: ScanLine },
+        { key: "excel", label: "Importar Excel", icon: FileSpreadsheet },
+    ];
+
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-8">
+        <div className="p-8 max-w-4xl mx-auto space-y-6">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-1">
                     <ScanLine className="w-7 h-7 text-primary" />
-                    <h1 className="text-2xl font-bold text-foreground">Escaner Inteligente</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Escáner e importación</h1>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Sube cualquier archivo y la IA lo clasificara automaticamente en la carpeta correcta.
+                    Sube cualquier archivo y la IA lo clasifica, o importa hojas de cálculo como datos.
                 </p>
             </div>
 
-            {getElectronAPI()?.getNetworkStatus && netStatus && (
-                <LanToggle netStatus={netStatus} netToggling={netToggling} onToggle={handleLanToggle} />
-            )}
+            {/* Pestañas */}
+            <div className="flex items-center gap-1 border-b border-border">
+                {tabs.map(t => {
+                    const Icon = t.icon;
+                    const active = tab === t.key;
+                    return (
+                        <button
+                            key={t.key}
+                            onClick={() => setTab(t.key)}
+                            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                                active
+                                    ? "border-primary text-foreground"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            }`}>
+                            <Icon className="w-4 h-4" /> {t.label}
+                        </button>
+                    );
+                })}
+            </div>
 
-            <DropZone dragOver={dragOver} setDragOver={setDragOver}
-                onFiles={handleFiles} fileInputRef={fileInputRef} />
+            {tab === "escaner" ? (
+                <div className="space-y-8">
+                    {getElectronAPI()?.getNetworkStatus && netStatus && (
+                        <LanToggle netStatus={netStatus} netToggling={netToggling} onToggle={handleLanToggle} />
+                    )}
 
-            <SelectedFilesList files={selectedFiles} scanning={scanning}
-                onRemove={removeFile} onScan={handleScan} />
+                    <DropZone dragOver={dragOver} setDragOver={setDragOver}
+                        onFiles={handleFiles} fileInputRef={fileInputRef} />
 
-            {error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    {error}
+                    <SelectedFilesList files={selectedFiles} scanning={scanning}
+                        onRemove={removeFile} onScan={handleScan} />
+
+                    {error && (
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                            {error}
+                        </div>
+                    )}
+
+                    <ScanResults results={results} grouped={grouped} docStatuses={docStatuses} />
                 </div>
+            ) : (
+                <ExcelImportPanel />
             )}
-
-            <ScanResults results={results} grouped={grouped} docStatuses={docStatuses} />
         </div>
     );
 }
