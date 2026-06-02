@@ -13,6 +13,7 @@ from app.services.idempotency import IdempotencyGuard
 from app.workers._orchestrator_context import (
     _build_initial_state,
     _create_invoice_from_approval,
+    _execute_from_approval,
     _load_and_start_task,
     _load_task_and_approval,
     _stream_and_log,
@@ -292,7 +293,12 @@ async def _resume_orchestrator(task_id: str, tenant_id_hint: str | None = None):
         set_current_tenant(str(task.tenant_id))
         set_current_task(task_id)
 
-        ok = await _create_invoice_from_approval(task, payload_data, db)
+        # Acción estructurada ({kind, params}) → executor genérico. Payloads
+        # antiguos sin kind → ruta legacy de factura.
+        if payload_data.get("kind"):
+            ok = await _execute_from_approval(task, payload_data, db)
+        else:
+            ok = await _create_invoice_from_approval(task, payload_data, db)
         if not ok:
             return
 

@@ -39,6 +39,14 @@ async def create_journal_entry(
             return f"Error: El asiento no cuadra. Débitos: {total_debit}, Créditos: {total_credit}. Deben ser iguales."
 
         if total_debit > APPROVAL_THRESHOLD_EUR:
+            from app.services.workflow.approval_actions import create_action_approval
+
+            await create_action_approval(
+                tenant_id=tenant_id,
+                kind="create_journal_entry",
+                params={"description": description, "entry_date": entry_date, "lines": lines},
+                summary=f"Asiento '{description}' por {total_debit:.2f}€ ({entry_date})",
+            )
             return (
                 f"APROBACIÓN REQUERIDA: El asiento supera el umbral de {APPROVAL_THRESHOLD_EUR:.0f}€.\n"
                 f"Descripción: {description}\nFecha: {entry_date}\nImporte: {total_debit:.2f}€\n"

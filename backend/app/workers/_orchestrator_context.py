@@ -395,3 +395,36 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
     task.requires_human_approval = False
     await db.commit()
     return True
+
+
+async def _execute_from_approval(task, payload_data: dict, db) -> bool:
+    """Ejecuta una acción retenida ESTRUCTURADA ({kind, params}) tras aprobación.
+
+    Genérico para cualquier escritura financiera registrada en approval_actions
+    (factura, asiento, nómina…). Reproduce el bookkeeping de
+    `_create_invoice_from_approval`: ejecuta, añade un agent_result de éxito y
+    avanza current_step para que el re-invoke del grafo no re-dispare el cap.
+    """
+    from app.services.workflow.approval_actions import execute_approved_action
+
+    ok, summary = await execute_approved_action(payload_data, db, str(task.tenant_id))
+    if not ok:
+        task.status = "failed"
+        task.error_message = summary
+        await db.commit()
+        return False
+
+    existing_results = list(task.agent_results or [])
+    existing_results.append(
+        {
+            "agent": payload_data.get("kind", "approval"),
+            "success": True,
+            "output": {"action": "executed_after_approval", "note": summary},
+        }
+    )
+    task.agent_results = existing_results
+    task.current_step = (task.current_step or 0) + 1
+    task.status = "executing"
+    task.requires_human_approval = False
+    await db.commit()
+    return True
