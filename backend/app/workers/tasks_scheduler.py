@@ -387,3 +387,71 @@ async def _cleanup_stuck_executions():
         await db.commit()
         logger.info("[CLEANUP] %d ejecucion(es) atascada(s) marcadas como failed.", len(stuck))
         return {"cleaned": len(stuck)}
+
+
+async def check_failed_workflow_executions():
+    """Cada 10 min: notifica al gestor las ejecuciones de workflow que fallaron.
+
+    Las automatizaciones programadas/por-evento corren desatendidas: si fallan
+    en silencio (el bug #1 que mata el producto fiscal), el gestor nunca se
+    entera. Este sweep detecta cualquier ejecución `failed` aún sin notificar y
+    crea una notificación de error. Las manuales NO avisan (el usuario las está
+    viendo en la UI). El flag `notified` evita avisar dos veces.
+    """
+    try:
+        await _check_failed_workflow_executions()
+    except Exception as e:
+        logger.error("[ALERTS] Error en check_failed_workflow_executions: %s", e)
+
+
+async def _check_failed_workflow_executions():
+    from sqlalchemy.orm import selectinload
+
+    from app.db.models.models import WorkflowExecution
+    from app.services.notifications import create_notification
+
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
+    async with AsyncSessionLocal() as db:
+        # Lectura cross-tenant intencionada (el scheduler es global). Cada
+        # notificación lleva su tenant_id explícito.
+        set_current_tenant(None)
+        res = await db.execute(
+            select(WorkflowExecution)
+            .options(selectinload(WorkflowExecution.workflow))
+            .where(
+                WorkflowExecution.status == "failed",
+                WorkflowExecution.notified.is_(False),
+                WorkflowExecution.started_at >= cutoff,
+            )
+        )
+        execs = res.scalars().all()
+        notified = 0
+        for ex in execs:
+            payload = ex.trigger_payload or {}
+            # Desatendida = disparada por el sistema (scheduler/catchup/evento),
+            # no por el usuario desde la UI (manual → trigger_payload sin source).
+            is_unattended = isinstance(payload, dict) and bool(payload.get("source"))
+            if is_unattended:
+                wf_name = ex.workflow.name if ex.workflow else "Automatización"
+                reason = (ex.result_log or "Error desconocido").strip()[:300]
+                await create_notification(
+                    db,
+                    tenant_id=ex.tenant_id,
+                    title=f"La automatización «{wf_name}» falló",
+                    body=reason,
+                    kind="error",
+                    payload={
+                        "execution_id": str(ex.id),
+                        "workflow_id": str(ex.workflow_id),
+                    },
+                )
+                notified += 1
+            ex.notified = True
+        set_current_tenant(None)
+        await db.commit()
+        if notified:
+            logger.warning(
+                "[ALERTS] %d ejecución(es) de workflow fallidas notificadas al gestor.",
+                notified,
+            )
+        return {"notified": notified}

@@ -22,6 +22,7 @@ _deferred_task: asyncio.Task[None] | None = None
 def register_jobs() -> None:
     """Registra las tareas periódicas (equivalente a beat_schedule)."""
     from app.workers.tasks_scheduler import (
+        check_failed_workflow_executions,
         check_scheduled_workflows,
         cleanup_stuck_executions,
         process_recurring_invoices,
@@ -62,6 +63,16 @@ def register_jobs() -> None:
         _persist_llm_usage,
         IntervalTrigger(minutes=10),
         id="persist_llm_usage",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Cada 10 minutos: notificar al gestor las automatizaciones desatendidas que
+    # fallaron (no deben fallar en silencio).
+    scheduler.add_job(
+        check_failed_workflow_executions,
+        IntervalTrigger(minutes=10),
+        id="check_failed_workflow_executions",
         replace_existing=True,
         max_instances=1,
     )
