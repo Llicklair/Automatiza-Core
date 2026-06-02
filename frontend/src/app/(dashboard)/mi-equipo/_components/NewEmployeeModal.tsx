@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 import { X, Loader2, Sparkles } from "lucide-react";
 
 export function NewEmployeeModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void; }) {
@@ -24,7 +25,10 @@ export function NewEmployeeModal({ onClose, onCreated }: { onClose: () => void; 
                 knowledge_enabled: true,
             });
             onCreated(); onClose();
-        } catch (e: any) { setError(e?.message ?? "Error al crear empleado"); }
+        } catch (e: any) {
+            if (surfaceIfConnectivity(e)) return;
+            setError(e?.message ?? "Error al crear empleado");
+        }
         finally { setLoading(false); }
     };
 

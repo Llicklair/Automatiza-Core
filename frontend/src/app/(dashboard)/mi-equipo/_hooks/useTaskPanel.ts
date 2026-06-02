@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Task } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { useNotificationStore } from "@/stores/notifications";
 import { useToastStore } from "@/stores/toast";
@@ -38,7 +39,7 @@ export function useTaskPanel(isActive: boolean) {
         setLoading(true);
         api.tasks.list({ limit: 50 })
             .then(setTasks)
-            .catch(() => { })
+            .catch((err) => { surfaceIfConnectivity(err); })
             .finally(() => setLoading(false));
     };
 
@@ -102,6 +103,7 @@ export function useTaskPanel(isActive: boolean) {
             if (!answer) answer = "La IA tardó demasiado. Inténtalo de nuevo.";
             setChatMessages(prev => [...prev, { role: "assistant", content: answer }]);
         } catch (e: any) {
+            if (surfaceIfConnectivity(e)) return;
             setChatMessages(prev => [...prev, { role: "assistant", content: `Error: ${e.message || "No se pudo procesar"}` }]);
         } finally {
             setChatLoading(false);
@@ -141,6 +143,7 @@ export function useTaskPanel(isActive: boolean) {
                 loadSilent();
             }
         } catch (err: unknown) {
+            if (surfaceIfConnectivity(err)) return;
             setError(err instanceof Error ? err.message : "Error al crear la tarea");
         } finally {
             setCreating(false);
@@ -159,7 +162,7 @@ export function useTaskPanel(isActive: boolean) {
         try {
             await api.tasks.cancel(id);
         } catch (err: any) {
-            toast.error(err.message || "Error al cancelar la tarea");
+            if (!surfaceIfConnectivity(err)) toast.error(err.message || "Error al cancelar la tarea");
         }
         load();
     }

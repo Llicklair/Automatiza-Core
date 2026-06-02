@@ -210,12 +210,12 @@ async def email_status(
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve qué proveedores de email están configurados para el tenant."""
-    from app.agents.email.tools import _get_email_credentials, _get_oauth_token
+    from app.services.email_credentials import get_email_credentials, get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
-    gmail = bool(await _get_oauth_token(tenant_id, "gmail"))
-    outlook = bool(await _get_oauth_token(tenant_id, "outlook"))
-    smtp = bool(await _get_email_credentials(tenant_id))
+    gmail = bool(await get_oauth_token(tenant_id, "gmail"))
+    outlook = bool(await get_oauth_token(tenant_id, "outlook"))
+    smtp = bool(await get_email_credentials(tenant_id))
     configured = gmail or outlook or smtp
     return {
         "configured": configured,
@@ -238,12 +238,12 @@ async def email_inbox(
     Lista los últimos mensajes recibidos del proveedor configurado.
     Detecta provider en este orden: gmail > outlook. Devuelve formato uniforme.
     """
-    from app.agents.email.tools import _get_oauth_token
+    from app.services.email_credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
     limit = max(1, min(limit, 50))
 
-    gmail_token = await _get_oauth_token(tenant_id, "gmail")
+    gmail_token = await get_oauth_token(tenant_id, "gmail")
     if gmail_token:
         from app.integrations.gmail_client import GmailClient
 
@@ -267,7 +267,7 @@ async def email_inbox(
         finally:
             await client.close()
 
-    outlook_token = await _get_oauth_token(tenant_id, "outlook")
+    outlook_token = await get_oauth_token(tenant_id, "outlook")
     if outlook_token:
         from app.integrations.outlook_client import OutlookClient
 
@@ -303,10 +303,10 @@ async def drive_list_files(
     current_user: User = Depends(get_current_user),
 ):
     """Lista archivos de Google Drive del tenant. Requiere OAuth Gmail con scope drive."""
-    from app.agents.email.tools import _get_oauth_token
+    from app.services.email_credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
-    token = await _get_oauth_token(tenant_id, "gmail")
+    token = await get_oauth_token(tenant_id, "gmail")
     if not token:
         raise HTTPException(status_code=400, detail="Conecta Google (Gmail) para acceder a Drive")
 
@@ -346,10 +346,10 @@ async def drive_attach_as_document(
     Descarga un fichero de Drive y lo guarda como Document del tenant.
     Devuelve el Document para que el frontend lo añada como adjunto al correo.
     """
-    from app.agents.email.tools import _get_oauth_token
+    from app.services.email_credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
-    token = await _get_oauth_token(tenant_id, "gmail")
+    token = await get_oauth_token(tenant_id, "gmail")
     if not token:
         raise HTTPException(status_code=400, detail="Conecta Google (Gmail) para acceder a Drive")
 
@@ -397,11 +397,11 @@ async def email_message_detail(
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve el cuerpo completo de un mensaje del proveedor configurado."""
-    from app.agents.email.tools import _get_oauth_token
+    from app.services.email_credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
 
-    gmail_token = await _get_oauth_token(tenant_id, "gmail")
+    gmail_token = await get_oauth_token(tenant_id, "gmail")
     if gmail_token:
         from app.integrations.gmail_client import GmailClient
 
@@ -421,7 +421,7 @@ async def email_message_detail(
         finally:
             await client.close()
 
-    outlook_token = await _get_oauth_token(tenant_id, "outlook")
+    outlook_token = await get_oauth_token(tenant_id, "outlook")
     if outlook_token:
         from app.integrations.outlook_client import OutlookClient
 
@@ -501,14 +501,14 @@ async def draft_email_reply(
     Reusa el handler de /email/messages/{id} para obtener el cuerpo completo
     y pasa el contexto opcional a la IA.
     """
-    from app.agents.email.tools import _get_oauth_token
+    from app.services.email_credentials import get_oauth_token
     from app.services.email_ai import EmailAIError, draft_reply
 
     tenant_id = str(current_user.tenant_id)
 
     full_msg: dict | None = None
     for provider, ClientCls in [("gmail", "GmailClient"), ("outlook", "OutlookClient")]:
-        token = await _get_oauth_token(tenant_id, provider)
+        token = await get_oauth_token(tenant_id, provider)
         if not token:
             continue
         if provider == "gmail":

@@ -128,6 +128,12 @@ def validate_vat_rate(rate: float) -> tuple[bool, str]:
 MAX_INVOICE_AMOUNT_EUR = Decimal("1_000_000")  # Límite de alerta por factura
 MIN_INVOICE_AMOUNT_EUR = Decimal("0.01")
 
+# Umbral por encima del cual una escritura financiera (factura, asiento, nómina)
+# requiere aprobación humana explícita desde el dashboard. El agente NO ejecuta la
+# operación: devuelve un aviso "APROBACIÓN REQUERIDA". Centralizado aquí para que
+# las tools de billing/accounting/hr usen el mismo límite.
+APPROVAL_THRESHOLD_EUR = Decimal("5000")
+
 
 def validate_amount(amount: Decimal) -> tuple[bool, str]:
     if amount < MIN_INVOICE_AMOUNT_EUR:

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { AlertTriangle, CalendarClock, MessageSquare, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 import { type Vencimiento } from "../_hooks/useCompliance";
 
 function VencimientoCard({ v, urgent }: { v: Vencimiento; urgent?: boolean }) {
@@ -54,8 +55,9 @@ export function CalendarioTab() {
                 setLoading(false);
             })
             .catch((err) => {
-                setError(err instanceof Error ? err.message : "Error al cargar el calendario");
                 setLoading(false);
+                if (surfaceIfConnectivity(err)) return;
+                setError(err instanceof Error ? err.message : "Error al cargar el calendario");
             });
     }, []);
 

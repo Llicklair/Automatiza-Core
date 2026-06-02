@@ -3,11 +3,13 @@
 import logging
 from calendar import monthrange
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from langchain_core.tools import tool
 from sqlalchemy import select
 
+from app.agents.shared.validators.billing import APPROVAL_THRESHOLD_EUR
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee, Payroll
 
@@ -165,6 +167,15 @@ async def _approve_payroll_async(
                 if not payrolls:
                     return f"No hay nóminas en borrador para {month}/{year}."
 
+                total_net = sum((Decimal(str(p.net_salary or 0)) for p in payrolls), Decimal(0))
+                if total_net > APPROVAL_THRESHOLD_EUR:
+                    return (
+                        f"APROBACIÓN REQUERIDA: El total de {len(payrolls)} nóminas de "
+                        f"{month}/{year} ({total_net:.2f}€) supera el umbral de "
+                        f"{APPROVAL_THRESHOLD_EUR:.0f}€.\nLas nóminas NO se han aprobado. "
+                        f"Requiere aprobación humana desde el dashboard."
+                    )
+
                 for p in payrolls:
                     p.status = "approved"
                 await db.commit()
@@ -198,6 +209,14 @@ async def _approve_payroll_async(
                     return f"Error: Nómina {payroll_id} no encontrada."
                 if payroll.status != "draft":
                     return f"Error: La nómina ya está en estado '{payroll.status}', no se puede aprobar."
+
+                if Decimal(str(payroll.net_salary or 0)) > APPROVAL_THRESHOLD_EUR:
+                    return (
+                        f"APROBACIÓN REQUERIDA: La nómina {payroll_id[:8]}... "
+                        f"({float(payroll.net_salary):.2f}€) supera el umbral de "
+                        f"{APPROVAL_THRESHOLD_EUR:.0f}€.\nNO se ha aprobado. "
+                        f"Requiere aprobación humana desde el dashboard."
+                    )
 
                 payroll.status = "approved"
                 await db.commit()

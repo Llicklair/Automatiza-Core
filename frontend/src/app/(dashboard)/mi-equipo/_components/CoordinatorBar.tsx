@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 import { Bot, Loader2, Send } from "lucide-react";
 
 export function CoordinatorBar({ onSent }: { onSent: () => void }) {
@@ -20,6 +21,7 @@ export function CoordinatorBar({ onSent }: { onSent: () => void }) {
             setTimeout(() => setSent(false), 3000);
             onSent();
         } catch (e: any) {
+            if (surfaceIfConnectivity(e)) return;
             setError(e?.message ?? "Error al enviar instrucción al coordinador");
             setTimeout(() => setError(null), 5000);
         }

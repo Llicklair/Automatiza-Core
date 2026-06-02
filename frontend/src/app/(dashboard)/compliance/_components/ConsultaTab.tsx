@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, MessageSquare, Loader2, Send } from "lucide-react";
 import { executeTaskAndWait } from "../_hooks/useCompliance";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 
 export function ConsultaTab() {
     const [question, setQuestion] = useState("");
@@ -25,6 +26,7 @@ export function ConsultaTab() {
             );
             setResults(data);
         } catch (err: any) {
+            if (surfaceIfConnectivity(err)) return;
             setError(err.message);
         } finally {
             setLoading(false);
