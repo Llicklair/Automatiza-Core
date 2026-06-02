@@ -30,6 +30,9 @@ class TestAIEmployees:
         "name": "Ana García",
         "role_description": "Responsable de facturación y cobros",
         "budget_limit_usd": 5.0,
+        # El contrato exige ≥2 de 4 capacidades (scope/memory/knowledge/workflows).
+        "memory_enabled": True,
+        "knowledge_enabled": True,
     }
 
     async def _create(self, auth_client: AsyncClient) -> dict:

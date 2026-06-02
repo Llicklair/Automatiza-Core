@@ -81,7 +81,8 @@ class TestAIEmployeesIsolation:
     ):
         await auth_client.post(
             "/api/v1/ai-employees",
-            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5},
+            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5,
+                  "memory_enabled": True, "knowledge_enabled": True},
         )
         resp = await auth_client_b.get("/api/v1/ai-employees")
         assert resp.status_code == 200
@@ -93,7 +94,8 @@ class TestAIEmployeesIsolation:
     ):
         created = await auth_client.post(
             "/api/v1/ai-employees",
-            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5},
+            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5,
+                  "memory_enabled": True, "knowledge_enabled": True},
         )
         emp_id = created.json()["id"]
         resp = await auth_client_b.get(f"/api/v1/ai-employees/{emp_id}")
@@ -105,7 +107,8 @@ class TestAIEmployeesIsolation:
     ):
         created = await auth_client.post(
             "/api/v1/ai-employees",
-            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5},
+            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5,
+                  "memory_enabled": True, "knowledge_enabled": True},
         )
         emp_id = created.json()["id"]
         resp = await auth_client_b.get(f"/api/v1/ai-employees/{emp_id}/usage")
@@ -117,7 +120,8 @@ class TestAIEmployeesIsolation:
     ):
         created = await auth_client.post(
             "/api/v1/ai-employees",
-            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5},
+            json={"name": "Ana A", "role_description": "Billing", "budget_limit_usd": 5,
+                  "memory_enabled": True, "knowledge_enabled": True},
         )
         emp_id = created.json()["id"]
         resp = await auth_client_b.post(
