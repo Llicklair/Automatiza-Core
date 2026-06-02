@@ -1,4 +1,4 @@
-const { execSync, spawn } = require("child_process");
+const { execSync, spawn, spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
@@ -296,10 +296,42 @@ function startBackend(extraEnv = {}) {
 }
 
 /**
+ * Pide al backend un apagado grácil (drena scheduler + tasks en vuelo) antes
+ * del force-kill. Bloqueante con timeout corto: el lifespan de uvicorn nunca
+ * corre porque luego hacemos `taskkill /F`, así que este POST es la única vía
+ * para dejar el scheduler limpio. Best-effort: cualquier error se ignora.
+ *
+ * Se ejecuta en un subproceso Node (electron-as-node) para poder bloquear de
+ * forma síncrona dentro de stopBackend(), que se invoca desde los handlers de
+ * cierre (before-quit, SIGTERM…) donde no se puede await.
+ */
+function requestGracefulShutdown() {
+  const script =
+    "const http=require('http');" +
+    "const req=http.request({host:'127.0.0.1',port:8080,path:'/lifecycle/shutdown',method:'POST',timeout:3000}," +
+    "r=>{r.resume();r.on('end',()=>process.exit(0));});" +
+    "req.on('error',()=>process.exit(0));" +
+    "req.on('timeout',()=>{req.destroy();process.exit(0);});" +
+    "req.end();";
+  try {
+    // spawnSync con args (sin shell) evita el quoting de cmd.exe sobre el
+    // script (que contiene '=>' y otros caracteres especiales).
+    spawnSync(process.execPath, ["-e", script], {
+      timeout: 4000,
+      stdio: "ignore",
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    });
+  } catch {
+    // Timeout o backend ya caído: seguimos al force-kill.
+  }
+}
+
+/**
  * Para el backend.
  */
 function stopBackend() {
   if (!backendProcess) return;
+  requestGracefulShutdown();
   try {
     if (process.platform === "win32") {
       execSync(`taskkill /PID ${backendProcess.pid} /T /F`, { stdio: "ignore" });

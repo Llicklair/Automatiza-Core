@@ -276,6 +276,37 @@ async def readiness_check():
         )
 
 
+@app.post("/lifecycle/shutdown", tags=["system"])
+async def lifecycle_shutdown(request: Request):
+    """Apagado grácil solicitado por el contenedor Electron antes del force-kill.
+
+    Electron mata el proceso Python con `taskkill /F`, por lo que el lifespan de
+    uvicorn (stop_scheduler + task_runner.shutdown) nunca corre. Este endpoint
+    permite que el escritorio drene el scheduler y las tasks en vuelo antes de
+    forzar el kill, dejando un estado limpio.
+
+    Solo accesible desde loopback (la propia app); nunca desde la LAN aunque el
+    backend escuche en ella (modo red local).
+    """
+    client_host = request.client.host if request.client else ""
+    if client_host not in ("127.0.0.1", "::1", "localhost"):
+        return JSONResponse({"detail": "Forbidden"}, status_code=403)
+
+    logger.info("[LIFECYCLE] Apagado grácil solicitado por %s", client_host)
+    from app.services.scheduler import stop_scheduler
+    from app.services.workflow.task_runner import task_runner
+
+    try:
+        await stop_scheduler()
+    except Exception as e:
+        logger.warning("[LIFECYCLE] stop_scheduler falló: %s", e)
+    try:
+        await task_runner.shutdown()
+    except Exception as e:
+        logger.warning("[LIFECYCLE] task_runner.shutdown falló: %s", e)
+    return {"status": "shutting_down"}
+
+
 @app.get("/", tags=["system"])
 async def root():
     return {"message": f"{settings.APP_NAME} API", "docs": "/docs"}

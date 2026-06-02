@@ -1,9 +1,11 @@
 """Portal externo de clientes — autenticación por token + vista de facturas."""
+import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +21,15 @@ from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as invoice_svc
 from app.services.client_portal.tokens import hash_token, issue_token
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/client-portal", tags=["client-portal"])
+
+
+class PortalAuthRequest(BaseModel):
+    """Body del intercambio token bruto → JWT del portal."""
+
+    token: str = Field(min_length=1, max_length=256)
 
 
 # ── Admin: generar / revocar token para un cliente ───────────────────────────
@@ -53,7 +63,7 @@ async def get_portal_token_status(
 async def generate_portal_token(
     request: Request,
     client_id: UUID,
-    days_valid: int = 90,
+    days_valid: int = Query(90, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -110,13 +120,10 @@ async def revoke_portal_token(
 @limiter.limit("10/minute")
 async def authenticate_portal(
     request: Request,
-    payload: dict,
+    payload: PortalAuthRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    raw_token: str = payload.get("token", "")
-    if not raw_token:
-        raise HTTPException(status_code=400, detail="Token requerido")
-
+    raw_token = payload.token
     token_hash = hash_token(raw_token)
     now = datetime.now(UTC)
 
@@ -223,7 +230,8 @@ async def portal_download_invoice_pdf(
             invoice_id, client.tenant_id, db
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.warning("[PORTAL] Error generando PDF factura %s: %s", invoice_id, e)
+        raise HTTPException(status_code=404, detail="No se pudo generar el PDF de la factura")
 
     return Response(
         content=pdf_bytes,
