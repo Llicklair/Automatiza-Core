@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Newspaper, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 
 interface BoeItem {
     identificador?: string;
@@ -42,6 +43,7 @@ export function BOETab() {
                 setItems(data);
             }
         } catch (err: unknown) {
+            if (surfaceIfConnectivity(err)) { setItems([]); return; }
             setError(err instanceof Error ? err.message : "Error desconocido al consultar el BOE");
             setItems([]);
         } finally {

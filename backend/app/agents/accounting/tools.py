@@ -7,6 +7,7 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import func, select
 
+from app.agents.shared.validators.billing import APPROVAL_THRESHOLD_EUR
 from app.db.base import AsyncSessionLocal
 from app.db.models.accounting import FixedAsset, JournalEntry, JournalLine
 
@@ -36,6 +37,13 @@ async def create_journal_entry(
         total_credit = sum(Decimal(str(ln.get("credit", 0))) for ln in lines)
         if abs(total_debit - total_credit) > Decimal("0.01"):
             return f"Error: El asiento no cuadra. Débitos: {total_debit}, Créditos: {total_credit}. Deben ser iguales."
+
+        if total_debit > APPROVAL_THRESHOLD_EUR:
+            return (
+                f"APROBACIÓN REQUERIDA: El asiento supera el umbral de {APPROVAL_THRESHOLD_EUR:.0f}€.\n"
+                f"Descripción: {description}\nFecha: {entry_date}\nImporte: {total_debit:.2f}€\n"
+                f"El asiento NO se ha creado. Requiere aprobación humana desde el dashboard."
+            )
 
         parsed_date = date.fromisoformat(entry_date)
 

@@ -10,7 +10,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from app.agents.shared.validators.billing import validate_invoice_data
+from app.agents.shared.validators.billing import APPROVAL_THRESHOLD_EUR, validate_invoice_data
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Invoice, InvoiceLine
 
@@ -62,11 +62,11 @@ async def _create_invoice_async(
     if not validation.is_valid:
         return f"Error de validación: {'; '.join(validation.errors)}"
 
-    # Aprobación humana si > 5000€
-    if amount > Decimal("5000"):
+    # Aprobación humana si supera el umbral compartido
+    if amount > APPROVAL_THRESHOLD_EUR:
         tax = round(amount * Decimal(str(vat_rate)) / 100, 2)
         return (
-            f"APROBACIÓN REQUERIDA: La factura supera el umbral de 5.000€.\n"
+            f"APROBACIÓN REQUERIDA: La factura supera el umbral de {APPROVAL_THRESHOLD_EUR:.0f}€.\n"
             f"Cliente: {resolved_name} (NIF: {resolved_nif})\nConcepto: {concept}\n"
             f"Base: {amount}€ + IVA {vat_rate}% = {amount + tax}€\n"
             f"La factura NO se ha creado. Requiere aprobación humana desde el dashboard."

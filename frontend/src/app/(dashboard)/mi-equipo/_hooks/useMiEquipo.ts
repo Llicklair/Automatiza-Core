@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -44,6 +45,7 @@ export function useMiEquipo() {
             setEmployees(emps);
             setError(null);
         } catch (e: any) {
+            if (surfaceIfConnectivity(e)) return;
             setError(e?.message ?? "Error cargando datos");
         } finally {
             setLoading(false);
@@ -73,8 +75,8 @@ export function useMiEquipo() {
             await api.aiEmployees.seed();
             await loadData();
             toast.success("Equipo inicial creado");
-        } catch {
-            toast.error("Error al crear equipo inicial");
+        } catch (err) {
+            if (!surfaceIfConnectivity(err)) toast.error("Error al crear equipo inicial");
         } finally {
             setSeeding(false);
         }
@@ -85,9 +87,9 @@ export function useMiEquipo() {
         setEmployees(prev => prev.map(e => e.id === id ? { ...e, status: next } : e));
         try {
             await api.aiEmployees.updateStatus(id, next);
-        } catch {
+        } catch (err) {
             setEmployees(prev => prev.map(e => e.id === id ? { ...e, status: current } : e));
-            toast.error("Error al cambiar estado del agente");
+            if (!surfaceIfConnectivity(err)) toast.error("Error al cambiar estado del agente");
         }
     };
 
@@ -115,8 +117,8 @@ export function useMiEquipo() {
         setEmployees(prev => prev.filter(e => e.id !== id));
         try {
             await api.aiEmployees.delete(id);
-        } catch {
-            toast.error("Error al eliminar el empleado");
+        } catch (err) {
+            if (!surfaceIfConnectivity(err)) toast.error("Error al eliminar el empleado");
             loadData();
         }
     };

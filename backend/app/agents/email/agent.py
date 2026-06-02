@@ -19,12 +19,9 @@ from app.services.email.service import send_email_smtp
 
 from ._provider_tools import _resolve_smtp_attachments, build_real_tools
 from .prompts import build_system_prompt
-from .tools import (
-    _get_email_credentials,
-    _get_oauth_token,
-    _load_attachments,
-    build_tools_list,
-)
+from app.services.email_credentials import get_email_credentials, get_oauth_token
+
+from .tools import _load_attachments, build_tools_list
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +129,9 @@ async def send_email_direct(
     Envía un email real usando las credenciales del tenant (gmail > outlook > smtp).
     Usable desde otros agentes sin pasar por el grafo LangGraph.
     """
-    gmail_token = await _get_oauth_token(tenant_id, "gmail")
-    outlook_token = await _get_oauth_token(tenant_id, "outlook")
-    imap_creds = await _get_email_credentials(tenant_id)
+    gmail_token = await get_oauth_token(tenant_id, "gmail")
+    outlook_token = await get_oauth_token(tenant_id, "outlook")
+    imap_creds = await get_email_credentials(tenant_id)
 
     attachments = await _load_attachments(tenant_id, attachment_ids)
     attach_msg = f" con {len(attachments)} adjuntos" if attachments else ""
@@ -189,15 +186,15 @@ async def run_email_agent(
     """
     providers: dict[str, str] = {}
 
-    gmail_token = await _get_oauth_token(tenant_id, "gmail")
+    gmail_token = await get_oauth_token(tenant_id, "gmail")
     if gmail_token:
         providers["gmail"] = gmail_token
 
-    outlook_token = await _get_oauth_token(tenant_id, "outlook")
+    outlook_token = await get_oauth_token(tenant_id, "outlook")
     if outlook_token:
         providers["outlook"] = outlook_token
 
-    imap_creds = await _get_email_credentials(tenant_id)
+    imap_creds = await get_email_credentials(tenant_id)
     if imap_creds:
         providers["imap"] = "imap"
 

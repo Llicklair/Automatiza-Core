@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { api } from "@/lib/api";
+import { surfaceIfConnectivity } from "@/lib/api/errors";
 import { X, Loader2 } from "lucide-react";
 
 export function InstructModal({ employee, onClose, onSent }: {
@@ -18,7 +19,10 @@ export function InstructModal({ employee, onClose, onSent }: {
         try {
             await api.aiEmployees.instruct(employee.id, message.trim());
             onSent(); onClose();
-        } catch (e: any) { setError(e?.message ?? "Error al enviar instrucción"); }
+        } catch (e: any) {
+            if (surfaceIfConnectivity(e)) return;
+            setError(e?.message ?? "Error al enviar instrucción");
+        }
         finally { setLoading(false); }
     };
 
