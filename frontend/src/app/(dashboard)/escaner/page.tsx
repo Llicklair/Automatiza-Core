@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ScanLine, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { ScanLine, AlertTriangle, FileSpreadsheet, FileText } from "lucide-react";
 import { useEscaner, getElectronAPI } from "./_hooks/useEscaner";
 import LanToggle from "./_components/LanToggle";
 import DropZone from "./_components/DropZone";
 import SelectedFilesList from "./_components/SelectedFilesList";
 import ScanResults from "./_components/ScanResults";
 import { ExcelImportPanel } from "./_components/ExcelImportPanel";
+import { FacturasImportPanel } from "./_components/FacturasImportPanel";
 
-type Tab = "escaner" | "excel";
+type Tab = "escaner" | "facturas" | "excel";
 
 export default function EscanerPage() {
     const {
@@ -21,10 +22,14 @@ export default function EscanerPage() {
     } = useEscaner();
 
     const searchParams = useSearchParams();
-    const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "excel" ? "excel" : "escaner");
+    const initialTab = searchParams.get("tab");
+    const [tab, setTab] = useState<Tab>(
+        initialTab === "excel" ? "excel" : initialTab === "facturas" ? "facturas" : "escaner"
+    );
 
     const tabs: { key: Tab; label: string; icon: typeof ScanLine }[] = [
         { key: "escaner", label: "Escáner", icon: ScanLine },
+        { key: "facturas", label: "Facturas → ERP", icon: FileText },
         { key: "excel", label: "Importar Excel", icon: FileSpreadsheet },
     ];
 
@@ -82,6 +87,8 @@ export default function EscanerPage() {
 
                     <ScanResults results={results} grouped={grouped} docStatuses={docStatuses} />
                 </div>
+            ) : tab === "facturas" ? (
+                <FacturasImportPanel />
             ) : (
                 <ExcelImportPanel />
             )}

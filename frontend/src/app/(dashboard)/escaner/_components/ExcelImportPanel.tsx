@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Upload, Loader2, AlertCircle, CheckCircle2, Download, Trash2, FileSpreadsheet } from "lucide-react";
+import { Upload, Loader2, AlertCircle, CheckCircle2, Download, Trash2, FileSpreadsheet, Database } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Document } from "@/lib/api/documents";
+import { ErpImportReview } from "./ErpImportReview";
 
 export function ExcelImportPanel() {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [loadingList, setLoadingList] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+    const [integrating, setIntegrating] = useState<Document | null>(null);
     const fileRef = useRef<HTMLInputElement>(null);
 
     async function loadDocuments() {
@@ -57,7 +59,9 @@ export function ExcelImportPanel() {
     return (
         <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
-                Importa hojas de cálculo (.xlsx, .xls, .csv) para que los agentes IA puedan analizarlas.
+                Importa hojas de cálculo (.xlsx, .xls, .csv). Quedan disponibles para que la IA
+                las analice y, con <strong>«Integrar en ERP»</strong>, puedes crear productos,
+                clientes/proveedores o empleados directamente desde sus filas (con revisión previa).
             </p>
 
             {/* Upload area */}
@@ -99,6 +103,25 @@ export function ExcelImportPanel() {
                 </div>
             )}
 
+            {/* Panel de integración en el ERP */}
+            {integrating && (
+                <ErpImportReview
+                    documentId={integrating.id}
+                    fileName={integrating.file_name}
+                    onClose={() => setIntegrating(null)}
+                    onDone={(res) => {
+                        setIntegrating(null);
+                        const extra = res.skipped ? ` · ${res.skipped} omitidos` : "";
+                        setResult({
+                            ok: res.created > 0,
+                            message: res.created > 0
+                                ? `${res.created} ${res.target_label?.toLowerCase() || res.target} creados en el ERP${extra}`
+                                : `No se creó ningún registro${extra}`,
+                        });
+                    }}
+                />
+            )}
+
             {/* Document list */}
             <div className="space-y-2">
                 <h2 className="text-sm font-medium text-muted-foreground">Archivos importados</h2>
@@ -118,6 +141,13 @@ export function ExcelImportPanel() {
                                     {new Date(doc.created_at).toLocaleDateString("es-ES")}
                                 </span>
                                 <div className="flex gap-1 shrink-0">
+                                    <button
+                                        onClick={() => { setIntegrating(doc); setResult(null); }}
+                                        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors"
+                                        title="Crear registros en el ERP desde este archivo"
+                                    >
+                                        <Database className="w-3.5 h-3.5" /> Integrar en ERP
+                                    </button>
                                     <button
                                         onClick={() => api.documents.download(doc.id, doc.file_name)}
                                         className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

@@ -18,6 +18,7 @@ langchain-groq>=0.2.0
 anthropic>=0.40.0
 cryptography>=43.0.0
 pypdf>=5.0.0
+opendataloader-pdf>=2.4.0
 pgvector>=0.3.6
 reportlab>=4.2.0
 pandas>=2.2.0

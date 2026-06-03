@@ -30,6 +30,31 @@ export interface ScannedInvoice {
     warnings: string[];
 }
 
+/** Borrador de factura escaneada, listo para revisión + import al ERP. */
+export interface InvoiceDraft extends ScannedInvoice {
+    /** Si true, al importar suma stock de las líneas que casan con el catálogo. */
+    apply_stock?: boolean;
+}
+
+export interface ScanBatchResult {
+    results: { filename: string; extracted: ScannedInvoice | null; error: string | null }[];
+}
+
+export interface InvoiceImportResult {
+    created: number;
+    total: number;
+    results: {
+        ok: boolean;
+        error?: string;
+        invoice_id?: string;
+        invoice_number?: string | null;
+        supplier?: string;
+        amount_total?: number;
+        stock_applied?: { product: string; sku: string | null; quantity: number }[];
+        stock_unmatched?: string[];
+    }[];
+}
+
 export interface Client {
     id: string;
     nif: string | null;
@@ -323,6 +348,18 @@ export const erp = {
             fd.append("file", file);
             return requestUpload<ScannedInvoice>("/api/v1/invoices/scan", fd);
         },
+        /** Escaneo en lote: OCR+IA sobre varias facturas; un fallo no tumba el resto. */
+        scanBatch: (files: File[]) => {
+            const fd = new FormData();
+            files.forEach(f => fd.append("files", f));
+            return requestUpload<ScanBatchResult>("/api/v1/invoices/scan-batch", fd);
+        },
+        /** Integra borradores revisados → facturas de compra + asiento + stock opcional. */
+        import: (drafts: InvoiceDraft[]) =>
+            request<InvoiceImportResult>("/api/v1/invoices/import", {
+                method: "POST",
+                body: JSON.stringify({ drafts }),
+            }),
         /** Aprendizaje OCR (F2.5): el usuario corrigió una extracción → guardar
          * overrides para que las próximas facturas del mismo NIF salgan
          * mejor sin coste extra de LLM. */
