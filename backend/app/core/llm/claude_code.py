@@ -445,7 +445,11 @@ class ClaudeCodeChatModel(BaseChatModel):
         except subprocess.TimeoutExpired:
             text = "Error: Claude Code CLI no respondio en el tiempo limite."
         except FileNotFoundError:
-            text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' este en el PATH."
+            text = (
+                "IA no configurada: no hay una clave de API activa. "
+                "Ve a Configuración → Claves API y añade tu clave de Anthropic, "
+                "OpenAI o Groq para que los agentes funcionen."
+            )
         except Exception as e:
             text = f"Error inesperado en Claude Code CLI: {e}"
         return self._process_response(text)
@@ -496,7 +500,11 @@ class ClaudeCodeChatModel(BaseChatModel):
                 except Exception as wait_err:
                     _log.warning("[ClaudeCode] error en proc.wait post-kill: %s", wait_err)
         except FileNotFoundError:
-            text = "Error: Claude Code CLI no encontrado. Verifica que 'claude' este en el PATH."
+            text = (
+                "IA no configurada: no hay una clave de API activa. "
+                "Ve a Configuración → Claves API y añade tu clave de Anthropic, "
+                "OpenAI o Groq para que los agentes funcionen."
+            )
         except Exception as e:
             text = f"Error inesperado en Claude Code CLI: {e}"
             # También limpiar proc si quedó colgado por una excepción inesperada
