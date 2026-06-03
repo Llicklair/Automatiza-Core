@@ -28,12 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
     {
         items: [
             { label: "Inicio", icon: Home, href: "/" },
-            {
-                label: "Primeros pasos", icon: Flag, subItems: [
-                    { label: "Bienvenida (wizard 4 pasos)", href: "/bienvenida" },
-                    { label: "Checklist completo", href: "/primeros-pasos" },
-                ],
-            },
+            { label: "Primeros pasos", icon: Flag, href: "/primeros-pasos" },
             { label: "Mi portal", icon: UserCircle, href: "/portal" },
             { label: "Mi equipo", icon: Sparkles, href: "/mi-equipo", highlight: true },
             { label: "Automatizaciones", icon: Zap, href: "/automatizaciones", highlight: true },

@@ -22,8 +22,12 @@ export function LlmNotConfiguredBanner() {
         api.tenant
             .getLlmConfig()
             .then(cfg => {
-                const hasKey = Object.values(cfg.providers || {}).some(p => p.has_key);
-                setShow(!hasKey);
+                const active = cfg.active_llm_provider;
+                // claude_code funciona con el CLI local (sin API key). En otro
+                // caso, el proveedor activo debe tener clave configurada.
+                const configured =
+                    active === "claude_code" || Boolean(cfg.providers?.[active]?.has_key);
+                setShow(!configured);
             })
             .catch(() => {});
     }, []);
