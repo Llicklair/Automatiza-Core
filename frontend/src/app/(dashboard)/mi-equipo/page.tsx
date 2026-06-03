@@ -7,6 +7,7 @@ import { NewEmployeeModal } from "./_components/NewEmployeeModal";
 import { TaskPanel } from "./_components/TaskPanel";
 import { useMiEquipo } from "./_hooks/useMiEquipo";
 import { useToastStore } from "@/stores/toast";
+import { LlmNotConfiguredBanner } from "@/components/shared/LlmNotConfiguredBanner";
 
 export default function TareasPage() {
     const {
@@ -32,6 +33,8 @@ export default function TareasPage() {
                     onCreated={() => { loadData(); toast.success("Empleado IA creado"); }}
                 />
             )}
+
+            <LlmNotConfiguredBanner />
 
             {/* Header */}
             <div className="flex items-center justify-between">

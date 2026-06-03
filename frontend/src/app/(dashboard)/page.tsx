@@ -14,6 +14,7 @@ import { RrhhWidget } from "./_components/RrhhWidget";
 import { LiveTeamSection } from "./_components/LiveTeamSection";
 import { MorningBrief } from "./_components/MorningBrief";
 import { UsageWidget } from "./_components/UsageWidget";
+import { LlmNotConfiguredBanner } from "@/components/shared/LlmNotConfiguredBanner";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
@@ -40,6 +41,8 @@ export default function DashboardPage() {
                     Aquí tienes el resumen financiero y operativo de tu negocio.
                 </p>
             </div>
+
+            <LlmNotConfiguredBanner />
 
             <MorningBrief />
 
