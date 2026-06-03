@@ -36,6 +36,13 @@ def _get_fernet() -> Fernet:
     return Fernet(urlsafe_key)
 
 
+def get_fernet() -> Fernet:
+    """Instancia Fernet con la clave maestra del tenant (derivada con PBKDF2 si
+    la clave configurada no es un Fernet key válido). Reutilizable por otros
+    servicios que cifran binarios (p.ej. custodia de certificados AEAT)."""
+    return _get_fernet()
+
+
 def encrypt_credentials(credentials: dict) -> str:
     """Cifra un diccionario de credenciales y devuelve un string base64."""
     import json
