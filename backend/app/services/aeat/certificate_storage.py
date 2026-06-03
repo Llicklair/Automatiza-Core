@@ -21,7 +21,6 @@ from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.db.models.accounting import TenantCertificate
 
 _log = logging.getLogger(__name__)
@@ -32,9 +31,14 @@ class CertificateError(RuntimeError):
 
 
 def _fernet() -> Fernet:
-    key = settings.TENANT_ENCRYPTION_KEY
+    # Reutiliza la derivación de clave de services.encryption: si
+    # TENANT_ENCRYPTION_KEY no es un Fernet key válido (p.ej. la base64url de 43
+    # chars que genera el desktop por safeStorage), la deriva con PBKDF2. Antes
+    # se llamaba a Fernet(key) directo y petaba con esa clave.
+    from app.services.encryption import get_fernet
+
     try:
-        return Fernet(key.encode() if isinstance(key, str) else key)
+        return get_fernet()
     except Exception as e:
         raise CertificateError(f"TENANT_ENCRYPTION_KEY inválida: {e}") from e
 
