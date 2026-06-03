@@ -38,15 +38,15 @@ export const STEPS: Step[] = [
     {
         id: "api_keys",
         title: "Configura tu clave de IA",
-        description: "Los agentes necesitan acceso a un modelo de IA para funcionar. Claude Code se integra automáticamente.",
-        detail: "Ve a Configuración → API Keys, activa un proveedor (recomendamos Claude Code o Anthropic) y, si aplica, pega tu clave.",
+        description: "Los agentes usan tu propia clave de IA (modelo BYOK). Sin clave, la IA no funciona.",
+        detail: "Ve a Configuración → Claves API, elige un proveedor (Anthropic recomendado; también OpenAI o Groq), pega tu clave y actívala. Se guarda cifrada y puedes cambiarla cuando quieras.",
         icon: KeyRound,
         color: "violet",
         href: "/configuracion/api-keys",
-        hrefLabel: "Ir a API Keys",
+        hrefLabel: "Ir a Claves API",
         tips: [
-            "Solo necesitas una API Key. Puedes cambiar de proveedor en cualquier momento.",
-            "Claude Code se autentica automáticamente sin necesidad de pegar una key.",
+            "Crea la clave en la web del proveedor (p.ej. console.anthropic.com); pagas solo tu consumo.",
+            "Claude Code solo funciona si tienes instalado el CLI de Claude (uso avanzado/dev).",
         ],
         prerequisite: "empresa",
     },
@@ -190,8 +190,12 @@ export function usePrimerosPassos() {
             .then(([tenant, llm]) => {
                 if (tenant.nif && tenant.name) base.add("empresa");
                 else base.delete("empresa");
-                const hasKey = Object.values(llm.providers).some(p => p.has_key);
-                if (hasKey) base.add("api_keys");
+                // claude_code funciona con el CLI (sin key); en otro caso, el
+                // proveedor activo debe tener clave. (Igual que el banner.)
+                const active = llm.active_llm_provider;
+                const configured =
+                    active === "claude_code" || Boolean(llm.providers?.[active]?.has_key);
+                if (configured) base.add("api_keys");
                 else base.delete("api_keys");
                 setCompleted(new Set(base));
             })
