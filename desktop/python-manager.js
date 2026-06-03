@@ -392,9 +392,32 @@ else:
     print("[MIGRATE] BD existente — ejecutando alembic upgrade head...")
     from alembic.config import Config
     from alembic import command
+    # Los IDs de revisión descriptivos superan los 32 chars por defecto de
+    # alembic_version.version_num (p.ej. 0032_employee_memory_and_rag_scope = 34).
+    # Sin esto, el upgrade paso a paso falla con StringDataRightTruncation.
+    with engine.connect() as conn:
+        try:
+            conn.execute(text(
+                "ALTER TABLE alembic_version "
+                "ALTER COLUMN version_num TYPE varchar(128)"
+            ))
+            conn.commit()
+        except Exception as e:
+            print(f"[MIGRATE] No se pudo ensanchar version_num: {e}")
     c = Config("alembic.ini")
-    command.upgrade(c, "head")
-    print("[MIGRATE] Migraciones aplicadas.")
+    try:
+        command.upgrade(c, "head")
+        print("[MIGRATE] Migraciones aplicadas.")
+    except Exception as e:
+        # Auto-recuperación ante drift (p.ej. BD inicializada con create_all +
+        # stamp a un head antiguo: algunas tablas ya existen). create_all crea
+        # solo las tablas que faltan; luego re-sincronizamos alembic a head.
+        print(f"[MIGRATE] upgrade falló ({e}); reconciliando con create_all...")
+        from app.db.models import models  # noqa: F401 — registra los modelos
+        from app.db.base import Base
+        Base.metadata.create_all(engine)
+        command.stamp(c, "head")
+        print("[MIGRATE] BD reconciliada y stamped a head.")
 `;
   try {
     fs.writeFileSync(migrationScript, scriptContent);

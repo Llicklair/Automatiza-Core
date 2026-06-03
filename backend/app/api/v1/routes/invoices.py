@@ -68,6 +68,8 @@ async def scan_invoice(
             content,
             mime,
             few_shot_hint=None,  # se completa abajo si hay template
+            tenant_id=current_user.tenant_id,
+            db=db,
         )
     except InvoiceExtractionError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -86,7 +88,10 @@ async def scan_invoice(
                 hint = build_few_shot_block(template)
                 if hint:
                     try:
-                        data = await extract_invoice_data(content, mime, few_shot_hint=hint)
+                        data = await extract_invoice_data(
+                            content, mime, few_shot_hint=hint,
+                            tenant_id=current_user.tenant_id, db=db,
+                        )
                         payload = data.to_dict()
                     except Exception as e:
                         logger.warning("Re-extracción con few-shot falló: %s", e)
@@ -131,6 +136,104 @@ async def learn_scan_correction(
         db, current_user.tenant_id, nif, original=original, corrected=corrected
     )
     return {"saved": bool(diff), "overrides": diff}
+
+
+@router.post("/invoices/scan-batch", status_code=status.HTTP_200_OK, tags=["erp"])
+@limiter.limit("5/minute")
+async def scan_invoices_batch(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """OCR + IA sobre VARIAS facturas recibidas a la vez.
+
+    Por cada fichero: cache por hash → extracción → aprendizaje por proveedor.
+    Un fallo en un fichero NO tumba el lote (se devuelve su `error`). NO crea
+    nada en BD; el frontend revisa y confirma con POST /invoices/import.
+    """
+    from app.services.ocr import InvoiceExtractionError, extract_invoice_data
+    from app.services.ocr.supplier_learning import (
+        apply_template_overrides,
+        file_sha256,
+        get_template,
+        lookup_cached,
+        record_extraction,
+        save_to_cache,
+    )
+
+    if len(files) > 20:
+        raise HTTPException(status_code=422, detail="Máximo 20 facturas por lote.")
+
+    results: list[dict] = []
+    for f in files:
+        try:
+            content = await f.read()
+            mime = f.content_type or "image/jpeg"
+            file_hash = file_sha256(content)
+
+            cached = await lookup_cached(db, current_user.tenant_id, file_hash)
+            if cached is not None:
+                results.append({"filename": f.filename, "extracted": cached, "error": None})
+                continue
+
+            data = await extract_invoice_data(
+                content, mime, few_shot_hint=None,
+                tenant_id=current_user.tenant_id, db=db,
+            )
+            payload = data.to_dict()
+            nif = (payload.get("emisor") or {}).get("nif")
+            if nif:
+                template = await get_template(db, current_user.tenant_id, nif)
+                if template is not None:
+                    payload = apply_template_overrides(payload, template)
+                await record_extraction(db, current_user.tenant_id, payload)
+            await save_to_cache(
+                db,
+                current_user.tenant_id,
+                file_hash=file_hash,
+                file_size=len(content),
+                mime_type=mime,
+                extracted_data=payload,
+            )
+            results.append({"filename": f.filename, "extracted": payload, "error": None})
+        except InvoiceExtractionError as e:
+            results.append({"filename": f.filename, "extracted": None, "error": str(e)})
+        except Exception as e:  # noqa: BLE001 — aislar fallos por fichero
+            logger.exception("Fallo procesando factura del lote: %s", f.filename)
+            results.append({"filename": f.filename, "extracted": None, "error": f"Error: {e}"})
+
+    return {"results": results}
+
+
+@router.post("/invoices/import", status_code=status.HTTP_200_OK, tags=["erp"])
+@limiter.limit("10/minute")
+async def import_invoices(
+    request: Request,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Integra en el ERP facturas de COMPRA ya revisadas por el usuario.
+
+    Body: {"drafts": [{emisor, invoice_number, issue_date, due_date, lines[],
+    amount_base, tax_amount, amount_total, apply_stock: bool}, ...]}.
+
+    Por cada borrador: crea proveedor si falta, crea la factura recibida +
+    líneas, genera el asiento de compra y (si apply_stock) suma stock SOLO de
+    las líneas que casan con el catálogo. Todo idempotente por referencia.
+    """
+    from app.services.billing.invoice_import import import_received_invoices
+
+    drafts = (payload or {}).get("drafts")
+    if not isinstance(drafts, list) or not drafts:
+        raise HTTPException(status_code=422, detail="Se requiere 'drafts' (lista no vacía).")
+
+    results = await import_received_invoices(
+        db, current_user.tenant_id, drafts, current_user.id
+    )
+    created = sum(1 for r in results if r.get("ok"))
+    return {"created": created, "total": len(results), "results": results}
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])

@@ -515,3 +515,52 @@ async def import_database(
         )
 
     return results
+
+
+@limiter.limit("30/minute")
+@router.post("/{document_id}/erp-import/preview")
+async def erp_import_preview(
+    request: Request,
+    document_id: uuid.UUID,
+    payload: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Previsualiza el mapeo de un archivo tabular ya subido → entidades del ERP.
+
+    Body opcional: {"target": "productos"|"clientes"|"empleados"}. Si falta, se
+    detecta por las columnas. NO crea nada.
+    """
+    from app.services.documents.erp_import import preview_import
+
+    target = (payload or {}).get("target")
+    try:
+        return await preview_import(db, current_user.tenant_id, document_id, target)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@limiter.limit("10/minute")
+@router.post("/{document_id}/erp-import")
+async def erp_import_apply(
+    request: Request,
+    document_id: uuid.UUID,
+    payload: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Crea en el ERP los registros del archivo tabular ya revisado.
+
+    Body: {"target": "productos"|"clientes"|"empleados"}.
+    """
+    from app.services.documents.erp_import import apply_import
+
+    target = (payload or {}).get("target")
+    try:
+        return await apply_import(db, current_user.tenant_id, document_id, target)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=422, detail=str(e))

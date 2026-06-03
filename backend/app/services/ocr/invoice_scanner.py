@@ -226,11 +226,171 @@ def _build_invoice(payload: dict) -> InvoiceExtracted:
     )
 
 
+async def _resolve_vision_credentials(tenant_id, db) -> tuple[str, str, str | None] | None:
+    """Resuelve una clave con VISIÓN para el tenant (modelo BYOK).
+
+    Prefiere Anthropic (admite PDF + imagen), luego OpenAI (solo imagen).
+    Busca en TODAS las ranuras del tenant (no solo el provider activo): así el
+    escáner funciona aunque el provider activo sea claude_code (CLI, sin clave).
+    Cae al .env global como último recurso. Devuelve (provider, api_key, model).
+    """
+    try:
+        from sqlalchemy import select
+
+        from app.db.models.models import TenantLlmConfig
+        from app.services.encryption import decrypt_credentials
+
+        res = await db.execute(
+            select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id)
+        )
+        cfg = res.scalar_one_or_none()
+        if cfg and cfg.encrypted_keys:
+            keys = decrypt_credentials(cfg.encrypted_keys)
+            for prov in ("anthropic", "openai"):
+                pdata = keys.get(prov) or {}
+                if pdata.get("api_key"):
+                    return prov, pdata["api_key"], pdata.get("model")
+    except Exception as e:
+        _log.warning("No se pudo resolver clave de visión del tenant: %s", e)
+
+    if getattr(settings, "ANTHROPIC_API_KEY", None):
+        return "anthropic", settings.ANTHROPIC_API_KEY, getattr(settings, "ANTHROPIC_MODEL", None)
+    if getattr(settings, "OPENAI_API_KEY", None):
+        return "openai", settings.OPENAI_API_KEY, getattr(settings, "OPENAI_MODEL", None)
+    return None
+
+
+async def _extract_anthropic(api_key, model, mime_type, image_b64, user_text) -> str:
+    from anthropic import AsyncAnthropic
+
+    client = AsyncAnthropic(api_key=api_key)
+    if mime_type == "application/pdf":
+        content_block = {
+            "type": "document",
+            "source": {"type": "base64", "media_type": "application/pdf", "data": image_b64},
+        }
+    else:
+        content_block = {
+            "type": "image",
+            "source": {"type": "base64", "media_type": mime_type, "data": image_b64},
+        }
+    resp = await client.messages.create(
+        model=model or "claude-sonnet-4-6",
+        max_tokens=2500,
+        system=_PROMPT,
+        messages=[{"role": "user", "content": [content_block, {"type": "text", "text": user_text}]}],
+    )
+    blocks = [b.text for b in resp.content if getattr(b, "type", None) == "text"]
+    if not blocks:
+        raise InvoiceExtractionError("La IA no devolvió contenido de texto.")
+    return blocks[0]
+
+
+async def _extract_openai(api_key, model, mime_type, image_b64, user_text) -> str:
+    if mime_type == "application/pdf":
+        raise InvoiceExtractionError(
+            "Con OpenAI sube la factura como imagen (JPG/PNG). "
+            "Para PDF directamente, configura una clave de Anthropic."
+        )
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(api_key=api_key)
+    resp = await client.chat.completions.create(
+        model=model or "gpt-4o-mini",
+        max_tokens=2500,
+        messages=[
+            {"role": "system", "content": _PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_text},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_b64}"}},
+                ],
+            },
+        ],
+    )
+    text = resp.choices[0].message.content
+    if not text:
+        raise InvoiceExtractionError("La IA no devolvió contenido de texto.")
+    return text
+
+
+def _extract_text_from_pdf(image_bytes: bytes) -> str:
+    """Extrae el contenido de un PDF con OpenDataLoader (OCR + tablas + estructura)
+    y fallback a pypdf. Devuelve markdown; '' si no se pudo extraer nada.
+
+    Gracias al OCR de OpenDataLoader (JRE), también funciona con PDFs escaneados
+    sin necesidad de una clave de visión — solo el Claude CLI para estructurar.
+    """
+    try:
+        from app.services.pdf.parser import parse_pdf
+
+        doc = parse_pdf(file_bytes=image_bytes)
+        return (doc.markdown or "").strip()
+    except Exception as e:  # noqa: BLE001
+        _log.warning("parse_pdf no pudo extraer texto: %s", e)
+        return ""
+
+
+def _regex_candidates(text: str) -> dict[str, list[str]]:
+    """Pistas para el LLM: NIF/CIF, IBAN, fechas e importes detectados por regex."""
+    def uniq(seq):
+        return list(dict.fromkeys(seq))
+
+    out: dict[str, list[str]] = {}
+    nifs = re.findall(r"\b([A-Z]\d{7}[0-9A-J]|\d{8}[A-Z]|[A-Z]\d{8})\b", text)
+    ibans = re.findall(r"\bES\d{2}(?:[ ]?\d{4}){5}\b", text)
+    dates = re.findall(r"\b\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}\b", text)
+    amounts = re.findall(r"\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b", text)
+    if nifs:
+        out["NIF/CIF candidatos"] = uniq(nifs)[:5]
+    if ibans:
+        out["IBAN candidatos"] = uniq(ibans)[:3]
+    if dates:
+        out["Fechas candidatas"] = uniq(dates)[:6]
+    if amounts:
+        out["Importes candidatos"] = uniq(amounts)[-8:]
+    return out
+
+
+async def _extract_via_text(text, candidates, tenant_id, db, few_shot_hint) -> str:
+    """Estructura una factura a partir de su TEXTO usando el LLM del tenant.
+
+    Funciona con cualquier provider de texto, incluido Claude Code (CLI), porque
+    no necesita visión: el texto + las pistas regex se le pasan al modelo.
+    """
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    from app.core.llm_factory import get_llm_for_tenant
+
+    llm = await get_llm_for_tenant(tenant_id, db, temperature=0, format_output="json")
+
+    cand_block = ""
+    if candidates:
+        cand_block = "\n\nPistas extraídas automáticamente (verifícalas con el texto):\n" + "\n".join(
+            f"- {k}: {', '.join(map(str, v))}" for k, v in candidates.items()
+        )
+    user = (
+        (few_shot_hint + "\n\n" if few_shot_hint else "")
+        + "Texto extraído de la factura (el orden puede estar alterado):\n\n"
+        + text[:12000]
+        + cand_block
+        + "\n\nExtrae los datos según el formato JSON pedido."
+    )
+    resp = await llm.ainvoke([SystemMessage(content=_PROMPT), HumanMessage(content=user)])
+    content = resp.content if isinstance(resp.content, str) else str(resp.content)
+    if not content.strip():
+        raise InvoiceExtractionError("La IA no devolvió contenido de texto.")
+    return content
+
+
 async def extract_invoice_data(
     image_bytes: bytes,
     mime_type: str,
     *,
     few_shot_hint: str | None = None,
+    tenant_id=None,
+    db=None,
 ) -> InvoiceExtracted:
     """Procesa imagen o PDF de factura recibida y devuelve estructura completa.
 
@@ -254,55 +414,52 @@ async def extract_invoice_data(
     if len(image_bytes) > 10 * 1024 * 1024:
         raise InvoiceExtractionError("Fichero supera el límite de 10 MB.")
 
-    api_key = getattr(settings, "ANTHROPIC_API_KEY", None)
-    if not api_key:
-        raise InvoiceExtractionError("Falta ANTHROPIC_API_KEY en configuración.")
+    creds = None
+    if tenant_id is not None and db is not None:
+        creds = await _resolve_vision_credentials(tenant_id, db)
 
-    try:
-        from anthropic import AsyncAnthropic
-    except ImportError as e:
-        raise InvoiceExtractionError("SDK anthropic no instalado.") from e
+    raw_text: str | None = None
 
-    client = AsyncAnthropic(api_key=api_key)
-    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    # Vía 1 — VISIÓN (la más precisa): requiere clave Anthropic u OpenAI.
+    if creds is not None:
+        provider, api_key, model = creds
+        image_b64 = base64.b64encode(image_bytes).decode("ascii")
+        user_text = "Extrae los datos de esta factura recibida según el formato pedido."
+        if few_shot_hint:
+            user_text = few_shot_hint + "\n\n" + user_text
+        try:
+            if provider == "openai":
+                raw_text = await _extract_openai(api_key, model, mime_type, image_b64, user_text)
+            else:
+                raw_text = await _extract_anthropic(api_key, model, mime_type, image_b64, user_text)
+        except ImportError as e:
+            raise InvoiceExtractionError(f"SDK del proveedor '{provider}' no instalado.") from e
 
-    # Para facturas usamos Sonnet (más preciso que Haiku con líneas múltiples)
-    model = getattr(settings, "ANTHROPIC_MODEL", None) or "claude-sonnet-4-6"
+    # Vía 2 — TEXTO (sin clave de visión): OpenDataLoader (OCR + tablas, fallback
+    # pypdf) extrae el contenido del PDF y el LLM del tenant (Claude Code CLI
+    # incluido) lo estructura. Es el flujo "open data loader → CLI".
+    elif mime_type == "application/pdf" and tenant_id is not None and db is not None:
+        doc_text = _extract_text_from_pdf(image_bytes)
+        if len(doc_text) >= 80:
+            raw_text = await _extract_via_text(
+                doc_text, _regex_candidates(doc_text), tenant_id, db, few_shot_hint
+            )
+        else:
+            raise InvoiceExtractionError(
+                "No se pudo extraer texto del PDF (ni con OCR). Si es un escaneo de "
+                "baja calidad, prueba con una clave con visión (Anthropic) en "
+                "Configuración → Claves API, o sube un PDF con mejor resolución."
+            )
 
-    # Anthropic vision admite PDF directamente como type=document desde finales 2024
-    if mime_type == "application/pdf":
-        content_block = {
-            "type": "document",
-            "source": {"type": "base64", "media_type": "application/pdf", "data": image_b64},
-        }
+    # Imagen sin clave de visión: no hay OCR local → no se puede.
     else:
-        content_block = {
-            "type": "image",
-            "source": {"type": "base64", "media_type": mime_type, "data": image_b64},
-        }
+        raise InvoiceExtractionError(
+            "Para imágenes (JPG/PNG) el escáner necesita una clave con visión "
+            "(Anthropic u OpenAI) en Configuración → Claves API. Los PDF con texto "
+            "sí funcionan con Claude Code (CLI)."
+        )
 
-    user_text = "Extrae los datos de esta factura recibida según el formato pedido."
-    if few_shot_hint:
-        user_text = few_shot_hint + "\n\n" + user_text
-
-    resp = await client.messages.create(
-        model=model,
-        max_tokens=2500,
-        system=_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": [
-                content_block,
-                {"type": "text", "text": user_text},
-            ],
-        }],
-    )
-
-    text_blocks = [b.text for b in resp.content if getattr(b, "type", None) == "text"]
-    if not text_blocks:
-        raise InvoiceExtractionError("La IA no devolvió contenido de texto.")
-
-    payload = _parse_json_loose(text_blocks[0])
+    payload = _parse_json_loose(raw_text)
     _log.info(
         "Invoice extracted: emisor=%s num=%s total=%s",
         (payload.get("emisor") or {}).get("nif"),

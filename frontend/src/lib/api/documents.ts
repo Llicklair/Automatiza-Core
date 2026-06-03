@@ -30,6 +30,32 @@ export interface ContractPreviewHtml {
     warnings: string[];
 }
 
+export interface ErpImportTarget {
+    key: string;
+    label: string;
+}
+
+export interface ErpImportPreview {
+    target: string;
+    target_label: string;
+    available_targets: ErpImportTarget[];
+    columns: string[];
+    mapped_fields: string[];
+    unmapped_columns: string[];
+    total_rows: number;
+    importable: number;
+    skipped: number;
+    sample: { record: Record<string, unknown>; ok: boolean }[];
+}
+
+export interface ErpImportResult {
+    target: string;
+    target_label?: string;
+    created: number;
+    skipped: number;
+    errors: string[];
+}
+
 export const documents = {
     list: (params?: { category?: string; skip?: number; limit?: number }) => {
         const q = new URLSearchParams(params as Record<string, string>).toString();
@@ -46,6 +72,18 @@ export const documents = {
         for (const f of files) form.append("files", f);
         return requestUpload("/api/v1/documents/import-db", form);
     },
+    /** Previsualiza el mapeo de un Excel/CSV ya subido → entidades del ERP (no escribe). */
+    erpImportPreview: (documentId: string, target?: string): Promise<ErpImportPreview> =>
+        request<ErpImportPreview>(`/api/v1/documents/${documentId}/erp-import/preview`, {
+            method: "POST",
+            body: JSON.stringify({ target: target ?? null }),
+        }),
+    /** Crea en el ERP los registros del archivo ya revisado. */
+    erpImportApply: (documentId: string, target: string): Promise<ErpImportResult> =>
+        request<ErpImportResult>(`/api/v1/documents/${documentId}/erp-import`, {
+            method: "POST",
+            body: JSON.stringify({ target }),
+        }),
     scan: (files: File[]): Promise<{ document: Document; auto_category: string; message: string }[]> => {
         const form = new FormData();
         for (const f of files) form.append("files", f);
