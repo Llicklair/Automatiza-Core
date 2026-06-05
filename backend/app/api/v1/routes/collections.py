@@ -1,7 +1,5 @@
 """Rutas de inteligencia de cobros (F3.9) — ranking de riesgo + recordatorios."""
 
-from __future__ import annotations
-
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
