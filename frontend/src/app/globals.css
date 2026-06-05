@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4: un único @import sustituye a las tres directivas @tailwind.
+   @config mantiene el tailwind.config.js existente (tema HSL + tailwindcss-animate)
+   sin reescribirlo a la sintaxis CSS @theme. */
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
 @layer base {
   :root {

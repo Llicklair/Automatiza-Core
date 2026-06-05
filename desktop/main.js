@@ -75,10 +75,24 @@ const { createTray, destroyTray } = require("./tray-manager");
 
 // DIS.UPD — gestor del canal stable/beta persistido en electron-store.
 let updateChannelMgr = null;
+// electron-store v11 es ESM-only (no se puede `require`). Se precarga con
+// import() dinámico en el arranque (ver app.whenReady -> _loadElectronStore) y
+// se cachea la clase aquí para usarla de forma síncrona desde este gestor lazy.
+let _ElectronStore = null;
+async function _loadElectronStore() {
+  if (!_ElectronStore) {
+    _ElectronStore = (await import("electron-store")).default;
+  }
+  return _ElectronStore;
+}
 function _ensureUpdateChannelMgr() {
   if (updateChannelMgr) return updateChannelMgr;
+  if (!_ElectronStore) {
+    console.warn("electron-store aún no precargado; gestor de canal no inicializado");
+    return null;
+  }
   try {
-    const Store = require("electron-store");
+    const Store = _ElectronStore;
     const { createUpdateChannelManager } = require("./lib/update-channel");
     const store = new Store({ name: "update-prefs" });
     updateChannelMgr = createUpdateChannelManager({
@@ -373,11 +387,18 @@ if (!gotLock) {
 
   // ── App lifecycle ────────────────────────────────────────────────────────
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     // SEC.DEV — deshabilita el menú nativo en producción para cerrar
     // el camino "View → Toggle DevTools" y similares.
     if (app.isPackaged) {
       Menu.setApplicationMenu(null);
+    }
+    // electron-store v11 (ESM): precargar la clase antes de startup(), que
+    // dispara setupAutoUpdater() -> _ensureUpdateChannelMgr().
+    try {
+      await _loadElectronStore();
+    } catch (e) {
+      console.warn("No se pudo precargar electron-store:", e.message);
     }
     return startup();
   });

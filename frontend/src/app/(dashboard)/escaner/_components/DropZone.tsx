@@ -5,7 +5,7 @@ interface DropZoneProps {
     dragOver: boolean;
     setDragOver: (v: boolean) => void;
     onFiles: (files: FileList | null) => void;
-    fileInputRef: RefObject<HTMLInputElement>;
+    fileInputRef: RefObject<HTMLInputElement | null>;
 }
 
 export default function DropZone({ dragOver, setDragOver, onFiles, fileInputRef }: DropZoneProps) {

@@ -23,7 +23,7 @@ interface CandidateListProps {
     candidates: Candidate[];
     loadingCandidates: boolean;
     uploading: boolean;
-    fileInputRef: React.RefObject<HTMLInputElement>;
+    fileInputRef: React.RefObject<HTMLInputElement | null>;
     onUploadCV: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onUpdateStatus: (candidateId: string, status: string) => void;
 }
