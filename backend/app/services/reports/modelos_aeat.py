@@ -410,44 +410,35 @@ async def build_modelo_390_data(
     issued = await _invoices_in_period(db, tenant_id, invoice_type="issued", start=start, end=end)
     received = await _invoices_in_period(db, tenant_id, invoice_type="received", start=start, end=end)
 
-    devengado: dict[float, dict[str, float]] = {}
-    deducible: dict[float, dict[str, float]] = {}
+    # Mismo desglose Decimal que el 303 trimestral → el 390 anual cuadra con la
+    # suma de los 4 trimestres y no arrastra el error de redondeo del float.
+    from app.services.reports.fiscal import _round2, vat_breakdown_by_rate
 
-    for inv in issued:
-        for line in inv.lines or []:
-            rate = float(line.tax_percentage or 21)
-            base = float(line.quantity or 1) * float(line.unit_price or 0)
-            if line.discount_percentage:
-                base -= base * float(line.discount_percentage) / 100
-            quota = base * rate / 100
-            entry = devengado.setdefault(rate, {"rate": rate, "base": 0.0, "quota": 0.0})
-            entry["base"] += base
-            entry["quota"] += quota
+    devengado = vat_breakdown_by_rate(issued)
+    deducible = vat_breakdown_by_rate(received)
 
-    for inv in received:
-        for line in inv.lines or []:
-            rate = float(line.tax_percentage or 21)
-            base = float(line.quantity or 1) * float(line.unit_price or 0)
-            if line.discount_percentage:
-                base -= base * float(line.discount_percentage) / 100
-            quota = base * rate / 100
-            entry = deducible.setdefault(rate, {"rate": rate, "base": 0.0, "quota": 0.0})
-            entry["base"] += base
-            entry["quota"] += quota
+    def _rows(m: dict) -> list[dict]:
+        return sorted(
+            (
+                {"rate": float(rate), "base": float(_round2(v["base"])), "quota": float(_round2(v["quota"]))}
+                for rate, v in m.items()
+            ),
+            key=lambda x: x["rate"],
+        )
 
-    total_devengado = sum(e["quota"] for e in devengado.values())
-    total_deducible = sum(e["quota"] for e in deducible.values())
-    resultado = total_devengado - total_deducible
+    total_devengado = _round2(sum((v["quota"] for v in devengado.values()), Decimal("0")))
+    total_deducible = _round2(sum((v["quota"] for v in deducible.values()), Decimal("0")))
+    resultado = _round2(total_devengado - total_deducible)
 
     return {
         "modelo": "390",
         "ejercicio": year,
         "tenant": {"name": tenant_name, "nif": tenant_nif},
-        "iva_devengado": sorted(devengado.values(), key=lambda x: x["rate"]),
-        "iva_deducible": sorted(deducible.values(), key=lambda x: x["rate"]),
-        "total_devengado": round(total_devengado, 2),
-        "total_deducible": round(total_deducible, 2),
-        "resultado_anual": round(resultado, 2),
+        "iva_devengado": _rows(devengado),
+        "iva_deducible": _rows(deducible),
+        "total_devengado": float(total_devengado),
+        "total_deducible": float(total_deducible),
+        "resultado_anual": float(resultado),
         "num_facturas_emitidas": len(issued),
         "num_facturas_recibidas": len(received),
     }

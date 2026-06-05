@@ -152,7 +152,11 @@ async def _log_task_completion(db, task, final_state: dict, employee_id: str | N
     from app.services.workflow.activity import log_activity
     results = final_state.get("agent_results", [])
     error = final_state.get("error_message")
-    if error:
+    is_clarification = bool((final_state.get("additional_metadata") or {}).get("clarification"))
+    if error and is_clarification:
+        # Petición de aclaración, no un fallo: se muestra tal cual, sin "Error:".
+        message, icon = str(error)[:200], "🤔"
+    elif error:
         message, icon = f"Error: {str(error)[:150]}", "❌"
     elif results:
         last = results[-1]

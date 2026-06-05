@@ -13,6 +13,7 @@ export interface Task {
     current_step: number;
     requires_human_approval: boolean;
     error_message: string | null;
+    additional_metadata?: Record<string, unknown> | null;
     created_at: string;
     started_at: string | null;
     completed_at: string | null;

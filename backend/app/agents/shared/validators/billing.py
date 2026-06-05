@@ -6,7 +6,7 @@ Fuentes: BOE, AEAT, Reglamento de Facturación (RD 1619/2012).
 
 import re
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 # ─── NIF / CIF ────────────────────────────────────────────────────────────────
 
@@ -113,14 +113,50 @@ VALID_VAT_RATES_ES = {0, 4, 10, 21}  # tipos vigentes en España
 VALID_IRPF_RATES = {7, 15, 19}  # retenciones IRPF habituales
 
 
-def validate_vat_rate(rate: float) -> tuple[bool, str]:
-    """Verifica que el tipo de IVA sea válido en España."""
-    if rate not in VALID_VAT_RATES_ES:
+def _coerce_number(value) -> Decimal:
+    """Normaliza int/float/str/Decimal a Decimal.
+
+    Los agentes IA y el parseo de lenguaje natural pueden entregar importes y
+    tipos impositivos como cadenas ('21', '21,0', '1.500,00', '21%'). Se
+    centraliza aquí la coerción para que los validadores no revienten con
+    TypeError ni rechacen valores correctos por culpa del tipo de dato.
+    Lanza InvalidOperation si el valor no es numérico.
+    """
+    if isinstance(value, Decimal):
+        return value
+    # bool es subclase de int: evita que True/False cuele como 1/0.
+    if isinstance(value, bool):
+        raise InvalidOperation("valor booleano no es numérico")
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+    s = str(value).strip().rstrip("%").replace(" ", "")
+    # Formato español: '1.500,00' -> '1500.00'; '21,5' -> '21.5'.
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s:
+        s = s.replace(",", ".")
+    return Decimal(s)
+
+
+def validate_vat_rate(rate) -> tuple[bool, str]:
+    """Verifica que el tipo de IVA sea válido en España.
+
+    Acepta el tipo como número o como cadena ('21', '21.0', '21%') porque los
+    agentes pueden entregarlo stringly-typed; coacciona antes de comparar para
+    no rechazar un tipo válido por venir como texto.
+    """
+    try:
+        rate_num = _coerce_number(rate)
+    except (InvalidOperation, ValueError):
+        return False, f"Tipo de IVA no numérico: {rate!r}"
+    # Normaliza 21.0 -> 21 para comparar con el conjunto de enteros permitidos.
+    rate_key = int(rate_num) if rate_num == rate_num.to_integral_value() else rate_num
+    if rate_key not in VALID_VAT_RATES_ES:
         return (
             False,
-            f"Tipo de IVA inválido: {rate}%. Valores permitidos: {sorted(VALID_VAT_RATES_ES)}",
+            f"Tipo de IVA inválido: {rate_key}%. Valores permitidos: {sorted(VALID_VAT_RATES_ES)}",
         )
-    return True, f"IVA {rate}% válido"
+    return True, f"IVA {rate_key}% válido"
 
 
 # ─── Importes ────────────────────────────────────────────────────────────────
@@ -135,9 +171,15 @@ MIN_INVOICE_AMOUNT_EUR = Decimal("0.01")
 APPROVAL_THRESHOLD_EUR = Decimal("5000")
 
 
-def validate_amount(amount: Decimal) -> tuple[bool, str]:
+def validate_amount(amount) -> tuple[bool, str]:
+    try:
+        amount = _coerce_number(amount)
+    except (InvalidOperation, ValueError):
+        return False, f"Importe no numérico: {amount!r}"
+    if amount < 0:
+        return False, f"Importe negativo no permitido: {amount}€"
     if amount < MIN_INVOICE_AMOUNT_EUR:
-        return False, f"Importe demasiado bajo: {amount}€"
+        return False, f"Importe demasiado bajo: {amount}€ (mínimo {MIN_INVOICE_AMOUNT_EUR}€)"
     if amount > MAX_INVOICE_AMOUNT_EUR:
         return False, f"Importe inusualmente alto: {amount}€ (requiere aprobación manual)"
     return True, f"Importe {amount}€ dentro de rango"

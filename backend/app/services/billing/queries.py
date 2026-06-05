@@ -6,6 +6,7 @@ No side effects: no INSERT/UPDATE/DELETE, no file writes, no commits.
 import logging
 import os
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import desc, select
@@ -28,6 +29,75 @@ UPLOAD_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
 )
 VALID_IVA = {0.0, 4.0, 10.0, 21.0}
+
+
+def _d(x) -> Decimal:
+    """Convierte a Decimal vía str para no arrastrar el error binario del float."""
+    if isinstance(x, Decimal):
+        return x
+    return Decimal(str(x if x is not None else 0))
+
+
+def _round2(d: Decimal) -> Decimal:
+    return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def compute_invoice_totals(
+    lines_data: list[dict], *, allow_negative: bool = False
+) -> dict:
+    """Valida el IVA de cada línea y calcula los importes con Decimal.
+
+    Pura y sin efectos. Centraliza la aritmética monetaria de la factura para
+    (a) evitar el arrastre de redondeo del `float` y (b) permitir validar las
+    líneas ANTES de consumir un número correlativo (sin huecos ni huérfanas).
+
+    Devuelve `{"lines", "amount_base", "tax_amount", "amount_total"}` con los
+    totales redondeados a 2 decimales y, por línea, `_line_base`/`_line_total`.
+    Lanza ValueError si algún IVA no es válido o si el total resulta negativo.
+
+    `allow_negative=True` permite totales negativos: lo necesitan las facturas
+    rectificativas / de abono (RD 1619/2012 Art. 15), que minoran una factura
+    anterior con importes negativos. Para una factura ordinaria se deja en
+    False, de modo que un total negativo siga siendo un error de captura.
+    """
+    total_base = Decimal("0")
+    total_tax = Decimal("0")
+    out_lines: list[dict] = []
+    for ld in lines_data:
+        qty = _d(ld.get("quantity", 1))
+        uprice = _d(ld.get("unit_price", 0))
+        discount = _d(ld.get("discount_percentage", 0))
+        tax_perc = float(ld.get("tax_percentage", 21))
+        if tax_perc not in VALID_IVA:
+            raise ValueError(
+                f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%."
+            )
+        line_base = qty * uprice
+        if discount > 0:
+            line_base -= line_base * (discount / Decimal("100"))
+        line_tax = line_base * (_d(tax_perc) / Decimal("100"))
+        total_base += line_base
+        total_tax += line_tax
+        out_lines.append(
+            {
+                **ld,
+                "quantity": float(qty),
+                "unit_price": float(uprice),
+                "discount_percentage": float(discount),
+                "tax_percentage": tax_perc,
+                "_line_base": float(_round2(line_base)),
+                "_line_total": float(_round2(line_base + line_tax)),
+            }
+        )
+    amount_total = _round2(total_base + total_tax)
+    if amount_total < 0 and not allow_negative:
+        raise ValueError("El importe total de la factura no puede ser negativo.")
+    return {
+        "lines": out_lines,
+        "amount_base": float(_round2(total_base)),
+        "tax_amount": float(_round2(total_tax)),
+        "amount_total": float(amount_total),
+    }
 
 
 # ── Invoice helpers ──────────────────────────────────────────────────────────

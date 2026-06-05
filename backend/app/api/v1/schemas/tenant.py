@@ -38,6 +38,10 @@ class LlmConfigResponse(BaseModel):
     active_llm_provider: str
     active_embeddings_provider: str
     providers: dict[str, Any]
+    # BYOK: si la IA está lista (proveedor + clave) y un motivo accionable, para
+    # que el frontend muestre el aviso con enlace a Configuración → Claves API.
+    ai_ready: bool = True
+    ai_reason: str = ""
 
 
 class ClaudeCodeSetupResponse(BaseModel):

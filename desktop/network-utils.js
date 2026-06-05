@@ -17,13 +17,20 @@ function getLanIP() {
 
 /**
  * Devuelve las URLs formateadas para mostrar al usuario.
+ *
+ * Incluye una variante por NOMBRE DE EQUIPO (`lanHost`) además de por IP: el
+ * nombre sobrevive a cambios de IP por DHCP si la red soporta mDNS/NetBIOS, por
+ * lo que es un enlace más estable para compartir con los empleados.
  */
 function getAccessURLs(lanIP) {
+  const hostname = os.hostname();
   return {
     local: "http://localhost:3000",
     lan: `http://${lanIP}:3000`,
     apiLocal: "http://localhost:8080",
     apiLan: `http://${lanIP}:8080`,
+    hostname,
+    lanHost: `http://${hostname}:3000`,
   };
 }
 

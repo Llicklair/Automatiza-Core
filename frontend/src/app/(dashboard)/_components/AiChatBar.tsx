@@ -47,7 +47,18 @@ export function AiChatBar() {
                             if (results[j]?.output?.response) { answer = results[j].output.response; break; }
                         }
                     }
-                    if (!answer) answer = t.error_message ? `Error: ${t.error_message}` : "No se obtuvo respuesta.";
+                    if (!answer) {
+                        if (t.error_message) {
+                            // Una petición de aclaración no es un error: se muestra
+                            // tal cual, sin el prefijo "Error:".
+                            const isClarification = Boolean(
+                                (t.additional_metadata as Record<string, unknown> | null)?.clarification,
+                            );
+                            answer = isClarification ? t.error_message : `Error: ${t.error_message}`;
+                        } else {
+                            answer = "No se obtuvo respuesta.";
+                        }
+                    }
                     break;
                 }
             }

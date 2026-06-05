@@ -75,6 +75,18 @@ class TenantDocument(Base):
     parsed_content = Column(Text)
     category = Column(String(50), nullable=True, index=True)
 
+    # Procedencia y enlace a la entidad del ERP que el documento refleja.
+    # source="generated"  → artefacto que genera el propio ERP (PDF de factura,
+    #   nómina, informe). NO debe reimportarse como dato nuevo.
+    # source="uploaded"   → documento externo (escaneo, subida) que SÍ puede
+    #   asimilarse al ERP.
+    # entity_type/entity_id → vínculo opaco a la entidad reflejada o creada a
+    #   partir del documento (p.ej. "invoice" + id). Permite mostrar el reflejo
+    #   y que la asimilación automática salte lo ya procesado (idempotencia).
+    source = Column(String(20), nullable=False, default="uploaded", index=True)
+    entity_type = Column(String(50), nullable=True)
+    entity_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
     processed_at = Column(DateTime(timezone=True))
 

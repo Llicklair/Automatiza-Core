@@ -74,7 +74,8 @@ async def download_backup(
     except TimeoutError:
         raise HTTPException(status_code=504, detail="pg_dump tardó demasiado (timeout 120s)")
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="pg_dump no está disponible en el servidor")
+        # Dependencia ausente (no es un crash del servidor) → 503, no 500.
+        raise HTTPException(status_code=503, detail="pg_dump no está disponible en el servidor")
 
     if proc.returncode != 0:
         logger.error("pg_dump error: %s", stderr.decode())
@@ -146,7 +147,8 @@ async def restore_backup(
             status_code=504, detail="La restauración tardó demasiado (timeout 5min)"
         )
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="psql no está disponible en el servidor")
+        # Dependencia ausente (no es un crash del servidor) → 503, no 500.
+        raise HTTPException(status_code=503, detail="psql no está disponible en el servidor")
 
     if proc.returncode != 0:
         err = stderr.decode(errors="ignore")[:500]

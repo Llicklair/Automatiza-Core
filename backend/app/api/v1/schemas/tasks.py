@@ -30,6 +30,7 @@ class TaskOut(BaseModel):
     current_step: int
     requires_human_approval: bool
     error_message: str | None
+    additional_metadata: Any | None = None
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None

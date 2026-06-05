@@ -232,8 +232,16 @@ async def import_invoices(
     results = await import_received_invoices(
         db, current_user.tenant_id, drafts, current_user.id
     )
-    created = sum(1 for r in results if r.get("ok"))
-    return {"created": created, "total": len(results), "results": results}
+    # 'created' = facturas realmente nuevas. Los duplicados se devuelven con
+    # ok=True + skipped=True (idempotencia), pero NO cuentan como creadas.
+    created = sum(1 for r in results if r.get("ok") and not r.get("skipped"))
+    skipped = sum(1 for r in results if r.get("skipped"))
+    return {
+        "created": created,
+        "skipped": skipped,
+        "total": len(results),
+        "results": results,
+    }
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse], tags=["erp"])
@@ -286,7 +294,12 @@ async def delete_invoice(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not await svc.delete_invoice(invoice_id, current_user.tenant_id, db):
+    try:
+        deleted = await svc.delete_invoice(invoice_id, current_user.tenant_id, db)
+    except ValueError as e:
+        # Verifactu inmutable o periodo contable cerrado → 409 (conflicto), no 500.
+        raise HTTPException(status_code=409, detail=str(e))
+    if not deleted:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
 
@@ -342,6 +355,46 @@ async def create_invoice(
     )
 
     return final_invoice
+
+
+@router.post(
+    "/invoices/{invoice_id}/rectificativa",
+    response_model=InvoiceResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["erp"],
+)
+@limiter.limit("30/minute")
+async def create_rectificativa(
+    request: Request,
+    invoice_id: UUID,
+    payload: dict,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Emite una factura rectificativa por anulación de la factura `invoice_id`.
+
+    Body: {"reason": str, "serie": str?}. Crea una nueva factura que minora la
+    original con importes negativos (RD 1619/2012 Art. 15), su numeración propia
+    y su eslabón en la cadena Verifactu.
+    """
+    reason = (payload or {}).get("reason") or ""
+    serie = (payload or {}).get("serie") or "R"
+    try:
+        rect = await svc.create_rectificativa(
+            invoice_id, reason, current_user.tenant_id, db, serie=serie
+        )
+    except ValueError as e:
+        code = 404 if "no encontrada" in str(e) else 400
+        raise HTTPException(status_code=code, detail=str(e))
+
+    background_tasks.add_task(
+        svc.generate_and_save_invoice_pdf,
+        invoice=rect,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+    )
+    return rect
 
 
 @router.get("/invoices/{invoice_id}/pdf", tags=["erp"])

@@ -63,6 +63,10 @@ async def _update_payroll_async(
             changes = []
 
             base = float(payroll.base_salary)
+            # Preservar el % de IRPF aplicado ANTES de cambiar la base: se deriva
+            # de los valores actuales (irpf/base). Calcularlo después de reasignar
+            # la base nueva distorsionaba el tipo (irpf_viejo / base_nueva).
+            irpf_rate = (float(payroll.irpf or 0) / base * 100) if base > 0 else 15.0
             if base_salary_str.strip():
                 try:
                     base = float(base_salary_str.strip().replace(",", "."))
@@ -80,26 +84,24 @@ async def _update_payroll_async(
                 except ValueError:
                     return f"Error: Deducciones no válidas: '{deductions_str}'."
 
-            # Cast explícito a float en ambos lados: payroll.base_salary recién
-            # se asignó como float pero payroll.irpf sigue siendo Decimal (no
-            # se ha tocado todavía). Decimal / float lanza TypeError.
-            irpf_rate = (
-                float(payroll.irpf) / float(payroll.base_salary) * 100
-                if payroll.base_salary and float(payroll.base_salary) > 0
-                else 15.0
-            )
-            ss_cc = round(base * 0.0470, 2)
-            ss_des = round(base * 0.0155, 2)
-            ss_fp = round(base * 0.0010, 2)
-            ss_mei = round(base * 0.0013, 2)
-            irpf = round(base * irpf_rate / 100, 2)
-            total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf + extra_ded
-            net = max(0.0, base - total_ded)
+            # Cálculo unificado (mismas tasas y tope que calc_payroll).
+            from app.services.hr.queries import calc_payroll
+
+            _year = payroll.period_start.year if payroll.period_start else None
+            calc = calc_payroll(base, irpf_rate, year=_year)
+            ss_cc = calc["ss_contingencias_comunes"]
+            ss_des = calc["ss_desempleo"]
+            ss_fp = calc["ss_formacion_profesional"]
+            ss_mei = calc["ss_mei"]
+            irpf = calc["irpf"]
+            total_ded = round(calc["deductions"] + extra_ded, 2)
+            net = max(0.0, round(base - total_ded, 2))
 
             payroll.ss_contingencias_comunes = ss_cc
             payroll.ss_desempleo = ss_des
             payroll.ss_formacion_profesional = ss_fp
             payroll.ss_mei = ss_mei
+            payroll.cuota_solidaridad = calc["cuota_solidaridad"]
             payroll.irpf = irpf
             payroll.deductions = total_ded
             payroll.net_salary = net
