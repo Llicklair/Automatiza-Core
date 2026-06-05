@@ -1,7 +1,5 @@
 """Rutas del marketplace de workflows (F3.10)."""
 
-from __future__ import annotations
-
 import uuid
 
 import sqlalchemy as sa

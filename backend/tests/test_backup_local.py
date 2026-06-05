@@ -162,7 +162,8 @@ class TestBackupEndpoints:
                     "encryption_key_label": "x",
                 },
             )
-        assert resp.status_code == 401
+        # Sin header Authorization, HTTPBearer(auto_error=True) responde 403.
+        assert resp.status_code == 403
 
     async def test_record_endpoint_persiste(self, db, seed_tenant_and_user):
         _, _, token = seed_tenant_and_user

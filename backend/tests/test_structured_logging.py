@@ -87,7 +87,8 @@ class TestDiagnosticBundle:
     async def test_endpoint_requiere_auth(self):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/v1/system/diagnostic-bundle")
-        assert resp.status_code == 401
+        # Sin header Authorization, HTTPBearer(auto_error=True) responde 403.
+        assert resp.status_code == 403
 
     async def test_endpoint_devuelve_zip(self, db, seed_tenant_and_user):
         _, _, token = seed_tenant_and_user

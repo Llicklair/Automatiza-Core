@@ -5,8 +5,6 @@ Estado: Fase C (preview). La presentación a producción está detrás del flag
 tenga certificado real y haya pasado pruebas en preproducción.
 """
 
-from __future__ import annotations
-
 import logging
 from uuid import UUID
 

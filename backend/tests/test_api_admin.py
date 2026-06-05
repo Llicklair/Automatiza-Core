@@ -7,10 +7,11 @@ class TestAdmin:
     @pytest.mark.asyncio
     async def test_backup_fails_in_test_env(self, auth_client: AsyncClient):
         """Backup uses pg_dump which is not available against SQLite test DB.
-        The endpoint should return 500 (pg_dump not found or DB parse error)."""
+        Missing pg_dump is a missing-dependency condition, so the endpoint
+        returns 503 (Service Unavailable), not 500."""
         resp = await auth_client.get("/api/v1/admin/backup")
-        # In test environment with SQLite, pg_dump will fail
-        assert resp.status_code == 500
+        # In test environment pg_dump is absent → 503 (dependency unavailable)
+        assert resp.status_code == 503
 
     @pytest.mark.asyncio
     async def test_restore_requires_sql_file(self, auth_client: AsyncClient):
