@@ -9,6 +9,7 @@ import logging
 import uuid
 from calendar import monthrange
 from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,42 @@ from app.services.reports._schemas import (
 )
 
 _logger = logging.getLogger(__name__)
+
+
+def _d(x) -> Decimal:
+    """Convierte a Decimal vía str (evita arrastrar el error binario del float)."""
+    if isinstance(x, Decimal):
+        return x
+    return Decimal(str(x if x is not None else 0))
+
+
+def _round2(d: Decimal) -> Decimal:
+    return Decimal(d).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def vat_breakdown_by_rate(invoices) -> dict[Decimal, dict]:
+    """Desglose de IVA por tipo impositivo calculado con Decimal.
+
+    Centraliza la aritmética del IVA de los modelos fiscales (303 trimestral,
+    390 anual y snapshot) para que coincidan entre sí y no arrastren el error
+    de redondeo del `float` —el mismo criterio que `compute_invoice_totals` en
+    facturación—. Acumula base y cuota EXACTAS por tipo (sin redondear); el
+    redondeo a 2 decimales lo aplica el caller al presentar cada tipo.
+
+    Devuelve ``{rate(Decimal): {"base": Decimal, "quota": Decimal}}``.
+    """
+    acc: dict[Decimal, dict] = {}
+    for inv in invoices:
+        for line in inv.lines or []:
+            rate = _d(line.tax_percentage if line.tax_percentage is not None else 21)
+            base = _d(line.quantity if line.quantity is not None else 1) * _d(line.unit_price)
+            if line.discount_percentage:
+                base -= base * _d(line.discount_percentage) / Decimal("100")
+            quota = base * rate / Decimal("100")
+            slot = acc.setdefault(rate, {"base": Decimal("0"), "quota": Decimal("0")})
+            slot["base"] += base
+            slot["quota"] += quota
+    return acc
 
 
 async def aggregate_fiscal(
@@ -46,16 +83,8 @@ async def aggregate_fiscal(
     )
     issued_invoices = issued_q.unique().scalars().all()
 
-    vat_rep: dict[float, float] = {}
-    base_rep: dict[float, float] = {}
-    for inv in issued_invoices:
-        for line in inv.lines or []:
-            rate = float(line.tax_percentage or 21)
-            base = float(line.quantity or 1) * float(line.unit_price or 0)
-            if line.discount_percentage:
-                base -= base * float(line.discount_percentage) / 100
-            vat_rep[rate] = vat_rep.get(rate, 0) + base * rate / 100
-            base_rep[rate] = base_rep.get(rate, 0) + base
+    # IVA repercutido (ventas) por tipo, con Decimal (sin arrastre de float).
+    rep = vat_breakdown_by_rate(issued_invoices)
 
     # ── IVA: Soportado (compras/recibidas) ──
     received_q = await db.execute(
@@ -70,32 +99,33 @@ async def aggregate_fiscal(
     )
     received_invoices = received_q.unique().scalars().all()
 
-    vat_sop: dict[float, float] = {}
-    base_sop: dict[float, float] = {}
-    for inv in received_invoices:
-        for line in inv.lines or []:
-            rate = float(line.tax_percentage or 21)
-            base = float(line.quantity or 1) * float(line.unit_price or 0)
-            if line.discount_percentage:
-                base -= base * float(line.discount_percentage) / 100
-            vat_sop[rate] = vat_sop.get(rate, 0) + base * rate / 100
-            base_sop[rate] = base_sop.get(rate, 0) + base
+    # IVA soportado (compras) por tipo, con Decimal.
+    sop = vat_breakdown_by_rate(received_invoices)
 
-    total_rep = round(sum(vat_rep.values()), 2)
-    total_sop = round(sum(vat_sop.values()), 2)
+    def _quota(m: dict, r: int) -> float:
+        return float(_round2(m.get(_d(r), {}).get("quota", Decimal("0"))))
+
+    def _sum_quota(m: dict) -> Decimal:
+        return _round2(sum((v["quota"] for v in m.values()), Decimal("0")))
+
+    def _sum_base(m: dict) -> float:
+        return float(_round2(sum((v["base"] for v in m.values()), Decimal("0"))))
+
+    total_rep = _sum_quota(rep)
+    total_sop = _sum_quota(sop)
 
     iva_section = FiscalIVA(
-        repercutido_21=round(vat_rep.get(21, 0), 2),
-        repercutido_10=round(vat_rep.get(10, 0), 2),
-        repercutido_4=round(vat_rep.get(4, 0), 2),
-        total_repercutido=total_rep,
-        base_repercutido=round(sum(base_rep.values()), 2),
-        soportado_21=round(vat_sop.get(21, 0), 2),
-        soportado_10=round(vat_sop.get(10, 0), 2),
-        soportado_4=round(vat_sop.get(4, 0), 2),
-        total_soportado=total_sop,
-        base_soportado=round(sum(base_sop.values()), 2),
-        resultado_iva=round(total_rep - total_sop, 2),
+        repercutido_21=_quota(rep, 21),
+        repercutido_10=_quota(rep, 10),
+        repercutido_4=_quota(rep, 4),
+        total_repercutido=float(total_rep),
+        base_repercutido=_sum_base(rep),
+        soportado_21=_quota(sop, 21),
+        soportado_10=_quota(sop, 10),
+        soportado_4=_quota(sop, 4),
+        total_soportado=float(total_sop),
+        base_soportado=_sum_base(sop),
+        resultado_iva=float(_round2(total_rep - total_sop)),
     )
 
     # ── IRPF: Retenciones en nominas ──
@@ -187,18 +217,8 @@ async def build_modelo_303_data(
     )
     issued_invoices = issued_q.unique().scalars().all()
 
-    vat_collected_map: dict[float, dict] = {}
-    for inv in issued_invoices:
-        for line in inv.lines or []:
-            rate = float(line.tax_percentage or 21)
-            base = float(line.quantity or 1) * float(line.unit_price or 0)
-            if line.discount_percentage:
-                base -= base * float(line.discount_percentage) / 100
-            quota = base * rate / 100
-            if rate not in vat_collected_map:
-                vat_collected_map[rate] = {"rate": rate, "base": 0.0, "quota": 0.0}
-            vat_collected_map[rate]["base"] += base
-            vat_collected_map[rate]["quota"] += quota
+    # IVA devengado (ventas) por tipo, con Decimal (sin arrastre de float).
+    vat_collected = vat_breakdown_by_rate(issued_invoices)
 
     # IVA deducible (compras) — eager-load lines (antes N+1)
     received_q = await db.execute(
@@ -213,31 +233,29 @@ async def build_modelo_303_data(
     )
     received_invoices = received_q.unique().scalars().all()
 
-    vat_deducted_map: dict[float, dict] = {}
-    for inv in received_invoices:
-        for line in inv.lines or []:
-            rate = float(line.tax_percentage or 21)
-            base = float(line.quantity or 1) * float(line.unit_price or 0)
-            if line.discount_percentage:
-                base -= base * float(line.discount_percentage) / 100
-            quota = base * rate / 100
-            if rate not in vat_deducted_map:
-                vat_deducted_map[rate] = {"rate": rate, "base": 0.0, "quota": 0.0}
-            vat_deducted_map[rate]["base"] += base
-            vat_deducted_map[rate]["quota"] += quota
+    # IVA deducible (compras) por tipo, con Decimal.
+    vat_deducted = vat_breakdown_by_rate(received_invoices)
 
-    # Round values
-    for m in [vat_collected_map, vat_deducted_map]:
-        for v in m.values():
-            v["base"] = round(v["base"], 2)
-            v["quota"] = round(v["quota"], 2)
+    def _rows(m: dict) -> list[dict]:
+        return sorted(
+            (
+                {
+                    "rate": float(rate),
+                    "base": float(_round2(v["base"])),
+                    "quota": float(_round2(v["quota"])),
+                }
+                for rate, v in m.items()
+            ),
+            key=lambda x: x["rate"],
+            reverse=True,
+        )
 
     return {
         "tenant": {"name": tenant_name, "nif": tenant_nif},
         "quarter": quarter,
         "year": year,
-        "vat_collected": sorted(vat_collected_map.values(), key=lambda x: x["rate"], reverse=True),
-        "vat_deducted": sorted(vat_deducted_map.values(), key=lambda x: x["rate"], reverse=True),
+        "vat_collected": _rows(vat_collected),
+        "vat_deducted": _rows(vat_deducted),
     }
 
 

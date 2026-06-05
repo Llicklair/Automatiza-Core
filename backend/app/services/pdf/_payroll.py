@@ -52,6 +52,7 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
     ss_des = float(payroll_data.get("ss_desempleo", 0))
     ss_fp = float(payroll_data.get("ss_formacion_profesional", 0))
     ss_mei = float(payroll_data.get("ss_mei", 0))
+    cuota_sol = float(payroll_data.get("cuota_solidaridad", 0))
     irpf = float(payroll_data.get("irpf", 0))
     irpf_rate = float(payroll_data.get("pct_irpf") or payroll_data.get("irpf_rate", 15.0))
     pct_cc = float(payroll_data.get("pct_cc", 4.70))
@@ -63,7 +64,7 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
     net = float(payroll_data.get("net_salary", 0))
     devengos = payroll_data.get("devengos_json") or {}
     total_dev = gross
-    total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf + anticipos + other
+    total_ded = ss_cc + ss_des + ss_fp + ss_mei + cuota_sol + irpf + anticipos + other
     base_cc = float(payroll_data.get("base_cotizacion_cc") or gross)
     base_irpf = float(payroll_data.get("base_irpf") or gross)
     cuotas = payroll_data.get("cuotas_empresa_json") or {}
@@ -220,6 +221,8 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
         (f"Cot. MEI ({pct_mei:.2f}%)", ss_mei),
         (f"Retenci\u00f3n IRPF ({irpf_rate:.1f}%)", irpf),
     ]
+    if cuota_sol > 0:
+        ded_items.append(("Cuota de solidaridad", cuota_sol))
     if anticipos > 0:
         ded_items.append(("Anticipos", anticipos))
     if other > 0:

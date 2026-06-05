@@ -143,6 +143,20 @@ def _tools_to_schema(tools) -> list[dict]:
     return schemas
 
 
+# Instrucción correctiva inyectada en el reintento cuando el LLM rehúsa usar
+# las tools alegando que "no están registradas como MCP" o "no tiene acceso".
+# La instancia interna de `claude -p` a veces razona sobre su propio entorno;
+# este recordatorio firme corrige esa rehúsa sin cambiar el resto del prompt.
+_REFUSAL_RETRY_INSTRUCTION = (
+    "Tu respuesta anterior rehusó usar las herramientas alegando que no están "
+    "disponibles o no estás conectado. Eso es INCORRECTO: las herramientas listadas "
+    "SÍ están disponibles en esta sesión mediante el protocolo de texto "
+    f"{_TOOL_CALL_START}...{_TOOL_CALL_END}. No son MCP y no necesitas conexión a "
+    "ningún servidor: simplemente emite el bloque con la tool y sus argumentos. "
+    "Invoca ahora la herramienta adecuada. NO expliques que no tienes acceso."
+)
+
+
 def _build_tool_system_prompt(tools) -> str:
     """Genera el system prompt que instruye al LLM a usar el formato de tool calling."""
     schemas = _tools_to_schema(tools)
@@ -178,7 +192,12 @@ def _build_tool_system_prompt(tools) -> str:
         "3. ALL parameter values must be the correct type (string, number, boolean).\n"
         "4. Include ALL required parameters. Omit optional ones unless the user specified them.\n"
         "5. Use EXACT tool names from the list below.\n"
-        "6. For multiple tools, put them all in one tool_calls array.\n\n"
+        "6. For multiple tools, put them all in one tool_calls array.\n"
+        "7. These tools ARE available to you in THIS session. Do NOT claim they are "
+        "unavailable, not registered, MCP-only, or that you lack access — that is false. "
+        "Just emit the TOOL_CALL block.\n"
+        "8. NEVER reply with an explanation that you cannot use the tools. If a tool "
+        "fits the request, call it. If genuinely none fits, answer in plain text.\n\n"
         f"## EXAMPLE — calling {example_name}:\n"
         f"{_TOOL_CALL_START}\n"
         f"{json.dumps({'tool_calls': [{'name': example_name, 'arguments': example_args}]}, ensure_ascii=False)}\n"
@@ -427,9 +446,21 @@ class ClaudeCodeChatModel(BaseChatModel):
         stop: list[str] | None = None,
         **kwargs: Any,
     ) -> ChatResult:
+        prompt = _messages_to_prompt(messages, self._get_tool_system())
+        text = self._call_cli(prompt)
+        try:
+            return self._process_response(text)
+        except LLMRefusedToolUseError:
+            if not self._bound_tools:
+                raise
+            _log.warning("[ClaudeCode] rehúsa de tools detectada, reintentando con prompt correctivo")
+            retry_prompt = f"{prompt}\n\n[System]: {_REFUSAL_RETRY_INSTRUCTION}"
+            return self._process_response(self._call_cli(retry_prompt))
+
+    def _call_cli(self, prompt: str) -> str:
+        """Invoca `claude -p` de forma síncrona y devuelve el texto (o un mensaje de error)."""
         import subprocess
 
-        prompt = _messages_to_prompt(messages, self._get_tool_system())
         try:
             result = subprocess.run(
                 [_resolve_claude_bin(), "-p", "--dangerously-skip-permissions"],
@@ -441,18 +472,17 @@ class ClaudeCodeChatModel(BaseChatModel):
                 env=_clean_env(),
                 cwd=_neutral_cwd(),
             )
-            text = result.stdout.strip() or result.stderr.strip() or "Sin respuesta del CLI"
+            return result.stdout.strip() or result.stderr.strip() or "Sin respuesta del CLI"
         except subprocess.TimeoutExpired:
-            text = "Error: Claude Code CLI no respondio en el tiempo limite."
+            return "Error: Claude Code CLI no respondio en el tiempo limite."
         except FileNotFoundError:
-            text = (
+            return (
                 "IA no configurada: no hay una clave de API activa. "
                 "Ve a Configuración → Claves API y añade tu clave de Anthropic, "
                 "OpenAI o Groq para que los agentes funcionen."
             )
         except Exception as e:
-            text = f"Error inesperado en Claude Code CLI: {e}"
-        return self._process_response(text)
+            return f"Error inesperado en Claude Code CLI: {e}"
 
     # -- async ----------------------------------------------------------------
     async def _agenerate(
@@ -462,6 +492,18 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
+        text = await self._acall_cli(prompt)
+        try:
+            return self._process_response(text)
+        except LLMRefusedToolUseError:
+            if not self._bound_tools:
+                raise
+            _log.warning("[ClaudeCode] rehúsa de tools detectada, reintentando con prompt correctivo")
+            retry_prompt = f"{prompt}\n\n[System]: {_REFUSAL_RETRY_INSTRUCTION}"
+            return self._process_response(await self._acall_cli(retry_prompt))
+
+    async def _acall_cli(self, prompt: str) -> str:
+        """Invoca `claude -p` de forma asíncrona y devuelve el texto (o un mensaje de error)."""
         proc: asyncio.subprocess.Process | None = None
         text = ""
         try:
@@ -514,8 +556,8 @@ class ClaudeCodeChatModel(BaseChatModel):
                     await asyncio.wait_for(proc.wait(), timeout=5)
                 except Exception:
                     pass
-        _log.info("[ClaudeCode] _agenerate key='%s': %d chars", self.pool_key, len(text))
-        return self._process_response(text)
+        _log.info("[ClaudeCode] _acall_cli key='%s': %d chars", self.pool_key, len(text))
+        return text
 
     # -- tool binding ---------------------------------------------------------
     def bind_tools(self, tools, *, tool_choice=None, **kwargs):

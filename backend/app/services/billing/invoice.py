@@ -1,6 +1,7 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
 from app.services.billing.commands import (
     create_invoice,
+    create_rectificativa,
     delete_invoice,
     generate_and_save_invoice_pdf,
     update_status,
@@ -22,6 +23,7 @@ __all__ = [
     "list_invoices",
     "get_invoice",
     "create_invoice",
+    "create_rectificativa",
     "update_status",
     "delete_invoice",
     "generate_and_save_invoice_pdf",

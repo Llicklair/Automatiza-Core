@@ -158,6 +158,49 @@ class TestCreateInvoice:
         assert invoice.invoice_number == "MANUAL-001"
 
     @pytest.mark.asyncio
+    async def test_duplicate_issued_number_raises(self, db: AsyncSession):
+        """Dos facturas emitidas con el mismo número manual → la 2ª se rechaza."""
+        tenant, client = await _seed_tenant_client(db)
+        uid = uuid4()
+        lines = [{"description": "X", "quantity": 1, "unit_price": 10.0, "tax_percentage": 21.0}]
+        await create_invoice(
+            client.id,
+            {"date": datetime.now(UTC), "status": "draft", "invoice_number": "A2026-0001"},
+            lines, tenant.id, uid, db,
+        )
+        with pytest.raises(ValueError, match="Ya existe una factura con el número"):
+            await create_invoice(
+                client.id,
+                {"date": datetime.now(UTC), "status": "draft", "invoice_number": "A2026-0001"},
+                lines, tenant.id, uid, db,
+            )
+
+    @pytest.mark.asyncio
+    async def test_received_can_share_number_with_issued(self, db: AsyncSession):
+        """Una recibida (nº del proveedor) puede coincidir con una emitida."""
+        tenant, client = await _seed_tenant_client(db)
+        uid = uuid4()
+        lines = [{"description": "X", "quantity": 1, "unit_price": 10.0, "tax_percentage": 21.0}]
+        await create_invoice(
+            client.id,
+            {"date": datetime.now(UTC), "status": "draft", "invoice_number": "A2026-0009"},
+            lines, tenant.id, uid, db,
+        )
+        # Mismo string pero tipo 'received' → permitido (queda fuera del índice).
+        recv = await create_invoice(
+            client.id,
+            {
+                "date": datetime.now(UTC),
+                "status": "draft",
+                "invoice_number": "A2026-0009",
+                "invoice_type": "received",
+            },
+            lines, tenant.id, uid, db,
+        )
+        assert recv.invoice_number == "A2026-0009"
+        assert recv.invoice_type == "received"
+
+    @pytest.mark.asyncio
     async def test_invoice_auto_number_with_series(self, db: AsyncSession):
         tenant, client = await _seed_tenant_client(db)
         invoice = await _create_basic_invoice(db, tenant, client)

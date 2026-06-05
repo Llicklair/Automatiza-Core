@@ -49,13 +49,52 @@ async def check_and_alert_tenant(db: AsyncSession, tenant_id) -> int:
     candidates += await _check_pending_payrolls(db, tenant_id)
 
     new_count = 0
+    new_overdue_ids: list[str] = []
     for alert in candidates:
         if await _is_duplicate(db, tenant_id, alert["type"], alert["entity_id"]):
             continue
         await _persist_and_notify(db, tenant_id, alert)
         new_count += 1
+        if alert["type"] == "overdue_invoice":
+            new_overdue_ids.append(alert["entity_id"])
+
+    # Trigger de automatización `invoice_overdue` (antes documentado pero nunca
+    # emitido). Una sola vez por factura (idempotente vía DomainEvent), aunque la
+    # alerta visual se repita a diario.
+    if new_overdue_ids:
+        await _emit_overdue_events(db, tenant_id, new_overdue_ids)
 
     return new_count
+
+
+async def _emit_overdue_events(db: AsyncSession, tenant_id, invoice_ids: list[str]) -> None:
+    from app.db.models.models import DomainEvent
+    from app.services.event_bus import emit_event
+
+    rows = await db.execute(
+        select(DomainEvent.payload).where(
+            DomainEvent.tenant_id == tenant_id,
+            DomainEvent.event_name == "invoice_overdue",
+        )
+    )
+    already: set[str] = set()
+    for (payload,) in rows.all():
+        if isinstance(payload, dict) and payload.get("invoice_id"):
+            already.add(str(payload["invoice_id"]))
+
+    for iid in invoice_ids:
+        if iid in already:
+            continue
+        try:
+            await emit_event(
+                db=db,
+                tenant_id=tenant_id,
+                user_id=None,
+                event_name="invoice_overdue",
+                context={"invoice_id": iid},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("No se pudo emitir invoice_overdue: %s", exc)
 
 
 async def get_recent_alerts(db: AsyncSession, tenant_id, hours: int = 48) -> list[AlertLog]:
@@ -78,7 +117,11 @@ async def _check_overdue_invoices(db: AsyncSession, tenant_id) -> list[dict]:
         .options(selectinload(Invoice.client))
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.status.in_(["sent", "draft"]),
+            # Estados reales del sistema: draft|pending|paid|cancelled. "sent" no
+            # existe — el filtro anterior se saltaba todas las "pending" (factura
+            # emitida sin cobrar), que son justo las que vencen. Vencida = no
+            # pagada ni anulada.
+            Invoice.status.in_(["pending", "draft"]),
             Invoice.due_date.is_not(None),
             Invoice.due_date < now,
         )
@@ -106,7 +149,7 @@ async def _check_due_soon_invoices(db: AsyncSession, tenant_id) -> list[dict]:
         .options(selectinload(Invoice.client))
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.status.in_(["sent", "draft"]),
+            Invoice.status.in_(["pending", "draft"]),
             Invoice.due_date.is_not(None),
             Invoice.due_date > now,
             Invoice.due_date <= horizon,

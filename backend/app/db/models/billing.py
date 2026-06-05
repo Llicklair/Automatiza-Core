@@ -1,6 +1,6 @@
 """Modelos de facturacion: Facturas, Presupuestos y Recurrentes."""
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Index, UniqueConstraint, text
 
 from .common import (
     JSONB,
@@ -42,6 +42,20 @@ class InvoiceSeries(Base):
 
 class Invoice(Base):
     __tablename__ = "invoices"
+    # Unicidad del número correlativo SOLO para las facturas que emitimos
+    # nosotros (issued/rectificativa). Las recibidas llevan el número del
+    # proveedor, que puede repetirse entre proveedores y coincidir con el
+    # nuestro, por lo que quedan fuera del índice (índice único parcial).
+    __table_args__ = (
+        Index(
+            "uq_invoices_tenant_number_emitted",
+            "tenant_id",
+            "invoice_number",
+            unique=True,
+            postgresql_where=text("invoice_type IN ('issued', 'rectificativa')"),
+            sqlite_where=text("invoice_type IN ('issued', 'rectificativa')"),
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
@@ -61,6 +75,13 @@ class Invoice(Base):
     external_id = Column(String(255))
     document_id = Column(UUID(as_uuid=True), ForeignKey("tenant_documents.id"), nullable=True)
 
+    # Rectificativa / abono (RD 1619/2012 Art. 15): enlaza a la factura original
+    # que minora y guarda el motivo. NULL en una factura ordinaria.
+    rectifies_invoice_id = Column(
+        UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True
+    )
+    rectification_reason = Column(Text, nullable=True)
+
     verifactu_status = Column(String(30), nullable=True)   # None | "sent" | "error"
     verifactu_sent_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -70,6 +91,9 @@ class Invoice(Base):
     client = relationship("Client", back_populates="invoices")
     document = relationship("TenantDocument", foreign_keys=[document_id])
     lines = relationship("InvoiceLine", back_populates="invoice", cascade="all, delete-orphan")
+    rectifies = relationship(
+        "Invoice", remote_side=[id], foreign_keys=[rectifies_invoice_id]
+    )
 
 
 class VerifactuRecord(Base):

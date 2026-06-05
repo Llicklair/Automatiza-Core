@@ -237,12 +237,12 @@ async def debug_llm(tenant_id, db: AsyncSession) -> dict:
 
         response = await asyncio.wait_for(
             llm.ainvoke([HumanMessage(content="Responde solo 'OK'")]),
-            timeout=30,
+            timeout=10,
         )
         info["response"] = response.content[:200]
         info["status"] = "OK"
     except TimeoutError:
-        info["status"] = "TIMEOUT (30s)"
+        info["status"] = "TIMEOUT (10s)"
     except Exception as e:
         info["status"] = f"ERROR: {type(e).__name__}: {str(e)}"
 

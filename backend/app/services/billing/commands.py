@@ -10,7 +10,8 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -18,18 +19,18 @@ from app.db.models.models import (
     FixedAsset,
     Invoice,
     InvoiceLine,
-    InvoiceSeries,
     JournalEntry,
     JournalLine,
     RecurringInvoice,
     Tenant,
     TenantDocument,
 )
+from app.services.billing.numbering import next_invoice_number
 from app.services.billing.queries import (
     UPLOAD_DIR,
-    VALID_IVA,
     _build_invoice_data,
     _load_invoice,
+    compute_invoice_totals,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,107 +53,201 @@ async def create_invoice(
 
     manual_number = payload_dict.pop("invoice_number", None)
     serie = (payload_dict.pop("serie", "F") or "F").upper()[:10]
+    # Tipo de la factura que se crea. La unicidad del número solo aplica a las
+    # que emitimos nosotros (issued/rectificativa); las recibidas llevan el
+    # número del proveedor y quedan fuera de la guarda y del índice parcial.
+    new_type = (payload_dict.get("invoice_type") or "issued")
+    is_emitted = new_type in ("issued", "rectificativa")
 
+    # 1) Validar líneas y calcular totales (Decimal) ANTES de consumir un número
+    #    de serie. Si algo falla aquí (IVA inválido, total negativo), no se ha
+    #    tocado el contador → sin huecos ni facturas huérfanas (RD 1619/2012).
+    totals = compute_invoice_totals(lines_data)
+
+    # 2) Número correlativo dentro de la MISMA transacción (advisory lock +
+    #    FOR UPDATE en next_invoice_number; evita la carrera de la 1ª factura).
     if manual_number:
+        # La numeración automática ya está protegida por el advisory lock de
+        # next_invoice_number; el vector de duplicados que queda es el número
+        # manual. Rechazamos uno ya emitido para este tenant (sin esto se han
+        # llegado a ver dos facturas con el mismo número). Solo para facturas
+        # emitidas: una recibida puede repetir el número del proveedor.
+        if is_emitted:
+            dup = await db.execute(
+                select(Invoice.id)
+                .where(
+                    Invoice.tenant_id == tenant_id,
+                    Invoice.invoice_number == manual_number,
+                    Invoice.invoice_type.in_(("issued", "rectificativa")),
+                )
+                .limit(1)
+            )
+            if dup.scalar_one_or_none() is not None:
+                raise ValueError(f"Ya existe una factura con el número {manual_number}.")
         invoice_number = manual_number
     else:
-        invoice_year = datetime.now(UTC).year
-        series_result = await db.execute(
-            select(InvoiceSeries)
-            .where(
-                InvoiceSeries.tenant_id == tenant_id,
-                InvoiceSeries.serie == serie,
-                InvoiceSeries.year == invoice_year,
-            )
-            .with_for_update()
-        )
-        series_row = series_result.scalar_one_or_none()
+        invoice_number = await next_invoice_number(db, tenant_id, series=serie)
 
-        if series_row is None:
-            series_row = InvoiceSeries(
-                tenant_id=tenant_id,
-                serie=serie,
-                year=invoice_year,
-                last_number=0,
-                prefix=serie,
-            )
-            db.add(series_row)
-            await db.flush()
-
-        series_row.last_number += 1
-        invoice_number = f"{series_row.prefix}{invoice_year}-{series_row.last_number:04d}"
-
+    # 3) Cabecera con los totales ya calculados. El id (UUID) está disponible al
+    #    instanciar, por lo que las líneas lo referencian sin commit previo y
+    #    todo (contador + cabecera + líneas + huella Verifactu) es un único commit.
     new_invoice = Invoice(
         tenant_id=tenant_id,
         client_id=client_id,
         invoice_number=invoice_number,
-        amount_base=0.0,
-        tax_amount=0.0,
-        amount_total=0.0,
+        amount_base=totals["amount_base"],
+        tax_amount=totals["tax_amount"],
+        amount_total=totals["amount_total"],
         **payload_dict,
     )
     db.add(new_invoice)
-    await db.commit()
-    await db.refresh(new_invoice)
+    # `Invoice.id` (default=uuid4) es un default de columna que SQLAlchemy aplica
+    # en el flush, no al instanciar; hacemos flush para poblar el id y que las
+    # líneas lo referencien. flush ≠ commit → sigue siendo atómico (un solo
+    # commit al final; si algo falla, rollback deshace también el contador).
+    await db.flush()
 
-    total_base = 0.0
-    total_tax = 0.0
-
-    for line_data in lines_data:
-        qty = float(line_data.get("quantity", 1))
-        uprice = float(line_data.get("unit_price", 0))
-        discount_perc = float(line_data.get("discount_percentage", 0))
-        tax_perc = float(line_data.get("tax_percentage", 21))
-
-        if tax_perc not in VALID_IVA:
-            raise ValueError(
-                f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%."
-            )
-
-        line_base = qty * uprice
-        if discount_perc > 0:
-            line_base -= line_base * (discount_perc / 100)
-        line_tax = line_base * (tax_perc / 100)
-        line_total = line_base + line_tax
-
-        total_base += line_base
-        total_tax += line_tax
-
+    for ld in totals["lines"]:
         db.add(
             InvoiceLine(
                 invoice_id=new_invoice.id,
-                product_id=line_data.get("product_id"),
-                description=line_data.get("description"),
-                quantity=qty,
-                unit_price=uprice,
-                discount_percentage=discount_perc,
-                tax_percentage=tax_perc,
-                total=line_total,
+                product_id=ld.get("product_id"),
+                description=ld.get("description"),
+                quantity=ld["quantity"],
+                unit_price=ld["unit_price"],
+                discount_percentage=ld["discount_percentage"],
+                tax_percentage=ld["tax_percentage"],
+                total=ld["_line_total"],
             )
         )
 
-    new_invoice.amount_base = round(total_base, 2)
-    new_invoice.tax_amount = round(total_tax, 2)
-    new_invoice.amount_total = round(total_base + total_tax, 2)
-
-    if new_invoice.amount_total < 0:
-        await db.rollback()
-        raise ValueError("El importe total de la factura no puede ser negativo.")
-    if lines_data and new_invoice.amount_total == 0:
+    if lines_data and totals["amount_total"] == 0:
         logger.warning("Factura creada con importe 0 para cliente %s", client_id)
 
-    # Verifactu: si el tenant está en modo "voluntary" creamos la entrada
-    # encadenada ANTES del commit, así la factura y su huella son atómicas.
+    # Verifactu: encadena la huella ANTES del commit → factura y huella atómicas.
     # En modo "no_remission" no hace nada.
     from app.services.billing.verifactu_chain import maybe_append_verifactu_record
     await maybe_append_verifactu_record(db, invoice=new_invoice)
+
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        # Backstop del índice único parcial (tenant, número) para emitidas:
+        # cubre la carrera concurrente que la guarda de aplicación no ve.
+        await db.rollback()
+        if "uq_invoices_tenant_number_emitted" in str(e.orig):
+            raise ValueError(
+                f"Ya existe una factura con el número {invoice_number}."
+            ) from e
+        raise
+
+    result = await db.execute(
+        select(Invoice)
+        .options(joinedload(Invoice.client), joinedload(Invoice.lines))
+        .where(Invoice.id == new_invoice.id)
+    )
+    return result.unique().scalar_one()
+
+
+async def create_rectificativa(
+    original_invoice_id: UUID,
+    reason: str,
+    tenant_id,
+    db: AsyncSession,
+    serie: str = "R",
+):
+    """Crea una factura rectificativa por anulación (RD 1619/2012 Art. 15).
+
+    Emite una NUEVA factura que minora íntegramente a la original: mismas líneas
+    con importes negados (sustitución total → deja la operación a cero). Queda
+    vinculada a la original (`rectifies_invoice_id`) con su motivo, lleva su
+    propia numeración correlativa (serie "R" por defecto) y su propio eslabón en
+    la cadena Verifactu. Todo en un único commit atómico: si algo falla, el
+    rollback deshace también el contador (sin huecos ni huérfanas).
+
+    Lanza ValueError si la original no existe, si ya es una rectificativa, si ya
+    tiene una rectificativa emitida, o si falta el motivo.
+    """
+    if not reason or not reason.strip():
+        raise ValueError("La factura rectificativa requiere un motivo.")
+
+    original = await _load_invoice(original_invoice_id, tenant_id, db)
+    if original is None:
+        raise ValueError("Factura original no encontrada")
+    if (original.invoice_type or "").lower() == "rectificativa":
+        raise ValueError("No se puede rectificar una factura rectificativa.")
+
+    # Idempotencia: una factura solo se anula una vez. Evita dobles abonos.
+    dup = await db.execute(
+        select(Invoice.id)
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.rectifies_invoice_id == original.id,
+        )
+        .limit(1)
+    )
+    if dup.scalar_one_or_none() is not None:
+        raise ValueError("Ya existe una factura rectificativa para esta factura.")
+
+    # Líneas negadas → reutiliza la aritmética Decimal validada (allow_negative).
+    neg_lines = [
+        {
+            "product_id": ln.product_id,
+            "description": ln.description,
+            "quantity": float(ln.quantity or 0),
+            "unit_price": -float(ln.unit_price or 0),
+            "discount_percentage": float(ln.discount_percentage or 0),
+            "tax_percentage": float(ln.tax_percentage or 21),
+        }
+        for ln in original.lines
+    ]
+    totals = compute_invoice_totals(neg_lines, allow_negative=True)
+
+    serie = (serie or "R").upper()[:10]
+    invoice_number = await next_invoice_number(db, tenant_id, series=serie)
+
+    rect = Invoice(
+        tenant_id=tenant_id,
+        client_id=original.client_id,
+        invoice_number=invoice_number,
+        date=datetime.now(UTC),
+        status="pending",
+        invoice_type="rectificativa",
+        rectifies_invoice_id=original.id,
+        rectification_reason=reason.strip(),
+        notes=f"Factura rectificativa de {original.invoice_number}. Motivo: {reason.strip()}",
+        amount_base=totals["amount_base"],
+        tax_amount=totals["tax_amount"],
+        amount_total=totals["amount_total"],
+    )
+    db.add(rect)
+    await db.flush()  # poblar rect.id antes de las líneas (atómico, sin commit)
+
+    for ld in totals["lines"]:
+        db.add(
+            InvoiceLine(
+                invoice_id=rect.id,
+                product_id=ld.get("product_id"),
+                description=ld.get("description"),
+                quantity=ld["quantity"],
+                unit_price=ld["unit_price"],
+                discount_percentage=ld["discount_percentage"],
+                tax_percentage=ld["tax_percentage"],
+                total=ld["_line_total"],
+            )
+        )
+
+    # Verifactu: la rectificativa es un hecho con efectos fiscales → encadena su
+    # propia huella ANTES del commit (atómico con la factura).
+    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+    await maybe_append_verifactu_record(db, invoice=rect)
 
     await db.commit()
 
     result = await db.execute(
         select(Invoice)
         .options(joinedload(Invoice.client), joinedload(Invoice.lines))
-        .where(Invoice.id == new_invoice.id)
+        .where(Invoice.id == rect.id)
     )
     return result.unique().scalar_one()
 
@@ -172,9 +267,32 @@ async def update_status(
     if not invoice:
         raise ValueError("Factura no encontrada")
 
+    prev_status = invoice.status
     invoice.status = new_status
     await db.commit()
     await db.refresh(invoice)
+
+    # Evento de negocio: al pasar a "paid" disparamos `invoice_paid` (trigger
+    # documentado que antes nunca se emitía → las automatizaciones "factura
+    # cobrada → …" no se ejecutaban). Best-effort: un fallo en los workflows no
+    # debe revertir el cambio de estado.
+    if new_status == "paid" and prev_status != "paid":
+        try:
+            from app.services.event_bus import emit_event
+            await emit_event(
+                db=db,
+                tenant_id=tenant_id,
+                user_id=None,
+                event_name="invoice_paid",
+                context={
+                    "invoice_id": str(invoice.id),
+                    "invoice_number": invoice.invoice_number,
+                    "amount_total": float(invoice.amount_total or 0),
+                },
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo emitir invoice_paid: %s", e)
+
     result = await db.execute(
         select(Invoice)
         .options(joinedload(Invoice.client), joinedload(Invoice.lines))
@@ -184,9 +302,49 @@ async def update_status(
 
 
 async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
+    """Borra una factura y, en cascada, sus asientos contables derivados.
+
+    La FK ``journal_entries.invoice_id`` (sin ON DELETE) bloqueaba el borrado de
+    una factura con asiento (típico en facturas recibidas) → 500. Aquí se borran
+    primero los asientos vinculados (sus líneas caen por cascade ORM).
+
+    Salvaguardas:
+      - Si la factura tiene registro Verifactu, NO se borra (la cadena es
+        inmutable/append-only) — se lanza ValueError con un mensaje claro.
+      - Si algún asiento está en un periodo contable cerrado, tampoco — ValueError.
+    """
+    from app.db.models.billing import VerifactuRecord
+    from app.services.accounting import is_date_locked
+
     invoice = await _load_invoice(invoice_id, tenant_id, db, with_joins=False)
     if not invoice:
         return False
+
+    vf = await db.execute(
+        select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice_id).limit(1)
+    )
+    if vf.scalar_one_or_none() is not None:
+        raise ValueError(
+            "No se puede borrar: la factura tiene un registro Verifactu (cadena inmutable)."
+        )
+
+    entries_res = await db.execute(
+        select(JournalEntry).where(
+            JournalEntry.invoice_id == invoice_id,
+            JournalEntry.tenant_id == tenant_id,
+        )
+    )
+    entries = list(entries_res.scalars().all())
+    for entry in entries:
+        _d = entry.date.date() if hasattr(entry.date, "date") and callable(entry.date.date) else entry.date
+        locked, label = await is_date_locked(db, tenant_id, _d)
+        if locked:
+            raise ValueError(
+                f"No se puede borrar: el asiento contable está en un periodo cerrado ({label or '?'})."
+            )
+    for entry in entries:
+        await db.delete(entry)
+
     await db.delete(invoice)
     await db.commit()
     return True
@@ -226,8 +384,24 @@ async def generate_and_save_invoice_pdf(invoice, tenant_id, user_id) -> None:
                 file_size=len(pdf_bytes),
                 category="Facturas",
                 status="ready",
+                # Procedencia: este PDF es un artefacto que genera el ERP, no un
+                # documento externo. Marcarlo como "generated" + enlazarlo a su
+                # factura evita que una asimilación documento→ERP lo trate como
+                # una factura nueva (sería un duplicado).
+                source="generated",
+                entity_type="invoice",
+                entity_id=invoice.id,
             )
             session.add(doc)
+            await session.flush()
+            # Enlace inverso: la factura conoce su documento (columna document_id
+            # que hasta ahora quedaba sin rellenar). Así el reflejo es navegable
+            # en ambos sentidos.
+            await session.execute(
+                update(Invoice)
+                .where(Invoice.id == invoice.id, Invoice.tenant_id == tenant_id)
+                .values(document_id=doc.id)
+            )
             await session.commit()
     except Exception as e:
         logger.error("Error generando PDF de factura: %s", e)

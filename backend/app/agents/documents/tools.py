@@ -60,6 +60,79 @@ CLASSIFICATION_PROMPT = load_prompt("documents_classification")
 
 
 @tool
+async def import_invoice_document(tenant_id: str, document_id: str) -> str:
+    """Asimila al ERP un documento de factura (escaneado o subido) como factura
+    de COMPRA (recibida): hace OCR e importa de forma IDEMPOTENTE.
+
+    Úsalo cuando se quiera "registrar/importar al ERP" una factura que está en
+    Documentos. Es SEGURO de reejecutar (apto para automatizaciones por evento):
+      - Salta los documentos que el propio ERP genera (source="generated", p.ej.
+        el PDF de una factura emitida) → nunca los convierte en factura nueva.
+      - Salta los ya asimilados (documento ya enlazado a una factura).
+      - Dedup por (proveedor + número): no crea duplicados.
+
+    Devuelve un resumen legible del resultado.
+    """
+    from app.services.billing.invoice_import import import_received_invoices
+    from app.services.ocr import extract_invoice_data
+
+    try:
+        async with AsyncSessionLocal() as db:
+            res = await db.execute(
+                select(TenantDocument).where(
+                    TenantDocument.tenant_id == UUID(tenant_id),
+                    TenantDocument.id == UUID(document_id),
+                )
+            )
+            doc = res.scalar_one_or_none()
+            if doc is None:
+                return f"Error: documento {document_id} no encontrado."
+
+            # Guarda anti-reflejo / anti-duplicado (el corazón de la seguridad).
+            if (doc.source or "uploaded") == "generated":
+                return (
+                    f"Omitido: '{doc.file_name}' es un documento generado por el "
+                    "propio ERP (no una factura externa). No se importa."
+                )
+            if doc.entity_id is not None:
+                return (
+                    f"Omitido: '{doc.file_name}' ya estaba asimilado al ERP "
+                    f"(factura {doc.entity_id}). No se reimporta."
+                )
+            if not doc.file_path or not os.path.exists(doc.file_path):
+                return f"Error: no se encuentra el fichero de '{doc.file_name}'."
+
+            with open(doc.file_path, "rb") as f:
+                content = f.read()
+            mime = doc.file_type or "application/pdf"
+            uploaded_by = doc.uploaded_by
+            tid = doc.tenant_id
+
+            data = await extract_invoice_data(content, mime, tenant_id=tid, db=db)
+            draft = data.to_dict()
+            draft["source_document_id"] = str(doc.id)
+            draft["apply_stock"] = False
+
+            results = await import_received_invoices(db, tid, [draft], uploaded_by)
+
+        r = results[0] if results else {}
+        if not r.get("ok"):
+            return f"No se pudo importar '{doc.file_name}': {r.get('error', 'error desconocido')}"
+        if r.get("duplicate"):
+            return (
+                f"'{doc.file_name}' ya estaba en el ERP (factura {r.get('invoice_number')}). "
+                "No se ha duplicado."
+            )
+        return (
+            f"Factura importada al ERP desde '{doc.file_name}': "
+            f"nº {r.get('invoice_number')} (id {r.get('invoice_id')})."
+        )
+    except Exception as e:
+        logger.exception("[IMPORT-DOC] fallo importando documento %s", document_id)
+        return f"Error importando el documento: {e}"
+
+
+@tool
 async def classify_document(tenant_id: str, document_id: str) -> str:
     """
     Clasifica un documento subido: detecta tipo (factura, contrato, extracto, nómina),
@@ -393,6 +466,7 @@ async def _search_documents_semantic_async(tenant_id: str, query: str, limit: in
 
 tools = [
     classify_document,
+    import_invoice_document,
     search_documents_semantic,
     create_document,
     list_tenant_documents,

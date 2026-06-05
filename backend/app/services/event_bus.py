@@ -7,17 +7,20 @@ Cuando un agente o endpoint crea/modifica datos relevantes, llaman a
 Esto busca todos los Workflows activos con trigger_type='event_based' del tenant
 que escuchen ese evento (o "any") y lanza una Task+WorkflowExecution para cada uno.
 
-Eventos disponibles:
+Eventos que se EMITEN hoy (triggers funcionales):
   - invoice_created      → cuando se crea una factura
   - invoice_paid         → cuando una factura pasa a estado 'paid'
-  - invoice_overdue      → cuando una factura vence sin pagar
   - client_created       → cuando se registra un nuevo cliente
-  - document_uploaded    → cuando se sube un documento
-  - document_processed   → cuando un documento termina de procesarse
+  - employee_created     → cuando se da de alta un empleado
+  - document_processed   → cuando un documento termina de procesarse/clasificarse
   - payroll_created      → cuando se genera una nómina individual
   - payrolls_bulk_created → cuando se genera un lote de nóminas
-  - task_completed       → cuando una tarea IA termina con éxito
-  - task_failed          → cuando una tarea IA falla
+  - payrolls_approved    → cuando se aprueba un lote de nóminas
+  - invoice_overdue      → factura vencida sin cobrar (chequeo diario de alertas)
+
+Eventos PENDIENTES de cablear (no emitidos todavía; no usar como trigger):
+  - document_uploaded    → hoy cubierto por document_processed
+  - task_completed / task_failed → requiere enganche en el orquestador
 """
 
 from __future__ import annotations

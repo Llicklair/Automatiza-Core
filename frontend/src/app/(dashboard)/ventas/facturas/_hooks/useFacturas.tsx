@@ -45,15 +45,27 @@ export function useFacturas() {
         const now = new Date();
         const month = now.getMonth();
         const year = now.getFullYear();
-        const thisMonth = invoices.filter(inv => {
+        const todayStr = now.toISOString().slice(0, 10);
+        // Solo facturas de venta (emitidas) cuentan para estos KPIs.
+        const issued = invoices.filter(i => (i.invoice_type ?? "issued") === "issued");
+        // "Sin cobrar" = emitida pero no pagada (sent/pending/overdue); draft aún no se ha emitido.
+        const isUnpaid = (s: string) => s === "sent" || s === "pending" || s === "overdue";
+
+        const thisMonth = issued.filter(inv => {
             if (!inv.date) return false;
             const d = new Date(inv.date);
             return d.getMonth() === month && d.getFullYear() === year;
         });
         return {
-            facturadoMes: thisMonth.reduce((s, i) => s + Number(i.amount_total), 0),
-            pendienteCobro: invoices.filter(i => i.status === "pending").reduce((s, i) => s + Number(i.amount_total), 0),
-            vencidas: invoices.filter(i => i.status === "overdue").length,
+            facturadoMes: thisMonth.reduce((s, i) => s + Number(i.amount_total || 0), 0),
+            pendienteCobro: issued
+                .filter(i => isUnpaid(i.status))
+                .reduce((s, i) => s + Number(i.amount_total || 0), 0),
+            // Vencida = sin cobrar y con fecha de vencimiento pasada (estado "overdue"
+            // casi nunca se persiste; se deriva de due_date).
+            vencidas: issued.filter(
+                i => isUnpaid(i.status) && i.due_date && i.due_date.slice(0, 10) < todayStr
+            ).length,
             numFacturasMes: thisMonth.length,
         };
     }, [invoices]);

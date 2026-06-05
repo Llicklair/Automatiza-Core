@@ -37,11 +37,77 @@ def _heuristic_classify(intent: str) -> str:
     return best if scores[best] > 0 else "chat"
 
 
+# Frases referenciales que aluden a un contexto previo no especificado. El
+# Coordinador tendía a inventarse un plan y EJECUTARLO ante estas instrucciones
+# (causa raíz C del smoke). Solo se marcan como ambiguas si además la
+# instrucción no aporta nada concreto (ni dominio reconocible ni cifras), para
+# no bloquear instrucciones válidas tipo «crea la factura de 500€ como siempre».
+_VAGUE_PHRASES: tuple[str, ...] = (
+    "lo de siempre",
+    "como siempre",
+    "lo habitual",
+    "lo de antes",
+    "lo de costumbre",
+    "lo mismo de siempre",
+    "lo típico",
+    "lo tipico",
+    "ya sabes",
+    "como el otro día",
+    "como el otro dia",
+)
+
+
+def needs_clarification(intent: str) -> tuple[bool, str]:
+    """Detecta instrucciones ambiguas que NO deben ejecutarse a ciegas.
+
+    Determinista y conservador: marca ambigüedad solo si hay una frase vaga
+    («lo de siempre»…) Y la instrucción carece de contenido concreto (sin
+    dominio reconocible ni cifras). Devuelve (ambigua, pregunta_de_aclaración).
+    """
+    text = (intent or "").lower().strip()
+    if not text:
+        return True, "No he recibido ninguna instrucción. ¿Qué quieres que haga?"
+    vague = next((p for p in _VAGUE_PHRASES if p in text), None)
+    if not vague:
+        return False, ""
+    has_domain = any(kw in text for kws in _DOMAIN_KEYWORDS.values() for kw in kws)
+    has_number = any(c.isdigit() for c in text)
+    if has_domain or has_number:
+        return False, ""
+    return (
+        True,
+        f"Tu instrucción es ambigua («{vague}»): no sé a qué operación concreta te "
+        "refieres. Dime qué quieres hacer y sobre qué (p. ej. «crea una factura de "
+        "500€ a Acme»). Por seguridad no ejecuto nada hasta tenerlo claro.",
+    )
+
+
 async def validate_node(state: OrchestratorState) -> OrchestratorState:
     """
     Validación determinista pre-ejecución.
     Verifica que el plan es ejecutable antes de invocar ningún agente o LLM.
     """
+    # Guarda de ambigüedad: ante una instrucción referencial sin nada concreto
+    # («haz lo de siempre con Acme»), pedir aclaración en vez de ejecutar un
+    # plan inventado (causa raíz C del smoke 2026-06-03).
+    ambiguous, question = needs_clarification(state.get("user_intent", ""))
+    if ambiguous:
+        logger.info(
+            "[VALIDATE] Intención ambigua → se pide aclaración en vez de ejecutar: %s",
+            (state.get("user_intent") or "")[:120],
+        )
+        # Marca de aclaración: no es un error real (no se ejecutó nada), sino una
+        # petición de concreción. El frontend la usa para mostrarla como mensaje
+        # normal en vez de "Error: …".
+        meta = dict(state.get("additional_metadata") or {})
+        meta["clarification"] = True
+        return {
+            **state,
+            "status": TaskStatus.FAILED,
+            "error_message": question,
+            "additional_metadata": meta,
+        }
+
     plan = state.get("plan", [])
     if not plan:
         # Fallback heurístico: el LLM no pudo descomponer la tarea (prompt

@@ -3,7 +3,14 @@
 Extracted from api/v1/routes/reports/_helpers.py.
 """
 
+import asyncio
 import logging
+
+# Cota dura para el resumen por IA dentro del request del snapshot. El cliente
+# LLM trae timeout de 30 s, demasiado para un GET: si el proveedor no responde
+# (típico en BYOK sin clave) o va lento, cortamos y devolvemos el determinista
+# —que es instantáneo— en vez de bloquear la página varios segundos.
+_RESUMEN_LLM_TIMEOUT_S = 8.0
 
 from app.services.reports._schemas import (
     FiscalIRPF,
@@ -111,14 +118,16 @@ async def generate_resumen_ejecutivo(
 
         from langchain_core.messages import HumanMessage
 
-        response = await llm.ainvoke([HumanMessage(content=prompt)])
+        response = await asyncio.wait_for(
+            llm.ainvoke([HumanMessage(content=prompt)]), timeout=_RESUMEN_LLM_TIMEOUT_S
+        )
         ai_resumen = response.content.strip()
 
         if len(ai_resumen) > 50:
             _logger.info("[REPORTS] Resumen ejecutivo generado por IA")
             return ai_resumen
 
-    except Exception as e:
+    except (Exception, asyncio.TimeoutError) as e:
         _logger.warning("[REPORTS] IA no disponible para resumen, usando determinista: %s", e)
 
     return deterministic
@@ -166,11 +175,13 @@ async def generate_resumen_fiscal(
 
         from langchain_core.messages import HumanMessage
 
-        response = await llm.ainvoke([HumanMessage(content=prompt)])
+        response = await asyncio.wait_for(
+            llm.ainvoke([HumanMessage(content=prompt)]), timeout=_RESUMEN_LLM_TIMEOUT_S
+        )
         ai_resumen = response.content.strip()
         if len(ai_resumen) > 50:
             return ai_resumen
-    except Exception as e:
+    except (Exception, asyncio.TimeoutError) as e:
         _logger.warning("[REPORTS] IA no disponible para resumen fiscal: %s", e)
 
     return deterministic

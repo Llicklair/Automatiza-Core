@@ -18,7 +18,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.db.models.billing import Invoice, InvoiceLine
 from app.db.models.crm import Client
@@ -115,8 +115,64 @@ async def import_received_invoices(
     return results
 
 
+async def _link_source_document(db, tenant_id: UUID, draft: dict, invoice_id) -> None:
+    """Marca el documento origen (si el draft trae `source_document_id`) como
+    importado y lo enlaza a la factura creada.
+
+    Deja el documento con `entity_type='invoice'`, `entity_id=<factura>` y
+    `status='imported'`. Una asimilación automática puede así saltarse los
+    documentos ya procesados (no reimporta) y la UI puede mostrar el vínculo.
+    """
+    doc_id = draft.get("source_document_id")
+    if not doc_id:
+        return
+    from app.db.models.tenant import TenantDocument
+
+    try:
+        await db.execute(
+            update(TenantDocument)
+            .where(
+                TenantDocument.id == doc_id,
+                TenantDocument.tenant_id == tenant_id,
+            )
+            .values(entity_type="invoice", entity_id=invoice_id, status="imported")
+        )
+    except Exception as e:  # noqa: BLE001 — el enlace es best-effort, no debe tumbar el import
+        logger.warning("[INVOICE-IMPORT] no se pudo enlazar el documento %s: %s", doc_id, e)
+
+
 async def _import_one(db, tenant_id: UUID, draft: dict, user_id: UUID | None) -> dict:
     supplier = await _resolve_supplier(db, tenant_id, draft.get("emisor") or {})
+
+    # Idempotencia: una factura recibida queda identificada por (proveedor,
+    # número del proveedor). Si ya existe, NO creamos otra — así reimportar el
+    # mismo documento (o una automatización por evento que reescanee la carpeta)
+    # no genera duplicados. El número de recibida lo pone el proveedor, por eso
+    # la clave es proveedor+número, no solo el número.
+    inv_number = (draft.get("invoice_number") or "").strip() or None
+    if inv_number:
+        dup = await db.execute(
+            select(Invoice.id).where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.client_id == supplier.id,
+                Invoice.invoice_number == inv_number,
+                Invoice.invoice_type == "received",
+            ).limit(1)
+        )
+        existing_id = dup.scalar_one_or_none()
+        if existing_id is not None:
+            # Enlazamos el documento origen a la factura ya existente (idempotente)
+            # y lo marcamos como importado para que no se reprocese.
+            await _link_source_document(db, tenant_id, draft, existing_id)
+            await db.commit()
+            return {
+                "ok": True,
+                "skipped": True,
+                "duplicate": True,
+                "invoice_id": str(existing_id),
+                "invoice_number": inv_number,
+                "reason": "Ya existía una factura recibida con ese proveedor y número.",
+            }
 
     lines_in = draft.get("lines") or []
     invoice = Invoice(
@@ -149,6 +205,9 @@ async def _import_one(db, tenant_id: UUID, draft: dict, user_id: UUID | None) ->
     await db.flush()
 
     await create_invoice_journal_entry(db, tenant_id, invoice)
+    # Enlaza el documento origen (si lo hay) a la factura recién creada y lo
+    # marca como importado → idempotencia para reescaneos/automatizaciones.
+    await _link_source_document(db, tenant_id, draft, invoice.id)
     await db.commit()
     await db.refresh(invoice)
 

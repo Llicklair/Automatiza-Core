@@ -37,7 +37,12 @@ from sqlalchemy import asc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import Invoice, VerifactuRecord
-from app.services.billing.verifactu_chain import build_payload_canonico, compute_huella
+from app.services.billing.verifactu_chain import (
+    _fmt_fecha_expedicion,
+    _fmt_fecha_hora_gen,
+    build_payload_alta,
+    compute_huella,
+)
 
 logger = logging.getLogger("billing.backfill_verifactu")
 
@@ -173,16 +178,19 @@ async def backfill_tenant_verifactu_chain(
             continue
 
         serie = _infer_serie(invoice.invoice_number or "")
-        fecha_iso = invoice.date.isoformat() if invoice.date is not None else ""
         importe = invoice.amount_total if invoice.amount_total is not None else Decimal("0.00")
+        cuota = invoice.tax_amount if invoice.tax_amount is not None else Decimal("0.00")
+        tipo_factura = "R1" if (invoice.invoice_type or "").lower() == "rectificativa" else "F1"
 
-        payload = build_payload_canonico(
-            nif_emisor=nif_emisor,
-            serie_factura=serie,
-            numero_factura=invoice.invoice_number or "",
-            fecha_emision_iso=fecha_iso,
+        payload = build_payload_alta(
+            id_emisor=nif_emisor,
+            num_serie_factura=invoice.invoice_number or "",
+            fecha_expedicion=_fmt_fecha_expedicion(invoice.date),
+            tipo_factura=tipo_factura,
+            cuota_total=cuota,
             importe_total=importe,
             huella_anterior=last_huella,
+            fecha_hora_gen=_fmt_fecha_hora_gen(invoice.date),
         )
         huella = compute_huella(payload)
 

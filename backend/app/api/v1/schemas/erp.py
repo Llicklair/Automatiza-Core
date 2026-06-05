@@ -136,6 +136,8 @@ class InvoiceResponse(BaseModel):
     amount_total: float
     status: str
     invoice_type: str
+    rectifies_invoice_id: UUID | None = None
+    rectification_reason: str | None = None
     notes: str | None = None
     terms: str | None = None
     external_id: str | None = None

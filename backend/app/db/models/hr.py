@@ -104,6 +104,7 @@ class Payroll(Base):
     ss_desempleo = Column(Numeric(10, 2), default=0)
     ss_formacion_profesional = Column(Numeric(10, 2), default=0)
     ss_mei = Column(Numeric(10, 2), default=0)
+    cuota_solidaridad = Column(Numeric(10, 2), default=0)  # parte trabajador (>base máx.)
     irpf = Column(Numeric(10, 2), default=0)
     pct_irpf = Column(Numeric(5, 2), default=15.00)  # % IRPF aplicado
     anticipos = Column(Numeric(10, 2), default=0)

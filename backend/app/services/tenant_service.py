@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models.models import Tenant, TenantLlmConfig
 from app.services._tenant_schemas import LlmProviderConfig
 from app.services.encryption import decrypt_credentials, encrypt_credentials
@@ -92,15 +93,83 @@ def _build_providers_out(keys: dict) -> dict[str, Any]:
     return providers_out
 
 
+# Entornos donde Claude Code CLI es un proveedor válido (lo tiene el dev local,
+# NO el usuario final con BYOK).
+_DEV_ENVIRONMENTS = {"development", "dev", "local", "testing"}
+
+
+def evaluate_ai_readiness(
+    active_provider: str | None,
+    keys: dict,
+    environment: str = "production",
+    cli_available: bool | None = None,
+) -> tuple[bool, str]:
+    """Indica si la IA del tenant está lista para usarse (modelo BYOK).
+
+    Función pura y sin efectos: la consume el endpoint de configuración para que
+    el frontend muestre un aviso claro con enlace, en vez de dejar que la IA
+    falle con un error críptico al primer uso.
+
+    `keys`: dict provider -> {api_key, model, enabled} (SIN enmascarar).
+    `cli_available`: si el binario de Claude Code CLI está disponible. Si es None
+    se infiere por `environment` (solo como respaldo).
+    Devuelve (lista: bool, motivo: str).
+    """
+    provider = (active_provider or "").lower()
+
+    if provider == "claude_code":
+        # Claude Code CLI: la IA está lista si el binario está disponible (máquina
+        # del dev/fundador). Si falta (gestor típico con BYOK), NO lo está y hay
+        # que configurar una clave de proveedor. Si no se conoce, se infiere por
+        # entorno como respaldo.
+        if cli_available is None:
+            cli_available = (environment or "").lower() in _DEV_ENVIRONMENTS
+        if cli_available:
+            return True, "Usando Claude Code CLI."
+        return (
+            False,
+            "La IA aún no está configurada. Añade la clave de tu proveedor "
+            "(Anthropic, OpenAI…) en Configuración → Claves API.",
+        )
+
+    if provider not in ALLOWED_LLM_PROVIDERS:
+        return (
+            False,
+            "No hay proveedor de IA seleccionado. Configúralo en "
+            "Configuración → Claves API.",
+        )
+
+    pdata = (keys or {}).get(provider) or {}
+    if not pdata.get("api_key"):
+        return (
+            False,
+            f"Falta la clave de IA de «{provider}». Añádela en "
+            "Configuración → Claves API.",
+        )
+    if not pdata.get("enabled"):
+        return (
+            False,
+            f"El proveedor de IA «{provider}» está desactivado. Actívalo en "
+            "Configuración → Claves API.",
+        )
+    return True, "IA configurada."
+
+
 async def get_llm_config(db: AsyncSession, tenant_id: UUID) -> dict[str, Any]:
     result = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id))
     cfg = result.scalar_one_or_none()
     keys = _decrypt_keys(cfg)
 
+    active = cfg.active_llm_provider if cfg else "claude_code"
+    ai_ready, ai_reason = evaluate_ai_readiness(
+        active, keys, settings.ENVIRONMENT, cli_available=_find_claude_bin() is not None
+    )
     return {
-        "active_llm_provider": cfg.active_llm_provider if cfg else "claude_code",
+        "active_llm_provider": active,
         "active_embeddings_provider": cfg.active_embeddings_provider if cfg else "local",
         "providers": _build_providers_out(keys),
+        "ai_ready": ai_ready,
+        "ai_reason": ai_reason,
     }
 
 
@@ -150,10 +219,18 @@ async def update_llm_config(
     await db.commit()
     await db.refresh(cfg)
 
+    ai_ready, ai_reason = evaluate_ai_readiness(
+        cfg.active_llm_provider,
+        existing_keys,
+        settings.ENVIRONMENT,
+        cli_available=_find_claude_bin() is not None,
+    )
     return {
         "active_llm_provider": cfg.active_llm_provider,
         "active_embeddings_provider": cfg.active_embeddings_provider,
         "providers": _build_providers_out(existing_keys),
+        "ai_ready": ai_ready,
+        "ai_reason": ai_reason,
     }
 
 

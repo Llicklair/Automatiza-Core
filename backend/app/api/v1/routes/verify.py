@@ -32,8 +32,10 @@ async def verify_invoice_by_huella(huella: str, db: AsyncSession = Depends(get_d
     un flag `integrity_ok` que indica si la huella almacenada coincide con
     el SHA-256 recomputado del payload canónico.
     """
-    huella = (huella or "").strip().lower()
-    if len(huella) != 64 or not all(c in "0123456789abcdef" for c in huella):
+    # La AEAT expresa la huella en hex MAYÚSCULAS; aceptamos cualquier caja en la
+    # entrada y normalizamos a mayúsculas para casar con lo almacenado.
+    huella = (huella or "").strip().upper()
+    if len(huella) != 64 or not all(c in "0123456789ABCDEF" for c in huella):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Huella inválida — se espera SHA-256 hexadecimal (64 chars).",

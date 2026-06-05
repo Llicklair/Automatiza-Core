@@ -146,6 +146,7 @@ class PayrollBase(BaseModel):
     ss_desempleo: float = 0.0
     ss_formacion_profesional: float = 0.0
     ss_mei: float = 0.0
+    cuota_solidaridad: float = 0.0
     irpf: float = 0.0
     other_deductions: float = 0.0
     deductions: float = 0.0
@@ -186,6 +187,7 @@ class PayrollCalculateResponse(BaseModel):
     ss_desempleo: float  # 1.55%
     ss_formacion_profesional: float  # 0.10%
     ss_mei: float  # 0.12%
+    cuota_solidaridad: float = 0.0  # cotización adicional de solidaridad (> base máx.)
     total_ss: float
     irpf: float
     deductions: float

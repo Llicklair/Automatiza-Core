@@ -33,21 +33,96 @@ _SS_DESEMPLEO = 0.0155
 _SS_FP = 0.0010
 _SS_MEI = 0.0010
 
+# Tope máximo de la base de cotización MENSUAL (Régimen General). La SS se
+# cotiza sobre min(salario, tope): por encima del tope NO se cotiza (salvo la
+# cuota de solidaridad sobre el exceso, no incluida en este MVP). El IRPF, en
+# cambio, se retiene sobre el salario íntegro sin tope.
+# Fuente: Órdenes anuales de cotización (BOE). Revisar cada año.
+_BASE_MAX_COTIZACION_MENSUAL = {
+    2024: 4720.50,
+    2025: 4909.50,
+    2026: 5101.20,
+}
+_BASE_MAX_DEFAULT_YEAR = max(_BASE_MAX_COTIZACION_MENSUAL)
+
+
+def base_maxima_cotizacion(year: int | None = None) -> float:
+    """Tope mensual de cotización del año dado. Si el año no está en la tabla,
+    usa el más reciente conocido (las órdenes posteriores solo suben el tope)."""
+    if year in _BASE_MAX_COTIZACION_MENSUAL:
+        return _BASE_MAX_COTIZACION_MENSUAL[year]
+    return _BASE_MAX_COTIZACION_MENSUAL[_BASE_MAX_DEFAULT_YEAR]
+
+
+# Cuota de solidaridad (RD-ley 2/2023, vigente desde 2025): cotización adicional
+# sobre la parte del salario que EXCEDE la base máxima, en tres tramos. Se
+# reparte entre empresa y trabajador en la MISMA proporción que las
+# contingencias comunes (trabajador 4,70 de 28,30 = 16,61 %). Aquí se calcula la
+# parte del TRABAJADOR, que es la que reduce el neto. Tipos TOTALES por año (BOE);
+# antes de 2025 no existía. Revisar cada año (suben progresivamente hasta 2045).
+_CC_TOTAL = 0.2830  # contingencias comunes: 23,60 empresa + 4,70 trabajador
+_SOLIDARIDAD_FRACCION_TRABAJADOR = _SS_CONTINGENCIAS / _CC_TOTAL  # ≈ 0,1661
+# Tramos como múltiplos de la base máxima: [1,0–1,1), [1,1–1,5), [1,5–∞).
+_SOLIDARIDAD_TRAMOS = ((1.0, 1.10), (1.10, 1.50), (1.50, None))
+# Tipos totales (empresa + trabajador) por tramo y año.
+_CUOTA_SOLIDARIDAD_TIPOS = {
+    2025: (0.0092, 0.0100, 0.0117),
+    2026: (0.0115, 0.0125, 0.0146),
+}
+
+
+def cuota_solidaridad_trabajador(base_salary: float, year: int | None = None) -> float:
+    """Parte de la cuota de solidaridad a cargo del TRABAJADOR (reduce el neto).
+
+    Cotización adicional sobre el salario que supera la base máxima mensual, en
+    tres tramos. No existía antes de 2025 → 0. Devuelve 0 si el salario no supera
+    el tope. Reparto trabajador ≈ 16,61 % (misma proporción que contingencias
+    comunes), conforme a la definición legal.
+    """
+    base_salary = float(base_salary)
+    tope = base_maxima_cotizacion(year)
+    tipos = _CUOTA_SOLIDARIDAD_TIPOS.get(year if year is not None else _BASE_MAX_DEFAULT_YEAR)
+    if tipos is None or base_salary <= tope:
+        return 0.0
+    total = 0.0
+    for (mult_low, mult_high), tipo in zip(_SOLIDARIDAD_TRAMOS, tipos):
+        low = tope * mult_low
+        high = tope * mult_high if mult_high is not None else float("inf")
+        portion = min(base_salary, high) - low
+        if portion > 0:
+            total += portion * tipo * _SOLIDARIDAD_FRACCION_TRABAJADOR
+    return round(total, 2)
+
+
 VALID_CANDIDATE_STATUSES = {"new", "reviewed", "shortlisted", "rejected", "hired"}
 
 
 # ── Calculo de nomina ────────────────────────────────────────────────────────
 
 
-def calc_payroll(base_salary: float, irpf_rate: float) -> dict:
-    """Calcula deducciones de SS e IRPF sobre el salario base mensual."""
-    ss_cc = round(base_salary * _SS_CONTINGENCIAS, 2)
-    ss_des = round(base_salary * _SS_DESEMPLEO, 2)
-    ss_fp = round(base_salary * _SS_FP, 2)
-    ss_mei = round(base_salary * _SS_MEI, 2)
+def calc_payroll(base_salary: float, irpf_rate: float, year: int | None = None) -> dict:
+    """Calcula deducciones de SS e IRPF sobre el salario base mensual.
+
+    La SS se cotiza sobre la BASE DE COTIZACIÓN, topada por la base máxima
+    mensual del año: si el salario supera el tope, la SS se calcula sobre el
+    tope, no sobre el salario completo (antes se sobre-deducía a los sueldos
+    altos). El IRPF se retiene sobre el salario íntegro, sin tope.
+
+    `year`: año del periodo para elegir el tope; si es None usa el más reciente.
+    """
+    base_salary = float(base_salary)
+    irpf_rate = float(irpf_rate)
+    tope = base_maxima_cotizacion(year)
+    base_cotizacion = min(base_salary, tope) if base_salary > 0 else 0.0
+    ss_cc = round(base_cotizacion * _SS_CONTINGENCIAS, 2)
+    ss_des = round(base_cotizacion * _SS_DESEMPLEO, 2)
+    ss_fp = round(base_cotizacion * _SS_FP, 2)
+    ss_mei = round(base_cotizacion * _SS_MEI, 2)
     total_ss = round(ss_cc + ss_des + ss_fp + ss_mei, 2)
     irpf = round(base_salary * (irpf_rate / 100), 2)
-    deductions = round(total_ss + irpf, 2)
+    # Cuota de solidaridad del trabajador (solo si el salario supera el tope).
+    solidaridad = cuota_solidaridad_trabajador(base_salary, year)
+    deductions = round(total_ss + irpf + solidaridad, 2)
     net = round(base_salary - deductions, 2)
     return {
         "ss_contingencias_comunes": ss_cc,
@@ -56,8 +131,10 @@ def calc_payroll(base_salary: float, irpf_rate: float) -> dict:
         "ss_mei": ss_mei,
         "total_ss": total_ss,
         "irpf": irpf,
+        "cuota_solidaridad": solidaridad,
         "deductions": deductions,
         "net_salary": net,
+        "base_cotizacion": round(base_cotizacion, 2),
     }
 
 

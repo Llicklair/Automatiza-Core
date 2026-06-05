@@ -325,8 +325,22 @@ async def get_recent_files(
     integration_type: str,
     db: AsyncSession,
 ) -> list:
-    """Obtiene archivos recientes de Google Drive u OneDrive."""
-    token = await get_oauth_access_token(db, tenant_id, integration_type)
+    """Obtiene archivos recientes de Google Drive u OneDrive.
+
+    Si la integración no está conectada o el token caducó (el refresh del
+    proveedor devuelve 4xx), se trata como "no conectado": se devuelve lista
+    vacía en vez de propagar un 500 con el error del proveedor. El estado real
+    de conexión lo reporta el endpoint `/status`.
+    """
+    try:
+        token = await get_oauth_access_token(db, tenant_id, integration_type)
+    except Exception as e:
+        logger.warning(
+            "%s/recent: no se pudo refrescar el token (¿reconectar la integración?): %s",
+            integration_type,
+            e,
+        )
+        return []
     if not token:
         return []
 

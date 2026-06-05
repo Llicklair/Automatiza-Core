@@ -7,7 +7,8 @@ from app.db.models.billing import Invoice, VerifactuRecord
 from app.db.models.crm import Client
 from app.services.billing.verifactu_chain import (
     append_verifactu_record,
-    build_payload_canonico,
+    build_payload_alta,
+    build_payload_anulacion,
     compute_huella,
     maybe_append_verifactu_record,
     verify_chain_integrity,
@@ -27,40 +28,105 @@ def _make_invoice(tenant_id, client_id, *, invoice_number: str, importe: Decimal
     )
 
 
-class TestBuildPayloadCanonico:
+def _payload_alta(**over):
+    base = dict(
+        id_emisor="B12345678",
+        num_serie_factura="A2026-0001",
+        fecha_expedicion="14-05-2026",
+        tipo_factura="F1",
+        cuota_total=Decimal("21.00"),
+        importe_total=Decimal("121.00"),
+        huella_anterior=None,
+        fecha_hora_gen="2026-05-14T10:00:00+00:00",
+    )
+    base.update(over)
+    return build_payload_alta(**base)
+
+
+class TestVectorOficialAEAT:
+    """Conformidad con el vector de prueba publicado por la AEAT en
+    «Detalle de las especificaciones técnicas para la generación de la huella».
+    Reproducir su hash exacto demuestra que el formato canónico es el oficial.
+    """
+
+    EJEMPLO = (
+        "IDEmisorFactura=89890001K&NumSerieFactura=12345678/G33"
+        "&FechaExpedicionFactura=01-01-2024&TipoFactura=F1"
+        "&CuotaTotal=12.35&ImporteTotal=123.45&Huella="
+        "&FechaHoraHusoGenRegistro=2024-01-01T19:20:30+01:00"
+    )
+    HUELLA = "3C464DAF61ACB827C65FDA19F352A4E3BDC2C640E9E9FC4CC058073F38F12F60"
+
+    def test_cadena_canonica_coincide_con_el_ejemplo(self):
+        payload = build_payload_alta(
+            id_emisor="89890001K",
+            num_serie_factura="12345678/G33",
+            fecha_expedicion="01-01-2024",
+            tipo_factura="F1",
+            cuota_total=Decimal("12.35"),
+            importe_total=Decimal("123.45"),
+            huella_anterior=None,
+            fecha_hora_gen="2024-01-01T19:20:30+01:00",
+        )
+        assert payload == self.EJEMPLO
+
+    def test_huella_coincide_con_el_vector_oficial(self):
+        assert compute_huella(self.EJEMPLO) == self.HUELLA
+
+
+class TestBuildPayloadAlta:
     def test_formato_determinista(self):
-        a = build_payload_canonico(
-            "B12345678", "A", "A2026-0001",
-            "2026-05-14T10:00:00+00:00", Decimal("121.00"), None,
-        )
-        b = build_payload_canonico(
-            "B12345678", "A", "A2026-0001",
-            "2026-05-14T10:00:00+00:00", Decimal("121.00"), None,
-        )
-        assert a == b
-        assert "B12345678" in a
-        assert "A2026-0001" in a
-        assert "121.00" in a
+        assert _payload_alta() == _payload_alta()
+        p = _payload_alta()
+        assert "IDEmisorFactura=B12345678" in p
+        assert "NumSerieFactura=A2026-0001" in p
+        assert "ImporteTotal=121.00" in p
+        assert "CuotaTotal=21.00" in p
+
+    def test_orden_oficial_de_campos(self):
+        p = _payload_alta()
+        campos = [kv.split("=", 1)[0] for kv in p.split("&")]
+        assert campos == [
+            "IDEmisorFactura", "NumSerieFactura", "FechaExpedicionFactura",
+            "TipoFactura", "CuotaTotal", "ImporteTotal", "Huella",
+            "FechaHoraHusoGenRegistro",
+        ]
 
     def test_huella_anterior_vacia_si_none(self):
-        result = build_payload_canonico(
-            "B12345678", "A", "A2026-0001",
-            "2026-05-14T10:00:00+00:00", Decimal("121.00"), None,
-        )
-        assert result.endswith("|")
+        assert "&Huella=&" in _payload_alta(huella_anterior=None)
 
-    def test_importe_normalizado_2_decimales(self):
-        a = build_payload_canonico("X", "A", "1", "t", Decimal("121"), None)
-        b = build_payload_canonico("X", "A", "1", "t", Decimal("121.00"), None)
-        c = build_payload_canonico("X", "A", "1", "t", Decimal("121.000"), None)
+    def test_huella_anterior_encadenada(self):
+        assert "&Huella=ABCDEF&" in _payload_alta(huella_anterior="ABCDEF")
+
+    def test_importe_2_decimales_insensible_a_ceros(self):
+        a = _payload_alta(importe_total=Decimal("121"))
+        b = _payload_alta(importe_total=Decimal("121.00"))
+        c = _payload_alta(importe_total=Decimal("121.000"))
         assert a == b == c
 
 
+class TestBuildPayloadAnulacion:
+    def test_subconjunto_de_campos_anulacion(self):
+        p = build_payload_anulacion(
+            id_emisor="B12345678",
+            num_serie_factura="A2026-0001",
+            fecha_expedicion="14-05-2026",
+            huella_anterior=None,
+            fecha_hora_gen="2026-05-14T10:00:00+00:00",
+        )
+        campos = [kv.split("=", 1)[0] for kv in p.split("&")]
+        assert campos == [
+            "IDEmisorFacturaAnulada", "NumSerieFacturaAnulada",
+            "FechaExpedicionFacturaAnulada", "Huella", "FechaHoraHusoGenRegistro",
+        ]
+
+
 class TestComputeHuella:
-    def test_es_sha256_hex(self):
+    def test_es_sha256_hex_mayusculas(self):
         h = compute_huella("payload-prueba")
         assert len(h) == 64
-        assert all(c in "0123456789abcdef" for c in h)
+        # La AEAT exige el hex en MAYÚSCULAS.
+        assert all(c in "0123456789ABCDEF" for c in h)
 
     def test_determinista(self):
         assert compute_huella("misma-cadena") == compute_huella("misma-cadena")

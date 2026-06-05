@@ -17,17 +17,23 @@ import { api } from "@/lib/api";
  */
 export function LlmNotConfiguredBanner() {
     const [show, setShow] = useState(false);
+    const [reason, setReason] = useState("");
 
     useEffect(() => {
         api.tenant
             .getLlmConfig()
             .then(cfg => {
-                const active = cfg.active_llm_provider;
-                // claude_code funciona con el CLI local (sin API key). En otro
-                // caso, el proveedor activo debe tener clave configurada.
-                const configured =
-                    active === "claude_code" || Boolean(cfg.providers?.[active]?.has_key);
-                setShow(!configured);
+                // Señal autoritativa del backend (modelo BYOK). Importante:
+                // `claude_code` (CLI) NO está disponible para un usuario final en
+                // producción, así que un tenant nuevo SÍ debe ver el aviso.
+                // Fallback a la heurística antigua si el backend no envía ai_ready.
+                const ready =
+                    typeof cfg.ai_ready === "boolean"
+                        ? cfg.ai_ready
+                        : cfg.active_llm_provider === "claude_code" ||
+                          Boolean(cfg.providers?.[cfg.active_llm_provider]?.has_key);
+                setShow(!ready);
+                if (cfg.ai_reason) setReason(cfg.ai_reason);
             })
             .catch(() => {});
     }, []);
@@ -38,8 +44,8 @@ export function LlmNotConfiguredBanner() {
         <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <span className="flex-1 text-foreground">
-                La IA aún no está configurada. Añade tu clave de API para que tus agentes
-                puedan trabajar.
+                {reason ||
+                    "La IA aún no está configurada. Añade tu clave de API para que tus agentes puedan trabajar."}
             </span>
             <Link
                 href="/configuracion/api-keys"

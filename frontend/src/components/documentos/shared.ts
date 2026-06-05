@@ -1,7 +1,10 @@
 import { FileText, FileImage, FileArchive } from "lucide-react";
-import { getToken } from "@/lib/api/client";
+import { BASE, getToken } from "@/lib/api/client";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+// Reutiliza la BASE derivada del host (client.ts) en vez de fijar 127.0.0.1,
+// para que Documentos funcione también vía LAN (móvil del empleado). El override
+// por env se respeta si alguna vez se define.
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? BASE;
 
 export function authHeaders() {
     const token = getToken() ?? "";

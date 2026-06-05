@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from app.agents.hr._payroll_pdf import _generate_and_save_payroll_pdf
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee, Payroll
+from app.services.hr.queries import calc_payroll
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +61,17 @@ async def _create_payroll_async(
             base_salary = float(employee.base_salary) if employee.base_salary else 0
             irpf_rate = float(employee.irpf_rate) if employee.irpf_rate is not None else 15.0
 
-            ss_cc = round(base_salary * 0.0470, 2)
-            ss_des = round(base_salary * 0.0155, 2)
-            ss_fp = round(base_salary * 0.0010, 2)
-            ss_mei = round(base_salary * 0.0013, 2)
-            irpf = round(base_salary * irpf_rate / 100, 2)
-            total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf + deductions
-            net_salary = max(0.0, base_salary - total_ded)
+            # Cálculo unificado: mismas tasas y tope de cotización que el resto
+            # de la app (calc_payroll), evitando que la nómina creada por la IA
+            # difiera de la creada vía API.
+            calc = calc_payroll(base_salary, irpf_rate, year=year)
+            ss_cc = calc["ss_contingencias_comunes"]
+            ss_des = calc["ss_desempleo"]
+            ss_fp = calc["ss_formacion_profesional"]
+            ss_mei = calc["ss_mei"]
+            irpf = calc["irpf"]
+            total_ded = round(calc["deductions"] + deductions, 2)
+            net_salary = max(0.0, round(base_salary - total_ded, 2))
 
             last_day = monthrange(year, month)[1]
             start_date = datetime(year, month, 1, tzinfo=UTC)
@@ -103,6 +108,7 @@ async def _create_payroll_async(
                 ss_desempleo=ss_des,
                 ss_formacion_profesional=ss_fp,
                 ss_mei=ss_mei,
+                cuota_solidaridad=calc["cuota_solidaridad"],
                 irpf=irpf,
                 other_deductions=deductions,
                 deductions=total_ded,
@@ -135,6 +141,7 @@ async def _create_payroll_async(
             "ss_desempleo": ss_des,
             "ss_formacion_profesional": ss_fp,
             "ss_mei": ss_mei,
+            "cuota_solidaridad": calc["cuota_solidaridad"],
             "irpf": irpf,
             "irpf_rate": irpf_rate,
             "other_deductions": deductions,
@@ -229,13 +236,14 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 base_salary = float(emp.base_salary) if emp.base_salary else 0
                 irpf_rate = float(emp.irpf_rate) if emp.irpf_rate is not None else 15.0
 
-                ss_cc = round(base_salary * 0.0470, 2)
-                ss_des = round(base_salary * 0.0155, 2)
-                ss_fp = round(base_salary * 0.0010, 2)
-                ss_mei = round(base_salary * 0.0013, 2)
-                irpf = round(base_salary * irpf_rate / 100, 2)
-                total_ded = ss_cc + ss_des + ss_fp + ss_mei + irpf
-                net_salary = max(0.0, base_salary - total_ded)
+                calc = calc_payroll(base_salary, irpf_rate, year=year)
+                ss_cc = calc["ss_contingencias_comunes"]
+                ss_des = calc["ss_desempleo"]
+                ss_fp = calc["ss_formacion_profesional"]
+                ss_mei = calc["ss_mei"]
+                irpf = calc["irpf"]
+                total_ded = calc["deductions"]
+                net_salary = max(0.0, calc["net_salary"])
 
                 db.add(
                     Payroll(
@@ -249,6 +257,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                         ss_desempleo=ss_des,
                         ss_formacion_profesional=ss_fp,
                         ss_mei=ss_mei,
+                        cuota_solidaridad=calc["cuota_solidaridad"],
                         irpf=irpf,
                         other_deductions=0,
                         deductions=total_ded,
@@ -263,6 +272,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     "ss_desempleo": ss_des,
                     "ss_formacion_profesional": ss_fp,
                     "ss_mei": ss_mei,
+                    "cuota_solidaridad": calc["cuota_solidaridad"],
                     "irpf": irpf,
                     "irpf_rate": irpf_rate,
                     "other_deductions": 0.0,

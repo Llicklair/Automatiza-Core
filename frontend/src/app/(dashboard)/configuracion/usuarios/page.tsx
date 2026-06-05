@@ -10,6 +10,8 @@ import {
 import type { Invitation, InvitationCreated, User, UserCreate } from "@/lib/api";
 
 import { useUsuarios } from "./_hooks/useUsuarios";
+import { useLanAccess } from "./_hooks/useLanAccess";
+import PortalAccessCard from "./_components/PortalAccessCard";
 
 const USER_ROLES = ["admin", "user"] as const;
 const INVITE_ROLES = ["employee", "user", "admin"] as const;
@@ -21,9 +23,11 @@ const ROLE_LABEL: Record<string, string> = {
     employee: "Empleado (solo Mi portal)",
 };
 
-function buildShareUrl(token: string): string {
-    if (typeof window === "undefined") return `/aceptar-invitacion/${token}`;
-    return `${window.location.origin}/aceptar-invitacion/${token}`;
+function buildShareUrl(token: string, base?: string | null): string {
+    // En la app de escritorio, window.location.origin es localhost (no sirve en
+    // el móvil del empleado). Si tenemos la base de LAN, se usa esa.
+    const origin = base || (typeof window === "undefined" ? "" : window.location.origin);
+    return `${origin}/aceptar-invitacion/${token}`;
 }
 
 export default function UsuariosConfigPage() {
@@ -35,6 +39,7 @@ export default function UsuariosConfigPage() {
     const [showInvite, setShowInvite] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [shareInvitation, setShareInvitation] = useState<InvitationCreated | null>(null);
+    const lan = useLanAccess();
 
     const isSelf = (u: User) => me?.id === u.id;
 
@@ -267,6 +272,8 @@ export default function UsuariosConfigPage() {
                 </div>
             </section>
 
+            <PortalAccessCard lan={lan} />
+
             {showCreate && (
                 <NewUserModal
                     onCancel={() => setShowCreate(false)}
@@ -284,6 +291,7 @@ export default function UsuariosConfigPage() {
             {shareInvitation && (
                 <ShareInvitationModal
                     invitation={shareInvitation}
+                    lanBase={lan.lanBase}
                     onClose={() => setShareInvitation(null)}
                 />
             )}
@@ -455,13 +463,17 @@ function NewInvitationModal({
 
 function ShareInvitationModal({
     invitation,
+    lanBase,
     onClose,
 }: {
     invitation: InvitationCreated;
+    lanBase?: string | null;
     onClose: () => void;
 }) {
     const [copied, setCopied] = useState(false);
-    const url = buildShareUrl(invitation.token);
+    // Si hay red local, el enlace usa la IP de LAN para que funcione en el móvil
+    // del empleado (no localhost, que solo vale en este ordenador).
+    const url = buildShareUrl(invitation.token, lanBase);
 
     async function copy() {
         try {

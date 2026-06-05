@@ -71,6 +71,7 @@ async def create_payroll_auto(payload, tenant_id, db: AsyncSession) -> Payroll:
         ss_desempleo=calc["ss_desempleo"],
         ss_formacion_profesional=calc["ss_formacion_profesional"],
         ss_mei=calc["ss_mei"],
+        cuota_solidaridad=calc["cuota_solidaridad"],
         irpf=calc["irpf"],
         other_deductions=0.0,
         deductions=calc["deductions"],
@@ -148,6 +149,7 @@ async def update_payroll(payroll_id: UUID, payload, tenant_id, db: AsyncSession)
                 "ss_desempleo": calc["ss_desempleo"],
                 "ss_formacion_profesional": calc["ss_formacion_profesional"],
                 "ss_mei": calc["ss_mei"],
+                "cuota_solidaridad": calc["cuota_solidaridad"],
                 "irpf": calc["irpf"],
                 "deductions": round(calc["deductions"] + float(payroll.other_deductions or 0), 2),
                 "net_salary": round(
@@ -206,6 +208,7 @@ def build_payroll_pdf(
     ss_des = float(payroll.ss_desempleo or 0)
     ss_fp = float(payroll.ss_formacion_profesional or 0)
     ss_mei = float(payroll.ss_mei or 0)
+    cuota_sol = float(getattr(payroll, "cuota_solidaridad", 0) or 0)
     total_ss = round(ss_cc + ss_des + ss_fp + ss_mei, 2)
     other = float(payroll.other_deductions or 0)
     net = float(payroll.net_salary or 0)
@@ -238,6 +241,7 @@ def build_payroll_pdf(
         "ss_desempleo": ss_des,
         "ss_formacion_profesional": ss_fp,
         "ss_mei": ss_mei,
+        "cuota_solidaridad": cuota_sol,
         "ss_employee": total_ss,
         "irpf": irpf,
         "pct_irpf": float(getattr(payroll, "pct_irpf", 0) or 0),

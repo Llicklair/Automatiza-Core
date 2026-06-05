@@ -10,6 +10,10 @@ export interface LlmConfigResponse {
     active_llm_provider: string;
     active_embeddings_provider: string;
     providers: Record<string, LlmProviderEntry>;
+    // BYOK: señal autoritativa del backend de si la IA está lista para usarse,
+    // y un motivo accionable. Opcionales para compatibilidad con respuestas viejas.
+    ai_ready?: boolean;
+    ai_reason?: string;
 }
 
 export interface LlmProviderConfigUpdate {

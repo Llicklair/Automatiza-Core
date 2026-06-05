@@ -9,11 +9,13 @@ agent boundary).
 from .agent import graph
 from .tools import (
     classify_document,
+    import_invoice_document,
     search_documents_semantic,
 )
 
 __all__ = [
     "graph",
     "classify_document",
+    "import_invoice_document",
     "search_documents_semantic",
 ]
