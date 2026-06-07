@@ -66,9 +66,11 @@ export function FacturasImportPanel() {
             const res = await api.erp.invoices.import(rows.map(r => r.draft));
             const movedLines = res.results.reduce((n, r) => n + (r.stock_applied?.length || 0), 0);
             const unmatched = res.results.reduce((n, r) => n + (r.stock_unmatched?.length || 0), 0);
+            const created = res.results.reduce((n, r) => n + (r.stock_created?.length || 0), 0);
             const failed = res.total - res.created;
             let msg = `${res.created} factura${res.created !== 1 ? "s" : ""} de compra creada${res.created !== 1 ? "s" : ""}`;
             if (movedLines) msg += ` · ${movedLines} línea${movedLines !== 1 ? "s" : ""} movieron stock`;
+            if (created) msg += ` · ${created} producto${created !== 1 ? "s" : ""} creado${created !== 1 ? "s" : ""}`;
             if (unmatched) msg += ` · ${unmatched} sin casar (no afectan stock)`;
             if (failed) msg += ` · ${failed} con error`;
             setSummary(msg);
@@ -170,8 +172,16 @@ export function FacturasImportPanel() {
                                 onChange={e => patch(i, "apply_stock", e.target.checked)}
                                 className="rounded border-border" />
                             <Package className="w-4 h-4 text-muted-foreground" />
-                            Actualizar stock (solo líneas que casen con el catálogo por SKU o nombre)
+                            Actualizar stock (casa por código de barras, SKU o nombre)
                         </label>
+                        {d.apply_stock && (
+                            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer ml-6">
+                                <input type="checkbox" checked={!!d.create_missing}
+                                    onChange={e => patch(i, "create_missing", e.target.checked)}
+                                    className="rounded border-border" />
+                                Crear automáticamente los productos que falten
+                            </label>
+                        )}
                     </div>
                 );
             })}

@@ -117,6 +117,24 @@ async def _match_product(db, tenant_id: UUID, description: str) -> Product | Non
     return None
 
 
+async def _create_product_from_line(db, tenant_id: UUID, ln: dict) -> Product:
+    """Crea un producto a partir de una linea de factura que no casaba con el catalogo."""
+    desc = (ln.get("description") or "").strip()[:255] or "Producto sin nombre"
+    cost = _dec(ln.get("unit_price"))
+    product = Product(
+        tenant_id=tenant_id,
+        name=desc,
+        cost_price=cost,
+        price=cost,
+        tax_percentage=_dec(ln.get("tax_percentage") or 21),
+        stock_quantity=0,
+        is_active=True,
+    )
+    db.add(product)
+    await db.flush()
+    return product
+
+
 async def _stock_ref_exists(db, tenant_id: UUID, reference: str) -> bool:
     res = await db.execute(
         select(StockMovement.id).where(StockMovement.tenant_id == tenant_id, StockMovement.reference == reference)
@@ -236,13 +254,18 @@ async def _import_one(db, tenant_id: UUID, draft: dict, user_id: UUID | None) ->
 
     stock_applied: list[dict] = []
     stock_unmatched: list[str] = []
+    stock_created: list[str] = []
+    create_missing = bool(draft.get("create_missing"))
     if draft.get("apply_stock"):
         for idx, ln in enumerate(lines_in):
             desc = ln.get("description") or ""
             product = await _match_product(db, tenant_id, desc)
             if product is None:
-                stock_unmatched.append(desc[:120])
-                continue
+                if not create_missing or not desc.strip():
+                    stock_unmatched.append(desc[:120])
+                    continue
+                product = await _create_product_from_line(db, tenant_id, ln)
+                stock_created.append(product.name)
             qty = round(float(_dec(ln.get("quantity") or 0)))
             if qty <= 0:
                 stock_unmatched.append(desc[:120])
@@ -273,4 +296,5 @@ async def _import_one(db, tenant_id: UUID, draft: dict, user_id: UUID | None) ->
         "amount_total": float(invoice.amount_total),
         "stock_applied": stock_applied,
         "stock_unmatched": stock_unmatched,
+        "stock_created": stock_created,
     }
