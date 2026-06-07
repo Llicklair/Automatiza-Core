@@ -52,15 +52,11 @@ async def _resolve_supplier(db, tenant_id: UUID, emisor: dict) -> Client:
 
     client = None
     if nif:
-        res = await db.execute(
-            select(Client).where(Client.tenant_id == tenant_id, Client.nif == nif)
-        )
+        res = await db.execute(select(Client).where(Client.tenant_id == tenant_id, Client.nif == nif))
         client = res.scalars().first()
     if client is None:
         res = await db.execute(
-            select(Client).where(
-                Client.tenant_id == tenant_id, func.lower(Client.name) == name.lower()
-            )
+            select(Client).where(Client.tenant_id == tenant_id, func.lower(Client.name) == name.lower())
         )
         client = res.scalars().first()
     if client is None:
@@ -78,32 +74,57 @@ async def _resolve_supplier(db, tenant_id: UUID, emisor: dict) -> Client:
     return client
 
 
+def _norm(s: str) -> str:
+    """Normaliza para comparar: sin acentos, minúsculas, espacios colapsados."""
+    import unicodedata
+
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return " ".join(s.lower().split())
+
+
 async def _match_product(db, tenant_id: UUID, description: str) -> Product | None:
-    """Casa una línea con un producto del catálogo por SKU o nombre exacto."""
+    """Casa una línea de factura con un producto del catálogo.
+
+    Orden de coincidencia (de más a menos fiable):
+      1. SKU o código de barras exactos.
+      2. Nombre exacto (insensible a mayúsculas).
+      3. Nombre normalizado (sin acentos/espacios) — para casar variaciones
+         habituales en las descripciones de las facturas de proveedor.
+    """
     desc = (description or "").strip()
     if not desc:
         return None
+
     res = await db.execute(
         select(Product).where(
             Product.tenant_id == tenant_id,
-            (Product.sku == desc) | (func.lower(Product.name) == desc.lower()),
+            (Product.sku == desc) | (Product.barcode == desc) | (func.lower(Product.name) == desc.lower()),
         )
     )
-    return res.scalars().first()
+    product = res.scalars().first()
+    if product is not None:
+        return product
+
+    # Fallback: comparación normalizada (sin acentos) sobre el catálogo del tenant.
+    target = _norm(desc)
+    if not target:
+        return None
+    all_res = await db.execute(select(Product).where(Product.tenant_id == tenant_id, Product.is_active.is_(True)))
+    for p in all_res.scalars():
+        if _norm(p.name) == target or (p.sku and _norm(p.sku) == target):
+            return p
+    return None
 
 
 async def _stock_ref_exists(db, tenant_id: UUID, reference: str) -> bool:
     res = await db.execute(
-        select(StockMovement.id).where(
-            StockMovement.tenant_id == tenant_id, StockMovement.reference == reference
-        )
+        select(StockMovement.id).where(StockMovement.tenant_id == tenant_id, StockMovement.reference == reference)
     )
     return res.scalar_one_or_none() is not None
 
 
-async def import_received_invoices(
-    db, tenant_id: UUID, drafts: list[dict], user_id: UUID | None = None
-) -> list[dict]:
+async def import_received_invoices(db, tenant_id: UUID, drafts: list[dict], user_id: UUID | None = None) -> list[dict]:
     """Crea N facturas de compra (+asiento, +stock opcional) desde borradores revisados."""
     results: list[dict] = []
     for draft in drafts:
@@ -152,12 +173,14 @@ async def _import_one(db, tenant_id: UUID, draft: dict, user_id: UUID | None) ->
     inv_number = (draft.get("invoice_number") or "").strip() or None
     if inv_number:
         dup = await db.execute(
-            select(Invoice.id).where(
+            select(Invoice.id)
+            .where(
                 Invoice.tenant_id == tenant_id,
                 Invoice.client_id == supplier.id,
                 Invoice.invoice_number == inv_number,
                 Invoice.invoice_type == "received",
-            ).limit(1)
+            )
+            .limit(1)
         )
         existing_id = dup.scalar_one_or_none()
         if existing_id is not None:
