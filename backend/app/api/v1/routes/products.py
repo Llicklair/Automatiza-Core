@@ -13,11 +13,12 @@ from app.api.v1.schemas.erp import (
     StockValuationResponse,
 )
 from app.api.v1.schemas.lots import LotCreate, LotUpdate
+from app.api.v1.schemas.warehouse import StockTransferRequest
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services.inventory import lot_service
+from app.services.inventory import lot_service, stock_service
 from app.services.sales import product as svc
 
 logger = logging.getLogger(__name__)
@@ -233,3 +234,42 @@ async def update_product_lot(
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/products/{product_id}/stock-by-warehouse", tags=["inventory"])
+@limiter.limit("30/minute")
+async def stock_by_warehouse(
+    request: Request,
+    product_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Desglose de stock del producto por almacén (el almacén por defecto se deriva)."""
+    try:
+        return await stock_service.get_by_warehouse(db, current_user.tenant_id, product_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/inventory/transfer", tags=["inventory"])
+@limiter.limit("30/minute")
+async def transfer_stock(
+    request: Request,
+    payload: StockTransferRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Transfiere stock (y lotes en orden FEFO) entre dos almacenes."""
+    try:
+        return await stock_service.transfer(
+            db,
+            tenant_id=current_user.tenant_id,
+            product_id=payload.product_id,
+            from_warehouse_id=payload.from_warehouse_id,
+            to_warehouse_id=payload.to_warehouse_id,
+            quantity=payload.quantity,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
