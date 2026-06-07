@@ -1,5 +1,7 @@
 """Modelos de inventario: Productos y Movimientos de stock."""
 
+from sqlalchemy import UniqueConstraint
+
 from .common import (
     UUID,
     Base,
@@ -67,6 +69,12 @@ class ProductLot(Base):
         nullable=False,
         index=True,
     )
+    warehouse_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("warehouses.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     lot_number = Column(String(100), nullable=False)
     expiry_date = Column(Date, nullable=True, index=True)
     quantity = Column(Integer, nullable=False, default=0)
@@ -86,6 +94,9 @@ class StockMovement(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False, index=True)
+    warehouse_id = Column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     movement_type = Column(String(50), nullable=False)
     quantity = Column(Integer, nullable=False)
@@ -98,3 +109,44 @@ class StockMovement(Base):
 
     tenant = relationship("Tenant")
     product = relationship("Product", back_populates="stock_movements")
+
+
+class Warehouse(Base):
+    """Almacén/tienda físico del tenant. Permite gestionar stock en varias
+    ubicaciones (multi-almacén). Cada tenant tiene uno marcado como `is_default`."""
+
+    __tablename__ = "warehouses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    name = Column(String(150), nullable=False)
+    code = Column(String(50), nullable=True)
+    address = Column(String(255), nullable=True)
+    is_default = Column(Boolean, nullable=False, default=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    tenant = relationship("Tenant")
+
+
+class ProductStock(Base):
+    """Stock de un producto EN un almacén concreto. `Product.stock_quantity`
+    se mantiene como total global (suma de todos los almacenes)."""
+
+    __tablename__ = "product_stock"
+    __table_args__ = (UniqueConstraint("product_id", "warehouse_id", name="uq_product_stock_product_warehouse"),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    warehouse_id = Column(
+        UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quantity = Column(Integer, nullable=False, default=0)
+
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    product = relationship("Product")
+    warehouse = relationship("Warehouse")
