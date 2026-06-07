@@ -20,6 +20,8 @@ function MobileScannerInner() {
     const [product, setProduct] = useState<ScannedProduct | null>(null);
     const [loading, setLoading] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const [lotNumber, setLotNumber] = useState("");
+    const [lotExpiry, setLotExpiry] = useState("");
     const [result, setResult] = useState<ActionResult | null>(null);
     const [albaranNum, setAlbaranNum] = useState("");
 
@@ -49,9 +51,14 @@ function MobileScannerInner() {
         if (!product) return;
         setLoading(true); setResult(null);
         try {
-            const data = await mobileScanner.stockEntry(token, productCode(), quantity);
-            setResult({ success: true, message: `+${quantity} → Stock: ${data.stock_after}`, data });
+            const data = await mobileScanner.stockEntry(token, productCode(), quantity, {
+                lot_number: lotNumber.trim() || null,
+                expiry_date: lotExpiry || null,
+            });
+            const lotMsg = lotNumber.trim() ? ` · lote ${lotNumber.trim()}` : "";
+            setResult({ success: true, message: `+${quantity} → Stock: ${data.stock_after}${lotMsg}`, data });
             setProduct({ ...product, stock_quantity: data.stock_after, low_stock: data.low_stock });
+            setLotNumber(""); setLotExpiry("");
         } catch (e: any) { setResult({ success: false, message: e.message }); }
         setLoading(false);
     };
@@ -179,6 +186,27 @@ function MobileScannerInner() {
                             onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                             className="w-20 bg-muted border border-border rounded-lg px-2 py-1.5 text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                         />
+                    </div>
+
+                    {/* Lote (opcional) — solo aplica a Entrada (gestión de caducidad/FEFO) */}
+                    <div className="space-y-1.5">
+                        <p className="text-xs text-muted-foreground">Lote (opcional, solo entrada):</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <input
+                                type="text"
+                                value={lotNumber}
+                                onChange={(e) => setLotNumber(e.target.value)}
+                                placeholder="Nº de lote"
+                                className="bg-muted border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                            />
+                            <input
+                                type="date"
+                                value={lotExpiry}
+                                onChange={(e) => setLotExpiry(e.target.value)}
+                                aria-label="Caducidad del lote"
+                                className="bg-muted border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <button

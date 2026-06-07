@@ -12,7 +12,7 @@ from app.api.v1.schemas.erp import (
     StockMovementResponse,
     StockValuationResponse,
 )
-from app.api.v1.schemas.lots import LotUpdate
+from app.api.v1.schemas.lots import LotCreate, LotUpdate
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
@@ -184,6 +184,36 @@ async def list_product_lots(
         return await lot_service.list_lots(db, current_user.tenant_id, product_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post(
+    "/products/{product_id}/lots",
+    status_code=status.HTTP_201_CREATED,
+    tags=["inventory"],
+)
+@limiter.limit("30/minute")
+async def create_product_lot(
+    request: Request,
+    product_id: UUID,
+    payload: LotCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Da de alta un lote (recepción): crea el lote, suma stock y registra el movimiento."""
+    try:
+        return await lot_service.create_lot(
+            db,
+            tenant_id=current_user.tenant_id,
+            product_id=product_id,
+            lot_number=payload.lot_number,
+            quantity=payload.quantity,
+            expiry_date=payload.expiry_date,
+            cost_price=payload.cost_price,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.patch("/products/{product_id}/lots/{lot_id}", tags=["inventory"])

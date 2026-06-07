@@ -241,3 +241,57 @@ async def list_expiring_lots(db: AsyncSession, tenant_id: UUID, days: int = 7) -
         )
         out.append(entry)
     return out
+
+
+async def create_lot(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    product_id: UUID,
+    lot_number: str,
+    quantity: int,
+    expiry_date: date | None = None,
+    cost_price: float | None = None,
+) -> dict:
+    """Da de alta un lote desde la gestión de escritorio (recepción manual).
+
+    A diferencia de `add_lot`, aquí SÍ se reconcilia el agregado: suma la
+    cantidad a `Product.stock_quantity` y registra un movimiento de entrada
+    para mantener la trazabilidad. Todo en la misma transacción.
+    """
+    from app.db.models.inventory import StockMovement
+
+    product = await _get_product_owned(db, tenant_id, product_id)
+    qty = abs(int(quantity))
+    if qty <= 0:
+        raise ValueError("La cantidad debe ser mayor que cero")
+
+    await add_lot(
+        db,
+        tenant_id=tenant_id,
+        product_id=product_id,
+        lot_number=lot_number,
+        quantity=qty,
+        expiry_date=expiry_date,
+        cost_price=cost_price,
+    )
+
+    new_stock = int(product.stock_quantity or 0) + qty
+    product.stock_quantity = new_stock
+
+    nota = f"Alta de lote {lot_number}"
+    if expiry_date:
+        nota += f" (cad. {expiry_date.isoformat()})"
+    movement = StockMovement(
+        product_id=product.id,
+        movement_type="entrada",
+        quantity=qty,
+        stock_after=new_stock,
+        unit_cost=cost_price,
+        reference=f"lote:{lot_number}",
+        notes=nota,
+    )
+    db.add(movement)
+    await db.commit()
+
+    return {"stock_after": new_stock, "lots": await list_lots(db, tenant_id, product_id)}
