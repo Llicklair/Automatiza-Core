@@ -141,7 +141,7 @@ async function startPostgres() {
 
   const pgCtl = path.join(PG_BIN, "pg_ctl.exe");
   logDebug(`Lanzando pg_ctl start (ciego) a puerto ${PG_PORT}`);
-  
+
   await new Promise((resolve) => {
     const child = spawn(
       pgCtl,
@@ -150,7 +150,7 @@ async function startPostgres() {
     );
     child.on("close", (code) => {
       logDebug(`pg_ctl terminado con codigo ${code}`);
-      resolve(); 
+      resolve();
     });
     child.on("error", (err) => {
       logDebug(`Error lanzando pg_ctl: ${err.message}`);
@@ -228,7 +228,7 @@ async function waitForPostgres(timeoutMs = 60000) {
     }
     await new Promise(r => setTimeout(r, 2000));
   }
-  
+
   logDebug("Timeout esperando a PostgreSQL");
   let lastError = "";
   try {
@@ -258,12 +258,24 @@ function createDatabase() {
       );
     }
 
-    // Habilitar pgvector si está disponible
+    // Habilitar pgvector SOLO si el binario de la extensión está instalado.
+    // El Postgres portable de la app no incluye pgvector y la búsqueda semántica
+    // usa coseno en Python como fallback, así que la extensión es opcional.
+    // Comprobamos pg_available_extensions primero para NO ensuciar el log de
+    // Postgres con "la extensión «vector» no está disponible" en cada arranque.
     try {
-      execSync(
-        `"${psql}" -p ${PG_PORT} -U ${DB_USER} -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS vector"`,
+      const vectorAvailable = execSync(
+        `"${psql}" -p ${PG_PORT} -U ${DB_USER} -d ${DB_NAME} -tAc "SELECT 1 FROM pg_available_extensions WHERE name = 'vector'"`,
         { stdio: "pipe", timeout: 10000 }
-      );
+      )
+        .toString()
+        .trim();
+      if (vectorAvailable === "1") {
+        execSync(
+          `"${psql}" -p ${PG_PORT} -U ${DB_USER} -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS vector"`,
+          { stdio: "pipe", timeout: 10000 }
+        );
+      }
     } catch {
       // pgvector no disponible — continuar sin él
     }
