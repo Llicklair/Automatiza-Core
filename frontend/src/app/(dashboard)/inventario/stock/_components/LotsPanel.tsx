@@ -117,7 +117,8 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between">
                 <h4 className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Layers className="w-4 h-4 text-muted-foreground" /> Lotes y caducidad (FEFO)
+                    <Layers className="w-4 h-4 text-muted-foreground" /> Lotes y caducidad
+                    <span className="text-xs font-normal text-muted-foreground">· al vender se gasta antes lo que antes caduca</span>
                 </h4>
                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowAdd(s => !s)}>
                     <Plus className="mr-1 w-3 h-3" /> Añadir lote

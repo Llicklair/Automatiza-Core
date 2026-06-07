@@ -190,6 +190,7 @@ export default function StockPage() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => toggleExpand(product.id)}
+                            title="Ver lotes, caducidad, stock por almacén y movimientos"
                         >
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </Button>
