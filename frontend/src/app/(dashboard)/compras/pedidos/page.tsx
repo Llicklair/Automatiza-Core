@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { ShoppingBag, Plus, Search, Loader2, ChevronDown, Package, Calendar, Check, Truck, Trash2 } from "lucide-react";
 import { usePedidosCompra } from "./_hooks/usePedidosCompra";
 import { NuevoPedidoModal } from "./_components/NuevoPedidoModal";
+import { RecibirModal } from "./_components/RecibirModal";
+import { type PurchaseOrder } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +16,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; bor
     draft:     { label: "Borrador",   color: "text-muted-foreground", bg: "bg-muted",          border: "border-border" },
     sent:      { label: "Enviado",    color: "text-blue-400",         bg: "bg-blue-500/10",     border: "border-blue-500/20" },
     confirmed: { label: "Confirmado", color: "text-primary",          bg: "bg-primary/10",      border: "border-primary/20" },
+    partially_received: { label: "Recibido parcial", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     received:  { label: "Recibido",   color: "text-emerald-400",      bg: "bg-emerald-500/10",  border: "border-emerald-500/20" },
     cancelled: { label: "Cancelado",  color: "text-rose-400",         bg: "bg-rose-500/10",     border: "border-rose-500/20" },
 };
@@ -25,8 +29,10 @@ export default function PedidosCompraPage() {
         showModal, setShowModal, expandedId, setExpandedId,
         saving, deletingId, form, setForm, filtered,
         lineTotal, orderTotal, openNew, setLine,
-        handleSubmit, handleAdvance, handleCancel, handleDelete,
+        handleSubmit, handleAdvance, handleCancel, handleDelete, load,
     } = usePedidosCompra();
+
+    const [receiveOrder, setReceiveOrder] = useState<PurchaseOrder | null>(null);
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-6">
@@ -112,6 +118,11 @@ export default function PedidosCompraPage() {
                                                 <Check className="w-3 h-3 mr-1" /> {STATUS_MAP[nextStatus]?.label}
                                             </Button>
                                         )}
+                                        {["sent", "confirmed", "partially_received"].includes(order.status) && (
+                                            <Button size="sm" variant="ghost" className="h-7 text-xs bg-blue-600/20 text-blue-400 border border-blue-500/20 hover:bg-blue-600/30" onClick={() => setReceiveOrder(order)}>
+                                                <Package className="w-3 h-3 mr-1" /> Recibir
+                                            </Button>
+                                        )}
                                         {!["cancelled", "received"].includes(order.status) && (
                                             <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleCancel(order)}>Cancelar</Button>
                                         )}
@@ -160,6 +171,8 @@ export default function PedidosCompraPage() {
                 setLine={setLine}
                 onSubmit={handleSubmit}
             />
+
+            <RecibirModal order={receiveOrder} onClose={() => setReceiveOrder(null)} onReceived={load} />
         </div>
     );
 }

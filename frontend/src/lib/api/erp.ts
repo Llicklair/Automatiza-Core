@@ -217,6 +217,7 @@ export interface PurchaseOrderLine {
     product_id?: string | null;
     description: string;
     quantity: number;
+    received_quantity?: number;
     unit_price: number;
     tax_percentage: number;
     total?: number;
@@ -413,6 +414,17 @@ export const erp = {
     },
     purchaseOrders: {
         list: () => request<PurchaseOrder[]>("/api/v1/purchase-orders"),
+        receive: (
+            id: string,
+            data: {
+                warehouse_id?: string | null;
+                lines: { line_id: string; quantity: number; lot_number?: string | null; expiry_date?: string | null }[];
+            },
+        ) =>
+            request<{ order_id: string; status: string }>(`/api/v1/purchase-orders/${id}/receive`, {
+                method: "POST",
+                body: JSON.stringify(data),
+            }),
         create: (data: Partial<PurchaseOrder> & { lines?: PurchaseOrderLine[] }) =>
             request<PurchaseOrder>("/api/v1/purchase-orders", { method: "POST", body: JSON.stringify(data) }),
         update: (id: string, data: Partial<PurchaseOrder>) =>
