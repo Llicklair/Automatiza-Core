@@ -39,6 +39,8 @@ class Product(Base):
     stock_quantity = Column(Integer, nullable=False, default=0)
     stock_min_alert = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
+    supplier_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True)
+    reorder_quantity = Column(Integer, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
