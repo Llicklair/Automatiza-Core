@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { type Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
@@ -19,6 +19,8 @@ import { MovementModal } from "./_components/MovementModal";
 import { ProductModal } from "./_components/ProductModal";
 import { LotsPanel } from "./_components/LotsPanel";
 import { ExpiringLotsPanel } from "./_components/ExpiringLotsPanel";
+import { WarehouseStockPanel } from "./_components/WarehouseStockPanel";
+import Link from "next/link";
 
 const fmt = (n: number) => n.toLocaleString("es-ES");
 
@@ -209,6 +211,17 @@ export default function StockPage() {
         </Button>
     );
 
+    const headerActions = (
+        <div className="flex items-center gap-2">
+            <Link href="/inventario/almacenes">
+                <Button variant="outline">
+                    <WarehouseIcon className="mr-2 h-4 w-4" /> Almacenes
+                </Button>
+            </Link>
+            {newProductButton}
+        </div>
+    );
+
     if (!loading && products.length === 0) {
         return (
             <div className="p-6 space-y-6">
@@ -216,7 +229,7 @@ export default function StockPage() {
                     title="Control de Stock"
                     description="Gestiona el inventario físico de tus productos con entradas, salidas y ajustes."
                     icon={Package}
-                    actions={newProductButton}
+                    actions={headerActions}
                 />
                 <EmptyState
                     icon={Package}
@@ -243,7 +256,7 @@ export default function StockPage() {
                 title="Control de Stock"
                 description="Gestiona el inventario físico de tus productos con entradas, salidas y ajustes."
                 icon={Package}
-                actions={newProductButton}
+                actions={headerActions}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -326,6 +339,7 @@ export default function StockPage() {
                         movementsLoading={movementsLoading}
                     />
                     <LotsPanel productId={expandedId} />
+                    <WarehouseStockPanel productId={expandedId} />
                 </div>
             )}
 
