@@ -119,6 +119,8 @@ export interface Product {
     stock_quantity: number;
     stock_min_alert: number;
     is_active: boolean;
+    supplier_id: string | null;
+    reorder_quantity: number | null;
     created_at: string;
     updated_at: string | null;
 }
