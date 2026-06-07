@@ -1,0 +1,44 @@
+/** Analítica de inventario (valoración, stock muerto, más vendidos). */
+import { request } from "./client";
+
+export interface InvValuation {
+    value_cost: number;
+    value_retail: number;
+    potential_margin: number;
+    units: number;
+    product_count: number;
+}
+
+export interface DeadStockItem {
+    product_id: string;
+    name: string;
+    sku: string | null;
+    stock: number;
+    last_sale: string | null;
+    days_since_sale: number | null;
+    value_cost: number;
+}
+
+export interface TopMover {
+    product_id: string;
+    name: string;
+    sku: string | null;
+    sold: number;
+}
+
+export interface InventoryAnalytics {
+    valuation: InvValuation;
+    dead_days: number;
+    top_days: number;
+    dead_count: number;
+    dead_value_cost: number;
+    dead_stock: DeadStockItem[];
+    top_movers: TopMover[];
+}
+
+export const inventoryAnalytics = {
+    overview: (deadDays = 90, topDays = 30) =>
+        request<InventoryAnalytics>(
+            `/api/v1/inventory/analytics?dead_days=${deadDays}&top_days=${topDays}`,
+        ),
+};
