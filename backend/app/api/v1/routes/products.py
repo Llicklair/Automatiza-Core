@@ -19,6 +19,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services.inventory import analytics as inventory_analytics
 from app.services.inventory import labels as labels_svc
 from app.services.inventory import lot_service, reorder_service, stock_service
 from app.services.sales import product as svc
@@ -321,4 +322,19 @@ async def labels_pdf(
         content=pdf,
         media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="etiquetas.pdf"'},
+    )
+
+
+@router.get("/inventory/analytics", tags=["inventory"])
+@limiter.limit("30/minute")
+async def inventory_analytics_overview(
+    request: Request,
+    dead_days: int = Query(default=90, ge=1, le=730, description="Dias sin venta para considerar stock muerto"),
+    top_days: int = Query(default=30, ge=1, le=365, description="Ventana para los mas vendidos"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Analitica de inventario: valoracion, stock muerto y productos mas movidos."""
+    return await inventory_analytics.inventory_overview(
+        db, current_user.tenant_id, dead_days=dead_days, top_days=top_days
     )
