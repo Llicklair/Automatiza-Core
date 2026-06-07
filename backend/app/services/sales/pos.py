@@ -242,6 +242,10 @@ async def checkout(
                 f"(disponible {product.stock_quantity}, solicitado {line.quantity})"
             )
         product.stock_quantity = new_stock
+        from app.services.inventory import lot_service
+
+        if await lot_service.has_lots(db, product.id):
+            await lot_service.deduct_fefo(db, product_id=product.id, quantity=int(line.quantity))
         db.add(
             StockMovement(
                 tenant_id=tenant_id,

@@ -190,6 +190,13 @@ async def create_stock_movement(
 
     product.stock_quantity = new_stock
 
+    # Si el producto gestiona lotes, una salida los descuenta en orden FEFO.
+    if movement_type == "salida":
+        from app.services.inventory import lot_service
+
+        if await lot_service.has_lots(db, product_id):
+            await lot_service.deduct_fefo(db, product_id=product_id, quantity=abs(quantity))
+
     movement = StockMovement(
         tenant_id=tenant_id,
         product_id=product_id,
@@ -504,6 +511,10 @@ async def _deduct_stock_for_albaran(
                 f"(disponible {product.stock_quantity}, solicitado {qty})"
             )
         product.stock_quantity = new_stock
+        from app.services.inventory import lot_service
+
+        if await lot_service.has_lots(db, product.id):
+            await lot_service.deduct_fefo(db, product_id=product.id, quantity=qty)
         db.add(
             StockMovement(
                 tenant_id=note.tenant_id,
