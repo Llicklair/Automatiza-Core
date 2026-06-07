@@ -18,7 +18,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services.inventory import lot_service, stock_service
+from app.services.inventory import lot_service, reorder_service, stock_service
 from app.services.sales import product as svc
 
 logger = logging.getLogger(__name__)
@@ -273,3 +273,25 @@ async def transfer_stock(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/inventory/reorder-suggestions", tags=["inventory"])
+@limiter.limit("30/minute")
+async def reorder_suggestions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Productos en o por debajo de su punto de pedido, con cantidad sugerida."""
+    return await reorder_service.suggest_reorders(db, current_user.tenant_id)
+
+
+@router.post("/inventory/reorder/generate-pos", tags=["inventory"])
+@limiter.limit("10/minute")
+async def reorder_generate_pos(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Genera pedidos de compra BORRADOR agrupando las sugerencias por proveedor."""
+    return await reorder_service.generate_draft_pos(db, current_user.tenant_id)
