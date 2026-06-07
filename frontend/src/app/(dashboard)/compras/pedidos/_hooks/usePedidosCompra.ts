@@ -134,5 +134,6 @@ export function usePedidosCompra() {
         saving, deletingId, form, setForm,
         filtered, lineTotal, orderTotal,
         openNew, setLine, handleSubmit, handleAdvance, handleCancel, handleDelete,
+        load,
     };
 }
