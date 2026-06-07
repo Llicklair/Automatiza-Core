@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon } from "lucide-react";
+import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon, ShoppingCart } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { type Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
@@ -213,6 +213,11 @@ export default function StockPage() {
 
     const headerActions = (
         <div className="flex items-center gap-2">
+            <Link href="/inventario/reposicion">
+                <Button variant="outline">
+                    <ShoppingCart className="mr-2 h-4 w-4" /> Reposición
+                </Button>
+            </Link>
             <Link href="/inventario/almacenes">
                 <Button variant="outline">
                     <WarehouseIcon className="mr-2 h-4 w-4" /> Almacenes
