@@ -92,7 +92,10 @@ async def stock_entry(
     scanner=Depends(get_scanner_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Registra entrada de stock desde el escáner móvil. `payload.sku` acepta barcode o SKU."""
+    """Registra entrada de stock desde el escáner móvil. `payload.sku` acepta barcode o SKU.
+
+    Si se incluye `lot_number`, registra además el lote con su caducidad (FEFO).
+    """
     try:
         return await svc.record_movement(
             db,
@@ -102,6 +105,9 @@ async def stock_entry(
             payload.notes,
             "entrada",
             scanner.get("device", "mobile"),
+            lot_number=payload.lot_number,
+            expiry_date=payload.expiry_date,
+            cost_price=payload.cost_price,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

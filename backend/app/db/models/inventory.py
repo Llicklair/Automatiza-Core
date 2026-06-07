@@ -5,6 +5,7 @@ from .common import (
     Base,
     Boolean,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -41,9 +42,42 @@ class Product(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     tenant = relationship("Tenant")
-    stock_movements = relationship(
-        "StockMovement", back_populates="product", cascade="all, delete-orphan"
+    stock_movements = relationship("StockMovement", back_populates="product", cascade="all, delete-orphan")
+    lots = relationship("ProductLot", back_populates="product", cascade="all, delete-orphan")
+
+
+class ProductLot(Base):
+    """Lote de un producto con caducidad, para deducción FEFO (First Expired, First Out).
+
+    Los lotes son una capa OPCIONAL de detalle sobre `Product.stock_quantity`:
+    si un producto no tiene lotes, el inventario funciona exactamente igual que
+    antes (solo cuenta `stock_quantity`). Cuando hay lotes, la salida de stock
+    descuenta primero del lote que caduca antes (FEFO), ideal para perecederos.
+
+    `expiry_date` es nullable: un lote sin caducidad se ordena el último.
+    """
+
+    __tablename__ = "product_lots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    product_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
+    lot_number = Column(String(100), nullable=False)
+    expiry_date = Column(Date, nullable=True, index=True)
+    quantity = Column(Integer, nullable=False, default=0)
+    cost_price = Column(Numeric(10, 2), nullable=True)
+
+    received_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    tenant = relationship("Tenant")
+    product = relationship("Product", back_populates="lots")
 
 
 class StockMovement(Base):
