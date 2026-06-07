@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw, Loader2, ShoppingCart, AlertTriangle, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { reorder as reorderApi, type ReorderSuggestion, type GeneratePosResult } from "@/lib/api/reorder";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,11 @@ export default function ReposicionPage() {
                         <CheckCircle2 className="w-4 h-4" />
                         {result.created.length} pedido(s) de compra borrador creado(s).
                     </p>
+                    {result.created.length > 0 && (
+                        <Link href="/compras/pedidos" className="text-xs text-emerald-300 underline underline-offset-2">
+                            Ver pedidos de compra →
+                        </Link>
+                    )}
                     {result.skipped_no_supplier.length > 0 && (
                         <p className="flex items-center gap-2 text-amber-300">
                             <AlertTriangle className="w-4 h-4" />
@@ -92,7 +98,7 @@ export default function ReposicionPage() {
                             <tr className="text-xs text-muted-foreground border-b border-border">
                                 <th className="text-left font-medium p-3">Producto</th>
                                 <th className="text-right font-medium p-3">Stock</th>
-                                <th className="text-right font-medium p-3">Punto pedido</th>
+                                <th className="text-right font-medium p-3" title="Nivel a partir del cual conviene reponer (alerta mínima)">Punto pedido</th>
                                 <th className="text-right font-medium p-3">Sugerido</th>
                                 <th className="text-left font-medium p-3">Proveedor</th>
                             </tr>
