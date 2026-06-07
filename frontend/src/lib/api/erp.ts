@@ -34,6 +34,8 @@ export interface ScannedInvoice {
 export interface InvoiceDraft extends ScannedInvoice {
     /** Si true, al importar suma stock de las líneas que casan con el catálogo. */
     apply_stock?: boolean;
+    /** Si true, crea automáticamente los productos de las líneas sin casar. */
+    create_missing?: boolean;
 }
 
 export interface ScanBatchResult {
@@ -52,6 +54,7 @@ export interface InvoiceImportResult {
         amount_total?: number;
         stock_applied?: { product: string; sku: string | null; quantity: number }[];
         stock_unmatched?: string[];
+        stock_created?: string[];
     }[];
 }
 
