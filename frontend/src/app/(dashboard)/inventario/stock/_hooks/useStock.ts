@@ -25,12 +25,14 @@ export interface ProductForm {
     stock_min_alert: number;
     description: string;
     is_active: boolean;
+    supplier_id: string | null;
+    reorder_quantity: number | null;
 }
 
 const emptyProductForm: ProductForm = {
     name: "", sku: "", barcode: "", category: "", location: "", unit: "ud",
     price: 0, cost_price: null, stock_min_alert: 0,
-    description: "", is_active: true,
+    description: "", is_active: true, supplier_id: null, reorder_quantity: null,
 };
 
 export function useStock() {
@@ -163,6 +165,8 @@ export function useStock() {
             stock_min_alert: product.stock_min_alert,
             description: product.description || "",
             is_active: product.is_active,
+            supplier_id: product.supplier_id ?? null,
+            reorder_quantity: product.reorder_quantity ?? null,
         });
         setShowProductModal(true);
     };
@@ -177,6 +181,7 @@ export function useStock() {
             category: productForm.category || null,
             location: productForm.location || null,
             description: productForm.description || null,
+            supplier_id: productForm.supplier_id || null,
         };
         try {
             if (editingProduct) {

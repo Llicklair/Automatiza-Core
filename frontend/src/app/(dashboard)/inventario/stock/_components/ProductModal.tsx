@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { type Product } from "@/lib/api";
+import { api, type Product } from "@/lib/api";
+import { type Client } from "@/lib/api/erp";
 import { type ProductForm } from "../_hooks/useStock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,12 @@ interface ProductModalProps {
 }
 
 export function ProductModal({ open, onOpenChange, editingProduct, productForm, setProductForm, onSubmit, saving }: ProductModalProps) {
+    const [suppliers, setSuppliers] = useState<Client[]>([]);
+    useEffect(() => {
+        if (!open) return;
+        api.erp.clients.list({ client_type: "supplier" }).then(setSuppliers).catch(() => setSuppliers([]));
+    }, [open]);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
@@ -133,6 +141,30 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                                 min={0}
                                 value={productForm.stock_min_alert}
                                 onChange={e => setProductForm(f => ({ ...f, stock_min_alert: parseInt(e.target.value) || 0 }))}
+                                className="mt-1.5"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <Label className="text-xs">Proveedor habitual</Label>
+                            <select
+                                value={productForm.supplier_id ?? ""}
+                                onChange={e => setProductForm(f => ({ ...f, supplier_id: e.target.value || null }))}
+                                className="mt-1.5 w-full bg-background border border-border text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring transition-colors h-9"
+                            >
+                                <option value="">— Sin proveedor —</option>
+                                {suppliers.map(sup => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <Label className="text-xs">Cantidad de reposición</Label>
+                            <Input
+                                type="number"
+                                min={0}
+                                value={productForm.reorder_quantity ?? ""}
+                                onChange={e => setProductForm(f => ({ ...f, reorder_quantity: e.target.value ? parseInt(e.target.value) : null }))}
+                                placeholder="auto"
                                 className="mt-1.5"
                             />
                         </div>
