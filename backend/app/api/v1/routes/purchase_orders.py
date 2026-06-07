@@ -11,11 +11,13 @@ from app.api.v1.schemas.erp import (
     PurchaseOrderResponse,
     PurchaseOrderUpdate,
 )
+from app.api.v1.schemas.receiving import ReceiveRequest
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services.sales import purchase_order as svc
+from app.services.sales import purchase_receiving
 
 logger = logging.getLogger(__name__)
 
@@ -79,3 +81,28 @@ async def delete_purchase_order(
         await svc.delete_purchase_order(db, current_user.tenant_id, order_id)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/purchase-orders/{order_id}/receive", tags=["erp"])
+@limiter.limit("30/minute")
+async def receive_purchase_order(
+    request: Request,
+    order_id: UUID,
+    payload: ReceiveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Recibe mercancía de un pedido de compra: da entrada de stock (y lotes) en
+    el almacén indicado y actualiza la cantidad recibida y el estado del pedido."""
+    try:
+        return await purchase_receiving.receive(
+            db,
+            tenant_id=current_user.tenant_id,
+            order_id=order_id,
+            receipts=[line.model_dump() for line in payload.lines],
+            warehouse_id=payload.warehouse_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

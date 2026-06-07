@@ -89,6 +89,7 @@ class PurchaseOrderLine(Base):
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True)
     description = Column(String(500), nullable=False)
     quantity = Column(Numeric(10, 2), nullable=False, default=1)
+    received_quantity = Column(Numeric(10, 2), nullable=False, default=0)
     unit_price = Column(Numeric(10, 2), nullable=False, default=0)
     tax_percentage = Column(Numeric(5, 2), default=21.0)
     total = Column(Numeric(10, 2), nullable=False, default=0)

@@ -266,6 +266,8 @@ class PurchaseOrderLineCreate(BaseModel):
 
 
 class PurchaseOrderLineResponse(PurchaseOrderLineCreate):
+    received_quantity: float = 0
+
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     order_id: UUID
