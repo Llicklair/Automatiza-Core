@@ -58,6 +58,12 @@ export interface ScannerDeliveryConfirm {
     status: string;
 }
 
+/** Datos opcionales de lote para una ENTRADA de stock (gestión de caducidad/FEFO). */
+export interface LotEntryOptions {
+    lot_number?: string | null;
+    expiry_date?: string | null;
+}
+
 export const scanner = {
     generateQR: (deviceName = "Scanner móvil") =>
         request<ScannerToken>("/api/v1/scanner/generate-qr", {
@@ -103,10 +109,18 @@ export const mobileScanner = {
             body: JSON.stringify({ sku: code }),
         }),
 
-    stockEntry: (token: string, code: string, quantity: number) =>
+    // `lot` es opcional: si se indica `lot_number`, la entrada registra además
+    // el lote con su caducidad (gestión FEFO). Retrocompatible si se omite.
+    stockEntry: (token: string, code: string, quantity: number, lot?: LotEntryOptions) =>
         scannerFetch<ScannerStockMutation>("/stock-entry", token, {
             method: "POST",
-            body: JSON.stringify({ sku: code, quantity }),
+            body: JSON.stringify({
+                sku: code,
+                quantity,
+                ...(lot?.lot_number
+                    ? { lot_number: lot.lot_number, expiry_date: lot.expiry_date || null }
+                    : {}),
+            }),
         }),
 
     stockExit: (token: string, code: string, quantity: number) =>

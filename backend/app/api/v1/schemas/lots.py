@@ -5,6 +5,15 @@ from datetime import date
 from pydantic import BaseModel
 
 
+class LotCreate(BaseModel):
+    """Alta de un lote (recepción): suma stock y registra movimiento de entrada."""
+
+    lot_number: str
+    quantity: int
+    expiry_date: date | None = None
+    cost_price: float | None = None
+
+
 class LotUpdate(BaseModel):
     """Edición de metadatos de un lote. La cantidad NO se edita aquí (cambia solo
     vía movimientos de stock). Solo se aplican los campos enviados."""

@@ -17,6 +17,8 @@ import { useStock } from "./_hooks/useStock";
 import { StockStatus, MovementsPanel } from "./_components/StockHelpers";
 import { MovementModal } from "./_components/MovementModal";
 import { ProductModal } from "./_components/ProductModal";
+import { LotsPanel } from "./_components/LotsPanel";
+import { ExpiringLotsPanel } from "./_components/ExpiringLotsPanel";
 
 const fmt = (n: number) => n.toLocaleString("es-ES");
 
@@ -260,6 +262,8 @@ export default function StockPage() {
                 />
             </div>
 
+            <ExpiringLotsPanel />
+
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                 <div className="relative flex-1 max-w-md">
                     <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -315,11 +319,14 @@ export default function StockPage() {
             />
 
             {expandedId && (
-                <MovementsPanel
-                    productId={expandedId}
-                    movements={movements}
-                    movementsLoading={movementsLoading}
-                />
+                <div className="space-y-4">
+                    <MovementsPanel
+                        productId={expandedId}
+                        movements={movements}
+                        movementsLoading={movementsLoading}
+                    />
+                    <LotsPanel productId={expandedId} />
+                </div>
             )}
 
             <MovementModal
