@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.erp import (
@@ -12,12 +12,14 @@ from app.api.v1.schemas.erp import (
     StockMovementResponse,
     StockValuationResponse,
 )
+from app.api.v1.schemas.labels import LabelsRequest
 from app.api.v1.schemas.lots import LotCreate, LotUpdate
 from app.api.v1.schemas.warehouse import StockTransferRequest
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services.inventory import labels as labels_svc
 from app.services.inventory import lot_service, reorder_service, stock_service
 from app.services.sales import product as svc
 
@@ -295,3 +297,28 @@ async def reorder_generate_pos(
 ):
     """Genera pedidos de compra BORRADOR agrupando las sugerencias por proveedor."""
     return await reorder_service.generate_draft_pos(db, current_user.tenant_id)
+
+
+@router.post("/inventory/labels/pdf", tags=["inventory"])
+@limiter.limit("20/minute")
+async def labels_pdf(
+    request: Request,
+    payload: LabelsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Genera un PDF de etiquetas con codigo de barras (Code128) para imprimir."""
+    try:
+        pdf = await labels_svc.generate_labels_pdf(
+            db,
+            current_user.tenant_id,
+            [it.model_dump() for it in payload.items],
+            show_price=payload.show_price,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="etiquetas.pdf"'},
+    )
