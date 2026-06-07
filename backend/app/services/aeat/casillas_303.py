@@ -13,7 +13,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-
 # Casillas del Modelo 303 — régimen general
 # Listado simplificado de las casillas más comunes que se rellenan
 # automáticamente desde facturas emitidas/recibidas.

@@ -12,7 +12,6 @@ from app.agents.orchestrator.helpers import (
 )
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.agents.orchestrator.utils import _format_summary
-from app.agents.tool_registry import get_registry
 from app.skills.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)

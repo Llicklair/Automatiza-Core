@@ -1,9 +1,10 @@
 from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict
+
 # Re-export de la ubicación canónica en services/
 from app.services._tenant_schemas import LlmProviderConfig  # noqa: F401
-from pydantic import BaseModel, ConfigDict
 
 
 class TenantMeResponse(BaseModel):

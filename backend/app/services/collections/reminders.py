@@ -17,7 +17,7 @@ facturas reales y devuelve las que ESTE día necesitan recordatorio.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -28,7 +28,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.billing import Invoice
-
 
 _PAID_STATUSES = ("paid", "reconciled", "settled", "cancelled", "voided")
 

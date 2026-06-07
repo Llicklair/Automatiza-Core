@@ -33,7 +33,6 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-
 _NS = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"
 _IBAN_RE = re.compile(r"^[A-Z]{2}[0-9A-Z]{2,32}$")
 

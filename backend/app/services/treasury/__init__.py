@@ -15,7 +15,7 @@ from app.services.treasury.projection import (
     CashflowDay,
     project_cashflow,
 )
-from app.services.treasury.sepa import build_pain001, Pain001Error
+from app.services.treasury.sepa import Pain001Error, build_pain001
 
 __all__ = [
     "CashflowAlert",

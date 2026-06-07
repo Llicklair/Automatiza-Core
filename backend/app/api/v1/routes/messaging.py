@@ -501,8 +501,8 @@ async def draft_email_reply(
     Reusa el handler de /email/messages/{id} para obtener el cuerpo completo
     y pasa el contexto opcional a la IA.
     """
-    from app.services.email_credentials import get_oauth_token
     from app.services.email_ai import EmailAIError, draft_reply
+    from app.services.email_credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
 

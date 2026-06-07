@@ -3,10 +3,11 @@
 from datetime import datetime
 from uuid import UUID
 
+from pydantic import BaseModel, EmailStr
+
 # Schemas compartidos con la capa services — re-exportados aquí para mantener
 # compat con route handlers existentes; ubicación canónica: services/auth/_schemas.py
 from app.services.auth._schemas import TenantCreate, UserCreate  # noqa: F401
-from pydantic import BaseModel, EmailStr
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
 

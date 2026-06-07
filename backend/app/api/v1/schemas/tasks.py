@@ -4,9 +4,10 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel
+
 # Re-export para compatibilidad — la fuente canónica es agents.types
 from app.agents.types import StepResult  # noqa: F401
-from pydantic import BaseModel
 
 # ─── Tasks ───────────────────────────────────────────────────────────────────
 

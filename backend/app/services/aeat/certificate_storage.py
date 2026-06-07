@@ -11,7 +11,6 @@ revoca automáticamente el anterior. Mantener histórico para auditoría.
 
 from __future__ import annotations
 
-import base64
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -58,9 +57,9 @@ def _extract_metadata(pfx_bytes: bytes, password: str) -> CertificateMetadata:
     PFX (windows en algunos casos), devuelve metadatos vacíos.
     """
     try:
+        from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.serialization import pkcs12
         from cryptography.x509 import load_der_x509_certificate
-        from cryptography.hazmat.primitives import hashes
     except ImportError:
         return CertificateMetadata(None, None, None, None, None, None)
 

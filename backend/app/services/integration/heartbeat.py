@@ -22,9 +22,9 @@ from uuid import UUID
 from sqlalchemy import func, select, update
 
 from app.db.base import AsyncSessionLocal
-from app.services.agent_budget import get_budget_status
 from app.db.models.ai_employees import ActivityEntry, AIEmployee
 from app.db.models.tasks import Task
+from app.services.agent_budget import get_budget_status
 
 logger = logging.getLogger(__name__)
 

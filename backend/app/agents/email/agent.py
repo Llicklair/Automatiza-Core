@@ -16,11 +16,10 @@ from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm
 from app.services.email.service import send_email_smtp
+from app.services.email_credentials import get_email_credentials, get_oauth_token
 
 from ._provider_tools import _resolve_smtp_attachments, build_real_tools
 from .prompts import build_system_prompt
-from app.services.email_credentials import get_email_credentials, get_oauth_token
-
 from .tools import _load_attachments, build_tools_list
 
 logger = logging.getLogger(__name__)
