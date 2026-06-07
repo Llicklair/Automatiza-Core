@@ -63,9 +63,9 @@ def sign_xades_bes(xml_str: str, pfx_bytes: bytes, password: str) -> SignResult:
 
     # Camino real (cuando libs están instaladas)
     try:
-        from signxml import XMLSigner, methods
         from cryptography.hazmat.primitives.serialization import pkcs12
         from lxml import etree
+        from signxml import XMLSigner, methods
     except ImportError as e:
         raise SigningError(f"Falta dependencia en runtime: {e}") from e
 

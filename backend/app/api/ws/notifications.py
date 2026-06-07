@@ -1,8 +1,9 @@
 import logging
 
-from app.core.config import settings
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

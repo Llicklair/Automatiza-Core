@@ -32,7 +32,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.db.models.billing import Invoice, VerifactuConfig, VerifactuRecord
-from app.db.models.crm import Client
 
 _QUARTER_MONTHS = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
 _BALANCE_TOLERANCE_CENTS = Decimal("0.02")

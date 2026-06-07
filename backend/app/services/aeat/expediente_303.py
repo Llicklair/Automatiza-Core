@@ -18,7 +18,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.aeat.casillas_303 import Casilla303, build_casillas_303
+from app.services.aeat.casillas_303 import build_casillas_303
 from app.services.aeat.modelo_303_xml import build_modelo_303_xml
 
 _log = logging.getLogger(__name__)
