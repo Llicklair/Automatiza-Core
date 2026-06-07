@@ -138,10 +138,17 @@ Devuelve JSON: {"resumen": "...", "novedades_relevantes": [...], "acciones_recom
 
 _CONTEXTO_NORMATIVO = """
     - IVA General España: 21%. Reducido: 10%. Superreducido: 4%.
-    - Plazo presentación Modelo 303 (IVA trimestral): 20 días tras fin de trimestre (30 días en 4T).
-    - Modelo 130 (IRPF fraccionado Estimación Directa): mismos plazos que Modelo 303.
-    - Modelo 111 (Retenciones): trimestral, mismos plazos.
-    - Factura electrónica obligatoria para B2B: Ley Crea y Crece (pendiente de reglamento).
+    - Plazo presentación Modelo 303 (IVA trimestral): 20 días tras fin de trimestre.
+      El 4T es excepción: del 1 al 30 de enero del año siguiente.
+    - Modelo 130 (IRPF fraccionado Estimación Directa): mismos plazos que Modelo 303
+      (incluido el 4T hasta el 30 de enero).
+    - Modelo 111 (Retenciones IRPF): trimestral, 20 primeros días del mes siguiente
+      al trimestre. OJO: el 4T vence el 20 de enero (NO el 30 como el 303/130).
+    - Factura electrónica obligatoria B2B (Ley Crea y Crece): desarrollada por el
+      Real Decreto 238/2026 (BOE 31-mar-2026). El calendario arranca el 1-oct-2026;
+      la obligación entra en vigor 1 año después para quienes facturen >8M€/año
+      (en torno a oct-2027) y 2 años después para el resto de empresas y autónomos
+      (en torno a oct-2028). Formato europeo EN16931.
     - Umbral operaciones con terceros Modelo 347: 3.005,06€ anuales.
     - Retención general profesionales: 15% (7% primeros años de actividad).
     - Autónomos en módulos: no presentan Modelo 130 sino Modelo 131.

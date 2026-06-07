@@ -161,6 +161,9 @@ async def get_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> Employ
 def _load_sepe_logo_b64() -> str:
     """Load SEPE logo as a data URI PNG for embedding in HTML."""
     candidates = [
+        # Ubicación real del asset en el repo.
+        os.path.join(os.path.dirname(__file__), "..", "assets", "sepe_logo.png"),
+        # Rutas históricas conservadas por compatibilidad.
         os.path.join(os.path.dirname(__file__), "assets", "sepe_logo.png"),
         os.path.join(
             os.path.dirname(__file__), "..", "api", "v1", "routes", "assets", "sepe_logo.png"

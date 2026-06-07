@@ -117,7 +117,10 @@ async def record_movement(
     movement = StockMovement(
         product_id=product.id,
         movement_type=movement_type,
-        quantity=qty if movement_type == "entrada" else -qty,
+        # `quantity` se guarda como magnitud POSITIVA en todo el sistema; la
+        # dirección la marca `movement_type` (entrada/salida/ajuste). La UI ya
+        # aplica el signo según el tipo.
+        quantity=qty,
         stock_after=new_stock,
         unit_cost=cost_price if movement_type == "entrada" else None,
         reference=f"scanner:{device}",

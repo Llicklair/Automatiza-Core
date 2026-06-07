@@ -10,6 +10,7 @@ from app.agents.orchestrator.dispatchers.compliance import _dispatch_compliance
 from app.agents.orchestrator.dispatchers.crm import _dispatch_crm
 from app.agents.orchestrator.dispatchers.documents import _dispatch_documents
 from app.agents.orchestrator.dispatchers.hr import _dispatch_hr
+from app.agents.orchestrator.dispatchers.inventory import _dispatch_inventory
 from app.agents.orchestrator.dispatchers.marketing import _dispatch_marketing
 from app.agents.orchestrator.dispatchers.misc import (
     _dispatch_email,
@@ -37,6 +38,7 @@ DISPATCHER_MAP = {
     "report": _dispatch_report,
     "recruitment": _dispatch_recruitment,
     "marketing": _dispatch_marketing,
+    "inventory": _dispatch_inventory,
     "skill": _dispatch_skill,
     "chat": _dispatch_chat,
 }
@@ -57,6 +59,7 @@ __all__ = [
     "_dispatch_workflow",
     "_dispatch_recruitment",
     "_dispatch_marketing",
+    "_dispatch_inventory",
     "_dispatch_skill",
     "_dispatch_chat",
 ]

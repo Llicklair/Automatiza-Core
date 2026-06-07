@@ -83,6 +83,7 @@ VALID_DOMAINS = {
     "marketing",
     "recruitment",
     "accounting",
+    "inventory",
     "report",
     "chat",
     "custom",
