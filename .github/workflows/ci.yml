@@ -145,7 +145,9 @@ jobs:
         run: npx tsc --noEmit
 
       - name: ESLint
-        run: npx eslint src/ --ext .ts,.tsx --max-warnings 20
+        # Flat config (eslint.config.mjs): el flag --ext se eliminó en ESLint v9+;
+        # los tipos de archivo a lintar los define el propio config.
+        run: npx eslint src/ --max-warnings 20
 
   frontend-test:
     name: Frontend — Tests

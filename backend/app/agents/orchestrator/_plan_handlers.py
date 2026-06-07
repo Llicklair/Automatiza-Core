@@ -235,7 +235,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
 
     class PlanStep(BaseModel):
         agent: str = Field(
-            description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag, workflow, compliance, recruitment, marketing, chat, custom"
+            description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag, workflow, compliance, recruitment, marketing, inventory, chat, custom"
         )
         action: str = Field(description="Acción corta, ej: extract_data, create_report, send_email")
         instruction: str = Field(

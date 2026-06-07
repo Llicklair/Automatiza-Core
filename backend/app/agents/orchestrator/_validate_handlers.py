@@ -26,6 +26,7 @@ _DOMAIN_KEYWORDS: dict[str, tuple[str, ...]] = {
     "rag": ("consulta interna", "knowledge base", "politica interna", "política interna"),
     "recruitment": ("cv", "candidato", "candidata", "posicion abierta", "posición abierta"),
     "marketing": ("campaña", "campana", "catalogo", "catálogo de productos"),
+    "inventory": ("stock", "inventario", "almacén", "almacen", "existencias", "recuento", "merma", "stock mínimo", "stock minimo"),
 }
 
 

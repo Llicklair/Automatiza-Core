@@ -21,6 +21,12 @@ from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_re
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Opportunity
 
+# ─── Etapas del embudo (única fuente de verdad) ──────────────────────────────
+# Debe coincidir con el frontend (crm/embudo-de-ventas) y el tipo de la API
+# (frontend/src/lib/api/crm.ts). Si añades una etapa, actualízala también allí.
+VALID_STAGES: tuple[str, ...] = ("new", "qualified", "proposal", "won", "lost")
+_STAGES_HELP = ", ".join(f"'{s}'" for s in VALID_STAGES)
+
 # ─── Herramientas ────────────────────────────────────────────────────────────
 
 
@@ -88,11 +94,8 @@ async def create_opportunity(
     except (ValueError, TypeError):
         return f"Error: valor esperado inválido '{expected_value}'. Debe ser un número."
 
-    VALID_STAGES = {"new", "qualified", "proposal", "negotiation", "won", "lost"}
     if stage not in VALID_STAGES:
-        return (
-            f"Error: etapa inválida '{stage}'. Opciones válidas: {', '.join(sorted(VALID_STAGES))}."
-        )
+        return f"Error: etapa inválida '{stage}'. Opciones válidas: {_STAGES_HELP}."
 
     return await _create_opportunity_async(tenant_id, client_nif, title, expected_value, stage)
 
@@ -137,9 +140,8 @@ async def update_opportunity_stage(
         new_stage: Nueva fase ('new', 'qualified', 'proposal', 'won', 'lost')
         notes: Nota opcional sobre el cambio de etapa
     """
-    valid_stages = ["new", "qualified", "proposal", "won", "lost"]
-    if new_stage not in valid_stages:
-        return f"Error: Fase '{new_stage}' invalida. Usa una de: {valid_stages}."
+    if new_stage not in VALID_STAGES:
+        return f"Error: Fase '{new_stage}' invalida. Usa una de: {_STAGES_HELP}."
 
     return await _update_opportunity_stage_async(tenant_id, opportunity_id, new_stage, notes)
 

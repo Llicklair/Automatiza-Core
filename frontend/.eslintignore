@@ -1,6 +1,0 @@
-# Tests no necesitan pasar el lint del build de producción.
-# Vitest + TypeScript ya validan sintaxis y tipos.
-**/*.test.ts
-**/*.test.tsx
-**/__tests__/**
-src/test/**

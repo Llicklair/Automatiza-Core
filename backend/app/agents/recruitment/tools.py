@@ -18,6 +18,14 @@ from app.db.models.hr import Candidate, RecruitmentPosition
 logger = logging.getLogger(__name__)
 
 
+def _parse_uuid(value: str, label: str) -> UUID:
+    """Convierte a UUID o lanza ValueError con mensaje claro para el usuario."""
+    try:
+        return UUID(value)
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError(f"{label} '{value}' no es un identificador válido.")
+
+
 @tool
 async def create_position(
     tenant_id: str,
@@ -32,6 +40,13 @@ async def create_position(
     """Crea un nuevo puesto abierto para reclutar.
     required_skills es un JSON array de strings, ej: '["Python", "SQL"]'
     """
+    if not title or not title.strip():
+        return "Error: el título del puesto es obligatorio."
+    try:
+        tenant_uuid = _parse_uuid(tenant_id, "tenant_id")
+    except ValueError as e:
+        return f"Error: {e}"
+
     try:
         skills = (
             json.loads(required_skills) if isinstance(required_skills, str) else required_skills
@@ -39,41 +54,54 @@ async def create_position(
     except json.JSONDecodeError:
         skills = [s.strip() for s in required_skills.split(",") if s.strip()]
 
-    async with AsyncSessionLocal() as db:
-        pos = RecruitmentPosition(
-            tenant_id=UUID(tenant_id),
-            title=title,
-            department=department,
-            description=description,
-            required_skills=skills,
-            experience_min_years=experience_min_years,
-            salary_range_min=salary_range_min if salary_range_min else None,
-            salary_range_max=salary_range_max if salary_range_max else None,
-        )
-        db.add(pos)
-        await db.commit()
-        await db.refresh(pos)
-        return json.dumps(
-            {
-                "id": str(pos.id),
-                "title": pos.title,
-                "department": pos.department,
-                "required_skills": pos.required_skills,
-                "status": pos.status,
-            },
-            ensure_ascii=False,
-        )
+    try:
+        async with AsyncSessionLocal() as db:
+            pos = RecruitmentPosition(
+                tenant_id=tenant_uuid,
+                title=title.strip(),
+                department=department,
+                description=description,
+                required_skills=skills,
+                experience_min_years=experience_min_years,
+                salary_range_min=salary_range_min if salary_range_min else None,
+                salary_range_max=salary_range_max if salary_range_max else None,
+            )
+            db.add(pos)
+            await db.commit()
+            await db.refresh(pos)
+            return json.dumps(
+                {
+                    "id": str(pos.id),
+                    "title": pos.title,
+                    "department": pos.department,
+                    "required_skills": pos.required_skills,
+                    "status": pos.status,
+                },
+                ensure_ascii=False,
+            )
+    except Exception as e:
+        logger.warning("create_position falló: %s", e)
+        return f"Error al crear el puesto: {e}"
 
 
 @tool
 async def list_positions(tenant_id: str, status: str = "open") -> str:
     """Lista los puestos abiertos del tenant. status: open|closed|paused|all"""
-    async with AsyncSessionLocal() as db:
-        q = select(RecruitmentPosition).where(RecruitmentPosition.tenant_id == UUID(tenant_id))
-        if status != "all":
-            q = q.where(RecruitmentPosition.status == status)
-        result = await db.execute(q.order_by(RecruitmentPosition.created_at.desc()))
-        positions = result.scalars().all()
+    try:
+        tenant_uuid = _parse_uuid(tenant_id, "tenant_id")
+    except ValueError as e:
+        return f"Error: {e}"
+
+    try:
+        async with AsyncSessionLocal() as db:
+            q = select(RecruitmentPosition).where(RecruitmentPosition.tenant_id == tenant_uuid)
+            if status != "all":
+                q = q.where(RecruitmentPosition.status == status)
+            result = await db.execute(q.order_by(RecruitmentPosition.created_at.desc()))
+            positions = result.scalars().all()
+    except Exception as e:
+        logger.warning("list_positions falló: %s", e)
+        return f"Error al listar puestos: {e}"
 
     if not positions:
         return "No hay puestos abiertos."
@@ -101,42 +129,67 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
     # AI.SCO — `score_candidate` no se invoca; ver docs/ai_act_scoping.md §2.
     from app.services.ai.cv_parser import extract_cv_data, parse_cv_file
 
-    cv_text = await parse_cv_file(cv_file_path)
+    try:
+        tenant_uuid = _parse_uuid(tenant_id, "tenant_id")
+        position_uuid = _parse_uuid(position_id, "position_id")
+    except ValueError as e:
+        return f"Error: {e}"
+
+    # Extracción de texto del PDF: archivo corrupto, formato no soportado o
+    # ruta inexistente no deben tumbar al agente.
+    try:
+        cv_text = await parse_cv_file(cv_file_path)
+    except FileNotFoundError:
+        return f"Error: no se encontró el archivo de CV en '{cv_file_path}'."
+    except Exception as e:
+        logger.warning("process_cv: fallo al parsear PDF %s: %s", cv_file_path, e)
+        return f"Error: no se pudo leer el CV ({e})."
     if not cv_text:
-        return "Error: no se pudo extraer texto del PDF."
+        return "Error: no se pudo extraer texto del PDF (¿escaneado sin OCR o vacío?)."
 
-    cv_data = await extract_cv_data(cv_text)
+    # Extracción estructurada vía LLM: puede fallar o devolver algo no-dict.
+    try:
+        cv_data = await extract_cv_data(cv_text)
+    except Exception as e:
+        logger.warning("process_cv: fallo en extract_cv_data: %s", e)
+        return f"Error: no se pudieron estructurar los datos del CV ({e})."
+    if not isinstance(cv_data, dict):
+        cv_data = {}
 
-    async with AsyncSessionLocal() as db:
-        pos_result = await db.execute(
-            select(RecruitmentPosition).where(
-                RecruitmentPosition.id == UUID(position_id),
-                RecruitmentPosition.tenant_id == UUID(tenant_id),
+    try:
+        async with AsyncSessionLocal() as db:
+            pos_result = await db.execute(
+                select(RecruitmentPosition).where(
+                    RecruitmentPosition.id == position_uuid,
+                    RecruitmentPosition.tenant_id == tenant_uuid,
+                )
             )
-        )
-        position = pos_result.scalars().first()
-        if not position:
-            return f"Error: puesto {position_id} no encontrado."
+            position = pos_result.scalars().first()
+            if not position:
+                return f"Error: puesto {position_id} no encontrado."
 
-    async with AsyncSessionLocal() as db:
-        candidate = Candidate(
-            tenant_id=UUID(tenant_id),
-            position_id=UUID(position_id),
-            name=cv_data.get("name") or "Nombre no detectado",
-            email=cv_data.get("email"),
-            phone=cv_data.get("phone"),
-            skills=cv_data.get("skills", []),
-            experience_years=cv_data.get("experience_years"),
-            languages=cv_data.get("languages", []),
-            education=cv_data.get("education"),
-            summary=cv_data.get("summary"),
-            raw_cv_text=cv_text[:10000],
-            cv_file_path=cv_file_path,
-            status="new",
-        )
-        db.add(candidate)
-        await db.commit()
-        await db.refresh(candidate)
+        async with AsyncSessionLocal() as db:
+            candidate = Candidate(
+                tenant_id=tenant_uuid,
+                position_id=position_uuid,
+                name=cv_data.get("name") or "Nombre no detectado",
+                email=cv_data.get("email"),
+                phone=cv_data.get("phone"),
+                skills=cv_data.get("skills", []),
+                experience_years=cv_data.get("experience_years"),
+                languages=cv_data.get("languages", []),
+                education=cv_data.get("education"),
+                summary=cv_data.get("summary"),
+                raw_cv_text=cv_text[:10000],
+                cv_file_path=cv_file_path,
+                status="new",
+            )
+            db.add(candidate)
+            await db.commit()
+            await db.refresh(candidate)
+    except Exception as e:
+        logger.warning("process_cv: fallo al guardar candidato: %s", e)
+        return f"Error al guardar el candidato: {e}"
 
     return json.dumps(
         {
@@ -164,14 +217,24 @@ async def list_candidates(
     es por fecha de aplicación (más reciente primero). La selección humana es
     responsabilidad del recruiter.
     """
-    async with AsyncSessionLocal() as db:
-        q = select(Candidate).where(Candidate.tenant_id == UUID(tenant_id))
-        if position_id:
-            q = q.where(Candidate.position_id == UUID(position_id))
-        if status != "all":
-            q = q.where(Candidate.status == status)
-        result = await db.execute(q.order_by(Candidate.created_at.desc()))
-        candidates = result.scalars().all()
+    try:
+        tenant_uuid = _parse_uuid(tenant_id, "tenant_id")
+        position_uuid = _parse_uuid(position_id, "position_id") if position_id else None
+    except ValueError as e:
+        return f"Error: {e}"
+
+    try:
+        async with AsyncSessionLocal() as db:
+            q = select(Candidate).where(Candidate.tenant_id == tenant_uuid)
+            if position_uuid:
+                q = q.where(Candidate.position_id == position_uuid)
+            if status != "all":
+                q = q.where(Candidate.status == status)
+            result = await db.execute(q.order_by(Candidate.created_at.desc()))
+            candidates = result.scalars().all()
+    except Exception as e:
+        logger.warning("list_candidates falló: %s", e)
+        return f"Error al listar candidatos: {e}"
 
     if not candidates:
         return "No hay candidatos que coincidan con los filtros."
@@ -192,20 +255,30 @@ async def update_candidate_status(tenant_id: str, candidate_id: str, new_status:
     if new_status not in valid:
         return f"Estado inválido. Opciones: {', '.join(valid)}"
 
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Candidate).where(
-                Candidate.id == UUID(candidate_id),
-                Candidate.tenant_id == UUID(tenant_id),
+    try:
+        tenant_uuid = _parse_uuid(tenant_id, "tenant_id")
+        candidate_uuid = _parse_uuid(candidate_id, "candidate_id")
+    except ValueError as e:
+        return f"Error: {e}"
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Candidate).where(
+                    Candidate.id == candidate_uuid,
+                    Candidate.tenant_id == tenant_uuid,
+                )
             )
-        )
-        c = result.scalars().first()
-        if not c:
-            return f"Candidato {candidate_id} no encontrado."
-        old = c.status
-        c.status = new_status
-        await db.commit()
-        return f"Candidato {c.name}: {old} → {new_status}"
+            c = result.scalars().first()
+            if not c:
+                return f"Candidato {candidate_id} no encontrado."
+            old = c.status
+            c.status = new_status
+            await db.commit()
+            return f"Candidato {c.name}: {old} → {new_status}"
+    except Exception as e:
+        logger.warning("update_candidate_status falló: %s", e)
+        return f"Error al actualizar el candidato: {e}"
 
 
 @tool
@@ -236,6 +309,11 @@ async def create_candidate(
     if not name or not name.strip():
         return "Error: el nombre del candidato es obligatorio."
 
+    try:
+        tenant_uuid = _parse_uuid(tenant_id, "tenant_id")
+    except ValueError as e:
+        return f"Error: {e}"
+
     pos_uuid = None
     if position_id:
         try:
@@ -243,33 +321,37 @@ async def create_candidate(
         except ValueError:
             return f"Error: position_id '{position_id}' no es un UUID válido."
 
-    async with AsyncSessionLocal() as db:
-        if pos_uuid:
-            pos = await db.get(RecruitmentPosition, pos_uuid)
-            if not pos or str(pos.tenant_id) != tenant_id:
-                return f"Error: puesto {position_id} no encontrado en este tenant."
+    try:
+        async with AsyncSessionLocal() as db:
+            if pos_uuid:
+                pos = await db.get(RecruitmentPosition, pos_uuid)
+                if not pos or str(pos.tenant_id) != tenant_id:
+                    return f"Error: puesto {position_id} no encontrado en este tenant."
 
-        cand = Candidate(
-            tenant_id=UUID(tenant_id),
-            name=name.strip(),
-            email=email.strip() or None,
-            phone=phone.strip() or None,
-            position_id=pos_uuid,
-        )
-        db.add(cand)
-        await db.commit()
-        await db.refresh(cand)
-        return json.dumps(
-            {
-                "id": str(cand.id),
-                "name": cand.name,
-                "email": cand.email,
-                "phone": cand.phone,
-                "position_id": str(cand.position_id) if cand.position_id else None,
-                "status": cand.status,
-            },
-            ensure_ascii=False,
-        )
+            cand = Candidate(
+                tenant_id=tenant_uuid,
+                name=name.strip(),
+                email=email.strip() or None,
+                phone=phone.strip() or None,
+                position_id=pos_uuid,
+            )
+            db.add(cand)
+            await db.commit()
+            await db.refresh(cand)
+            return json.dumps(
+                {
+                    "id": str(cand.id),
+                    "name": cand.name,
+                    "email": cand.email,
+                    "phone": cand.phone,
+                    "position_id": str(cand.position_id) if cand.position_id else None,
+                    "status": cand.status,
+                },
+                ensure_ascii=False,
+            )
+    except Exception as e:
+        logger.warning("create_candidate falló: %s", e)
+        return f"Error al crear el candidato: {e}"
 
 
 tools = [create_position, list_positions, process_cv, create_candidate, list_candidates, update_candidate_status, create_pdf_report, create_pdf_text_report]
