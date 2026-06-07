@@ -1,11 +1,16 @@
 """Reposición automática: sugerencias de pedido y generación de pedidos de
 compra borrador cuando el stock baja del punto de pedido (`stock_min_alert`).
 
+`run_auto_reorder` es el punto de entrada del scheduler diario: genera los
+borradores para todos los tenants de forma idempotente (no duplica un producto
+que ya esté en un pedido de compra abierto).
+
 No lanza HTTPException — solo excepciones Python o valores de retorno.
 """
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from uuid import UUID
 
@@ -15,6 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.crm import Client
 from app.db.models.inventory import Product
 from app.db.models.orders import PurchaseOrder, PurchaseOrderLine
+
+logger = logging.getLogger(__name__)
+
+# Estados de pedido de compra que se consideran "abiertos" para idempotencia:
+# si un producto ya está en uno de estos, no se vuelve a pedir.
+_OPEN_PO_STATUSES = ("draft", "pending", "sent")
 
 
 def _suggest_qty(product: Product) -> int:
@@ -58,17 +69,39 @@ async def suggest_reorders(db: AsyncSession, tenant_id: UUID) -> list[dict]:
     return out
 
 
+async def _products_in_open_pos(db: AsyncSession, tenant_id: UUID) -> set[str]:
+    """IDs de productos que ya están en un pedido de compra abierto (idempotencia)."""
+    result = await db.execute(
+        select(PurchaseOrderLine.product_id)
+        .join(PurchaseOrder, PurchaseOrderLine.order_id == PurchaseOrder.id)
+        .where(
+            PurchaseOrder.tenant_id == tenant_id,
+            PurchaseOrder.status.in_(_OPEN_PO_STATUSES),
+            PurchaseOrderLine.product_id.is_not(None),
+        )
+    )
+    return {str(pid) for (pid,) in result.all() if pid}
+
+
 async def generate_draft_pos(db: AsyncSession, tenant_id: UUID) -> dict:
     """Genera pedidos de compra BORRADOR agrupando las sugerencias por proveedor.
 
-    Los productos sin proveedor asignado se devuelven en `skipped_no_supplier`.
+    Idempotente: omite productos que ya estén en un pedido de compra abierto
+    (`skipped_existing_po`). Los productos sin proveedor van en
+    `skipped_no_supplier`.
     """
     suggestions = await suggest_reorders(db, tenant_id)
+    already_open = await _products_in_open_pos(db, tenant_id)
+
     groups: dict[str, list[dict]] = defaultdict(list)
-    skipped: list[str] = []
+    skipped_no_supplier: list[str] = []
+    skipped_existing: list[str] = []
     for s in suggestions:
+        if s["product_id"] in already_open:
+            skipped_existing.append(s["name"])
+            continue
         if not s["supplier_id"]:
-            skipped.append(s["name"])
+            skipped_no_supplier.append(s["name"])
             continue
         groups[s["supplier_id"]].append(s)
 
@@ -76,7 +109,7 @@ async def generate_draft_pos(db: AsyncSession, tenant_id: UUID) -> dict:
     for supplier_id, items in groups.items():
         po = PurchaseOrder(tenant_id=tenant_id, supplier_id=UUID(supplier_id), status="draft")
         db.add(po)
-        await db.flush()  # obtener po.id
+        await db.flush()
         base = 0.0
         tax = 0.0
         for it in items:
@@ -111,4 +144,29 @@ async def generate_draft_pos(db: AsyncSession, tenant_id: UUID) -> dict:
         )
 
     await db.commit()
-    return {"created": created, "skipped_no_supplier": skipped}
+    return {
+        "created": created,
+        "skipped_no_supplier": skipped_no_supplier,
+        "skipped_existing_po": skipped_existing,
+    }
+
+
+async def run_auto_reorder() -> None:
+    """Punto de entrada del scheduler: genera borradores de reposición para
+    todos los tenants activos. Idempotente, así que es seguro a diario."""
+    from app.db.base import AsyncSessionLocal
+    from app.db.models.auth import Tenant
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Tenant).where(Tenant.is_active.is_(True)))
+        for tenant in result.scalars():
+            try:
+                res = await generate_draft_pos(db, tenant.id)
+                if res["created"]:
+                    logger.info(
+                        "Reposición automática tenant %s: %d pedido(s) borrador",
+                        tenant.id,
+                        len(res["created"]),
+                    )
+            except Exception as exc:
+                logger.error("Error en reposición automática tenant %s: %s", tenant.id, exc)

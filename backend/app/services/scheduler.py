@@ -88,6 +88,18 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # Diario a las 8:45 (Europe/Madrid): reposición automática — genera pedidos
+    # de compra borrador para productos bajo su punto de pedido (idempotente).
+    from app.services.inventory.reorder_service import run_auto_reorder
+
+    scheduler.add_job(
+        run_auto_reorder,
+        CronTrigger(hour=8, minute=45),
+        id="daily_auto_reorder",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     # Diario a las 4:00 (Europe/Madrid): backup pg_dump + rotación.
     # Hora baja para no competir con la actividad del usuario.
     from app.services.backup import run_backup_job
