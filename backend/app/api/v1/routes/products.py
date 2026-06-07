@@ -12,10 +12,12 @@ from app.api.v1.schemas.erp import (
     StockMovementResponse,
     StockValuationResponse,
 )
+from app.api.v1.schemas.lots import LotUpdate
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services.inventory import lot_service
 from app.services.sales import product as svc
 
 logger = logging.getLogger(__name__)
@@ -48,9 +50,7 @@ async def list_products(
     )
 
 
-@router.get(
-    "/products/by-barcode/{code}", response_model=ProductResponse, tags=["inventory"]
-)
+@router.get("/products/by-barcode/{code}", response_model=ProductResponse, tags=["inventory"])
 @limiter.limit("60/minute")
 async def get_product_by_barcode(
     request: Request,
@@ -74,9 +74,7 @@ async def update_product(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_product(
-            db, current_user.tenant_id, product_id, payload.model_dump(exclude_none=True)
-        )
+        return await svc.update_product(db, current_user.tenant_id, product_id, payload.model_dump(exclude_none=True))
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
@@ -95,9 +93,7 @@ async def delete_product(
         raise HTTPException(status_code=404, detail=str(exc))
 
 
-@router.post(
-    "/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["erp"]
-)
+@router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
 @limiter.limit("30/minute")
 async def create_product(
     request: Request,
@@ -153,10 +149,57 @@ async def create_stock_movement(
     data = payload.model_dump()
     data["user_id"] = current_user.id
     try:
-        return await svc.create_stock_movement(
-            db, current_user.tenant_id, product_id, data
-        )
+        return await svc.create_stock_movement(db, current_user.tenant_id, product_id, data)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+# ─── Lotes (caducidad / FEFO) ─────────────────────────────────────────────────
+
+
+@router.get("/inventory/expiring-lots", tags=["inventory"])
+@limiter.limit("30/minute")
+async def list_expiring_lots(
+    request: Request,
+    days: int = Query(default=7, ge=0, le=365, description="Horizonte de caducidad en días"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lotes (de todo el negocio) que caducan dentro de `days` días o ya caducados."""
+    return await lot_service.list_expiring_lots(db, current_user.tenant_id, days)
+
+
+@router.get("/products/{product_id}/lots", tags=["inventory"])
+@limiter.limit("30/minute")
+async def list_product_lots(
+    request: Request,
+    product_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista los lotes con stock de un producto, ordenados por caducidad (FEFO)."""
+    try:
+        return await lot_service.list_lots(db, current_user.tenant_id, product_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.patch("/products/{product_id}/lots/{lot_id}", tags=["inventory"])
+@limiter.limit("30/minute")
+async def update_product_lot(
+    request: Request,
+    product_id: UUID,
+    lot_id: UUID,
+    payload: LotUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Edita metadatos de un lote (número, caducidad, coste). No cambia la cantidad."""
+    try:
+        return await lot_service.update_lot_metadata(
+            db, current_user.tenant_id, lot_id, payload.model_dump(exclude_unset=True)
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
