@@ -72,6 +72,7 @@ async def add_lot(
     quantity: int,
     expiry_date: date | None = None,
     cost_price: float | None = None,
+    warehouse_id: UUID | None = None,
 ) -> ProductLot:
     """Crea un lote o suma cantidad a uno existente (mismo número y caducidad).
 
@@ -84,6 +85,7 @@ async def add_lot(
             ProductLot.product_id == product_id,
             ProductLot.lot_number == lot_number,
             ProductLot.expiry_date == expiry_date,
+            ProductLot.warehouse_id == warehouse_id,
         )
     )
     lot = result.scalars().first()
@@ -96,6 +98,7 @@ async def add_lot(
     lot = ProductLot(
         tenant_id=tenant_id,
         product_id=product_id,
+        warehouse_id=warehouse_id,
         lot_number=lot_number,
         expiry_date=expiry_date,
         quantity=qty,

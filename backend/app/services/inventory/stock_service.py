@@ -122,6 +122,20 @@ async def _available_in(
     return int(row.quantity) if row else 0
 
 
+async def add_to_warehouse(
+    db: AsyncSession, *, tenant_id: UUID, product, warehouse_id: UUID, qty: int
+) -> None:
+    """Entrada de `qty` unidades en un almacén: sube el total global del producto
+    y, si el almacén no es el por defecto, su fila `product_stock` (el por
+    defecto se deriva). No commitea."""
+    product.stock_quantity = int(product.stock_quantity or 0) + int(qty)
+    default_id = await _default_warehouse_id(db, tenant_id)
+    if default_id is not None and warehouse_id != default_id:
+        await _set_nondefault(
+            db, tenant_id=tenant_id, product_id=product.id, warehouse_id=warehouse_id, delta=int(qty)
+        )
+
+
 async def transfer(
     db: AsyncSession,
     *,
