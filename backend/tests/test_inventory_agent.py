@@ -1,5 +1,7 @@
 """Tests del agente de stock: estructura del grafo, registro de tools y
 validación de entrada de las tools de escritura (ramas previas a la BD)."""
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 
@@ -92,3 +94,71 @@ def test_format_adjust_preview_shows_confirm_hint():
     assert "PREVISUALIZACIÓN" in out
     assert "confirm=true" in out
     assert "10 → 50" in out
+
+
+# ── Gate de autonomía (tareas y automatizaciones) ─────────────────────────────
+
+_FAKE_PREVIEW = {
+    "op": "set", "dry_run": True, "total": 1, "ok": 1, "skipped": 0, "applied": 0,
+    "plan": [{"status": "ok", "name": "Café", "sku": "C1", "ref": "C1",
+              "before": 10, "after": 50, "delta": 40}],
+}
+_ITEMS = '[{"ref":"C1","quantity":50}]'
+
+
+@pytest.mark.asyncio
+async def test_confirm_mode_queues_approval_not_apply():
+    """Política CONFIRM con contexto de task → encola aprobación, no aplica."""
+    import app.agents.inventory.tools as t
+
+    with patch.object(t.batch_service, "batch_adjust_stock", new=AsyncMock(return_value=_FAKE_PREVIEW)) as svc, \
+         patch.object(t, "check_autonomy", new=AsyncMock(return_value="CONFIRM")), \
+         patch.object(t, "create_action_approval", new=AsyncMock(return_value="appr-123")) as appr:
+        out = await t.batch_adjust_stock.ainvoke(
+            {"tenant_id": VALID_TENANT, "items_json": _ITEMS, "op": "set"}
+        )
+
+    assert "pendientes de aprobación" in out.lower() or "aprobación" in out.lower()
+    appr.assert_awaited_once()
+    # batch_service solo se llamó para la PREVISUALIZACIÓN (dry_run=True), no para aplicar.
+    assert svc.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_manual_mode_only_suggests():
+    """Política MANUAL → no ejecuta ni encola; solo sugiere."""
+    import app.agents.inventory.tools as t
+
+    with patch.object(t.batch_service, "batch_adjust_stock", new=AsyncMock(return_value=_FAKE_PREVIEW)) as svc, \
+         patch.object(t, "check_autonomy", new=AsyncMock(return_value="MANUAL")), \
+         patch.object(t, "create_action_approval", new=AsyncMock()) as appr:
+        out = await t.batch_adjust_stock.ainvoke(
+            {"tenant_id": VALID_TENANT, "items_json": _ITEMS, "op": "set"}
+        )
+
+    assert "MANUAL" in out
+    appr.assert_not_awaited()
+    assert svc.await_count == 1  # solo la previsualización
+
+
+@pytest.mark.asyncio
+async def test_auto_mode_applies_directly():
+    """Política AUTO → aplica sin pedir confirmación (sirve a automatizaciones)."""
+    import app.agents.inventory.tools as t
+
+    applied = dict(_FAKE_PREVIEW)
+    applied["dry_run"] = False
+    applied["applied"] = 1
+
+    async def _svc(db, tid, items, **kw):
+        return applied if kw.get("dry_run") is False else _FAKE_PREVIEW
+
+    with patch.object(t.batch_service, "batch_adjust_stock", new=AsyncMock(side_effect=_svc)), \
+         patch.object(t, "check_autonomy", new=AsyncMock(return_value="AUTO")), \
+         patch.object(t, "create_action_approval", new=AsyncMock()) as appr:
+        out = await t.batch_adjust_stock.ainvoke(
+            {"tenant_id": VALID_TENANT, "items_json": _ITEMS, "op": "set"}
+        )
+
+    assert "APLICADO" in out
+    appr.assert_not_awaited()

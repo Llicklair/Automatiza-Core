@@ -14,6 +14,7 @@ import { useState } from "react";
 import {
     BookCheck,
     Building2,
+    Download,
     FileText,
     Loader2,
     RefreshCw,
@@ -92,6 +93,29 @@ export function ModelosPanel() {
     const [trimestre, setTrimestre] = useState(1);
     const [busy, setBusy] = useState<ModeloKey | null>(null);
     const [results, setResults] = useState<Partial<Record<ModeloKey, any>>>({});
+    type DownloadKey = ModeloKey | "303" | "115" | "349";
+    const [downloading, setDownloading] = useState<DownloadKey | null>(null);
+
+    async function downloadPdf(modelo: DownloadKey) {
+        setDownloading(modelo);
+        try {
+            switch (modelo) {
+                case "303": await api.modelosAeat.pdf.m303(trimestre, ejercicio); break;
+                case "130": await api.modelosAeat.pdf.m130(trimestre, ejercicio); break;
+                case "111": await api.modelosAeat.pdf.m111(trimestre, ejercicio); break;
+                case "115": await api.modelosAeat.pdf.m115(trimestre, ejercicio); break;
+                case "349": await api.modelosAeat.pdf.m349(trimestre, ejercicio); break;
+                case "190": await api.modelosAeat.pdf.m190(ejercicio); break;
+                case "347": await api.modelosAeat.pdf.m347(ejercicio); break;
+                case "390": await api.modelosAeat.pdf.m390(ejercicio); break;
+            }
+            toast.show(`PDF del modelo ${modelo} descargado.`, "success");
+        } catch (e: any) {
+            toast.show(`Error al descargar el PDF: ${e.message}`, "error");
+        } finally {
+            setDownloading(null);
+        }
+    }
 
     async function generate(modelo: ModeloKey) {
         setBusy(modelo);
@@ -147,6 +171,28 @@ export function ModelosPanel() {
                             <option value={4}>4T</option>
                         </select>
                     </label>
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Descargar (trimestral):
+                        </span>
+                        {(["303", "115", "349"] as const).map((mk) => (
+                            <button
+                                key={mk}
+                                type="button"
+                                onClick={() => downloadPdf(mk)}
+                                disabled={downloading === mk}
+                                title={`Descargar el Modelo ${mk} en PDF para imprimir`}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50"
+                            >
+                                {downloading === mk ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                                ) : (
+                                    <Download className="w-3 h-3" aria-hidden="true" />
+                                )}
+                                {mk} (PDF)
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </section>
 
@@ -183,6 +229,20 @@ export function ModelosPanel() {
                                             <RefreshCw className="w-3 h-3" aria-hidden="true" />
                                         ) : null}
                                         {data ? "Recalcular" : "Calcular"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => downloadPdf(m.key)}
+                                        disabled={downloading === m.key}
+                                        title="Descargar PDF borrador para imprimir"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-foreground text-xs font-medium hover:bg-muted disabled:opacity-50"
+                                    >
+                                        {downloading === m.key ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                                        ) : (
+                                            <Download className="w-3 h-3" aria-hidden="true" />
+                                        )}
+                                        PDF
                                     </button>
                                 </div>
                             </header>
