@@ -60,16 +60,30 @@ CLASSIFICATION_PROMPT = load_prompt("documents_classification")
 
 
 @tool
-async def import_invoice_document(tenant_id: str, document_id: str) -> str:
+async def import_invoice_document(
+    tenant_id: str,
+    document_id: str,
+    confirm: bool = False,
+    apply_stock: bool = False,
+) -> str:
     """Asimila al ERP un documento de factura (escaneado o subido) como factura
     de COMPRA (recibida): hace OCR e importa de forma IDEMPOTENTE.
 
+    FLUJO OBLIGATORIO: llama primero con confirm=False para mostrar los datos
+    extraídos por OCR al usuario. Solo con confirm=True se persiste en el ERP.
+
     Úsalo cuando se quiera "registrar/importar al ERP" una factura que está en
     Documentos. Es SEGURO de reejecutar (apto para automatizaciones por evento):
-      - Salta los documentos que el propio ERP genera (source="generated", p.ej.
-        el PDF de una factura emitida) → nunca los convierte en factura nueva.
+      - Salta los documentos que el propio ERP genera (source="generated").
       - Salta los ya asimilados (documento ya enlazado a una factura).
       - Dedup por (proveedor + número): no crea duplicados.
+
+    Args:
+        tenant_id: ID del tenant
+        document_id: ID del documento en TenantDocument
+        confirm: False = previsualizar OCR sin importar (por defecto). True = importar.
+        apply_stock: Solo cuando confirm=True. True = actualizar stock con las líneas
+            de la factura. False = registrar solo la factura (sin tocar stock).
 
     Devuelve un resumen legible del resultado.
     """
@@ -88,7 +102,7 @@ async def import_invoice_document(tenant_id: str, document_id: str) -> str:
             if doc is None:
                 return f"Error: documento {document_id} no encontrado."
 
-            # Guarda anti-reflejo / anti-duplicado (el corazón de la seguridad).
+            # Guarda anti-reflejo / anti-duplicado.
             if (doc.source or "uploaded") == "generated":
                 return (
                     f"Omitido: '{doc.file_name}' es un documento generado por el "
@@ -109,11 +123,45 @@ async def import_invoice_document(tenant_id: str, document_id: str) -> str:
             tid = doc.tenant_id
 
             data = await extract_invoice_data(content, mime, tenant_id=tid, db=db)
-            draft = data.to_dict()
-            draft["source_document_id"] = str(doc.id)
-            draft["apply_stock"] = False
+            d = data.to_dict()
 
-            results = await import_received_invoices(db, tid, [draft], uploaded_by)
+            if not confirm:
+                lines_count = len(d.get("lines") or [])
+                missing = [
+                    f
+                    for f, v in [
+                        ("proveedor", d.get("supplier_name")),
+                        ("nº factura", d.get("invoice_number")),
+                        ("total", d.get("total_amount")),
+                    ]
+                    if not v
+                ]
+                conf_note = (
+                    f"\n⚠️ Campos no detectados: {', '.join(missing)} — revisa antes de confirmar."
+                    if missing
+                    else ""
+                )
+                return (
+                    f"Datos extraídos de '{doc.file_name}':\n"
+                    f"  Proveedor: {d.get('supplier_name') or '—'}\n"
+                    f"  NIF proveedor: {d.get('supplier_nif') or '—'}\n"
+                    f"  Nº factura: {d.get('invoice_number') or '—'}\n"
+                    f"  Fecha: {d.get('issue_date') or '—'}\n"
+                    f"  Base imponible: {d.get('base_amount') or '—'}€\n"
+                    f"  IVA: {d.get('tax_amount') or '—'}€\n"
+                    f"  Total: {d.get('total_amount') or '—'}€\n"
+                    f"  Líneas detectadas: {lines_count}"
+                    f"{conf_note}\n\n"
+                    "¿Qué quieres hacer?\n"
+                    "  (a) Solo registrar la factura de compra → responde 'registra' (apply_stock=False)\n"
+                    "  (b) Registrar la factura Y actualizar el stock → responde 'registra con stock' (apply_stock=True)\n"
+                    "  (c) Cancelar → no hagas nada"
+                )
+
+            # confirm=True: persistir en el ERP.
+            d["source_document_id"] = str(doc.id)
+            d["apply_stock"] = apply_stock
+            results = await import_received_invoices(db, tid, [d], uploaded_by)
 
         r = results[0] if results else {}
         if not r.get("ok"):
@@ -123,9 +171,10 @@ async def import_invoice_document(tenant_id: str, document_id: str) -> str:
                 f"'{doc.file_name}' ya estaba en el ERP (factura {r.get('invoice_number')}). "
                 "No se ha duplicado."
             )
+        stock_note = " Stock actualizado con las líneas de la factura." if apply_stock else ""
         return (
             f"Factura importada al ERP desde '{doc.file_name}': "
-            f"nº {r.get('invoice_number')} (id {r.get('invoice_id')})."
+            f"nº {r.get('invoice_number')} (id {r.get('invoice_id')}).{stock_note}"
         )
     except Exception as e:
         logger.exception("[IMPORT-DOC] fallo importando documento %s", document_id)
