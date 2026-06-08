@@ -50,6 +50,7 @@ KNOWN_DOMAINS: frozenset[str] = frozenset({
     "hr",
     "documents",
     "email",
+    "inventory",
     "marketing",
     "recruitment",
     "rag",
@@ -58,11 +59,17 @@ KNOWN_DOMAINS: frozenset[str] = frozenset({
 })
 
 # Defaults por dominio. Cualquier dominio no listado cae a AUTO.
+# Acciones irreversibles o con efecto físico/contable van a CONFIRM por defecto:
+# en automatizaciones quedan en la bandeja de aprobaciones en vez de ejecutarse
+# solas. El tenant puede relajarlas a AUTO en Ajustes.
 DEFAULTS: dict[str, AutonomyMode] = {
     "banking_write": "MANUAL",
     "accounting": "CONFIRM",
     "marketing": "CONFIRM",
     "recruitment": "CONFIRM",
+    "email": "CONFIRM",       # enviar correo es irreversible
+    "documents": "CONFIRM",   # importar factura de compra puede mover stock
+    "inventory": "CONFIRM",   # ajustes/precios/altas-bajas por lotes
 }
 
 

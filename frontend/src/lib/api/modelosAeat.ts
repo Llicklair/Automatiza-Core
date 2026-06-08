@@ -5,7 +5,36 @@
  * lo presenta como preview en `/impuestos`. La presentación real (firmada
  * + telemática) corre por PRES.303 / PRES.MOD1/MOD2 (post-DEC.14).
  */
-import { request } from "./client";
+import { downloadBlob, request } from "./client";
+
+/** Descarga del PDF borrador imprimible de cada modelo. */
+const _q = (quarter: number, year?: number) =>
+    `quarter=${quarter}${year ? `&year=${year}` : ""}`;
+const _y = (year?: number) => (year ? `?year=${year}` : "");
+
+export const modelosPdf = {
+    m303: (quarter: number, year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/303/pdf?${_q(quarter, year)}`,
+            `modelo-303-${quarter}T-${year ?? ""}.pdf`),
+    m130: (quarter: number, year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/130/pdf?${_q(quarter, year)}`,
+            `modelo-130-${quarter}T-${year ?? ""}.pdf`),
+    m111: (quarter: number, year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/111/pdf?${_q(quarter, year)}`,
+            `modelo-111-${quarter}T-${year ?? ""}.pdf`),
+    m115: (quarter: number, year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/115/pdf?${_q(quarter, year)}`,
+            `modelo-115-${quarter}T-${year ?? ""}.pdf`),
+    m349: (quarter: number, year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/349/pdf?${_q(quarter, year)}`,
+            `modelo-349-${quarter}T-${year ?? ""}.pdf`),
+    m190: (year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/190/pdf${_y(year)}`, `modelo-190-${year ?? ""}.pdf`),
+    m347: (year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/347/pdf${_y(year)}`, `modelo-347-${year ?? ""}.pdf`),
+    m390: (year?: number) =>
+        downloadBlob(`/api/v1/reports/modelos/390/pdf${_y(year)}`, `modelo-390-${year ?? ""}.pdf`),
+};
 
 export interface ModeloAeatResult {
     [key: string]: unknown;
@@ -94,4 +123,7 @@ export const modelosAeat = {
             `/api/v1/reports/modelos/preventive-check?${qs}`,
         );
     },
+
+    /** Descarga de PDF borrador imprimible por modelo. */
+    pdf: modelosPdf,
 };

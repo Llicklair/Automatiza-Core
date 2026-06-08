@@ -16,9 +16,14 @@ from sqlalchemy import or_, select
 from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.db.base import AsyncSessionLocal
 from app.db.models.inventory import Product
+from app.services.autonomy import check_autonomy
 from app.services.inventory import analytics, batch_service, reorder_service
+from app.services.workflow.approval_actions import create_action_approval
 
 logger = logging.getLogger(__name__)
+
+# Dominio de autonomía para las escrituras de stock (ver services/autonomy.py).
+_INVENTORY_DOMAIN = "inventory"
 
 
 def _parse_uuid(value: str, label: str = "tenant_id") -> UUID:
@@ -191,6 +196,50 @@ def _format_update_preview(res: dict) -> str:
     return "\n".join(lines)
 
 
+# ── Gate de autonomía (tareas y automatizaciones) ─────────────────────────────
+
+async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn):
+    """Aplica una escritura de stock respetando la política de autonomía.
+
+    - AUTO    → ejecuta directamente (sin confirmación; sirve a automatizaciones).
+    - CONFIRM → encola una PendingApproval (bandeja de aprobaciones). Funciona
+                igual en tarea interactiva que en automatización: la acción se
+                aprueba luego y se ejecuta vía el executor registrado.
+                Si no hay contexto de task (uso suelto), cae a confirm=true.
+    - MANUAL  → solo sugiere, no ejecuta.
+
+    `apply_fn(db)` ejecuta la escritura real (dry_run=False) y devuelve el dict
+    de resultado; el caller lo formatea.
+    """
+    async with AsyncSessionLocal() as db:
+        mode = await check_autonomy(db, tenant_id=tenant_uuid, domain=_INVENTORY_DOMAIN)
+
+    if mode == "MANUAL":
+        return (
+            "⚠ Política de inventario en MANUAL: no aplico cambios automáticamente. "
+            "Revisa la previsualización y aplícalos desde la UI.\n\n" + summary
+        )
+
+    if mode == "CONFIRM":
+        approval_id = await create_action_approval(
+            tenant_id=str(tenant_uuid), kind=kind, params=params, summary=summary[:480]
+        )
+        if approval_id:
+            return (
+                "⏸ Cambios pendientes de aprobación (inventario = CONFIRM). "
+                "Los he enviado a la bandeja de aprobaciones; se aplicarán al aprobarlos.\n\n"
+                + summary
+            )
+        # Sin contexto de task (uso interactivo suelto): confirmación clásica.
+        if not confirm:
+            return summary + "\n\nPara aplicar estos cambios, repite la operación con confirm=true."
+
+    # AUTO, o CONFIRM aprobado de forma interactiva.
+    async with AsyncSessionLocal() as db:
+        res = await apply_fn(db)
+    return res
+
+
 # ── Modificación por lotes (preview + confirm) ────────────────────────────────
 
 @tool
@@ -227,14 +276,30 @@ async def batch_adjust_stock(
         return "Error: la lista de productos está vacía."
 
     try:
+        # Previsualización (no toca la BD) para el resumen de la aprobación.
         async with AsyncSessionLocal() as db:
-            res = await batch_service.batch_adjust_stock(
-                db, tid, items, op=op, reason=reason, dry_run=not confirm
+            preview = await batch_service.batch_adjust_stock(
+                db, tid, items, op=op, reason=reason, dry_run=True
             )
+        summary = _format_adjust_preview(preview)
+
+        async def _apply(db):
+            res = await batch_service.batch_adjust_stock(
+                db, tid, items, op=op, reason=reason, dry_run=False
+            )
+            return _format_adjust_preview(res)
+
+        return await _gated_batch(
+            tid,
+            kind="inventory_batch_adjust",
+            params={"op": op, "items": items, "reason": reason},
+            summary=summary,
+            confirm=confirm,
+            apply_fn=_apply,
+        )
     except Exception as e:
         logger.warning("batch_adjust_stock falló: %s", e)
         return f"Error al ajustar el stock: {e}"
-    return _format_adjust_preview(res)
 
 
 @tool
@@ -268,11 +333,24 @@ async def batch_update_products(
 
     try:
         async with AsyncSessionLocal() as db:
-            res = await batch_service.batch_update_fields(db, tid, items, dry_run=not confirm)
+            preview = await batch_service.batch_update_fields(db, tid, items, dry_run=True)
+        summary = _format_update_preview(preview)
+
+        async def _apply(db):
+            res = await batch_service.batch_update_fields(db, tid, items, dry_run=False)
+            return _format_update_preview(res)
+
+        return await _gated_batch(
+            tid,
+            kind="inventory_batch_update",
+            params={"items": items},
+            summary=summary,
+            confirm=confirm,
+            apply_fn=_apply,
+        )
     except Exception as e:
         logger.warning("batch_update_products falló: %s", e)
         return f"Error al actualizar productos: {e}"
-    return _format_update_preview(res)
 
 
 tools = [

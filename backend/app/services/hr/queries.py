@@ -27,11 +27,30 @@ logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 
-# Tasas SS empleado 2024/2025 — Regimen General (trabajador)
+# Tasas SS empleado — Régimen General (trabajador)
 _SS_CONTINGENCIAS = 0.0470
-_SS_DESEMPLEO = 0.0155
+_SS_DESEMPLEO = 0.0155  # contrato indefinido; temporal = 0,0160
 _SS_FP = 0.0010
-_SS_MEI = 0.0010
+
+# MEI (Mecanismo de Equidad Intergeneracional) — parte del TRABAJADOR. Sube
+# 0,01 pp/año hasta 2029 (RD-ley 2/2023). Tipos del trabajador por año (BOE):
+#   2023: 0,10 % · 2024: 0,12 % · 2025: 0,13 % · 2026: 0,15 %
+# Revisar cada año. Antes el código usaba un 0,10 % fijo (tipo de 2023),
+# infra-deduciendo el MEI en 2024+.
+_MEI_TRABAJADOR = {
+    2023: 0.0010,
+    2024: 0.0012,
+    2025: 0.0013,
+    2026: 0.0015,
+}
+_MEI_DEFAULT_YEAR = max(_MEI_TRABAJADOR)
+
+
+def mei_trabajador(year: int | None = None) -> float:
+    """Tipo del MEI a cargo del trabajador para el año dado (default: más reciente)."""
+    if year in _MEI_TRABAJADOR:
+        return _MEI_TRABAJADOR[year]
+    return _MEI_TRABAJADOR[_MEI_DEFAULT_YEAR]
 
 # Tope máximo de la base de cotización MENSUAL (Régimen General). La SS se
 # cotiza sobre min(salario, tope): por encima del tope NO se cotiza (salvo la
@@ -117,7 +136,7 @@ def calc_payroll(base_salary: float, irpf_rate: float, year: int | None = None) 
     ss_cc = round(base_cotizacion * _SS_CONTINGENCIAS, 2)
     ss_des = round(base_cotizacion * _SS_DESEMPLEO, 2)
     ss_fp = round(base_cotizacion * _SS_FP, 2)
-    ss_mei = round(base_cotizacion * _SS_MEI, 2)
+    ss_mei = round(base_cotizacion * mei_trabajador(year), 2)
     total_ss = round(ss_cc + ss_des + ss_fp + ss_mei, 2)
     irpf = round(base_salary * (irpf_rate / 100), 2)
     # Cuota de solidaridad del trabajador (solo si el salario supera el tope).

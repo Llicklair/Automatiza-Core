@@ -267,3 +267,42 @@ async def _exec_create_invoice(
     )
     await db.flush()
     return True, f"Factura {invoice_number} creada tras aprobación. Total: {total_amount:.2f}€."
+
+
+@register_action("inventory_batch_adjust")
+async def _exec_inventory_batch_adjust(
+    params: dict, db: AsyncSession, tenant_id: str
+) -> tuple[bool, str]:
+    """Aplica un ajuste de stock por lotes que estaba pendiente de aprobación."""
+    from app.services.inventory import batch_service
+
+    tid = uuid.UUID(tenant_id)
+    res = await batch_service.batch_adjust_stock(
+        db,
+        tid,
+        params.get("items") or [],
+        op=params.get("op", "set"),
+        reason=params.get("reason", "Aprobado"),
+        dry_run=False,
+    )
+    return True, (
+        f"Ajuste de stock aplicado tras aprobación: {res['applied']} productos "
+        f"({res['ok']} OK, {res['skipped']} omitidos)."
+    )
+
+
+@register_action("inventory_batch_update")
+async def _exec_inventory_batch_update(
+    params: dict, db: AsyncSession, tenant_id: str
+) -> tuple[bool, str]:
+    """Aplica una actualización de catálogo por lotes pendiente de aprobación."""
+    from app.services.inventory import batch_service
+
+    tid = uuid.UUID(tenant_id)
+    res = await batch_service.batch_update_fields(
+        db, tid, params.get("items") or [], dry_run=False
+    )
+    return True, (
+        f"Actualización de catálogo aplicada tras aprobación: {res['applied']} "
+        f"productos ({res['ok']} OK, {res['skipped']} omitidos)."
+    )

@@ -86,6 +86,26 @@ def test_base_cero_todo_cero():
         assert c[k] == 0.0, f"{k} debería ser 0"
 
 
+def test_mei_trabajador_por_ano():
+    """El MEI del trabajador sube por año (RD-ley 2/2023): no es fijo."""
+    from app.services.hr.queries import mei_trabajador
+
+    assert mei_trabajador(2023) == 0.0010
+    assert mei_trabajador(2024) == 0.0012
+    assert mei_trabajador(2025) == 0.0013
+    assert mei_trabajador(2026) == 0.0015
+    # Año desconocido → usa el más reciente conocido.
+    assert mei_trabajador(2099) == mei_trabajador(2026)
+
+
+def test_ss_mei_usa_tipo_del_ano():
+    """calc_payroll aplica el MEI del año, no un 0,10 % fijo."""
+    c25 = calc_payroll(2000, 15, year=2025)
+    c26 = calc_payroll(2000, 15, year=2026)
+    assert c25["ss_mei"] == round(2000 * 0.0013, 2)
+    assert c26["ss_mei"] == round(2000 * 0.0015, 2)
+
+
 def test_acepta_year_none_por_defecto():
     c = calc_payroll(2000, 15)
     assert c["base_cotizacion"] == 2000.0
