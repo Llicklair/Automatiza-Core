@@ -162,8 +162,11 @@ def build_real_tools(
         body: str,
         provider: str = default_provider,
         attachment_ids: list[str] | str | None = None,
+        confirm: bool = False,
     ) -> str:
         """Envía un correo electrónico al destinatario indicado.
+        IMPORTANTE: llama siempre con confirm=False primero para mostrar el borrador al usuario.
+        Solo llama con confirm=True cuando el usuario haya aprobado explícitamente el envío.
         Args:
             tenant_id: ID del tenant
             to: Dirección de correo electrónico del destinatario
@@ -173,11 +176,23 @@ def build_real_tools(
             attachment_ids: Opcional. Lista de IDs de documentos a adjuntar.
                 Acepta también un único ID como string — los LLM suelen
                 omitir los corchetes con un solo elemento.
+            confirm: False = mostrar borrador sin enviar (por defecto). True = enviar.
         """
         if provider not in providers:
             return f"Error: proveedor '{provider}' no disponible. Usa uno de: {provider_desc}"
         if isinstance(attachment_ids, str):
             attachment_ids = [attachment_ids] if attachment_ids else None
+
+        preview = (
+            f"Borrador de correo ({provider}):\n"
+            f"  Para: {to}\n"
+            f"  Asunto: {subject}\n"
+            f"  Cuerpo:\n{body}"
+            + (f"\n  Adjuntos: {len(attachment_ids)} documento(s)" if attachment_ids else "")
+        )
+        if not confirm:
+            return f"{preview}\n\n¿Confirmas el envío? Responde 'sí, envía' para proceder o 'no' para cancelar."
+
         attachments = await _load_attachments(tenant_id, attachment_ids)
         attach_msg = f" con {len(attachments)} adjuntos" if attachments else ""
         try:

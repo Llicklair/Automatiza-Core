@@ -128,9 +128,12 @@ def send_email(
     subject: str,
     body: str,
     attachment_ids: list[str] | str | None = None,
+    confirm: bool = False,
 ) -> str:
     """
     Envía un correo electrónico al destinatario indicado, permitiendo adjuntar documentos.
+    IMPORTANTE: llama siempre con confirm=False primero para mostrar el borrador al usuario.
+    Solo llama con confirm=True cuando el usuario haya aprobado explícitamente el envío.
     Args:
         tenant_id: ID del tenant
         to: Dirección de correo electrónico del destinatario
@@ -139,13 +142,27 @@ def send_email(
         attachment_ids: Opcional. Lista de IDs de documentos del Escanear
             (TenantDocument) a adjuntar. Acepta también un único ID como
             string — los LLM suelen omitir los corchetes con un solo elemento.
+        confirm: False = mostrar borrador sin enviar (por defecto). True = enviar.
     """
     if isinstance(attachment_ids, str):
         attachment_ids = [attachment_ids] if attachment_ids else None
     attachments_str = f" con {len(attachment_ids)} adjuntos" if attachment_ids else ""
+
+    preview = (
+        f"Borrador de correo:\n"
+        f"  Para: {to}\n"
+        f"  Asunto: {subject}\n"
+        f"  Cuerpo:\n{body}"
+        + (f"\n  Adjuntos: {len(attachment_ids)} documento(s)" if attachment_ids else "")
+    )
+    if not confirm:
+        return (
+            f"{preview}\n\n"
+            "¿Confirmas el envío? Responde 'sí, envía' para proceder o 'no' para cancelar.\n"
+            "(DEMO: configura credenciales de email en Integraciones para envíos reales)"
+        )
     return (
-        f"[DEMO] Correo '{subject}' preparado para {to}{attachments_str}.\n"
-        f"Contenido:\n{body}\n\n"
+        f"[DEMO] Correo '{subject}' enviado a {to}{attachments_str}.\n"
         "(Configura las credenciales de email en Integraciones para envíos reales)"
     )
 
