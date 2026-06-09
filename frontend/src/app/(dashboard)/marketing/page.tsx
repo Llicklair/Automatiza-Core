@@ -170,7 +170,13 @@ function TabCuentas() {
             const { auth_url } = await marketingApi.accounts.connect(platform);
             // En Electron los OAuth de redes sociales abren en el browser del sistema.
             // window.open devuelve null pero el browser real maneja el flujo.
-            window.open(auth_url, "_blank", "width=600,height=700");
+            // En Electron: IPC → shell.openExternal (100% fiable). En browser: window.open normal.
+            const eAPI = (window as typeof window & { electronAPI?: { openExternal?: (u: string) => Promise<void> } }).electronAPI;
+            if (eAPI?.openExternal) {
+                await eAPI.openExternal(auth_url);
+            } else {
+                window.open(auth_url, "_blank", "width=600,height=700");
+            }
             // Polling hasta 60s para detectar cuando el callback llegue al backend
             const before = accounts.map((a) => a.id);
             let attempts = 0;

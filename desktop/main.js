@@ -355,6 +355,10 @@ ipcMain.handle("open-template-native", async (_event, filePath) => {
   await shell.openPath(filePath);
 });
 
+ipcMain.handle("open-external", (_event, url) => {
+  shell.openExternal(url);
+});
+
 ipcMain.handle("toggle-local-network", async (_event, enabled) => {
   const newHost = enabled ? "0.0.0.0" : "127.0.0.1";
   const lanIP = getLanIP();
