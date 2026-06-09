@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node launch.js",
     "generate-icon": "node -e \"require('png-to-ico')('assets/icon.png').then(b => require('fs').writeFileSync('assets/icon.ico', b)).catch(e => { console.error('generate-icon failed:', e.message); process.exit(1); })\"",
-    "predist": "npm run generate-icon",
+    "predist": "echo icon already exists",
     "dist": "electron-builder",
     "sync": "node sync.js",
     "sync:rebuild": "node sync.js --rebuild-frontend"
