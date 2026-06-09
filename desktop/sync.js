@@ -13,7 +13,7 @@ const { execSync } = require("child_process");
 
 // --- Config ---
 const PROJECT_ROOT = path.resolve(__dirname, "..");
-const POSSIBLE_NAMES = ["automatizapyme-desktop", "AutomatizaPyme"];
+const POSSIBLE_NAMES = ["automatizacore-desktop", "automatizapyme-desktop", "AutomatizaPyme"];
 const PROGRAMS_DIR = path.join(
     process.env.LOCALAPPDATA || path.join(require("os").homedir(), "AppData", "Local"),
     "Programs"
