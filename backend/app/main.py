@@ -49,6 +49,16 @@ async def lifespan(app: FastAPI):
     from app.services.workflow.recovery import recover_stale_executions
 
     await recover_stale_executions()
+    # Validar licencia al arranque
+    from app.core.license import validate_license
+
+    lic = await validate_license()
+    app.state.license_valid = lic.valid
+    app.state.license_plan = lic.plan
+    if not lic.valid:
+        logger.warning("[LICENSE] Licencia no válida: %s", lic.reason)
+    else:
+        logger.info("[LICENSE] Licencia OK · plan=%s", lic.plan)
     # Restaurar el consumo LLM persistido para que el dashboard sobreviva al reinicio.
     from app.services import llm_usage_tracker
 
@@ -93,12 +103,13 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
+from app.middleware.license_check import LicenseCheckMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
 app.add_middleware(SecurityHeadersMiddleware)
-
 app.add_middleware(RequestLoggerMiddleware)
+app.add_middleware(LicenseCheckMiddleware)
 
 from app.api.ws.notifications import router as ws_router
 

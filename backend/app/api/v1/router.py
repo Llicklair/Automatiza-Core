@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.routes import (
     accounting,
     admin,
+    license,
     advisory,
     aeat_presentation,
     ai_employees,
@@ -107,3 +108,4 @@ api_router.include_router(presentacion_asistida.router)
 api_router.include_router(modelos_aeat.router)
 api_router.include_router(aeat_presentation.router)
 api_router.include_router(pos.router)
+api_router.include_router(license.router)
