@@ -65,7 +65,7 @@ def _oauth_url(platform: str, state: str) -> str:
             f"&scope=openid+profile+w_member_social&state={state}"
         ),
         "twitter": (
-            f"https://twitter.com/i/oauth2/authorize"
+            f"https://x.com/i/oauth2/authorize"
             f"?response_type=code&client_id={client_id}&redirect_uri={redirect}"
             f"&scope=tweet.write+users.read+offline.access"
             f"&state={state}&code_challenge=challenge&code_challenge_method=plain"
@@ -118,7 +118,7 @@ async def _exchange_token(platform: str, code: str) -> dict:
             raise HTTPException(status_code=400, detail=f"Plataforma no soportada: {platform}")
 
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Error al obtener token de {platform}: {r.text}")
+        raise HTTPException(status_code=502, detail=f"Error {r.status_code} al obtener token de {platform}: {r.text[:400]}")
     return r.json()
 
 
@@ -179,7 +179,7 @@ def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLRes
             <h2>Error al conectar</h2>
             <p>{message}</p>
         """
-        script = "setTimeout(() => window.close(), 4000);"
+        script = "setTimeout(() => window.close(), 15000);"
 
     html = f"""<!DOCTYPE html>
 <html lang="es">
