@@ -51,11 +51,14 @@ async def get_product_catalog(tenant_id: str) -> str:
 
 
 @tool
-async def search_image(query: str) -> str:
+async def search_image(query: str, tenant_id: str = "") -> str:
     """
     Busca una imagen de stock relevante en Unsplash para ilustrar un post.
     Devuelve la URL de la imagen o un aviso si no hay clave configurada.
     Úsala para cada post del plan de contenidos.
+
+    `tenant_id` se acepta por consistencia con el resto de tools de marketing
+    (el LLM lo pasa siempre) pero se ignora: Unsplash es un recurso global.
     """
     url = await _search_image(query)
     if url:
