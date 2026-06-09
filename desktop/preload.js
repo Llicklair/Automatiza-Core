@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     remove: (key) => ipcRenderer.invoke("secure-store:remove", key),
     isAvailable: () => ipcRenderer.invoke("secure-store:is-available"),
   },
+  // Abrir URL en navegador externo del sistema (OAuth redes sociales)
+  openExternal: (url) => ipcRenderer.invoke("open-external", url),
   // Auto-update
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   installUpdate: () => ipcRenderer.invoke("install-update"),
