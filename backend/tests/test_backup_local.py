@@ -162,8 +162,8 @@ class TestBackupEndpoints:
                     "encryption_key_label": "x",
                 },
             )
-        # Sin header Authorization, HTTPBearer(auto_error=True) responde 403.
-        assert resp.status_code == 403
+        # Sin header Authorization, FastAPI (HTTPBearer) responde 401 No autenticado.
+        assert resp.status_code == 401
 
     async def test_record_endpoint_persiste(self, db, seed_tenant_and_user):
         _, _, token = seed_tenant_and_user

@@ -1,163 +1,31 @@
 """Marketing: social accounts, campaigns, scheduled posts, OAuth callbacks."""
 
-import base64
 import datetime
 from typing import Optional
 from uuid import UUID
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
 from app.db.models.models import User
+from app.services.encryption import encrypt_str
+from app.services.marketing.oauth import (
+    _decode_state,
+    _encode_state,
+    _exchange_token,
+    _fetch_profile,
+    _oauth_url,
+    _resolve_facebook_page,
+    _resolve_instagram_account,
+)
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
-
-# ── Helpers OAuth ──────────────────────────────────────────────────────────────
-
-def _encode_state(platform: str, tenant_id: str) -> str:
-    raw = f"{platform}|{tenant_id}"
-    return base64.urlsafe_b64encode(raw.encode()).decode()
-
-
-def _decode_state(state: str) -> tuple[str, str]:
-    try:
-        raw = base64.urlsafe_b64decode(state.encode()).decode()
-        platform, tenant_id = raw.split("|", 1)
-        return platform, tenant_id
-    except Exception:
-        raise HTTPException(status_code=400, detail="Estado OAuth inválido")
-
-
-def _redirect_uri() -> str:
-    return settings.OAUTH_REDIRECT_URI
-
-
-def _oauth_url(platform: str, state: str) -> str:
-    client_id = getattr(settings, f"{platform.upper()}_CLIENT_ID", "")
-    if not client_id:
-        raise HTTPException(
-            status_code=503,
-            detail=f"OAuth para {platform} no configurado. Añade {platform.upper()}_CLIENT_ID al .env",
-        )
-    redirect = _redirect_uri()
-    urls = {
-        "instagram": (
-            f"https://api.instagram.com/oauth/authorize"
-            f"?client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=user_profile,user_media&response_type=code&state={state}"
-        ),
-        "facebook": (
-            f"https://www.facebook.com/v18.0/dialog/oauth"
-            f"?client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=pages_manage_posts,pages_read_engagement&state={state}"
-        ),
-        "linkedin": (
-            f"https://www.linkedin.com/oauth/v2/authorization"
-            f"?response_type=code&client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=openid+profile+w_member_social&state={state}"
-        ),
-        "twitter": (
-            f"https://x.com/i/oauth2/authorize"
-            f"?response_type=code&client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=tweet.write+users.read+offline.access"
-            f"&state={state}&code_challenge=challenge&code_challenge_method=plain"
-        ),
-    }
-    return urls[platform]
-
-
-async def _exchange_token(platform: str, code: str) -> dict:
-    """Intercambia el authorization code por un access token."""
-    client_id = getattr(settings, f"{platform.upper()}_CLIENT_ID", "")
-    client_secret = getattr(settings, f"{platform.upper()}_CLIENT_SECRET", "")
-    redirect = _redirect_uri()
-
-    async with httpx.AsyncClient(timeout=15) as client:
-        if platform in ("instagram", "facebook"):
-            r = await client.post(
-                "https://graph.facebook.com/v18.0/oauth/access_token",
-                data={
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "redirect_uri": redirect,
-                    "code": code,
-                },
-            )
-        elif platform == "linkedin":
-            r = await client.post(
-                "https://www.linkedin.com/oauth/v2/accessToken",
-                data={
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "redirect_uri": redirect,
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        elif platform == "twitter":
-            r = await client.post(
-                "https://api.twitter.com/2/oauth2/token",
-                data={
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "redirect_uri": redirect,
-                    "code_verifier": "challenge",
-                },
-                auth=(client_id, client_secret),
-            )
-        else:
-            raise HTTPException(status_code=400, detail=f"Plataforma no soportada: {platform}")
-
-    if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Error {r.status_code} al obtener token de {platform}: {r.text[:400]}")
-    return r.json()
-
-
-async def _fetch_profile(platform: str, access_token: str) -> tuple[str, str]:
-    """Devuelve (account_id, account_name) desde la API de la plataforma."""
-    async with httpx.AsyncClient(timeout=15) as client:
-        if platform == "instagram":
-            r = await client.get(
-                "https://graph.instagram.com/me",
-                params={"fields": "id,username", "access_token": access_token},
-            )
-            data = r.json()
-            return data.get("id", ""), data.get("username", "")
-
-        elif platform == "facebook":
-            r = await client.get(
-                "https://graph.facebook.com/me",
-                params={"fields": "id,name", "access_token": access_token},
-            )
-            data = r.json()
-            return data.get("id", ""), data.get("name", "")
-
-        elif platform == "linkedin":
-            r = await client.get(
-                "https://api.linkedin.com/v2/userinfo",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            data = r.json()
-            return data.get("sub", ""), data.get("name", "")
-
-        elif platform == "twitter":
-            r = await client.get(
-                "https://api.twitter.com/2/users/me",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            data = r.json().get("data", {})
-            return data.get("id", ""), data.get("name", "")
-
-    return "", ""
 
 
 def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLResponse:
@@ -351,10 +219,26 @@ async def oauth_callback(
     if expires_in:
         token_expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=int(expires_in))
 
-    try:
-        account_id_str, account_name = await _fetch_profile(platform, access_token)
-    except Exception:
-        account_id_str, account_name = "", ""
+    if platform in ("facebook", "instagram"):
+        # Facebook: Page token (no se publica en perfiles personales).
+        # Instagram: cuenta Business vinculada a una página; se publica con el
+        # Page token y el IG user id. En ambos el token es de larga duración.
+        resolver = _resolve_facebook_page if platform == "facebook" else _resolve_instagram_account
+        try:
+            target = await resolver(access_token)
+        except HTTPException as e:
+            return _popup_html(False, message=e.detail)
+        except Exception as e:
+            return _popup_html(False, message=f"Error al resolver la cuenta de {platform}: {e}")
+        access_token = target["access_token"]
+        account_id_str, account_name = target["id"], target["name"]
+        token_expires_at = None
+        refresh_token = None
+    else:
+        try:
+            account_id_str, account_name = await _fetch_profile(platform, access_token)
+        except Exception:
+            account_id_str, account_name = "", ""
 
     # Upsert: si ya existe una cuenta para esta plataforma+account_id, actualiza el token
     existing = await db.execute(
@@ -366,9 +250,12 @@ async def oauth_callback(
     )
     account = existing.scalar_one_or_none()
 
+    enc_access = encrypt_str(access_token)
+    enc_refresh = encrypt_str(refresh_token) if refresh_token else None
+
     if account:
-        account.access_token = access_token
-        account.refresh_token = refresh_token
+        account.access_token = enc_access
+        account.refresh_token = enc_refresh
         account.token_expires_at = token_expires_at
         account.account_name = account_name
         account.is_active = True
@@ -378,8 +265,8 @@ async def oauth_callback(
             platform=platform,
             account_id=account_id_str or "unknown",
             account_name=account_name,
-            access_token=access_token,
-            refresh_token=refresh_token,
+            access_token=enc_access,
+            refresh_token=enc_refresh,
             token_expires_at=token_expires_at,
         )
         db.add(account)
@@ -491,3 +378,147 @@ async def delete_post(
         raise HTTPException(status_code=404, detail="Post no encontrado o ya publicado")
     await db.delete(post)
     await db.commit()
+
+
+# ── Agent: generar plan ────────────────────────────────────────────────────────
+
+
+class GeneratePlanRequest(BaseModel):
+    prompt: str
+
+
+class GeneratePlanResponse(BaseModel):
+    summary: str
+    post_ids: list[str]
+
+
+@router.post("/agent/generate", response_model=GeneratePlanResponse)
+async def generate_plan(
+    body: GeneratePlanRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Llama al agente de marketing con un prompt y crea los borradores en DB."""
+    from app.agents.marketing import run_agent
+
+    results = await run_agent(
+        prompt=body.prompt,
+        tenant_id=str(current_user.tenant_id),
+    )
+
+    # Recoge los IDs de posts creados por el agente (via tool create_post)
+    posts_result = await db.execute(
+        select(ScheduledPost)
+        .where(
+            ScheduledPost.tenant_id == current_user.tenant_id,
+            ScheduledPost.status == "draft",
+        )
+        .order_by(ScheduledPost.created_at.desc())
+        .limit(20)
+    )
+    recent_drafts = posts_result.scalars().all()
+    post_ids = [str(p.id) for p in recent_drafts]
+
+    summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
+    return GeneratePlanResponse(summary=summary, post_ids=post_ids)
+
+
+# ── Publish individual / batch ─────────────────────────────────────────────────
+
+
+class PublishBatchRequest(BaseModel):
+    post_ids: list[UUID]
+
+
+class PostUpdateRequest(BaseModel):
+    content: Optional[str] = None
+    image_url: Optional[str] = None
+    scheduled_at: Optional[datetime.datetime] = None
+
+
+@router.post("/posts/{post_id}/publish", response_model=PostOut)
+async def publish_post_now(
+    post_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Publica un post borrador o programado inmediatamente."""
+    from app.services.marketing.publisher import publish_post
+
+    result = await db.execute(
+        select(ScheduledPost).where(
+            ScheduledPost.id == post_id,
+            ScheduledPost.tenant_id == current_user.tenant_id,
+        )
+    )
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post no encontrado")
+    if post.status == "published":
+        raise HTTPException(status_code=409, detail="El post ya está publicado")
+
+    await publish_post(post, db)
+    await db.commit()
+    await db.refresh(post)
+    return post
+
+
+@router.post("/posts/publish-batch")
+async def publish_batch(
+    body: PublishBatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Publica varios posts inmediatamente. Devuelve resumen con ok/failed."""
+    from app.services.marketing.publisher import publish_post
+
+    ok_ids, failed_ids = [], []
+    for pid in body.post_ids:
+        result = await db.execute(
+            select(ScheduledPost).where(
+                ScheduledPost.id == pid,
+                ScheduledPost.tenant_id == current_user.tenant_id,
+                ScheduledPost.status != "published",
+            )
+        )
+        post = result.scalar_one_or_none()
+        if not post:
+            failed_ids.append(str(pid))
+            continue
+        success = await publish_post(post, db)
+        (ok_ids if success.ok else failed_ids).append(str(pid))
+
+    await db.commit()
+    return {"published": ok_ids, "failed": failed_ids}
+
+
+@router.patch("/posts/{post_id}", response_model=PostOut)
+async def update_post(
+    post_id: UUID,
+    body: PostUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Edita contenido, imagen o horario de un post borrador o programado."""
+    result = await db.execute(
+        select(ScheduledPost).where(
+            ScheduledPost.id == post_id,
+            ScheduledPost.tenant_id == current_user.tenant_id,
+            ScheduledPost.status.in_(["draft", "scheduled"]),
+        )
+    )
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post no encontrado o ya publicado")
+
+    if body.content is not None:
+        post.content = body.content
+    if body.image_url is not None:
+        post.image_url = body.image_url
+    if body.scheduled_at is not None:
+        post.scheduled_at = body.scheduled_at
+        post.status = "scheduled"
+
+    await db.commit()
+    await db.refresh(post)
+    return post

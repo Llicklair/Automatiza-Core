@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     LINKEDIN_CLIENT_ID: str = ""
     LINKEDIN_CLIENT_SECRET: str = ""
 
+    # Búsqueda de imágenes (Marketing)
+    UNSPLASH_ACCESS_KEY: str = ""
+
     # Cifrado de credenciales de tenants
     TENANT_ENCRYPTION_KEY: str = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"
 

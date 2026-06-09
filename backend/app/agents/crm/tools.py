@@ -74,7 +74,7 @@ async def _list_opportunities_async(tenant_id: str, stage: str) -> str:
 
 @tool
 async def create_opportunity(
-    tenant_id: str, client_nif: str, title: str, expected_value: float = 0, stage: str = "new"
+    tenant_id: str, client_nif: str, title: str, expected_value: float | str = 0.0, stage: str = "new"
 ) -> str:
     """
     Crea una nueva Oportunidad de Venta (Lead) en el CRM para un cliente existente.

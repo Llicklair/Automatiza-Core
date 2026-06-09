@@ -59,3 +59,28 @@ def decrypt_credentials(encrypted: str) -> dict:
     f = _get_fernet()
     plaintext = f.decrypt(encrypted.encode())
     return json.loads(plaintext)
+
+
+def encrypt_str(plaintext: str) -> str:
+    """Cifra un string y devuelve base64. Cadena vacía/None → se devuelve igual."""
+    if not plaintext:
+        return plaintext
+    return _get_fernet().encrypt(plaintext.encode()).decode()
+
+
+def decrypt_str(token: str) -> str:
+    """Descifra un string cifrado con `encrypt_str`.
+
+    Compat hacia atrás: si el valor no es un token Fernet válido (filas legacy
+    guardadas en texto plano antes de introducir el cifrado), lo devuelve tal
+    cual con un warning, en vez de lanzar. Permite migrar sin script de datos.
+    """
+    if not token:
+        return token
+    from cryptography.fernet import InvalidToken
+
+    try:
+        return _get_fernet().decrypt(token.encode()).decode()
+    except InvalidToken:
+        _logger.warning("decrypt_str: valor no cifrado (legacy en texto plano), devuelto tal cual")
+        return token

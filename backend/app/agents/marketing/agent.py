@@ -50,3 +50,15 @@ workflow.add_edge("tools", "agent")
 workflow.add_edge("finalize", END)
 
 graph = workflow.compile()
+
+
+async def run_agent(prompt: str, tenant_id: str) -> list[dict]:
+    """Ejecuta el agente de marketing y devuelve los posts creados como borradores."""
+    state: AgentState = {
+        "user_intent": prompt,
+        "tenant_id": tenant_id,
+        "messages": [],
+    }
+    result = await graph.ainvoke(state)
+    agent_results = result.get("agent_results", [])
+    return agent_results

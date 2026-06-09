@@ -1,6 +1,74 @@
 # Tareas activas — AutomatizaCore
 
-Última actualización: 2026-06-01
+Última actualización: 2026-06-09
+
+---
+
+## Plan activo (2026-06-09) — Ciclo de vida de tokens OAuth en Marketing
+
+Objetivo: que los posts programados dejen de fallar para siempre cuando el token
+caduca, y que los tokens dejen de guardarse en texto plano. Es el mismo trozo de
+código (guardar/leer `access_token`), así que se arreglan juntos.
+
+> Pre-producción (sin clientes). `refresh_token` y `token_expires_at` YA existen
+> en el modelo → **sin migración Alembic** (evitamos el gotcha de version_num).
+
+### Mecánica de refresh por plataforma
+
+| Plataforma | Vida token | Renovación |
+|-----------|-----------|------------|
+| Twitter/X | ~2 h | `grant_type=refresh_token` (scope `offline.access` ya pedido). **Rota** el refresh_token → guardar el nuevo |
+| LinkedIn | ~60 d | `grant_type=refresh_token` si hay; si no → marcar "reconecta" |
+| Facebook | →60 d | sin refresh_token: re-intercambio `fb_exchange_token` del access_token |
+| Instagram | 60 d | sin refresh_token: `GET /refresh_access_token?grant_type=ig_refresh_token` (token >24 h) |
+
+### Cambios — ✅ COMPLETADO 2026-06-09 (18 tests verdes; agent+encryption sin regresión)
+
+- [x] **1. `services/encryption.py`** — `encrypt_str(s)` / `decrypt_str(s)` sobre
+  `get_fernet()`. `decrypt_str`: si `InvalidToken` → devuelve el valor tal cual +
+  warning (compat filas legacy en plano, sin script de migración).
+- [x] **2. `services/marketing/oauth_tokens.py`** (NUEVO) — choke point único:
+  `ensure_valid_token(account, db) -> str | None` (descifra; si expira <5 min →
+  refresh por plataforma → persiste cifrado → devuelve nuevo; si falla → None) +
+  `_refresh_twitter/_linkedin/_facebook/_instagram`.
+- [x] **3. `services/marketing/publisher.py`** — usa `ensure_valid_token`; si
+  None → `failed` con "Token caducado: reconecta la cuenta".
+- [x] **4. `api/v1/routes/marketing.py`** — cifra access_token + refresh_token
+  con `encrypt_str` en el upsert del callback OAuth.
+- [x] **5. Tests** `tests/test_marketing_tokens.py` — roundtrip cifrado +
+  `ensure_valid_token` con httpx mockeado (válido/caducado+ok/caducado+sin-refresh).
+
+### Facebook Page tokens — ✅ COMPLETADO 2026-06-09 (28 tests verdes)
+Publicar en FB exigía Page token (Meta retiró los perfiles personales en 2018).
+`_resolve_facebook_page` en routes cambia el user token por el Page token (larga
+duración, sin expiración) de la primera página gestionada; scope `pages_show_list`
+añadido. El publisher NO cambia: con Page token `/me/feed` = feed de la Página.
+
+### Reintentos + backoff — ✅ COMPLETADO 2026-06-09 (44 tests verdes)
+`publish_post` ahora devuelve `PublishResult(ok, transient)`; transitorios =
+429/5xx/red. Scheduler: `_handle_publish_result` reprograma transitorios con
+backoff exponencial (5→10→20→40→80 min, máx 5 intentos) vía nueva columna
+`scheduled_posts.retry_count` (migración **0050_post_retry_count**); permanentes
+quedan `failed`. ⚠️ Aplicar migración: `alembic upgrade head` en la BD real.
+
+### Instagram → Instagram Graph API — ✅ COMPLETADO 2026-06-09
+Antes usaba `graph.instagram.com` + Basic Display (solo lectura) → no publicaba.
+Ahora: OAuth vía Facebook (scopes `instagram_basic,instagram_content_publish,
+pages_show_list`), `_resolve_instagram_account` localiza la cuenta IG Business
+vinculada a una Página (reusa `_facebook_pages`), y `_publish_instagram` publica
+por `graph.facebook.com/{ig-user-id}/media[_publish]` con el Page token.
+⚠️ Verificación real exige app Meta + cuenta IG Business + (para producción)
+App Review del permiso `instagram_content_publish`.
+
+### Fuera de alcance (siguientes pasos)
+- Selector de página/cuenta cuando el usuario gestiona varias (ahora se toma la
+  primera con IG vinculada / la primera página).
+- Verificación end-to-end contra Meta (app + páginas/cuentas de prueba).
+- Subida de imagen propia (hoy IG/FB esperan una URL pública de imagen).
+
+### Verificación
+`pytest backend/tests/test_marketing_tokens.py -v` · import backend OK · smoke:
+forzar `token_expires_at` en pasado y confirmar path refresh/`failed`.
 
 ---
 

@@ -78,6 +78,6 @@ class TestTelemetryEndpoint:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp_get = await ac.get("/api/v1/telemetry/me")
             resp_del = await ac.delete("/api/v1/telemetry/me")
-        # Sin header Authorization, HTTPBearer(auto_error=True) responde 403.
-        assert resp_get.status_code == 403
-        assert resp_del.status_code == 403
+        # Sin header Authorization, FastAPI (HTTPBearer) responde 401 No autenticado.
+        assert resp_get.status_code == 401
+        assert resp_del.status_code == 401
