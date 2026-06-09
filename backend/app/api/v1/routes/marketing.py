@@ -2,7 +2,6 @@
 
 import base64
 import datetime
-import os
 from typing import Optional
 from uuid import UUID
 
@@ -13,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
@@ -37,11 +37,11 @@ def _decode_state(state: str) -> tuple[str, str]:
 
 
 def _redirect_uri() -> str:
-    return os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8000/api/v1/marketing/oauth/callback")
+    return settings.OAUTH_REDIRECT_URI
 
 
 def _oauth_url(platform: str, state: str) -> str:
-    client_id = os.getenv(f"{platform.upper()}_CLIENT_ID")
+    client_id = getattr(settings, f"{platform.upper()}_CLIENT_ID", "")
     if not client_id:
         raise HTTPException(
             status_code=503,
@@ -76,8 +76,8 @@ def _oauth_url(platform: str, state: str) -> str:
 
 async def _exchange_token(platform: str, code: str) -> dict:
     """Intercambia el authorization code por un access token."""
-    client_id = os.getenv(f"{platform.upper()}_CLIENT_ID", "")
-    client_secret = os.getenv(f"{platform.upper()}_CLIENT_SECRET", "")
+    client_id = getattr(settings, f"{platform.upper()}_CLIENT_ID", "")
+    client_secret = getattr(settings, f"{platform.upper()}_CLIENT_SECRET", "")
     redirect = _redirect_uri()
 
     async with httpx.AsyncClient(timeout=15) as client:
