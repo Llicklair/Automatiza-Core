@@ -33,8 +33,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.ico",
-      "signAndEditExecutable": false
+      "icon": "assets/icon.ico"
     },
     "afterPack": "./afterPack.js",
     "forceCodeSigning": false,
