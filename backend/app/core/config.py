@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "AutomatizaciónPyme"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
+    AP_DEVMODE: str = ""
     SECRET_KEY: str = _DEFAULT_SECRET
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
