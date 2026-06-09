@@ -389,6 +389,74 @@ async def _cleanup_stuck_executions():
         return {"cleaned": len(stuck)}
 
 
+# Reintentos automáticos de publicación con backoff exponencial.
+_MAX_PUBLISH_RETRIES = 5
+_RETRY_BASE_MINUTES = 5  # delays: 5, 10, 20, 40, 80 min
+
+
+def _handle_publish_result(post, result, now: datetime) -> str:
+    """Decide qué hacer con un post tras intentar publicarlo.
+
+    Devuelve "published" | "retried" | "failed" y muta el post en consecuencia.
+    Un fallo transitorio con reintentos disponibles vuelve a 'scheduled' con
+    `scheduled_at` empujado por backoff; agotados o permanente queda 'failed'.
+    """
+    if result.ok:
+        return "published"
+    if result.transient and post.retry_count < _MAX_PUBLISH_RETRIES:
+        post.retry_count += 1
+        delay = _RETRY_BASE_MINUTES * (2 ** (post.retry_count - 1))
+        post.status = "scheduled"
+        post.scheduled_at = now + timedelta(minutes=delay)
+        post.error_message = (
+            f"Reintento {post.retry_count}/{_MAX_PUBLISH_RETRIES} en {delay} min: "
+            f"{post.error_message or ''}"
+        )[:500]
+        return "retried"
+    return "failed"
+
+
+async def publish_scheduled_posts():
+    """Cada 5 min: publica posts con status='scheduled' y scheduled_at <= ahora."""
+    try:
+        await _publish_scheduled_posts()
+    except Exception as e:
+        logger.error("[MARKETING] Error en publish_scheduled_posts: %s", e)
+
+
+async def _publish_scheduled_posts():
+    from app.db.models.marketing import ScheduledPost
+    from app.services.marketing.publisher import publish_post
+
+    now = datetime.now(UTC)
+    async with AsyncSessionLocal() as db:
+        set_current_tenant(None)
+        result = await db.execute(
+            select(ScheduledPost)
+            .where(
+                ScheduledPost.status == "scheduled",
+                ScheduledPost.scheduled_at <= now,
+            )
+            .limit(20)
+        )
+        posts = result.scalars().all()
+        published = retried = 0
+        for post in posts:
+            set_current_tenant(str(post.tenant_id))
+            outcome = _handle_publish_result(post, await publish_post(post, db), now)
+            if outcome == "published":
+                published += 1
+            elif outcome == "retried":
+                retried += 1
+        set_current_tenant(None)
+        await db.commit()
+        if posts:
+            logger.info(
+                "[MARKETING] %d publicados, %d reprogramados, %d fallidos (de %d).",
+                published, retried, len(posts) - published - retried, len(posts),
+            )
+
+
 async def check_failed_workflow_executions():
     """Cada 10 min: notifica al gestor las ejecuciones de workflow que fallaron.
 

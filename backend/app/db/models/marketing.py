@@ -5,6 +5,7 @@ from .common import (
     Column,
     DateTime,
     ForeignKey,
+    Integer,
     String,
     Text,
     relationship,
@@ -72,6 +73,8 @@ class ScheduledPost(Base):
     status = Column(String(50), nullable=False, default="draft", index=True)
     platform_post_id = Column(String(255), nullable=True)  # ID del post en la plataforma
     error_message = Column(Text, nullable=True)
+    # nº de reintentos automáticos consumidos tras un fallo transitorio
+    retry_count = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

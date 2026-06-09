@@ -1,7 +1,7 @@
 """Tests para app.services.hr — cálculo y persistencia de nóminas.
 
 Cubre:
-- calc_payroll: aplica SS (4.70% + 1.55% + 0.10% + 0.10%) + IRPF (configurable).
+- calc_payroll: aplica SS (4.70% + 1.55% + 0.10% FP + MEI variable por año) + IRPF (configurable).
 - preview_payroll: lee al empleado y devuelve el cálculo sin persistir.
 - create_payroll_auto: crea Payroll con cálculo automático y persiste.
 
@@ -18,7 +18,7 @@ from uuid import uuid4
 import pytest
 from app.db.models.hr import Employee
 from app.db.models.models import Payroll
-from app.services.hr.queries import calc_payroll, preview_payroll
+from app.services.hr.queries import calc_payroll, mei_trabajador, preview_payroll
 from app.services.hr.commands import create_payroll_auto
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,14 +52,18 @@ async def _seed_employee(
 
 class TestCalcPayroll:
     def test_aplica_tasas_ss_estandar(self):
-        # Salario 2000€, IRPF 15%
+        # Salario 2000€, IRPF 15%. CC/desempleo/FP son fijos; el MEI sube cada
+        # año (mei_trabajador() devuelve el tipo del año por defecto), así que se
+        # compara contra la tasa canónica para no romper al cambiar de ejercicio.
         result = calc_payroll(2000.0, 15.0)
-        # SS empleado RGSS: 4.70 + 1.55 + 0.10 + 0.10 = 6.45%
         assert result["ss_contingencias_comunes"] == round(2000 * 0.0470, 2)
         assert result["ss_desempleo"] == round(2000 * 0.0155, 2)
         assert result["ss_formacion_profesional"] == round(2000 * 0.0010, 2)
-        assert result["ss_mei"] == round(2000 * 0.0010, 2)
-        assert result["total_ss"] == round(2000 * 0.0645, 2)
+        assert result["ss_mei"] == round(2000 * mei_trabajador(), 2)
+        assert result["total_ss"] == round(
+            result["ss_contingencias_comunes"] + result["ss_desempleo"]
+            + result["ss_formacion_profesional"] + result["ss_mei"], 2
+        )
 
     def test_irpf_se_calcula_sobre_base(self):
         result = calc_payroll(1500.0, 20.0)

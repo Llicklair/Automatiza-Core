@@ -26,6 +26,7 @@ def register_jobs() -> None:
         check_scheduled_workflows,
         cleanup_stuck_executions,
         process_recurring_invoices,
+        publish_scheduled_posts,
     )
 
     # Cada minuto: comprobar workflows programados
@@ -42,6 +43,15 @@ def register_jobs() -> None:
         process_recurring_invoices,
         CronTrigger(hour=8, minute=0),
         id="process_recurring_invoices",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Cada 5 minutos: publicar posts de marketing programados
+    scheduler.add_job(
+        publish_scheduled_posts,
+        IntervalTrigger(minutes=5),
+        id="publish_scheduled_posts",
         replace_existing=True,
         max_instances=1,
     )

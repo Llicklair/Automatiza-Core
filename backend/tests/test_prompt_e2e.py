@@ -396,8 +396,9 @@ class TestMarketingPromptContent:
         assert "LinkedIn" in self.prompt
 
     def test_posts_structure_documented(self):
+        # Prompt tool-based (create_post por plataforma) y en español.
         assert "posts" in self.prompt
-        assert "platform" in self.prompt
+        assert "plataforma" in self.prompt
 
 
 class TestRAGPromptContent:
