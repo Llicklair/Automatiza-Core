@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     MICROSOFT_REDIRECT_URI: str = "http://localhost:8080/api/v1/integrations/microsoft/callback"
 
     # OAuth — Redes sociales (Marketing)
-    OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/marketing/oauth/callback"
+    OAUTH_REDIRECT_URI: str = "http://localhost:8080/api/v1/marketing/oauth/callback"
     TWITTER_CLIENT_ID: str = ""
     TWITTER_CLIENT_SECRET: str = ""
     FACEBOOK_CLIENT_ID: str = ""
