@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,7 @@ class LicenseResult:
 async def validate_license() -> LicenseResult:
     """Valida la licencia. Llama al servidor solo si la caché expiró."""
 
-    if os.environ.get("AP_DEVMODE") == "1":
+    if settings.AP_DEVMODE == "1":
         return LicenseResult(valid=True, plan="dev")
 
     machine_id = get_machine_id()
