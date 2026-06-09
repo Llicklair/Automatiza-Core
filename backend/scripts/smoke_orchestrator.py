@@ -166,8 +166,8 @@ PROMPTS: list[tuple[str, str, str]] = [
     # === Iter 10 marketing/A ===
     (
         "iter10_marketing",
-        "Generame 3 propuestas de copy para la landing page del servicio Auditoria IT",
-        "Iter10/A: clasificar marketing -> generate_copy",
+        "Prepara un plan de 3 publicaciones para promocionar el servicio Auditoria IT en redes sociales y dejalas como borradores",
+        "Iter10/A: clasificar marketing -> agent (get_product_catalog/list_social_accounts/search_image/create_post). Sin cuenta conectada valida routing+borrador, no publicacion real",
     ),
     # === Iter 11 excel/B ===
     (

@@ -4,6 +4,28 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-10 — Toda `@tool` de un dominio debe aceptar `tenant_id` (el LLM lo pasa a todas)
+
+**Contexto**: la iteración LLM (`smoke_orchestrator`) detectó `iter10_marketing`
+FAIL: `search_image() got an unexpected keyword argument 'tenant_id'`. El agente
+de marketing tiene 4 tools; 3 llevan `tenant_id` como primer parámetro
+(`get_product_catalog`, `list_social_accounts`, `create_post`) y `search_image`
+no. El LLM, siguiendo la convención del prompt ("pasa `tenant_id` a las tools"),
+llamó `search_image(query=..., tenant_id=...)` → TypeError → step failed.
+
+**Patrón antipatrón**: cuando la mayoría de tools de un dominio aceptan
+`tenant_id`, el LLM asume que TODAS lo aceptan y lo pasa siempre. Una tool con
+firma inconsistente (sin `tenant_id`) revienta con TypeError en cuanto el LLM la
+invoca — y **no se ve en tests unitarios** (que la llaman con los args correctos),
+solo en ejecución real contra el LLM. Por eso la iteración LLM lo cazó y los tests no.
+
+**Regla de prevención**: toda `@tool` expuesta al LLM dentro de un dominio debe
+aceptar `tenant_id` (aunque lo ignore) si sus tools hermanas lo llevan. Mantener
+la firma consistente entre tools del mismo agente. Fix: `search_image` ahora
+acepta `tenant_id: str = ""` (ignorado; Unsplash es global).
+
+---
+
 ## 2026-05-20 — Electron arranca `alembic upgrade head` en silencio: fallos quedan invisibles
 
 **Contexto**: Aplicando la migración 0029 (AIEmployee contract) tras una sesión
