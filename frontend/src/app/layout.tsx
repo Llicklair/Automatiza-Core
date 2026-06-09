@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { GlobalErrorListener } from "@/components/GlobalErrorListener";
+import { LicenseListener } from "@/components/LicenseListener";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -44,6 +45,7 @@ try {
                 <NextIntlClientProvider messages={messages}>
                     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
                         <GlobalErrorListener />
+                        <LicenseListener />
                         {children}
                     </ThemeProvider>
                 </NextIntlClientProvider>
