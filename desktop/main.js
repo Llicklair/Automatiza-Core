@@ -1,5 +1,5 @@
 /*
- * Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+ * Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaCore
  * SPDX-License-Identifier: LicenseRef-Proprietary
  */
 const { app, BrowserWindow, dialog, shell, ipcMain, Menu, safeStorage } = require("electron");
@@ -179,7 +179,7 @@ function createMainWindow() {
     icon: app.isPackaged
       ? path.join(process.resourcesPath, "icon.ico")
       : path.join(__dirname, "assets", "icon.ico"),
-    title: "AutomatizaPyme",
+    title: "AutomatizaCore",
     show: false,
     webPreferences: {
       nodeIntegration: false,
