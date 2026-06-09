@@ -168,8 +168,23 @@ function TabCuentas() {
         setConnectError(null);
         try {
             const { auth_url } = await marketingApi.accounts.connect(platform);
-            const popup = window.open(auth_url, "_blank", "width=600,height=700");
-            if (!popup) setConnectError("El navegador bloqueó el popup. Permite popups para esta página.");
+            // En Electron los OAuth de redes sociales abren en el browser del sistema.
+            // window.open devuelve null pero el browser real maneja el flujo.
+            window.open(auth_url, "_blank", "width=600,height=700");
+            // Polling hasta 60s para detectar cuando el callback llegue al backend
+            const before = accounts.map((a) => a.id);
+            let attempts = 0;
+            const iv = setInterval(async () => {
+                attempts++;
+                try {
+                    const fresh = await marketingApi.accounts.list();
+                    if (fresh.some((a) => !before.includes(a.id))) {
+                        setAccounts(fresh);
+                        clearInterval(iv);
+                    }
+                } catch { /* ignore */ }
+                if (attempts >= 30) clearInterval(iv);
+            }, 2000);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Error al conectar";
             setConnectError(msg);
