@@ -169,7 +169,7 @@ def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLRes
         """
         script = """
             if (window.opener) {
-                window.opener.dispatchEvent(new CustomEvent('oauth-complete', { detail: { platform: location.search } }));
+                window.opener.postMessage({ type: 'oauth-complete' }, '*');
             }
             setTimeout(() => window.close(), 1800);
         """
