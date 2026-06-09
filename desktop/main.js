@@ -198,7 +198,13 @@ function createMainWindow() {
     }
   });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.includes("accounts.google.com") || url.includes("login.microsoftonline.com")) {
+    const externalOAuth = [
+      "accounts.google.com", "login.microsoftonline.com",
+      "twitter.com/i/oauth", "x.com/i/oauth",
+      "facebook.com/", "api.instagram.com/oauth",
+      "www.linkedin.com/oauth",
+    ];
+    if (externalOAuth.some((p) => url.includes(p))) {
       shell.openExternal(url);
       return { action: "deny" };
     }
