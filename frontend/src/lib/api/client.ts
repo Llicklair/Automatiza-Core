@@ -126,6 +126,11 @@ export async function request<T>(
         throw new ApiError(401, "Sesión expirada", undefined, "session_expired");
     }
 
+    if (res.status === 402) {
+        window.dispatchEvent(new CustomEvent("license-required"));
+        throw new ApiError(402, "Licencia requerida", undefined, "license_required");
+    }
+
     if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new ApiError(
