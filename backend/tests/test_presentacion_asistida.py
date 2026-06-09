@@ -47,7 +47,7 @@ class TestBuildXml:
     def test_meta_prerelleno_presente(self):
         xml = build_modelo_131_xml(_tenant())
         assert "MetaPrerelleno" in xml
-        assert 'sistema="AutomatizaPyme"' in xml
+        assert 'sistema="AutomatizaCore"' in xml
 
     def test_caracteres_especiales_escapados(self):
         tenant = TenantSummary(

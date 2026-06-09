@@ -7,7 +7,7 @@
 ### Solo — 39€/mes
 
 * **Soporte**: best-effort.
-* **Canal**: email a `soporte@automatizapyme.com`.
+* **Canal**: email a `soporte@automatizacore.com`.
 * **Tiempo de respuesta**: sin compromiso explícito. Resolución dentro de plazo razonable, normalmente <72h hábiles.
 * **Cobertura**: lunes a viernes, 9:00 a 18:00 CET.
 * **Knowledge base**: acceso completo a la KB pública.

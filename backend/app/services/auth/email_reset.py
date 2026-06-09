@@ -19,7 +19,7 @@ def send_password_reset_email(to_email: str, reset_url: str, user_name: str = ""
     Si SMTP no está configurado, loguea el enlace y devuelve True igualmente
     para no bloquear el flujo en desarrollo.
     """
-    subject = "Recuperación de contraseña — AutomatizaPyme"
+    subject = "Recuperación de contraseña — AutomatizaCore"
     name_display = user_name or to_email
 
     html = f"""
@@ -31,7 +31,7 @@ def send_password_reset_email(to_email: str, reset_url: str, user_name: str = ""
           <div style="display: inline-flex; background: #4f46e5; width: 48px; height: 48px; border-radius: 12px; align-items: center; justify-content: center; margin-bottom: 16px;">
             <span style="color: white; font-size: 24px;">⚡</span>
           </div>
-          <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">AutomatizaPyme</h1>
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">AutomatizaCore</h1>
         </div>
 
         <h2 style="font-size: 18px; font-weight: 600; color: white; margin-bottom: 8px;">
@@ -74,7 +74,7 @@ def send_password_reset_email(to_email: str, reset_url: str, user_name: str = ""
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"AutomatizaPyme <{settings.SMTP_USER}>"
+        msg["From"] = f"AutomatizaCore <{settings.SMTP_USER}>"
         msg["To"] = to_email
         msg.attach(MIMEText(html, "html"))
 

@@ -9,7 +9,7 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 **Contexto**: Aplicando la migración 0029 (AIEmployee contract) tras una sesión
 de smoke testing, `alembic_version` estaba en `0027_tasks_is_deleted`.
 Faltaba aplicar **dos** migraciones (0028 y 0029), pese a que el usuario
-había arrancado AutomatizaPyme.exe en sesiones previas — y Electron está
+había arrancado AutomatizaCore.exe en sesiones previas — y Electron está
 configurado para correr `alembic upgrade head` al arranque en
 `desktop/python-manager.js:360`.
 
@@ -38,7 +38,7 @@ de Python embebido, que el wrapper Electron no escala a la UI.
    Equivalente al `system_status_check` que ya existe pero específico para
    alembic.
 3. **Migraciones que `raise` deben dejar una marca persistente**: e.g.,
-   escribir un fichero `migrations_blocked.txt` en `APPDATA/AutomatizaPyme/`
+   escribir un fichero `migrations_blocked.txt` en `APPDATA/AutomatizaCore/`
    con el último error, que el frontend pueda leer y mostrar.
 
 **Aplicación**: revisar `desktop/python-manager.js` para asegurar que el
@@ -188,7 +188,7 @@ Los otros 2 prompts del mismo run (`iter1_email_send`, `iter1_email_summarize`) 
 **Contexto**: tras fixear SC-1 (CRM-create), el smoke completo expuso SC-9:
 `billing_simple` ahora falla con timeout 900s porque el `plan_node`
 (_plan_handlers.py:438-462) detecta un AIEmployee custom de domain=billing
-("yolanda sanchez" en el tenant AutomatizaPyme) y enruta el plan a
+("yolanda sanchez" en el tenant AutomatizaCore) y enruta el plan a
 `agent="custom"` en lugar del builtin billing. Yolanda tiene system_prompt
 o skills rotas → hangup.
 
@@ -274,7 +274,7 @@ script smoke.
 
 ## 2026-05-03 — Comprobar gestores portables del proyecto antes de instalar dependencias system-wide
 
-**Contexto:** Para validar la Fase 3 (RLS) necesitaba un Postgres corriendo. Vi `Test-NetConnection localhost -Port 5433 → False`, asumí "no hay Postgres" e instalé PostgreSQL 17 vía winget como servicio del sistema. Después descubrimos que `desktop/postgres-manager.js` ya gestiona PostgreSQL 15 portable en `%APPDATA%\AutomatizaPyme\pgsql\` — exactamente lo que tendrá el end-user.
+**Contexto:** Para validar la Fase 3 (RLS) necesitaba un Postgres corriendo. Vi `Test-NetConnection localhost -Port 5433 → False`, asumí "no hay Postgres" e instalé PostgreSQL 17 vía winget como servicio del sistema. Después descubrimos que `desktop/postgres-manager.js` ya gestiona PostgreSQL 15 portable en `%APPDATA%\AutomatizaCore\pgsql\` — exactamente lo que tendrá el end-user.
 
 **Consecuencias:**
 - Postgres 17 system-wide redundante con la portable que produce el producto.

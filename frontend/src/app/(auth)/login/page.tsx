@@ -168,7 +168,7 @@ export default function LoginPage() {
                         size={56}
                         className="rounded-2xl mb-4 shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-400/30 mx-auto overflow-hidden"
                     />
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">AutomatizaPyme</h1>
+                    <h1 className="text-2xl font-bold text-foreground tracking-tight">AutomatizaCore</h1>
                     <p className="mt-1 text-sm text-muted-foreground">{t("tagline")}</p>
                 </div>
 

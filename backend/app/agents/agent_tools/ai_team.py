@@ -96,7 +96,7 @@ VALID_EMPLOYEE_DOMAINS = {
 }
 
 SPEC_PROMPT = """\
-Eres el diseñador de agentes IA para AutomatizaPyme, una plataforma de gestión empresarial española.
+Eres el diseñador de agentes IA para AutomatizaCore, una plataforma de gestión empresarial española.
 Genera la especificación JSON de un nuevo empleado IA a partir de esta petición:
 
 "{description}"

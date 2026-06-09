@@ -2,7 +2,7 @@
 
 > **Crítico**: este runbook es **condición previa al pago de siniestro** en pólizas E&O Hiscox / AIG CyberEdge / Markel Pro IT (consensuado en Ronda 12 §63). Sin runbook documentado, el seguro puede rechazar la cobertura aunque esté contratado.
 >
-> Activación: cuando un cliente reciba paralela AEAT, comunicación previa, requerimiento o sanción derivada (presuntamente) de un cálculo o presentación realizada por AutomatizaPyme.
+> Activación: cuando un cliente reciba paralela AEAT, comunicación previa, requerimiento o sanción derivada (presuntamente) de un cálculo o presentación realizada por AutomatizaCore.
 
 ## §1 Personas designadas
 
@@ -35,13 +35,13 @@ Exportar todo lo anterior como bundle de diagnóstico (`/api/v1/system/diagnosti
 
 ## §4 Análisis de responsabilidad
 
-Cuatro escenarios posibles, en orden de responsabilidad de AutomatizaPyme S.L.:
+Cuatro escenarios posibles, en orden de responsabilidad de AutomatizaCore S.L.:
 
 ### Escenario A — Bug del software (responsabilidad del proveedor)
 
 * Síntoma: `audit_log` muestra cálculo erróneo, fórmula incorrecta, dato omitido por bug, error de XSD/format.
 * `fiscal_approval_log` muestra aprobación humana, pero los datos aprobados ya estaban mal calculados.
-* **Acción**: AutomatizaPyme asume responsabilidad. Activar E&O. Compensar al cliente la sanción si el seguro lo cubre.
+* **Acción**: AutomatizaCore asume responsabilidad. Activar E&O. Compensar al cliente la sanción si el seguro lo cubre.
 
 ### Escenario B — Datos del cliente incorrectos (responsabilidad del cliente)
 
@@ -75,7 +75,7 @@ Cuatro escenarios posibles, en orden de responsabilidad de AutomatizaPyme S.L.:
 
 ### Plantilla de análisis completado (10 días)
 
-Estructura: hechos + escenario aplicable (A/B/C/D) + acciones que asume AutomatizaPyme + acciones que recomendamos al cliente + relación con la póliza E&O.
+Estructura: hechos + escenario aplicable (A/B/C/D) + acciones que asume AutomatizaCore + acciones que recomendamos al cliente + relación con la póliza E&O.
 
 ## §6 Notificación al asegurador E&O
 

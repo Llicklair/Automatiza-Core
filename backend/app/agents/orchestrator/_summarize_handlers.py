@@ -61,7 +61,7 @@ async def summarize_node(state: OrchestratorState) -> dict:
             return state
 
         prompt = (
-            "Eres el asistente de AutomatizaPyme. El usuario pidió lo siguiente:\n"
+            "Eres el asistente de AutomatizaCore. El usuario pidió lo siguiente:\n"
             f'"{state["user_intent"]}"\n\n'
             "Los agentes han devuelto estos resultados:\n" + "\n".join(results_text) + "\n\n"
             "Genera un RESUMEN EJECUTIVO breve y claro en español para el usuario. "

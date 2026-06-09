@@ -1,4 +1,4 @@
-# Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+# Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaCore
 # SPDX-License-Identifier: LicenseRef-Proprietary
 """Aplicación principal FastAPI."""
 

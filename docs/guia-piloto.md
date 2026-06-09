@@ -1,11 +1,11 @@
-# AutomatizaPyme — Guía rápida de instalación (piloto)
+# AutomatizaCore — Guía rápida de instalación (piloto)
 
 Bienvenido. En ~15 minutos tendrás el ERP funcionando con tus agentes de IA.
 
 ---
 
 ## 1. Instalar
-1. Ejecuta **`AutomatizaPyme Setup.exe`**.
+1. Ejecuta **`AutomatizaCore Setup.exe`**.
 2. Si Windows muestra *"Windows protegió tu PC"* (SmartScreen) → **Más información → Ejecutar de todos modos**. *(Es normal mientras la app no esté firmada; la instala tu proveedor de confianza.)*
 3. El **primer arranque tarda unos minutos** y necesita **internet**: la app prepara sola su base de datos y motor interno. Déjala terminar (verás una pantalla de carga). Los siguientes arranques son rápidos.
 
@@ -44,4 +44,4 @@ La app te lleva a **Primeros pasos**. Haz estos dos, que son los importantes:
 - **Actualizaciones**: la app se actualiza sola (*Configuración → Actualizaciones*).
 - **¿Algo no funciona?** Anota qué hacías y escríbenos. En el piloto, tu feedback es lo que más vale.
 
-*Gracias por probar AutomatizaPyme. Cuéntanos qué te ayuda y qué te estorba.*
+*Gracias por probar AutomatizaCore. Cuéntanos qué te ayuda y qué te estorba.*

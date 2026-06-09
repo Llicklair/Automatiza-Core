@@ -60,7 +60,7 @@ def _parse_requirements(path: Path) -> list[dict]:
             "version": version,
             "purl": f"pkg:pypi/{name}@{version}",
             "scope": "required",
-            "properties": [{"name": "automatizapyme:source", "value": "backend"}],
+            "properties": [{"name": "automatizacore:source", "value": "backend"}],
         })
     return components
 
@@ -86,8 +86,8 @@ def _parse_package_json(path: Path, scope: str) -> list[dict]:
                 "purl": f"pkg:npm/{name}@{version}",
                 "scope": scope_value,
                 "properties": [
-                    {"name": "automatizapyme:source", "value": scope},
-                    {"name": "automatizapyme:section", "value": section},
+                    {"name": "automatizacore:source", "value": scope},
+                    {"name": "automatizacore:section", "value": section},
                 ],
             })
     return out
@@ -107,8 +107,8 @@ def _parse_embedded(path: Path) -> list[dict]:
             "version": entry["version"],
             "scope": "required",
             "properties": [
-                {"name": "automatizapyme:source", "value": "embedded"},
-                {"name": "automatizapyme:license", "value": entry.get("license", "unknown")},
+                {"name": "automatizacore:source", "value": "embedded"},
+                {"name": "automatizacore:license", "value": entry.get("license", "unknown")},
             ],
         }
         if entry.get("sha256"):
@@ -137,16 +137,16 @@ def build_sbom(version: str) -> dict:
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "tools": [{
-                "vendor": "AutomatizaPyme",
+                "vendor": "AutomatizaCore",
                 "name": "generate_sbom.py",
                 "version": "1.0.0",
             }],
             "component": {
                 "type": "application",
-                "bom-ref": f"automatizapyme@{version}",
-                "name": "automatizapyme",
+                "bom-ref": f"automatizacore@{version}",
+                "name": "automatizacore",
                 "version": version,
-                "supplier": {"name": "AutomatizaPyme S.L."},
+                "supplier": {"name": "AutomatizaCore S.L."},
             },
         },
         "components": components,

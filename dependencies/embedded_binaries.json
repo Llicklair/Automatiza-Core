@@ -1,6 +1,6 @@
 {
   "$schema": "./embedded_binaries.schema.json",
-  "_doc": "Binarios de terceros embebidos en el instalador Electron de AutomatizaPyme. Cada release verifica SHA-256 contra este manifest antes de empaquetar (DIS.SBOM). Los hashes se obtienen de la página oficial del proyecto.",
+  "_doc": "Binarios de terceros embebidos en el instalador Electron de AutomatizaCore. Cada release verifica SHA-256 contra este manifest antes de empaquetar (DIS.SBOM). Los hashes se obtienen de la página oficial del proyecto.",
   "binaries": [
     {
       "name": "postgresql",

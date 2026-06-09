@@ -11,7 +11,7 @@ async def main() -> None:
         print("== Login demo para pruebas de tareas/automatizaciones ==")
         r = await client.post(
             "/auth/login",
-            json={"email": "demo@automatizapyme.com", "password": "Demo1234!"},
+            json={"email": "demo@automatizacore.com", "password": "Demo1234!"},
         )
         print("login status:", r.status_code)
         if r.status_code != 200:

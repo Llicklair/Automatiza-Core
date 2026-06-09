@@ -3,12 +3,14 @@
 import React from "react";
 import { LogoSvg } from "@/components/ui/logo-svg";
 import Link from "next/link";
-import { Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NAV_SECTIONS, type NavItem, type NavSection } from "./nav-config";
 import { useSidebar } from "./_hooks/useSidebar";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useLicenseStore } from "@/stores/license";
+import { canAccess } from "@/lib/plans";
 
 export function Sidebar() {
     const {
@@ -24,6 +26,7 @@ export function Sidebar() {
     const role = useUserRole();
     const isAdmin = role === "admin";
     const isEmployee = role === "employee";
+    const plan = useLicenseStore((s) => s.plan);
 
     // Para rol "employee": solo se ve Inicio, Mi portal y Configuración > Perfil.
     const EMPLOYEE_ALLOWED_HREFS = new Set<string>([
@@ -60,6 +63,8 @@ export function Sidebar() {
         const hasSubItems = !!item.subItems && item.subItems.length > 0;
 
         const highlight = !!item.highlight;
+        const locked = !canAccess(plan, item.requiredPlan);
+        const lockedTitle = `Disponible en el plan ${item.requiredPlan === "gestoria" ? "Gestoría" : "Pro"}`;
         // Container: hover/activo sutil cuando highlight, sin pisar el color del texto
         const containerStyle = highlight
             ? cn(
@@ -81,6 +86,13 @@ export function Sidebar() {
         // Collapsed mode
         if (collapsed) {
             const href = item.href || (item.subItems?.[0]?.href ?? "#");
+            if (locked) return (
+                <div key={item.label}>
+                    <div title={lockedTitle} className={cn("flex items-center justify-center w-full h-9 rounded-md opacity-40 cursor-not-allowed", containerStyle)}>
+                        <Icon className={iconClass} />
+                    </div>
+                </div>
+            );
             return (
                 <div key={item.label}>
                     <Link
@@ -101,6 +113,15 @@ export function Sidebar() {
 
         // Expanded mode - simple link
         if (!hasSubItems && item.href) {
+            if (locked) return (
+                <div key={item.label}>
+                    <div title={lockedTitle} className="flex items-center gap-2.5 px-2.5 h-9 rounded-md text-[13px] font-medium text-muted-foreground opacity-40 cursor-not-allowed">
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate flex-1">{item.label}</span>
+                        <Lock className="h-3 w-3 flex-shrink-0" />
+                    </div>
+                </div>
+            );
             return (
                 <div key={item.label}>
                     <Link
@@ -119,6 +140,15 @@ export function Sidebar() {
         }
 
         // Expanded mode - collapsible parent with sub-items
+        if (locked) return (
+            <div key={item.label}>
+                <div title={lockedTitle} className="flex items-center gap-2.5 px-2.5 h-9 w-full rounded-md text-[13px] font-medium text-muted-foreground opacity-40 cursor-not-allowed">
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate flex-1 text-left">{item.label}</span>
+                    <Lock className="h-3 w-3 flex-shrink-0" />
+                </div>
+            </div>
+        );
         return (
             <div key={item.label}>
                 <button
@@ -143,7 +173,18 @@ export function Sidebar() {
                 {expanded && item.subItems && (
                     <div className="ml-[22px] border-l border-sidebar-border pl-2.5 mt-0.5 space-y-0.5">
                         {item.subItems.map((sub) => {
+                            const subLocked = !canAccess(plan, sub.requiredPlan);
                             const subActive = isActive(sub.href);
+                            if (subLocked) return (
+                                <div
+                                    key={sub.href}
+                                    title={`Disponible en el plan ${sub.requiredPlan === "gestoria" ? "Gestoría" : "Pro"}`}
+                                    className="flex items-center h-8 px-2 rounded-md text-[13px] text-muted-foreground opacity-40 cursor-not-allowed"
+                                >
+                                    <span className="truncate flex-1">{sub.label}</span>
+                                    <Lock className="h-3 w-3 flex-shrink-0" />
+                                </div>
+                            );
                             return (
                                 <Link
                                     key={sub.href}
@@ -206,7 +247,7 @@ export function Sidebar() {
                 />
                 {!collapsed && (
                     <span className="text-sm font-semibold text-sidebar-foreground truncate">
-                        AutomatizaPyme
+                        AutomatizaCore
                     </span>
                 )}
             </div>

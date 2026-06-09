@@ -483,7 +483,7 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
     elements.append(Spacer(1, 3 * mm))
     elements.append(
         Paragraph(
-            "Informe generado automáticamente por el motor de IA de AutomatizaPyme · "
+            "Informe generado automáticamente por el motor de IA de AutomatizaCore · "
             f"Período: {month_label} · {datetime.now().strftime('%d/%m/%Y')}",
             s_footer,
         )

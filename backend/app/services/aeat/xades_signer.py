@@ -55,7 +55,7 @@ def sign_xades_bes(xml_str: str, pfx_bytes: bytes, password: str) -> SignResult:
         )
         wrapped = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<UnsignedDraft generator="AutomatizaPyme" note="stub-no-xmlsec">\n'
+            '<UnsignedDraft generator="AutomatizaCore" note="stub-no-xmlsec">\n'
             f"{xml_str.lstrip(chr(10)).lstrip()}\n"
             "</UnsignedDraft>"
         )

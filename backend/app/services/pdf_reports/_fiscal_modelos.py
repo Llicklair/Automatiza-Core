@@ -99,7 +99,7 @@ def _footer(s, C) -> list:
                            alignment=TA_CENTER),
         ),
         Spacer(1, 2 * mm),
-        Paragraph(f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}", s["footer"]),
+        Paragraph(f"Generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}", s["footer"]),
     ]
 
 

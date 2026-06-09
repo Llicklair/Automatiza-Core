@@ -23,7 +23,7 @@ export default function PrimerosPassPage() {
                     </div>
                     <div>
                         <h1 className="text-3xl font-bold text-foreground tracking-tight">Primeros Pasos</h1>
-                        <p className="text-muted-foreground text-sm mt-0.5">Tu guía para poner en marcha AutomatizaPyme</p>
+                        <p className="text-muted-foreground text-sm mt-0.5">Tu guía para poner en marcha AutomatizaCore</p>
                     </div>
                 </div>
 

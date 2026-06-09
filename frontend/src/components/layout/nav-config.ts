@@ -14,9 +14,10 @@ export type NavItem = {
     icon: LucideIcon;
     href?: string;
     adminOnly?: boolean;
-    /** Marca el item como núcleo de la app (Mi equipo, Automatizaciones, etc.) — se renderiza con un color destacado en el sidebar. */
+    requiredPlan?: "pro" | "gestoria";
+    /** Marca el item como núcleo de la app — se renderiza con un color destacado en el sidebar. */
     highlight?: boolean;
-    subItems?: { label: string; href: string; adminOnly?: boolean }[];
+    subItems?: { label: string; href: string; adminOnly?: boolean; requiredPlan?: "pro" | "gestoria" }[];
 };
 
 export type NavSection = {
@@ -42,7 +43,7 @@ export const NAV_SECTIONS: NavSection[] = [
             {
                 label: "Contactos", icon: Users2, subItems: [
                     { label: "Clientes", href: "/clientes" },
-                    { label: "Portal clientes", href: "/clientes/portal", adminOnly: true },
+                    { label: "Portal clientes", href: "/clientes/portal", adminOnly: true, requiredPlan: "gestoria" },
                 ],
             },
             {
@@ -66,7 +67,7 @@ export const NAV_SECTIONS: NavSection[] = [
                 ],
             },
             {
-                label: "CRM", icon: Users, subItems: [
+                label: "CRM", icon: Users, requiredPlan: "pro", subItems: [
                     { label: "Resumen", href: "/crm" },
                     { label: "Embudo de ventas", href: "/crm/embudo-de-ventas" },
                     { label: "Actividades", href: "/crm/actividades" },
@@ -76,7 +77,7 @@ export const NAV_SECTIONS: NavSection[] = [
                 ],
             },
             {
-                label: "RRHH", icon: Briefcase, subItems: [
+                label: "RRHH", icon: Briefcase, requiredPlan: "pro", subItems: [
                     { label: "Resumen", href: "/rrhh" },
                     { label: "Empleados", href: "/rrhh/empleados" },
                     { label: "Nóminas", href: "/rrhh/nominas" },
@@ -108,7 +109,7 @@ export const NAV_SECTIONS: NavSection[] = [
         title: "Finanzas",
         items: [
             {
-                label: "Tesorería", icon: Landmark, subItems: [
+                label: "Tesorería", icon: Landmark, requiredPlan: "pro", subItems: [
                     { label: "Resumen", href: "/tesoreria" },
                     { label: "Cuentas", href: "/banca" },
                     { label: "Cashflow", href: "/tesoreria/cashflow" },
@@ -117,7 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
                 ],
             },
             {
-                label: "Contabilidad", icon: BookOpen, subItems: [
+                label: "Contabilidad", icon: BookOpen, requiredPlan: "pro", subItems: [
                     { label: "Resumen", href: "/contabilidad" },
                     { label: "Cuadro de cuentas", href: "/contabilidad/cuadro-de-cuentas" },
                     { label: "Libro diario", href: "/contabilidad/libro-diario" },
@@ -127,39 +128,40 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Asesorías", href: "/contabilidad/asesorias" },
                 ],
             },
-            { label: "Impuestos", icon: Scale, href: "/impuestos" },
+            { label: "Impuestos", icon: Scale, href: "/impuestos", requiredPlan: "pro" },
         ],
     },
     {
         title: "Verifactu",
         items: [
-            { label: "Configuración fiscal (AEAT)", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true },
+            { label: "Configuración fiscal (AEAT)", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true, requiredPlan: "pro" },
         ],
     },
     {
         title: "Análisis",
         items: [
-            { label: "Analítica", icon: PieChart, href: "/analitica" },
-            { label: "Informes IA", icon: BarChart3, href: "/informes" },
-            { label: "Marketing", icon: Megaphone, href: "/marketing" },
-            { label: "Alertas", icon: AlertTriangle, href: "/alertas" },
+            { label: "Analítica", icon: PieChart, href: "/analitica", requiredPlan: "pro" },
+            { label: "Informes IA", icon: BarChart3, href: "/informes", requiredPlan: "pro" },
+            { label: "Email Marketing", icon: Mail, href: "/email-marketing", requiredPlan: "pro" },
+            { label: "Marketing", icon: Megaphone, href: "/marketing", requiredPlan: "gestoria" },
+            { label: "Alertas", icon: AlertTriangle, href: "/alertas", requiredPlan: "pro" },
         ],
     },
     {
         title: "Gobierno",
         items: [
-            { label: "Compliance", icon: ShieldCheck, href: "/compliance", adminOnly: true },
-            { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true },
+            { label: "Compliance", icon: ShieldCheck, href: "/compliance", adminOnly: true, requiredPlan: "gestoria" },
+            { label: "Auditoría", icon: ScrollText, href: "/auditoria", adminOnly: true, requiredPlan: "gestoria" },
         ],
     },
     {
         title: "Herramientas",
         items: [
-            { label: "Plantillas", icon: Layers, href: "/plantillas" },
-            { label: "Escáner e importación", icon: ScanLine, href: "/escaner" },
-            { label: "Documentos", icon: FileText, href: "/documentos" },
-            { label: "Correos", icon: Mail, href: "/correos" },
-            { label: "Integraciones", icon: Plug, href: "/integraciones" },
+            { label: "Plantillas", icon: Layers, href: "/plantillas", requiredPlan: "pro" },
+            { label: "Escáner e importación", icon: ScanLine, href: "/escaner", requiredPlan: "pro" },
+            { label: "Documentos", icon: FileText, href: "/documentos", requiredPlan: "pro" },
+            { label: "Correos", icon: Mail, href: "/correos", requiredPlan: "pro" },
+            { label: "Integraciones", icon: Plug, href: "/integraciones", requiredPlan: "pro" },
             {
                 label: "Configuración", icon: Settings, subItems: [
                     { label: "Resumen", href: "/configuracion" },
@@ -183,21 +185,15 @@ export const NAV_SECTIONS: NavSection[] = [
 // Route label mapping for breadcrumbs - flattened from NAV_SECTIONS
 export const ROUTE_LABELS: Record<string, string> = {};
 
-// Build from NAV_SECTIONS
 for (const section of NAV_SECTIONS) {
     for (const item of section.items) {
-        if (item.href) {
-            ROUTE_LABELS[item.href] = item.label;
-        }
+        if (item.href) ROUTE_LABELS[item.href] = item.label;
         if (item.subItems) {
-            for (const sub of item.subItems) {
-                ROUTE_LABELS[sub.href] = sub.label;
-            }
+            for (const sub of item.subItems) ROUTE_LABELS[sub.href] = sub.label;
         }
     }
 }
 
-// Additional manual labels for settings/config pages
 Object.assign(ROUTE_LABELS, {
     "/configuracion/empresa": "Empresa",
     "/configuracion/actualizaciones": "Actualizaciones",

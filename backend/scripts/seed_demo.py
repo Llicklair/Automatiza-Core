@@ -1,6 +1,6 @@
 """
-Seed de datos demo para AutomatizaPyme.
-Pobla la cuenta demo@automatizapyme.com con datos realistas de una PYME española.
+Seed de datos demo para AutomatizaCore.
+Pobla la cuenta demo@automatizacore.com con datos realistas de una PYME española.
 
 Uso:
     python scripts/seed_demo.py
@@ -35,7 +35,7 @@ from sqlalchemy.orm import sessionmaker
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-DEMO_EMAIL = "demo@automatizapyme.com"
+DEMO_EMAIL = "demo@automatizacore.com"
 
 def d(days_ago: int) -> datetime:
     """Fecha relativa a hoy."""
@@ -354,7 +354,7 @@ async def seed(reset: bool = False):
         print("  • 20 movimientos bancarios")
         print("")
         print("  Dashboard: http://localhost:3000")
-        print("  Usuario:   demo@automatizapyme.com / Demo1234!")
+        print("  Usuario:   demo@automatizacore.com / Demo1234!")
 
 
 async def clear_only():

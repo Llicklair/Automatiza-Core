@@ -23,7 +23,7 @@ from app.db.models.models import Task, Workflow, WorkflowExecution
 logger = logging.getLogger(__name__)
 
 _CHAT_SYSTEM = """\
-Eres el asistente de AutomatizaPyme, un ERP inteligente para PYMEs españolas.
+Eres el asistente de AutomatizaCore, un ERP inteligente para PYMEs españolas.
 Respondes preguntas generales, dudas conceptuales y consultas de estado de forma clara y concisa.
 Hoy es {date}. Responde siempre en español.
 

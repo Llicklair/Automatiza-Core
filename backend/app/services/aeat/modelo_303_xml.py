@@ -38,7 +38,7 @@ def build_modelo_303_xml(
         "version": "1.0",
         "ejercicio": str(year),
         "periodo": f"{quarter}T",
-        "generador": "AutomatizaPyme",
+        "generador": "AutomatizaCore",
         "tipo": "auxiliar",  # explícito: no es envío oficial
     })
 

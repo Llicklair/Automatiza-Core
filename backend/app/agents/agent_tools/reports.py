@@ -36,7 +36,7 @@ def _resolve_upload_dir(category: str = "") -> str:
     Estrategia (en orden):
       1. Si UPLOAD_DIR está definida y NO es la ruta-Linux por defecto
          "/app/uploads" → respeta lo que el operador haya configurado.
-      2. En Windows → AppData/Roaming/AutomatizaPyme/uploads (carpeta
+      2. En Windows → AppData/Roaming/AutomatizaCore/uploads (carpeta
          estándar de datos de usuario en Electron).
       3. Otros SO → ./uploads relativo al cwd.
 
@@ -49,7 +49,7 @@ def _resolve_upload_dir(category: str = "") -> str:
         upload_dir = env
     elif os.name == "nt":
         appdata = os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming")
-        upload_dir = os.path.join(appdata, "AutomatizaPyme", "uploads")
+        upload_dir = os.path.join(appdata, "AutomatizaCore", "uploads")
     else:
         upload_dir = os.path.abspath("uploads")
 

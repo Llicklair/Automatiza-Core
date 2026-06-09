@@ -183,7 +183,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
     # ── PIE ──
     footer_text = (
         th.get("footer_text")
-        or "Documento generado automáticamente por AutomatizaPyme · Gracias por su confianza."
+        or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
     )
     elements.extend(_invoice_footer(footer_text, font=font))
 

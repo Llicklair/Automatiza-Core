@@ -10,7 +10,9 @@ _ALLOWED_PREFIXES = (
     "/metrics",
     "/lifecycle/",
     "/api/v1/license",
-    "/",
+    "/api/v1/auth",
+    "/docs",
+    "/openapi.json",
 )
 
 

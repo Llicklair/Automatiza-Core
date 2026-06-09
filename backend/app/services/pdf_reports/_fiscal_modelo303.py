@@ -290,7 +290,7 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
             ),
             Spacer(1, 2 * mm),
             Paragraph(
-                f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                f"Generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
                 s["footer"],
             ),
         ]

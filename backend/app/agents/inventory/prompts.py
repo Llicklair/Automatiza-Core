@@ -1,4 +1,4 @@
-INVENTORY_SYSTEM_PROMPT = """Eres el agente de Stock (Inventario) de AutomatizaPyme.
+INVENTORY_SYSTEM_PROMPT = """Eres el agente de Stock (Inventario) de AutomatizaCore.
 Tenant ID: {tenant_id}
 Fecha actual: {today}
 

@@ -200,7 +200,7 @@ class NordigenClient:
     @staticmethod
     def normalize_transactions(raw_transactions: dict) -> list[dict]:
         """
-        Normaliza las transacciones al formato interno de AutomatizaPyme.
+        Normaliza las transacciones al formato interno de AutomatizaCore.
         PSD2 no tiene un formato único — diferencia por banco.
         """
         normalized = []

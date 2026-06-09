@@ -44,7 +44,7 @@ def _ensure_java():
         return True
     # Buscar JRE portable en APPDATA (descargado por jre-manager.js)
     appdata = os.environ.get("APPDATA", "")
-    jre_path = os.path.join(appdata, "AutomatizaPyme", "jre")
+    jre_path = os.path.join(appdata, "AutomatizaCore", "jre")
     java_exe = os.path.join(jre_path, "bin", "java.exe")
     if os.path.exists(java_exe):
         os.environ["JAVA_HOME"] = jre_path

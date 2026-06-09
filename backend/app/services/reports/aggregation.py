@@ -150,7 +150,7 @@ def build_report_text(snap: CompanySnapshot, company_name: str) -> str:
     lines += [
         "",
         "═══════════════════════════════════════",
-        "  AutomatizaPyme — Informe generado por IA",
+        "  AutomatizaCore — Informe generado por IA",
         "═══════════════════════════════════════",
     ]
 

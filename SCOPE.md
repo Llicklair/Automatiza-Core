@@ -1,4 +1,4 @@
-# AutomatizaPyme — Scope de Producto v1
+# AutomatizaCore — Scope de Producto v1
 
 > Documento de definición de producto. Define qué es, para quién, qué hace, y qué necesita para ser viable comercialmente.
 >
@@ -10,7 +10,7 @@
 
 ### Qué es
 
-AutomatizaPyme es un ERP de escritorio con inteligencia artificial integrada. En lugar de navegar menús y rellenar formularios, el usuario escribe instrucciones en lenguaje natural — "crea una factura para García S.L. por 1.200€" — y el sistema lo ejecuta.
+AutomatizaCore es un ERP de escritorio con inteligencia artificial integrada. En lugar de navegar menús y rellenar formularios, el usuario escribe instrucciones en lenguaje natural — "crea una factura para García S.L. por 1.200€" — y el sistema lo ejecuta.
 
 ### Para quién
 
@@ -26,7 +26,7 @@ Los ERP existentes (Holded, Sage, A3, Contasol) tienen dos problemas para este s
 1. **Curva de aprendizaje alta** — el usuario necesita saber dónde está cada función
 2. **Datos en la nube** — muchas PYMEs y asesorías son reticentes a subir datos fiscales y de empleados a servidores de terceros
 
-AutomatizaPyme resuelve ambos: la IA elimina la curva de aprendizaje, y la arquitectura local-first garantiza que los datos nunca salen del ordenador del cliente.
+AutomatizaCore resuelve ambos: la IA elimina la curva de aprendizaje, y la arquitectura local-first garantiza que los datos nunca salen del ordenador del cliente.
 
 ### Riesgo competitivo
 

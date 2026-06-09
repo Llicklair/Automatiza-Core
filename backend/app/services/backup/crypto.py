@@ -6,7 +6,7 @@ con PBKDF2-HMAC-SHA256 (1M iteraciones). El VPS guarda blobs opacos que no
 puede descifrar.
 
 Copy aceptado en MARKETING.md: *"Si activas la copia en la nube,
-AutomatizaPyme almacena tus datos cifrados en un servidor externo. Solo tú
+AutomatizaCore almacena tus datos cifrados en un servidor externo. Solo tú
 tienes la clave."*
 
 Formato del blob cifrado (versionado para evolución futura):

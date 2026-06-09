@@ -1,4 +1,4 @@
-name: CI — AutomatizaPyme
+name: CI — AutomatizaCore
 
 on:
   push:
@@ -71,7 +71,7 @@ jobs:
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
-          POSTGRES_DB: automatizapyme_test
+          POSTGRES_DB: automatizacore_test
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
@@ -96,7 +96,7 @@ jobs:
       - name: Run migrations
         timeout-minutes: 3
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizacore_test
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
           OPENAI_API_KEY: sk-test-fake-key
@@ -104,7 +104,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizapyme_test
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizacore_test
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
           OPENAI_API_KEY: sk-test-fake-key

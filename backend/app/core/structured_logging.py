@@ -1,7 +1,7 @@
 """Logger JSON estructurado (CONT.LOG).
 
-Logs en formato JSON line-per-event, rotados en `%APPDATA%/AutomatizaPyme/logs/`
-(Windows) o `~/.local/share/AutomatizaPyme/logs/` (POSIX). Aplica
+Logs en formato JSON line-per-event, rotados en `%APPDATA%/AutomatizaCore/logs/`
+(Windows) o `~/.local/share/AutomatizaCore/logs/` (POSIX). Aplica
 `telemetry_scrubber.scrub_text` a `message` y `exc_info` para evitar persistir
 PII en disco.
 
@@ -79,16 +79,16 @@ class JSONFormatter(logging.Formatter):
 def get_log_dir() -> Path:
     """Devuelve el directorio de logs según el SO.
 
-    - Windows: `%APPDATA%/AutomatizaPyme/logs/`
-    - POSIX: `~/.local/share/AutomatizaPyme/logs/`
+    - Windows: `%APPDATA%/AutomatizaCore/logs/`
+    - POSIX: `~/.local/share/AutomatizaCore/logs/`
 
     Crea el directorio si no existe.
     """
     if os.name == "nt":
         base = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
-        log_dir = base / "AutomatizaPyme" / "logs"
+        log_dir = base / "AutomatizaCore" / "logs"
     else:
-        log_dir = Path.home() / ".local" / "share" / "AutomatizaPyme" / "logs"
+        log_dir = Path.home() / ".local" / "share" / "AutomatizaCore" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir
 
@@ -99,7 +99,7 @@ def setup_structured_logging(
     log_level: int = logging.INFO,
     max_bytes: int = 10 * 1024 * 1024,  # 10MB
     backup_count: int = 5,
-    filename: str = "automatizapyme.jsonl",
+    filename: str = "automatizacore.jsonl",
 ) -> Path:
     """Configura logger root con `RotatingFileHandler` JSON.
 
@@ -120,12 +120,12 @@ def setup_structured_logging(
     )
     handler.setFormatter(formatter)
     handler.setLevel(log_level)
-    handler.set_name("automatizapyme_jsonl")  # idempotencia
+    handler.set_name("automatizacore_jsonl")  # idempotencia
 
     root = logging.getLogger()
     # Evitar duplicar handler en hot-reload
     for existing in root.handlers:
-        if existing.get_name() == "automatizapyme_jsonl":
+        if existing.get_name() == "automatizacore_jsonl":
             return log_file
     root.addHandler(handler)
     root.setLevel(min(root.level, log_level) if root.level else log_level)

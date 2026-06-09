@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, X, ExternalLink } from "lucide-react";
+import { KeyRound, ExternalLink } from "lucide-react";
 import { licenseApi } from "@/lib/api/license";
 import { useLicenseStore } from "@/stores/license";
 
@@ -43,16 +43,11 @@ export default function LicenseModal() {
                 className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                    <div className="flex items-center gap-2">
-                        <KeyRound className="w-5 h-5 text-indigo-400" />
-                        <span id="license-modal-title" className="font-semibold text-foreground text-sm">
-                            Activar licencia
-                        </span>
-                    </div>
-                    <button onClick={hide} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <X className="w-4 h-4" />
-                    </button>
+                <div className="flex items-center px-5 py-4 border-b border-border gap-2">
+                    <KeyRound className="w-5 h-5 text-indigo-400" />
+                    <span id="license-modal-title" className="font-semibold text-foreground text-sm">
+                        Activar licencia
+                    </span>
                 </div>
 
                 {/* Body */}
@@ -83,7 +78,7 @@ export default function LicenseModal() {
                             )}
 
                             <a
-                                href="https://llicklair.github.io/Automatiza-pyme_landing/#precios"
+                                href="https://llicklair.github.io/Automatiza-core_landing/#precios"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
@@ -97,17 +92,11 @@ export default function LicenseModal() {
 
                 {/* Footer */}
                 {!success && (
-                    <div className="flex gap-2 px-5 pb-5">
-                        <button
-                            onClick={hide}
-                            className="flex-1 py-2 rounded-xl border border-border text-muted-foreground text-sm hover:text-foreground hover:bg-white/5 transition-colors"
-                        >
-                            Cancelar
-                        </button>
+                    <div className="px-5 pb-5">
                         <button
                             onClick={handleActivate}
                             disabled={loading || !key.trim()}
-                            className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                            className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                         >
                             {loading ? "Activando…" : "Activar"}
                         </button>

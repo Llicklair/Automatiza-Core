@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-[DEPRECATED] test_all.py -- Test integral del sistema AutomatizaPyme con MockLLM.
+[DEPRECATED] test_all.py -- Test integral del sistema AutomatizaCore con MockLLM.
 
 ⚠️  DEPRECATED — este script duplica fixtures de la suite pytest oficial y
 puede divergir en cualquier momento. La cobertura equivalente vive en:
@@ -42,7 +42,7 @@ parser.add_argument("--url", default="http://localhost:8080", help="URL base de 
 args = parser.parse_args()
 
 BASE = args.url.rstrip("/")
-EMAIL = "demo@automatizapyme.com"
+EMAIL = "demo@automatizacore.com"
 PASSWORD = "Demo1234!"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

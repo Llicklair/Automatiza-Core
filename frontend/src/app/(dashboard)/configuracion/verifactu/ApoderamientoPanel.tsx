@@ -130,7 +130,7 @@ export function ApoderamientoPanel() {
     }
 
     const phase = status?.status ?? "not_started";
-    const apoderado = status?.apoderado_nombre ?? "AutomatizaPyme S.L.";
+    const apoderado = status?.apoderado_nombre ?? "AutomatizaCore S.L.";
 
     return (
         <div className="space-y-6">

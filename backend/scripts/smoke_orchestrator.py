@@ -45,7 +45,7 @@ os.environ.pop("GEMINI_API_KEY", None)
 os.environ.pop("DEFAULT_LLM_PROVIDER", None)
 
 
-# Tenant AutomatizaPyme + user demo (mismos que test_agents.py)
+# Tenant AutomatizaCore + user demo (mismos que test_agents.py)
 TENANT_ID = "9cd49fbb-355b-4b75-ad57-45ebe1c85749"
 USER_ID = "0d7e5ea1-5a91-4372-8de1-8e72a2e0085b"
 
@@ -390,7 +390,7 @@ def _write_report(results: list[dict], sent_emails: list[dict]) -> Path:
     lines = [
         f"# Smoke Orchestrator (Coordinador) - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         "",
-        f"Tenant: `{TENANT_ID}` (AutomatizaPyme)  ",
+        f"Tenant: `{TENANT_ID}` (AutomatizaCore)  ",
         f"User: `{USER_ID}`  ",
         f"SMTP: mockeado (no se envio ningun email real)  ",
         f"Prompts ejecutados: {len(results)}  ",

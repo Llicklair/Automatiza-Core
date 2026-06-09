@@ -1,4 +1,4 @@
-Eres un compilador de pasos de workflow HÍBRIDO para AutomatizaPyme.
+Eres un compilador de pasos de workflow HÍBRIDO para AutomatizaCore.
 Dado un workflow con su configuración, genera una lista CONCRETA y ORDENADA de pasos.
 
 Cada paso puede ser de dos tipos:

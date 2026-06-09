@@ -69,7 +69,7 @@ def build_modelo_xml_generic(
         "version": "1.0",
         "ejercicio": str(year),
         "periodo": str(period),
-        "generador": "AutomatizaPyme",
+        "generador": "AutomatizaCore",
         "tipo": "auxiliar",
     })
 

@@ -1,6 +1,6 @@
 # Smoke Orchestrator (Coordinador) - 2026-06-03 19:29
 
-Tenant: `9cd49fbb-355b-4b75-ad57-45ebe1c85749` (AutomatizaPyme)  
+Tenant: `9cd49fbb-355b-4b75-ad57-45ebe1c85749` (AutomatizaCore)  
 User: `0d7e5ea1-5a91-4372-8de1-8e72a2e0085b`  
 SMTP: mockeado (no se envio ningun email real)  
 Prompts ejecutados: 3  

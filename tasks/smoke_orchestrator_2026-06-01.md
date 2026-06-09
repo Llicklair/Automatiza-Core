@@ -1,6 +1,6 @@
 # Smoke Orchestrator (Coordinador) - 2026-06-01 10:34
 
-Tenant: `9cd49fbb-355b-4b75-ad57-45ebe1c85749` (AutomatizaPyme)  
+Tenant: `9cd49fbb-355b-4b75-ad57-45ebe1c85749` (AutomatizaCore)  
 User: `0d7e5ea1-5a91-4372-8de1-8e72a2e0085b`  
 SMTP: mockeado (no se envio ningun email real)  
 Prompts ejecutados: 1  
@@ -44,7 +44,7 @@ _Imposible: debe rechazar limpiamente sin alucinar tools_
       "agent": "chat",
       "success": true,
       "error": null,
-      "output_preview": "{\"action\": \"chat_response\", \"response\": \"No está dentro de mis capacidades (ni del ERP). AutomatizaPyme gestiona facturación, RRHH, CRM y banca para PYMEs españolas, no exploración espacial ni adquisi..."
+      "output_preview": "{\"action\": \"chat_response\", \"response\": \"No está dentro de mis capacidades (ni del ERP). AutomatizaCore gestiona facturación, RRHH, CRM y banca para PYMEs españolas, no exploración espacial ni adquisi..."
     }
   ],
   "error_message": null,

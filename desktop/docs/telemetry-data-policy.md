@@ -1,4 +1,4 @@
-# Política de datos de telemetría — AutomatizaPyme
+# Política de datos de telemetría — AutomatizaCore
 
 > **Cumplimiento**: RGPD Art. 5.1.e (minimización + limitación del plazo),
 > Art. 7 (consentimiento informado), Art. 17 (derecho de supresión).
@@ -62,7 +62,7 @@ El usuario puede:
 
 1. **Desactivar telemetría globalmente** vía `Settings → Privacidad →
    Avanzado` con texto literal *"renuncio a la revisión por incidente y
-   autorizo a AutomatizaPyme a enviar informes técnicos sin pedirme
+   autorizo a AutomatizaCore a enviar informes técnicos sin pedirme
    confirmación cada vez. Mantengo el derecho a revocar este consentimiento
    en cualquier momento y a solicitar el borrado de los datos enviados."*
 
@@ -100,5 +100,5 @@ La salt para `hash_tenant_id()`:
 ## §7 Punto de contacto
 
 Cualquier consulta sobre tratamiento de datos de telemetría:
-**privacidad@automatizapyme.com** (DPD designado conforme RGPD Art. 37 si
+**privacidad@automatizacore.com** (DPD designado conforme RGPD Art. 37 si
 procede). Plazo respuesta: 30 días naturales.

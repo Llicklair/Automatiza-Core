@@ -2,11 +2,11 @@
 
 > Cumplimiento Reglamento UE 2024/1689 (AI Act) **Art. 26.7**: el *deployer* de un sistema de IA del Anexo III debe informar **antes del despliegue** a los representantes de los trabajadores y a los trabajadores afectados.
 >
-> En AutomatizaPyme el **deployer es el cliente** (PYME o gestoría). AutomatizaPyme actúa como proveedor del sistema integrado y entrega esta plantilla para que el cliente cumpla con su obligación legal.
+> En AutomatizaCore el **deployer es el cliente** (PYME o gestoría). AutomatizaCore actúa como proveedor del sistema integrado y entrega esta plantilla para que el cliente cumpla con su obligación legal.
 
 ## Plantilla de comunicación a trabajadores (versión 1.0)
 
-**A entregar antes del despliegue de AutomatizaPyme en la empresa.**
+**A entregar antes del despliegue de AutomatizaCore en la empresa.**
 
 ---
 
@@ -16,11 +16,11 @@
 
 Estimado/a trabajador/a, estimados representantes:
 
-En cumplimiento del artículo 26, apartado 7, del **Reglamento (UE) 2024/1689 del Parlamento Europeo y del Consejo, de 13 de junio de 2024, por el que se establecen normas armonizadas en materia de inteligencia artificial** (en adelante, "AI Act"), os informamos del despliegue inminente del software **AutomatizaPyme** en nuestra organización.
+En cumplimiento del artículo 26, apartado 7, del **Reglamento (UE) 2024/1689 del Parlamento Europeo y del Consejo, de 13 de junio de 2024, por el que se establecen normas armonizadas en materia de inteligencia artificial** (en adelante, "AI Act"), os informamos del despliegue inminente del software **AutomatizaCore** en nuestra organización.
 
 #### 1. Sistema desplegado
 
-AutomatizaPyme es una plataforma de gestión administrativa que incluye agentes basados en inteligencia artificial. La empresa actúa como **deployer** (responsable del despliegue) y el proveedor del sistema es AutomatizaPyme S.L.
+AutomatizaCore es una plataforma de gestión administrativa que incluye agentes basados en inteligencia artificial. La empresa actúa como **deployer** (responsable del despliegue) y el proveedor del sistema es AutomatizaCore S.L.
 
 #### 2. Agentes que afectan a relaciones laborales
 
@@ -49,7 +49,7 @@ El trabajador tiene derecho a:
 
 #### 5. Datos personales tratados
 
-Los datos del personal tratados por AutomatizaPyme se limitan a los necesarios para la gestión administrativa y de nóminas: nombre, NIF, número de seguridad social, IBAN para abono, salario, retenciones IRPF, horas trabajadas, permisos solicitados. Estos datos:
+Los datos del personal tratados por AutomatizaCore se limitan a los necesarios para la gestión administrativa y de nóminas: nombre, NIF, número de seguridad social, IBAN para abono, salario, retenciones IRPF, horas trabajadas, permisos solicitados. Estos datos:
 
 * Se almacenan **localmente** en el equipo de la empresa, no en servidores externos.
 * Se conservan durante el periodo legal aplicable (4 años LGT / 6 años CCom según concepto).
@@ -60,7 +60,7 @@ Los datos del personal tratados por AutomatizaPyme se limitan a los necesarios p
 Para cualquier consulta sobre este despliegue:
 
 * **Responsable interno**: [Nombre y email del designado por la empresa]
-* **AutomatizaPyme S.L. (proveedor del sistema)**: privacidad@automatizapyme.com
+* **AutomatizaCore S.L. (proveedor del sistema)**: privacidad@automatizacore.com
 
 Documentación técnica del sistema disponible bajo petición conforme Art. 13 AI Act.
 
@@ -80,8 +80,8 @@ Documentación técnica del sistema disponible bajo petición conforme Art. 13 A
 
 ---
 
-## Notas para el equipo de AutomatizaPyme
+## Notas para el equipo de AutomatizaCore
 
-* Esta plantilla **debe ser validada por el abogado del cliente** antes de su distribución. AutomatizaPyme no presta asesoramiento legal — proporciona la plantilla como guía.
+* Esta plantilla **debe ser validada por el abogado del cliente** antes de su distribución. AutomatizaCore no presta asesoramiento legal — proporciona la plantilla como guía.
 * El cliente tier **Gestoría** debe entregar esta plantilla por cada empresa que gestione (uno por NIF de empresa cliente final).
 * Versión plantilla: **1.0** — generada 2026-05-14. Revisar antes de publicar legislación adicional UE/España que modifique obligaciones.

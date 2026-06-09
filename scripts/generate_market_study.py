@@ -1,10 +1,10 @@
-"""Genera un PDF de estudio de mercado de AutomatizaPyme para presentar.
+"""Genera un PDF de estudio de mercado de AutomatizaCore para presentar.
 
 Uso:
     python scripts/generate_market_study.py
 
 Salida:
-    C:\\Users\\Marcos\\Desktop\\AutomatizaPyme_Estudio_Mercado_OAP_Valencia.pdf
+    C:\\Users\\Marcos\\Desktop\\AutomatizaCore_Estudio_Mercado_OAP_Valencia.pdf
 
 Datos cuantitativos: rangos derivados de fuentes públicas conocidas
 (INE/DIRCE 2024, RETA, ONTSI, AMETIC, Comisión Europea). NO verificados
@@ -193,7 +193,7 @@ def _on_page(canvas, doc):
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(C_MUTED)
     canvas.drawString(
-        2 * cm, 1.1 * cm, "AutomatizaPyme — Estudio de mercado (mayo 2026)"
+        2 * cm, 1.1 * cm, "AutomatizaCore — Estudio de mercado (mayo 2026)"
     )
     canvas.drawRightString(
         A4[0] - 2 * cm, 1.1 * cm, f"Página {doc.page}"
@@ -264,7 +264,7 @@ def SectionBreak():
 def cover_page():
     elements = [
         Spacer(1, 4 * cm),
-        Paragraph("AutomatizaPyme", STYLE_COVER_TITLE),
+        Paragraph("AutomatizaCore", STYLE_COVER_TITLE),
         Spacer(1, 0.4 * cm),
         Paragraph("Estudio de mercado", STYLE_COVER_SUB),
         Paragraph(
@@ -293,7 +293,7 @@ def section_resumen():
     return [
         H1("1. Resumen ejecutivo"),
         P(
-            "AutomatizaPyme es una suite de gestión empresarial (ERP) diseñada "
+            "AutomatizaCore es una suite de gestión empresarial (ERP) diseñada "
             "específicamente para pequeñas y medianas empresas y autónomos del "
             "mercado español, con cuatro diferenciadores estructurales frente a "
             "las soluciones cloud incumbentes:"
@@ -446,7 +446,7 @@ def section_competencia():
         ["Odoo", "ERP open-source", "20-50 €/usr/mes", "Modular, código abierto", "Despliegue complejo; sin IA nativa"],
         ["Declarando", "Fiscal autónomos", "20-60 €/mes", "UX cuidada, foco fiscal", "Solo fiscal; no es ERP completo"],
         ["Sage / MS Dynamics", "Mid-market", ">200 €/mes", "Robustez enterprise", "Caro y sobredimensionado para PYME"],
-        ["AutomatizaPyme", "ERP + IA verticalizada, desktop-first", "Tiers Starter/Pro/Business", "IA en cada vertical + motor det/razon + empleados IA custom + soberanía dato + Verifactu", "Producto pre-comercial (lanzamiento Q3 2026)"],
+        ["AutomatizaCore", "ERP + IA verticalizada, desktop-first", "Tiers Starter/Pro/Business", "IA en cada vertical + motor det/razon + empleados IA custom + soberanía dato + Verifactu", "Producto pre-comercial (lanzamiento Q3 2026)"],
     ]
     rows = [[cell_header(h) for h in headers]]
     rows += [[cell(c) for c in row] for row in raw_rows]
@@ -469,7 +469,7 @@ def section_competencia():
             "<b>Cuadrante UI tradicional + amplio</b>: Holded, Odoo, Sage. Funcionalidad completa pero curva de aprendizaje exigente.",
             "<b>Cuadrante UI tradicional + estrecho</b>: Quipu, Contasimple, Declarando. Especializados; el cliente debe pegar varios.",
             "<b>Cuadrante IA + estrecho</b>: TaxDown y similares. IA limitada a una vertical fiscal.",
-            "<b>Cuadrante IA + amplio</b>: <b>vacío hoy</b>. AutomatizaPyme apunta a ocuparlo.",
+            "<b>Cuadrante IA + amplio</b>: <b>vacío hoy</b>. AutomatizaCore apunta a ocuparlo.",
         ]),
         H2("4.2 — Barreras de entrada para competidores cloud"),
         P(
@@ -513,7 +513,7 @@ def section_tendencias():
             "consentimiento."
         ),
         P(
-            "AutomatizaPyme incorpora desde diseño los mecanismos exigidos "
+            "AutomatizaCore incorpora desde diseño los mecanismos exigidos "
             "(logging append-only de cada invocación de agente, opt-out "
             "RGPD Art. 7, banner Art. 50, plantilla de información a "
             "trabajadores Art. 26.7). Esta preparación se convierte en "
@@ -524,7 +524,7 @@ def section_tendencias():
         P(
             "El Kit Digital (Acelera PYME) ha inyectado entre 2022 y 2025 "
             "más de 3.000 M€ de subvención a la digitalización de PYMEs "
-            "españolas. Las categorías relevantes para AutomatizaPyme son "
+            "españolas. Las categorías relevantes para AutomatizaCore son "
             "gestión de procesos, factura electrónica, oficina virtual y "
             "ciberseguridad. El estatus de Agente Digitalizador acreditado "
             "habilita capturar estos importes como descuento aplicable al "
@@ -549,7 +549,7 @@ def section_propuesta():
     return [
         H1("6. Propuesta de valor diferencial"),
         P(
-            "AutomatizaPyme se diferencia de los actores del segmento en "
+            "AutomatizaCore se diferencia de los actores del segmento en "
             "seis pilares estructurales, pensados como ventaja arquitectónica "
             "—difícil de copiar por incumbentes sin canibalizar su modelo "
             "actual— y no como simples <i>features</i>:"
@@ -558,7 +558,7 @@ def section_propuesta():
         # ── 6.1 Desktop-first ─────────────────────────────────────────────
         H2("6.1 — Arquitectura: desktop-first con soberanía del dato"),
         P(
-            "A diferencia de los SaaS tradicionales, AutomatizaPyme se "
+            "A diferencia de los SaaS tradicionales, AutomatizaCore se "
             "instala como aplicación de escritorio (Electron) con el "
             "backend Python y la base de datos PostgreSQL <b>embebidos</b> "
             "en la propia máquina del cliente. Sus datos no salen de su "
@@ -579,7 +579,7 @@ def section_propuesta():
         P(
             "Frente a los productos del segmento que añaden IA como un "
             "<i>chatbot</i> bolt-on sobre la interfaz tradicional, "
-            "AutomatizaPyme integra IA <b>en cada vertical operativa</b> "
+            "AutomatizaCore integra IA <b>en cada vertical operativa</b> "
             "de la empresa. El usuario habla en lenguaje natural con un "
             "Coordinador que clasifica la intención y delega en el agente "
             "experto de ese dominio:"
@@ -611,7 +611,7 @@ def section_propuesta():
         H2("6.3 — Motor dual: automatización determinista o por razonamiento"),
         P(
             "Las automatizaciones recurrentes en una PYME tienen dos "
-            "naturalezas muy distintas, y AutomatizaPyme las soporta con "
+            "naturalezas muy distintas, y AutomatizaCore las soporta con "
             "dos motores que comparten arquitectura pero divergen en "
             "ejecución:"
         ),
@@ -654,7 +654,7 @@ def section_propuesta():
             "<i>desktop-first</i> con automatizaciones programadas es: "
             "<i>«¿qué pasa con mi factura mensual del día 1 si justo ese "
             "día tengo el portátil apagado?»</i>. La respuesta de "
-            "AutomatizaPyme: <b>no pasa nada — se ejecuta en cuanto vuelves "
+            "AutomatizaCore: <b>no pasa nada — se ejecuta en cuanto vuelves "
             "a abrirlo</b>."
         ),
         *BulletList([
@@ -784,7 +784,7 @@ def section_conclusiones():
         H1("9. Conclusiones y siguientes pasos"),
         H2("9.1 — Tesis de inversión / colaboración"),
         P(
-            "AutomatizaPyme opera en la confluencia de tres olas convergentes: "
+            "AutomatizaCore opera en la confluencia de tres olas convergentes: "
             "<b>(1)</b> obligación regulatoria Verifactu que fuerza la "
             "actualización de millones de PYMEs en 2025-2027, <b>(2)</b> "
             "maduración de IA agente que hace técnica y económicamente "
@@ -973,7 +973,7 @@ def section_internacionalizacion():
     return [
         H1("10. Plan de internacionalización"),
         P(
-            "La arquitectura de AutomatizaPyme está diseñada para "
+            "La arquitectura de AutomatizaCore está diseñada para "
             "internacionalización desde la fundación: <b>(a)</b> el modelo "
             "multi-tenant ya separa el <i>locale</i> y la jurisdicción "
             "fiscal en columnas dedicadas (<i>ui_locale</i>, "
@@ -1055,7 +1055,7 @@ def section_reestructuracion():
         H1("11. Futura reestructuración del proyecto"),
         P(
             "El paso de un producto unitario español a una plataforma "
-            "internacional multimercado exigirá reorganizar AutomatizaPyme "
+            "internacional multimercado exigirá reorganizar AutomatizaCore "
             "en tres planos paralelos: <b>arquitectura técnica</b>, "
             "<b>estructura de equipo</b> y <b>estructura corporativa</b>. "
             "Cada plano se activa en una fase distinta del roadmap, no "
@@ -1074,7 +1074,7 @@ def section_reestructuracion():
             "<b>Salto 1 (con F2, Portugal)</b>: refactor del módulo de cumplimiento a <i>plugin architecture</i>. Cada jurisdicción es un paquete enchufable que registra: modelos fiscales propios (303 / IVA 22 / SAF-T / MTD), conectores con la API tributaria, plantillas PDF localizadas, reglas de validación. El core del ERP queda agnóstico.",
             "<b>Salto 2 (con F4, México)</b>: separación clara entre <i>core</i> (factura, inventario, CRM, RRHH) y <i>compliance pack</i> por país. Cada cliente activa los packs que necesite. Habilita opcionalmente un modelo de monetización por pack premium.",
             "<b>Salto 3 (con F6, Reino Unido)</b>: introducción del inglés como idioma de primera clase. El catálogo de prompts del sistema se reescribe (no se traduce) para reflejar tono y convenciones anglosajonas. Esto exige una capa de abstracción de prompts por <i>language family</i> que ya queda preparada en el monorepo.",
-            "<b>Posible salto 4 (con F8, EE. UU.)</b>: evaluación de migración del backend desktop-embebido a un modelo <i>hybrid edge-cloud</i> para soportar <i>sales tax</i> estatal con tablas vivas que se sincronizan automáticamente (50 jurisdicciones, reglas que cambian trimestralmente tras la sentencia <i>Wayfair</i> 2018). La soberanía del dato del cliente se preserva, pero el cálculo de impuestos delega en un proveedor especializado (Avalara o TaxJar) o en tablas centralizadas mantenidas por AutomatizaPyme.",
+            "<b>Posible salto 4 (con F8, EE. UU.)</b>: evaluación de migración del backend desktop-embebido a un modelo <i>hybrid edge-cloud</i> para soportar <i>sales tax</i> estatal con tablas vivas que se sincronizan automáticamente (50 jurisdicciones, reglas que cambian trimestralmente tras la sentencia <i>Wayfair</i> 2018). La soberanía del dato del cliente se preserva, pero el cálculo de impuestos delega en un proveedor especializado (Avalara o TaxJar) o en tablas centralizadas mantenidas por AutomatizaCore.",
         ]),
 
         # ── 11.2 Equipo ──────────────────────────────────────────────────
@@ -1115,7 +1115,7 @@ def section_reestructuracion():
             "La forma jurídica del proyecto evoluciona en tres etapas:"
         ),
         *BulletList([
-            "<b>Etapa 1 — SL única en España (años 1-3)</b>: AutomatizaPyme SL operando desde España, facturando a clientes ES, PT, IT vía facturación intracomunitaria. Estructura simple, costes legales mínimos.",
+            "<b>Etapa 1 — SL única en España (años 1-3)</b>: AutomatizaCore SL operando desde España, facturando a clientes ES, PT, IT vía facturación intracomunitaria. Estructura simple, costes legales mínimos.",
             "<b>Etapa 2 — Holding ibérico (años 3-5)</b>: con tracción demostrada, creación de holding (España o Portugal según ventaja fiscal) y filial operativa por mercado de la zona euro (ES, PT, IT, FR). Cada filial factura localmente, gestiona su impuesto de sociedades y empleados con su régimen.",
             "<b>Etapa 3 — Estructura multi-país EU + UK (años 5-7)</b>: filial UK/Irlanda post-Brexit (la irlandesa puede ser puente para EU+UK simultáneamente), filial mexicana con sede en CDMX, presencia legal en LatAm consolidada.",
             "<b>Etapa 4 — Entrada en EE. UU. (años 7+)</b>: si F8 se activa, LLC en Delaware o Wyoming —elegidas por su flexibilidad de gobernanza corporativa y ventajas fiscales para holding— con responsabilidades segmentadas: la LLC asume el riesgo de cumplimiento <i>sales tax</i> y demandas estado por estado, sin contaminar la operación europea. Esta entrada exige capital adicional (1-3 M€) para legal, equipo local y certificaciones SOC 2 / HIPAA si se accede a verticales reguladas.",
@@ -1209,7 +1209,7 @@ def section_fuentes():
         Spacer(1, 1 * cm),
         Paragraph(
             f"Documento preparado el {date.today().strftime('%d de %B de %Y')} · "
-            "AutomatizaPyme · Versión 1.0",
+            "AutomatizaCore · Versión 1.0",
             STYLE_CAPTION,
         ),
     ]
@@ -1226,8 +1226,8 @@ def build_pdf(output_path: Path) -> None:
         rightMargin=2 * cm,
         topMargin=2 * cm,
         bottomMargin=2 * cm,
-        title="AutomatizaPyme — Estudio de mercado",
-        author="AutomatizaPyme",
+        title="AutomatizaCore — Estudio de mercado",
+        author="AutomatizaCore",
         subject="Estudio de mercado para presentación a OAP Valencia",
     )
 
@@ -1254,7 +1254,7 @@ def main():
     if not desktop.exists():
         # Windows fallback explícito
         desktop = Path(r"C:\Users\Marcos\Desktop")
-    output = desktop / "AutomatizaPyme_Estudio_Mercado_OAP_Valencia.pdf"
+    output = desktop / "AutomatizaCore_Estudio_Mercado_OAP_Valencia.pdf"
     build_pdf(output)
     size_kb = output.stat().st_size // 1024
     print(f"OK -> {output} ({size_kb} KB)")

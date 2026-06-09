@@ -38,7 +38,7 @@ GUIAS: dict[str, list[dict]] = {
             "resumen": "A partir de 2026, todas las empresas y autónomos deberán emitir y recibir facturas en formato electrónico estructurado (Facturae) en sus relaciones B2B.",
             "referencia_legal": "Ley 18/2022, de 28 de septiembre (Crea y Crece), Art. 12",
             "url_boe": "https://www.boe.es/buscar/act.php?id=BOE-A-2022-15818",
-            "consejo_pyme": "Adapta tu software de facturación antes de la fecha límite. AutomatizaPyme ya genera facturas compatibles con Facturae.",
+            "consejo_pyme": "Adapta tu software de facturación antes de la fecha límite. AutomatizaCore ya genera facturas compatibles con Facturae.",
         },
         {
             "titulo": "Modelo 347 — Operaciones con terceros",
@@ -82,7 +82,7 @@ GUIAS: dict[str, list[dict]] = {
             "resumen": "Toda empresa debe llevar: Libro Diario, Libro de Inventarios y Cuentas Anuales, y Libro de Actas. Las SL deben llevar además el Libro Registro de Socios.",
             "referencia_legal": "Arts. 25-30 Código de Comercio (RD 22/1885)",
             "url_boe": "https://www.boe.es/buscar/act.php?id=BOE-A-1885-6627",
-            "consejo_pyme": "Los libros se legalizan telemáticamente en el Registro Mercantil. AutomatizaPyme genera el Libro Diario automáticamente desde tu contabilidad.",
+            "consejo_pyme": "Los libros se legalizan telemáticamente en el Registro Mercantil. AutomatizaCore genera el Libro Diario automáticamente desde tu contabilidad.",
         },
         {
             "titulo": "Legalización telemática de libros",

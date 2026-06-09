@@ -534,7 +534,7 @@ def _fiscal_footer(st: dict) -> list:
         ),
         Spacer(1, 3 * mm),
         Paragraph(
-            f"Generado por AutomatizaPyme \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             st["footer"],
         ),
     ]

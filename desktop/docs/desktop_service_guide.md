@@ -2,7 +2,7 @@
 
 > **Versión 1.0 — 2026-05-15**.
 
-AutomatizaPyme corre como aplicación Electron de escritorio, pero su
+AutomatizaCore corre como aplicación Electron de escritorio, pero su
 backend (uvicorn) DEBE estar disponible mientras el equipo del usuario
 esté encendido para que cron jobs, scheduled workflows y notificaciones
 funcionen. Esta guía describe cómo se logra **sin** instalarlo como
@@ -27,7 +27,7 @@ En su lugar, **Electron actúa como service host**:
 - Auto-update lanza `quitAndInstall()` que para el supervisor de forma
   ordenada antes de reemplazar binarios.
 
-El usuario percibe: "AutomatizaPyme está siempre disponible mientras
+El usuario percibe: "AutomatizaCore está siempre disponible mientras
 mi PC está encendido, no me molesta cuando no lo uso".
 
 ## §2 Lifecycle
@@ -80,7 +80,7 @@ es un wrapper Node sin dependencias de Electron que envuelve un
 
 Tras **6 intentos** consecutivos sin éxito → `onGiveUp` callback. La
 UI muestra modal de error y pide al usuario revisar logs (los logs
-están en `%APPDATA%/AutomatizaPyme/logs/`, CONT.LOG).
+están en `%APPDATA%/AutomatizaCore/logs/`, CONT.LOG).
 
 ### Stop limpio vs crash
 

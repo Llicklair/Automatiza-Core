@@ -1,4 +1,4 @@
-# AutomatizaPyme — Mensajes de marketing canónicos
+# AutomatizaCore — Mensajes de marketing canónicos
 
 > Frases vinculantes para landing, EULA, ads y comunicación. Cambiarlas
 > requiere coherencia con `ARCHITECTURE.md §16` y `docs/telemetry-data-policy.md`.
@@ -41,7 +41,7 @@ para soft cap pero tienen cap propio (200/mes Pro, 200×N hasta 2000 Gestoría).
 
 ## Posicionamiento competitivo
 
-Frente a Holded (12€), Anfix (9€), Quipu (13€): AutomatizaPyme cobra
+Frente a Holded (12€), Anfix (9€), Quipu (13€): AutomatizaCore cobra
 3-4× porque combina:
 
 1. **Privacidad real** — local-first, no SaaS cloud puro.
@@ -63,7 +63,7 @@ Frente a Holded (12€), Anfix (9€), Quipu (13€): AutomatizaPyme cobra
 
 ## Compromisos sobre IA
 
-AutomatizaPyme es **proveedor del sistema de IA integrado** bajo
+AutomatizaCore es **proveedor del sistema de IA integrado** bajo
 Reglamento UE 2024/1689 (AI Act). Cumplimiento documentado en
 `docs/ai_act_scoping.md`. En v1 MVP:
 
@@ -82,5 +82,5 @@ Windows 10 22H2+ y Windows 11. macOS confirmado para Q4-2026
 
 ## Punto de contacto privacidad
 
-DPD: **privacidad@automatizapyme.com**. Plazo respuesta: 30 días
+DPD: **privacidad@automatizacore.com**. Plazo respuesta: 30 días
 naturales (RGPD Art. 12.3).

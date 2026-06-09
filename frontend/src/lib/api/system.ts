@@ -70,7 +70,7 @@ export const system = {
         const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objectUrl;
-        a.download = `automatizapyme-diagnostic-${Date.now()}.zip`;
+        a.download = `automatizacore-diagnostic-${Date.now()}.zip`;
         a.click();
         URL.revokeObjectURL(objectUrl);
     },

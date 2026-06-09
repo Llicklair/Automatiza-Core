@@ -117,7 +117,7 @@ def simulate_modelo_303(quarter: int = 1, year: int = 2026) -> dict:
                 f"Diferencia a ingresar: {_round2(resultado):.2f}€",
             ],
             "footer": (
-                "Con tus datos reales, AutomatizaPyme genera y presenta este modelo "
+                "Con tus datos reales, AutomatizaCore genera y presenta este modelo "
                 "trimestralmente. La diferencia entre ver esto y rellenarlo a mano: minutos."
             ),
         },

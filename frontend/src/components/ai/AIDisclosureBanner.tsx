@@ -55,7 +55,7 @@ export function AIDisclosureBanner({ domain, extraNote }: Props) {
                 <p className="mt-1 text-xs text-muted-foreground">
                     Las respuestas se generan automáticamente y pueden contener errores.
                     Revisa la información antes de tomar decisiones, especialmente fiscales o
-                    laborales. AutomatizaPyme cumple el Reglamento UE 2024/1689 (AI Act).
+                    laborales. AutomatizaCore cumple el Reglamento UE 2024/1689 (AI Act).
                     {extraNote && <span className="ml-1">{extraNote}</span>}
                 </p>
             </div>

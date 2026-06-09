@@ -153,7 +153,7 @@ def generate_registro_jornada_pdf(registro_data: dict) -> bytes:
         Paragraph(
             "Registro en cumplimiento del art. 34.9 del Estatuto de los Trabajadores. "
             "La empresa deber\u00e1 conservar los registros de jornada durante cuatro a\u00f1os. "
-            "Generado por AutomatizaPyme.",
+            "Generado por AutomatizaCore.",
             S["footer"],
         )
     )
