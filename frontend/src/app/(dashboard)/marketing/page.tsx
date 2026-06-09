@@ -139,6 +139,7 @@ function TabCuentas() {
     const [accounts, setAccounts] = useState<SocialAccount[]>([]);
     const [loading, setLoading] = useState(true);
     const [connecting, setConnecting] = useState<string | null>(null);
+    const [connectError, setConnectError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         try {
@@ -153,20 +154,25 @@ function TabCuentas() {
 
     useEffect(() => { load(); }, [load]);
 
-    // Refresca cuando el popup OAuth cierra con éxito
+    // Refresca cuando el popup OAuth cierra con éxito (postMessage cross-origin)
     useEffect(() => {
-        const handler = () => load();
-        window.addEventListener("oauth-complete", handler);
-        return () => window.removeEventListener("oauth-complete", handler);
+        const handler = (e: MessageEvent) => {
+            if (e.data?.type === "oauth-complete") load();
+        };
+        window.addEventListener("message", handler);
+        return () => window.removeEventListener("message", handler);
     }, [load]);
 
     const connect = async (platform: string) => {
         setConnecting(platform);
+        setConnectError(null);
         try {
             const { auth_url } = await marketingApi.accounts.connect(platform);
-            window.open(auth_url, "_blank", "width=600,height=700");
-        } catch {
-            // backend pendiente
+            const popup = window.open(auth_url, "_blank", "width=600,height=700");
+            if (!popup) setConnectError("El navegador bloqueó el popup. Permite popups para esta página.");
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Error al conectar";
+            setConnectError(msg);
         } finally {
             setConnecting(null);
         }
@@ -180,6 +186,13 @@ function TabCuentas() {
     };
 
     return (
+        <div className="space-y-4">
+        {connectError && (
+            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {connectError}
+            </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {PLATFORMS.map((p) => {
                 const Icon = PLATFORM_ICONS[p.id];
@@ -228,6 +241,7 @@ function TabCuentas() {
                     </div>
                 );
             })}
+        </div>
         </div>
     );
 }
