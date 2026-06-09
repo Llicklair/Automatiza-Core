@@ -1,7 +1,7 @@
 """Servicio del wizard REGAP (PRES.REG) — apoderamiento AEAT.
 
 REGAP = Registro de Apoderamientos de la Agencia Tributaria. Para que
-AutomatizaPyme S.L. pueda presentar declaraciones telemáticas en nombre
+AutomatizaCore S.L. pueda presentar declaraciones telemáticas en nombre
 de un cliente, el cliente debe haber otorgado el apoderamiento en sede
 electrónica AEAT con uno de tres métodos de autenticación:
 
@@ -40,10 +40,10 @@ RegapStatus = Literal[
     "rejected",
 ]
 
-# NIF de AutomatizaPyme S.L. (DEC.02 — entidad facturadora oficial).
+# NIF de AutomatizaCore S.L. (DEC.02 — entidad facturadora oficial).
 # Se carga del settings si está configurado, por defecto placeholder.
 APODERADO_NIF_DEFAULT = "B00000000"
-APODERADO_NOMBRE_DEFAULT = "AutomatizaPyme S.L."
+APODERADO_NOMBRE_DEFAULT = "AutomatizaCore S.L."
 
 
 def _settings_apoderado() -> tuple[str, str]:

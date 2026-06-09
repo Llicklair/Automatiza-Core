@@ -24,8 +24,8 @@ class TestBuildSbom:
         sbom = generate_sbom.build_sbom("2.5.0")
         comp = sbom["metadata"]["component"]
         assert comp["version"] == "2.5.0"
-        assert comp["name"] == "automatizapyme"
-        assert comp["supplier"]["name"] == "AutomatizaPyme S.L."
+        assert comp["name"] == "automatizacore"
+        assert comp["supplier"]["name"] == "AutomatizaCore S.L."
 
     def test_incluye_componentes_de_distintas_fuentes(self):
         sbom = generate_sbom.build_sbom("1.0.0")
@@ -33,7 +33,7 @@ class TestBuildSbom:
             p["value"]
             for c in sbom["components"]
             for p in c.get("properties", [])
-            if p["name"] == "automatizapyme:source"
+            if p["name"] == "automatizacore:source"
         }
         # Esperamos al menos embedded + al menos una fuente JS (frontend/desktop).
         # `backend` puede no aparecer si requirements.txt no existe (Poetry).

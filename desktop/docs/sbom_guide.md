@@ -8,7 +8,7 @@ B2B sofisticados (gestorías corporate, asesorías grandes) lo piden cada
 vez más en RFPs. El gobierno federal de EE.UU. lo exige desde 2024 a
 sus proveedores; en UE viene en marcha con la Cyber Resilience Act.
 
-AutomatizaPyme emite un SBOM CycloneDX 1.5 por cada release publicado.
+AutomatizaCore emite un SBOM CycloneDX 1.5 por cada release publicado.
 
 ## §1 Generar el SBOM
 

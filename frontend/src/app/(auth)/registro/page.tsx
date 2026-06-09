@@ -139,7 +139,7 @@ export default function RegistroPage() {
                         <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                             <Zap className="w-4.5 h-4.5 text-foreground" />
                         </div>
-                        <span className="text-foreground font-semibold text-lg">AutomatizaPyme</span>
+                        <span className="text-foreground font-semibold text-lg">AutomatizaCore</span>
                     </div>
 
                     <h2 className="text-4xl font-bold text-foreground leading-tight mb-4">
@@ -176,7 +176,7 @@ export default function RegistroPage() {
                         <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
                             <Zap className="w-4 h-4 text-foreground" />
                         </div>
-                        <span className="text-foreground font-semibold">AutomatizaPyme</span>
+                        <span className="text-foreground font-semibold">AutomatizaCore</span>
                     </div>
 
                     <h1 className="text-xl font-bold text-foreground mb-1">{t("createAccount")}</h1>

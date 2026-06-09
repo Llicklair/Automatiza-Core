@@ -1,4 +1,4 @@
-ACCOUNTING_SYSTEM_PROMPT = """Eres el agente de Contabilidad de AutomatizaPyme.
+ACCOUNTING_SYSTEM_PROMPT = """Eres el agente de Contabilidad de AutomatizaCore.
 Tenant ID: {tenant_id}
 Fecha actual: {today}
 

@@ -1,6 +1,6 @@
 # Cláusula AI Act para EULA — AI.EULA
 
-> Texto plantilla a incluir en el contrato de licencia entre AutomatizaPyme S.L. (proveedor) y el cliente (deployer). **Sujeto a validación por abogado SaaS especializado antes de su uso comercial** (decisión humana 6 del consenso). Esta plantilla no constituye asesoramiento jurídico.
+> Texto plantilla a incluir en el contrato de licencia entre AutomatizaCore S.L. (proveedor) y el cliente (deployer). **Sujeto a validación por abogado SaaS especializado antes de su uso comercial** (decisión humana 6 del consenso). Esta plantilla no constituye asesoramiento jurídico.
 
 ---
 
@@ -8,11 +8,11 @@
 
 ### X.1 Naturaleza del sistema
 
-El software **AutomatizaPyme** (en adelante, "el Sistema") incluye agentes basados en inteligencia artificial conforme al **Reglamento (UE) 2024/1689 del Parlamento Europeo y del Consejo, de 13 de junio de 2024** (en adelante, "AI Act"). El proveedor del Sistema es **AutomatizaPyme S.L.** (en adelante, "el Proveedor") y el cliente que lo despliega y lo utiliza en su organización es el **deployer** según definición del artículo 3.4 del AI Act.
+El software **AutomatizaCore** (en adelante, "el Sistema") incluye agentes basados en inteligencia artificial conforme al **Reglamento (UE) 2024/1689 del Parlamento Europeo y del Consejo, de 13 de junio de 2024** (en adelante, "AI Act"). El proveedor del Sistema es **AutomatizaCore S.L.** (en adelante, "el Proveedor") y el cliente que lo despliega y lo utiliza en su organización es el **deployer** según definición del artículo 3.4 del AI Act.
 
 ### X.2 Distribución de responsabilidades
 
-#### Como Proveedor (Art. 16 AI Act), AutomatizaPyme S.L. asume:
+#### Como Proveedor (Art. 16 AI Act), AutomatizaCore S.L. asume:
 
 a) **Diseño y desarrollo conforme** del Sistema según los principios del AI Act, según se detalla en `docs/ai_act_scoping.md` y `docs/ai_act_governance.md` del Sistema.
 
@@ -66,7 +66,7 @@ El tratamiento de datos personales por el Sistema se rige adicionalmente por:
 * **Política de Privacidad** del Sistema (URL).
 * **Política de telemetría** del Sistema, en `docs/telemetry-data-policy.md`.
 
-Por defecto, AutomatizaPyme S.L. **no centraliza** datos de negocio del Cliente en sus servidores. Los datos viven en el equipo del Cliente. Cualquier envío de datos al Proveedor (telemetría técnica, backup remoto cifrado) es **opcional, opt-in y revocable**.
+Por defecto, AutomatizaCore S.L. **no centraliza** datos de negocio del Cliente en sus servidores. Los datos viven en el equipo del Cliente. Cualquier envío de datos al Proveedor (telemetría técnica, backup remoto cifrado) es **opcional, opt-in y revocable**.
 
 ### X.6 Modificación de la cláusula
 

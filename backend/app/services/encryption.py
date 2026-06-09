@@ -28,7 +28,7 @@ def _get_fernet() -> Fernet:
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"automatizapyme_tenant_enc_v1",
+        salt=b"automatizacore_tenant_enc_v1",
         iterations=100_000,
     )
     key_bytes = kdf.derive(key_str)

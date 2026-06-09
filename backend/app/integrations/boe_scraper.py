@@ -49,7 +49,7 @@ class BOEScraper:
     def __init__(self):
         self._client = httpx.AsyncClient(
             timeout=15.0,
-            headers={"User-Agent": "AutomatizaPyme-BOE/1.0 (contacto@automatizapyme.es)"},
+            headers={"User-Agent": "AutomatizaCore-BOE/1.0 (contacto@automatizacore.es)"},
         )
 
     async def close(self):

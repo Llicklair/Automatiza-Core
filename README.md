@@ -1,4 +1,4 @@
-# AutomatizaPyme
+# AutomatizaCore
 
 > **ERP español con IA agentica e instalación local.** Una plataforma completa de gestión empresarial (facturación, contabilidad, banca, CRM, RRHH, compliance fiscal) donde el usuario opera en **lenguaje natural** y agentes especializados ejecutan las acciones contra una base de datos que vive en su propia máquina.
 
@@ -28,7 +28,7 @@
 
 ## Qué es y para quién
 
-AutomatizaPyme combina dos cosas que normalmente no van juntas:
+AutomatizaCore combina dos cosas que normalmente no van juntas:
 
 1. **Un ERP completo** con facturación electrónica Verifactu, contabilidad española (libro diario, P&G, balance), banca, CRM, RRHH con nóminas, compras, ventas, POS, inventario y compliance AEAT.
 2. **Una capa de IA agentica** donde el usuario escribe en lenguaje natural (*"hazme la nómina de Juan para este mes"*) y agentes especializados ejecutan la acción.
@@ -572,7 +572,7 @@ levantar.bat
 Accesos:
 - Frontend: http://localhost:3000
 - API docs: http://localhost:8080/docs
-- Usuario demo: `demo@automatizapyme.com` / `Demo1234!`
+- Usuario demo: `demo@automatizacore.com` / `Demo1234!`
 
 ### Producción (Electron)
 
@@ -613,7 +613,7 @@ cd desktop && npm run dist     # electron-builder → dist/*.exe + latest.yml + 
    construirse — cambiar el destino exige **reconstruir**, no basta editar el repo.
 2. **Repo de releases público.** `electron-updater` no puede actualizar clientes
    desde un repo **privado** sin un token embebido en la app (inseguro). Para
-   distribución real, publica en un repo público (p.ej. `automatizapyme-releases`)
+   distribución real, publica en un repo público (p.ej. `automatizacore-releases`)
    o usa otro canal (S3/genérico). El repo de código puede seguir privado.
 3. **Sanear `.env`.** `build.extraResources` copia `../.env` dentro del
    instalador. En producción el `.env` empaquetado debe llevar **placeholders**;
@@ -625,7 +625,7 @@ cd desktop && npm run dist     # electron-builder → dist/*.exe + latest.yml + 
 ```bash
 # electron-builder publica si GH_TOKEN está seteado y se pasa --publish always,
 # o manualmente con gh:
-gh release create v1.0.1 "dist/AutomatizaPyme Setup 1.0.1.exe" \
+gh release create v1.0.1 "dist/AutomatizaCore Setup 1.0.1.exe" \
   "dist/latest.yml" -R <owner>/<repo-releases>
 ```
 

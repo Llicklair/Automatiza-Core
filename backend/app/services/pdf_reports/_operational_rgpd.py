@@ -147,7 +147,7 @@ def generate_rgpd_registry_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 3 * mm))
     elements.append(
         Paragraph(
-            f"Registro generado el {datetime.now().strftime('%d/%m/%Y')} · AutomatizaPyme",
+            f"Registro generado el {datetime.now().strftime('%d/%m/%Y')} · AutomatizaCore",
             s["footer"],
         )
     )

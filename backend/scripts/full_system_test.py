@@ -84,7 +84,7 @@ async def test_auth(client: httpx.AsyncClient) -> bool:
     section("1. AUTENTICACIÓN")
 
     r = await client.post("/auth/register", json={
-        "email": "test_integral@automatizapyme.com",
+        "email": "test_integral@automatizacore.com",
         "password": "Test1234!",
         "full_name": "Test Integral",
         "tenant": {"name": "Test Corp SA", "nif": "B99887766"},
@@ -95,7 +95,7 @@ async def test_auth(client: httpx.AsyncClient) -> bool:
         fail("Registro usuario de test", r.text[:100])
 
     r = await client.post("/auth/login", json={
-        "email": "test_integral@automatizapyme.com",
+        "email": "test_integral@automatizacore.com",
         "password": "Test1234!",
     })
     if r.status_code == 200:
@@ -639,7 +639,7 @@ async def test_crm(client: httpx.AsyncClient, client_id: str) -> None:
 
     # Reuniones
     r = await client.post("/crm/events", headers=HEADERS, json={
-        "title": "Demo plataforma AutomatizaPyme",
+        "title": "Demo plataforma AutomatizaCore",
         "client_id": client_id or None,
         "start_time": (now + timedelta(days=10, hours=11)).isoformat(),
         "end_time": (now + timedelta(days=10, hours=12, minutes=30)).isoformat(),
@@ -1332,7 +1332,7 @@ def print_summary():
         ("CRM — Actividades", "Llamada + nota registradas"),
         ("CRM — Calendario",  "Reunión kick-off en 3 días"),
         ("CRM — Reservas",    "Reserva CONFIRMADA"),
-        ("CRM — Reuniones",   "Demo AutomatizaPyme programada"),
+        ("CRM — Reuniones",   "Demo AutomatizaCore programada"),
         ("RRHH — Empleados",  "Ana García (Tech Lead 4000€) + Carlos Martínez"),
         ("RRHH — Nóminas",    "Nómina de Ana: bruto 4000€ neto 3100€"),
         ("Coordinador IA",    "Alta cliente + oportunidad CRM — agentes: crm"),

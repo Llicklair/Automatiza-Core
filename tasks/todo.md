@@ -1,4 +1,4 @@
-# Tareas activas — AutomatizaPyme
+# Tareas activas — AutomatizaCore
 
 Última actualización: 2026-06-01
 
@@ -17,9 +17,9 @@ Orden de ejecución (menor → mayor riesgo):
 - [x] **#4** Spending cap + alerta 80%: `get_budget_status` en `agent_budget.py` (estados ok/warning/exhausted), endpoint PATCH `/ai-employees/{id}/budget` + `aiEmployees.updateBudget`. Dashboard de coste = diferido (next-quarter). ✅
 - [x] **#10** WS push `budget_warning` (80%) y `budget_exhausted` (100%) desde heartbeat; handlers en layout.tsx. ✅
 - [x] **#1** `smoke_orchestrator.py` reforzado con veredicto PASS/FAIL + `--strict` (exit 1). ✅ código y **ejecutado end-to-end** contra LLM real + DB portable (PG 15.10 en 5433): `ambiguous`/`reports_month`/`impossible` → 3 PASS, exit codes OK. 2 bugs propios arreglados (commit `46a3b40`). Batería completa disponible: `python backend/scripts/smoke_orchestrator.py --strict` (DATABASE_URL=postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db).
-- [~] **#5** Auto-update: wiring de código OK + `desktop/package.json` `publish` corregido a `Llicklair/Automatiza-pyme` (commit `5e56935`). **Release NO publicada** (decisión usuario 2026-06-01: "no publicar aún"). Bloqueantes para el runtime:
+- [~] **#5** Auto-update: wiring de código OK + `desktop/package.json` `publish` corregido a `Llicklair/Automatiza-core` (commit `5e56935`). **Release NO publicada** (decisión usuario 2026-06-01: "no publicar aún"). Bloqueantes para el runtime:
   1. **Rebuild obligatorio**: el `app-update.yml` se hornea en el instalador en build-time; el `.exe` del 26-abr (`desktop/dist/`) tiene el owner placeholder → inservible. Hace falta `cd frontend && npm run build` luego `cd desktop && npm run dist`.
-  2. **Repo privado**: electron-updater (provider github) no puede actualizar clientes desde un repo privado sin token embebido (inseguro). Para distribución real → repo de releases **público** (p.ej. `automatizapyme-releases`) o canal alternativo (S3/genérico).
+  2. **Repo privado**: electron-updater (provider github) no puede actualizar clientes desde un repo privado sin token embebido (inseguro). Para distribución real → repo de releases **público** (p.ej. `automatizacore-releases`) o canal alternativo (S3/genérico).
   3. **`.env` horneado**: `build.extraResources` copia `../.env` dentro del instalador. Sanear secretos (API keys, SECRET_KEY) antes de cualquier release distribuible; producción debe usar placeholders + Electron safeStorage.
 
 Notas de verificación: `orchestrator/tools.py` NO existe (no tocado); DashboardLayout perf-claim refutada (zustand ya aísla) → refactor por SRP/seams. tsc frontend ✅; `test_planner_custom_agents` 11/11 ✅.
@@ -37,7 +37,7 @@ Notas de verificación: `orchestrator/tools.py` NO existe (no tocado); Dashboard
 - [⚠️ ACCIÓN USUARIO] **F1.3 OAuth Google → Production mode** — bloqueante para piloto.
   Pasos exactos (30 s):
   1. https://console.cloud.google.com/apis/credentials/consent
-  2. Seleccionar el proyecto OAuth de AutomatizaPyme
+  2. Seleccionar el proyecto OAuth de AutomatizaCore
   3. En "Publishing status" pulsar **"PUBLISH APP"** → "Confirm"
   4. Estado pasa de *Testing* a *In production* (sin verificar).
   Resultado: refresh tokens dejan de caducar a 7 días, los usuarios fuera del listado Test users pueden hacer login (ven warning "Google hasn't verified" — aceptable hasta tener 5+ clientes y meterse en OAuth verification, que es F1.3-bis cuando toque).
@@ -123,7 +123,7 @@ principio ERP "IA accede a todo", razón de ser de los AIEmployees custom).
 - [x] **Migración 0028 + 0029 aplicada en BD del usuario** ✅ 2026-05-20.
   alembic_version: `0029_aiemployee_contract`. Dedup previo necesario:
   smoke testing había creado 6 clientes duplicados en tenant
-  "AutomatizaPyme" (9cd49fbb) que bloqueaban 0028. Mergeados 4 grupos
+  "AutomatizaCore" (9cd49fbb) que bloqueaban 0028. Mergeados 4 grupos
   coherentes + resuelto el caso B11223344 (NIF reasignado: Tech Innovations
   pasó a NIF=NULL, Clínica Dental Montserrat quedó como único owner del NIF).
   Total: 41 FKs repuntadas, 5 clientes borrados, 1 cliente con NIF a NULL.
@@ -174,7 +174,7 @@ principio ERP "IA accede a todo", razón de ser de los AIEmployees custom).
   step 1 → step 2 con contexto enriquecido. Antes fail al timeout 90s, ahora
   completa en ~76s sin problemas.
 
-  ⚠️ **Para que tome efecto**: cerrar AutomatizaPyme.exe y volver a abrir (el
+  ⚠️ **Para que tome efecto**: cerrar AutomatizaCore.exe y volver a abrir (el
   backend Python embebido por Electron tiene que reiniciarse para recoger los
   cambios).
 
@@ -258,7 +258,7 @@ Reporte detallado en `tasks/smoke_orchestrator_2026-05-18.md`. Causa raíz + fix
 - `backend/app/agents/agent_tools/documents.py` — SC-7
 - `backend/app/agents/email/tools.py` — SC-5
 
-### Datos de testing en tenant AutomatizaPyme (limpieza opcional)
+### Datos de testing en tenant AutomatizaCore (limpieza opcional)
 
 ```sql
 DELETE FROM tasks WHERE additional_metadata->>'source' = 'smoke_orchestrator';
@@ -340,7 +340,7 @@ Cada flujo arranca con **una sola instrucción NL** al Coordinador y debe encade
 - [ ] Seed mínimo por perfil: 1 tenant + 3 clientes + 2 empleados + 5 facturas históricas + 3 CVs + 5 PDFs.
 - [ ] Activar DEBUG en `classifier`, `task_dispatch`, `tool_registry` durante todo el ejercicio.
 - [ ] Limpiar cache classifier antes de cada ronda (`c:\tmp\clear_classify_cache.py`).
-- [ ] Recordar: cualquier cambio backend exige cerrar y reabrir `AutomatizaPyme.exe` (backend embebido).
+- [ ] Recordar: cualquier cambio backend exige cerrar y reabrir `AutomatizaCore.exe` (backend embebido).
 
 ### Estimación de coste LLM
 

@@ -1,4 +1,4 @@
-# Roadmap AutomatizaPyme — MVP comercial 22-jul-2026
+# Roadmap AutomatizaCore — MVP comercial 22-jul-2026
 
 > **Fuente**: consensuado en `DISCUSION_OTRA_IA.md` (31 rondas IA-1 ↔ IA-2). Backlog operativo detallado en [`tasks/backlog.md`](./backlog.md).
 
@@ -160,7 +160,7 @@ Auditoría rápida del código vs el roadmap (commit `16b6e2d`):
 
 ### Sprint 9 (13-17 jul) — Presentación producción + última milla
 
-**Asume**: PRES.0 (alta colaborador social) ha cerrado entre 15-jun y 30-jun. Cert representación AutomatizaPyme operativo.
+**Asume**: PRES.0 (alta colaborador social) ha cerrado entre 15-jun y 30-jun. Cert representación AutomatizaCore operativo.
 
 | Dev | Tareas |
 |---|---|
@@ -177,7 +177,7 @@ Auditoría rápida del código vs el roadmap (commit `16b6e2d`):
 
 ```mermaid
 gantt
-    title AutomatizaPyme MVP — Critical path (autónomo + 3 devs)
+    title AutomatizaCore MVP — Critical path (autónomo + 3 devs)
     dateFormat YYYY-MM-DD
     axisFormat %d-%b
 
@@ -301,7 +301,7 @@ Las 17 decisiones consensuadas con sus fechas-tope, en orden cronológico:
 - [ ] **20-may** DEC.04 Cert Code Signing EV (~400€/año)
 - [ ] **20-may** DEC.10 AI.1 Escenario A vs B (default A)
 - [ ] **21-may** DEC.14 Iniciar alta colaborador social AEAT
-- [ ] **21-may** DEC.15 Cert representación FNMT AutomatizaPyme (~50€)
+- [ ] **21-may** DEC.15 Cert representación FNMT AutomatizaCore (~50€)
 - [ ] **22-may** DEC.05 Stripe vs Redsys (default Stripe)
 - [ ] **25-may** DEC.11 Contratar agencia traducción CA/EU/GA (~1.000€)
 - [ ] **1-jun** DEC.03 Contratos beta-tester 3-5 personas (0€)

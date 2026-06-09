@@ -13,7 +13,7 @@ Ventajas frente a un endpoint que escuche la BD por polling:
 Limitaciones MVP:
 - In-process only. Si el deployment escala a múltiples uvicorn workers,
   hay que migrar a Redis pub/sub (un canal por task_id). Por ahora
-  AutomatizaPyme corre en un único proceso desktop (Electron + uvicorn
+  AutomatizaCore corre en un único proceso desktop (Electron + uvicorn
   embebido).
 - Sin persistencia: si un cliente se conecta tarde, no recibe los eventos
   emitidos antes. Para reconstruir histórico, leer `Task.agent_results`.

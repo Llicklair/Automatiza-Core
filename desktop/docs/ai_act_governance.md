@@ -1,6 +1,6 @@
 # Gobernanza de prompts y datos — AI.GOV
 
-> Cumplimiento Reglamento UE 2024/1689 (AI Act) Art. 10 (data governance) + Art. 14 (human oversight) + Art. 12 (record-keeping). Política aplicable a AutomatizaPyme como **proveedor del sistema de IA integrado**.
+> Cumplimiento Reglamento UE 2024/1689 (AI Act) Art. 10 (data governance) + Art. 14 (human oversight) + Art. 12 (record-keeping). Política aplicable a AutomatizaCore como **proveedor del sistema de IA integrado**.
 
 ## §1 Prompts versionados en repositorio
 
@@ -35,7 +35,7 @@ Cambiar un prompt requiere:
 
 ## §2 Datos de entrenamiento
 
-AutomatizaPyme **no entrena modelos propios**. Usa LLMs de terceros (Anthropic, OpenAI, Groq) como proveedores GPAI. Por tanto las obligaciones de Art. 10 AI Act sobre data governance del training set **no aplican a AutomatizaPyme** — recaen sobre el proveedor GPAI.
+AutomatizaCore **no entrena modelos propios**. Usa LLMs de terceros (Anthropic, OpenAI, Groq) como proveedores GPAI. Por tanto las obligaciones de Art. 10 AI Act sobre data governance del training set **no aplican a AutomatizaCore** — recaen sobre el proveedor GPAI.
 
 ### Datos few-shot enviados al LLM
 

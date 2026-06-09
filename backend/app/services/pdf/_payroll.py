@@ -392,7 +392,7 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
     elements.append(
         Paragraph(
             "Recibo de salario conforme al art. 29.1 del Estatuto de los Trabajadores "
-            "y Orden ESS/2098/2014. Generado por AutomatizaPyme.",
+            "y Orden ESS/2098/2014. Generado por AutomatizaCore.",
             S["footer"],
         )
     )

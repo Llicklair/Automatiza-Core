@@ -5,7 +5,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 doc = SimpleDocTemplate(
-    "/tmp/contrato_prueba_automatizapyme.pdf",
+    "/tmp/contrato_prueba_automatizacore.pdf",
     pagesize=A4,
     leftMargin=2.5*cm, rightMargin=2.5*cm,
     topMargin=2.5*cm, bottomMargin=2.5*cm,
@@ -27,7 +27,7 @@ story = [
     s(1),
     h("REUNIDOS"),
     p("De una parte, <b>TECH SOLUTIONS SL</b>, con CIF B-12345678, domicilio social en Calle Gran V&iacute;a 45, 2&ordf; Planta, 28013 Madrid, representada por D. Alejandro Garc&iacute;a Mart&iacute;nez, Administrador &Uacute;nico (<i>en adelante, &ldquo;EL CLIENTE&rdquo;</i>)."),
-    p("De otra parte, <b>AUTOMATIZA PYME SL</b>, con CIF B-87654321, domicilio social en Calle Serrano 22, Planta 3, 28001 Madrid, representada por D. Marcos L&oacute;pez Fern&aacute;ndez, Administrador (<i>en adelante, &ldquo;EL PROVEEDOR&rdquo;</i>)."),
+    p("De otra parte, <b>AUTOMATIZA CORE SL</b>, con CIF B-87654321, domicilio social en Calle Serrano 22, Planta 3, 28001 Madrid, representada por D. Marcos L&oacute;pez Fern&aacute;ndez, Administrador (<i>en adelante, &ldquo;EL PROVEEDOR&rdquo;</i>)."),
     s(1),
     h("ESTIPULACIONES"),
     h("PRIMERA. OBJETO"),
@@ -42,7 +42,7 @@ story = [
     h("TERCERA. PRECIO Y PAGO"),
     p("Precio mensual: <b>999,00 EUR + IVA 21% = 1.208,79 EUR/mes</b>."),
     p("Pago mediante transferencia bancaria en los primeros 5 d&iacute;as naturales de cada mes:"),
-    p("IBAN: ES91 2100 0418 4001 2345 6789 &mdash; CaixaBank (titular: AUTOMATIZA PYME SL)", mono_style),
+    p("IBAN: ES91 2100 0418 4001 2345 6789 &mdash; CaixaBank (titular: AUTOMATIZA CORE SL)", mono_style),
     h("CUARTA. OBLIGACIONES DEL PROVEEDOR"),
     p("a) Disponibilidad m&iacute;nima del servicio: 99% mensual. &nbsp; b) Soporte t&eacute;cnico L-V de 9:00 a 18:00h. &nbsp; c) Actualizaciones peri&oacute;dicas y confidencialidad de datos (RGPD / LOPDGDD)."),
     h("QUINTA. OBLIGACIONES DEL CLIENTE"),
@@ -56,13 +56,13 @@ story = [
     Spacer(1, 1.5*cm),
     p("_______________________________&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _______________________________", mono_style),
     p("D. Alejandro Garc&iacute;a Mart&iacute;nez &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; D. Marcos L&oacute;pez Fern&aacute;ndez"),
-    p("TECH SOLUTIONS SL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AUTOMATIZA PYME SL"),
+    p("TECH SOLUTIONS SL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AUTOMATIZA CORE SL"),
     p("CIF: B-12345678 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CIF: B-87654321"),
     Spacer(1, 1*cm),
     h("ANEXO I &mdash; SLA (Service Level Agreement)"),
     p("Disponibilidad garantizada: 99% mensual | Tiempo m&aacute;ximo de respuesta: 60 s/tarea"),
-    p("Soporte: <b>soporte@automatizapyme.com</b> | Tel: <b>+34 91 555 12 34</b> | Horario: L-V 9:00-18:00h"),
+    p("Soporte: <b>soporte@automatizacore.com</b> | Tel: <b>+34 91 555 12 34</b> | Horario: L-V 9:00-18:00h"),
 ]
 
 doc.build(story)
-print("PDF generado: /tmp/contrato_prueba_automatizapyme.pdf")
+print("PDF generado: /tmp/contrato_prueba_automatizacore.pdf")

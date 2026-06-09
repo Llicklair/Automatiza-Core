@@ -25,7 +25,7 @@ _OFFICIAL_TEMPLATES: list[dict] = [
             "lanza el cuadre bancario y avisa de vencimientos AEAT."
         ),
         "category": "fiscal",
-        "author": "AutomatizaPyme",
+        "author": "AutomatizaCore",
         "trigger_type": "cron",
         "trigger_config": {"cron": "0 9 1 * *"},
         "action_type": "agent_sequence",
@@ -46,7 +46,7 @@ _OFFICIAL_TEMPLATES: list[dict] = [
             "oficiales y aviso al usuario para revisar antes de presentar."
         ),
         "category": "fiscal",
-        "author": "AutomatizaPyme",
+        "author": "AutomatizaCore",
         "trigger_type": "cron",
         "trigger_config": {"cron": "0 9 1 1,4,7,10 *"},  # día 1 de Ene/Abr/Jul/Oct
         "action_type": "agent_sequence",
@@ -68,7 +68,7 @@ _OFFICIAL_TEMPLATES: list[dict] = [
             "según el calendario D-3 / D+0 / D+15 / D+30."
         ),
         "category": "cobros",
-        "author": "AutomatizaPyme",
+        "author": "AutomatizaCore",
         "trigger_type": "cron",
         "trigger_config": {"cron": "0 9 * * *"},
         "action_type": "agent_sequence",

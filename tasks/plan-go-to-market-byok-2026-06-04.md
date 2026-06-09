@@ -1,7 +1,7 @@
 # Plan de acción go-to-market — modelo BYOK
 
 > Fecha: 2026-06-04 · Fundador: Llicklair
-> Decisión fijada: **BYOK ("trae tu clave")**. El usuario aporta y paga su clave LLM (Anthropic / OpenAI / Groq…). AutomatizaPyme **no suministra IA ni asume su coste**.
+> Decisión fijada: **BYOK ("trae tu clave")**. El usuario aporta y paga su clave LLM (Anthropic / OpenAI / Groq…). AutomatizaCore **no suministra IA ni asume su coste**.
 > Fuentes: `tasks/pilot-readiness.md`, `tasks/iteracion_fallos_ERP_2026-06-03.md`, `consejo-report-20260602…md`, `roadmap.md`, `MARKETING.md`, `docs/guia-piloto.md`.
 
 ---

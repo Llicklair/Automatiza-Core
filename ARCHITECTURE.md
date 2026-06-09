@@ -1,4 +1,4 @@
-# AutomatizaPyme — Arquitectura Limpia & Principios de Código
+# AutomatizaCore — Arquitectura Limpia & Principios de Código
 
 > Reglas no negociables para mantener el proyecto escalable conforme crece. Basadas en la estructura real del código existente.
 
@@ -266,7 +266,7 @@ const res = await fetch('/api/v1/invoices', { method: 'POST', ... })
 ```python
 # agents/billing/prompts.py
 SYSTEM_PROMPT = """
-Eres el agente de facturación de AutomatizaPyme...
+Eres el agente de facturación de AutomatizaCore...
 """
 
 INVOICE_CREATION_CONTEXT = """
@@ -355,10 +355,10 @@ except Exception as e:
 
 ## 16. Invariante de centralización de datos (MULTI.2)
 
-> Regla no negociable consensuada en el debate IA-1↔IA-2 sobre AutomatizaPyme
+> Regla no negociable consensuada en el debate IA-1↔IA-2 sobre AutomatizaCore
 > (`DISCUSION_OTRA_IA.md` §0ter — Ronda 16-19).
 
-**AutomatizaPyme no centraliza datos de negocio del cliente en servidores propios.**
+**AutomatizaCore no centraliza datos de negocio del cliente en servidores propios.**
 
 Datos de negocio = facturas, clientes, NIFs, IBANs, importes, nóminas,
 contabilidad, contenido de prompts y outputs de agentes. Estos viven
@@ -375,19 +375,19 @@ Servicios opcionales del cliente que pueden enviar datos al VPS:
   `docs/telemetry-data-policy.md`).
 
 Ambos usan proveedores externos que **el cliente puede sustituir** y el
-cliente **conserva las claves**. AutomatizaPyme nunca recibe datos del
+cliente **conserva las claves**. AutomatizaCore nunca recibe datos del
 negocio en plano.
 
 ### Implicaciones de diseño
 
-1. **No SaaS cloud puro** — AutomatizaPyme no expondrá nunca un endpoint
+1. **No SaaS cloud puro** — AutomatizaCore no expondrá nunca un endpoint
    `/api/v1/...` corriendo en infraestructura central que reciba facturas
    de un tenant. La API existe pero corre en el equipo del cliente.
 2. **Multi-actor por LAN/VPN del cliente, no por servidor central** —
    modo "Servidor compartido" (MULTI.1, roadmap v1.2) expone el Postgres
    del cliente principal a otros dispositivos vía Tailscale/WireGuard.
-   Nunca vía servidor de AutomatizaPyme.
-3. **El VPS de AutomatizaPyme solo gestiona licencias** y opcionalmente
+   Nunca vía servidor de AutomatizaCore.
+3. **El VPS de AutomatizaCore solo gestiona licencias** y opcionalmente
    recibe blobs cifrados (backup B2) o eventos scrubbed (telemetría).
    No tiene rutas de lectura de datos de negocio del cliente.
 

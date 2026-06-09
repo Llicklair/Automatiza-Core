@@ -63,7 +63,7 @@ const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" 
 </svg>`;
 
 /**
- * Logo de AutomatizaPyme inline.
+ * Logo de AutomatizaCore inline.
  *
  * Por qué inline en vez de /logo.svg con next/image: la app desktop (Electron)
  * sirve el frontend via file://, donde las rutas absolutas como /logo.svg se
@@ -73,7 +73,7 @@ const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" 
 export function LogoSvg({
   className,
   size = 56,
-  ariaLabel = "AutomatizaPyme",
+  ariaLabel = "AutomatizaCore",
 }: {
   className?: string;
   size?: number;

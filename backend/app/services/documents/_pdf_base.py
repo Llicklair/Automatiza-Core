@@ -466,7 +466,7 @@ def _invoice_footer(
         ),
         Spacer(1, 2 * mm),
         Paragraph(
-            f"Generado por AutomatizaPyme \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             ParagraphStyle(
                 "IF_ts",
                 parent=styles["Normal"],

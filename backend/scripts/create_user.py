@@ -6,7 +6,7 @@ import httpx
 async def test():
     async with httpx.AsyncClient() as client:
         res = await client.post("http://127.0.0.1:8080/api/v1/auth/register", json={
-            "email": "demo@automatizapyme.com",
+            "email": "demo@automatizacore.com",
             "password": "Demo1234!",
             "full_name": "Demo Admin",
             "tenant": {

@@ -127,8 +127,8 @@ que se debe
 
   Searched for 1 pattern (ctrl+o to expand)
 
-● Bash(if [ -f "$HOME/Desktop/AutomatizaPyme_BOOT_LOG.txt" ]; then tail -100
-      "$HOME/Desktop/AutomatizaPyme_BOOT_LOG.txt" | grep -i
+● Bash(if [ -f "$HOME/Desktop/AutomatizaCore_BOOT_LOG.txt" ]; then tail -100
+      "$HOME/Desktop/AutomatizaCore_BOOT_LOG.txt" | grep -i
       "error\|fail\|generative\|llm\|500\|…)
   ⎿  Error: Exit code 1
      [rerun: b1]
@@ -399,7 +399,7 @@ Referer:
 http://localhost:3000/                                                          
 User-Agent:                                                                     
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like       
-Gecko) automatizapyme-desktop/1.0.0 Chrome/120.0.6099.291 Electron/28.3.3       
+Gecko) automatizacore-desktop/1.0.0 Chrome/120.0.6099.291 Electron/28.3.3       
 Safari/537.36                                                                   
                                                                                 
 segundo archivo                                                                 
@@ -468,7 +468,7 @@ Sec-Fetch-Mode:
 cors                                                                            
 User-Agent:                                                                     
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like       
-Gecko) automatizapyme-desktop/1.0.0 Chrome/120.0.6099.291 Electron/28.3.3       
+Gecko) automatizacore-desktop/1.0.0 Chrome/120.0.6099.291 Electron/28.3.3       
 Safari/537.36                                                                     ⎿  UserPromptSubmit hook error
 
 ● Bien, el preflight OPTIONS devuelve 200 con CORS correctos — eso descarta CORS
@@ -509,7 +509,7 @@ Safari/537.36                                                                   
      hod:GETConnection:keep-aliveHost:192.168.0.13:8080Origin:http://localhost:3
      000Referer:http://localhost:3000/Sec-Fetch-Mode:corsUser-Agent:Mozilla/5.0 
      (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
-     automatizapyme-desktop/1.0.0 Chrome/120.0.6099.291 Electron/28.3.3 
+     automatizacore-desktop/1.0.0 Chrome/120.0.6099.291 Electron/28.3.3 
      Safari/537.36
 
 
@@ -748,10 +748,10 @@ fetch the resource with CORS disabled.
   Arreglemos el .env empaquetado y también hagamos el service-manager más
   robusto:
 
-● Update(C:/Users/Marcos/AppData/Local/Programs/automatizapyme-desktop/resources
+● Update(C:/Users/Marcos/AppData/Local/Programs/automatizacore-desktop/resources
         /project/.env)  ⎿  File must be read first
 
-● Update(C:/Users/Marcos/AppData/Local/Programs/automatizapyme-desktop/resources
+● Update(C:/Users/Marcos/AppData/Local/Programs/automatizacore-desktop/resources
         /project/.env)
   ⎿  (No output)
 
@@ -764,7 +764,7 @@ fetch the resource with CORS disabled.
   fuente (backend/.env) tienen openrouter que es OK.
 
   Ahora, necesitas reiniciar la app Electron para que el backend tome el nuevo
-  .env. Cierra AutomatizaPyme completamente (desde el tray, click derecho →
+  .env. Cierra AutomatizaCore completamente (desde el tray, click derecho →
   Salir) y ábrela de nuevo.
 
   Resumen de lo que encontré y arreglé
@@ -821,7 +821,7 @@ build antigua
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +14 lines (ctrl+o to expand)
 
@@ -855,7 +855,7 @@ build antigua
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +12 lines (ctrl+o to expand)
 
@@ -998,13 +998,13 @@ build antigua
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +12 lines (ctrl+o to expand)
 
 ● Sync OK. Ahora:
 
-  1. Cierra AutomatizaPyme desde el system tray → click derecho → Salir
+  1. Cierra AutomatizaCore desde el system tray → click derecho → Salir
   2. Ábrela de nuevo
   3. Una vez cargada, abre el navegador Chrome/Edge y ve a esta URL (copia el
   token JWT de la sesión):
@@ -1415,7 +1415,7 @@ build antigua
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +14 lines (ctrl+o to expand)
 
@@ -1979,14 +1979,14 @@ VM112:3 Uncaught SyntaxError: Invalid or unexpected token
 ● Y eliminamos .env.local para que NEXT_PUBLIC_API_URL nunca se bake:
 ● Bash(rm "C:/Users/Marcos/Desktop/atomatizacion de
       empresas/frontend/.env.local" && rm "C:/Users/Marcos/AppData/Local/Program
-      s/automatizapyme-desktop/resources/projec…)
+      s/automatizacore-desktop/resources/projec…)
   ⎿  DONE
 
 ● Ahora sync + reinicio para que se reconstruya el frontend sin la URL baked:
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +14 lines (ctrl+o to expand)
 
@@ -2081,7 +2081,7 @@ VM112:3 Uncaught SyntaxError: Invalid or unexpected token
 
   Necesito limpiar el build cache completamente:
 
-● Bash(rm -rf "C:/Users/Marcos/AppData/Local/Programs/automatizapyme-desktop/res
+● Bash(rm -rf "C:/Users/Marcos/AppData/Local/Programs/automatizacore-desktop/res
       ources/project/frontend/.next" && echo "DELETED .next" && ls
       "C:/Users/Marcos/AppData/L…)
   ⎿  DELETED .next
@@ -2460,7 +2460,7 @@ VM112:3 Uncaught SyntaxError: Invalid or unexpected token
                                                        const result =
                                                       execSync(\n
                                                       `\"C:/Users/Marcos/AppData
-                                                      /Roaming/AutomatizaPyme/pg
+                                                      /Roaming/AutomatizaCore/pg
                                                       sql/bin/psql.exe\" -U
                                                       pyme_user -d pyme_db -p
                                                       5433 -t -c \"SELECT
@@ -2972,7 +2972,7 @@ VM112:3 Uncaught SyntaxError: Invalid or unexpected token
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +12 lines (ctrl+o to expand)
 
@@ -3134,7 +3134,7 @@ VM112:3 Uncaught SyntaxError: Invalid or unexpected token
 
 ● Bash(cd "C:/Users/Marcos/Desktop/atomatizacion de empresas/desktop" && npm run
        sync 2>&1)
-  ⎿  > automatizapyme-desktop@1.0.0 sync
+  ⎿  > automatizacore-desktop@1.0.0 sync
      > node sync.js
      … +12 lines (ctrl+o to expand)
   ⎿  API Error: 400 You have exceeded your daily token limit. You can resume at 

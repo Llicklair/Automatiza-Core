@@ -9,9 +9,9 @@ BASE_URL = "http://localhost:8080/api/v1"
 async def main() -> None:
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
         # 1) Registro tenant + usuario admin demo (idempotente)
-        print("== Registro demo@automatizapyme.com ==")
+        print("== Registro demo@automatizacore.com ==")
         register_payload = {
-            "email": "demo@automatizapyme.com",
+            "email": "demo@automatizacore.com",
             "password": "Demo1234!",
             "full_name": "Demo Admin",
             "tenant": {"name": "Demo Corp", "nif": "B12345678"},
@@ -25,7 +25,7 @@ async def main() -> None:
         print("\n== Login ==")
         r = await client.post(
             "/auth/login",
-            json={"email": "demo@automatizapyme.com", "password": "Demo1234!"},
+            json={"email": "demo@automatizacore.com", "password": "Demo1234!"},
         )
         print("login status:", r.status_code)
         if r.status_code != 200:

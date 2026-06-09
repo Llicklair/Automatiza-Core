@@ -17,10 +17,10 @@ async def inject_demo_credentials():
     print("Inyectando credenciales DEMO a nivel de base de datos...")
     async with AsyncSessionLocal() as db:
         # 1. Encontrar el usuario demo y su tenant
-        result = await db.execute(select(User).where(User.email == "demo@automatizapyme.com"))
+        result = await db.execute(select(User).where(User.email == "demo@automatizacore.com"))
         user = result.scalar_one_or_none()
         if not user:
-            print("❌ Usuario demo@automatizapyme.com no encontrado.")
+            print("❌ Usuario demo@automatizacore.com no encontrado.")
             return
 
         tenant_id = user.tenant_id

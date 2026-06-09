@@ -45,6 +45,8 @@ import { treasury } from "./treasury";
 import { collections } from "./collections";
 import { marketplace } from "./marketplace";
 import { signing } from "./signing";
+import { marketingApi } from "./marketing";
+import { emailMarketingApi } from "./email_marketing";
 import { request } from "./client";
 
 // ── Portal types ─────────────────────────────────────────────────────────────
@@ -109,6 +111,8 @@ export const api = {
     collections,
     marketplace,
     signing,
+    marketing: marketingApi,
+    emailMarketing: emailMarketingApi,
     search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
     importBulk: {
         employees: (rows: Record<string, string>[]) =>
@@ -226,3 +230,4 @@ export type { PersistentNotification, NotificationListResponse } from "./notific
 export type { VerifactuMode, VerifactuConfig } from "./verifactuConfig";
 export type { ModeloAsistido, PresentacionInfo } from "./presentacion";
 export type { PosLine, PosSession, PosLineAdd, PosCheckoutRequest } from "./pos";
+export type { SocialAccount, Campaign, ScheduledPost, CreatePostInput } from "./marketing";

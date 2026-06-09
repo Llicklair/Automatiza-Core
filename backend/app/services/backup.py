@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 
 
 def _default_backup_dir() -> Path:
-    """`%APPDATA%\\AutomatizaPyme\\backups` en Windows, equivalente XDG en otros."""
+    """`%APPDATA%\\AutomatizaCore\\backups` en Windows, equivalente XDG en otros."""
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        return Path(appdata) / "AutomatizaPyme" / "backups"
+        return Path(appdata) / "AutomatizaCore" / "backups"
     xdg = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
-    return Path(xdg) / "AutomatizaPyme" / "backups"
+    return Path(xdg) / "AutomatizaCore" / "backups"
 
 
 def _portable_postgres_bin() -> Path | None:
@@ -47,9 +47,9 @@ def _portable_postgres_bin() -> Path | None:
     la app desktop, o None si no existe."""
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        candidate = Path(appdata) / "AutomatizaPyme" / "pgsql" / "bin"
+        candidate = Path(appdata) / "AutomatizaCore" / "pgsql" / "bin"
     else:
-        candidate = Path.home() / ".local" / "share" / "AutomatizaPyme" / "pgsql" / "bin"
+        candidate = Path.home() / ".local" / "share" / "AutomatizaCore" / "pgsql" / "bin"
     return candidate if candidate.exists() else None
 
 

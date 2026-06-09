@@ -7,28 +7,48 @@ Protecciones:
 - Variable de desarrollo no obvia → AP_DEVMODE=1.
 """
 
+import base64
 import hashlib
 import hmac
 import json
 import logging
 import os
 import platform
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-LICENSE_SERVER    = "https://automatizapyme-license-server.onrender.com"
+LICENSE_SERVER    = "https://automatizacore-license-server.onrender.com"
 CACHE_TTL_HOURS   = 24
 OFFLINE_GRACE_DAYS = 7
 REQUEST_TIMEOUT   = 8
 
+# Ed25519 public key — hardcoded to prevent fake-server attacks
+_PUBLIC_KEY_B64 = "Jen8cURct8egCXVhCxHlnXjo8Qaczi7X9Ml6uAkHHxY="
+
+def _verify_server_sig(nonce: str, plan: str, sig_b64: str) -> bool:
+    """Verify that the validate response was signed by our real server."""
+    if not sig_b64:
+        return False
+    try:
+        raw_pub = base64.b64decode(_PUBLIC_KEY_B64)
+        pub_key = Ed25519PublicKey.from_public_bytes(raw_pub)
+        message = f"{nonce}:{plan}".encode()
+        pub_key.verify(base64.b64decode(sig_b64), message)
+        return True
+    except (InvalidSignature, Exception):
+        return False
+
 _appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
-LICENSE_FILE = Path(_appdata) / "AutomatizaPyme" / "license.json"
+LICENSE_FILE = Path(_appdata) / "AutomatizaCore" / "license.json"
 
 
 # ── Machine ID ────────────────────────────────────────────────────────────────
@@ -154,13 +174,19 @@ async def validate_license() -> LicenseResult:
 
     # Llamada al servidor
     try:
+        nonce = secrets.token_hex(16)
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
             resp = await client.post(
                 f"{LICENSE_SERVER}/licenses/validate",
-                json={"key": key, "machine_id": machine_id},
+                json={"key": key, "machine_id": machine_id, "nonce": nonce},
             )
         if resp.status_code == 200:
-            plan = resp.json().get("plan", "pro")
+            data = resp.json()
+            plan = data.get("plan", "pro")
+            sig  = data.get("sig", "")
+            if not _verify_server_sig(nonce, plan, sig):
+                logger.error("[LICENSE] Firma del servidor inválida — posible servidor falso")
+                return LicenseResult(valid=False, reason="Respuesta del servidor no autenticada.")
             save_license(key, plan)
             logger.info("[LICENSE] Válida · plan=%s", plan)
             return LicenseResult(valid=True, plan=plan)

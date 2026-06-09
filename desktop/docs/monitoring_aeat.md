@@ -1,6 +1,6 @@
 # Monitorización portal AEAT — CONT.MON
 
-> Fuentes que el equipo de AutomatizaPyme debe vigilar para anticipar cambios normativos o técnicos que afecten a la presentación de modelos y a Verifactu.
+> Fuentes que el equipo de AutomatizaCore debe vigilar para anticipar cambios normativos o técnicos que afecten a la presentación de modelos y a Verifactu.
 
 ## §1 Fuentes oficiales (suscripción obligatoria)
 
@@ -25,7 +25,7 @@
 ### Documentación Verifactu — versión vigente
 
 * **URL**: <https://sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu.html>
-* **Periodicidad**: cada release de AutomatizaPyme verifica que el XSD usado coincide con la última versión publicada.
+* **Periodicidad**: cada release de AutomatizaCore verifica que el XSD usado coincide con la última versión publicada.
 * **Disparador**: AEAT publica nuevo XSD → ticket P-0 para revisar tests de integración (FAC.TST).
 
 ## §2 Procedimiento de respuesta
@@ -57,5 +57,5 @@ Cada sprint Verifactu/PRES.* del roadmap incluye buffer **3 días** para absorbe
 1. **Pausar** trabajo del sprint actual relacionado con presentación.
 2. **Calcular** plazo de adaptación que AEAT concede (normalmente 30-90 días).
 3. **Comunicar** al fundador con número exacto de días hasta deadline.
-4. Si el plazo de AEAT < tiempo de adaptación realista del software: **escalar** públicamente al cliente con plan B (presentación manual vía sede + asistida por AutomatizaPyme).
+4. Si el plazo de AEAT < tiempo de adaptación realista del software: **escalar** públicamente al cliente con plan B (presentación manual vía sede + asistida por AutomatizaCore).
 5. Una vez resuelto: post-mortem técnico en `tasks/lessons.md`.

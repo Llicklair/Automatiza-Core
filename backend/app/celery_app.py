@@ -22,7 +22,7 @@ def _make_celery():
         from celery import Celery
 
         app = Celery(
-            "automatizapyme",
+            "automatizacore",
             broker=settings.REDIS_URL,
             backend=settings.REDIS_URL,
             include=["app.workers.celery_tasks"],

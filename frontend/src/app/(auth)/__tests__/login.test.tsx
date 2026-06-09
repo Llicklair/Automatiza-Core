@@ -54,7 +54,7 @@ describe("LoginPage", () => {
     it("renders the page title", () => {
         render(<LoginPage />);
 
-        expect(screen.getByText("AutomatizaPyme")).toBeInTheDocument();
+        expect(screen.getByText("AutomatizaCore")).toBeInTheDocument();
     });
 
     it("renders forgot password and register links", () => {

@@ -3,7 +3,7 @@
 > **Versión 1.0 — 2026-05-14**
 >
 > Objetivo: garantizar conformidad **WCAG 2.1 nivel AA** en la UI desktop de
-> AutomatizaPyme. Alcance MVP: rutas críticas del flujo fiscal (login,
+> AutomatizaCore. Alcance MVP: rutas críticas del flujo fiscal (login,
 > dashboard, chat agente, modal de aprobación humana, presentación AEAT).
 
 ## §1 Marco normativo aplicable
@@ -12,7 +12,7 @@
 |---|---|
 | WCAG 2.1 nivel AA | Estándar internacional de facto. |
 | UNE-EN 301 549 | Transposición europea de WCAG. Obligatoria para Sector Público; recomendada para B2B. |
-| RD 1112/2018 | Accesibilidad de sitios web del sector público español. AutomatizaPyme no es sector público, pero al integrarse con clientes-gestoría que sirven al sector público hereda parte del estándar. |
+| RD 1112/2018 | Accesibilidad de sitios web del sector público español. AutomatizaCore no es sector público, pero al integrarse con clientes-gestoría que sirven al sector público hereda parte del estándar. |
 | Reglamento UE 2024/1689 (AI Act) Art. 50 | El banner de transparencia AI debe ser perceptible por todos los usuarios incluyendo aquellos con lector de pantalla. |
 
 ## §2 Gate automatizado (axe-core)
@@ -72,7 +72,7 @@ y mensajes de error contextuales.
 Marcar ✓ o ✗ con nota.
 
 **Login (5 min)**
-- [ ] Al cargar la página, NVDA anuncia "AutomatizaPyme - Panel de Control".
+- [ ] Al cargar la página, NVDA anuncia "AutomatizaCore - Panel de Control".
 - [ ] El skip-link "Saltar al contenido" se anuncia al primer Tab.
 - [ ] Los campos email y password se anuncian con su etiqueta (no solo "edit").
 - [ ] El botón "Iniciar sesión" anuncia su estado (botón / submit).
@@ -102,7 +102,7 @@ Marcar ✓ o ✗ con nota.
 **Verifactu QR público — `/verify/<huella>` (5 min)**
 - [ ] La huella se anuncia como código (no como palabra).
 - [ ] El estado "Integridad verificada" se anuncia con rol `status`.
-- [ ] El logo de AutomatizaPyme tiene alt.
+- [ ] El logo de AutomatizaCore tiene alt.
 
 **Banca, CRM, Documentos, Contabilidad (resto de la sesión)**
 - [ ] Cada tabla principal se anuncia con número de filas y columnas.

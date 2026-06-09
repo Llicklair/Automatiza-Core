@@ -27,7 +27,7 @@ import httpx
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 
-parser = argparse.ArgumentParser(description="AutomatizaPyme — Test Funcional Completo")
+parser = argparse.ArgumentParser(description="AutomatizaCore — Test Funcional Completo")
 parser.add_argument("--base-url", default="http://localhost:8080/api/v1")
 parser.add_argument("--email", default="marcosreciosanchez@gmail.com")
 parser.add_argument("--password", default="marcos3448")
@@ -935,7 +935,7 @@ AGENT_PROMPTS = [
     ("rag", "Busca info sobre facturación electrónica en España"),
     ("recruitment", "Lista ofertas de empleo publicadas"),
     ("marketing", "Sugiere ideas de campaña para Q2 2026"),
-    ("chat", "Hola, ¿qué funcionalidades tiene AutomatizaPyme?"),
+    ("chat", "Hola, ¿qué funcionalidades tiene AutomatizaCore?"),
 ]
 
 

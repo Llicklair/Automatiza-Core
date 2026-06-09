@@ -19,7 +19,7 @@ Cada vez que se toque código de tools/agentes/dispatchers/parser, hay que valid
 
 ## Flujo de una iteración
 
-1. **Editar código** en el repo dev: `c:\Users\Marcos\Desktop\automatizacion de empresas\Automatiza-pyme-main\`
+1. **Editar código** en el repo dev: `c:\Users\Marcos\Desktop\automatizacion de empresas\Automatiza-core-main\`
 2. **Commit + push** → `git push origin master`
 3. **Sincronizar al exe instalado**: `cd desktop && npm run sync`
 4. **Cerrar Electron completo** (también desde la bandeja del sistema)
@@ -262,7 +262,7 @@ URL: postgresql+psycopg2://pyme_user:pyme_pass@localhost:5433/pyme_db
 
 Python embebido:
 ```
-"C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe"
+"C:/Users/Marcos/AppData/Roaming/AutomatizaCore/python/python.exe"
 ```
 
 ### Plantilla de inspección
@@ -332,19 +332,19 @@ with e.begin() as c:
 `DATABASE_URL` con dialect `psycopg2` (no `psycopg`):
 
 ```bash
-cd "C:/Users/Marcos/AppData/Local/Programs/automatizapyme-desktop/resources/project/backend"
+cd "C:/Users/Marcos/AppData/Local/Programs/automatizacore-desktop/resources/project/backend"
 DATABASE_URL="postgresql+psycopg2://pyme_user:pyme_pass@localhost:5433/pyme_db" \
-  "C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe" -m alembic current
+  "C:/Users/Marcos/AppData/Roaming/AutomatizaCore/python/python.exe" -m alembic current
 
 DATABASE_URL="postgresql+psycopg2://pyme_user:pyme_pass@localhost:5433/pyme_db" \
-  "C:/Users/Marcos/AppData/Roaming/AutomatizaPyme/python/python.exe" -m alembic upgrade head
+  "C:/Users/Marcos/AppData/Roaming/AutomatizaCore/python/python.exe" -m alembic upgrade head
 ```
 
 ### Verificar que el sync llevó un cambio
 
 ```bash
 grep -c "<patrón_nuevo>" \
-  "C:/Users/Marcos/AppData/Local/Programs/automatizapyme-desktop/resources/project/backend/<archivo.py>"
+  "C:/Users/Marcos/AppData/Local/Programs/automatizacore-desktop/resources/project/backend/<archivo.py>"
 ```
 
 Si devuelve 0 → el sync no se hizo, repetir `cd desktop && npm run sync`.
@@ -375,11 +375,11 @@ asyncio.run(go())
 ## Paths importantes
 
 ```
-Repo dev:           c:\Users\Marcos\Desktop\automatizacion de empresas\Automatiza-pyme-main\
-Exe instalado:      C:\Users\Marcos\AppData\Local\Programs\automatizapyme-desktop\resources\project\
+Repo dev:           c:\Users\Marcos\Desktop\automatizacion de empresas\Automatiza-core-main\
+Exe instalado:      C:\Users\Marcos\AppData\Local\Programs\automatizacore-desktop\resources\project\
 .env real:          ↑ + \.env
-Python embed:       C:\Users\Marcos\AppData\Roaming\AutomatizaPyme\python\python.exe
-Uploads del tenant: C:\Users\Marcos\AppData\Roaming\AutomatizaPyme\uploads\<categoría>\
+Python embed:       C:\Users\Marcos\AppData\Roaming\AutomatizaCore\python\python.exe
+Uploads del tenant: C:\Users\Marcos\AppData\Roaming\AutomatizaCore\uploads\<categoría>\
 Logs LLM (si trace activo): logs/llm/YYYY-MM-DD.jsonl (relativo al cwd del backend)
 ```
 
@@ -393,7 +393,7 @@ Logs LLM (si trace activo): logs/llm/YYYY-MM-DD.jsonl (relativo al cwd del backe
 DEFAULT_LLM_PROVIDER=claude_code   # provider activo (sin coste API)
 LLM_TRACE_ENABLED=true              # opcional, escribe JSONL con cada llamada LLM
 LLM_TRACE_DIR=logs/llm
-UPLOAD_DIR=                          # vacío en Windows → AppData/Roaming/AutomatizaPyme/uploads
+UPLOAD_DIR=                          # vacío en Windows → AppData/Roaming/AutomatizaCore/uploads
 ```
 
 > **Limitación con `claude_code`**: los callbacks de LangChain (incluido `LLMTraceCallback`) **no se disparan** porque el provider es un wrapper subprocess que no llama a `run_manager`. `LLM_TRACE_ENABLED=true` produce 0 archivos cuando este es el provider activo. Para diagnóstico real con trace JSONL, cambiar a `anthropic` / `gemini` (con function calling nativo) o leer stdout del backend en vivo.
@@ -406,7 +406,7 @@ Para cada cambio que toque tools/agentes/dispatchers/parser:
 
 1. ☑ La tarea termina en `status=done` o `failed` (no `executing` eterno).
 2. ☑ El número de filas en `tenant_documents` corresponde al esperado (sin duplicados).
-3. ☑ El `file_path` está en `AppData/Roaming/AutomatizaPyme/uploads/<categoría>/` (no en `C:\app\uploads`).
+3. ☑ El `file_path` está en `AppData/Roaming/AutomatizaCore/uploads/<categoría>/` (no en `C:\app\uploads`).
 4. ☑ La duración total entra en el timeout configurado.
 5. ☑ Si genera PDF, el archivo se abre correctamente y el contenido coincide con lo pedido.
 6. ☑ Para tools de "consulta" (list, search), los datos vuelven de BD reales — no inventados por el LLM.

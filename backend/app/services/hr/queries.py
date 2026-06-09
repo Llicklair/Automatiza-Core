@@ -305,9 +305,9 @@ ESTRUCTURA CARTA DE DESPIDO (plantilla vacía, structure-only):
 7. Firma empresa + lugar y fecha.
 8. Disclaimer al pie (texto literal):
      "Este documento ha sido generado como plantilla formal por
-      AutomatizaPyme. La motivación de la causa de despido y los efectos
+      AutomatizaCore. La motivación de la causa de despido y los efectos
       económicos deben ser validados por un abogado laboralista antes de su
-      entrega al trabajador. AutomatizaPyme no asume responsabilidad sobre
+      entrega al trabajador. AutomatizaCore no asume responsabilidad sobre
       el contenido."
 
 PROHIBIDO en este tipo de documento:

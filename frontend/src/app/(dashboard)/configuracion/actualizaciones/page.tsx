@@ -201,7 +201,7 @@ export default function ActualizacionesPage() {
                     Cómo funcionan las actualizaciones
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                    AutomatizaPyme se actualiza automáticamente en segundo plano. Cuando hay una nueva versión,
+                    AutomatizaCore se actualiza automáticamente en segundo plano. Cuando hay una nueva versión,
                     se descarga sin interrumpir tu trabajo. Al finalizar, aparecerá el botón <strong className="text-foreground">Instalar y reiniciar</strong> arriba.
                 </p>
                 <ol className="space-y-3 text-sm text-muted-foreground">

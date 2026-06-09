@@ -1,4 +1,4 @@
-# AutomatizaPyme — Analisis Exhaustivo del Proyecto y Proyeccion de Mercado
+# AutomatizaCore — Analisis Exhaustivo del Proyecto y Proyeccion de Mercado
 
 > Fecha: 5 de abril de 2026
 
@@ -6,7 +6,7 @@
 
 ## 1. RESUMEN EJECUTIVO
 
-AutomatizaPyme es un **ERP local-first multiagente** para PYMEs espanolas que combina:
+AutomatizaCore es un **ERP local-first multiagente** para PYMEs espanolas que combina:
 
 - **Agentes IA especializados** (8 dominios) que ejecutan acciones reales sobre la base de datos
 - **Automatizaciones hibridas** (deterministas + razonamiento IA) con coste granular
@@ -50,7 +50,7 @@ BASE DE DATOS (PostgreSQL + pgvector)
 | **Determinista** | 0 tokens (gratis) | Crear factura con datos fijos, mover estado de pedido |
 | **Razonamiento** | Tokens LLM | Analizar texto de email, clasificar documento, generar resumen |
 
-**Esto es unico en el mercado.** Los ERPs con IA cobran por cada interaccion. AutomatizaPyme permite disenar workflows donde el 70-80% de los pasos son deterministas (coste cero) y solo los pasos que requieren "pensar" consumen tokens.
+**Esto es unico en el mercado.** Los ERPs con IA cobran por cada interaccion. AutomatizaCore permite disenar workflows donde el 70-80% de los pasos son deterministas (coste cero) y solo los pasos que requieren "pensar" consumen tokens.
 
 **Triggers soportados:**
 - Basados en tiempo (cron/APScheduler)
@@ -141,11 +141,11 @@ Con **fallback automatico**: si el proveedor principal falla, reintenta con back
 | **Sage 50** | No | Importacion | No | No | Si (desktop) | 40-100 EUR |
 | **Contasol** | No | No | No | No | Si (desktop) | Gratuito-50 EUR |
 | **Odoo** | No nativo | Si (code) | No | No | Ambos | 0-30 EUR/mod |
-| **AutomatizaPyme** | **Nativa (8 agentes)** | **Hibrida (det+IA)** | **Si (orquestador 3 capas)** | **Si (custom + skills)** | **Si** | **TBD** |
+| **AutomatizaCore** | **Nativa (8 agentes)** | **Hibrida (det+IA)** | **Si (orquestador 3 capas)** | **Si (custom + skills)** | **Si** | **TBD** |
 
 ### 3.2 ERPs con IA (Global)
 
-| Producto | Modelo | IA | Diferencia con AutomatizaPyme |
+| Producto | Modelo | IA | Diferencia con AutomatizaCore |
 |---|---|---|---|
 | **SAP Joule** | Enterprise cloud | Copilot (sugiere, no ejecuta) | No crea empleados IA, no tiene workflows hibridos, precio enterprise |
 | **Oracle AI** | Enterprise cloud | Modulos predictivos | Sin agentes autonomos, sin personalizacion de roles |
@@ -155,7 +155,7 @@ Con **fallback automatico**: si el proveedor principal falla, reintenta con back
 
 ### 3.3 Plataformas de Automatizacion IA
 
-| Producto | Diferencia con AutomatizaPyme |
+| Producto | Diferencia con AutomatizaCore |
 |---|---|
 | **n8n / Make / Zapier** | Son conectores entre apps, no tienen ERP propio ni datos internos |
 | **Relevance AI** | Agentes genericos sin dominio ERP, sin datos estructurados |
@@ -172,7 +172,7 @@ Con **fallback automatico**: si el proveedor principal falla, reintenta con back
 5. Despliegue local-first (privacidad total de datos)
 6. Compliance espanol nativo (AEAT/BOE)
 
-AutomatizaPyme ocupa un **blue ocean** — no compite directamente con ninguna categoria existente.
+AutomatizaCore ocupa un **blue ocean** — no compite directamente con ninguna categoria existente.
 
 ---
 
@@ -238,7 +238,7 @@ AutomatizaPyme ocupa un **blue ocean** — no compite directamente con ninguna c
 
 ### 4.6 Canal de Distribucion Clave: Asesorias y Gestorias
 
-Espana tiene **~60.000 asesorias fiscales y gestorias** que gestionan la administracion de multiples PYMEs. Un programa de partners donde la asesoria despliega AutomatizaPyme en sus clientes podria ser el **growth hack definitivo**:
+Espana tiene **~60.000 asesorias fiscales y gestorias** que gestionan la administracion de multiples PYMEs. Un programa de partners donde la asesoria despliega AutomatizaCore en sus clientes podria ser el **growth hack definitivo**:
 
 - La asesoria reduce su carga de trabajo (los agentes hacen lo repetitivo)
 - Cobra un margen sobre la licencia
@@ -263,7 +263,7 @@ Espana tiene **~60.000 asesorias fiscales y gestorias** que gestionan la adminis
 
 ### 6.1 No es "un ERP con un chatbot pegado"
 
-La mayoria de ERPs que dicen tener IA simplemente anadieron un chatbot de soporte o un copilot que sugiere. AutomatizaPyme tiene **IA nativa en el core**:
+La mayoria de ERPs que dicen tener IA simplemente anadieron un chatbot de soporte o un copilot que sugiere. AutomatizaCore tiene **IA nativa en el core**:
 
 - Los agentes **escriben en la base de datos**
 - Los workflows **ejecutan logica de negocio real**
@@ -288,7 +288,7 @@ Cada uno de estos pilares existe por separado en algun producto. **Ninguno los c
 
 ### 6.3 Efecto Red de Datos
 
-Cada empresa que usa AutomatizaPyme genera patrones de uso que mejoran:
+Cada empresa que usa AutomatizaCore genera patrones de uso que mejoran:
 - Las plantillas de workflows sugeridos
 - Los system prompts de empleados IA recomendados
 - Las reglas de compliance por sector
@@ -312,7 +312,7 @@ Sin compartir datos entre empresas — solo patrones anonimizados de uso.
 
 ## 8. CONCLUSION
 
-AutomatizaPyme no es un ERP mas. Es el **primer ERP nativo de IA** donde los agentes no asisten — **trabajan**. La combinacion de ejecucion real + automatizaciones hibridas + empleados IA personalizables + privacidad local-first crea una categoria nueva que no existe en el mercado actual.
+AutomatizaCore no es un ERP mas. Es el **primer ERP nativo de IA** donde los agentes no asisten — **trabajan**. La combinacion de ejecucion real + automatizaciones hibridas + empleados IA personalizables + privacidad local-first crea una categoria nueva que no existe en el mercado actual.
 
 El TAM en Espana es de ~3.700M EUR/ano solo en PYMEs. Con un SAM realista de 450-900M EUR y un producto sin competencia directa, la oportunidad de capturar incluso un 1% del mercado representaria **4.5-9M EUR/ano en ARR**.
 
@@ -582,7 +582,7 @@ Electron Main Process
 
 ## 18. CONCLUSION TECNICA
 
-AutomatizaPyme tiene una **base tecnica solida y bien arquitectada** (7.8/10). Los patrones elegidos (LangGraph, FastAPI async, multi-tenant nativo, Zero Trust tools) son decisiones de ingenieria senior que dificilmente se encuentran en productos de este estadio.
+AutomatizaCore tiene una **base tecnica solida y bien arquitectada** (7.8/10). Los patrones elegidos (LangGraph, FastAPI async, multi-tenant nativo, Zero Trust tools) son decisiones de ingenieria senior que dificilmente se encuentran en productos de este estadio.
 
 Las debilidades son **subsanables en 3-4 meses**: secretos, JWT storage, testing, y logging. Ninguna requiere reescritura — son mejoras incrementales sobre una base bien disenada.
 
@@ -592,4 +592,4 @@ El sistema de agentes con compilacion dinamica, workflows hibridos, y budget gua
 
 ---
 
-*Documento generado como analisis interno del proyecto AutomatizaPyme. Datos de mercado basados en fuentes publicas (INE, Eurostat) y estimaciones sectoriales.*
+*Documento generado como analisis interno del proyecto AutomatizaCore. Datos de mercado basados en fuentes publicas (INE, Eurostat) y estimaciones sectoriales.*

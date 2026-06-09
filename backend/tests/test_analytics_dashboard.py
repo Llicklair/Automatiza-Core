@@ -60,4 +60,4 @@ async def test_latest_period_none_when_no_invoices():
 # exclusivo de Postgres (extract('isodow', …)) que no compila en el SQLite de
 # los tests. El default de la ruta se construye sobre latest_period_with_data
 # (cubierto arriba) + el parse_month ya testeado; verificado además contra la
-# DB real (último mes con datos = 2025-05 para el tenant AutomatizaPyme).
+# DB real (último mes con datos = 2025-05 para el tenant AutomatizaCore).

@@ -2,7 +2,7 @@
 
 > **Versión 1.0 — 2026-05-15**.
 
-AutomatizaPyme se actualiza automáticamente con
+AutomatizaCore se actualiza automáticamente con
 [`electron-updater`](https://www.electron.build/auto-update) leyendo
 releases publicados en GitHub Releases. Soporta dos **canales**
 (stable / beta) y **delta updates** (diferencial — el cliente descarga
@@ -85,13 +85,13 @@ con placeholder `TU_USUARIO_GITHUB`:
 "publish": {
   "provider": "github",
   "owner": "TU_USUARIO_GITHUB",
-  "repo": "automatizapyme-desktop"
+  "repo": "automatizacore-desktop"
 }
 ```
 
 **Acción pre-release**: el fundador (DEC.04 / DIS.SIG) debe:
 
-1. Crear el repo `<org>/automatizapyme-desktop` en GitHub (privado OK,
+1. Crear el repo `<org>/automatizacore-desktop` en GitHub (privado OK,
    electron-updater soporta privado vía PAT).
 2. Actualizar `owner` y `repo` en el bloque publish.
 3. Generar un `GH_TOKEN` con scope `repo` para el workflow de release.

@@ -250,7 +250,7 @@ def generate_albaran_pdf(albaran_data: dict, theme_config: dict | None = None) -
     elements.append(Spacer(1, 3 * mm))
     footer_text = (
         th.get("footer_text")
-        or "Documento generado automáticamente por AutomatizaPyme · Gracias por su confianza."
+        or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
     )
     elements.append(
         Paragraph(

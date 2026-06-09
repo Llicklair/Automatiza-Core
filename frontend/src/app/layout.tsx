@@ -1,5 +1,5 @@
 /*
- * Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaPyme
+ * Copyright © 2026 Marcos Recio <marcosreciosanchez@gmail.com> — AutomatizaCore
  * SPDX-License-Identifier: LicenseRef-Proprietary
  */
 import type { Metadata } from "next";
@@ -14,7 +14,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "AutomatizaPyme — Panel de Control",
+    title: "AutomatizaCore — Panel de Control",
     description: "Plataforma de automatización administrativa multiagente para PYMEs",
 };
 

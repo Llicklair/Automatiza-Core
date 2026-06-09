@@ -1,4 +1,4 @@
-# AI Act Scoping Memo — AutomatizaPyme MVP
+# AI Act Scoping Memo — AutomatizaCore MVP
 
 > **Fecha**: 2026-05-14
 > **Marco normativo**: Reglamento UE 2024/1689 (AI Act) — aplicación high-risk Anexo III: **2-ago-2026**
@@ -37,7 +37,7 @@
 - **Acción MVP — Escenario A ampliado**:
   - Retirar `score_candidate()` también de `services/hr/commands.py:269` y `queries.py:377`.
   - Plantilla `termination` reducida a **estructura formal vacía** (LLM emite encabezado/identificación/cita normativa/fecha/firma; NO motiva el cuerpo).
-  - UI gate `ENTIENDO` tipado (no checkbox) + disclaimer modal *"Esta plantilla no constituye asesoramiento jurídico. La motivación del despido debe ser redactada y revisada por un abogado laboralista. AutomatizaPyme no se responsabiliza del contenido."*.
+  - UI gate `ENTIENDO` tipado (no checkbox) + disclaimer modal *"Esta plantilla no constituye asesoramiento jurídico. La motivación del despido debe ser redactada y revisada por un abogado laboralista. AutomatizaCore no se responsabiliza del contenido."*.
   - Coste: 0.5d implementación + dictamen abogado laboralista (decisión humana 12, ~500€).
 - **Defensa Art. 6(3) párrafo 1**: con structure-only sin motivación, la herramienta es *"tarea preparatoria estricta"* — el LLM no decide, no motiva, no influye en contenido. Validar con dictamen.
 
@@ -108,7 +108,7 @@ Cero columnas adicionales detectadas. La defensa Art. 6(3) requiere que el schem
 
 ## §5 Obligaciones Art. 26 (deployer) que asume el cliente
 
-El cliente (PYME / autónomo / gestoría) actúa como **deployer** bajo AI Act. AutomatizaPyme actúa como **provider** del sistema integrado.
+El cliente (PYME / autónomo / gestoría) actúa como **deployer** bajo AI Act. AutomatizaCore actúa como **provider** del sistema integrado.
 
 Cláusulas a incluir en EULA (AI.6):
 
@@ -116,11 +116,11 @@ Cláusulas a incluir en EULA (AI.6):
 - El cliente conserva log automático ≥ 6 meses (cubierto técnicamente por `audit_immutable` + `AgentExecutionTrace`).
 - El cliente coopera con autoridades AI Office si requerido.
 
-Cláusulas para AutomatizaPyme como provider (Art. 13, 16, 17):
+Cláusulas para AutomatizaCore como provider (Art. 13, 16, 17):
 
 - Instructions for use entregadas al deployer.
 - Logs automáticos ≥ 6 meses (cubierto).
-- Gobernanza de datos de entrenamiento — N/A porque AutomatizaPyme no entrena modelos, usa LLMs de terceros (Anthropic/OpenAI/Groq) como proveedores GPAI.
+- Gobernanza de datos de entrenamiento — N/A porque AutomatizaCore no entrena modelos, usa LLMs de terceros (Anthropic/OpenAI/Groq) como proveedores GPAI.
 
 ## §6 Acciones derivadas — checklist
 

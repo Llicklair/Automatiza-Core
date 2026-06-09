@@ -185,46 +185,46 @@ try:
     _registry = CollectorRegistry()
 
     TASKS_CREATED = Counter(
-        "automatizapyme_tasks_created_total",
+        "automatizacore_tasks_created_total",
         "Total de tareas creadas",
         ["tenant_id", "domain"],
         registry=_registry,
     )
     TASKS_COMPLETED = Counter(
-        "automatizapyme_tasks_completed_total",
+        "automatizacore_tasks_completed_total",
         "Total de tareas completadas",
         ["tenant_id", "domain", "status"],
         registry=_registry,
     )
     LLM_LATENCY = Histogram(
-        "automatizapyme_llm_duration_seconds",
+        "automatizacore_llm_duration_seconds",
         "Latencia de llamadas LLM",
         ["agent", "model"],
         registry=_registry,
         buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
     )
     TOOL_EXECUTION_DURATION = Histogram(
-        "automatizapyme_tool_duration_seconds",
+        "automatizacore_tool_duration_seconds",
         "Latencia de ejecución de tools de agente",
         ["tool", "status"],  # status: ok | timeout | error
         registry=_registry,
         buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
     )
     AGENT_RUNS_TOTAL = Counter(
-        "automatizapyme_agent_runs_total",
+        "automatizacore_agent_runs_total",
         "Total de invocaciones a agentes vía dispatcher",
         ["agent", "status"],  # status: success | failed | timeout | error
         registry=_registry,
     )
     AGENT_DURATION = Histogram(
-        "automatizapyme_agent_duration_seconds",
+        "automatizacore_agent_duration_seconds",
         "Latencia end-to-end de una invocación de agente",
         ["agent"],
         registry=_registry,
         buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0],
     )
     APPROVALS_PENDING = Gauge(
-        "automatizapyme_approvals_pending",
+        "automatizacore_approvals_pending",
         "Aprobaciones pendientes por tenant",
         ["tenant_id"],
         registry=_registry,
@@ -232,20 +232,20 @@ try:
 
     # ── HTTP metrics (integrated via RequestLoggerMiddleware) ──
     HTTP_REQUESTS_TOTAL = Counter(
-        "automatizapyme_http_requests_total",
+        "automatizacore_http_requests_total",
         "Total HTTP requests",
         ["method", "path", "status_code"],
         registry=_registry,
     )
     HTTP_REQUEST_DURATION = Histogram(
-        "automatizapyme_http_request_duration_seconds",
+        "automatizacore_http_request_duration_seconds",
         "HTTP request duration in seconds",
         ["method", "path"],
         registry=_registry,
         buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
     )
     ACTIVE_WEBSOCKET_CONNECTIONS = Gauge(
-        "automatizapyme_active_websocket_connections",
+        "automatizacore_active_websocket_connections",
         "Number of active WebSocket connections",
         registry=_registry,
     )

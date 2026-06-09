@@ -101,7 +101,7 @@ def generate_text_report_pdf(title: str, content: str, category: str = "Informe"
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#f1f5f9")))
     elements.append(
         Paragraph(
-            "Generado por el Sistema de Inteligencia Artificial de AutomatizaPyme",
+            "Generado por el Sistema de Inteligencia Artificial de AutomatizaCore",
             ParagraphStyle(
                 "Footer",
                 parent=styles["Normal"],

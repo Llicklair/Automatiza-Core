@@ -96,7 +96,7 @@ class TestPdfQrBlock:
             "amount_total": 121.00,
             "verifactu": {
                 "huella": "abc123def456" + "0" * 52,
-                "verify_url": "https://automatizapyme.com/api/v1/verify/abc123def456" + "0" * 52,
+                "verify_url": "https://automatizacore.com/api/v1/verify/abc123def456" + "0" * 52,
             },
         }
         pdf_bytes = generate_invoice_pdf(invoice_data)

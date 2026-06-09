@@ -18,11 +18,11 @@
 
 ### Fase B — Producción (después de PRES.0)
 
-* **Credencial necesaria**: cert de representación FNMT de AutomatizaPyme S.L. (decisión humana 15, ~50€). El alta como colaborador social (decisión humana 14) debe estar **completada y efectiva** antes.
+* **Credencial necesaria**: cert de representación FNMT de AutomatizaCore S.L. (decisión humana 15, ~50€). El alta como colaborador social (decisión humana 14) debe estar **completada y efectiva** antes.
 * **Endpoint AEAT**: `https://www2.agenciatributaria.gob.es/wlpl/inwinvoc/...` (producción).
 * **Datos**: facturas reales del tenant tras `MANDATORY_HUMAN_FISCAL` aprobado.
 * **Smoke test obligatorio antes del primer cliente**:
-  1. Crear factura test interna (tenant de pruebas de AutomatizaPyme).
+  1. Crear factura test interna (tenant de pruebas de AutomatizaCore).
   2. Aprobar con `approve_fiscal` el modelo 303 simulado.
   3. Presentar contra producción AEAT.
   4. Verificar acuse de recibo.
@@ -62,7 +62,7 @@ El cert se carga desde `CertStore` (DIS.IFACE) — nunca está en el .env en pla
 2. Si error de XSD/formato: el bug es nuestro → ticket `aeat-format-bug` P-0.
 3. Si error de cadena de huella: investigar — la cadena debería ser íntegra (test `verify_chain_integrity`). Si está rota: ticket `verifactu-chain-break` P-0 + investigación de causa.
 4. Si error de credenciales/expiración cert: emergencia → renovar cert AEAT inmediatamente (T+24h). Mientras tanto, pausar presentaciones automáticas.
-5. Si error de plazo (vencimiento): comunicar al cliente que la presentación debe hacerse manual desde sede AEAT con asistencia de AutomatizaPyme (deep-link PRES.5).
+5. Si error de plazo (vencimiento): comunicar al cliente que la presentación debe hacerse manual desde sede AEAT con asistencia de AutomatizaCore (deep-link PRES.5).
 
 ## §5 Mantenimiento del cert producción
 

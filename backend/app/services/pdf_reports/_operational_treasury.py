@@ -288,7 +288,7 @@ def generate_cashflow_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 3 * mm))
     elements.append(
         Paragraph(
-            f"Informe de tesorería generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Informe de tesorería generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             s["footer"],
         )
     )
@@ -495,7 +495,7 @@ def generate_delinquency_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 2 * mm))
     elements.append(
         Paragraph(
-            f"Generado por AutomatizaPyme · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             s["footer"],
         )
     )

@@ -622,7 +622,7 @@ async + tenant-aware.
    futuro hook de pre-commit podría detectar el antipatrón
    `\.expires_at\s*[<>]` sin coerción previa.
 6. **OAuth Google → Production mode**: tarea externa.
-7. **Acción pendiente del fix soft-delete**: reiniciar `AutomatizaPyme.exe`
+7. **Acción pendiente del fix soft-delete**: reiniciar `AutomatizaCore.exe`
    para que el backend embebido recoja el código nuevo. Migración ya
    aplicada (forward-compatible).
 

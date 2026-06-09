@@ -8,7 +8,7 @@ Cada tenant tiene un único estado de apoderamiento que recorre:
                                                  └→ rejected (excepcional)
 
 `auth_method` indica la rama elegida (clave_pin | clave_permanente |
-cert_fnmt). `apoderado_nif` guarda el NIF de AutomatizaPyme S.L. al que
+cert_fnmt). `apoderado_nif` guarda el NIF de AutomatizaCore S.L. al que
 el cliente apodera (cargado del setting tenant). `verified_at` se setea
 cuando la consulta REGAP confirma el alta.
 

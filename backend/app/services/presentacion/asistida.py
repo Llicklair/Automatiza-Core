@@ -78,7 +78,7 @@ def build_modelo_131_xml(tenant: TenantSummary) -> str:
         '    <PagoFraccionado>0.00</PagoFraccionado>\n'
         '    <!-- Completar módulos y rendimientos en Sede AEAT -->\n'
         '  </Liquidacion>\n'
-        f'  <MetaPrerelleno generado="{_now_iso()}" sistema="AutomatizaPyme"/>\n'
+        f'  <MetaPrerelleno generado="{_now_iso()}" sistema="AutomatizaCore"/>\n'
         '</Modelo131>\n'
     )
 
@@ -107,7 +107,7 @@ def build_modelo_200_xml(tenant: TenantSummary) -> str:
         '    <CuotaIntegra>0.00</CuotaIntegra>\n'
         '    <!-- Completar resultado contable, ajustes y deducciones en Sede AEAT -->\n'
         '  </Liquidacion>\n'
-        f'  <MetaPrerelleno generado="{_now_iso()}" sistema="AutomatizaPyme"/>\n'
+        f'  <MetaPrerelleno generado="{_now_iso()}" sistema="AutomatizaCore"/>\n'
         '</Modelo200>\n'
     )
 

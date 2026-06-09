@@ -978,7 +978,7 @@ def render_markdown_report(
     <h1>{safe_title}</h1>
     {subtitle_html}
     <p class="meta">
-      <b>Empresa:</b> {safe_tenant or 'AutomatizaPyme'}<br/>
+      <b>Empresa:</b> {safe_tenant or 'AutomatizaCore'}<br/>
       <b>Autor:</b> {safe_author}<br/>
       <b>Fecha:</b> {today}
     </p>

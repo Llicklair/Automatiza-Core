@@ -224,7 +224,7 @@ async def get_diagnostic_bundle(
     requiere autenticación.
     """
     zip_bytes = await build_diagnostic_bundle(db)
-    filename = f"automatizapyme-diagnostic-{user.tenant_id}.zip"
+    filename = f"automatizacore-diagnostic-{user.tenant_id}.zip"
     return Response(
         content=zip_bytes,
         media_type="application/zip",

@@ -4,7 +4,7 @@
 
 Un buen empty state responde en menos de 5 segundos a "¿qué es esto y qué
 hago ahora?". Este catálogo establece la copy + icono + CTA primario
-recomendado para los ~15 dominios principales de AutomatizaPyme.
+recomendado para los ~15 dominios principales de AutomatizaCore.
 
 ## Componentes disponibles
 

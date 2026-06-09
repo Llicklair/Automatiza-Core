@@ -1,4 +1,4 @@
-# Capacidades del LLM en AutomatizaPyme
+# Capacidades del LLM en AutomatizaCore
 
 **Inventario completo de qué puede hacer el LLM por dominio.**
 Fecha: 2026-05-06. Basado en auditoría estática (76 `@tool` en 29 archivos).

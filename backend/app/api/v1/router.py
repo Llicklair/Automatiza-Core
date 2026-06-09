@@ -26,6 +26,8 @@ from app.api.v1.routes import (
     import_bulk,
     integrations,
     llm_usage,
+    email_marketing,
+    marketing,
     marketplace,
     messaging,
     modelos_aeat,
@@ -108,4 +110,6 @@ api_router.include_router(presentacion_asistida.router)
 api_router.include_router(modelos_aeat.router)
 api_router.include_router(aeat_presentation.router)
 api_router.include_router(pos.router)
+api_router.include_router(marketing.router)
+api_router.include_router(email_marketing.router)
 api_router.include_router(license.router)

@@ -1,7 +1,7 @@
 {
-  "name": "automatizapyme-desktop",
+  "name": "automatizacore-desktop",
   "version": "1.0.0",
-  "description": "AutomatizaPyme - ERP de escritorio para PYMEs",
+  "description": "AutomatizaCore - ERP de escritorio para PYMEs",
   "author": "Marcos Recio <marcosreciosanchez@gmail.com>",
   "license": "UNLICENSED",
   "main": "main.js",
@@ -24,8 +24,8 @@
     "rcedit": "^5.0.2"
   },
   "build": {
-    "appId": "com.automatizapyme.desktop",
-    "productName": "AutomatizaPyme",
+    "appId": "com.automatizacore.desktop",
+    "productName": "AutomatizaCore",
     "directories": {
       "output": "dist"
     },
@@ -44,14 +44,14 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AutomatizaPyme",
+      "shortcutName": "AutomatizaCore",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico"
     },
     "publish": {
       "provider": "github",
       "owner": "Llicklair",
-      "repo": "Automatiza-pyme"
+      "repo": "Automatiza-core"
     },
     "files": [
       "main.js",
