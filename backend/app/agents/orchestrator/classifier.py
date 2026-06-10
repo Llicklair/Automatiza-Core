@@ -529,6 +529,21 @@ def _keyword_classify(intent_lower: str) -> str:
     return "unknown"
 
 
+def _meets_employee_contract(emp) -> bool:
+    """Un AIEmployee custom 'de verdad' aporta >=2 de las 4 capacidades del contrato
+    (scope, memoria, conocimiento, workflows). Si aporta 0-1 es un 'Perfil' (solo
+    tono/expertise) y NO debe interceptar el routing de un dominio builtin por una
+    mención incidental de su nombre/rol: eso dispara un dispatch custom lento
+    (timeout 180s) sin valor añadido. Ver tasks/lessons.md."""
+    caps = sum((
+        emp.scope is not None,
+        bool(getattr(emp, "memory_enabled", False)),
+        bool(getattr(emp, "knowledge_enabled", False)),
+        emp.workflows is not None,
+    ))
+    return caps >= 2
+
+
 async def _resolve_custom_employee(state: OrchestratorState, intent_lower: str) -> dict | None:
     """Si la tarea va dirigida a un AIEmployee custom (por id en metadata o por nombre/rol
     mencionado en el texto), devuelve el dict de metadata enriquecido y enruta a 'custom'.
@@ -586,6 +601,15 @@ async def _resolve_custom_employee(state: OrchestratorState, intent_lower: str) 
             continue
         for tok in tokens:
             if re.search(r"\b" + re.escape(tok) + r"\b", intent_lower):
+                # Solo intercepta si es un empleado "de verdad" (>=2 capacidades).
+                # Un Perfil (0-1) mencionado de pasada NO debe secuestrar el dominio
+                # builtin ni disparar un dispatch custom lento. Ver lessons.md.
+                if not _meets_employee_contract(emp):
+                    logger.info(
+                        "[CLASSIFY] custom '%s' mencionado pero es Perfil (sin capacidades) → no intercepta routing",
+                        emp.name,
+                    )
+                    break  # pasar al siguiente empleado
                 metadata["addressed_employee_id"] = str(emp.id)
                 logger.info(
                     "[CLASSIFY] empleado custom resuelto por mención '%s': %s (%s)",

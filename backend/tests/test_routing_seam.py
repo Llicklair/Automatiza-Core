@@ -262,6 +262,10 @@ async def test_resolve_custom_employee_matches_by_name_with_correct_filter(
         budget_limit_usd=10.0,
         status="idle",
         is_builtin=False,
+        # >=2 capacidades del contrato: un empleado "de verdad" sí intercepta por
+        # mención (el guard de _meets_employee_contract solo frena a los Perfil).
+        memory_enabled=True,
+        knowledge_enabled=True,
     )
     db.add(yolanda)
     await db.commit()
