@@ -6,6 +6,7 @@ import { useNotificationStore } from "@/stores/notifications";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { useAgentStream } from "@/hooks/useAgentStream";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 export function useTaskPanel(isActive: boolean) {
     const toast = useToastStore();
@@ -61,11 +62,7 @@ export function useTaskPanel(isActive: boolean) {
     // en backend y siguen ejecutándose aunque el usuario navegue; al volver
     // a la pestaña, el polling y el WebSocket re-sincronizan el estado.
 
-    useEffect(() => {
-        if (!isActive) return;
-        const interval = setInterval(loadSilent, hasActive ? 2000 : 10000);
-        return () => clearInterval(interval);
-    }, [hasActive, isActive]);
+    usePolling(loadSilent, hasActive ? 2000 : 10000, { enabled: isActive });
 
     useEffect(() => {
         if (showNew) {

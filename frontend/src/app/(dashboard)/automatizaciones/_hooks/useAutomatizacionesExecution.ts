@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, WorkflowExecution } from "@/lib/api";
 import { logError } from "@/lib/logger";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 export function useAutomatizacionesExecution(
     showToast: (msg: string, type: "ok" | "err") => void,
@@ -20,7 +21,6 @@ export function useAutomatizacionesExecution(
     // Live logs
     const [liveLogs, setLiveLogs] = useState<Record<string, string[]>>({});
     const logsRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const loadExecutions = useCallback(async (id: string) => {
         setLoadingExec(id);
@@ -40,20 +40,13 @@ export function useAutomatizacionesExecution(
     }, []);
 
     // Auto-refresh polling for active executions
-    useEffect(() => {
-        if (!expandedId) {
-            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-            return;
-        }
-        const wfExecs = executions[expandedId] || [];
-        const hasActive = wfExecs.some(e => e.status === "running" || e.status === "paused");
-        if (hasActive) {
-            pollRef.current = setInterval(() => { loadExecutions(expandedId); }, 4000);
-        } else {
-            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-        }
-        return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
-    }, [expandedId, executions, loadExecutions]);
+    const expandedExecs = expandedId ? (executions[expandedId] || []) : [];
+    const hasActiveExec = expandedExecs.some(e => e.status === "running" || e.status === "paused");
+    usePolling(
+        () => { if (expandedId) loadExecutions(expandedId); },
+        4000,
+        { enabled: !!expandedId && hasActiveExec },
+    );
 
     // Live logs polling
     useEffect(() => {

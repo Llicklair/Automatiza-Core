@@ -8,6 +8,7 @@ import type { AIEmployee } from "@/lib/api/ai_employees";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 const TABS = [
     { key: "tareas", label: "Tareas" },
@@ -55,9 +56,9 @@ export function useMiEquipo() {
     useEffect(() => {
         if (activeTab !== "equipo") return;
         loadData();
-        const interval = setInterval(loadData, 60_000);
-        return () => clearInterval(interval);
     }, [loadData, activeTab]);
+
+    usePolling(loadData, 60_000, { enabled: activeTab === "equipo" });
 
     useNotificationSocket({
         agent_status_changed: (msg) => {

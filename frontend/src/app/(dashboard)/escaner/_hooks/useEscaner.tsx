@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { api } from "@/lib/api";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 export type ElectronNetworkStatus = {
     localNetworkEnabled: boolean;
@@ -63,29 +64,23 @@ export function useEscaner() {
     }
 
     // Polling: actualizar estado de documentos que estan procesando
-    useEffect(() => {
-        if (results.length === 0) return;
-        const processing = results.filter(r => {
-            const st = docStatuses[r.document.id];
-            return !st || st.status === "processing" || st.status === "uploaded";
-        });
-        if (processing.length === 0) return;
+    const processing = results.filter(r => {
+        const st = docStatuses[r.document.id];
+        return !st || st.status === "processing" || st.status === "uploaded";
+    });
 
-        const interval = setInterval(async () => {
-            try {
-                const allDocs = await api.documents.list({});
-                const statusMap: Record<string, { status: string; category: string | null }> = {};
-                for (const doc of allDocs) {
-                    statusMap[doc.id] = { status: doc.status, category: doc.category };
-                }
-                setDocStatuses(prev => ({ ...prev, ...statusMap }));
-            } catch {
-                // silenciar errores de polling
+    usePolling(async () => {
+        try {
+            const allDocs = await api.documents.list({});
+            const statusMap: Record<string, { status: string; category: string | null }> = {};
+            for (const doc of allDocs) {
+                statusMap[doc.id] = { status: doc.status, category: doc.category };
             }
-        }, 4000);
-
-        return () => clearInterval(interval);
-    }, [results, docStatuses]);
+            setDocStatuses(prev => ({ ...prev, ...statusMap }));
+        } catch {
+            // silenciar errores de polling
+        }
+    }, 4000, { enabled: processing.length > 0 });
 
     const handleFiles = useCallback((files: FileList | null) => {
         if (!files || files.length === 0) return;

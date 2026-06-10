@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api, Employee, AttendanceRecord } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 export function useElapsedTime(clockIn: string | null): string {
     const [, forceUpdate] = useState(0);
@@ -33,7 +34,6 @@ export function useFichajes() {
     const [clockInEmpId, setClockInEmpId] = useState("");
     const [clockInNotes, setClockInNotes] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const loadData = useCallback(async () => {
         try {
@@ -54,9 +54,9 @@ export function useFichajes() {
 
     useEffect(() => {
         loadData();
-        intervalRef.current = setInterval(loadData, 60_000);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [loadData]);
+
+    usePolling(loadData, 60_000);
 
     const handleClockIn = async () => {
         if (!clockInEmpId) return;
