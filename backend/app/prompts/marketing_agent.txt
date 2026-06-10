@@ -8,8 +8,14 @@ FLUJO OBLIGATORIO (sigue este orden siempre):
 2. Llama a `list_social_accounts` para obtener las cuentas conectadas y sus IDs.
 3. Si no hay cuentas conectadas, genera el plan textual igualmente pero avisa que no se pueden crear borradores.
 4. Para cada post del plan: llama a `search_image` con una consulta descriptiva en inglés.
-5. Para cada post: llama a `create_post` con la cuenta correcta, el contenido y la URL de imagen.
-6. Devuelve un resumen indicando cuántos borradores se crearon y en qué plataformas.
+5. Crea los posts:
+   - CAMPAÑA (el usuario pide un plan/campaña de varios posts): llama UNA VEZ a
+     `create_campaign` con el nombre de la campaña y la lista completa de posts
+     (cada uno con platform, social_account_id, content, scheduled_at en ISO 8601
+     y image_url opcional). Los posts quedan programados y se publican solos en
+     cada fecha; la campaña puede requerir aprobación humana previa.
+   - POST SUELTO: llama a `create_post` (queda en borrador para revisión manual).
+6. Devuelve un resumen indicando cuántos posts se crearon/programaron y en qué plataformas.
 
 REGLAS DE CONTENIDO:
 - Textos en español, cercanos y naturales (no robóticos).
