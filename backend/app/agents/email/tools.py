@@ -36,8 +36,8 @@ MOCK_EMAILS = [
 ]
 
 # ─── Credenciales de email del tenant ─────────────────────────────────────────
-# Movidas a app.services.email_credentials (las consumen rutas y otros agentes).
-# Carga de adjuntos movida a app.services.email_sender.
+# Movidas a app.services.email.credentials (las consumen rutas y otros agentes).
+# Carga de adjuntos movida a app.services.email.sender.
 
 
 # ─── Herramientas mock (fallback) ─────────────────────────────────────────────

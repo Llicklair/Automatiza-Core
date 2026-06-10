@@ -469,7 +469,7 @@ async def main() -> int:
     print(f"== Smoke Orchestrator: {len(selected)} prompts ==")
     print(f"Tenant: {TENANT_ID}\n")
 
-    with patch("app.services.email_sender.send_email", side_effect=fake_send_email):
+    with patch("app.services.email.sender.send_email", side_effect=fake_send_email):
         # Import diferido para que el patch este activo cuando los modulos lo resuelvan
         from app.agents.orchestrator import orchestrator
 
