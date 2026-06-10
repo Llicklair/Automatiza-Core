@@ -2,7 +2,7 @@
 Banking agent tools re-export facade.
 
 Logic lives in:
-  _psd2_helpers.py        — credentials, demo data, ALERT_THRESHOLDS
+  _psd2_helpers.py        — demo data, ALERT_THRESHOLDS (credenciales PSD2 en services/banking/psd2.py)
   _account_tools.py       — check_balances
   _transaction_tools.py   — list_transactions, financial_summary
   _reconciliation_tools.py — reconcile_transactions
