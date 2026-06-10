@@ -47,6 +47,7 @@ import { marketplace } from "./marketplace";
 import { signing } from "./signing";
 import { marketingApi } from "./marketing";
 import { emailMarketingApi } from "./email_marketing";
+import { metricsApi } from "./metrics";
 import { request } from "./client";
 
 // ── Portal types ─────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ export const api = {
     signing,
     marketing: marketingApi,
     emailMarketing: emailMarketingApi,
+    metrics: metricsApi,
     search: (q: string) => request<SearchResult[]>(`/api/v1/search?q=${encodeURIComponent(q)}`),
     importBulk: {
         employees: (rows: Record<string, string>[]) =>
