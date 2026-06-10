@@ -34,11 +34,17 @@ from decimal import Decimal
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 _NS = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"
+_NS_008 = "urn:iso:std:iso:20022:tech:xsd:pain.008.001.02"
 _IBAN_RE = re.compile(r"^[A-Z]{2}[0-9A-Z]{2,32}$")
+_SEQ_TYPES = ("FRST", "RCUR", "OOFF", "FNAL")
 
 
 class Pain001Error(ValueError):
     """Error de validación al construir el pain.001."""
+
+
+class Pain008Error(ValueError):
+    """Error de validación al construir el pain.008."""
 
 
 @dataclass
@@ -205,3 +211,161 @@ def _element(tag: str, text: str) -> Element:
     el = Element(tag)
     el.text = text
     return el
+
+
+# ── pain.008 — adeudos directos SEPA Core (cobros a clientes) ─────────────────
+
+
+@dataclass
+class DirectDebitOrder:
+    """Un adeudo individual dentro de una remesa pain.008 (SEPA Core)."""
+
+    debtor_name: str
+    debtor_iban: str
+    amount_eur: Decimal | float
+    concept: str
+    mandate_id: str
+    mandate_date: date
+    sequence_type: str = "RCUR"  # FRST | RCUR | OOFF | FNAL
+    end_to_end_id: str | None = None
+
+
+@dataclass
+class CreditorParty:
+    """Acreedor de los adeudos: la pyme, con su identificador SEPA (AT-02)."""
+
+    name: str
+    iban: str
+    creditor_id: str  # identificador de acreedor SEPA (p.ej. ES12000B12345678)
+    bic: str | None = None
+
+
+def build_pain008(
+    creditor: CreditorParty,
+    collection_date: date,
+    orders: list[DirectDebitOrder],
+    *,
+    message_id: str | None = None,
+    now: datetime | None = None,
+) -> tuple[str, dict]:
+    """Construye el XML pain.008.001.02 (Customer Direct Debit Initiation,
+    esquema CORE) y devuelve ``(xml_str, summary)``.
+
+    Cada adeudo requiere mandato (MndtId + fecha de firma) y tipo de
+    secuencia. Los adeudos se agrupan en un ``PmtInf`` por tipo de secuencia
+    (el SeqTp es un atributo del bloque de pago, no de la transacción).
+    """
+    if not orders:
+        raise Pain008Error("La remesa requiere al menos 1 adeudo.")
+
+    today = (now or datetime.now(timezone.utc)).date()
+    if collection_date < today:
+        raise Pain008Error(
+            f"La fecha de cobro {collection_date} es anterior a hoy {today}."
+        )
+
+    creditor_iban = _validate_iban(creditor.iban)
+    creditor_name = _sanitize_txt(creditor.name, 70)
+    if not creditor_name:
+        raise Pain008Error("El nombre del acreedor es obligatorio.")
+    creditor_id = _sanitize_txt(creditor.creditor_id, 35)
+    if not creditor_id:
+        raise Pain008Error("El identificador de acreedor SEPA es obligatorio.")
+
+    validated: list[tuple[DirectDebitOrder, Decimal, str]] = []
+    control_sum = Decimal("0")
+    for ord_ in orders:
+        seq = (ord_.sequence_type or "RCUR").upper()
+        if seq not in _SEQ_TYPES:
+            raise Pain008Error(f"Tipo de secuencia inválido: {ord_.sequence_type!r}")
+        if not (ord_.mandate_id or "").strip():
+            raise Pain008Error(f"Adeudo a '{ord_.debtor_name}' sin mandato (MndtId).")
+        if ord_.mandate_date is None:
+            raise Pain008Error(f"Adeudo a '{ord_.debtor_name}' sin fecha de mandato.")
+        try:
+            amt = _validate_amount(ord_.amount_eur)
+            iban_ok = _validate_iban(ord_.debtor_iban)
+        except Pain001Error as e:
+            raise Pain008Error(str(e)) from e
+        control_sum += amt
+        validated.append((ord_, amt, iban_ok))
+
+    creation_ts = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%S")
+    msg_id = (message_id or f"ADE-{_uuid.uuid4().hex[:16]}").upper()
+
+    doc = Element("Document", attrib={"xmlns": _NS_008})
+    cst = SubElement(doc, "CstmrDrctDbtInitn")
+
+    grp = SubElement(cst, "GrpHdr")
+    SubElement(grp, "MsgId").text = msg_id
+    SubElement(grp, "CreDtTm").text = creation_ts
+    SubElement(grp, "NbOfTxs").text = str(len(validated))
+    SubElement(grp, "CtrlSum").text = format(control_sum, "f")
+    SubElement(SubElement(grp, "InitgPty"), "Nm").text = creditor_name
+
+    # Un PmtInf por tipo de secuencia, en orden estable
+    by_seq: dict[str, list[tuple[DirectDebitOrder, Decimal, str]]] = {}
+    for item in validated:
+        by_seq.setdefault(item[0].sequence_type.upper(), []).append(item)
+
+    for i, (seq, items) in enumerate(sorted(by_seq.items()), start=1):
+        seq_sum = sum(amt for _, amt, _ in items)
+        pmt = SubElement(cst, "PmtInf")
+        SubElement(pmt, "PmtInfId").text = f"{msg_id}-{i:03d}"
+        SubElement(pmt, "PmtMtd").text = "DD"
+        SubElement(pmt, "NbOfTxs").text = str(len(items))
+        SubElement(pmt, "CtrlSum").text = format(seq_sum, "f")
+        pmt_tp = SubElement(pmt, "PmtTpInf")
+        SubElement(SubElement(pmt_tp, "SvcLvl"), "Cd").text = "SEPA"
+        SubElement(SubElement(pmt_tp, "LclInstrm"), "Cd").text = "CORE"
+        SubElement(pmt_tp, "SeqTp").text = seq
+        SubElement(pmt, "ReqdColltnDt").text = collection_date.isoformat()
+        SubElement(SubElement(pmt, "Cdtr"), "Nm").text = creditor_name
+        SubElement(
+            SubElement(SubElement(pmt, "CdtrAcct"), "Id"), "IBAN"
+        ).text = creditor_iban
+        cdtr_agt = SubElement(pmt, "CdtrAgt")
+        fin_inst = SubElement(cdtr_agt, "FinInstnId")
+        if creditor.bic:
+            SubElement(fin_inst, "BIC").text = creditor.bic.upper()
+        else:
+            SubElement(fin_inst, "Othr").append(_element("Id", "NOTPROVIDED"))
+        schme = SubElement(pmt, "CdtrSchmeId")
+        othr = SubElement(SubElement(SubElement(schme, "Id"), "PrvtId"), "Othr")
+        SubElement(othr, "Id").text = creditor_id
+        SubElement(SubElement(othr, "SchmeNm"), "Prtry").text = "SEPA"
+
+        for ord_, amt, iban_ok in items:
+            tx = SubElement(pmt, "DrctDbtTxInf")
+            e2e = ord_.end_to_end_id or f"E2E-{_uuid.uuid4().hex[:20].upper()}"
+            SubElement(SubElement(tx, "PmtId"), "EndToEndId").text = _sanitize_txt(e2e, 35)
+            SubElement(tx, "InstdAmt", attrib={"Ccy": "EUR"}).text = format(amt, "f")
+            mndt = SubElement(SubElement(tx, "DrctDbtTx"), "MndtRltdInf")
+            SubElement(mndt, "MndtId").text = _sanitize_txt(ord_.mandate_id, 35)
+            SubElement(mndt, "DtOfSgntr").text = ord_.mandate_date.isoformat()
+            dbtr_agt = SubElement(tx, "DbtrAgt")
+            SubElement(SubElement(dbtr_agt, "FinInstnId"), "Othr").append(
+                _element("Id", "NOTPROVIDED")
+            )
+            SubElement(SubElement(tx, "Dbtr"), "Nm").text = _sanitize_txt(
+                ord_.debtor_name, 70
+            )
+            SubElement(SubElement(SubElement(tx, "DbtrAcct"), "Id"), "IBAN").text = iban_ok
+            if ord_.concept:
+                SubElement(SubElement(tx, "RmtInf"), "Ustrd").text = _sanitize_txt(
+                    ord_.concept, 140
+                )
+
+    xml_bytes = tostring(doc, encoding="utf-8", xml_declaration=True)
+    xml_str = xml_bytes.decode("utf-8")
+
+    import hashlib
+    summary = {
+        "msg_id": msg_id,
+        "nb_of_txs": len(validated),
+        "control_sum_eur": float(control_sum),
+        "creditor_iban": creditor_iban,
+        "collection_date": collection_date.isoformat(),
+        "sha256": hashlib.sha256(xml_bytes).hexdigest(),
+    }
+    return xml_str, summary

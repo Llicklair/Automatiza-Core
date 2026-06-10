@@ -1,7 +1,7 @@
 /**
  * Tesorería (F2.7) — cashflow proyectado + remesas SEPA pain.001.
  */
-import { request } from "./client";
+import { downloadBlob, request } from "./client";
 
 export interface CashflowEvent {
     kind: "invoice_in" | "invoice_out" | "payroll";
@@ -66,6 +66,52 @@ export interface Pain001Result {
     };
 }
 
+export interface RemittanceOrder {
+    id: string;
+    counterparty_name: string;
+    counterparty_iban: string;
+    amount: number;
+    concept: string;
+    end_to_end_id: string;
+    mandate_id: string | null;
+    sequence_type: string | null;
+    invoice_id: string | null;
+    payroll_id: string | null;
+}
+
+export interface Remittance {
+    id: string;
+    remittance_type: "pain.001" | "pain.008";
+    msg_id: string;
+    status: "generated" | "sent" | "executed" | "reconciled";
+    execution_date: string;
+    party_iban: string;
+    nb_of_txs: number;
+    total_amount: number;
+    sha256: string;
+    executed_at: string | null;
+    bank_transaction_id: string | null;
+    created_at: string | null;
+    orders?: RemittanceOrder[];
+}
+
+export interface RemittanceList {
+    items: Remittance[];
+    total: number;
+}
+
+function triggerXmlDownload(xml: string, filename: string) {
+    const blob = new Blob([xml], { type: "application/xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 export const treasury = {
     cashflow: {
         projection: (daysAhead = 90) =>
@@ -83,16 +129,37 @@ export const treasury = {
         /** Genera el XML y dispara descarga client-side como archivo .xml. */
         downloadPain001: async (payload: Pain001Request) => {
             const result = await treasury.sepa.buildPain001(payload);
-            const blob = new Blob([result.xml], { type: "application/xml" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${result.summary.msg_id}.xml`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            triggerXmlDownload(result.xml, `${result.summary.msg_id}.xml`);
             return result.summary;
         },
+    },
+    remittances: {
+        list: (params?: { status?: string; limit?: number; offset?: number }) => {
+            const q = new URLSearchParams();
+            if (params?.status) q.set("status", params.status);
+            if (params?.limit) q.set("limit", String(params.limit));
+            if (params?.offset) q.set("offset", String(params.offset));
+            const qs = q.toString();
+            return request<RemittanceList>(
+                `/api/v1/treasury/remittances${qs ? `?${qs}` : ""}`,
+            );
+        },
+        get: (id: string) =>
+            request<Remittance>(`/api/v1/treasury/remittances/${id}`),
+        /** Descarga el XML persistido de la remesa. */
+        downloadXml: (id: string, msgId: string) =>
+            downloadBlob(`/api/v1/treasury/remittances/${id}/xml`, `${msgId}.xml`),
+        updateStatus: (
+            id: string,
+            status: Remittance["status"],
+            bankTransactionId?: string,
+        ) =>
+            request<Remittance>(`/api/v1/treasury/remittances/${id}/status`, {
+                method: "POST",
+                body: JSON.stringify({
+                    status,
+                    bank_transaction_id: bankTransactionId ?? null,
+                }),
+            }),
     },
 };

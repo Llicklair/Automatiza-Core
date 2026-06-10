@@ -8,6 +8,7 @@ import { useRemesas, TYPE_CONFIG, type RemesaType } from "./_hooks/useRemesas";
 import RemesaItemList from "./_components/RemesaItemList";
 import RemesaSummary from "./_components/RemesaSummary";
 import RemesaModal from "./_components/RemesaModal";
+import RemesaHistorial from "./_components/RemesaHistorial";
 
 const fmt = (v: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
@@ -61,6 +62,7 @@ export default function RemesasPage() {
 
                 <div className="space-y-5">
                     <RemesaSummary selected={selected} totalSelected={totalSelected} />
+                    <RemesaHistorial />
                     <div className="bg-card border border-border rounded-2xl p-5">
                         <h3 className="text-sm font-semibold text-foreground mb-4">Configuracion SEPA</h3>
                         <div className="space-y-3 text-xs">
