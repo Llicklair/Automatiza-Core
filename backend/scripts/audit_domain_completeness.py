@@ -59,7 +59,7 @@ def _extract_dict_keys(src: str, name: str) -> set[str]:
 def main() -> int:
     state_src = (ROOT / "state.py").read_text(encoding="utf-8")
     disp_src = (ROOT / "dispatchers" / "__init__.py").read_text(encoding="utf-8")
-    classif_src = (ROOT / "classifier.py").read_text(encoding="utf-8")
+    classif_src = (ROOT / "classifier_data.py").read_text(encoding="utf-8")
 
     valid = _extract_set_literal(state_src, "VALID_DOMAINS")
     dispatchers = _extract_dispatcher_keys(disp_src)
