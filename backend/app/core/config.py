@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
 
+    # Sincronización bancaria: si True, "sincronizar" genera movimientos [DEMO]
+    # cuando PSD2 no está configurado (solo entornos de demostración).
+    BANKING_DEMO_SYNC: bool = False
+
     # Backups automáticos de la BD del usuario.
     BACKUP_ENABLED: bool = True
     BACKUP_DIR: str = ""  # Vacío → %APPDATA%/AutomatizaCore/backups (default por OS)

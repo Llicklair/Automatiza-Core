@@ -109,6 +109,7 @@ export function TransaccionesTab() {
             await loadData();
         } catch (error) {
             logError("banca/page", error);
+            toast.error(error instanceof Error ? error.message : "No se pudo sincronizar el banco.");
         } finally {
             setIsSyncing(false);
         }

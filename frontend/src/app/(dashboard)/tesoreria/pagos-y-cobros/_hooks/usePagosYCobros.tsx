@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Invoice, type BankTransaction } from "@/lib/api";
 import { isPast } from "date-fns";
 import { logError } from "@/lib/logger";
+import { useToastStore } from "@/stores/toast";
 
 export type TabId = "cobros" | "pagos" | "movimientos";
 
@@ -22,6 +23,7 @@ export function usePagosYCobros() {
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [tab, setTab] = useState<TabId>("cobros");
+    const toast = useToastStore();
 
     const loadData = async () => {
         setLoading(true);
@@ -48,7 +50,10 @@ export function usePagosYCobros() {
         try {
             await api.banking.transactions.sync();
             await loadData();
-        } catch { /* ignore */ }
+        } catch (e) {
+            logError("tesoreria/pagos-y-cobros/sync", e);
+            toast.error(e instanceof Error ? e.message : "No se pudo sincronizar el banco.");
+        }
         finally { setSyncing(false); }
     };
 

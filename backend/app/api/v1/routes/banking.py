@@ -41,12 +41,15 @@ async def sync_bank_transactions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Genera movimientos DEMO simulando PSD2 (Plaid/Nordigen no integrado).
+    """Sincroniza movimientos bancarios.
 
-    Las transacciones quedan prefijadas con [DEMO] para que las analíticas
-    reales puedan filtrarlas. Usa DELETE /transactions/demo para borrarlas.
+    Sin PSD2 configurado devuelve 409. Solo con BANKING_DEMO_SYNC=true genera
+    movimientos [DEMO] (borrables con DELETE /transactions/demo).
     """
-    return await svc.sync_transactions(db, current_user.tenant_id, current_user.id)
+    try:
+        return await svc.sync_transactions(db, current_user.tenant_id, current_user.id)
+    except svc.BankSyncNotAvailableError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
 
 @router.delete("/transactions/demo")
