@@ -9,6 +9,7 @@ import type { CertificateStatus } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
@@ -65,7 +66,11 @@ export function FirmaDigitalPanel() {
     };
 
     const handleDelete = async () => {
-        if (!confirm("¿Eliminar el certificado? Las facturas se generarán sin firma.")) return;
+        if (!(await showConfirm({
+            message: "¿Eliminar el certificado? Las facturas se generarán sin firma.",
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         setIsDeleting(true);
         try {
             await api.tenant.certificate.delete();

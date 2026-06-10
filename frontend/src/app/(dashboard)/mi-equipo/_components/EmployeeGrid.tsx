@@ -7,6 +7,7 @@ import { Plus, Users2, AlertCircle } from "lucide-react";
 import { EmployeeCard } from "./EmployeeCard";
 import { InstructModal } from "./InstructModal";
 import { NewEmployeeModal } from "./NewEmployeeModal";
+import { showConfirm } from "@/stores/confirm";
 
 interface EmployeeGridProps {
     employees: AIEmployee[];
@@ -43,7 +44,11 @@ export function EmployeeGrid({ employees, loading, onRefresh, refreshing }: Empl
 
     const handleDelete = async (id: string) => {
         const emp = employees.find(e => e.id === id);
-        if (!window.confirm(`¿Eliminar a ${emp?.name ?? "este empleado"}? Esta acción no se puede deshacer.`)) return;
+        if (!(await showConfirm({
+            message: `¿Eliminar a ${emp?.name ?? "este empleado"}? Esta acción no se puede deshacer.`,
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         try { await api.aiEmployees.delete(id); onRefresh(); }
         catch { showToast("Error al eliminar el empleado"); }
     };

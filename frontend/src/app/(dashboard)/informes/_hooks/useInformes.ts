@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type CompanySnapshot, type FiscalSnapshot, type ReportDoc } from "@/lib/api";
 import { logError } from "@/lib/logger";
+import { showConfirm } from "@/stores/confirm";
 
 // ─── Pure helpers (no React) ──────────────────────────────────────────────────
 
@@ -171,7 +172,11 @@ export function useInformes() {
     }
 
     async function handleDeleteReport(id: string) {
-        if (!confirm("¿Eliminar este informe? Esta acción no se puede deshacer.")) return;
+        if (!(await showConfirm({
+            message: "¿Eliminar este informe? Esta acción no se puede deshacer.",
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         try {
             await api.reports.delete(id);
             setReports(prev => prev.filter(r => r.id !== id));

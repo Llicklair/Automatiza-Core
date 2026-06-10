@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import type { Invitation, InvitationCreated, User, UserCreate } from "@/lib/api";
+import { showConfirm } from "@/stores/confirm";
 
 import { useUsuarios } from "./_hooks/useUsuarios";
 import { useLanAccess } from "./_hooks/useLanAccess";
@@ -83,7 +84,11 @@ export default function UsuariosConfigPage() {
     }
 
     async function handleDelete(u: User) {
-        if (!confirm(`¿Eliminar al usuario ${u.email}? Esta acción es irreversible.`)) return;
+        if (!(await showConfirm({
+            message: `¿Eliminar al usuario ${u.email}? Esta acción es irreversible.`,
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         setActionError(null);
         try {
             await remove(u.id);
@@ -93,7 +98,11 @@ export default function UsuariosConfigPage() {
     }
 
     async function handleRevoke(inv: Invitation) {
-        if (!confirm(`¿Revocar la invitación a ${inv.email}?`)) return;
+        if (!(await showConfirm({
+            message: `¿Revocar la invitación a ${inv.email}?`,
+            confirmLabel: "Revocar",
+            confirmVariant: "danger",
+        }))) return;
         setActionError(null);
         try {
             await revokeInvitation(inv.id);

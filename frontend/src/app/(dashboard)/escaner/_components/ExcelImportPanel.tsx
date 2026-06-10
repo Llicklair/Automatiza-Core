@@ -5,6 +5,7 @@ import { Upload, Loader2, AlertCircle, CheckCircle2, Download, Trash2, FileSprea
 import { api } from "@/lib/api";
 import type { Document } from "@/lib/api/documents";
 import { ErpImportReview } from "./ErpImportReview";
+import { showConfirm } from "@/stores/confirm";
 
 export function ExcelImportPanel() {
     const [documents, setDocuments] = useState<Document[]>([]);
@@ -47,7 +48,11 @@ export function ExcelImportPanel() {
     }
 
     async function handleDelete(id: string, filename: string) {
-        if (!confirm(`¿Eliminar "${filename}"?`)) return;
+        if (!(await showConfirm({
+            message: `¿Eliminar "${filename}"?`,
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         try {
             await api.documents.delete(id);
             setDocuments(prev => prev.filter(d => d.id !== id));
