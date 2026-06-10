@@ -20,8 +20,21 @@ entradas con prefijo ``classify:`` para todos los tenants.
 """
 
 import logging
-import re
 
+from app.agents.orchestrator.classifier_data import (
+    _CHITCHAT_TOKENS,
+    _KEYWORD_MAP,
+    _MULTI_STEP_CONNECTORS,
+    _RE_AMOUNT,
+    _RE_DATE,
+    _RE_EMAIL,
+    _RE_MONTH,
+    _RE_NIF,
+    _RE_NUMBER,
+    _RE_QUARTER,
+    _RE_WHITESPACE,
+    _STRONG_KEYWORDS,
+)
 from app.agents.orchestrator.state import (
     VALID_DOMAINS,
     OrchestratorState,
@@ -30,23 +43,6 @@ from app.agents.orchestrator.state import (
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Patrones de normalización: tokens que NO afectan la clasificación pero rompen
-# el cache hit ("crea factura 500" vs "crea factura 600" deberían ser el mismo).
-_RE_EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
-_RE_NIF = re.compile(r"\b[A-Z]?\d{7,8}[A-Z]?\b", re.IGNORECASE)
-_RE_DATE = re.compile(
-    r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b"
-)
-_RE_AMOUNT = re.compile(r"\b\d[\d.,]*\s*(?:€|eur|euros?|usd|\$|%)\b", re.IGNORECASE)
-_RE_NUMBER = re.compile(r"\b\d+([.,]\d+)?\b")
-_RE_WHITESPACE = re.compile(r"\s+")
-_RE_MONTH = re.compile(
-    r"\b(enero|febrero|marzo|abril|mayo|junio|julio|"
-    r"agosto|septiembre|octubre|noviembre|diciembre)\b",
-    re.IGNORECASE,
-)
-_RE_QUARTER = re.compile(r"\b[qQ][1-4]\b")
 
 
 def _normalize_for_cache(text: str) -> str:
@@ -68,251 +64,6 @@ def _normalize_for_cache(text: str) -> str:
     t = _RE_WHITESPACE.sub(" ", t).strip()
     return t
 
-
-# Reglas de palabras clave — usadas como fallback rápido si el LLM falla
-_KEYWORD_MAP: dict[str, list[str]] = {
-    "billing": [
-        "factura",
-        "facturar",
-        "cobro",
-        "pago",
-        "iva",
-        "presupuesto",
-        "albarán",
-        "emisión",
-    ],
-    "documents": [
-        "contrato",
-        "documento",
-        "archivo",
-        "pdf",
-        "extracto",
-        "subir",
-        "analizar",
-        "escanear",
-    ],
-    "compliance": [
-        "modelo 303",
-        "modelo 130",
-        "modelo 111",
-        "modelo 200",
-        "modelo 390",
-        "hacienda",
-        "aeat",
-        "impuesto",
-        "declaración trimestral",
-        "declaración del iva",
-    ],
-    "hr": [
-        "nómina",
-        "nóminas",
-        "empleado",
-        "laboral",
-        "vacaciones",
-        "baja médica",
-        "trabajador",
-        "salario",
-        "sueldo",
-        "contrato laboral",
-    ],
-    "crm": [
-        "venta",
-        "oportunidad",
-        "lead",
-        "cliente potencial",
-        "nuevo cliente",
-        "alta de cliente",
-        "alta del cliente",
-        "añade un cliente",
-        "añadir cliente",
-        "registra un cliente",
-        "registrar cliente",
-        "crea un cliente",
-        "crear cliente",
-        "crea cliente",
-        "agrega un cliente",
-        "agregar cliente",
-        "da de alta un cliente",
-        "presupuestar",
-        "reunión comercial",
-        "embudo",
-        "trato",
-        "ganada",
-    ],
-    "banking": [
-        "saldo",
-        "balance",
-        "cuenta",
-        "cuentas",
-        "banco",
-        "transacción",
-        "movimiento",
-        "transferencia",
-        "informe bancario",
-        "iban",
-        "psd2",
-        "extracto bancario",
-    ],
-    "rag": [
-        "qué dice",
-        "qué dicen",
-        "qué hay sobre",
-        "qué tenemos sobre",
-        "qué información",
-        "qué dice nuestra",
-        "según el contrato",
-        "según el documento",
-        "según los documentos",
-        "según la política",
-        "política interna",
-        "consultar documento",
-        "consultar la documentación",
-        "preguntar a la documentación",
-        "pregúntale a la documentación",
-        "busca en los documentos",
-        "resume el documento",
-        "qué significa",
-    ],
-    "excel": ["excel", "csv", "cruzar", "tabla", "hoja de cálculo", "datos", "columnas"],
-    "email": [
-        "correo electrónico",
-        "bandeja de entrada",
-        "buzón",
-        "inbox",
-        "enviar mensaje",
-        "responder correo",
-    ],
-    "coordinator": [
-        "coordinar",
-        "complejo",
-        "varios agentes",
-        "múltiple",
-        "todos los agentes",
-        "combina",
-        "cruza",
-    ],
-    "workflow": [
-        "automatización",
-        "regla",
-        "cada vez que",
-        "programar",
-        "automático",
-        "workflow",
-        "automatizar",
-        "repetir",
-    ],
-    "recruitment": [
-        "reclutamiento",
-        "candidato",
-        "cv",
-        "currículum",
-        "curriculum",
-        "puesto abierto",
-        "selección de personal",
-        "contratar",
-        "vacante",
-        "entrevista",
-        "recruiting",
-        "shortlist",
-    ],
-    "marketing": [
-        "marketing",
-        "contenido",
-        "redes sociales",
-        "instagram",
-        "facebook",
-        "linkedin",
-        "publicación",
-        "post",
-        "hashtag",
-        "plan de contenidos",
-        "campaña",
-        "social media",
-        "community manager",
-    ],
-    "accounting": [
-        "asiento",
-        "asiento contable",
-        "libro diario",
-        "contabilidad",
-        "cuenta contable",
-        "pgc",
-        "amortización",
-        "balance de situación",
-        "pérdidas y ganancias",
-        "inmovilizado",
-        "activo fijo",
-        "debe",
-        "haber",
-        "conciliación contable",
-    ],
-    "inventory": [
-        "stock",
-        "inventario",
-        "almacén",
-        "almacen",
-        "existencias",
-        "producto",
-        "productos",
-        "sku",
-        "código de barras",
-        "codigo de barras",
-        "recuento",
-        "reposición",
-        "reposicion",
-        "punto de pedido",
-        "stock mínimo",
-        "stock minimo",
-        "merma",
-        "mermas",
-        "valoración de stock",
-        "entrada de mercancía",
-        "salida de mercancía",
-        "ajuste de stock",
-        "actualizar precios",
-        "subir precios",
-        "lote de productos",
-    ],
-    "report": [
-        "informe mensual",
-        "snapshot",
-        "resumen del mes",
-        "resumen mensual",
-        "resumen contable",
-        "resumen del trimestre",
-        "resumen trimestral",
-        "resumen anual",
-        "resumen del año",
-        "estado de la empresa",
-        "informe completo",
-        "informe empresarial",
-        "análisis mensual",
-        "cierre mensual",
-        "genera el informe",
-        "informe de gestión",
-        "dame el resumen",
-        "dame un resumen",
-    ],
-    "chat": [
-        "qué es",
-        "cómo funciona",
-        "explica",
-        "diferencia entre",
-        "qué significa",
-        "ayuda",
-        "terminó",
-        "ha terminado",
-        "estado de la tarea",
-        "cómo va",
-        "qué tal va",
-        "puedes",
-        "sabes",
-        "entiendes",
-        "gracias",
-        "hola",
-        "buenas",
-    ],
-}
 
 from app.prompts import load_prompt
 
@@ -364,77 +115,6 @@ def _is_question(text: str) -> bool:
     return any(t.lower().startswith(q) for q in question_starts)
 
 
-_CHITCHAT_TOKENS = {
-    "hola", "buenas", "buenos días", "buenas tardes", "buenas noches",
-    "gracias", "ok", "vale", "qué tal", "cómo estás",
-}
-
-# Strong keywords: si alguno matchea → dominio devuelto directamente sin scoring.
-# Solo poner aquí términos altamente predictivos del dominio (alta precisión, baja
-# ambigüedad). Si dudas si añadir uno, NO lo añadas — déjalo en _KEYWORD_MAP.
-# Orden importa: el primer match gana cuando hay strong en varios dominios.
-# Pones primero los dominios más específicos / "acción primaria" frente a
-# dominios "objeto/recurso" (billing puede aparecer como complemento).
-_STRONG_KEYWORDS: dict[str, list[str]] = {
-    # Acciones específicas primero
-    "rag": [
-        "qué dice", "qué dicen", "qué hay sobre", "qué tenemos sobre",
-        "qué información tenemos", "según el contrato", "según el documento",
-        "según los documentos", "según la política", "política interna",
-        "consultar la documentación", "preguntar a la documentación",
-        "pregúntale a la documentación", "busca en los documentos",
-        "resume el documento",
-    ],
-    "compliance": ["modelo 303", "modelo 130", "modelo 111", "modelo 200",
-                   "modelo 390", "aeat", "hacienda"],
-    "banking": ["iban", "concilia", "concilia movimiento", "extracto bancario",
-                "resumen financiero", "estado financiero", "saldo de la cuenta",
-                "transferencia"],
-    "email": ["envía un email", "envía email", "envía un correo", "envía correo",
-              "manda un email", "manda email", "manda un correo", "responde el correo",
-              "responde el email", "bandeja de entrada", "revisa el inbox"],
-    "workflow": ["crea un workflow", "automatización", "workflow", "cada lunes",
-                 "cada martes", "cada miércoles", "cada jueves", "cada viernes",
-                 "cada día", "cada semana"],
-    "documents": ["escanea", "escanear este", "sube este pdf", "sube este documento",
-                  "clasifica los documentos", "clasifica el documento"],
-    "recruitment": ["candidato", "currículum", "shortlist", "selección de personal",
-                    "vacante", "oferta de trabajo", "publica una oferta",
-                    "publicar una oferta", "puesto vacante"],
-    "marketing": ["campaña de marketing", "redes sociales", "instagram", "linkedin"],
-    "excel": ["excel", "csv", "hoja de cálculo"],
-    "accounting": [
-        "asiento contable", "libro diario", "crea un asiento", "asiento de",
-        "balance de situación", "pérdidas y ganancias", "cuenta contable",
-        "inmovilizado", "activo fijo", "amortización del inmovilizado",
-    ],
-    "inventory": [
-        "ajuste de stock", "ajusta el stock", "recuento de inventario",
-        "valoración del inventario", "productos bajo mínimo", "stock mínimo",
-        "actualizar precios", "sube los precios", "entrada de mercancía",
-        "salida de mercancía", "stock del producto", "cuánto stock",
-    ],
-    "report": ["informe mensual", "snapshot", "estado de la empresa", "cierre mensual",
-               "resumen contable", "resumen del mes", "resumen mensual",
-               "resumen del trimestre", "resumen trimestral", "resumen anual"],
-    # CRM-create antes de billing — "factura" es strong de billing y dispararía
-    # en prompts como "crea cliente y emítele factura"; pero el conector multi-step
-    # ya delega ese caso al LLM (path coordinator). Aquí cubrimos los CRM-create
-    # puros que sin esto caían al LLM y este los clasificaba mal como billing.
-    "crm": [
-        "crea un cliente", "crear cliente", "crea cliente",
-        "registra un cliente", "registrar cliente",
-        "añade un cliente", "añadir cliente",
-        "da de alta un cliente", "alta del cliente", "alta de cliente",
-        "agrega un cliente", "agregar cliente",
-    ],
-    # Dominios "objeto/recurso" al final (pueden aparecer como complemento de acción)
-    "hr": ["nómina", "nóminas", "da de alta empleado", "alta del empleado",
-           "alta de empleado"],
-    "billing": ["factura", "facturas", "cobro de", "presupuesto"],
-}
-
-
 def _strong_keyword_match(intent_lower: str) -> str | None:
     """Devuelve el dominio si algún strong keyword matchea, None si no."""
     for domain, keywords in _STRONG_KEYWORDS.items():
@@ -442,13 +122,6 @@ def _strong_keyword_match(intent_lower: str) -> str | None:
             if kw in intent_lower:
                 return domain
     return None
-
-
-_MULTI_STEP_CONNECTORS = (
-    " y luego ", " y después ", " y envía", " y manda",
-    " y prepara", " y genera", " y crea", " y notifica", " también ",
-    ", luego ", ", después ", " después de ",
-)
 
 
 def _has_multi_step_connector(intent_lower: str) -> bool:
