@@ -311,13 +311,24 @@ async def get_reconciliation_suggestions(
         select(BankTransaction)
         .where(BankTransaction.tenant_id == tenant_id, BankTransaction.status == "unreconciled")
         .order_by(desc(BankTransaction.date))
+        .limit(200)
     )
     txs = tx_res.scalars().all()
+    if not txs:
+        return []
 
+    # Pre-filtro en SQL: solo facturas cuyo importe cae en el rango de las txs
+    # (±0.02€, el mismo umbral que _candidates_for). Evita el producto
+    # cartesiano txs × todas las facturas en memoria.
+    amounts = [abs(float(tx.amount)) for tx in txs]
     inv_res = await db.execute(
         select(Invoice)
         .options(selectinload(Invoice.client))
-        .where(Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"]))
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.status.in_(["sent", "draft"]),
+            func.abs(Invoice.amount_total).between(min(amounts) - 0.02, max(amounts) + 0.02),
+        )
     )
     invoices = list(inv_res.scalars().all())
 

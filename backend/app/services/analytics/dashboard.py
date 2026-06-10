@@ -268,28 +268,37 @@ async def get_dashboard(
     )
     empleados_activos = int((await db.execute(emp_q)).scalar() or 0)
 
-    payroll_periodo_q = select(Payroll).where(
+    payroll_periodo_q = select(
+        func.coalesce(func.sum(Payroll.net_salary), 0),
+        func.count(),
+        func.count().filter(Payroll.status == "paid"),
+    ).where(
         Payroll.tenant_id == tenant_id,
         Payroll.period_start >= start,
         Payroll.period_end <= end,
     )
-    payrolls = (await db.execute(payroll_periodo_q)).scalars().all()
-    coste_nominas = sum(float(p.net_salary or 0) for p in payrolls)
-    nominas_pagadas = sum(1 for p in payrolls if p.status == "paid")
-    nominas_pendientes = len(payrolls) - nominas_pagadas
+    pay_sum, pay_total, pay_paid = (await db.execute(payroll_periodo_q)).one()
+    coste_nominas = float(pay_sum)
+    nominas_pagadas = int(pay_paid)
+    nominas_pendientes = int(pay_total) - nominas_pagadas
 
     # ── Banca (excluyendo demo) ──────────────────────────────────────────
-    bank_period_q = select(BankTransaction).where(
+    bank_period_q = select(
+        func.coalesce(func.sum(BankTransaction.amount).filter(BankTransaction.amount > 0), 0),
+        func.coalesce(func.sum(BankTransaction.amount).filter(BankTransaction.amount < 0), 0),
+        func.count(),
+        func.count().filter(BankTransaction.status == "reconciled"),
+    ).where(
         BankTransaction.tenant_id == tenant_id,
         BankTransaction.date >= start,
         BankTransaction.date <= end,
         _real_tx_filter(),
     )
-    bank_txs = (await db.execute(bank_period_q)).scalars().all()
-    entradas_periodo = sum(float(t.amount) for t in bank_txs if float(t.amount) > 0)
-    salidas_periodo = abs(sum(float(t.amount) for t in bank_txs if float(t.amount) < 0))
-    transacciones_periodo = len(bank_txs)
-    reconciliadas = sum(1 for t in bank_txs if t.status == "reconciled")
+    tx_in, tx_out, tx_total, tx_reconciled = (await db.execute(bank_period_q)).one()
+    entradas_periodo = float(tx_in)
+    salidas_periodo = abs(float(tx_out))
+    transacciones_periodo = int(tx_total)
+    reconciliadas = int(tx_reconciled)
     pendientes_conciliar = transacciones_periodo - reconciliadas
 
     # Saldo actual = balance de la transacción real más reciente
