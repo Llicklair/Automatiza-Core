@@ -10,8 +10,13 @@ from app.services.email.service import (
     send_email_smtp,
     test_imap_connection,
 )
+from app.services.email.credentials import get_email_credentials, get_oauth_token
+from app.services.email.sender import send_email
 
 __all__ = [
+    "get_email_credentials",
+    "get_oauth_token",
+    "send_email",
     "PROVIDER_PRESETS",
     "EmailCredentials",
     "EmailMessage",

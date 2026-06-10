@@ -17,7 +17,7 @@ from sqlalchemy import select
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import TenantDocument
 from app.services.email.service import send_email_smtp
-from app.services.email_credentials import get_email_credentials, get_oauth_token
+from app.services.email.credentials import get_email_credentials, get_oauth_token
 
 logger = logging.getLogger(__name__)
 

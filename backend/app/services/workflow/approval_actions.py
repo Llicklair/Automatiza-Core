@@ -329,7 +329,7 @@ async def _exec_send_email(
     params: dict, db: AsyncSession, tenant_id: str
 ) -> tuple[bool, str]:
     """Envía un email retenido (recordatorios de pago, comunicaciones a clientes)."""
-    from app.services.email_sender import send_email
+    from app.services.email.sender import send_email
 
     to = params.get("to") or ""
     subject = params.get("subject") or ""

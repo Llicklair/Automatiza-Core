@@ -81,7 +81,7 @@ async def _run_dispatch(user_intent: str) -> dict:
     async def _fake_send_email(*args, **kwargs):
         return {"success": True, "message_id": "test-fake"}
 
-    with patch("app.services.email_sender.send_email", side_effect=_fake_send_email):
+    with patch("app.services.email.sender.send_email", side_effect=_fake_send_email):
         from app.agents.orchestrator import orchestrator
 
         final = await asyncio.wait_for(orchestrator.ainvoke(state), timeout=_INVOKE_TIMEOUT_S)

@@ -170,7 +170,7 @@ async def send_email(
     current_user: User = Depends(get_current_user),
 ):
     """Envía un email usando las credenciales del tenant (Gmail > Outlook > SMTP)."""
-    from app.services.email_sender import send_email as send_email_service
+    from app.services.email.sender import send_email as send_email_service
 
     result = await send_email_service(
         tenant_id=str(current_user.tenant_id),
@@ -210,7 +210,7 @@ async def email_status(
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve qué proveedores de email están configurados para el tenant."""
-    from app.services.email_credentials import get_email_credentials, get_oauth_token
+    from app.services.email.credentials import get_email_credentials, get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
     gmail = bool(await get_oauth_token(tenant_id, "gmail"))
@@ -238,7 +238,7 @@ async def email_inbox(
     Lista los últimos mensajes recibidos del proveedor configurado.
     Detecta provider en este orden: gmail > outlook. Devuelve formato uniforme.
     """
-    from app.services.email_credentials import get_oauth_token
+    from app.services.email.credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
     limit = max(1, min(limit, 50))
@@ -303,7 +303,7 @@ async def drive_list_files(
     current_user: User = Depends(get_current_user),
 ):
     """Lista archivos de Google Drive del tenant. Requiere OAuth Gmail con scope drive."""
-    from app.services.email_credentials import get_oauth_token
+    from app.services.email.credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
     token = await get_oauth_token(tenant_id, "gmail")
@@ -346,7 +346,7 @@ async def drive_attach_as_document(
     Descarga un fichero de Drive y lo guarda como Document del tenant.
     Devuelve el Document para que el frontend lo añada como adjunto al correo.
     """
-    from app.services.email_credentials import get_oauth_token
+    from app.services.email.credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
     token = await get_oauth_token(tenant_id, "gmail")
@@ -397,7 +397,7 @@ async def email_message_detail(
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve el cuerpo completo de un mensaje del proveedor configurado."""
-    from app.services.email_credentials import get_oauth_token
+    from app.services.email.credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
 
@@ -502,7 +502,7 @@ async def draft_email_reply(
     y pasa el contexto opcional a la IA.
     """
     from app.services.email_ai import EmailAIError, draft_reply
-    from app.services.email_credentials import get_oauth_token
+    from app.services.email.credentials import get_oauth_token
 
     tenant_id = str(current_user.tenant_id)
 

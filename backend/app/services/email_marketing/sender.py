@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.db.models.email_marketing import EmailCampaign, EmailCampaignRecipient
 from app.services.audit import log_action
-from app.services.email_sender import send_email
+from app.services.email.sender import send_email
 
 logger = logging.getLogger(__name__)
 

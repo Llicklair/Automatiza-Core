@@ -15,7 +15,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm
-from app.services.email_credentials import get_email_credentials, get_oauth_token
+from app.services.email.credentials import get_email_credentials, get_oauth_token
 
 from ._provider_tools import build_real_tools
 from .prompts import build_system_prompt
