@@ -67,6 +67,63 @@ export function EmpleadoFormModal({
                     </FormField>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Pagas anuales">
+                        <Select
+                            value={form.num_pagas}
+                            onValueChange={(v) => setForm((f) => ({ ...f, num_pagas: v, prorratear_pagas: v === "12" ? false : f.prorratear_pagas }))}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="12" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="12">12 pagas</SelectItem>
+                                <SelectItem value="14">14 pagas (2 extras)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </FormField>
+                    <FormField label="Jornada">
+                        <Select
+                            value={form.jornada_tipo}
+                            onValueChange={(v) => setForm((f) => ({ ...f, jornada_tipo: v, jornada_horas_semana: v === "completa" ? "" : f.jornada_horas_semana }))}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Completa" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="completa">Completa (40h)</SelectItem>
+                                <SelectItem value="parcial">Parcial</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </FormField>
+                </div>
+
+                {form.num_pagas === "14" && (
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={form.prorratear_pagas}
+                            onChange={(e) => setForm((f) => ({ ...f, prorratear_pagas: e.target.checked }))}
+                            className="h-4 w-4 rounded border-border"
+                        />
+                        Prorratear pagas extra en la nómina mensual
+                    </label>
+                )}
+
+                {form.jornada_tipo === "parcial" && (
+                    <FormField label="Horas por semana">
+                        <Input
+                            type="number"
+                            min="1"
+                            max="40"
+                            step="0.5"
+                            value={form.jornada_horas_semana}
+                            onChange={(e) => setForm((f) => ({ ...f, jornada_horas_semana: e.target.value }))}
+                            placeholder="20"
+                        />
+                    </FormField>
+                )}
+
                 <FormField label="Email">
                     <Input
                         type="email"

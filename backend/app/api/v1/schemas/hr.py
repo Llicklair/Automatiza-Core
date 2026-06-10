@@ -13,6 +13,10 @@ class EmployeeBase(BaseModel):
     base_salary: float | None = None
     status: str = "active"
     irpf_rate: float | None = None
+    num_pagas: int | None = None  # 12 | 14
+    prorratear_pagas: bool | None = None
+    jornada_tipo: str | None = None  # completa | parcial
+    jornada_horas_semana: float | None = None
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
     leave_type: str | None = None
@@ -33,6 +37,10 @@ class EmployeeUpdate(BaseModel):
     base_salary: float | None = None
     status: str | None = None
     irpf_rate: float | None = None
+    num_pagas: int | None = None  # 12 | 14
+    prorratear_pagas: bool | None = None
+    jornada_tipo: str | None = None  # completa | parcial
+    jornada_horas_semana: float | None = None
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
     leave_type: str | None = None
@@ -166,6 +174,7 @@ class PayrollSimpleCreate(BaseModel):
     period_end: datetime
     issue_date: datetime | None = None
     base_salary: float | None = None  # Si None, usa employee.base_salary
+    horas_extra_importe: float = 0.0
     status: str = "draft"
 
 
@@ -198,6 +207,8 @@ class PayrollCalculateResponse(BaseModel):
 class PayrollResponse(PayrollBase):
     id: UUID
     tenant_id: UUID
+    gross_salary: float | None = None
+    devengos_json: dict | None = None
     created_at: datetime
     employee: EmployeeResponse | None = None
     model_config = ConfigDict(from_attributes=True)
@@ -215,6 +226,8 @@ class FiniquitoRequest(BaseModel):
     employee_id: UUID
     fecha_baja: str
     causa_baja: str = "Baja voluntaria"
+    # Con conceptos vacios el backend calcula el finiquito automaticamente
+    vacaciones_pendientes_dias: float = 0.0
     conceptos: list[FiniquitoConcepto] = []
     total_percepciones: float = 0.0
     total_deducciones: float = 0.0

@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from app.agents.hr._payroll_pdf import _generate_and_save_payroll_pdf
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee, Payroll
-from app.services.hr.queries import calc_payroll
+from app.services.hr.queries import calc_payroll_for_employee
 
 logger = logging.getLogger(__name__)
 
@@ -61,21 +61,24 @@ async def _create_payroll_async(
             base_salary = float(employee.base_salary) if employee.base_salary else 0
             irpf_rate = float(employee.irpf_rate) if employee.irpf_rate is not None else 15.0
 
-            # Cálculo unificado: mismas tasas y tope de cotización que el resto
-            # de la app (calc_payroll), evitando que la nómina creada por la IA
-            # difiera de la creada vía API.
-            calc = calc_payroll(base_salary, irpf_rate, year=year)
+            last_day = monthrange(year, month)[1]
+            start_date = datetime(year, month, 1, tzinfo=UTC)
+            end_date = datetime(year, month, last_day, tzinfo=UTC)
+
+            # Cálculo unificado: mismas tasas, tope y edge cases (jornada
+            # parcial, pagas extra, baja IT) que el resto de la app, evitando
+            # que la nómina creada por la IA difiera de la creada vía API.
+            calc = calc_payroll_for_employee(
+                employee, base_salary, irpf_rate, year=year,
+                period_start=start_date, period_end=end_date,
+            )
             ss_cc = calc["ss_contingencias_comunes"]
             ss_des = calc["ss_desempleo"]
             ss_fp = calc["ss_formacion_profesional"]
             ss_mei = calc["ss_mei"]
             irpf = calc["irpf"]
             total_ded = round(calc["deductions"] + deductions, 2)
-            net_salary = max(0.0, round(base_salary - total_ded, 2))
-
-            last_day = monthrange(year, month)[1]
-            start_date = datetime(year, month, 1, tzinfo=UTC)
-            end_date = datetime(year, month, last_day, tzinfo=UTC)
+            net_salary = max(0.0, round(calc["gross_salary"] - total_ded, 2))
 
             # Guard de unicidad: ya existe nómina del mismo empleado para este
             # period_start? Si sí, devolver mensaje claro sin crear duplicado.
@@ -104,6 +107,11 @@ async def _create_payroll_async(
                 period_end=end_date,
                 issue_date=datetime.now(UTC),
                 base_salary=base_salary,
+                gross_salary=calc["gross_salary"],
+                devengos_json=calc["devengos"],
+                base_cotizacion_cc=calc["base_cotizacion"],
+                base_irpf=calc["gross_salary"],
+                pct_irpf=irpf_rate,
                 ss_contingencias_comunes=ss_cc,
                 ss_desempleo=ss_des,
                 ss_formacion_profesional=ss_fp,
@@ -236,7 +244,10 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 base_salary = float(emp.base_salary) if emp.base_salary else 0
                 irpf_rate = float(emp.irpf_rate) if emp.irpf_rate is not None else 15.0
 
-                calc = calc_payroll(base_salary, irpf_rate, year=year)
+                calc = calc_payroll_for_employee(
+                    emp, base_salary, irpf_rate, year=year,
+                    period_start=start_date, period_end=end_date,
+                )
                 ss_cc = calc["ss_contingencias_comunes"]
                 ss_des = calc["ss_desempleo"]
                 ss_fp = calc["ss_formacion_profesional"]
@@ -253,6 +264,11 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                         period_end=end_date,
                         issue_date=datetime.now(UTC),
                         base_salary=base_salary,
+                        gross_salary=calc["gross_salary"],
+                        devengos_json=calc["devengos"],
+                        base_cotizacion_cc=calc["base_cotizacion"],
+                        base_irpf=calc["gross_salary"],
+                        pct_irpf=irpf_rate,
                         ss_contingencias_comunes=ss_cc,
                         ss_desempleo=ss_des,
                         ss_formacion_profesional=ss_fp,

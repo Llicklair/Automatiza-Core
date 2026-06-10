@@ -47,6 +47,10 @@ class Employee(Base):
     jornada_tipo = Column(String(20), default="completa")  # completa | parcial
     jornada_horas_semana = Column(Numeric(4, 1))  # e.g. 40.0
 
+    # Pagas: 12 (extras prorrateadas aparte) o 14 (junio/diciembre)
+    num_pagas = Column(Integer, default=12)
+    prorratear_pagas = Column(Boolean, default=False)  # prorrata de extras en nómina mensual
+
     # Bonificación SEPE aplicable al contrato
     # conversion_temporal | discapacidad | exclusion_social | mayor_45 | hogar_familiar | otras
     bonificacion_tipo = Column(String(50))
