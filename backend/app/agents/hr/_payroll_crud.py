@@ -170,6 +170,7 @@ async def _approve_payroll_async(
                     return f"No hay nóminas en borrador para {month}/{year}."
 
                 total_net = sum((Decimal(str(p.net_salary or 0)) for p in payrolls), Decimal(0))
+                # Umbral de importe, NO el gate de autonomía: aplica incluso en AUTO.
                 if total_net > APPROVAL_THRESHOLD_EUR:
                     from app.services.workflow.approval_actions import create_action_approval
 
@@ -220,6 +221,7 @@ async def _approve_payroll_async(
                 if payroll.status != "draft":
                     return f"Error: La nómina ya está en estado '{payroll.status}', no se puede aprobar."
 
+                # Umbral de importe, NO el gate de autonomía: aplica incluso en AUTO.
                 if Decimal(str(payroll.net_salary or 0)) > APPROVAL_THRESHOLD_EUR:
                     from app.services.workflow.approval_actions import create_action_approval
 

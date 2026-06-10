@@ -16,7 +16,7 @@ from sqlalchemy import or_, select
 from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.db.base import AsyncSessionLocal
 from app.db.models.inventory import Product
-from app.services.autonomy import check_autonomy
+from app.services.autonomy_gate import evaluate_autonomy
 from app.services.inventory import analytics, batch_service, reorder_service
 from app.services.workflow.approval_actions import create_action_approval
 
@@ -212,15 +212,20 @@ async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn)
     de resultado; el caller lo formatea.
     """
     async with AsyncSessionLocal() as db:
-        mode = await check_autonomy(db, tenant_id=tenant_uuid, domain=_INVENTORY_DOMAIN)
+        decision = await evaluate_autonomy(
+            db, tenant_id=tenant_uuid, domain=_INVENTORY_DOMAIN,
+            action_summary=summary[:480], action_payload=params,
+        )
 
-    if mode == "MANUAL":
+    if decision.manual_only:
         return (
             "⚠ Política de inventario en MANUAL: no aplico cambios automáticamente. "
             "Revisa la previsualización y aplícalos desde la UI.\n\n" + summary
         )
 
-    if mode == "CONFIRM":
+    if decision.needs_approval:
+        # create_action_approval (y no decision.persist_pending_approval) porque
+        # descubre el task-context activo y es idempotente por task/execution.
         approval_id = await create_action_approval(
             tenant_id=str(tenant_uuid), kind=kind, params=params, summary=summary[:480]
         )
