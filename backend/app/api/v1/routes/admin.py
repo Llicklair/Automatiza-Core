@@ -1,4 +1,15 @@
-"""Endpoints de administración: backup y restauración de la base de datos."""
+"""Endpoints de administración: backup y restauración de la base de datos.
+
+Nota de seguridad (auditoría H15): estos endpoints lanzan subprocesos
+(pg_dump/psql) pero están acotados:
+  - Solo rol admin (`require_role("admin")`) y rate-limit.
+  - `create_subprocess_exec` sin shell; los argumentos derivan únicamente
+    de `settings.DATABASE_URL` (config del servidor), nunca de input del
+    usuario. El único input externo (el .sql de restore) va por stdin a
+    psql, que es justamente el propósito del endpoint.
+  - Pensados para la app desktop local (Postgres portable del propio
+    usuario), no para un despliegue multi-tenant expuesto.
+"""
 
 import asyncio
 import logging
