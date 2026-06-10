@@ -21,7 +21,7 @@ import {
     Users,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useToastStore } from "@/stores/toast";
 
 type ModeloKey = "130" | "111" | "190" | "347" | "390";
