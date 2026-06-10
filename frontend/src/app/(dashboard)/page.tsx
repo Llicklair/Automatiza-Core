@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUserRole } from "@/hooks/useUserRole";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useDashboard } from "./_hooks/useDashboard";
 import { AiChatBar } from "./_components/AiChatBar";
@@ -24,7 +27,16 @@ function getGreeting(name: string) {
 }
 
 export default function DashboardPage() {
+    const role = useUserRole();
+    const router = useRouter();
     const { tasks, approvals, invoices, summary, analytics, loading, userName, integrations, employees, workingNow } = useDashboard();
+
+    // Los empleados no gestionan el negocio: su inicio es Mi Portal.
+    useEffect(() => {
+        if (role === "employee") router.replace("/portal");
+    }, [role, router]);
+
+    if (role === "employee") return null;
 
     return (
         <ErrorBoundary section="inicio">
