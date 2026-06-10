@@ -62,7 +62,9 @@ async def _create_invoice_async(
     if not validation.is_valid:
         return f"Error de validación: {'; '.join(validation.errors)}"
 
-    # Aprobación humana si supera el umbral compartido
+    # Aprobación humana si supera el umbral compartido.
+    # NOTA: esto NO es el gate de autonomía (evaluate_autonomy) — es un umbral
+    # de importe independiente que aplica incluso con la política en AUTO.
     if amount > APPROVAL_THRESHOLD_EUR:
         from app.services.workflow.approval_actions import create_action_approval
 

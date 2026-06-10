@@ -106,13 +106,25 @@ _FAKE_PREVIEW = {
 _ITEMS = '[{"ref":"C1","quantity":50}]'
 
 
+def _decision(mode: str) -> AsyncMock:
+    """Mock de evaluate_autonomy que devuelve una AutonomyDecision real."""
+    from uuid import UUID
+
+    from app.services.autonomy_gate import AutonomyDecision
+
+    return AsyncMock(return_value=AutonomyDecision(
+        mode=mode, domain="inventory", tenant_id=UUID(VALID_TENANT),
+        action_summary="test",
+    ))
+
+
 @pytest.mark.asyncio
 async def test_confirm_mode_queues_approval_not_apply():
     """Política CONFIRM con contexto de task → encola aprobación, no aplica."""
     import app.agents.inventory.tools as t
 
     with patch.object(t.batch_service, "batch_adjust_stock", new=AsyncMock(return_value=_FAKE_PREVIEW)) as svc, \
-         patch.object(t, "check_autonomy", new=AsyncMock(return_value="CONFIRM")), \
+         patch.object(t, "evaluate_autonomy", new=_decision("CONFIRM")), \
          patch.object(t, "create_action_approval", new=AsyncMock(return_value="appr-123")) as appr:
         out = await t.batch_adjust_stock.ainvoke(
             {"tenant_id": VALID_TENANT, "items_json": _ITEMS, "op": "set"}
@@ -130,7 +142,7 @@ async def test_manual_mode_only_suggests():
     import app.agents.inventory.tools as t
 
     with patch.object(t.batch_service, "batch_adjust_stock", new=AsyncMock(return_value=_FAKE_PREVIEW)) as svc, \
-         patch.object(t, "check_autonomy", new=AsyncMock(return_value="MANUAL")), \
+         patch.object(t, "evaluate_autonomy", new=_decision("MANUAL")), \
          patch.object(t, "create_action_approval", new=AsyncMock()) as appr:
         out = await t.batch_adjust_stock.ainvoke(
             {"tenant_id": VALID_TENANT, "items_json": _ITEMS, "op": "set"}
@@ -154,7 +166,7 @@ async def test_auto_mode_applies_directly():
         return applied if kw.get("dry_run") is False else _FAKE_PREVIEW
 
     with patch.object(t.batch_service, "batch_adjust_stock", new=AsyncMock(side_effect=_svc)), \
-         patch.object(t, "check_autonomy", new=AsyncMock(return_value="AUTO")), \
+         patch.object(t, "evaluate_autonomy", new=_decision("AUTO")), \
          patch.object(t, "create_action_approval", new=AsyncMock()) as appr:
         out = await t.batch_adjust_stock.ainvoke(
             {"tenant_id": VALID_TENANT, "items_json": _ITEMS, "op": "set"}
