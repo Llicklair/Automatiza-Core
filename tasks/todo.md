@@ -53,10 +53,16 @@ menor: `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
   tsc por página + next build final verde. Pendiente anotado: doble carga
   de `accounts()` entre TabCuentas/TabCrear (marketing).
 
-Pendiente (proyectos, no aprobados): #10 polling → invalidación, #7 a11y,
-#11 tokens de diseño/PageContainer, #6 tabs unificados, migración i18n
-real por módulos, alert de `portal-cliente/page.tsx` (necesita
-ToastContainer en su layout propio).
+- [x] **#10 polling** (2026-06-11): hook `lib/hooks/usePolling` con pausa en
+  pestaña oculta + 7 tests (b8d3886); ApprovalsTab → push WS approval_created
+  + respaldo 60s, ActivityTab/usePendingApprovalsCount migrados (dc8eb92);
+  6 polls continuos migrados, layout ahora reactivo a hydrated/token
+  (7619fdc). Polls acotados OAuth/tasks y UI ticks intactos a propósito.
+
+Pendiente (proyectos, no aprobados): #7 a11y, #11 tokens de
+diseño/PageContainer, #6 tabs unificados, migración i18n real por
+módulos, alert de `portal-cliente/page.tsx` (necesita ToastContainer
+en su layout propio).
 
 ---
 

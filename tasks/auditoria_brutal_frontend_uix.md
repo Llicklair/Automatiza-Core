@@ -11,7 +11,14 @@
 > (3ec520b), usuarios 609→179 (b62e1a2), clientes 537→153 (e0c743a), email-marketing
 > 528→58 (9eb154a). Pure-move verificado con tsc por página + next build final.
 > Pendiente anotado: doble carga de accounts() entre TabCuentas/TabCrear (marketing).
-> Pendientes (proyectos, no quick-wins): #10 polling, #7 a11y,
+> ✅ **#10 polling COMPLETADO 2026-06-11** — hook `lib/hooks/usePolling` (enabled +
+> pausa en pestaña oculta con catch-up, 7 tests) en b8d3886; ApprovalsTab pasa a
+> push WS approval_created + respaldo 60s, ActivityTab/usePendingApprovalsCount
+> migrados (dc8eb92); 6 polls continuos migrados — layout (ahora reactivo a
+> hydrated/token, antes podía no arrancar), useMiEquipo, useTaskPanel, useFichajes,
+> useEscaner, useAutomatizacionesExecution (7619fdc). Polls acotados de OAuth/tasks
+> y UI ticks intactos a propósito (pausarlos rompería las esperas OAuth).
+> Pendientes (proyectos, no quick-wins): #7 a11y,
 > #11 tokens de diseño/PageContainer, #6 tabs, migración i18n real (#1 fase 2),
 > y el alert de `portal-cliente/page.tsx` (fuera del layout, sin ToastContainer).
 
