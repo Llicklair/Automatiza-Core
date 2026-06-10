@@ -119,35 +119,153 @@ VALID_CANDIDATE_STATUSES = {"new", "reviewed", "shortlisted", "rejected", "hired
 # ── Calculo de nomina ────────────────────────────────────────────────────────
 
 
-def calc_payroll(base_salary: float, irpf_rate: float, year: int | None = None) -> dict:
-    """Calcula deducciones de SS e IRPF sobre el salario base mensual.
+# Cotización del trabajador por horas extraordinarias (Régimen General):
+# estructurales/normales 4,70 % · fuerza mayor 2,00 %.
+_SS_HORAS_EXTRA = 0.0470
+_SS_HORAS_EXTRA_FM = 0.0200
+
+# Prestación IT por contingencias comunes (base reguladora diaria):
+# días 1-3: 0 % · días 4-20: 60 % · día 21+: 75 % (salvo mejora de convenio).
+_IT_TRAMOS = ((1, 3, 0.0), (4, 20, 0.60), (21, None, 0.75))
+
+_DIAS_PERIODO = 30  # mes "comercial" usado como divisor de la base reguladora
+
+
+def it_days_overlap(leave_start, leave_end, period_start, period_end) -> tuple[int, int]:
+    """Días de baja IT que caen dentro del periodo de nómina.
+
+    Devuelve ``(dias_it_en_periodo, dia_de_baja_al_inicio)``: cuántos días del
+    periodo está de baja (máx. 30) y qué número de día de baja corresponde al
+    primer día de IT dentro del periodo (para situar los tramos 60 %/75 %).
+    """
+    if not leave_start or not period_start or not period_end:
+        return 0, 1
+    start = max(leave_start, period_start)
+    end = min(leave_end, period_end) if leave_end else period_end
+    if start > end:
+        return 0, 1
+    dias = min((end - start).days + 1, _DIAS_PERIODO)
+    dia_inicio = (start - leave_start).days + 1
+    return dias, dia_inicio
+
+
+def _prestacion_it(base_reguladora_diaria: float, dias_it: int, dia_inicio: int) -> float:
+    """Prestación IT del periodo: suma día a día según el tramo legal."""
+    total = 0.0
+    for i in range(dias_it):
+        dia = dia_inicio + i
+        for low, high, pct in _IT_TRAMOS:
+            if dia >= low and (high is None or dia <= high):
+                total += base_reguladora_diaria * pct
+                break
+    return round(total, 2)
+
+
+def calc_payroll(
+    base_salary: float,
+    irpf_rate: float,
+    year: int | None = None,
+    *,
+    num_pagas: int = 12,
+    prorratear_pagas: bool = False,
+    jornada_pct: float = 100.0,
+    horas_extra_importe: float = 0.0,
+    horas_extra_fuerza_mayor: bool = False,
+    dias_baja_it: int = 0,
+    it_dia_inicio: int = 1,
+) -> dict:
+    """Calcula la nómina mensual: devengos, SS e IRPF del trabajador.
+
+    Con los argumentos por defecto reproduce el cálculo clásico (mensualidad
+    simple sobre el salario base). Los kwargs cubren los casos reales:
+
+    - ``num_pagas``/``prorratear_pagas``: con 14 pagas, la prorrata de las
+      extras SIEMPRE forma parte de la base de cotización mensual (art. 147
+      LGSS); solo se suma al devengo si se prorratea en nómina.
+    - ``jornada_pct``: jornada parcial — prorratea el salario base.
+    - ``horas_extra_importe``: cotizan aparte (4,70 % trabajador; 2 % si son
+      de fuerza mayor) y tributan IRPF como el resto del devengo.
+    - ``dias_baja_it``/``it_dia_inicio``: baja por IT (contingencias comunes):
+      días 1-3 sin prestación, 4-20 al 60 %, 21+ al 75 % de la base reguladora
+      diaria (base/30). La cotización del mes se mantiene sobre la base normal.
 
     La SS se cotiza sobre la BASE DE COTIZACIÓN, topada por la base máxima
-    mensual del año: si el salario supera el tope, la SS se calcula sobre el
-    tope, no sobre el salario completo (antes se sobre-deducía a los sueldos
-    altos). El IRPF se retiene sobre el salario íntegro, sin tope.
-
-    `year`: año del periodo para elegir el tope; si es None usa el más reciente.
+    mensual del año. El IRPF se retiene sobre el devengo íntegro, sin tope.
+    `year`: año del periodo para elegir tope/MEI; si es None usa el más reciente.
     """
     base_salary = float(base_salary)
     irpf_rate = float(irpf_rate)
+
+    # Jornada parcial: prorrateo del salario base.
+    jornada_pct = float(jornada_pct or 100.0)
+    base_mes = round(base_salary * jornada_pct / 100, 2)
+
+    # Pagas extra: prorrata mensual (solo si hay más de 12 pagas).
+    pagas_extra = max(int(num_pagas or 12) - 12, 0)
+    prorrata_extra = round(base_mes * pagas_extra / 12, 2) if pagas_extra else 0.0
+
+    # Baja IT: días trabajados cobran salario; días de baja cobran prestación.
+    dias_baja_it = min(max(int(dias_baja_it or 0), 0), _DIAS_PERIODO)
+    base_reguladora_diaria = round(base_mes / _DIAS_PERIODO, 4)
+    salario_dias_trabajados = round(
+        base_mes * (_DIAS_PERIODO - dias_baja_it) / _DIAS_PERIODO, 2
+    )
+    prestacion_it = (
+        _prestacion_it(base_reguladora_diaria, dias_baja_it, max(int(it_dia_inicio or 1), 1))
+        if dias_baja_it
+        else 0.0
+    )
+
+    horas_extra_importe = round(float(horas_extra_importe or 0.0), 2)
+
+    # Devengo bruto del periodo.
+    gross = round(
+        salario_dias_trabajados
+        + prestacion_it
+        + (prorrata_extra if prorratear_pagas else 0.0)
+        + horas_extra_importe,
+        2,
+    )
+
+    # Base de cotización mensual: salario + prorrata de extras, topada.
+    # Durante la IT la obligación de cotizar se mantiene sobre la base normal.
     tope = base_maxima_cotizacion(year)
-    base_cotizacion = min(base_salary, tope) if base_salary > 0 else 0.0
+    base_mensual = base_mes + prorrata_extra
+    base_cotizacion = min(base_mensual, tope) if base_mensual > 0 else 0.0
     ss_cc = round(base_cotizacion * _SS_CONTINGENCIAS, 2)
     ss_des = round(base_cotizacion * _SS_DESEMPLEO, 2)
     ss_fp = round(base_cotizacion * _SS_FP, 2)
     ss_mei = round(base_cotizacion * mei_trabajador(year), 2)
-    total_ss = round(ss_cc + ss_des + ss_fp + ss_mei, 2)
-    irpf = round(base_salary * (irpf_rate / 100), 2)
-    # Cuota de solidaridad del trabajador (solo si el salario supera el tope).
-    solidaridad = cuota_solidaridad_trabajador(base_salary, year)
+    # Horas extra: cotización adicional del trabajador, fuera del tope mensual.
+    tipo_he = _SS_HORAS_EXTRA_FM if horas_extra_fuerza_mayor else _SS_HORAS_EXTRA
+    ss_horas_extra = round(horas_extra_importe * tipo_he, 2)
+    total_ss = round(ss_cc + ss_des + ss_fp + ss_mei + ss_horas_extra, 2)
+
+    irpf = round(gross * (irpf_rate / 100), 2)
+    # Cuota de solidaridad del trabajador (solo si la base mensual supera el tope).
+    solidaridad = cuota_solidaridad_trabajador(base_mensual, year)
     deductions = round(total_ss + irpf + solidaridad, 2)
-    net = round(base_salary - deductions, 2)
+    net = round(gross - deductions, 2)
+
+    devengos = {
+        "salario_base": salario_dias_trabajados,
+        "prorrata_pagas_extra": prorrata_extra if prorratear_pagas else 0.0,
+        "horas_extra": horas_extra_importe,
+        "prestacion_it": prestacion_it,
+        "dias_trabajados": _DIAS_PERIODO - dias_baja_it,
+        "dias_baja_it": dias_baja_it,
+        "num_pagas": int(num_pagas or 12),
+        "jornada_pct": jornada_pct,
+    }
+
     return {
+        "gross_salary": gross,
+        "devengos": devengos,
         "ss_contingencias_comunes": ss_cc,
         "ss_desempleo": ss_des,
         "ss_formacion_profesional": ss_fp,
         "ss_mei": ss_mei,
+        "ss_horas_extra": ss_horas_extra,
         "total_ss": total_ss,
         "irpf": irpf,
         "cuota_solidaridad": solidaridad,
@@ -155,6 +273,45 @@ def calc_payroll(base_salary: float, irpf_rate: float, year: int | None = None) 
         "net_salary": net,
         "base_cotizacion": round(base_cotizacion, 2),
     }
+
+
+def calc_payroll_for_employee(
+    emp: Employee,
+    base_salary: float,
+    irpf_rate: float,
+    year: int | None = None,
+    period_start=None,
+    period_end=None,
+    horas_extra_importe: float = 0.0,
+) -> dict:
+    """calc_payroll derivando los kwargs desde la ficha del empleado.
+
+    - Jornada parcial: % desde ``jornada_horas_semana`` (sobre 40 h).
+    - Pagas: ``num_pagas`` del empleado (12 por defecto).
+    - Baja IT: si el empleado está de ``baja_medica`` y las fechas solapan
+      el periodo de la nómina.
+    """
+    jornada_pct = 100.0
+    if (emp.jornada_tipo or "completa") == "parcial" and emp.jornada_horas_semana:
+        jornada_pct = round(float(emp.jornada_horas_semana) / 40.0 * 100, 2)
+
+    dias_it, it_inicio = 0, 1
+    if emp.leave_type == "baja_medica" and emp.leave_start and period_start and period_end:
+        ps = period_start.date() if hasattr(period_start, "date") else period_start
+        pe = period_end.date() if hasattr(period_end, "date") else period_end
+        dias_it, it_inicio = it_days_overlap(emp.leave_start, emp.leave_end, ps, pe)
+
+    return calc_payroll(
+        base_salary,
+        irpf_rate,
+        year=year,
+        num_pagas=int(getattr(emp, "num_pagas", None) or 12),
+        prorratear_pagas=bool(getattr(emp, "prorratear_pagas", False)),
+        jornada_pct=jornada_pct,
+        horas_extra_importe=horas_extra_importe,
+        dias_baja_it=dias_it,
+        it_dia_inicio=it_inicio,
+    )
 
 
 # ── Employee queries ─────────────────────────────────────────────────────────

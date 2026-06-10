@@ -69,7 +69,7 @@ export function PayrollDrawer({
                                         {format(new Date(p.period_start), "d MMM", { locale: es })} – {format(new Date(p.period_end), "d MMM yyyy", { locale: es })}
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                        <span>Bruto: {currencyFmt.format(p.base_salary)}</span>
+                                        <span>Bruto: {currencyFmt.format(p.gross_salary ?? p.base_salary)}</span>
                                         <span className="text-emerald-400 font-medium">Neto: {currencyFmt.format(p.net_salary)}</span>
                                     </div>
                                 </div>

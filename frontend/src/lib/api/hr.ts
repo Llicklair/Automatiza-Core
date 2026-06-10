@@ -19,6 +19,10 @@ export interface Employee {
     base_salary: number | null;
     status: string;
     irpf_rate: number | null;
+    num_pagas: number | null;
+    prorratear_pagas: boolean | null;
+    jornada_tipo: string | null;
+    jornada_horas_semana: number | null;
     join_date: string | null;
     contract_end_date: string | null;
     leave_type: string | null;
@@ -63,6 +67,8 @@ export interface Payroll {
     deductions: number;
     net_salary: number;
     status: string;
+    gross_salary?: number | null;
+    devengos_json?: Record<string, number> | null;
     created_at: string;
     employee?: Employee;
 }
@@ -129,7 +135,7 @@ export const hr = {
     payrolls: {
         list: () => request<Payroll[]>("/api/v1/hr/payrolls"),
         generate: (data: Partial<Payroll>) => request<Payroll>("/api/v1/hr/payrolls", { method: "POST", body: JSON.stringify(data) }),
-        generateAuto: (data: { employee_id: string; period_start: string; period_end: string; issue_date?: string; base_salary?: number; status?: string }) =>
+        generateAuto: (data: { employee_id: string; period_start: string; period_end: string; issue_date?: string; base_salary?: number; horas_extra_importe?: number; status?: string }) =>
             request<Payroll>("/api/v1/hr/payrolls/auto", { method: "POST", body: JSON.stringify(data) }),
         preview: (employeeId: string) =>
             request<PayrollCalculation>(`/api/v1/hr/employees/${employeeId}/payroll/preview`),

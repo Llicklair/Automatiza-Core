@@ -30,7 +30,38 @@ async def load_employee_and_tenant(
     return emp, tenant
 
 
-def generate_finiquito_pdf(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str]:
+def generate_finiquito_pdf(
+    emp: Employee, tenant: Tenant | None, payload
+) -> tuple[bytes, str, dict | None]:
+    """Genera el PDF de finiquito.
+
+    Si el payload no trae conceptos, los calcula desde la ficha del empleado
+    (vacaciones pendientes + prorrata de extras + indemnización por causa).
+    Devuelve ``(pdf_bytes, filename, calc)`` — ``calc`` solo en modo auto,
+    para que la ruta pueda persistir el Settlement.
+    """
+    conceptos = [c.model_dump() for c in payload.conceptos]
+    total_percepciones = payload.total_percepciones
+    total_deducciones = payload.total_deducciones
+    liquido = payload.liquido
+    calc = None
+
+    if not conceptos:
+        from app.services.hr.finiquito import calc_finiquito_for_employee
+
+        calc = calc_finiquito_for_employee(
+            emp,
+            fecha_baja=payload.fecha_baja,
+            causa=payload.causa_baja,
+            vacaciones_pendientes_dias=float(
+                getattr(payload, "vacaciones_pendientes_dias", 0) or 0
+            ),
+        )
+        conceptos = calc["conceptos"]
+        total_percepciones = calc["total_percepciones"]
+        total_deducciones = calc["total_deducciones"]
+        liquido = calc["total_liquido"]
+
     finiquito_data = {
         "employee": {"name": emp.name, "nif": emp.nif or ""},
         "company": {
@@ -40,15 +71,15 @@ def generate_finiquito_pdf(emp: Employee, tenant: Tenant | None, payload) -> tup
         },
         "fecha_baja": payload.fecha_baja,
         "causa_baja": payload.causa_baja,
-        "conceptos": [c.model_dump() for c in payload.conceptos],
-        "total_percepciones": payload.total_percepciones,
-        "total_deducciones": payload.total_deducciones,
-        "liquido": payload.liquido,
+        "conceptos": conceptos,
+        "total_percepciones": total_percepciones,
+        "total_deducciones": total_deducciones,
+        "liquido": liquido,
         "fecha": datetime.now(UTC).isoformat(),
     }
     pdf_bytes = _pdf_finiquito(finiquito_data)
     filename = f"Finiquito_{emp.name.replace(' ', '_')}_{payload.fecha_baja[:10]}.pdf"
-    return pdf_bytes, filename
+    return pdf_bytes, filename, calc
 
 
 def generate_liquidacion_pdf(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str]:

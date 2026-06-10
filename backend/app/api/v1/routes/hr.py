@@ -326,7 +326,14 @@ async def generate_finiquito_pdf_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    pdf_bytes, filename = svc.generate_finiquito_pdf(emp, tenant, payload)
+    pdf_bytes, filename, calc = svc.generate_finiquito_pdf(emp, tenant, payload)
+
+    # Modo auto-cálculo: registrar el finiquito como Settlement (draft).
+    if calc is not None:
+        from app.services.hr.finiquito import create_settlement
+
+        await create_settlement(db, current_user.tenant_id, payload.employee_id, calc)
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

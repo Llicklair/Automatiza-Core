@@ -8,6 +8,10 @@ export interface EmployeeForm {
     role: string;
     base_salary: string;
     status: string;
+    num_pagas: string;
+    prorratear_pagas: boolean;
+    jornada_tipo: string;
+    jornada_horas_semana: string;
     join_date: string;
     contract_end_date: string;
     leave_type: string;
@@ -18,6 +22,8 @@ export interface EmployeeForm {
 export const EMPTY_FORM: EmployeeForm = {
     name: "", nif: "", email: "", department: "", role: "",
     base_salary: "", status: "active",
+    num_pagas: "12", prorratear_pagas: false,
+    jornada_tipo: "completa", jornada_horas_semana: "",
     join_date: "", contract_end_date: "",
     leave_type: "", leave_start: "", leave_end: "",
 };

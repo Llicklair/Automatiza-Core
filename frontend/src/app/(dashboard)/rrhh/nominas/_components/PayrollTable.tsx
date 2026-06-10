@@ -4,6 +4,16 @@ import { WalletCards, Download, CheckCircle2, Loader2 } from "lucide-react";
 import type { Payroll } from "@/lib/api";
 import { PayrollStatusBadge } from "./PayrollStatusBadge";
 
+function devengoExtras(p: Payroll, fmt: (n: number) => string): string[] {
+    const d = p.devengos_json;
+    if (!d) return [];
+    const extras: string[] = [];
+    if (d.prorrata_pagas_extra) extras.push(`P. extra ${fmt(d.prorrata_pagas_extra)}`);
+    if (d.horas_extra) extras.push(`H. extra ${fmt(d.horas_extra)}`);
+    if (d.prestacion_it) extras.push(`IT ${fmt(d.prestacion_it)} (${d.dias_baja_it} días)`);
+    return extras;
+}
+
 interface PayrollTableProps {
     filtered: Payroll[];
     isLoading: boolean;
@@ -56,7 +66,14 @@ export function PayrollTable({
                                         {format(new Date(payroll.period_start), "d MMM", { locale: es })} – {format(new Date(payroll.period_end), "d MMM yyyy", { locale: es })}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-right text-muted-foreground">{fmt(payroll.base_salary)}</td>
+                                <td className="px-6 py-4 text-right text-muted-foreground">
+                                    {fmt(payroll.gross_salary ?? payroll.base_salary)}
+                                    {devengoExtras(payroll, fmt).length > 0 && (
+                                        <div className="text-[10px] text-muted-foreground/70">
+                                            {devengoExtras(payroll, fmt).join(" · ")}
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 text-right text-red-400/80 text-xs">−{fmt(payroll.deductions)}</td>
                                 <td className="px-6 py-4 text-right font-semibold text-emerald-400 border-l border-border bg-muted/20 text-base">{fmt(payroll.net_salary)}</td>
                                 <td className="px-6 py-4"><div className="flex justify-center"><PayrollStatusBadge status={payroll.status} /></div></td>

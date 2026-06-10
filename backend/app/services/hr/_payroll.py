@@ -47,7 +47,8 @@ async def create_payroll(payload, tenant_id, db: AsyncSession) -> Payroll:
 
 async def create_payroll_auto(payload, tenant_id, db: AsyncSession) -> Payroll:
     """Crea nomina con calculo automatico de SS e IRPF. Lanza ValueError si falla."""
-    from app.services.hr.service import calc_payroll, get_employee
+    from app.services.hr.queries import calc_payroll_for_employee
+    from app.services.hr.service import get_employee
 
     emp = await get_employee(payload.employee_id, tenant_id, db)
     if not emp:
@@ -58,7 +59,15 @@ async def create_payroll_auto(payload, tenant_id, db: AsyncSession) -> Payroll:
         raise ValueError("El salario base debe ser mayor que 0")
 
     irpf_rate = float(emp.irpf_rate or 15.0)
-    calc = calc_payroll(base, irpf_rate)
+    calc = calc_payroll_for_employee(
+        emp,
+        base,
+        irpf_rate,
+        year=payload.period_start.year if payload.period_start else None,
+        period_start=payload.period_start,
+        period_end=payload.period_end,
+        horas_extra_importe=float(getattr(payload, "horas_extra_importe", 0) or 0),
+    )
 
     new_payroll = Payroll(
         tenant_id=tenant_id,
@@ -67,13 +76,20 @@ async def create_payroll_auto(payload, tenant_id, db: AsyncSession) -> Payroll:
         period_end=payload.period_end,
         issue_date=payload.issue_date or datetime.now(UTC),
         base_salary=base,
+        gross_salary=calc["gross_salary"],
+        devengos_json=calc["devengos"],
+        base_cotizacion_cc=calc["base_cotizacion"],
+        base_irpf=calc["gross_salary"],
+        pct_irpf=irpf_rate,
         ss_contingencias_comunes=calc["ss_contingencias_comunes"],
         ss_desempleo=calc["ss_desempleo"],
         ss_formacion_profesional=calc["ss_formacion_profesional"],
         ss_mei=calc["ss_mei"],
         cuota_solidaridad=calc["cuota_solidaridad"],
         irpf=calc["irpf"],
-        other_deductions=0.0,
+        # Cotización de horas extra: sin columna propia — va en otras deducciones
+        # para que el desglose por columnas cuadre con el total.
+        other_deductions=calc["ss_horas_extra"],
         deductions=calc["deductions"],
         net_salary=calc["net_salary"],
         status=payload.status,
@@ -89,7 +105,8 @@ async def create_payroll_auto(payload, tenant_id, db: AsyncSession) -> Payroll:
 
 async def preview_payroll(employee_id: UUID, tenant_id, db: AsyncSession) -> dict:
     """Calcula preview de nomina sin crear registro. Lanza ValueError."""
-    from app.services.hr.service import calc_payroll, get_employee
+    from app.services.hr.queries import calc_payroll_for_employee
+    from app.services.hr.service import get_employee
 
     emp = await get_employee(employee_id, tenant_id, db)
     if not emp:
@@ -99,7 +116,8 @@ async def preview_payroll(employee_id: UUID, tenant_id, db: AsyncSession) -> dic
 
     base = float(emp.base_salary)
     irpf_rate = float(emp.irpf_rate or 15.0)
-    calc = calc_payroll(base, irpf_rate)
+    now = datetime.now(UTC)
+    calc = calc_payroll_for_employee(emp, base, irpf_rate, year=now.year)
     return {"employee_id": employee_id, "base_salary": base, "irpf_rate_applied": irpf_rate, **calc}
 
 
