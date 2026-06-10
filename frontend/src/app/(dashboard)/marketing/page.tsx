@@ -245,6 +245,7 @@ function TabCuentas() {
 // ── Tab: Crear post ────────────────────────────────────────────────────────────
 
 function TabCrear() {
+    const toast = useToastStore();
     const [accounts, setAccounts] = useState<SocialAccount[]>([]);
     const [selectedAccount, setSelectedAccount] = useState("");
     const [content, setContent] = useState("");
@@ -263,7 +264,7 @@ function TabCrear() {
     useEffect(() => {
         marketingApi.accounts.list()
             .then(setAccounts)
-            .catch(() => {});
+            .catch((err) => logError("marketing/crear-load-accounts", err));
     }, []);
 
     const submit = async () => {
@@ -281,7 +282,9 @@ function TabCrear() {
             setContent("");
             setImageUrl("");
             setTimeout(() => setSuccess(false), 3000);
-        } catch {
+        } catch (err) {
+            logError("marketing/crear-post", err);
+            toast.error(err instanceof Error ? err.message : "No se pudo crear la publicación.");
         } finally {
             setLoading(false);
         }
@@ -497,6 +500,7 @@ function TabProgramados() {
 // ── Tab: Plan IA ───────────────────────────────────────────────────────────────
 
 function TabPlanIA() {
+    const toast = useToastStore();
     const [prompt, setPrompt] = useState("");
     const [generating, setGenerating] = useState(false);
     const [publishingAll, setPublishingAll] = useState(false);
@@ -553,7 +557,10 @@ function TabPlanIA() {
                     return p;
                 })
             );
-        } catch { /* ignore */ }
+        } catch (err) {
+            logError("marketing/publish-all", err);
+            toast.error(err instanceof Error ? err.message : "No se pudieron publicar los borradores.");
+        }
         setPublishingAll(false);
     };
 
@@ -561,7 +568,10 @@ function TabPlanIA() {
         try {
             await marketingApi.posts.delete(id);
             setDrafts((prev) => prev.filter((p) => p.id !== id));
-        } catch { /* ignore */ }
+        } catch (err) {
+            logError("marketing/remove-post", err);
+            toast.error(err instanceof Error ? err.message : "No se pudo eliminar el borrador.");
+        }
     };
 
     const pendingCount = drafts.filter((d) => d.status !== "published").length;
