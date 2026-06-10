@@ -1,9 +1,8 @@
 /**
  * I18N.SEL — Settings selector de idioma.
  *
- * Las traducciones CA/EU/GL son stubs marcados con prefijo `[XX]` hasta
- * que la agencia (I18N.TR) entregue las traducciones reales — la UI lo
- * señala explícitamente.
+ * Solo se ofrece español hasta que existan traducciones reales (I18N.TR).
+ * Los demás idiomas están comentados en `hooks/useLocale.ts`.
  */
 "use client";
 
@@ -18,8 +17,6 @@ import {
     type AppLocale,
 } from "@/hooks/useLocale";
 import { PageHeader } from "@/components/ui/PageHeader";
-
-const STUBBED: AppLocale[] = ["ca", "eu", "gl"];
 
 export default function IdiomaPage() {
     const router = useRouter();
@@ -48,12 +45,9 @@ export default function IdiomaPage() {
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2">
                 <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">Catalán, euskera y gallego</strong> están en
-                    proceso de traducción profesional. Mientras tanto verás los textos con prefijo
-                    <code className="mx-1 px-1 py-0.5 bg-background border border-border rounded">
-                        [CA]/[EU]/[GL]
-                    </code>
-                    para distinguirlos visualmente.
+                    <strong className="text-foreground">Catalán, euskera, gallego e inglés</strong>{" "}
+                    estarán disponibles próximamente, cuando finalice la traducción profesional de
+                    la interfaz.
                 </p>
             </div>
 
@@ -64,7 +58,6 @@ export default function IdiomaPage() {
             >
                 {SUPPORTED_LOCALES.map((opt) => {
                     const isActive = active === opt.code;
-                    const isStub = STUBBED.includes(opt.code);
                     return (
                         <button
                             key={opt.code}
@@ -88,7 +81,6 @@ export default function IdiomaPage() {
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         {opt.label}
-                                        {isStub && " · en traducción"}
                                     </p>
                                 </div>
                             </div>

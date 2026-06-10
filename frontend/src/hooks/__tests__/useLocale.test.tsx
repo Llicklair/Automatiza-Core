@@ -21,12 +21,18 @@ describe("useLocale helpers", () => {
     });
 
     it("setStoredLocale persiste y getStoredLocale lo lee", () => {
-        setStoredLocale("ca");
-        expect(getStoredLocale()).toBe("ca");
+        setStoredLocale("es");
+        expect(getStoredLocale()).toBe("es");
     });
 
     it("getStoredLocale ignora valores no soportados (fallback es)", () => {
         document.cookie = "locale=invalid; Path=/";
+        expect(getStoredLocale()).toBe("es");
+    });
+
+    it("getStoredLocale ignora locales retirados del selector (fallback es)", () => {
+        // Cookie heredada de cuando ca/eu/gl/en se ofrecían en la UI.
+        document.cookie = "locale=ca; Path=/";
         expect(getStoredLocale()).toBe("es");
     });
 
@@ -37,13 +43,9 @@ describe("useLocale helpers", () => {
         }
     });
 
-    it("SUPPORTED_LOCALES incluye co-oficiales españolas + en", () => {
+    it("SUPPORTED_LOCALES solo ofrece español hasta tener traducciones reales", () => {
         const codes = SUPPORTED_LOCALES.map((l) => l.code);
-        expect(codes).toContain("es");
-        expect(codes).toContain("ca");
-        expect(codes).toContain("eu");
-        expect(codes).toContain("gl");
-        expect(codes).toContain("en");
+        expect(codes).toEqual(["es"]);
     });
 
     it("cada locale tiene nombre nativo no vacío", () => {
