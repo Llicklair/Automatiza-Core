@@ -15,12 +15,33 @@ from app.services.treasury.projection import (
     CashflowDay,
     project_cashflow,
 )
-from app.services.treasury.sepa import Pain001Error, build_pain001
+from app.services.treasury.remittances import (
+    RemittanceError,
+    create_direct_debit_remittance,
+    create_transfer_remittance,
+    get_remittance,
+    list_remittances,
+    update_remittance_status,
+)
+from app.services.treasury.sepa import (
+    Pain001Error,
+    Pain008Error,
+    build_pain001,
+    build_pain008,
+)
 
 __all__ = [
     "CashflowAlert",
     "CashflowDay",
     "Pain001Error",
+    "Pain008Error",
+    "RemittanceError",
     "build_pain001",
+    "build_pain008",
+    "create_direct_debit_remittance",
+    "create_transfer_remittance",
+    "get_remittance",
+    "list_remittances",
     "project_cashflow",
+    "update_remittance_status",
 ]
