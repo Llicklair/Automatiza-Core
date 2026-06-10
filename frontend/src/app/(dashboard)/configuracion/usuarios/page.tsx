@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 
-import {
-    Loader2, Plus, Trash2, ShieldCheck, ShieldOff, X,
-    Mail, Copy, Check,
-} from "lucide-react";
+import { Plus, Mail } from "lucide-react";
 
 import type { Invitation, InvitationCreated, User, UserCreate } from "@/lib/api";
 import { showConfirm } from "@/stores/confirm";
@@ -13,23 +10,11 @@ import { showConfirm } from "@/stores/confirm";
 import { useUsuarios } from "./_hooks/useUsuarios";
 import { useLanAccess } from "./_hooks/useLanAccess";
 import PortalAccessCard from "./_components/PortalAccessCard";
-
-const USER_ROLES = ["admin", "user"] as const;
-const INVITE_ROLES = ["employee", "user", "admin"] as const;
-
-const ROLE_LABEL: Record<string, string> = {
-    admin: "Admin",
-    user: "Usuario",
-    viewer: "Solo lectura",
-    employee: "Empleado (solo Mi portal)",
-};
-
-function buildShareUrl(token: string, base?: string | null): string {
-    // En la app de escritorio, window.location.origin es localhost (no sirve en
-    // el móvil del empleado). Si tenemos la base de LAN, se usa esa.
-    const origin = base || (typeof window === "undefined" ? "" : window.location.origin);
-    return `${origin}/aceptar-invitacion/${token}`;
-}
+import PendingInvitationsTable from "./_components/PendingInvitationsTable";
+import UsersTable from "./_components/UsersTable";
+import NewUserModal from "./_components/NewUserModal";
+import NewInvitationModal from "./_components/NewInvitationModal";
+import ShareInvitationModal from "./_components/ShareInvitationModal";
 
 export default function UsuariosConfigPage() {
     const {
@@ -148,138 +133,23 @@ export default function UsuariosConfigPage() {
 
             {/* Invitaciones pendientes */}
             {pendingInvitations.length > 0 && (
-                <section className="space-y-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Invitaciones pendientes ({pendingInvitations.length})
-                    </h2>
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
-                                    <th className="text-left font-medium px-5 py-3">Email</th>
-                                    <th className="text-left font-medium px-5 py-3">Rol</th>
-                                    <th className="text-left font-medium px-5 py-3">Caduca</th>
-                                    <th className="text-right font-medium px-5 py-3">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pendingInvitations.map((inv) => (
-                                    <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                                        <td className="px-5 py-3 text-foreground">{inv.email}</td>
-                                        <td className="px-5 py-3 text-muted-foreground">{ROLE_LABEL[inv.role] ?? inv.role}</td>
-                                        <td className="px-5 py-3 text-muted-foreground text-xs">
-                                            {new Date(inv.expires_at).toLocaleString()}
-                                        </td>
-                                        <td className="px-5 py-3">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => handleRevoke(inv)}
-                                                    disabled={busyId === inv.id}
-                                                    title="Revocar"
-                                                    className="p-1.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                <PendingInvitationsTable
+                    invitations={pendingInvitations}
+                    busyId={busyId}
+                    onRevoke={handleRevoke}
+                />
             )}
 
             {/* Usuarios */}
-            <section className="space-y-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Usuarios activos ({users.length})
-                </h2>
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                    {loading ? (
-                        <div className="flex items-center justify-center gap-2 text-muted-foreground py-12">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Cargando usuarios…
-                        </div>
-                    ) : users.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-12 text-sm">
-                            No hay usuarios todavía.
-                        </div>
-                    ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
-                                    <th className="text-left font-medium px-5 py-3">Email</th>
-                                    <th className="text-left font-medium px-5 py-3">Nombre</th>
-                                    <th className="text-left font-medium px-5 py-3">Rol</th>
-                                    <th className="text-left font-medium px-5 py-3">Estado</th>
-                                    <th className="text-right font-medium px-5 py-3">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map((u) => (
-                                    <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                                        <td className="px-5 py-3 text-foreground">
-                                            {u.email}
-                                            {isSelf(u) && (
-                                                <span className="ml-2 text-xs text-primary">(tú)</span>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-3 text-muted-foreground">{u.full_name || "—"}</td>
-                                        <td className="px-5 py-3">
-                                            <select
-                                                value={u.role}
-                                                onChange={(e) => handleChangeRole(u, e.target.value)}
-                                                disabled={busyId === u.id || isSelf(u)}
-                                                className="bg-muted border border-border rounded-lg px-2 py-1 text-xs text-foreground disabled:opacity-50"
-                                            >
-                                                {INVITE_ROLES.map((r) => (
-                                                    <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td className="px-5 py-3">
-                                            <span
-                                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs ${
-                                                    u.is_active
-                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                        : "bg-muted text-muted-foreground border border-border"
-                                                }`}
-                                            >
-                                                {u.is_active ? "Activo" : "Inactivo"}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => handleToggleActive(u)}
-                                                    disabled={busyId === u.id || isSelf(u)}
-                                                    title={u.is_active ? "Desactivar" : "Activar"}
-                                                    className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40"
-                                                >
-                                                    {u.is_active ? (
-                                                        <ShieldOff className="w-4 h-4" />
-                                                    ) : (
-                                                        <ShieldCheck className="w-4 h-4" />
-                                                    )}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(u)}
-                                                    disabled={busyId === u.id || isSelf(u)}
-                                                    title="Eliminar"
-                                                    className="p-1.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            </section>
+            <UsersTable
+                users={users}
+                loading={loading}
+                busyId={busyId}
+                isSelf={isSelf}
+                onChangeRole={handleChangeRole}
+                onToggleActive={handleToggleActive}
+                onDelete={handleDelete}
+            />
 
             <PortalAccessCard lan={lan} />
 
@@ -304,306 +174,6 @@ export default function UsuariosConfigPage() {
                     onClose={() => setShareInvitation(null)}
                 />
             )}
-        </div>
-    );
-}
-
-function NewUserModal({
-    onCancel,
-    onSubmit,
-}: {
-    onCancel: () => void;
-    onSubmit: (data: UserCreate) => Promise<void>;
-}) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [role, setRole] = useState<string>("user");
-    const [submitting, setSubmitting] = useState(false);
-
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            await onSubmit({
-                email: email.trim(),
-                password,
-                first_name: firstName.trim() || undefined,
-                last_name: lastName.trim() || undefined,
-                role,
-            });
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
-    return (
-        <Modal title="Crear usuario con contraseña" onClose={onCancel}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Email" required>
-                    <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                    />
-                </Field>
-
-                <Field label="Contraseña" required>
-                    <input
-                        type="password"
-                        required
-                        minLength={8}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                    />
-                </Field>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <Field label="Nombre">
-                        <input
-                            type="text"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                        />
-                    </Field>
-                    <Field label="Apellidos">
-                        <input
-                            type="text"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                        />
-                    </Field>
-                </div>
-
-                <Field label="Rol">
-                    <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                    >
-                        {USER_ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>
-                        ))}
-                    </select>
-                </Field>
-
-                <ModalActions onCancel={onCancel} submitting={submitting} submitLabel="Crear usuario" />
-            </form>
-        </Modal>
-    );
-}
-
-function NewInvitationModal({
-    onCancel,
-    onSubmit,
-}: {
-    onCancel: () => void;
-    onSubmit: (email: string, role: string, ttl_days: number) => Promise<void>;
-}) {
-    const [email, setEmail] = useState("");
-    const [role, setRole] = useState<string>("employee");
-    const [ttlDays, setTtlDays] = useState<number>(7);
-    const [submitting, setSubmitting] = useState(false);
-
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            await onSubmit(email.trim(), role, ttlDays);
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
-    return (
-        <Modal title="Invitar por email" onClose={onCancel}>
-            <p className="text-xs text-muted-foreground -mt-1">
-                Genera un enlace de invitación. Tras crearlo te lo mostraremos para que lo copies y lo envíes a la persona como prefieras.
-            </p>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Email del invitado" required>
-                    <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                        placeholder="empleado@empresa.com"
-                    />
-                </Field>
-
-                <Field label="Rol al aceptar">
-                    <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                    >
-                        {INVITE_ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>
-                        ))}
-                    </select>
-                </Field>
-
-                <Field label="Caducidad">
-                    <select
-                        value={ttlDays}
-                        onChange={(e) => setTtlDays(Number(e.target.value))}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                    >
-                        <option value={1}>1 día</option>
-                        <option value={3}>3 días</option>
-                        <option value={7}>7 días (recomendado)</option>
-                        <option value={14}>14 días</option>
-                        <option value={30}>30 días</option>
-                    </select>
-                </Field>
-
-                <ModalActions onCancel={onCancel} submitting={submitting} submitLabel="Generar enlace" />
-            </form>
-        </Modal>
-    );
-}
-
-function ShareInvitationModal({
-    invitation,
-    lanBase,
-    onClose,
-}: {
-    invitation: InvitationCreated;
-    lanBase?: string | null;
-    onClose: () => void;
-}) {
-    const [copied, setCopied] = useState(false);
-    // Si hay red local, el enlace usa la IP de LAN para que funcione en el móvil
-    // del empleado (no localhost, que solo vale en este ordenador).
-    const url = buildShareUrl(invitation.token, lanBase);
-
-    async function copy() {
-        try {
-            await navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch {
-            // Fallback: select the input
-        }
-    }
-
-    return (
-        <Modal title="Enlace de invitación generado" onClose={onClose}>
-            <div className="space-y-4">
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
-                    <strong>Importante:</strong> este enlace solo se muestra una vez. Cópialo ahora y envíalo a {invitation.email} por el medio que prefieras.
-                </div>
-
-                <Field label="Enlace para compartir">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            readOnly
-                            value={url}
-                            onClick={(e) => e.currentTarget.select()}
-                            className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 font-mono text-xs text-foreground focus:border-primary/20 outline-none"
-                        />
-                        <button
-                            type="button"
-                            onClick={copy}
-                            className="flex items-center gap-1 bg-primary text-primary-foreground px-3 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 shrink-0"
-                        >
-                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                            {copied ? "Copiado" : "Copiar"}
-                        </button>
-                    </div>
-                </Field>
-
-                <div className="flex items-center justify-end pt-1">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 rounded-xl text-sm bg-muted border border-border text-foreground hover:bg-muted/70"
-                    >
-                        Hecho
-                    </button>
-                </div>
-            </div>
-        </Modal>
-    );
-}
-
-function Modal({
-    title,
-    children,
-    onClose,
-}: {
-    title: string;
-    children: React.ReactNode;
-    onClose: () => void;
-}) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 space-y-5">
-                <div className="flex items-start justify-between">
-                    <h2 className="text-xl font-bold text-foreground">{title}</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-                {children}
-            </div>
-        </div>
-    );
-}
-
-function ModalActions({
-    onCancel,
-    submitting,
-    submitLabel,
-}: {
-    onCancel: () => void;
-    submitting: boolean;
-    submitLabel: string;
-}) {
-    return (
-        <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-                type="button"
-                onClick={onCancel}
-                className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground"
-            >
-                Cancelar
-            </button>
-            <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50"
-            >
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {submitLabel}
-            </button>
-        </div>
-    );
-}
-
-function Field({
-    label,
-    required,
-    children,
-}: {
-    label: string;
-    required?: boolean;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
-            {children}
         </div>
     );
 }
