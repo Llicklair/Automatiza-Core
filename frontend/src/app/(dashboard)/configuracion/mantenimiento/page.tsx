@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { system } from "@/lib/api/system";
 import { useToastStore } from "@/stores/toast";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 export default function MantenimientoPage() {
     const toast = useToastStore();

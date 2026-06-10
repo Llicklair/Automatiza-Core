@@ -17,7 +17,7 @@ import { Download, ExternalLink, FileText, Info, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ModeloAsistido } from "@/lib/api/presentacion";
 import { useToastStore } from "@/stores/toast";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const MODELOS: {
     key: ModeloAsistido;

@@ -16,7 +16,7 @@ import {
     setStoredLocale,
     type AppLocale,
 } from "@/hooks/useLocale";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 export default function IdiomaPage() {
     const router = useRouter();

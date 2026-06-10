@@ -1,5 +1,6 @@
 /**
- * Tests del componente UI.POL `PageHeader`.
+ * Tests del componente canónico `shared/PageHeader`.
+ * (Heredados de ui/PageHeader, retirado en la auditoría UIX #8.)
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -37,25 +38,5 @@ describe("PageHeader", () => {
             />,
         );
         expect(screen.getByRole("button", { name: "Nueva" })).toBeInTheDocument();
-    });
-
-    it("renderiza breadcrumb encima del título cuando se pasa", () => {
-        const { container } = render(
-            <PageHeader
-                title="Detalle"
-                breadcrumb={<nav data-testid="bc">Inicio &gt; Facturas</nav>}
-            />,
-        );
-        const bc = screen.getByTestId("bc");
-        const h1 = container.querySelector("h1");
-        // breadcrumb debe aparecer ANTES del h1 en el DOM
-        expect(bc.compareDocumentPosition(h1!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    });
-
-    it("usa role banner (header semántico) ", () => {
-        const { container } = render(<PageHeader title="X" />);
-        // <header> sin <main> ancestro es banner por defecto; cuando va
-        // anidado dentro de <main> no, pero el elemento `<header>` debe existir.
-        expect(container.querySelector("header")).not.toBeNull();
     });
 });
