@@ -6,7 +6,7 @@ Cero lógica de negocio aquí.
 """
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,4 +139,54 @@ async def import_bank_transactions(
     result = await import_bank_transactions_rows(rows, current_user.tenant_id, db)
     return MigrationImportResult(
         imported=result.created, skipped=result.skipped, errors=result.errors
+    )
+
+
+# ── Bank statement Norma 43 (AEB) ─────────────────────────────────────────────
+
+
+class N43ImportResult(MigrationImportResult):
+    """Resultado del import N43: además del import idempotente, informa
+    cuántos movimientos quedaron conciliados automáticamente."""
+
+    reconciled: int
+
+
+@router.post("/bank-statement-n43", response_model=N43ImportResult)
+async def import_bank_statement_n43(
+    file: UploadFile,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Importa un extracto bancario en formato Norma 43 (Cuaderno 43 AEB).
+
+    Valida los registros de control (33), importa idempotente por
+    (fecha, importe, concepto, saldo) y lanza la auto-conciliación.
+    """
+    from app.services.banking.parsers.norma43 import (
+        Norma43Error,
+        norma43_to_rows,
+        parse_norma43,
+    )
+    from app.services.banking.service import auto_reconcile
+
+    content = await file.read()
+    try:
+        accounts = parse_norma43(content)
+    except Norma43Error as e:
+        raise HTTPException(status_code=422, detail=f"Fichero N43 inválido: {e}") from e
+
+    rows = norma43_to_rows(accounts)
+    result = await import_bank_transactions_rows(rows, current_user.tenant_id, db)
+
+    reconciled = 0
+    if result.created:
+        recon = await auto_reconcile(db, current_user.tenant_id, current_user.id)
+        reconciled = recon.get("matched", 0)
+
+    return N43ImportResult(
+        imported=result.created,
+        skipped=result.skipped,
+        reconciled=reconciled,
+        errors=result.errors,
     )

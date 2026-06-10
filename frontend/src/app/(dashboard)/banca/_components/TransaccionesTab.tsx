@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Banknote, FileDown, Loader2, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, FileDown, FileUp, Loader2, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { api, type BankTransaction, type Invoice } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
@@ -81,6 +81,8 @@ export function TransaccionesTab() {
     const [reconcileTx, setReconcileTx] = useState<BankTransaction | null>(null);
     const [selectedInvoice, setSelectedInvoice] = useState("");
     const [reconciling, setReconciling] = useState(false);
+    const [importingN43, setImportingN43] = useState(false);
+    const n43InputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -109,6 +111,28 @@ export function TransaccionesTab() {
             logError("banca/page", error);
         } finally {
             setIsSyncing(false);
+        }
+    };
+
+    const handleImportN43 = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        setImportingN43(true);
+        try {
+            const res = await api.banking.transactions.importN43(file);
+            toast.success(
+                `Extracto importado: ${res.imported} nuevos, ${res.skipped} duplicados, ${res.reconciled} conciliados`
+            );
+            if (res.errors.length > 0) {
+                toast.error(`${res.errors.length} movimientos con errores`);
+            }
+            await loadData();
+        } catch (error) {
+            logError("banca/import-n43", error);
+            toast.error(error instanceof Error ? error.message : "Error al importar el fichero N43.");
+        } finally {
+            setImportingN43(false);
         }
     };
 
@@ -186,6 +210,17 @@ export function TransaccionesTab() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                    <input
+                        ref={n43InputRef}
+                        type="file"
+                        accept=".n43,.txt,.aeb,.q43"
+                        className="hidden"
+                        onChange={handleImportN43}
+                    />
+                    <Button size="sm" variant="outline" onClick={() => n43InputRef.current?.click()} disabled={importingN43} title="Importar extracto bancario Norma 43 (AEB)">
+                        {importingN43 ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <FileUp className="mr-2 h-3 w-3" />}
+                        {importingN43 ? "Importando…" : "Importar N43"}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={exportCsv} disabled={filteredTx.length === 0}>
                         <FileDown className="mr-2 h-3 w-3" /> Exportar CSV
                     </Button>
