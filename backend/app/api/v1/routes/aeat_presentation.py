@@ -9,6 +9,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +20,10 @@ from app.middleware.rate_limit import limiter
 from app.services.aeat import (
     CertificateError,
     PresentationError,
+    build_acuse_text,
     cert_to_dict,
     create_presentation,
+    get_presentation,
     get_active_certificate,
     list_presentations,
     presentation_to_dict,
@@ -289,3 +292,28 @@ async def list_presentations_endpoint(
 ):
     items = await list_presentations(db, current_user.tenant_id, limit=limit)
     return {"items": [presentation_to_dict(p) for p in items]}
+
+@router.get("/presentations/{presentation_id}/acuse")
+@limiter.limit("30/minute")
+async def download_acuse(
+    request: Request,
+    presentation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Descarga el acuse de recibo (CSV justificante) de una presentación aceptada."""
+    p = await get_presentation(db, current_user.tenant_id, presentation_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Presentación no encontrada.")
+    if not p.csv_justificante:
+        raise HTTPException(
+            status_code=422,
+            detail="La presentación no tiene CSV justificante (aún no aceptada).",
+        )
+    filename = f"acuse_{p.model_code}_{p.year}_{p.period}.txt"
+    return Response(
+        content=build_acuse_text(p),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+

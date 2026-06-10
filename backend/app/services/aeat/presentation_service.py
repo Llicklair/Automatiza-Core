@@ -22,6 +22,7 @@ from app.services.aeat.certificate_storage import (
 )
 from app.services.aeat.sede_client import SedeError, submit_signed_xml
 from app.services.aeat.xades_signer import SigningError, sign_xades_bes
+from app.services.aeat.xsd_validation import validate_xml_pre_signature
 
 _log = logging.getLogger(__name__)
 
@@ -100,7 +101,17 @@ async def submit_presentation(
         await db.refresh(p)
         return p
 
-    # 2. Firmar
+    # 2. Validar XML antes de firmar (well-formed + XSD si está disponible)
+    validation_errors = validate_xml_pre_signature(p.xml_unsigned, p.model_code)
+    if validation_errors:
+        p.status = "error"
+        p.error_code = "XSD"
+        p.error_message = "; ".join(validation_errors)[:2000]
+        await db.commit()
+        await db.refresh(p)
+        return p
+
+    # 3. Firmar
     try:
         sign_result = sign_xades_bes(p.xml_unsigned, pfx_bytes, password)
     except SigningError as e:
@@ -125,7 +136,7 @@ async def submit_presentation(
         await db.refresh(p)
         return p
 
-    # 3. Enviar
+    # 4. Enviar
     try:
         result = await submit_signed_xml(
             p.model_code, sign_result.signed_xml,
@@ -153,6 +164,36 @@ async def submit_presentation(
     await db.commit()
     await db.refresh(p)
     return p
+
+
+async def get_presentation(
+    db: AsyncSession, tenant_id: UUID, presentation_id: UUID
+) -> AeatPresentation | None:
+    res = await db.execute(
+        select(AeatPresentation)
+        .where(AeatPresentation.id == presentation_id)
+        .where(AeatPresentation.tenant_id == tenant_id)
+    )
+    return res.scalar_one_or_none()
+
+
+def build_acuse_text(p: AeatPresentation) -> str:
+    """Acuse de recibo en texto plano con el CSV justificante de la AEAT."""
+    lines = [
+        "ACUSE DE RECIBO — PRESENTACIÓN ELECTRÓNICA AEAT",
+        "=" * 48,
+        f"Modelo:        {p.model_code}",
+        f"Ejercicio:     {p.year}",
+        f"Periodo:       {p.period}",
+        f"Entorno:       {p.environment}",
+        f"Estado:        {p.status}",
+        f"CSV (justificante): {p.csv_justificante or '—'}",
+        f"Presentado:    {p.submitted_at.isoformat() if p.submitted_at else '—'}",
+        f"Aceptado:      {p.accepted_at.isoformat() if p.accepted_at else '—'}",
+        "",
+        "Verificable en https://sede.agenciatributaria.gob.es con el CSV.",
+    ]
+    return "\n".join(lines)
 
 
 async def list_presentations(

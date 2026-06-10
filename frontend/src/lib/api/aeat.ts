@@ -2,7 +2,7 @@
  * AEAT — custodia de certificado digital + presentación electrónica de modelos.
  * Estado: Fase C (preview). Por defecto se usa dry_run=true.
  */
-import { request, requestUpload } from "./client";
+import { downloadBlob, request, requestUpload } from "./client";
 
 export interface AeatCertificate {
     id: string;
@@ -74,6 +74,12 @@ export const aeat = {
             request<AeatPresentation>(
                 `/api/v1/aeat/presentations/${id}/submit?dry_run=${dryRun}`,
                 { method: "POST" },
+            ),
+        /** Descarga el acuse de recibo (CSV justificante) como .txt. */
+        downloadAcuse: (p: AeatPresentation) =>
+            downloadBlob(
+                `/api/v1/aeat/presentations/${p.id}/acuse`,
+                `acuse_${p.model_code}_${p.year}_${p.period}.txt`,
             ),
     },
 };

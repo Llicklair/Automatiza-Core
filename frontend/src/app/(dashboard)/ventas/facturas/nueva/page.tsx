@@ -15,6 +15,7 @@ function NuevaFacturaContent() {
         clients, products, clientId, setClientId,
         invoiceNumber, setInvoiceNumber, date, setDate,
         dueDate, setDueDate, notes, setNotes,
+        fiscalRegime, setFiscalRegime,
         lines, submitting, totals,
         addLine, removeLine, updateLine, fillFromProduct, handleSubmit,
     } = useNuevaFactura();
@@ -35,7 +36,8 @@ function NuevaFacturaContent() {
                 <InvoiceHeader clients={clients} clientId={clientId} setClientId={setClientId}
                     invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber}
                     date={date} setDate={setDate} dueDate={dueDate} setDueDate={setDueDate}
-                    notes={notes} setNotes={setNotes} />
+                    notes={notes} setNotes={setNotes}
+                    fiscalRegime={fiscalRegime} setFiscalRegime={setFiscalRegime} />
 
                 <InvoiceLinesTable lines={lines} products={products}
                     onAddLine={addLine} onRemoveLine={removeLine}

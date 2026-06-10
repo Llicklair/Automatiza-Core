@@ -125,6 +125,11 @@ class InvoiceCreate(BaseModel):
     invoice_type: str = "issued"
     notes: str | None = None
     terms: str | None = None
+    # Régimen fiscal especial 303: intracomunitario | isp | recargo_equivalencia
+    fiscal_regime: str | None = None
+    # Retención IRPF Art.95 (facturas recibidas de profesionales)
+    retencion_irpf_rate: float | None = None
+    retencion_irpf_amount: float | None = None
     lines: list[InvoiceLineCreate] = []
 
 
@@ -142,6 +147,9 @@ class InvoiceResponse(BaseModel):
     invoice_type: str
     rectifies_invoice_id: UUID | None = None
     rectification_reason: str | None = None
+    fiscal_regime: str | None = None
+    retencion_irpf_rate: float | None = None
+    retencion_irpf_amount: float | None = None
     notes: str | None = None
     terms: str | None = None
     external_id: str | None = None

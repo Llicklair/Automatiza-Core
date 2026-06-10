@@ -36,6 +36,7 @@ export function useNuevaFactura() {
     const [date, setDate] = useState(today());
     const [dueDate, setDueDate] = useState(in30());
     const [notes, setNotes] = useState("");
+    const [fiscalRegime, setFiscalRegime] = useState("");
     const [lines, setLines] = useState<(InvoiceLine & { _key: number })[]>([emptyLine()]);
     const [submitting, setSubmitting] = useState(false);
 
@@ -97,6 +98,7 @@ export function useNuevaFactura() {
                 status: "draft",
                 invoice_type: "issued",
                 notes: notes || null,
+                fiscal_regime: fiscalRegime || null,
                 lines: lines.filter(l => l.description.trim()).map(({ _key, ...l }) => ({
                     ...l,
                     quantity: Number(l.quantity),
@@ -118,6 +120,7 @@ export function useNuevaFactura() {
         clients, products, clientId, setClientId,
         invoiceNumber, setInvoiceNumber, date, setDate,
         dueDate, setDueDate, notes, setNotes,
+        fiscalRegime, setFiscalRegime,
         lines, submitting, totals,
         addLine, removeLine, updateLine, fillFromProduct, handleSubmit,
     };
