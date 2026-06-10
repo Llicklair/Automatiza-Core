@@ -14,7 +14,7 @@ from langchain_core.tools import tool
 from sqlalchemy import or_, select
 
 from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
-from app.db.base import AsyncSessionLocal
+from app.agents.shared.db import tool_session
 from app.db.models.inventory import Product
 from app.services.autonomy_gate import evaluate_autonomy
 from app.services.inventory import analytics, batch_service, reorder_service
@@ -51,7 +51,7 @@ async def get_stock_overview(tenant_id: str) -> str:
     except ValueError as e:
         return f"Error: {e}"
     try:
-        async with AsyncSessionLocal() as db:
+        async with tool_session(tid) as db:
             ov = await analytics.inventory_overview(db, tid)
     except Exception as e:
         logger.warning("get_stock_overview falló: %s", e)
@@ -81,7 +81,7 @@ async def list_low_stock(tenant_id: str) -> str:
     except ValueError as e:
         return f"Error: {e}"
     try:
-        async with AsyncSessionLocal() as db:
+        async with tool_session(tid) as db:
             rows = await reorder_service.suggest_reorders(db, tid)
     except Exception as e:
         logger.warning("list_low_stock falló: %s", e)
@@ -108,7 +108,7 @@ async def find_products(tenant_id: str, query: str = "", category: str = "") -> 
     except ValueError as e:
         return f"Error: {e}"
     try:
-        async with AsyncSessionLocal() as db:
+        async with tool_session(tid) as db:
             stmt = select(Product).where(Product.tenant_id == tid)
             if query:
                 like = f"%{query}%"
@@ -144,7 +144,7 @@ async def get_product_stock(tenant_id: str, ref: str) -> str:
     except ValueError as e:
         return f"Error: {e}"
     try:
-        async with AsyncSessionLocal() as db:
+        async with tool_session(tid) as db:
             product, how = await batch_service.resolve_product(db, tid, ref)
             if product is None:
                 return f"No se pudo identificar el producto '{ref}': {how}."
@@ -211,7 +211,7 @@ async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn)
     `apply_fn(db)` ejecuta la escritura real (dry_run=False) y devuelve el dict
     de resultado; el caller lo formatea.
     """
-    async with AsyncSessionLocal() as db:
+    async with tool_session(tenant_uuid) as db:
         decision = await evaluate_autonomy(
             db, tenant_id=tenant_uuid, domain=_INVENTORY_DOMAIN,
             action_summary=summary[:480], action_payload=params,
@@ -240,7 +240,7 @@ async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn)
             return summary + "\n\nPara aplicar estos cambios, repite la operación con confirm=true."
 
     # AUTO, o CONFIRM aprobado de forma interactiva.
-    async with AsyncSessionLocal() as db:
+    async with tool_session(tenant_uuid) as db:
         res = await apply_fn(db)
     return res
 
@@ -282,7 +282,7 @@ async def batch_adjust_stock(
 
     try:
         # Previsualización (no toca la BD) para el resumen de la aprobación.
-        async with AsyncSessionLocal() as db:
+        async with tool_session(tid) as db:
             preview = await batch_service.batch_adjust_stock(
                 db, tid, items, op=op, reason=reason, dry_run=True
             )
@@ -337,7 +337,7 @@ async def batch_update_products(
         return "Error: la lista de productos está vacía."
 
     try:
-        async with AsyncSessionLocal() as db:
+        async with tool_session(tid) as db:
             preview = await batch_service.batch_update_fields(db, tid, items, dry_run=True)
         summary = _format_update_preview(preview)
 
