@@ -7,7 +7,7 @@ import { type Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { KpiCard } from "@/components/shared/KpiCard";
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -251,7 +251,7 @@ export default function StockPage() {
                     icon={Package}
                     title="Sin productos físicos"
                     description="Añade productos en el catálogo para gestionar su stock aquí."
-                    action={newProductButton}
+                    action={{ label: "Nuevo producto", onClick: openCreateProduct }}
                 />
                 <ProductModal
                     open={showProductModal}
