@@ -37,3 +37,15 @@ def test_cron_cada_minuto_devuelve_el_ultimo_vencido():
 def test_sin_cron_o_invalido():
     assert _next_due_run({}, _at(9, 0)) is None
     assert _next_due_run({"cron": "no es un cron"}, _at(9, 0)) is None
+
+
+# ── _infer_domain_from_text: default ──────────────────────────────────────────
+
+
+def test_infer_domain_sin_keywords_va_al_coordinador():
+    """Texto sin keywords → "chat" (el coordinador clasifica con LLM).
+    Antes el default era "billing" y un workflow genérico acababa en facturación."""
+    from app.workers.tasks_scheduler import _infer_domain_from_text
+
+    assert _infer_domain_from_text("enviar resumen semanal del negocio") == "chat"
+    assert _infer_domain_from_text("factura vencida del cliente") == "billing"

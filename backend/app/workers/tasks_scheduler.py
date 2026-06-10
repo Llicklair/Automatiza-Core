@@ -85,7 +85,9 @@ def _infer_domain_from_text(text: str) -> str:
         return "banking"
     if any(w in text for w in ["documento", "archivo", "ocr", "contrato"]):
         return "documents"
-    return "billing"
+    # Sin match → "chat": el coordinador clasifica con LLM. Antes el default
+    # era "billing" y cualquier workflow genérico acababa en facturación.
+    return "chat"
 
 
 def _calc_line_totals(line: dict) -> tuple[float, float]:
