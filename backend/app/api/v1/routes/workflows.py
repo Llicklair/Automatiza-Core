@@ -51,6 +51,23 @@ async def create_workflow(
     return await svc.create_workflow(workflow_in, current_user.tenant_id, current_user.id, db)
 
 
+@router.post("/seed-defaults")
+@limiter.limit("5/minute")
+async def seed_defaults(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Siembra las rutinas de oficio por defecto que falten en el tenant (idempotente)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Solo el administrador puede sembrar rutinas")
+    from app.services.workflow.default_routines import seed_default_routines
+
+    created = await seed_default_routines(db, current_user.tenant_id, current_user.id)
+    await db.commit()
+    return {"created": created, "count": len(created)}
+
+
 @router.get("/{workflow_id}", response_model=schemas.WorkflowResponse)
 @limiter.limit("30/minute")
 async def get_workflow(

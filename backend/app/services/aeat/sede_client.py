@@ -98,13 +98,24 @@ async def submit_signed_xml(
     signed_xml: str,
     environment: str = "preproduccion",
     dry_run: bool = True,
+    *,
+    confirmed: bool = False,
 ) -> SubmissionResult:
     """Envía el XML firmado a la SEDE AEAT.
 
     Cuando `dry_run=True` NO se hace POST: se devuelve una respuesta simulada
     con CSV ficticio para iterar el flujo. Cuando `dry_run=False` se hace
     POST real al endpoint correspondiente.
+
+    Blindaje fiscal (defensa en profundidad): el POST real exige además
+    `confirmed=True`, que solo debe pasarlo `presentation_service` tras
+    validar la confirmación humana (`confirmed_by_user_id`).
     """
+    if not dry_run and not confirmed:
+        raise SedeError(
+            "Envío real a la SEDE bloqueado: falta confirmación humana explícita. "
+            "Usa submit_presentation con confirmed_by_user_id."
+        )
     endpoint = _endpoint_for(model_code, environment)
 
     if dry_run:

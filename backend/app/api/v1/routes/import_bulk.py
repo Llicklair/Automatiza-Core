@@ -180,9 +180,31 @@ async def import_bank_statement_n43(
     result = await import_bank_transactions_rows(rows, current_user.tenant_id, db)
 
     reconciled = 0
+    unmatched = 0
     if result.created:
         recon = await auto_reconcile(db, current_user.tenant_id, current_user.id)
         reconciled = recon.get("matched", 0)
+        unmatched = max(recon.get("total", 0) - reconciled, 0)
+
+    if result.created:
+        from app.services import events_catalog as ev
+        from app.services.event_bus import emit_event
+
+        await emit_event(
+            db, current_user.tenant_id, current_user.id, ev.N43_IMPORTED,
+            {
+                "imported": result.created,
+                "skipped": result.skipped,
+                "reconciled": reconciled,
+                "unmatched": unmatched,
+            },
+        )
+        if unmatched:
+            await emit_event(
+                db, current_user.tenant_id, current_user.id,
+                ev.RECONCILIATION_EXCEPTIONS,
+                {"unmatched": unmatched, "total": unmatched + reconciled, "source": "n43"},
+            )
 
     return N43ImportResult(
         imported=result.created,

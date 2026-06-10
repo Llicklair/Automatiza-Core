@@ -30,6 +30,7 @@ AutonomyMode = Literal["AUTO", "CONFIRM", "MANUAL"]
 class PolicyEntry(BaseModel):
     mode: AutonomyMode
     is_default: bool
+    locked: bool = False  # dominios con modo forzado (fiscal) — no editables
 
 
 class PolicyListOut(BaseModel):

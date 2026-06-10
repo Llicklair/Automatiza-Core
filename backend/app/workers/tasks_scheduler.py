@@ -523,3 +523,51 @@ async def _check_failed_workflow_executions():
                 notified,
             )
         return {"notified": notified}
+
+
+async def emit_month_end_events():
+    """Día 1 de cada mes: emite el evento `month_end` para cada tenant activo.
+
+    El payload lleva el mes RECIÉN CERRADO (no el actual). Las rutinas de
+    cierre mensual (asientos borrador, resumen, etc.) escuchan este evento.
+    Idempotente por tenant+mes vía IdempotencyGuard.
+    """
+    try:
+        await _emit_month_end_events()
+    except Exception as e:
+        logger.error("[SCHEDULER] Error en emit_month_end_events: %s", e)
+
+
+async def _emit_month_end_events():
+    from app.db.models.auth import Tenant
+    from app.services import events_catalog as ev
+    from app.services.event_bus import emit_event
+
+    today = datetime.now(zoneinfo.ZoneInfo("Europe/Madrid")).date()
+    closed = (today.replace(day=1) - timedelta(days=1))  # último día del mes cerrado
+    period = f"{closed.year}-{closed.month:02d}"
+    guard = IdempotencyGuard()
+
+    async with AsyncSessionLocal() as db:
+        # Lectura cross-tenant intencionada (el scheduler es global).
+        set_current_tenant(None)
+        res = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
+        tenant_ids = [row[0] for row in res.all()]
+
+    emitted = 0
+    for tid in tenant_ids:
+        key = f"{tid}:{period}"
+        if await guard.already_executed("month_end", key):
+            continue
+        set_current_tenant(str(tid))
+        async with AsyncSessionLocal() as db:
+            await emit_event(
+                db, tid, None, ev.MONTH_END,
+                {"month": closed.month, "year": closed.year, "period": period},
+            )
+        await guard.mark_executed("month_end", key, {"period": period})
+        emitted += 1
+    set_current_tenant(None)
+    if emitted:
+        logger.info("[SCHEDULER] month_end %s emitido para %d tenant(s).", period, emitted)
+    return {"emitted": emitted, "period": period}

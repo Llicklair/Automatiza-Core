@@ -270,10 +270,16 @@ async def submit_presentation_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Firma + envía la presentación. Por defecto dry-run (sin POST real)."""
+    """Firma + envía la presentación. Por defecto dry-run (sin POST real).
+
+    El envío real (`dry_run=false`) solo puede iniciarse desde este endpoint
+    con un usuario autenticado: su id viaja como `confirmed_by_user_id`
+    (confirmación humana explícita, requisito del blindaje fiscal).
+    """
     try:
         p = await submit_presentation(
             db, current_user.tenant_id, presentation_id, dry_run=dry_run,
+            confirmed_by_user_id=None if dry_run else current_user.id,
         )
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
