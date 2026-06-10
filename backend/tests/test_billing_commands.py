@@ -13,8 +13,7 @@ Aquí se cubre:
   - delete_invoice borra en cascada los asientos contables vinculados.
   - create_journal_entry rechaza asientos descuadrados.
   - run_recurring genera una factura desde la plantilla y avanza next_run_date.
-  - GAP (xfail): update_status no valida transiciones de la máquina de estados
-    (paid → draft se acepta aunque "paid" es terminal en state_machine.py).
+  - update_status valida transiciones contra state_machine (paid → draft se rechaza).
 """
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -112,12 +111,6 @@ async def test_total_negativo_rechazado_y_no_consume_numero(db, seed_tenant_and_
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="GAP: update_status solo valida que el estado esté en {draft,pending,paid,"
-    "cancelled}, no consulta state_machine.validate_transition — acepta paid→draft "
-    "aunque 'paid' es terminal según _ALLOWED['Invoice']. Documentado, no arreglado.",
-    strict=True,
-)
 async def test_update_status_paid_a_draft_deberia_rechazarse(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     cli = await _seed_client(db, tenant.id)

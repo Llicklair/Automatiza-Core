@@ -10,8 +10,8 @@ Aquí se cubre:
   - Pre-filtro SQL por rango min-max de importes (H10): con txs de 100 y 500,
     la factura de 500 sigue siendo candidata de su tx y la de 9999 no se carga.
   - Sin txs sin conciliar → [] (guarda contra min()/max() de secuencia vacía).
-  - GAP (xfail): auto_reconcile nunca marca la factura como pagada porque usa
-    estados "sent"/"draft" que no existen en la máquina de estados de Invoice.
+  - auto_reconcile marca la factura ganadora como pagada (vocabulario de estados
+    unificado con state_machine: draft/pending/sent → paid).
 """
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -122,14 +122,6 @@ async def test_auto_reconcile_respeta_pares_rechazados(db, seed_tenant_and_user)
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="GAP: auto_reconcile busca facturas con status in ('sent','draft') pero la "
-    "máquina de estados de Invoice solo define draft→issued→paid: "
-    "can_transition('Invoice','sent','paid') y ('draft','paid') son False, así que la "
-    "factura ganadora NUNCA pasa a 'paid' (la tx sí queda 'reconciled'). Desajuste de "
-    "vocabulario de estados entre banking/service.py y state_machine.py. Documentado.",
-    strict=True,
-)
 async def test_auto_reconcile_marca_factura_pagada(db, seed_tenant_and_user):
     tenant, user, _ = seed_tenant_and_user
     cli = await _seed_client(db, tenant.id)

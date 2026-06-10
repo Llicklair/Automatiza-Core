@@ -326,7 +326,7 @@ async def get_reconciliation_suggestions(
         .options(selectinload(Invoice.client))
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.status.in_(["sent", "draft"]),
+            Invoice.status.in_(["pending", "sent", "draft"]),
             func.abs(Invoice.amount_total).between(min(amounts) - 0.02, max(amounts) + 0.02),
         )
     )
@@ -388,7 +388,7 @@ async def auto_reconcile(
     inv_res = await db.execute(
         select(Invoice)
         .options(selectinload(Invoice.client))
-        .where(Invoice.tenant_id == tenant_id, Invoice.status.in_(["sent", "draft"]))
+        .where(Invoice.tenant_id == tenant_id, Invoice.status.in_(["pending", "sent", "draft"]))
     )
     invoices = list(inv_res.scalars().all())
 
@@ -527,7 +527,7 @@ async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     pending_q = select(func.count(), func.coalesce(func.sum(Invoice.amount_total), 0)).where(
         Invoice.tenant_id == tenant_id,
         Invoice.invoice_type == "issued",
-        Invoice.status.in_(["sent", "draft"]),
+        Invoice.status.in_(["pending", "sent", "draft"]),
         Invoice.due_date <= today + timedelta(days=7),
     )
     pending_res = (await db.execute(pending_q)).one()
