@@ -5,6 +5,8 @@ import { api, type Approval } from "@/lib/api";
 import { XCircle, ShieldCheck, Trash2, X } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
+import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { ApprovalCard } from "./ApprovalCard";
 
 interface ApprovalsTabProps {
@@ -31,13 +33,16 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
 
     useEffect(() => { load(); }, []);
 
-    // Polling every 10s
-    useEffect(() => {
-        const interval = setInterval(() => {
+    // Push WS (`approval_created`) + polling de respaldo cada 60 s
+    // (cubre decisiones de otros usuarios/agentes, que no emiten WS).
+    useNotificationSocket({
+        approval_created: () => {
             api.approvals.list().then(setApprovals).catch(() => { });
-        }, 10_000);
-        return () => clearInterval(interval);
-    }, []);
+        },
+    });
+    usePolling(() => {
+        api.approvals.list().then(setApprovals).catch(() => { });
+    }, 60_000);
 
     // Report pending count to parent
     useEffect(() => {
