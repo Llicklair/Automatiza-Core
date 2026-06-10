@@ -7,7 +7,7 @@ import { type Invoice } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useFacturasRecibidas } from "./_hooks/useFacturasRecibidas";
 import { RegistrarFacturaModal } from "./_components/RegistrarFacturaModal";
@@ -189,11 +189,8 @@ export default function FacturasRecibidasPage() {
                         icon={Inbox}
                         title="No tienes facturas de compra registradas"
                         description="Registra tu primera factura para empezar a gestionar tus compras."
-                        action={
-                            <Button variant="outline" onClick={() => setShowModal(true)}>
-                                <Plus className="mr-2 h-4 w-4" /> Registrar primera factura
-                            </Button>
-                        }
+                        action={{ label: "Registrar primera factura", onClick: () => setShowModal(true) }}
+                        size="sm"
                     />
                 </div>
             ) : (

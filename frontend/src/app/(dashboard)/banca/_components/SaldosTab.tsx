@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { AlertTriangle, Building2, CreditCard, Link2, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, Building2, CreditCard, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAgentPolling, extractOutput } from "../_hooks/useAgentPolling";
 import { AgentLoader } from "./BancaCharts";
 
@@ -75,11 +75,7 @@ export function SaldosTab() {
                     icon={CreditCard}
                     title="Sin cuentas disponibles"
                     description="Conecta tu banco para ver tus cuentas y saldos en tiempo real."
-                    action={
-                        <Button variant="outline" asChild>
-                            <a href="/integraciones"><Link2 className="mr-2 h-4 w-4" /> Conectar banco</a>
-                        </Button>
-                    }
+                    action={{ label: "Conectar banco", href: "/integraciones" }}
                 />
             )}
 

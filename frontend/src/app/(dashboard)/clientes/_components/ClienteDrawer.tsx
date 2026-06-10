@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Client, Invoice } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { api } from "@/lib/api";
-import { StatusBadge, KpiCard, EmptyState } from "@/components/shared";
+import { StatusBadge, KpiCard } from "@/components/shared";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -179,7 +180,7 @@ export function ClienteDrawer({
                                     <EmptyState
                                         icon={FileText}
                                         title={t("noInvoices")}
-                                        className="py-10"
+                                        size="sm"
                                     />
                                 ) : (
                                     <div className="space-y-2">

@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { Client } from "@/lib/api";
 
-import { PageHeader, StatusBadge, FormModal, FormField, EmptyState } from "@/components/shared";
+import { PageHeader, StatusBadge, FormModal, FormField } from "@/components/shared";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -208,7 +209,7 @@ export default function ClientesPage() {
     if (error && !loading) {
         return (
             <div className="p-8 max-w-7xl mx-auto">
-                <EmptyState title={t("errorLoading")} description={error} />
+                <EmptyState icon={Building2} title={t("errorLoading")} description={error} />
             </div>
         );
     }
@@ -256,35 +257,30 @@ export default function ClientesPage() {
 
             {/* Table or Empty */}
             {!loading && clients.length === 0 ? (
-                <EmptyState
-                    icon={Building2}
-                    title={t("emptyTitle")}
-                    description={t("emptyDescription")}
-                    action={
-                        <div className="flex flex-col items-center gap-4">
-                            <Button onClick={openCreateModal}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("newClient")}
-                            </Button>
-                            <div className="flex flex-col items-center gap-2">
-                                <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">{t("orCreateWithAI")}</p>
-                                <div className="flex flex-wrap justify-center gap-2">
-                                    {[t("aiSuggestion1"), t("aiSuggestion2"), t("aiSuggestion3")].map((suggestion) => (
-                                        <Button
-                                            key={suggestion}
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-xs"
-                                            onClick={() => sendAiTask(suggestion)}
-                                        >
-                                            {suggestion}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
+                <div className="flex flex-col items-center">
+                    <EmptyState
+                        icon={Building2}
+                        title={t("emptyTitle")}
+                        description={t("emptyDescription")}
+                        action={{ label: t("newClient"), onClick: openCreateModal }}
+                    />
+                    <div className="flex flex-col items-center gap-2 pb-8">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">{t("orCreateWithAI")}</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {[t("aiSuggestion1"), t("aiSuggestion2"), t("aiSuggestion3")].map((suggestion) => (
+                                <Button
+                                    key={suggestion}
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => sendAiTask(suggestion)}
+                                >
+                                    {suggestion}
+                                </Button>
+                            ))}
                         </div>
-                    }
-                />
+                    </div>
+                </div>
             ) : viewMode === "table" ? (
                 <DataTable
                     columns={columns}

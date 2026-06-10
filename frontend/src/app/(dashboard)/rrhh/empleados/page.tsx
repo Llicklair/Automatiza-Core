@@ -9,7 +9,7 @@ import { PayrollDrawer } from "./_components/PayrollDrawer";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { KpiCard } from "@/components/shared/KpiCard";
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { exportToCsv } from "@/lib/utils/export-csv";
@@ -77,11 +77,7 @@ export default function EmployeesPage() {
                     icon={Users}
                     title="No hay empleados registrados"
                     description="Añade tu primer empleado para empezar a gestionar la plantilla."
-                    action={
-                        <Button onClick={openModal} size="sm">
-                            <Plus className="mr-2 h-4 w-4" /> Añadir el primero
-                        </Button>
-                    }
+                    action={{ label: "Añadir el primero", onClick: openModal }}
                 />
             ) : (
                 <DataTable

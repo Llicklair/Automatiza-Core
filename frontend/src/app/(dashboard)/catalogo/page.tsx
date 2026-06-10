@@ -7,7 +7,7 @@ import { Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useCatalogPage } from "./_hooks/useCatalogPage";
 import { ProductModal } from "./_components/ProductModal";
@@ -127,11 +127,7 @@ export default function CatalogPage() {
                     icon={Package}
                     title="Tu catálogo está vacío"
                     description="Añade productos y servicios para que la IA pueda generar facturas y presupuestos automáticamente."
-                    action={
-                        <Button onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" />Nuevo Artículo
-                        </Button>
-                    }
+                    action={{ label: "Nuevo Artículo", onClick: openCreate }}
                 />
             ) : (
                 <DataTable

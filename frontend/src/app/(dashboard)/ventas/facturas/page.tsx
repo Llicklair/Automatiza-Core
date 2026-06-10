@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { KpiCard } from "@/components/shared/KpiCard";
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useFacturas } from "./_hooks/useFacturas";
 
@@ -35,11 +35,7 @@ export default function FacturasPage() {
                     icon={FileText}
                     title={t("emptyTitle")}
                     description={t("emptyDescription")}
-                    action={
-                        <Button asChild>
-                            <Link href="/ventas/facturas/nueva"><Plus className="mr-2 h-4 w-4" />{t("createInvoice")}</Link>
-                        </Button>
-                    }
+                    action={{ label: t("createInvoice"), href: "/ventas/facturas/nueva" }}
                 />
             </div>
         );
