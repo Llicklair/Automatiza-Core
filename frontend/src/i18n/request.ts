@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 
-const SUPPORTED_LOCALES = ["es", "ca", "eu", "gl", "en"] as const;
+// Solo "es" hasta tener traducciones reales (I18N.TR) — ver hooks/useLocale.ts.
+const SUPPORTED_LOCALES = ["es"] as const;
 type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 const DEFAULT_LOCALE: SupportedLocale = "es";
 
