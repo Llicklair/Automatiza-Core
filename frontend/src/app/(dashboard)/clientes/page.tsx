@@ -491,6 +491,19 @@ export default function ClientesPage() {
                             placeholder={t("postalCodePlaceholder")}
                         />
                     </FormField>
+                    <div className="col-span-2 flex items-center gap-2 pt-2">
+                        <input
+                            id="client-marketing-consent"
+                            type="checkbox"
+                            checked={!!newClient.marketing_consent}
+                            onChange={(e) => setNewClient({ ...newClient, marketing_consent: e.target.checked })}
+                            className="h-4 w-4 rounded border-border accent-primary"
+                        />
+                        <label htmlFor="client-marketing-consent" className="text-sm text-foreground cursor-pointer">
+                            {t("marketingConsent")}{" "}
+                            <span className="text-xs text-muted-foreground">({t("marketingConsentHint")})</span>
+                        </label>
+                    </div>
                 </div>
             </FormModal>
 

@@ -571,3 +571,43 @@ async def _emit_month_end_events():
     if emitted:
         logger.info("[SCHEDULER] month_end %s emitido para %d tenant(s).", period, emitted)
     return {"emitted": emitted, "period": period}
+
+
+async def send_scheduled_email_campaigns():
+    """Cada minuto: envía las campañas de email `scheduled` cuyo
+    `scheduled_at` ya venció. El envío real lo hace
+    `services/email_marketing.send_campaign` (mismo código que el botón
+    "enviar ahora"), que marca sending → sent y protege contra dobles envíos.
+    """
+    try:
+        await _send_scheduled_email_campaigns()
+    except Exception as e:
+        logger.error("[EMAIL-MKT] Error en send_scheduled_email_campaigns: %s", e)
+
+
+async def _send_scheduled_email_campaigns():
+    from app.db.models.email_marketing import EmailCampaign
+    from app.services.email_marketing import send_campaign
+
+    now = datetime.now(UTC)
+    async with AsyncSessionLocal() as db:
+        # Lectura cross-tenant intencionada (el scheduler es global).
+        set_current_tenant(None)
+        res = await db.execute(
+            select(EmailCampaign.id, EmailCampaign.tenant_id).where(
+                EmailCampaign.status == "scheduled",
+                EmailCampaign.scheduled_at.isnot(None),
+                EmailCampaign.scheduled_at <= now,
+            )
+        )
+        due = res.all()
+
+    sent = 0
+    for campaign_id, tenant_id in due:
+        set_current_tenant(str(tenant_id))
+        await send_campaign(str(campaign_id), str(tenant_id))
+        sent += 1
+    set_current_tenant(None)
+    if sent:
+        logger.info("[EMAIL-MKT] %d campaña(s) programada(s) enviada(s).", sent)
+    return {"sent": sent}

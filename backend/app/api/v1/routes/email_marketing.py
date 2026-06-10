@@ -14,7 +14,7 @@ from app.db.base import get_db
 from app.db.models.crm import Client
 from app.db.models.email_marketing import EmailCampaign, EmailCampaignRecipient, EmailTemplate
 from app.db.models.models import User
-from app.services.email_sender import send_email
+from app.services.email_marketing import send_campaign as send_campaign_service
 
 router = APIRouter(prefix="/email-marketing", tags=["email-marketing"])
 
@@ -68,59 +68,6 @@ class CampaignOut(BaseModel):
     created_at: datetime.datetime
 
     model_config = {"from_attributes": True}
-
-
-# ── Background send ────────────────────────────────────────────────────────────
-
-async def _send_campaign_bg(campaign_id: str, tenant_id: str) -> None:
-    """Envía la campaña en background: un email por destinatario."""
-    from app.db.base import AsyncSessionLocal
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(EmailCampaign).where(EmailCampaign.id == UUID(campaign_id))
-        )
-        campaign = result.scalar_one_or_none()
-        if not campaign:
-            return
-
-        campaign.status = "sending"
-        await db.commit()
-
-        recipients = await db.execute(
-            select(EmailCampaignRecipient).where(
-                EmailCampaignRecipient.campaign_id == UUID(campaign_id),
-                EmailCampaignRecipient.status == "pending",
-            )
-        )
-        rows = recipients.scalars().all()
-
-        sent = 0
-        failed = 0
-        for r in rows:
-            # Reemplaza variables en asunto y cuerpo
-            subject = campaign.subject.replace("{{nombre}}", r.name or "").replace("{{email}}", r.email)
-            body = campaign.html_body.replace("{{nombre}}", r.name or "").replace("{{email}}", r.email)
-            try:
-                await send_email(
-                    tenant_id=tenant_id,
-                    to=r.email,
-                    subject=subject,
-                    body=body,
-                )
-                r.status = "sent"
-                r.sent_at = datetime.datetime.now(datetime.timezone.utc)
-                sent += 1
-            except Exception as e:
-                r.status = "failed"
-                r.error_message = str(e)[:500]
-                failed += 1
-
-        campaign.status = "sent"
-        campaign.sent_at = datetime.datetime.now(datetime.timezone.utc)
-        campaign.sent_count = sent
-        campaign.failed_count = failed
-        await db.commit()
 
 
 # ── Templates ──────────────────────────────────────────────────────────────────
@@ -228,6 +175,7 @@ async def create_campaign(
             Client.tenant_id == current_user.tenant_id,
             Client.email.isnot(None),
             Client.email != "",
+            Client.marketing_consent.is_(True),
         )
     )
     total = count_result.scalar() or 0
@@ -251,6 +199,7 @@ async def create_campaign(
             Client.tenant_id == current_user.tenant_id,
             Client.email.isnot(None),
             Client.email != "",
+            Client.marketing_consent.is_(True),
         )
     )
     for client in clients_result.scalars().all():
@@ -334,7 +283,7 @@ async def send_campaign(
         raise HTTPException(status_code=404, detail="Campaña no encontrada o ya enviada")
 
     background_tasks.add_task(
-        _send_campaign_bg,
+        send_campaign_service,
         str(campaign_id),
         str(current_user.tenant_id),
     )
@@ -351,6 +300,7 @@ async def recipient_count(
             Client.tenant_id == current_user.tenant_id,
             Client.email.isnot(None),
             Client.email != "",
+            Client.marketing_consent.is_(True),
         )
     )
     return {"count": result.scalar() or 0}

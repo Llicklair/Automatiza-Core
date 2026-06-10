@@ -68,6 +68,7 @@ export interface Client {
     city: string | null;
     postal_code: string | null;
     client_type: string;
+    marketing_consent: boolean;
     created_at: string;
     updated_at: string | null;
 }

@@ -28,6 +28,7 @@ def register_jobs() -> None:
         emit_month_end_events,
         process_recurring_invoices,
         publish_scheduled_posts,
+        send_scheduled_email_campaigns,
     )
 
     # Cada minuto: comprobar workflows programados
@@ -53,6 +54,15 @@ def register_jobs() -> None:
         publish_scheduled_posts,
         IntervalTrigger(minutes=5),
         id="publish_scheduled_posts",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Cada minuto: enviar campañas de email programadas vencidas
+    scheduler.add_job(
+        send_scheduled_email_campaigns,
+        IntervalTrigger(minutes=1),
+        id="send_scheduled_email_campaigns",
         replace_existing=True,
         max_instances=1,
     )

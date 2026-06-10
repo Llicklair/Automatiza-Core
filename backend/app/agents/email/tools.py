@@ -121,12 +121,23 @@ def send_email(
     )
 
 
-def build_tools_list(real_check_fn=None, real_unread_fn=None, real_send_fn=None):
-    """Devuelve la lista de tools con las funciones reales o mock según disponibilidad."""
+def build_tools_list(
+    real_check_fn=None,
+    real_unread_fn=None,
+    real_send_fn=None,
+    real_reply_fn=None,
+    real_markread_fn=None,
+):
+    """Devuelve la lista de tools con las funciones reales o mock según disponibilidad.
+
+    reply/mark_read solo existen en modo real (Gmail/Outlook): sin credenciales no se exponen.
+    """
+    extra = [t for t in (real_reply_fn, real_markread_fn) if t is not None]
     return [
         real_check_fn or check_inbox,
         real_unread_fn or check_unread,
         real_send_fn or send_email,
+        *extra,
         create_document,
         list_tenant_documents,
         get_document_content,

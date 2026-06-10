@@ -80,6 +80,24 @@ class OutlookClient:
         resp.raise_for_status()
         return {"status": "sent"}
 
+    async def mark_read(self, message_id: str) -> dict:
+        """Mark a message as read."""
+        resp = await self._client.patch(
+            f"{GRAPH_API}/me/messages/{message_id}",
+            json={"isRead": True},
+        )
+        resp.raise_for_status()
+        return {"status": "read"}
+
+    async def reply_message(self, message_id: str, body: str) -> dict:
+        """Reply to a message (Graph keeps it in the conversation)."""
+        resp = await self._client.post(
+            f"{GRAPH_API}/me/messages/{message_id}/reply",
+            json={"comment": body},
+        )
+        resp.raise_for_status()
+        return {"status": "sent"}
+
     async def search_messages(self, query: str, top: int = 10) -> list[dict]:
         """Search messages across all folders."""
         params = {

@@ -105,6 +105,49 @@ class GmailClient:
         """Search messages using Gmail query syntax."""
         return await self.list_messages(query=query, max_results=max_results)
 
+    async def mark_read(self, message_id: str) -> dict:
+        """Mark a message as read (removes the UNREAD label)."""
+        resp = await self._client.post(
+            f"{GMAIL_API}/messages/{message_id}/modify",
+            json={"removeLabelIds": ["UNREAD"]},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def reply_message(self, message_id: str, body: str, html: bool = False) -> dict:
+        """Reply to a message keeping it in the same thread."""
+        resp = await self._client.get(
+            f"{GMAIL_API}/messages/{message_id}",
+            params={
+                "format": "metadata",
+                "metadataHeaders": ["From", "Reply-To", "Subject", "Message-ID"],
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        headers = {h["name"].lower(): h["value"] for h in data.get("payload", {}).get("headers", [])}
+        thread_id = data.get("threadId")
+        original_msg_id = headers.get("message-id", "")
+        to = headers.get("reply-to") or headers.get("from", "")
+        subject = headers.get("subject", "")
+        if not subject.lower().startswith("re:"):
+            subject = f"Re: {subject}"
+
+        msg = MIMEText(body, "html" if html else "plain", "utf-8")
+        msg["To"] = to
+        msg["Subject"] = subject
+        if original_msg_id:
+            msg["In-Reply-To"] = original_msg_id
+            msg["References"] = original_msg_id
+
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
+        payload = {"raw": raw}
+        if thread_id:
+            payload["threadId"] = thread_id
+        resp = await self._client.post(f"{GMAIL_API}/messages/send", json=payload)
+        resp.raise_for_status()
+        return resp.json()
+
 
 def _extract_body(payload: dict) -> str:
     """Recursively extract text body from Gmail payload."""

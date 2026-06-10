@@ -364,6 +364,8 @@
     "addressPlaceholder": "[CA] Calle Principal 123",
     "cityPlaceholder": "[CA] Madrid",
     "postalCodePlaceholder": "[CA] 28001",
+    "marketingConsent": "Accepta comunicacions comercials",
+    "marketingConsentHint": "El client ha donat el seu consentiment per rebre emails de màrqueting (RGPD)",
     "searchPlaceholder": "[CA] Buscar por nombre, NIF o email...",
     "emptyTitle": "[CA] Anade tu primer cliente",
     "emptyDescription": "[CA] Gestiona tu cartera, consulta el historial de facturas y manten todos los datos en un solo lugar.",

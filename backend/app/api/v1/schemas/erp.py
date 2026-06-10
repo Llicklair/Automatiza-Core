@@ -13,6 +13,7 @@ class ClientCreate(BaseModel):
     city: str | None = None
     postal_code: str | None = None
     client_type: str = "customer"
+    marketing_consent: bool = False
 
 
 class ClientResponse(BaseModel):
@@ -26,6 +27,7 @@ class ClientResponse(BaseModel):
     city: str | None = None
     postal_code: str | None = None
     client_type: str
+    marketing_consent: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -91,6 +93,7 @@ class ClientUpdate(BaseModel):
     city: str | None = None
     postal_code: str | None = None
     client_type: str | None = None
+    marketing_consent: bool | None = None
 
 
 class ProductUpdate(BaseModel):

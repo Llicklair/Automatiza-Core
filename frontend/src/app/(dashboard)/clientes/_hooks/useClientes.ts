@@ -79,6 +79,7 @@ export function useClientes() {
             name: client.name, nif: client.nif, client_type: client.client_type,
             email: client.email, phone: client.phone, address: client.address,
             city: client.city, postal_code: client.postal_code,
+            marketing_consent: client.marketing_consent,
         });
         setIsCreating(true);
         closeDrawer();
