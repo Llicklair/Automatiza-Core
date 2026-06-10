@@ -99,6 +99,9 @@ export interface Invoice {
     external_id: string | null;
     verifactu_status: string | null;
     verifactu_sent_at: string | null;
+    fiscal_regime: string | null;
+    retencion_irpf_rate: number | null;
+    retencion_irpf_amount: number | null;
     created_at: string;
     updated_at: string | null;
     client?: Client;

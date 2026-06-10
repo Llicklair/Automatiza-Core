@@ -1,9 +1,10 @@
 """Mapeo del cálculo agregado del 303 a las casillas oficiales AEAT.
 
-El modelo 303 vigente tiene ~80 casillas; aquí cubrimos las que se rellenan
-en régimen general sin recargo de equivalencia ni operaciones intra-UE.
-El resto se dejan a 0 con la opción de que el frontend permita ajuste manual
-antes de presentar (caso de prorrata, regímenes especiales, etc.).
+El modelo 303 vigente tiene ~80 casillas; aquí cubrimos régimen general,
+adquisiciones intracomunitarias (10/11 y 36/37), inversión del sujeto
+pasivo (12/13) y recargo de equivalencia (16-24). El resto se dejan a 0
+con la opción de que el frontend permita ajuste manual antes de presentar
+(caso de prorrata u otros regímenes especiales).
 
 Referencia oficial: BOE Orden HFP/1124/2022 y posteriores.
 """
@@ -27,6 +28,21 @@ CASILLAS_303 = {
     "07": "Régimen General — Base imponible al 21%",
     "08": "Régimen General — Tipo aplicable 21%",
     "09": "Régimen General — Cuota devengada 21%",
+    # Adquisiciones intracomunitarias e ISP (autoliquidación)
+    "10": "Adquisiciones intracomunitarias de bienes y servicios — Base",
+    "11": "Adquisiciones intracomunitarias de bienes y servicios — Cuota",
+    "12": "Otras operaciones con inversión del sujeto pasivo — Base",
+    "13": "Otras operaciones con inversión del sujeto pasivo — Cuota",
+    # Recargo de equivalencia
+    "16": "Recargo de equivalencia — Base al 0,5%",
+    "17": "Recargo de equivalencia — Tipo 0,5%",
+    "18": "Recargo de equivalencia — Cuota 0,5%",
+    "19": "Recargo de equivalencia — Base al 1,4%",
+    "20": "Recargo de equivalencia — Tipo 1,4%",
+    "21": "Recargo de equivalencia — Cuota 1,4%",
+    "22": "Recargo de equivalencia — Base al 5,2%",
+    "23": "Recargo de equivalencia — Tipo 5,2%",
+    "24": "Recargo de equivalencia — Cuota 5,2%",
     # Totales devengado
     "27": "Total cuota devengada",
     # IVA deducible (compras corrientes)
@@ -34,6 +50,8 @@ CASILLAS_303 = {
     "29": "Cuotas soportadas en operaciones interiores corrientes — Cuota",
     "30": "Cuotas soportadas en operaciones interiores con bienes de inversión — Base",
     "31": "Cuotas soportadas en operaciones interiores con bienes de inversión — Cuota",
+    "36": "Adquisiciones intracomunitarias de bienes y servicios corrientes — Base",
+    "37": "Adquisiciones intracomunitarias de bienes y servicios corrientes — Cuota",
     # Totales deducible
     "45": "Total a deducir",
     # Resultado
@@ -106,7 +124,43 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
         Casilla303("09", CASILLAS_303["09"], _round2(tipo_21["quota"])),
     ]
 
-    total_devengado = sum((c.valor for c in casillas if c.codigo in {"03", "06", "09"}), Decimal("0"))
+    # Adquisiciones intracomunitarias (10/11) e ISP (12/13): autoliquidación
+    def _sum_rows(rows: list[dict], key: str) -> Decimal:
+        return sum((Decimal(str(r[key])) for r in rows), Decimal("0"))
+
+    intra_rows = data.get("vat_intra", [])
+    isp_rows = data.get("vat_isp", [])
+    casillas += [
+        Casilla303("10", CASILLAS_303["10"], _round2(_sum_rows(intra_rows, "base"))),
+        Casilla303("11", CASILLAS_303["11"], _round2(_sum_rows(intra_rows, "quota"))),
+        Casilla303("12", CASILLAS_303["12"], _round2(_sum_rows(isp_rows, "base"))),
+        Casilla303("13", CASILLAS_303["13"], _round2(_sum_rows(isp_rows, "quota"))),
+    ]
+
+    # Recargo de equivalencia (16-24), un trío base/tipo/cuota por recargo
+    recargo_rows = {
+        float(r["recargo_rate"]): r for r in data.get("recargo_equivalencia", [])
+    }
+    for codigo_base, codigo_tipo, codigo_cuota, recargo in (
+        ("16", "17", "18", 0.5),
+        ("19", "20", "21", 1.4),
+        ("22", "23", "24", 5.2),
+    ):
+        row = recargo_rows.get(recargo, {"base": 0, "quota": 0})
+        casillas += [
+            Casilla303(codigo_base, CASILLAS_303[codigo_base], _round2(row["base"])),
+            Casilla303(codigo_tipo, CASILLAS_303[codigo_tipo], _round2(recargo)),
+            Casilla303(codigo_cuota, CASILLAS_303[codigo_cuota], _round2(row["quota"])),
+        ]
+
+    total_devengado = sum(
+        (
+            c.valor
+            for c in casillas
+            if c.codigo in {"03", "06", "09", "11", "13", "18", "21", "24"}
+        ),
+        Decimal("0"),
+    )
     casillas.append(Casilla303("27", CASILLAS_303["27"], _round2(total_devengado)))
 
     # Deducible — agregamos todas las cuotas soportadas en operaciones corrientes (no bienes inversión)
@@ -131,7 +185,15 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
         ),
     ]
 
-    total_deducir = cuota_29
+    # Deducible de adquisiciones intracomunitarias (36/37)
+    base_36 = _sum_rows(intra_rows, "base")
+    cuota_37 = _sum_rows(intra_rows, "quota")
+    casillas += [
+        Casilla303("36", CASILLAS_303["36"], _round2(base_36)),
+        Casilla303("37", CASILLAS_303["37"], _round2(cuota_37)),
+    ]
+
+    total_deducir = cuota_29 + cuota_37
     casillas.append(Casilla303("45", CASILLAS_303["45"], _round2(total_deducir)))
 
     resultado_46 = total_devengado - total_deducir

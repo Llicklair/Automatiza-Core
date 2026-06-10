@@ -13,11 +13,14 @@ interface InvoiceHeaderProps {
     setDueDate: (v: string) => void;
     notes: string;
     setNotes: (v: string) => void;
+    fiscalRegime: string;
+    setFiscalRegime: (v: string) => void;
 }
 
 export default function InvoiceHeader({
     clients, clientId, setClientId, invoiceNumber, setInvoiceNumber,
     date, setDate, dueDate, setDueDate, notes, setNotes,
+    fiscalRegime, setFiscalRegime,
 }: InvoiceHeaderProps) {
     const t = useTranslations("ventas");
 
@@ -47,7 +50,19 @@ export default function InvoiceHeader({
                     className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20"
                 />
             </div>
-            <div>{/* spacer */}</div>
+            <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Régimen fiscal</label>
+                <select
+                    value={fiscalRegime}
+                    onChange={e => setFiscalRegime(e.target.value)}
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm outline-none focus:border-primary/20"
+                >
+                    <option value="">General</option>
+                    <option value="intracomunitario">Intracomunitario</option>
+                    <option value="isp">Inversión del sujeto pasivo (ISP)</option>
+                    <option value="recargo_equivalencia">Recargo de equivalencia</option>
+                </select>
+            </div>
             <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("issueDate")} *</label>
                 <input

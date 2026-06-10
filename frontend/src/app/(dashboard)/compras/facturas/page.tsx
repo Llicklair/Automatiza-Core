@@ -32,6 +32,8 @@ export default function FacturasRecibidasPage() {
         date, setDate,
         dueDate, setDueDate,
         invStatus, setInvStatus,
+        fiscalRegime, setFiscalRegime,
+        retencionRate, setRetencionRate,
         submitting,
         totalPendiente, totalPagado30,
         resetModal, handleRegister, handleScan, handleStatusChange, handleDeleteInvoice,
@@ -221,6 +223,8 @@ export default function FacturasRecibidasPage() {
                 date={date} setDate={setDate}
                 dueDate={dueDate} setDueDate={setDueDate}
                 invStatus={invStatus} setInvStatus={setInvStatus}
+                fiscalRegime={fiscalRegime} setFiscalRegime={setFiscalRegime}
+                retencionRate={retencionRate} setRetencionRate={setRetencionRate}
                 submitting={submitting}
                 onSubmit={handleRegister}
             />

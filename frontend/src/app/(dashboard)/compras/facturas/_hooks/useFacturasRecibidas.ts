@@ -24,6 +24,8 @@ export function useFacturasRecibidas() {
     const [date, setDate]                 = useState(today());
     const [dueDate, setDueDate]           = useState("");
     const [invStatus, setInvStatus]       = useState("pending");
+    const [fiscalRegime, setFiscalRegime] = useState("");
+    const [retencionRate, setRetencionRate] = useState("");
     const [submitting, setSubmitting]     = useState(false);
 
     const loadData = useCallback(async () => {
@@ -45,6 +47,7 @@ export function useFacturasRecibidas() {
         setSupplierId(""); setSupplierName(""); setUseExisting(true);
         setInvoiceNumber(""); setAmount(""); setTaxPct("21");
         setDate(today()); setDueDate(""); setInvStatus("pending");
+        setFiscalRegime(""); setRetencionRate("");
     };
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -58,12 +61,16 @@ export function useFacturasRecibidas() {
                 clientId = newClient.id;
             }
             const baseAmount = parseFloat(amount) || 0;
+            const retRate = parseFloat(retencionRate) || 0;
             const inv = await api.erp.invoices.create(clientId, {
                 invoice_number: invoiceNumber || null,
                 date: new Date(date).toISOString(),
                 due_date: dueDate ? new Date(dueDate).toISOString() : null,
                 status: invStatus,
                 invoice_type: "received",
+                fiscal_regime: fiscalRegime || null,
+                retencion_irpf_rate: retRate > 0 ? retRate : null,
+                retencion_irpf_amount: retRate > 0 ? Math.round(baseAmount * retRate) / 100 : null,
                 lines: [{ description: "Factura recibida", quantity: 1, unit_price: baseAmount, discount_percentage: 0, tax_percentage: parseFloat(taxPct) }],
             } as any);
             setInvoices(prev => [inv, ...prev]);
@@ -184,6 +191,8 @@ export function useFacturasRecibidas() {
         date, setDate,
         dueDate, setDueDate,
         invStatus, setInvStatus,
+        fiscalRegime, setFiscalRegime,
+        retencionRate, setRetencionRate,
         submitting,
         totalPendiente, totalPagado30,
         resetModal, handleRegister, handleScan, handleStatusChange, handleDeleteInvoice,

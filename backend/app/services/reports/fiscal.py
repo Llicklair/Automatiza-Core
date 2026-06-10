@@ -220,6 +220,34 @@ async def build_modelo_303_data(
     # IVA devengado (ventas) por tipo, con Decimal (sin arrastre de float).
     vat_collected = vat_breakdown_by_rate(issued_invoices)
 
+    # Recargo de equivalencia (casillas 16-24): las ventas a minoristas en
+    # recargo tributan IVA general (ya incluidas arriba) y ADEMÁS recargo.
+    _RECARGO_BY_RATE = {
+        Decimal("21"): Decimal("5.2"),
+        Decimal("10"): Decimal("1.4"),
+        Decimal("4"): Decimal("0.5"),
+    }
+    recargo_invoices = [
+        i for i in issued_invoices
+        if getattr(i, "fiscal_regime", None) == "recargo_equivalencia"
+    ]
+    recargo_eq: list[dict] = []
+    if recargo_invoices:
+        recargo_by_rate = vat_breakdown_by_rate(recargo_invoices)
+        for rate, v in sorted(recargo_by_rate.items(), reverse=True):
+            recargo_rate = _RECARGO_BY_RATE.get(Decimal(str(rate)))
+            if recargo_rate is None:
+                continue
+            base = _d(v["base"])
+            recargo_eq.append(
+                {
+                    "rate": float(rate),
+                    "recargo_rate": float(recargo_rate),
+                    "base": float(_round2(base)),
+                    "quota": float(_round2(base * recargo_rate / Decimal("100"))),
+                }
+            )
+
     # IVA deducible (compras) — eager-load lines (antes N+1)
     received_q = await db.execute(
         select(Invoice).options(jl(Invoice.lines)).where(
@@ -233,8 +261,25 @@ async def build_modelo_303_data(
     )
     received_invoices = received_q.unique().scalars().all()
 
-    # IVA deducible (compras) por tipo, con Decimal.
-    vat_deducted = vat_breakdown_by_rate(received_invoices)
+    # Separar compras por régimen: las intracomunitarias y las de inversión
+    # del sujeto pasivo (ISP) autoliquidan el IVA (devengado + deducible).
+    intra_invoices = [
+        i for i in received_invoices
+        if getattr(i, "fiscal_regime", None) == "intracomunitario"
+    ]
+    isp_invoices = [
+        i for i in received_invoices
+        if getattr(i, "fiscal_regime", None) == "isp"
+    ]
+    general_received = [
+        i for i in received_invoices
+        if getattr(i, "fiscal_regime", None) not in ("intracomunitario", "isp")
+    ]
+
+    # IVA deducible interior (compras generales + ISP: ambos van a 28/29).
+    vat_deducted = vat_breakdown_by_rate(general_received + isp_invoices)
+    vat_intra = vat_breakdown_by_rate(intra_invoices)
+    vat_isp = vat_breakdown_by_rate(isp_invoices)
 
     def _rows(m: dict) -> list[dict]:
         return sorted(
@@ -256,6 +301,10 @@ async def build_modelo_303_data(
         "year": year,
         "vat_collected": _rows(vat_collected),
         "vat_deducted": _rows(vat_deducted),
+        # Regímenes especiales (casillas 10-13, 16-24 y 36-37 del 303)
+        "vat_intra": _rows(vat_intra),
+        "vat_isp": _rows(vat_isp),
+        "recargo_equivalencia": recargo_eq,
     }
 
 

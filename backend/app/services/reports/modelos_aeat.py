@@ -286,8 +286,76 @@ async def build_modelo_111_data(
     ]
     perceptores.sort(key=lambda p: (p["nif"] or "", p["nombre"] or ""))
 
-    total_base = sum(Decimal(str(p["base_retencion"])) for p in perceptores)
-    total_retencion = sum(Decimal(str(p["retencion_practicada"])) for p in perceptores)
+    # Retenciones a profesionales (Art. 95 LIRPF): facturas recibidas con
+    # retención IRPF, agrupadas por proveedor.
+    prof_q = await db.execute(
+        select(Invoice).where(
+            and_(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_type == "received",
+                Invoice.retencion_irpf_amount.isnot(None),
+                Invoice.retencion_irpf_amount > 0,
+                func.date(Invoice.date) >= start,
+                func.date(Invoice.date) <= end,
+            )
+        )
+    )
+    prof_invoices = list(prof_q.scalars().all())
+
+    by_supplier: dict[Any, dict[str, Any]] = {}
+    for inv in prof_invoices:
+        entry = by_supplier.setdefault(
+            inv.client_id,
+            {
+                "client_id": str(inv.client_id),
+                "nombre": None,
+                "nif": None,
+                "base_retencion": Decimal("0"),
+                "retencion_practicada": Decimal("0"),
+                "num_facturas": 0,
+            },
+        )
+        entry["base_retencion"] += Decimal(inv.amount_base or 0)
+        entry["retencion_practicada"] += Decimal(inv.retencion_irpf_amount or 0)
+        entry["num_facturas"] += 1
+
+    if by_supplier:
+        cli_q = await db.execute(
+            select(Client).where(Client.id.in_(list(by_supplier.keys())))
+        )
+        for cli in cli_q.scalars().all():
+            entry = by_supplier.get(cli.id)
+            if entry is not None:
+                entry["nombre"] = cli.name
+                entry["nif"] = getattr(cli, "nif", None)
+
+    profesionales = [
+        {
+            "client_id": e["client_id"],
+            "nombre": e["nombre"],
+            "nif": e["nif"],
+            "base_retencion": float(e["base_retencion"]),
+            "retencion_practicada": float(e["retencion_practicada"]),
+            "num_facturas": e["num_facturas"],
+        }
+        for e in by_supplier.values()
+    ]
+    profesionales.sort(key=lambda p: (p["nif"] or "", p["nombre"] or ""))
+
+    total_base_prof = sum(
+        Decimal(str(p["base_retencion"])) for p in profesionales
+    )
+    total_ret_prof = sum(
+        Decimal(str(p["retencion_practicada"])) for p in profesionales
+    )
+
+    total_base = (
+        sum(Decimal(str(p["base_retencion"])) for p in perceptores) + total_base_prof
+    )
+    total_retencion = (
+        sum(Decimal(str(p["retencion_practicada"])) for p in perceptores)
+        + total_ret_prof
+    )
 
     return {
         "modelo": "111",
@@ -295,14 +363,12 @@ async def build_modelo_111_data(
         "periodo": f"{quarter}T",
         "tenant": {"name": tenant_name, "nif": tenant_nif},
         "perceptores_trabajo_personal": perceptores,
+        "perceptores_profesionales": profesionales,
+        "total_base_profesionales": float(total_base_prof),
+        "total_retencion_profesionales": float(total_ret_prof),
         "total_base_retenciones": float(total_base),
         "total_retencion_practicada": float(total_retencion),
-        "num_perceptores": len(perceptores),
-        # TODO v1.1: incluir retenciones a profesionales cuando se añada
-        # `retencion_irpf` en `Invoice` (Art. 95 LIRPF, 15% facturas recibidas
-        # de profesionales con NIF que opten por retención).
-        "perceptores_profesionales": [],
-        "_pending_v1_1": "retenciones a profesionales (Art. 95 LIRPF)",
+        "num_perceptores": len(perceptores) + len(profesionales),
     }
 
 
@@ -414,8 +480,19 @@ async def build_modelo_390_data(
     # suma de los 4 trimestres y no arrastra el error de redondeo del float.
     from app.services.reports.fiscal import _round2, vat_breakdown_by_rate
 
+    # Mismo criterio que el 303: intracomunitarias e ISP autoliquidan
+    # (devengado + deducible); el resto de recibidas es deducible interior.
+    intra = [r for r in received if getattr(r, "fiscal_regime", None) == "intracomunitario"]
+    isp = [r for r in received if getattr(r, "fiscal_regime", None) == "isp"]
+    general_received = [
+        r for r in received
+        if getattr(r, "fiscal_regime", None) not in ("intracomunitario", "isp")
+    ]
+
     devengado = vat_breakdown_by_rate(issued)
-    deducible = vat_breakdown_by_rate(received)
+    deducible = vat_breakdown_by_rate(general_received + isp)
+    intra_bd = vat_breakdown_by_rate(intra)
+    isp_bd = vat_breakdown_by_rate(isp)
 
     def _rows(m: dict) -> list[dict]:
         return sorted(
@@ -426,8 +503,17 @@ async def build_modelo_390_data(
             key=lambda x: x["rate"],
         )
 
-    total_devengado = _round2(sum((v["quota"] for v in devengado.values()), Decimal("0")))
-    total_deducible = _round2(sum((v["quota"] for v in deducible.values()), Decimal("0")))
+    cuota_intra = sum((v["quota"] for v in intra_bd.values()), Decimal("0"))
+    cuota_isp = sum((v["quota"] for v in isp_bd.values()), Decimal("0"))
+
+    total_devengado = _round2(
+        sum((v["quota"] for v in devengado.values()), Decimal("0"))
+        + cuota_intra
+        + cuota_isp
+    )
+    total_deducible = _round2(
+        sum((v["quota"] for v in deducible.values()), Decimal("0")) + cuota_intra
+    )
     resultado = _round2(total_devengado - total_deducible)
 
     return {
@@ -436,6 +522,8 @@ async def build_modelo_390_data(
         "tenant": {"name": tenant_name, "nif": tenant_nif},
         "iva_devengado": _rows(devengado),
         "iva_deducible": _rows(deducible),
+        "iva_intracomunitario": _rows(intra_bd),
+        "iva_isp": _rows(isp_bd),
         "total_devengado": float(total_devengado),
         "total_deducible": float(total_deducible),
         "resultado_anual": float(resultado),

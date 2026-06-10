@@ -85,6 +85,16 @@ class Invoice(Base):
     verifactu_status = Column(String(30), nullable=True)   # None | "sent" | "error"
     verifactu_sent_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Régimen fiscal especial (Modelo 303, casillas 10-13/16-26/36-39).
+    # None = régimen general interior.
+    fiscal_regime = Column(String(30), nullable=True)
+    # intracomunitario | isp | recargo_equivalencia
+
+    # Retención IRPF Art. 95 LIRPF (facturas recibidas de profesionales).
+    # Alimenta el Modelo 111 (perceptores profesionales).
+    retencion_irpf_rate = Column(Numeric(5, 2), nullable=True)    # p.ej. 15.00
+    retencion_irpf_amount = Column(Numeric(10, 2), nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

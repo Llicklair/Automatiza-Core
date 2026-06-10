@@ -21,6 +21,8 @@ interface Props {
     date: string; setDate: (v: string) => void;
     dueDate: string; setDueDate: (v: string) => void;
     invStatus: string; setInvStatus: (v: string) => void;
+    fiscalRegime: string; setFiscalRegime: (v: string) => void;
+    retencionRate: string; setRetencionRate: (v: string) => void;
     submitting: boolean;
     onSubmit: (e: React.FormEvent) => void;
 }
@@ -31,6 +33,7 @@ export function RegistrarFacturaModal({
     useExisting, setUseExisting, invoiceNumber, setInvoiceNumber,
     amount, setAmount, taxPct, setTaxPct, date, setDate,
     dueDate, setDueDate, invStatus, setInvStatus,
+    fiscalRegime, setFiscalRegime, retencionRate, setRetencionRate,
     submitting, onSubmit,
 }: Props) {
     return (
@@ -103,6 +106,20 @@ export function RegistrarFacturaModal({
                 </FormField>
                 <FormField label="Vencimiento">
                     <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                </FormField>
+                <FormField label="Régimen fiscal">
+                    <Select value={fiscalRegime || "general"} onValueChange={v => setFiscalRegime(v === "general" ? "" : v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="general">General</SelectItem>
+                            <SelectItem value="intracomunitario">Intracomunitario</SelectItem>
+                            <SelectItem value="isp">Inversión sujeto pasivo</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </FormField>
+                <FormField label="% Retención IRPF">
+                    <Input type="number" min="0" max="47" step="0.5" value={retencionRate}
+                        onChange={e => setRetencionRate(e.target.value)} placeholder="0 (sin retención)" />
                 </FormField>
             </div>
         </FormModal>

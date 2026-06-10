@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
     ShieldCheck, ShieldAlert, Send, Loader2, CheckCircle2, AlertCircle, Clock,
-    Sparkles, Receipt,
+    Sparkles, Receipt, Download,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AeatCertificate, AeatPresentation } from "@/lib/api/aeat";
@@ -274,8 +274,20 @@ export function PresentacionesPanel() {
                                                 {STATUS_LABEL[p.status] ?? p.status}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-2 text-muted-foreground font-mono text-[10px] max-w-[180px] truncate" title={p.csv_justificante ?? p.error_message ?? ""}>
-                                            {p.csv_justificante ?? p.error_message ?? "—"}
+                                        <td className="px-3 py-2 text-muted-foreground font-mono text-[10px] max-w-[180px]" title={p.csv_justificante ?? p.error_message ?? ""}>
+                                            <span className="inline-flex items-center gap-1.5 max-w-full">
+                                                <span className="truncate">{p.csv_justificante ?? p.error_message ?? "—"}</span>
+                                                {p.csv_justificante && (
+                                                    <button
+                                                        type="button"
+                                                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                                        title="Descargar acuse de recibo"
+                                                        onClick={() => void api.aeat.presentations.downloadAcuse(p)}
+                                                    >
+                                                        <Download className="w-3 h-3" />
+                                                    </button>
+                                                )}
+                                            </span>
                                         </td>
                                         <td className="px-3 py-2 text-right text-muted-foreground">
                                             {p.created_at ? new Date(p.created_at).toLocaleDateString("es-ES") : "—"}
