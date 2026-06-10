@@ -4,6 +4,28 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-10 — Un custom 'Perfil' (sin capacidades) NO debe interceptar el routing del Coordinador
+
+**Contexto**: la iteración LLM falló en e2e4 (cierre trimestral) por timeout de 180s
+del custom `Alicja Wiszczulis` — un AIEmployee con **0/4 capacidades** del contrato
+(scope/memoria/conocimiento/workflows) mapeado a `domain=compliance`.
+`_resolve_custom_employee` enrutaba a CUALQUIER custom cuyo nombre/rol apareciera en el
+texto, **sin mirar el contrato**. Una mención incidental ("auditoría", "cierre")
+secuestraba el dominio builtin y disparaba un dispatch custom lento que timeouteaba sin
+aportar valor. Mismo anti-patrón que yolanda (SC-8/9).
+
+**Patrón antipatrón**: tratar todo AIEmployee custom como agente autónomo. Un custom que
+solo aporta tono/expertise (Perfil) no tiene capacidades para ejecutar nada útil; si
+intercepta el routing, solo añade latencia/fallo.
+
+**Regla de prevención (fix)**: `_resolve_custom_employee` aplica ahora
+`_meets_employee_contract` — solo enruta a customs con **>=2 de las 4 capacidades**. Los
+Perfil mencionados de pasada caen al dominio builtin. La selección explícita por UI
+(`addressed_employee_id`) se respeta siempre (la elige el usuario). Cubierto por
+`test_classifier_custom_contract.py`.
+
+---
+
 ## 2026-06-10 — Toda `@tool` de un dominio debe aceptar `tenant_id` (el LLM lo pasa a todas)
 
 **Contexto**: la iteración LLM (`smoke_orchestrator`) detectó `iter10_marketing`
