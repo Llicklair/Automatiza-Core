@@ -85,6 +85,17 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # Cada hora: purgar claves de idempotencia expiradas (tabla idempotency_keys).
+    from app.services.idempotency import purge_expired_keys as _purge_idem_keys
+
+    scheduler.add_job(
+        _purge_idem_keys,
+        IntervalTrigger(hours=1),
+        id="purge_idempotency_keys",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     # Cada 10 minutos: volcar el consumo LLM en memoria a la DB (snapshot) para
     # que el dashboard sobreviva a una caída entre apagados gráciles.
     from app.services.llm_usage_tracker import persist_to_db as _persist_llm_usage

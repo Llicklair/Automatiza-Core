@@ -43,7 +43,7 @@ from .projects import Project, ProjectTask  # noqa: F401
 from .reconciliation import ReconciliationRejection  # noqa: F401
 from .signed_document import SignedDocument  # noqa: F401
 from .supplier_learning import InvoiceScanCache, SupplierInvoiceTemplate  # noqa: F401
-from .tasks import AuditLog, PendingApproval, Task  # noqa: F401
+from .tasks import AuditLog, IdempotencyKey, PendingApproval, Task  # noqa: F401
 from .treasury import SepaRemittance, SepaRemittanceOrder  # noqa: F401
 from .tenant import (  # noqa: F401
     AutonomyPolicy,
