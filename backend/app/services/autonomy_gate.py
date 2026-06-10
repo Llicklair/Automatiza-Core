@@ -114,6 +114,20 @@ class AutonomyDecision:
             "autonomy_gate.CONFIRM persisted approval=%s domain=%s tenant=%s",
             approval.id, self.domain, self.tenant_id,
         )
+        try:
+            from app.api.ws.notifications import manager as ws_manager
+
+            await ws_manager.broadcast_to_tenant(
+                str(self.tenant_id),
+                {
+                    "type": "approval_created",
+                    "approval_id": str(approval.id),
+                    "description": self.action_summary,
+                    "domain": self.domain,
+                },
+            )
+        except Exception:  # noqa: BLE001 — el WS nunca debe romper el flujo
+            logger.debug("WS approval_created no emitido", exc_info=True)
         return approval
 
     def to_suggestion_response(self) -> dict[str, Any]:

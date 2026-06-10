@@ -30,6 +30,7 @@ from app.api.v1.routes import (
     marketing,
     marketplace,
     messaging,
+    metrics,
     modelos_aeat,
     notifications,
     onboarding_regap,
@@ -112,4 +113,5 @@ api_router.include_router(aeat_presentation.router)
 api_router.include_router(pos.router)
 api_router.include_router(marketing.router)
 api_router.include_router(email_marketing.router)
+api_router.include_router(metrics.router)
 api_router.include_router(license.router)

@@ -13,6 +13,7 @@ import { ApprovalsSection } from "./_components/ApprovalsSection";
 import { RrhhWidget } from "./_components/RrhhWidget";
 import { LiveTeamSection } from "./_components/LiveTeamSection";
 import { MorningBrief } from "./_components/MorningBrief";
+import { TimeSavedCard } from "./_components/TimeSavedCard";
 import { UsageWidget } from "./_components/UsageWidget";
 import { LlmNotConfiguredBanner } from "@/components/shared/LlmNotConfiguredBanner";
 
@@ -53,10 +54,11 @@ export default function DashboardPage() {
             {/* Mapa de nodos en vivo: agentes IA */}
             <LiveTeamSection />
 
-            {/* Layout Inferior */}
+            {/* Resumen ejecutivo: qué hizo la IA y qué decisiones esperan */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Columna Izquierda Ancha */}
                 <div className="lg:col-span-2 space-y-6">
+                    <AiActivitySection loading={loading} tasks={tasks} />
                     {!loading && <AiInsightsSection insights={analytics.insights} />}
                     {!loading && <CashflowChart cashflow={analytics.cashflow} />}
                     <RecentInvoicesSection loading={loading} invoices={invoices} />
@@ -64,10 +66,10 @@ export default function DashboardPage() {
 
                 {/* Columna Derecha Estrecha */}
                 <div className="space-y-6">
+                    <ApprovalsSection loading={loading} approvals={approvals} />
+                    <TimeSavedCard />
                     <UsageWidget />
                     <RrhhWidget loading={loading} employees={employees} working={workingNow} />
-                    <AiActivitySection loading={loading} tasks={tasks} />
-                    <ApprovalsSection loading={loading} approvals={approvals} />
                     <IntegrationsWidget {...integrations} />
                 </div>
             </div>

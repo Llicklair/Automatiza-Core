@@ -11,6 +11,7 @@ import { useSidebar } from "./_hooks/useSidebar";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useLicenseStore } from "@/stores/license";
 import { canAccess } from "@/lib/plans";
+import { usePendingApprovalsCount } from "@/lib/hooks/usePendingApprovalsCount";
 
 export function Sidebar() {
     const {
@@ -27,6 +28,7 @@ export function Sidebar() {
     const isAdmin = role === "admin";
     const isEmployee = role === "employee";
     const plan = useLicenseStore((s) => s.plan);
+    const pendingApprovals = usePendingApprovalsCount();
 
     // Para rol "employee": solo se ve Inicio, Mi portal y Configuración > Perfil.
     const EMPLOYEE_ALLOWED_HREFS = new Set<string>([
@@ -63,6 +65,7 @@ export function Sidebar() {
         const hasSubItems = !!item.subItems && item.subItems.length > 0;
 
         const highlight = !!item.highlight;
+        const badgeCount = item.href === "/bandeja" ? pendingApprovals : 0;
         const locked = !canAccess(plan, item.requiredPlan);
         const lockedTitle = `Disponible en el plan ${item.requiredPlan === "gestoria" ? "Gestoría" : "Pro"}`;
         // Container: hover/activo sutil cuando highlight, sin pisar el color del texto
@@ -101,11 +104,14 @@ export function Sidebar() {
                         title={item.label}
                         aria-label={item.label}
                         className={cn(
-                            "flex items-center justify-center w-full h-9 rounded-md transition-colors",
+                            "relative flex items-center justify-center w-full h-9 rounded-md transition-colors",
                             containerStyle
                         )}
                     >
                         <Icon className={iconClass} />
+                        {badgeCount > 0 && (
+                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
+                        )}
                     </Link>
                 </div>
             );
@@ -133,7 +139,12 @@ export function Sidebar() {
                         )}
                     >
                         <Icon className={iconClass} />
-                        <span className={labelClass}>{item.label}</span>
+                        <span className={cn(labelClass, "flex-1")}>{item.label}</span>
+                        {badgeCount > 0 && (
+                            <span className="ml-auto flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
+                                {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                        )}
                     </Link>
                 </div>
             );
