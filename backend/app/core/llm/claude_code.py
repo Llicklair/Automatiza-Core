@@ -555,7 +555,7 @@ class ClaudeCodeChatModel(BaseChatModel):
                     proc.kill()
                     await asyncio.wait_for(proc.wait(), timeout=5)
                 except Exception:
-                    pass
+                    _log.debug("[ClaudeCode] no se pudo limpiar el proceso colgado; continúo", exc_info=True)
         _log.info("[ClaudeCode] _acall_cli key='%s': %d chars", self.pool_key, len(text))
         return text
 

@@ -336,7 +336,8 @@ async def prepare_download(doc: TenantDocument, tenant_id, db: AsyncSession) -> 
             if header != b"%PDF-":
                 await _regenerate_ai_invoice_pdf(doc, file_path, tenant_id, db)
         except Exception:
-            pass  # No bloquear descarga por errores de regeneración
+            # No bloquear descarga por errores de regeneración
+            logger.exception("No se pudo regenerar el PDF de factura IA; sirvo el archivo tal cual")
 
     return file_path
 

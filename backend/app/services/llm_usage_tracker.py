@@ -6,9 +6,12 @@ Los datos son efímeros (se pierden al reiniciar); para persistencia
 migrar a Redis usando los mismos métodos públicos.
 """
 
+import logging
 import threading
 from collections import defaultdict
 from datetime import UTC, datetime
+
+logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 
@@ -54,7 +57,7 @@ def record(
             for old in months[_MAX_MONTHS_PER_TENANT:]:
                 del _store[tenant_id][old]
     except Exception:
-        pass
+        logger.debug("No se pudo registrar el uso LLM; continúo", exc_info=True)
 
 
 def estimate_cost(provider: str, tokens_in: int, tokens_out: int) -> float:

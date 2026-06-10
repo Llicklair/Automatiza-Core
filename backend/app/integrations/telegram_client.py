@@ -73,7 +73,7 @@ class TelegramClient:
                 json={"chat_id": chat_id, "action": "typing"},
             )
         except Exception:
-            pass  # Non-critical
+            logger.debug("No se pudo enviar el indicador de typing; continúo", exc_info=True)
 
     # ─── Webhook management ───────────────────────────────────────────────
 

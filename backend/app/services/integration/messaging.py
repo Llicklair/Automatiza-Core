@@ -80,6 +80,7 @@ async def handle_link_command(
         try:
             creds = decrypt_credentials(integration.encrypted_credentials)
         except Exception:
+            logger.debug("Credenciales de una integración indescifrables; salto a la siguiente", exc_info=True)
             continue
         if creds.get("link_token") == link_token:
             creds["chat_id"] = chat_id
@@ -116,7 +117,7 @@ async def send_typing_indicator(chat_id: int):
         await client.send_typing(chat_id)
         await client.close()
     except Exception:
-        pass
+        logger.debug("No se pudo enviar el indicador de typing a Telegram; continúo", exc_info=True)
 
 
 async def process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: int):
@@ -262,7 +263,7 @@ async def disconnect_telegram(db: AsyncSession, tenant_id) -> dict:
             )
             await client.close()
         except Exception:
-            pass
+            logger.debug("No se pudo avisar al chat de la desvinculación; continúo", exc_info=True)
 
     integration.is_active = False
     integration.config = {}

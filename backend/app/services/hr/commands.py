@@ -498,7 +498,8 @@ async def clock_out_attendance(db: AsyncSession, tenant_id, attendance_id: UUID)
         db.add(jornada)
         await db.commit()
     except Exception:
-        pass  # non-critical — don't fail the clock-out
+        # non-critical — don't fail the clock-out
+        logger.exception("No se pudo guardar el registro de jornada; el fichaje se mantiene")
 
     return record
 
@@ -518,7 +519,7 @@ async def _ws_notify(tenant_id, message: str, notif_type: str = "info") -> None:
             )
         )
     except Exception:
-        pass
+        logger.debug("No se pudo emitir la notificación WS de RRHH; continúo", exc_info=True)
 
 
 async def create_leave_request(
@@ -655,7 +656,7 @@ async def delete_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> None:
         try:
             shutil.rmtree(os.path.dirname(exp.receipt_path), ignore_errors=True)
         except Exception:
-            pass
+            logger.debug("No se pudo borrar el recibo en disco; continúo con el borrado del gasto", exc_info=True)
     await db.delete(exp)
     await db.commit()
 

@@ -254,6 +254,8 @@ try:
 except ImportError:
     pass  # prometheus_client no instalado
 
+_log = logging.getLogger(__name__)
+
 
 def record_task_metric(event: str, tenant_id: str, domain: str, status: str = ""):
     """Registra métricas de negocio. No-op si Prometheus no está disponible."""
@@ -265,7 +267,7 @@ def record_task_metric(event: str, tenant_id: str, domain: str, status: str = ""
         elif event == "completed":
             TASKS_COMPLETED.labels(tenant_id=tenant_id, domain=domain, status=status).inc()
     except Exception:
-        pass  # Nunca crashear por métricas
+        _log.debug("No se pudo registrar métrica de tareas; continúo", exc_info=True)
 
 
 def record_llm_latency(agent: str, duration_seconds: float, model: str = "gpt-4o-mini"):
@@ -275,7 +277,7 @@ def record_llm_latency(agent: str, duration_seconds: float, model: str = "gpt-4o
     try:
         LLM_LATENCY.labels(agent=agent, model=model).observe(duration_seconds)
     except Exception:
-        pass
+        _log.debug("No se pudo registrar latencia LLM; continúo", exc_info=True)
 
 
 def record_tool_execution(tool: str, status: str, duration_seconds: float):
@@ -288,7 +290,7 @@ def record_tool_execution(tool: str, status: str, duration_seconds: float):
     try:
         TOOL_EXECUTION_DURATION.labels(tool=tool, status=status).observe(duration_seconds)
     except Exception:
-        pass
+        _log.debug("No se pudo registrar métrica de tool; continúo", exc_info=True)
 
 
 def record_agent_run(agent: str, status: str, duration_seconds: float):
@@ -306,7 +308,7 @@ def record_agent_run(agent: str, status: str, duration_seconds: float):
         AGENT_RUNS_TOTAL.labels(agent=agent, status=status).inc()
         AGENT_DURATION.labels(agent=agent).observe(duration_seconds)
     except Exception:
-        pass
+        _log.debug("No se pudo registrar métrica de agente; continúo", exc_info=True)
 
 
 def set_approvals_pending(tenant_id: str, count: int):
@@ -316,7 +318,7 @@ def set_approvals_pending(tenant_id: str, count: int):
     try:
         APPROVALS_PENDING.labels(tenant_id=tenant_id).set(count)
     except Exception:
-        pass
+        _log.debug("No se pudo actualizar el gauge de aprobaciones; continúo", exc_info=True)
 
 
 def record_http_request(method: str, path: str, status_code: int, duration_seconds: float):
@@ -333,7 +335,7 @@ def record_http_request(method: str, path: str, status_code: int, duration_secon
         ).inc()
         HTTP_REQUEST_DURATION.labels(method=method, path=normalized).observe(duration_seconds)
     except Exception:
-        pass
+        _log.debug("No se pudo registrar métrica HTTP; continúo", exc_info=True)
 
 
 def ws_connection_opened():
@@ -343,7 +345,7 @@ def ws_connection_opened():
     try:
         ACTIVE_WEBSOCKET_CONNECTIONS.inc()
     except Exception:
-        pass
+        _log.debug("No se pudo incrementar el gauge de WebSockets; continúo", exc_info=True)
 
 
 def ws_connection_closed():
@@ -353,7 +355,7 @@ def ws_connection_closed():
     try:
         ACTIVE_WEBSOCKET_CONNECTIONS.dec()
     except Exception:
-        pass
+        _log.debug("No se pudo decrementar el gauge de WebSockets; continúo", exc_info=True)
 
 
 def get_metrics_registry():

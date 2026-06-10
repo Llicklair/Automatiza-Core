@@ -261,7 +261,7 @@ class NodeEngine:
                     {"type": "activity_new", "entry": synthetic_entry},
                 )
         except Exception:
-            pass
+            _logger.debug("No se pudo emitir el evento WS del nodo; continúo", exc_info=True)
 
     async def _execute_node(self, node: dict, db: AsyncSession) -> dict:
         """Despacha según type: skill, conditional, delay, approval_gate."""
