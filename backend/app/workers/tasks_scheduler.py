@@ -41,24 +41,35 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 
-def _should_run_now(config: dict, now) -> bool:
-    """Evalua si la expresion cron del config coincide con el minuto actual."""
+#: Tolerancia para ticks retrasados (suspensión del portátil, GC, DB lenta).
+#: Si el tick llega hasta N minutos tarde, la ejecución perdida se recupera.
+_GRACE_MINUTES = 10
+
+
+def _next_due_run(config: dict, now) -> "datetime | None":
+    """Devuelve el instante programado más reciente que esté vencido dentro
+    de la ventana de gracia, o None si no toca ejecutar.
+
+    Antes se exigía coincidencia exacta de minuto con el tick: cualquier
+    retraso >60s perdía la ejecución sin error. Ahora un tick retrasado
+    recupera la última ejecución vencida (una sola — sin ráfagas), y la
+    clave de idempotencia se construye con el instante programado, no con
+    el minuto del tick, para que no se dispare dos veces.
+    """
     cron_expr = config.get("cron")
     if not cron_expr:
-        return False
+        return None
     try:
-        past = now - timedelta(minutes=1)
-        next_run = croniter(cron_expr, past).get_next(now.__class__)
-        return (
-            next_run.year == now.year
-            and next_run.month == now.month
-            and next_run.day == now.day
-            and next_run.hour == now.hour
-            and next_run.minute == now.minute
-        )
+        it = croniter(cron_expr, now - timedelta(minutes=_GRACE_MINUTES))
+        due = None
+        candidate = it.get_next(now.__class__)
+        while candidate <= now:
+            due = candidate
+            candidate = it.get_next(now.__class__)
+        return due
     except Exception as e:
         logger.warning("[SCHEDULER] Error parsing cron: %s -> %s", cron_expr, e)
-        return False
+        return None
 
 
 def _infer_domain_from_text(text: str) -> str:
@@ -193,14 +204,17 @@ async def _check_scheduled_workflows():
         # que toque datos del tenant.
         set_current_tenant(None)
         for wf in await get_active_scheduled_workflows(db):
-            if not _should_run_now(wf.trigger_config or {}, now_local):
+            due_run = _next_due_run(wf.trigger_config or {}, now_local)
+            if due_run is None:
                 continue
 
             set_current_tenant(str(wf.tenant_id))
-            idempotency_key = f"{wf.id}:{now_local.strftime('%Y%m%d%H%M')}"
-            guard = IdempotencyGuard(ttl=120)
+            # Clave por instante PROGRAMADO (no por minuto del tick): un tick
+            # retrasado recupera la ejecución sin riesgo de dispararla dos veces.
+            idempotency_key = f"{wf.id}:{due_run.strftime('%Y%m%d%H%M')}"
+            guard = IdempotencyGuard(ttl=(_GRACE_MINUTES + 5) * 60)
             if await guard.already_executed("workflow_beat", idempotency_key):
-                logger.info("[IDEMPOTENCY] Workflow '%s' ya disparado este minuto. Skip.", wf.name)
+                logger.debug("[IDEMPOTENCY] Workflow '%s' ya disparado (%s). Skip.", wf.name, idempotency_key)
                 continue
 
             if await has_active_execution(db, wf.id):
