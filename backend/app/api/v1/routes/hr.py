@@ -68,7 +68,9 @@ async def create_employee(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.create_employee(payload, current_user.tenant_id, db)
+        return await svc.create_employee(payload.model_dump(), current_user.tenant_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except Exception as e:
         logger.error("Error guardando empleado: %s", e)
         raise HTTPException(status_code=500, detail="Error al guardar el empleado")

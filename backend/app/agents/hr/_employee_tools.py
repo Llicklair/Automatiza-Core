@@ -1,14 +1,11 @@
-"""HR agent — employee management tools."""
+"""HR agent — employee management tools (thin wrappers over services/hr)."""
 
 import logging
 from uuid import UUID
 
 from langchain_core.tools import tool
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 
 from app.db.base import AsyncSessionLocal
-from app.db.models.models import Employee
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +22,11 @@ async def list_employees(tenant_id: str) -> str:
 
 
 async def _list_employees_async(tenant_id: str) -> str:
+    from app.services.hr.queries import list_employees as list_employees_svc
+
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Employee).where(Employee.tenant_id == UUID(tenant_id)))
-            employees = result.scalars().all()
+            employees = await list_employees_svc(UUID(tenant_id), db)
 
         if not employees:
             return "No hay empleados registrados en el sistema."
@@ -83,69 +81,28 @@ async def _create_employee_async(
     email: str,
     irpf_rate: float,
 ) -> str:
+    from app.services.hr.commands import create_employee as create_employee_svc
+
     if not name.strip():
         return "Error: El nombre del empleado es obligatorio."
     if not nif.strip():
         return "Error: El NIF/DNI del empleado es obligatorio."
 
     try:
-        normalized_nif = nif.strip().upper()
         async with AsyncSessionLocal() as db:
-            # Validación case-insensitive: el insert sube a uppercase, así que
-            # el query también debe ignorar case para evitar que "12345678z" y
-            # "12345678Z" se traten como NIFs distintos. La BD tiene un partial
-            # UNIQUE INDEX (tenant_id, UPPER(nif)) como segunda barrera.
-            result = await db.execute(
-                select(Employee).where(
-                    Employee.tenant_id == UUID(tenant_id),
-                    func.upper(Employee.nif) == normalized_nif,
-                )
+            emp = await create_employee_svc(
+                {
+                    "name": name.strip(),
+                    "nif": nif,
+                    "email": email.strip() or None,
+                    "base_salary": base_salary,
+                    "role": role or None,
+                    "department": department or None,
+                    "irpf_rate": irpf_rate,
+                },
+                UUID(tenant_id),
+                db,
             )
-            existing = result.scalar_one_or_none()
-            if existing:
-                return f"Error: Ya existe un empleado con NIF {nif}: {existing.name} (ID: {existing.id})."
-
-            emp = Employee(
-                tenant_id=UUID(tenant_id),
-                name=name.strip(),
-                nif=normalized_nif,
-                email=email.strip() or None,
-                base_salary=base_salary,
-                role=role or None,
-                department=department or None,
-                irpf_rate=irpf_rate,
-            )
-            db.add(emp)
-            try:
-                await db.commit()
-            except IntegrityError:
-                # Race condition o validación previa fallida: el UNIQUE INDEX
-                # de BD nos protege. Mensaje claro al LLM.
-                await db.rollback()
-                return (
-                    f"Error: Ya existe un empleado con NIF {nif} en el sistema "
-                    f"(detectado por restricción de unicidad de BD)."
-                )
-            await db.refresh(emp)
-
-            try:
-                from app.services.event_bus import emit_event
-
-                async with AsyncSessionLocal() as db_ev:
-                    await emit_event(
-                        db=db_ev,
-                        tenant_id=UUID(tenant_id),
-                        user_id=None,
-                        event_name="employee_created",
-                        context={
-                            "employee_id": str(emp.id),
-                            "name": emp.name,
-                            "nif": emp.nif,
-                        },
-                    )
-            except Exception:
-                logger.debug("Failed to emit employee_created event for %s", emp.id, exc_info=True)
-
             return (
                 f"Empleado creado correctamente.\n"
                 f"Nombre: {emp.name}\n"
@@ -156,5 +113,7 @@ async def _create_employee_async(
                 f"IRPF: {irpf_rate}%\n"
                 f"ID: {emp.id}"
             )
+    except ValueError as e:
+        return f"Error: {e}"
     except Exception as e:
         return f"Error creando empleado: {e}"
