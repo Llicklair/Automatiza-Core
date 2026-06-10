@@ -179,3 +179,19 @@ class FiscalApprovalLog(Base):
     user_agent = Column(String(500), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+
+
+class IdempotencyKey(Base):
+    """Clave de idempotencia persistente para jobs del scheduler/workers.
+
+    Sin tenant_id: es una tabla de sistema (la clave ya incluye operación y
+    entidad). Sobrevive reinicios — evita p.ej. emitir dos veces una factura
+    recurrente si la app se reinicia dentro de la ventana del cron.
+    """
+
+    __tablename__ = "idempotency_keys"
+
+    key = Column(String(255), primary_key=True)
+    payload = Column(Text, nullable=True)  # JSON con executed_at/result
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
