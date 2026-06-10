@@ -291,6 +291,86 @@ async def _exec_inventory_batch_adjust(
     )
 
 
+@register_action("gated_tool_call")
+async def _exec_gated_tool_call(
+    params: dict, db: AsyncSession, tenant_id: str
+) -> tuple[bool, str]:
+    """Re-ejecuta una tool retenida por `gated_tool` (CONFIRM), saltándose el gate.
+
+    El payload guarda module/func/kwargs. Se importa dinámicamente y se invoca
+    la función ORIGINAL (`__wrapped__`), no el wrapper — re-llamar al wrapper
+    re-evaluaría la política y volvería a bloquear (bucle de re-aprobación).
+    """
+    import importlib
+
+    module_name = params.get("module") or ""
+    func_name = params.get("func") or ""
+    kwargs = dict(params.get("kwargs") or {})
+    kwargs.setdefault("tenant_id", tenant_id)
+
+    if not module_name.startswith("app."):
+        return False, f"Módulo no permitido para gated_tool_call: {module_name!r}"
+
+    mod = importlib.import_module(module_name)
+    fn = getattr(mod, func_name, None)
+    if fn is None:
+        return False, f"Tool {module_name}.{func_name} no encontrada."
+    # @tool de LangChain envuelve en StructuredTool: la coroutine real está en .coroutine
+    fn = getattr(fn, "coroutine", fn)
+    # Saltar el wrapper del gate (functools.wraps expone la original en __wrapped__)
+    fn = getattr(fn, "__wrapped__", fn)
+
+    result = await fn(**kwargs)
+    return True, f"Acción ejecutada tras aprobación: {str(result)[:300]}"
+
+
+@register_action("send_email")
+async def _exec_send_email(
+    params: dict, db: AsyncSession, tenant_id: str
+) -> tuple[bool, str]:
+    """Envía un email retenido (recordatorios de pago, comunicaciones a clientes)."""
+    from app.services.email_sender import send_email
+
+    to = params.get("to") or ""
+    subject = params.get("subject") or ""
+    if not to or not subject:
+        return False, "Faltan destinatario o asunto para enviar el email."
+    result = await send_email(
+        tenant_id=tenant_id,
+        to=to,
+        subject=subject,
+        body=params.get("body") or "",
+        attachment_ids=params.get("attachment_ids"),
+    )
+    ok = "enviado" in result.lower()
+    return ok, result[:300]
+
+
+@register_action("reconcile_transaction")
+async def _exec_reconcile_transaction(
+    params: dict, db: AsyncSession, tenant_id: str
+) -> tuple[bool, str]:
+    """Concilia manualmente un movimiento bancario contra una factura (aprobado)."""
+    from app.services.banking.service import reconcile_transaction
+
+    tx_id = params.get("transaction_id")
+    invoice_id = params.get("invoice_id")
+    if not tx_id or not invoice_id:
+        return False, "Faltan transaction_id o invoice_id para conciliar."
+    user_id = params.get("user_id")
+    try:
+        await reconcile_transaction(
+            db,
+            uuid.UUID(tenant_id),
+            uuid.UUID(user_id) if user_id else None,  # solo viaja a emit_event (nullable)
+            uuid.UUID(str(tx_id)),
+            str(invoice_id),
+        )
+    except LookupError as e:
+        return False, str(e)
+    return True, f"Movimiento {str(tx_id)[:8]}… conciliado con la factura tras aprobación."
+
+
 @register_action("inventory_batch_update")
 async def _exec_inventory_batch_update(
     params: dict, db: AsyncSession, tenant_id: str

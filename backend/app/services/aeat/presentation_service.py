@@ -70,8 +70,33 @@ async def submit_presentation(
     presentation_id: UUID,
     *,
     dry_run: bool = True,
+    confirmed_by_user_id: UUID | None = None,
 ) -> AeatPresentation:
-    """Firma, envía y captura respuesta. Actualiza el AeatPresentation paso a paso."""
+    """Firma, envía y captura respuesta. Actualiza el AeatPresentation paso a paso.
+
+    Blindaje fiscal: el envío REAL (`dry_run=False`) exige `confirmed_by_user_id`
+    — el ID del humano que pulsó el botón. Ningún agente/automatización puede
+    presentar ante la AEAT sin esa confirmación explícita. Queda en AuditLog.
+    """
+    if not dry_run and confirmed_by_user_id is None:
+        raise PresentationError(
+            "Presentación real bloqueada: falta la confirmación humana explícita "
+            "(confirmed_by_user_id). Las presentaciones AEAT nunca se auto-envían."
+        )
+    if not dry_run:
+        from app.services.audit import log_action
+
+        await log_action(
+            db,
+            tenant_id=tenant_id,
+            agent_name="aeat",
+            action_type="aeat_presentation_confirmed",
+            status="success",
+            input_data={
+                "presentation_id": str(presentation_id),
+                "confirmed_by_user_id": str(confirmed_by_user_id),
+            },
+        )
     res = await db.execute(
         select(AeatPresentation)
         .where(AeatPresentation.id == presentation_id)
@@ -141,6 +166,7 @@ async def submit_presentation(
         result = await submit_signed_xml(
             p.model_code, sign_result.signed_xml,
             environment=p.environment, dry_run=dry_run,
+            confirmed=confirmed_by_user_id is not None,
         )
     except SedeError as e:
         p.status = "error"

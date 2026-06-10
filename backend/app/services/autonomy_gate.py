@@ -70,14 +70,24 @@ class AutonomyDecision:
 
     async def persist_pending_approval(
         self, db: AsyncSession, *, expires_in_days: int = 7,
-        risk_level: str = "MEDIUM",
+        risk_level: str = "MEDIUM", kind: str | None = None,
     ) -> PendingApproval:
         """Crea una `PendingApproval` para que un humano apruebe.
 
         Solo tiene sentido cuando `mode == "CONFIRM"`. El caller debe hacer
         commit explícito tras esta llamada. Requiere `task_id` en el
         `AutonomyDecision` (la tabla `pending_approvals` lo exige).
+
+        `kind` enlaza con un executor de `approval_actions.register_action`:
+        al aprobar, `_resume_orchestrator` ejecuta la acción automáticamente.
+        Sin `kind`, el payload cae en la ruta legacy (solo facturas) — pásalo
+        siempre que exista un executor registrado.
         """
+        payload = (
+            {"kind": kind, "params": self.action_payload, "summary": self.action_summary}
+            if kind
+            else self.action_payload
+        )
         if not self.needs_approval:
             raise ValueError(
                 "persist_pending_approval solo aplica en modo CONFIRM"
@@ -93,7 +103,7 @@ class AutonomyDecision:
             tenant_id=self.tenant_id,
             task_id=self.task_id,
             action_description=self.action_summary,
-            action_payload=self.action_payload,
+            action_payload=payload,
             risk_level=risk_level,
             expires_at=datetime.now(UTC) + timedelta(days=expires_in_days),
             status="pending",
@@ -187,13 +197,12 @@ def gated_tool(
 
     Si la política es:
       - AUTO    → ejecuta la tool normal y devuelve su resultado.
-      - CONFIRM → devuelve string explicando que la acción quedó pendiente.
+      - CONFIRM → crea un PendingApproval estructurado (kind=`gated_tool_call`)
+                  que al aprobarse re-ejecuta la tool original saltándose el
+                  gate (la decisión humana ES la autorización), y devuelve
+                  string explicando que la acción quedó pendiente. El task_id
+                  sale del ContextVar; si no hay task en curso, solo string.
       - MANUAL  → devuelve string con la sugerencia, sin ejecutar.
-
-    En CONFIRM/MANUAL NO se crea PendingApproval automáticamente porque
-    el decorator no tiene `task_id` (vive a nivel de tool, no de task).
-    El caller del orquestador es quien persiste la aprobación si el modo
-    es CONFIRM — ver `docs/autonomy_gate_guide.md` para el patrón completo.
     """
     from functools import wraps
 
@@ -232,9 +241,32 @@ def gated_tool(
                 return await func(*args, **kwargs)
 
             if decision.needs_approval:
+                from app.services.workflow.approval_actions import create_action_approval
+
+                approval_id = await create_action_approval(
+                    tenant_id=str(tenant_uuid),
+                    kind="gated_tool_call",
+                    params={
+                        "module": func.__module__,
+                        "func": func.__name__,
+                        # JSONB-safe: tipos no serializables se degradan a str
+                        "kwargs": {
+                            k: v
+                            if isinstance(v, str | int | float | bool | list | dict | None)
+                            else str(v)
+                            for k, v in kwargs.items()
+                        },
+                    },
+                    summary=summary,
+                )
+                suffix = (
+                    " Revisa tu bandeja de aprobaciones."
+                    if approval_id
+                    else " (No hay tarea activa: ejecútala desde la UI o aprueba la política.)"
+                )
                 return (
                     f"⏸ Acción pendiente de aprobación humana ({domain} = CONFIRM). "
-                    f"He preparado la acción: «{summary}». Revisa tu bandeja de aprobaciones."
+                    f"He preparado la acción: «{summary}».{suffix}"
                 )
 
             # MANUAL

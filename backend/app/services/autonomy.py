@@ -56,7 +56,15 @@ KNOWN_DOMAINS: frozenset[str] = frozenset({
     "rag",
     "validators",
     "uploads",
+    "fiscal",
 })
+
+# Dominios con modo FORZADO — no configurables por el tenant ni por API.
+# fiscal (Verifactu/AEAT): presentar ante la Administración exige SIEMPRE un
+# humano explícito; un AUTO aquí es riesgo legal directo.
+FORCED_MODES: dict[str, AutonomyMode] = {
+    "fiscal": "MANUAL",
+}
 
 # Defaults por dominio. Cualquier dominio no listado cae a AUTO.
 # Acciones irreversibles o con efecto físico/contable van a CONFIRM por defecto:
@@ -74,6 +82,8 @@ DEFAULTS: dict[str, AutonomyMode] = {
 
 
 def default_mode(domain: str) -> AutonomyMode:
+    if domain in FORCED_MODES:
+        return FORCED_MODES[domain]
     return DEFAULTS.get(domain, "AUTO")
 
 
@@ -83,6 +93,9 @@ async def get_policy(
     """Devuelve el mode efectivo (fila persistida o default del dominio)."""
     if domain not in KNOWN_DOMAINS:
         logger.warning("autonomy.get_policy: dominio desconocido %s", domain)
+    if domain in FORCED_MODES:
+        # Blindaje: ignora cualquier fila persistida (p. ej. escrita a mano en DB).
+        return FORCED_MODES[domain]
     result = await db.execute(
         select(AutonomyPolicy.mode).where(
             AutonomyPolicy.tenant_id == tenant_id,
@@ -113,7 +126,9 @@ async def list_policies(
 
     out: dict[str, dict[str, str | bool]] = {}
     for domain in sorted(KNOWN_DOMAINS):
-        if domain in persisted:
+        if domain in FORCED_MODES:
+            out[domain] = {"mode": FORCED_MODES[domain], "is_default": True, "locked": True}
+        elif domain in persisted:
             out[domain] = {"mode": persisted[domain], "is_default": False}
         else:
             out[domain] = {"mode": default_mode(domain), "is_default": True}
@@ -131,6 +146,11 @@ async def set_policy(
     """Upsert de la policy. Valida `domain` y `mode`."""
     if domain not in KNOWN_DOMAINS:
         raise ValueError(f"Dominio desconocido: {domain}")
+    if domain in FORCED_MODES:
+        raise ValueError(
+            f"El dominio '{domain}' tiene el modo forzado a {FORCED_MODES[domain]} "
+            "por seguridad y no es configurable."
+        )
     if mode not in ("AUTO", "CONFIRM", "MANUAL"):
         raise ValueError(f"Modo inválido: {mode}")
 

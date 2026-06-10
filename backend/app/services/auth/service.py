@@ -1,6 +1,7 @@
 """Lógica de negocio de autenticación: registro, login, refresh y reset de contraseña."""
 
 import hashlib
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -20,6 +21,8 @@ from app.db.models.models import PasswordResetToken, Tenant, User
 from app.services.audit import log_action
 from app.services.auth._schemas import UserCreate
 from app.services.auth.email_reset import send_password_reset_email
+
+logger = logging.getLogger(__name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -91,6 +94,14 @@ async def register(payload: UserCreate, db: AsyncSession) -> User:
         status="success",
         input_data={"email": payload.email, "nif": payload.tenant.nif},
     )
+
+    # Rutinas de oficio por defecto (motor proactivo). No fatal si falla.
+    try:
+        from app.services.workflow.default_routines import seed_default_routines
+
+        await seed_default_routines(db, tenant.id, user.id)
+    except Exception:
+        logger.warning("Seed de rutinas de oficio falló para tenant %s", tenant.id, exc_info=True)
 
     await db.commit()
     await db.refresh(user)

@@ -25,6 +25,7 @@ def register_jobs() -> None:
         check_failed_workflow_executions,
         check_scheduled_workflows,
         cleanup_stuck_executions,
+        emit_month_end_events,
         process_recurring_invoices,
         publish_scheduled_posts,
     )
@@ -52,6 +53,15 @@ def register_jobs() -> None:
         publish_scheduled_posts,
         IntervalTrigger(minutes=5),
         id="publish_scheduled_posts",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Día 1 de cada mes a las 7:00: evento month_end (mes recién cerrado) por tenant
+    scheduler.add_job(
+        emit_month_end_events,
+        CronTrigger(day=1, hour=7, minute=0),
+        id="emit_month_end_events",
         replace_existing=True,
         max_instances=1,
     )
