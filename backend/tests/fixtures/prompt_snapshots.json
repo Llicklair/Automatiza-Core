@@ -7,7 +7,7 @@
   "app/agents/documents/prompts.py": "67fdd38ac31f411f2767425b9911dd906d435124027d03327c39e4ffadc3833e",
   "app/agents/email/prompts.py": "c5a0649e57f281a06424df39f0bdf1539ee0e44a07dec097cb193d5359b575c1",
   "app/agents/excel/prompts.py": "88fed47ad6a04ae358e850a1ca9fc9ba48f6ac480c12308384f76b34812614c3",
-  "app/agents/hr/prompts.py": "2cde92d5a9418eac164bd0e131734b0782b481b070705d8fd7adef70c46da94a",
+  "app/agents/hr/prompts.py": "9873e04222b158ab55566f8d4e45cd197dea10e5ec106fc1d7234bf8fd2f0a9f",
   "app/agents/inventory/prompts.py": "9fe8db527abc8a45d01684306a8009a88600a495dcb2a6b9b506104040d6e410",
   "app/agents/marketing/prompts.py": "681a195859e16206dce235e1efd45c27c0d0ba8ac4c553def705931893c712ca",
   "app/agents/rag/prompts.py": "1e903c140ee552083d936de5c1ebf81c9ee901bb7e40e61bd83fa1004e7a554f",

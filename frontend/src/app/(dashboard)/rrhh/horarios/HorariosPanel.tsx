@@ -15,7 +15,7 @@ import { useToastStore } from "@/stores/toast";
 import { api } from "@/lib/api";
 import {
     useHorarios, DAYS, calcWeeklyHours,
-    buildScheduleCSV, buildScheduleHTML, downloadCSV,
+    buildScheduleHTML,
 } from "./_hooks/useHorarios";
 
 export function HorariosPanel() {
@@ -59,15 +59,17 @@ export function HorariosPanel() {
     });
     const [sending, setSending] = useState(false);
 
-    function handleExport() {
+    async function handleExport(format: "xlsx" | "pdf") {
         if (employees.length === 0) {
             toast.error("No hay empleados para exportar");
             return;
         }
-        const csv = buildScheduleCSV(employees, grids);
-        const date = new Date().toISOString().slice(0, 10);
-        downloadCSV(`horarios-${date}.csv`, csv);
-        toast.success("Exportado");
+        try {
+            await api.hr.schedules.export(format);
+            toast.success("Exportado");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Error al exportar");
+        }
     }
 
     async function handleSendEmail(e: React.FormEvent) {
@@ -109,9 +111,13 @@ export function HorariosPanel() {
                             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                             Asistente IA
                         </Button>
-                        <Button size="sm" variant="outline" onClick={handleExport}>
+                        <Button size="sm" variant="outline" onClick={() => handleExport("xlsx")}>
                             <Download className="w-3.5 h-3.5 mr-1.5" />
                             Exportar Excel
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleExport("pdf")}>
+                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                            Exportar PDF
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setShowEmail(true)}>
                             <Mail className="w-3.5 h-3.5 mr-1.5" />

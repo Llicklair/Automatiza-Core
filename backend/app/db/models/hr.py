@@ -1,5 +1,7 @@
 """Modelos RRHH: Empleados, Nóminas, Finiquitos y Reclutamiento."""
 
+from sqlalchemy import UniqueConstraint
+
 from .common import (
     JSONB,
     UUID,
@@ -273,6 +275,10 @@ class WorkSchedule(Base):
     """Plantilla de horario semanal fijo por empleado."""
 
     __tablename__ = "work_schedules"
+    # Requerida por el ON CONFLICT del upsert de horarios (services/hr/commands.py)
+    __table_args__ = (
+        UniqueConstraint("employee_id", "day_of_week", name="uq_work_schedule_emp_day"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)

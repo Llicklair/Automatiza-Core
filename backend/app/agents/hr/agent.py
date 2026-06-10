@@ -27,6 +27,7 @@ from .tools import (
     generate_all_payrolls,
     list_employees,
     list_payrolls,
+    propose_schedule,
     update_payroll,
 )
 
@@ -41,6 +42,7 @@ tools = [
     list_payrolls,
     update_payroll,
     approve_payroll,
+    propose_schedule,
     create_document,
     list_tenant_documents,
     update_existing_document,

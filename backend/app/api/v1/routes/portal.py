@@ -113,6 +113,40 @@ async def get_portal_me(
     return await _build_portal_payload(db, employee, current_user.tenant_id)
 
 
+@router.get("/my-schedule/export")
+async def export_my_schedule(
+    format: str = "pdf",
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Descarga el horario del propio empleado en Excel o PDF."""
+    from fastapi import Response
+
+    from app.services.hr.schedule_export import (
+        build_schedules_pdf,
+        build_schedules_xlsx,
+        fetch_schedule_grid,
+    )
+
+    if format not in ("xlsx", "pdf"):
+        raise HTTPException(status_code=422, detail="format debe ser 'xlsx' o 'pdf'")
+    employee = await _get_my_employee(db, current_user)
+    if not employee:
+        raise HTTPException(status_code=404, detail="No tienes ficha de empleado")
+    grid = await fetch_schedule_grid(db, current_user.tenant_id, employee_id=employee.id)
+    if format == "xlsx":
+        content = build_schedules_xlsx(grid)
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        content = build_schedules_pdf(grid)
+        media = "application/pdf"
+    return Response(
+        content=content,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="mi-horario.{format}"'},
+    )
+
+
 @router.get("/as/{employee_id}")
 async def get_portal_as_employee(
     employee_id: str,
