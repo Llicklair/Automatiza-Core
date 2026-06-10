@@ -32,6 +32,7 @@ from app.services.billing.queries import (
     _load_invoice,
     compute_invoice_totals,
 )
+from app.services.state_machine import allowed_next_states, can_transition
 
 logger = logging.getLogger(__name__)
 
@@ -258,8 +259,8 @@ async def update_status(
     new_status: str,
     db: AsyncSession,
 ):
-    """Cambia estado. Lanza ValueError si no existe o estado inválido."""
-    allowed = {"draft", "pending", "paid", "cancelled"}
+    """Cambia estado. Lanza ValueError si no existe o transición inválida."""
+    allowed = {"draft", "pending", "sent", "paid", "cancelled"}
     if new_status not in allowed:
         raise ValueError(f"Estado no válido. Opciones: {allowed}")
 
@@ -268,6 +269,11 @@ async def update_status(
         raise ValueError("Factura no encontrada")
 
     prev_status = invoice.status
+    if new_status != prev_status and not can_transition("Invoice", prev_status, new_status):
+        raise ValueError(
+            f"Transición inválida: '{prev_status}' → '{new_status}'. "
+            f"Permitidos: {allowed_next_states('Invoice', prev_status)}"
+        )
     invoice.status = new_status
     await db.commit()
     await db.refresh(invoice)

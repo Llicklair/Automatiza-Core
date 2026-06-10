@@ -40,14 +40,20 @@ class InvalidTransitionError(ValueError):
 
 _ALLOWED: dict[str, dict[str, list[str]]] = {
     # ── Invoice ──────────────────────────────────────────────────────────────
-    # draft  → (se puede emitir o cancelar sin emitir)
-    # issued → (se puede cobrar o cancelar)
-    # paid   → TERMINAL (no se puede deshacer)
+    # Vocabulario real en runtime (auditoría 2026-06): draft, pending, sent,
+    # paid, cancelled. "issued" no se asigna nunca como STATUS (no confundir
+    # con invoice_type="issued", que es emitida vs recibida).
+    # draft   → se puede emitir (pending/sent), cobrar o cancelar
+    # pending → pendiente de cobro (rectificativas, update_status)
+    # sent    → enviada al cliente, pendiente de cobro
+    # paid    → cobrada; reversa controlada a sent (desconciliar cobro bancario)
     # cancelled → TERMINAL
     "Invoice": {
-        "draft": ["issued", "cancelled"],
-        "issued": ["paid", "cancelled"],
-        # paid y cancelled son terminales → no aparecen
+        "draft": ["pending", "sent", "paid", "cancelled"],
+        "pending": ["sent", "paid", "cancelled"],
+        "sent": ["paid", "cancelled"],
+        # Reversa controlada: desconciliar un cobro bancario (unreconcile).
+        "paid": ["sent"],
     },
     # ── Payroll ──────────────────────────────────────────────────────────────
     # draft    → aprobada por el responsable de RRHH

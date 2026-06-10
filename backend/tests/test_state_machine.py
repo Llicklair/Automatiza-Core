@@ -10,19 +10,29 @@ from app.services.state_machine import (
 
 
 class TestInvoiceTransitions:
-    def test_draft_to_issued(self):
-        validate_transition("Invoice", "draft", "issued")  # no lanza
+    def test_draft_to_sent(self):
+        validate_transition("Invoice", "draft", "sent")  # no lanza
+
+    def test_draft_to_pending(self):
+        validate_transition("Invoice", "draft", "pending")
 
     def test_draft_to_cancelled(self):
         validate_transition("Invoice", "draft", "cancelled")
 
-    def test_issued_to_paid(self):
-        validate_transition("Invoice", "issued", "paid")
+    def test_sent_to_paid(self):
+        validate_transition("Invoice", "sent", "paid")
 
-    def test_issued_to_cancelled(self):
-        validate_transition("Invoice", "issued", "cancelled")
+    def test_pending_to_paid(self):
+        validate_transition("Invoice", "pending", "paid")
 
-    def test_paid_is_terminal(self):
+    def test_sent_to_cancelled(self):
+        validate_transition("Invoice", "sent", "cancelled")
+
+    def test_paid_to_sent_unreconcile(self):
+        # Reversa controlada: desconciliar un cobro bancario.
+        validate_transition("Invoice", "paid", "sent")
+
+    def test_paid_to_draft_not_allowed(self):
         with pytest.raises(InvalidTransitionError):
             validate_transition("Invoice", "paid", "draft")
 
@@ -30,9 +40,10 @@ class TestInvoiceTransitions:
         with pytest.raises(InvalidTransitionError):
             validate_transition("Invoice", "cancelled", "draft")
 
-    def test_draft_to_paid_not_allowed(self):
+    def test_issued_is_dead_status(self):
+        # "issued" como status fue retirado (vocabulario 2026-06).
         with pytest.raises(InvalidTransitionError):
-            validate_transition("Invoice", "draft", "paid")
+            validate_transition("Invoice", "issued", "paid")
 
 
 class TestPayrollTransitions:
@@ -67,7 +78,7 @@ class TestTaskTransitions:
 
 class TestCanTransition:
     def test_valid_returns_true(self):
-        assert can_transition("Invoice", "draft", "issued") is True
+        assert can_transition("Invoice", "draft", "sent") is True
 
     def test_invalid_returns_false(self):
         assert can_transition("Invoice", "paid", "draft") is False
@@ -76,17 +87,22 @@ class TestCanTransition:
 class TestAllowedNextStates:
     def test_draft_invoice(self):
         states = allowed_next_states("Invoice", "draft")
-        assert "issued" in states
+        assert "sent" in states
+        assert "pending" in states
         assert "cancelled" in states
 
     def test_terminal_returns_empty(self):
-        states = allowed_next_states("Invoice", "paid")
+        states = allowed_next_states("Invoice", "cancelled")
         assert states == []
 
 
 class TestIsTerminal:
-    def test_paid_is_terminal(self):
-        assert is_terminal("Invoice", "paid") is True
+    def test_cancelled_is_terminal(self):
+        assert is_terminal("Invoice", "cancelled") is True
+
+    def test_paid_is_not_terminal(self):
+        # paid → sent (reversa de desconciliación) está permitido.
+        assert is_terminal("Invoice", "paid") is False
 
     def test_draft_is_not_terminal(self):
         assert is_terminal("Invoice", "draft") is False

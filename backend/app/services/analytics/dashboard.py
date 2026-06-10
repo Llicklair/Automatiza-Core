@@ -6,7 +6,7 @@ RRHH, IA tasks, top clientes, cashflow histórico (6 meses) y estado de
 facturas. Demo bank transactions (description prefijada con [DEMO])
 quedan excluidas para no contaminar las métricas.
 
-Estados de Invoice válidos según state_machine: draft, issued, paid, cancelled.
+Estados de Invoice válidos según state_machine: draft, pending, sent, paid, cancelled.
 """
 
 from __future__ import annotations
@@ -161,11 +161,11 @@ async def get_dashboard(
         status_amounts[st] = float(amt or 0)
 
     pagadas_count = status_counts.get("paid", 0)
-    pendientes_count = status_counts.get("issued", 0)
+    pendientes_count = status_counts.get("pending", 0) + status_counts.get("sent", 0)
     borradores_count = status_counts.get("draft", 0)
     canceladas_count = status_counts.get("cancelled", 0)
 
-    importe_pendiente_cobro = status_amounts.get("issued", 0.0)
+    importe_pendiente_cobro = status_amounts.get("pending", 0.0) + status_amounts.get("sent", 0.0)
 
     total_ingresos_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
         Invoice.tenant_id == tenant_id,
@@ -190,13 +190,13 @@ async def get_dashboard(
     )
     recibidas_count = int((await db.execute(received_count_q)).scalar() or 0)
 
-    # ── Próximas a vencer (issued + due_date <= hoy+7) ───────────────────
+    # ── Próximas a vencer (pendientes de cobro + due_date <= hoy+7) ──────
     due_soon_q = select(
         func.count(), func.coalesce(func.sum(Invoice.amount_total), 0)
     ).where(
         Invoice.tenant_id == tenant_id,
         Invoice.invoice_type == "issued",
-        Invoice.status == "issued",
+        Invoice.status.in_(["pending", "sent"]),
         Invoice.due_date.is_not(None),
         Invoice.due_date <= today + timedelta(days=7),
     )
@@ -252,13 +252,13 @@ async def get_dashboard(
 
     # ── Estado de facturas (para pie chart, sólo emitidas con importe) ───
     estado_facturas = []
-    for label, key in (
-        ("Cobradas", "paid"),
-        ("Pendientes", "issued"),
-        ("Borradores", "draft"),
-        ("Canceladas", "cancelled"),
+    for label, keys in (
+        ("Cobradas", ("paid",)),
+        ("Pendientes", ("pending", "sent")),
+        ("Borradores", ("draft",)),
+        ("Canceladas", ("cancelled",)),
     ):
-        val = status_amounts.get(key, 0.0)
+        val = sum(status_amounts.get(k, 0.0) for k in keys)
         if val > 0:
             estado_facturas.append({"name": label, "value": round(val, 2)})
 
@@ -483,7 +483,7 @@ async def get_dashboard(
             .where(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == tipo,
-                Invoice.status == "issued",
+                Invoice.status.in_(["pending", "sent"]),
                 Invoice.due_date.is_not(None),
             )
             .group_by(bucket_expr)
