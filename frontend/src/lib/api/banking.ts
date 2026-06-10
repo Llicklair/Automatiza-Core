@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, requestUpload } from "./client";
 
 export interface BankTransaction {
     id: string;
@@ -42,6 +42,13 @@ export interface ReconciliationSuggestion {
     suggestions: InvoiceSuggestion[];
 }
 
+export interface N43ImportResult {
+    imported: number;
+    skipped: number;
+    reconciled: number;
+    errors: { row?: number; reason: string }[];
+}
+
 export const banking = {
     summary: () => request<{ ingresos: number; gastos: number; neto: number; margen: number; is_demo: boolean }>("/api/v1/banking/summary"),
     analytics: () => request<{ cashflow: { month: string, ingresos: number, gastos: number }[], insights: { id: string, type: 'success' | 'warning' | 'info' | 'error', title: string, message: string, action_text: string, action_url: string }[] }>("/api/v1/banking/analytics"),
@@ -54,6 +61,12 @@ export const banking = {
         }),
         ignore: (id: string) => request<{ message: string; status: string }>(`/api/v1/banking/transactions/${id}/ignore`, { method: "POST" }),
         unreconcile: (id: string) => request<{ message: string; status: string }>(`/api/v1/banking/transactions/${id}/unreconcile`, { method: "POST" }),
+        /** Importa un extracto Norma 43 (AEB): valida, importa idempotente y auto-concilia. */
+        importN43: (file: File): Promise<N43ImportResult> => {
+            const formData = new FormData();
+            formData.append("file", file);
+            return requestUpload<N43ImportResult>("/api/v1/import/bank-statement-n43", formData);
+        },
     },
     reconciliation: {
         suggestions: () => request<ReconciliationSuggestion[]>("/api/v1/banking/reconciliation/suggestions"),
