@@ -394,11 +394,23 @@ export default function PortalPage() {
 
                             {/* Horario semanal estipulado */}
                             <div className="rounded-xl border border-border bg-card overflow-hidden">
-                                <div className="px-4 py-3 border-b border-border">
-                                    <p className="text-sm font-medium text-foreground">Horario estipulado</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Tu jornada semanal según la ficha que configuró RRHH.
-                                    </p>
+                                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">Horario estipulado</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Tu jornada semanal según la ficha que configuró RRHH.
+                                        </p>
+                                    </div>
+                                    {(data?.schedule?.length ?? 0) > 0 && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => api.portal.exportMySchedule("pdf").catch(() => {})}
+                                        >
+                                            <Download className="w-3.5 h-3.5 mr-1.5" />
+                                            Descargar PDF
+                                        </Button>
+                                    )}
                                 </div>
                                 <table className="w-full text-sm">
                                     <thead>

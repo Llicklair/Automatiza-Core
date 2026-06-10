@@ -400,6 +400,37 @@ async def list_schedules(
     return await svc.list_schedules(db, current_user.tenant_id)
 
 
+@router.get("/schedules/export")
+@limiter.limit("10/minute")
+async def export_schedules(
+    request: Request,
+    format: str = "xlsx",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Exporta los horarios de todos los empleados a Excel o PDF."""
+    from app.services.hr.schedule_export import (
+        build_schedules_pdf,
+        build_schedules_xlsx,
+        fetch_schedule_grid,
+    )
+
+    if format not in ("xlsx", "pdf"):
+        raise HTTPException(status_code=422, detail="format debe ser 'xlsx' o 'pdf'")
+    grid = await fetch_schedule_grid(db, current_user.tenant_id)
+    if format == "xlsx":
+        content = build_schedules_xlsx(grid)
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        content = build_schedules_pdf(grid)
+        media = "application/pdf"
+    return Response(
+        content=content,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="horarios.{format}"'},
+    )
+
+
 @router.get("/schedules/{employee_id}")
 @limiter.limit("30/minute")
 async def get_employee_schedule(

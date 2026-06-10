@@ -78,6 +78,7 @@ DEFAULTS: dict[str, AutonomyMode] = {
     "email": "CONFIRM",       # enviar correo es irreversible
     "documents": "CONFIRM",   # importar factura de compra puede mover stock
     "inventory": "CONFIRM",   # ajustes/precios/altas-bajas por lotes
+    "hr": "CONFIRM",          # aplicar horarios afecta a toda la plantilla
 }
 
 

@@ -121,35 +121,6 @@ export function useHorarios() {
 
 // ── Export helpers ────────────────────────────────────────────────────────────
 
-export function buildScheduleCSV(
-    employees: Employee[],
-    grids: Record<string, EmployeeSchedule>
-): string {
-    const header = ["Empleado", "Rol", "Departamento", ...DAYS_FULL, "Horas/semana"];
-    const rows = employees.map((emp) => {
-        const grid = grids[emp.id] ?? {};
-        const cells = DAYS_FULL.map((_, i) => {
-            const day = grid[i];
-            return day?.active ? `${day.start_time}-${day.end_time}` : "";
-        });
-        return [
-            emp.name,
-            emp.role || "",
-            emp.department || "",
-            ...cells,
-            calcWeeklyHours(grid).toFixed(1),
-        ];
-    });
-
-    const escape = (v: string) => {
-        if (/[",\n;]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-        return v;
-    };
-    const lines = [header, ...rows].map((row) => row.map(escape).join(";"));
-    // Use UTF-8 BOM so Excel detects the encoding correctly
-    return "﻿" + lines.join("\r\n");
-}
-
 export function buildScheduleHTML(
     employees: Employee[],
     grids: Record<string, EmployeeSchedule>
@@ -179,16 +150,4 @@ export function buildScheduleHTML(
         <thead><tr>${headerCells}</tr></thead>
         <tbody>${bodyRows}</tbody>
     </table>`;
-}
-
-export function downloadCSV(filename: string, csv: string) {
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }

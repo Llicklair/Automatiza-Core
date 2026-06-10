@@ -48,7 +48,7 @@ import { signing } from "./signing";
 import { marketingApi } from "./marketing";
 import { emailMarketingApi } from "./email_marketing";
 import { metricsApi } from "./metrics";
-import { request } from "./client";
+import { downloadBlob, request } from "./client";
 
 // ── Portal types ─────────────────────────────────────────────────────────────
 export interface PortalData {
@@ -142,6 +142,8 @@ export const api = {
                 method: "POST",
                 body: JSON.stringify({ ...data, employee_id: "00000000-0000-0000-0000-000000000000" }),
             }),
+        exportMySchedule: (format: "xlsx" | "pdf") =>
+            downloadBlob(`/api/v1/portal/my-schedule/export?format=${format}`, `mi-horario.${format}`),
     },
 };
 

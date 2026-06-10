@@ -161,6 +161,8 @@ export const hr = {
                 method: "POST",
                 body: JSON.stringify({ instruction, employee_ids: employeeIds }),
             }),
+        export: (format: "xlsx" | "pdf") =>
+            downloadBlob(`/api/v1/hr/schedules/export?format=${format}`, `horarios.${format}`),
     },
     attendance: {
         list: (date?: string) =>

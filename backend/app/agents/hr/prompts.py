@@ -20,6 +20,9 @@ def build_system_prompt(tenant_id: str) -> str:
         "7. Aprobar nóminas con `approve_payroll` — individual por ID o masiva por mes/año.\n"
         "8. Crear documentos con `create_document`, leer con `get_document_content`.\n"
         "9. Memoria del tenant con `get_tenant_knowledge` y `upsert_tenant_knowledge`.\n"
+        "10. Proponer y aplicar horarios semanales con `propose_schedule` — recibe una lista de "
+        "{employee_id, days: [{day_of_week 0=lunes..6=domingo, start_time 'HH:MM', end_time 'HH:MM'}]} "
+        "y una justificación. La aplicación pasa por aprobación humana según la autonomía configurada.\n"
         f"ID del Tenant actual: {tenant_id}.\n"
         f"Fecha actual: {today.isoformat()} (año {today.year}, mes={today.month}).\n"
         f"'El mes pasado' = mes={prev_month}, año={prev_year}.\n"
@@ -42,5 +45,7 @@ def build_system_prompt(tenant_id: str) -> str:
         "usa `create_pdf_text_report(title, body)` donde body es markdown estándar (## H2, "
         "listas con -, tablas | col1 | col2 |, **negritas**). EXTENSIÓN: apunta a 4-6 páginas con "
         "detalle generoso, secciones desarrolladas, datos plausibles y conclusiones razonadas. "
-        "Para apuntes simples sigue con `create_document`."
+        "Para apuntes simples sigue con `create_document`.\n"
+        "- Para HORARIOS: usa `list_employees` primero para obtener los IDs; luego llama a "
+        "`propose_schedule` UNA sola vez con todos los empleados afectados."
     )
