@@ -15,12 +15,11 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from app.agents.base import AgentState
 from app.agents.types import StepResult
 from app.core.llm_factory import get_llm
-from app.services.email.service import send_email_smtp
 from app.services.email_credentials import get_email_credentials, get_oauth_token
 
-from ._provider_tools import _resolve_smtp_attachments, build_real_tools
+from ._provider_tools import build_real_tools
 from .prompts import build_system_prompt
-from .tools import _load_attachments, build_tools_list
+from .tools import build_tools_list
 
 logger = logging.getLogger(__name__)
 
@@ -115,62 +114,6 @@ def _build_graph(tools_list, mode_note: str = ""):
     wf.add_edge("tools", "email_agent")
 
     return wf.compile()
-
-
-async def send_email_direct(
-    tenant_id: str,
-    to: str,
-    subject: str,
-    body: str,
-    attachment_ids: list[str] | None = None,
-) -> str:
-    """
-    Envía un email real usando las credenciales del tenant (gmail > outlook > smtp).
-    Usable desde otros agentes sin pasar por el grafo LangGraph.
-    """
-    gmail_token = await get_oauth_token(tenant_id, "gmail")
-    outlook_token = await get_oauth_token(tenant_id, "outlook")
-    imap_creds = await get_email_credentials(tenant_id)
-
-    attachments = await _load_attachments(tenant_id, attachment_ids)
-    attach_msg = f" con {len(attachments)} adjuntos" if attachments else ""
-
-    try:
-        if gmail_token:
-            from app.integrations.gmail_client import GmailClient
-
-            client = GmailClient(gmail_token)
-            try:
-                await client.send_message(
-                    to=to, subject=subject, body=body, attachments=attachments or None
-                )
-                return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
-            finally:
-                await client.close()
-        elif outlook_token:
-            from app.integrations.outlook_client import OutlookClient
-
-            client = OutlookClient(outlook_token)
-            try:
-                await client.send_message(
-                    to=to, subject=subject, body=body, attachments=attachments or None
-                )
-                return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
-            finally:
-                await client.close()
-        elif imap_creds:
-            attachment_paths = await _resolve_smtp_attachments(tenant_id, attachment_ids or [])
-            result = send_email_smtp(
-                imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths
-            )
-            if result["success"]:
-                return f"Correo enviado via SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
-            else:
-                return f"Error SMTP: {result['message']}"
-        else:
-            return "[SIN CREDENCIALES] No hay proveedor de email configurado para este tenant."
-    except Exception as e:
-        return f"Error al enviar correo: {e}"
 
 
 async def run_email_agent(

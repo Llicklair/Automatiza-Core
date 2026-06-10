@@ -4,39 +4,16 @@ Tools are built at runtime because they close over provider tokens detected per 
 """
 
 import logging
-import os
-import uuid
 
 from langchain_core.tools import tool
-from sqlalchemy import select
 
-from app.db.base import AsyncSessionLocal
-from app.db.models.models import TenantDocument
 from app.services.email.service import read_inbox, read_unread, send_email_smtp
-
-from .tools import _load_attachments
+from app.services.email_sender import (
+    load_attachments as _load_attachments,
+    resolve_smtp_attachments as _resolve_smtp_attachments,
+)
 
 logger = logging.getLogger(__name__)
-
-
-async def _resolve_smtp_attachments(tenant_id: str, attachment_ids: list[str]) -> list[str]:
-    """Resuelve IDs de documentos a rutas en disco para adjuntos SMTP."""
-    paths = []
-    async with AsyncSessionLocal() as db:
-        for doc_id in attachment_ids:
-            try:
-                res = await db.execute(
-                    select(TenantDocument.file_path).where(
-                        TenantDocument.id == uuid.UUID(doc_id),
-                        TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                    )
-                )
-                path = res.scalar_one_or_none()
-                if path and os.path.exists(path):
-                    paths.append(path)
-            except Exception as e:
-                logger.warning("Error resolviendo ruta de adjunto doc_id=%s: %s", doc_id, e)
-    return paths
 
 
 def build_real_tools(

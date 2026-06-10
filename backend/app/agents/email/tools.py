@@ -37,53 +37,7 @@ MOCK_EMAILS = [
 
 # ─── Credenciales de email del tenant ─────────────────────────────────────────
 # Movidas a app.services.email_credentials (las consumen rutas y otros agentes).
-
-
-async def _load_attachments(
-    tenant_id: str, attachment_ids: list[str] | None
-) -> list[tuple[str, bytes]]:
-    """Load document attachments from DB by their IDs."""
-    if not attachment_ids:
-        return []
-    import os
-    import uuid
-
-    from sqlalchemy import select
-
-    from app.db.base import AsyncSessionLocal
-    from app.db.models.models import TenantDocument
-
-    attachments = []
-    async with AsyncSessionLocal() as db:
-        for doc_id in attachment_ids:
-            try:
-                res = await db.execute(
-                    select(TenantDocument.file_path, TenantDocument.file_name).where(
-                        TenantDocument.id == uuid.UUID(doc_id),
-                        TenantDocument.tenant_id == uuid.UUID(tenant_id),
-                    )
-                )
-                row = res.one_or_none()
-                if not row:
-                    logger.warning(
-                        "Adjunto doc_id=%s no encontrado para tenant=%s", doc_id, tenant_id
-                    )
-                    continue
-                if not row.file_path or not os.path.exists(row.file_path):
-                    logger.warning(
-                        "Adjunto doc_id=%s con file_path inválido: %s", doc_id, row.file_path
-                    )
-                    continue
-                with open(row.file_path, "rb") as f:
-                    attachments.append(
-                        (row.file_name or os.path.basename(row.file_path), f.read())
-                    )
-            except Exception as _e:
-                logger.warning(
-                    "Error leyendo adjunto doc_id=%s tenant=%s: %s", doc_id, tenant_id, _e
-                )
-                continue
-    return attachments
+# Carga de adjuntos movida a app.services.email_sender.
 
 
 # ─── Herramientas mock (fallback) ─────────────────────────────────────────────
