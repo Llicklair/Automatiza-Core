@@ -1,6 +1,32 @@
 # Tareas activas — AutomatizaCore
 
-Última actualización: 2026-06-09
+Última actualización: 2026-06-11
+
+---
+
+## Auditoría brutal del backend — ✅ COMPLETADA 2026-06-11
+
+`tasks/auditoria_brutal_backend.md`: 16/16 hallazgos resueltos en commits
+atómicos (1 por hallazgo), tests dirigidos verdes en cada uno.
+
+- [x] **CRÍTICOS 1-3**: backup duplicado, idempotencia en DB (`idempotency_keys`,
+  migración 0056), catch-up del scheduler (`_next_due_run`).
+- [x] **ALTOS 5-10**: `tool_session()` para RLS en tools (piloto inventory),
+  gate de autonomía unificado (`evaluate_autonomy`), excepts silenciosos con
+  log (ruff S110/S112), tests billing/banking, hr.py → 4 sub-routers +
+  classifier_data.py, agregaciones a SQL.
+- [x] **MEDIOS 11-14**: sync banco sin demo (409 + flag `BANKING_DEMO_SYNC`),
+  RLS con `set_config` bind param, default de dominio → "chat", email
+  consolidado en `services/email/`.
+- [x] **BAJOS 15-16**: admin.py verificado y documentado; H16 informativo.
+- [x] **Bonus** (b9f1611): vocabulario de estados de Invoice unificado con la
+  máquina de estados — `auto_reconcile` ya marca facturas como pagadas y el
+  dashboard deja de mostrar "Pendientes" a 0.
+
+Pendiente relacionado (no aprobado): migración incremental del resto de
+agentes a `tool_session()`; extraer lógica de negocio de routes con muchos
+commits (hallazgo 4 se resolvió solo para el alcance crítico); observación
+menor: `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
 
 ---
 
