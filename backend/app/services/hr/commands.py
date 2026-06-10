@@ -44,11 +44,47 @@ UPLOAD_DIR_CVS = os.environ.get("CV_UPLOAD_DIR", "uploads/cvs")
 # â"€â"€ Employee commands â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 
-async def create_employee(payload, tenant_id, db: AsyncSession) -> Employee:
-    """Crea empleado y emite evento. Lanza SQLAlchemyError si falla."""
-    emp = Employee(tenant_id=tenant_id, **payload.model_dump())
+async def create_employee(data: dict, tenant_id, db: AsyncSession) -> Employee:
+    """Crea empleado con dedup de NIF y emite evento.
+
+    Normaliza el NIF (strip + uppercase) y valida unicidad case-insensitive
+    por tenant. La BD tiene un partial UNIQUE INDEX (tenant_id, UPPER(nif))
+    como segunda barrera ante race conditions.
+
+    Raises:
+        ValueError: si ya existe un empleado con el mismo NIF.
+    """
+    from sqlalchemy import func
+    from sqlalchemy.exc import IntegrityError
+
+    data = dict(data)
+    normalized_nif = (data.get("nif") or "").strip().upper() or None
+    data["nif"] = normalized_nif
+
+    if normalized_nif:
+        result = await db.execute(
+            select(Employee).where(
+                Employee.tenant_id == tenant_id,
+                func.upper(Employee.nif) == normalized_nif,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            raise ValueError(
+                f"Ya existe un empleado con NIF {normalized_nif}: "
+                f"{existing.name} (ID: {existing.id})"
+            )
+
+    emp = Employee(tenant_id=tenant_id, **data)
     db.add(emp)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError(
+            f"Ya existe un empleado con NIF {normalized_nif} en el sistema "
+            f"(detectado por restricción de unicidad de BD)."
+        ) from None
     await db.refresh(emp)
 
     try:
@@ -60,6 +96,7 @@ async def create_employee(payload, tenant_id, db: AsyncSession) -> Employee:
             {
                 "employee_id": str(emp.id),
                 "name": emp.name,
+                "nif": emp.nif,
             },
         )
     except Exception:

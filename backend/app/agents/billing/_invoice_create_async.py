@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 
 from app.agents.shared.validators.billing import APPROVAL_THRESHOLD_EUR, validate_invoice_data
 from app.db.base import AsyncSessionLocal
-from app.db.models.models import Client, Invoice, InvoiceLine
+from app.db.models.models import Client, Invoice
 
 from ._client_tools import _resolve_client
 from ._invoice_pdf_tools import _generate_and_save_invoice_pdf, _load_invoice_template
@@ -90,18 +90,10 @@ async def _create_invoice_async(
     tax_amount = round(amount * Decimal(str(vat_rate)) / 100, 2)
     total_amount = amount + tax_amount
     inv_datetime = datetime(inv_date.year, inv_date.month, inv_date.day, tzinfo=UTC)
-    # FAC.NUM — el número se asigna dentro de la transacción mediante
-    # `next_invoice_number()` con `pg_advisory_xact_lock` (RD 1619/2012 Art. 6.1).
     warnings = validation.warnings[:]
 
     async with AsyncSessionLocal() as db:
         try:
-            from app.services.billing.numbering import next_invoice_number
-
-            invoice_number = await next_invoice_number(
-                db, UUID(tenant_id), series="A", year=inv_date.year
-            )
-
             # Upsert cliente
             if resolved_client_id:
                 result = await db.execute(select(Client).where(Client.id == resolved_client_id))
@@ -129,73 +121,65 @@ async def _create_invoice_async(
                 db.add(local_client)
                 await db.flush()
 
-            new_invoice = Invoice(
-                tenant_id=UUID(tenant_id),
+            # Creación delegada al service (fuente de verdad única): numeración
+            # con advisory lock (RD 1619/2012), totales Decimal, huella Verifactu
+            # atómica (RD 1007/2023) y backstop de números duplicados.
+            from app.services.billing.commands import create_invoice as create_invoice_svc
+
+            new_invoice = await create_invoice_svc(
                 client_id=local_client.id,
-                invoice_number=invoice_number,
-                date=inv_datetime,
-                amount_base=amount,
-                tax_amount=tax_amount,
-                amount_total=total_amount,
-                notes=notes or None,
-                status="draft",
+                payload_dict={
+                    "date": inv_datetime,
+                    "notes": notes or None,
+                    "status": "draft",
+                    "serie": "A",
+                },
+                lines_data=[
+                    {
+                        "description": concept or "Servicio",
+                        "quantity": 1.0,
+                        "unit_price": float(amount),
+                        "discount_percentage": 0.0,
+                        "tax_percentage": float(vat_rate),
+                    }
+                ],
+                tenant_id=UUID(tenant_id),
+                user_id=None,
+                db=db,
             )
-            db.add(new_invoice)
-            await db.flush()
-
-            invoice_line = InvoiceLine(
-                invoice_id=new_invoice.id,
-                description=concept or "Servicio",
-                quantity=1.0,
-                unit_price=float(amount),
-                discount_percentage=0.0,
-                tax_percentage=float(vat_rate),
-                total=float(total_amount),
-            )
-            db.add(invoice_line)
-
-            try:
-                from app.services.event_bus import emit_event
-
-                await emit_event(
-                    db=db,
-                    tenant_id=UUID(tenant_id),
-                    user_id=None,
-                    event_name="invoice_created",
-                    context={
-                        "invoice_id": str(new_invoice.id),
-                        "invoice_number": invoice_number,
-                        # Exponemos varios alias de monto porque los workflows
-                        # event-based del usuario usan el field "amount" en
-                        # sus conditions (lo natural en lenguaje), no
-                        # "amount_total". Mantenemos ambos para compatibilidad.
-                        "amount": float(total_amount),
-                        "amount_total": float(total_amount),
-                        "amount_base": float(amount),
-                        "client_name": resolved_name,
-                        "client_nif": resolved_nif,
-                        "concept": concept,
-                    },
-                )
-            except Exception as ev_err:
-                warnings.append(f"Evento invoice_created no emitido: {ev_err}")
-
-            # Verifactu: si el tenant está en modo "voluntary" añade el registro
-            # encadenado para que el PDF lleve QR (RD 1007/2023 Art. 8).
-            # En modo "no_remission" no hace nada.
-            try:
-                from app.services.billing.verifactu_chain import (
-                    maybe_append_verifactu_record,
-                )
-                await maybe_append_verifactu_record(db, invoice=new_invoice)
-            except Exception as vf_err:
-                warnings.append(f"Verifactu no encadenado: {vf_err}")
-
-            await db.commit()
-            await db.refresh(new_invoice)
+            invoice_number = new_invoice.invoice_number
+            invoice_line = new_invoice.lines[0]
+        except ValueError as e:
+            return f"Error al guardar la factura: {e}"
         except Exception as e:
             await db.rollback()
             return f"Error al guardar la factura en base de datos: {e}"
+
+        try:
+            from app.services.event_bus import emit_event
+
+            await emit_event(
+                db=db,
+                tenant_id=UUID(tenant_id),
+                user_id=None,
+                event_name="invoice_created",
+                context={
+                    "invoice_id": str(new_invoice.id),
+                    "invoice_number": invoice_number,
+                    # Exponemos varios alias de monto porque los workflows
+                    # event-based del usuario usan el field "amount" en
+                    # sus conditions (lo natural en lenguaje), no
+                    # "amount_total". Mantenemos ambos para compatibilidad.
+                    "amount": float(total_amount),
+                    "amount_total": float(total_amount),
+                    "amount_base": float(amount),
+                    "client_name": resolved_name,
+                    "client_nif": resolved_nif,
+                    "concept": concept,
+                },
+            )
+        except Exception as ev_err:
+            warnings.append(f"Evento invoice_created no emitido: {ev_err}")
 
         try:
             from app.services.billing.auto_accounting import create_invoice_journal_entry
