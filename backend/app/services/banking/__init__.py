@@ -1,6 +1,7 @@
 """Banking service domain package."""
 
 from app.services.banking.service import (
+    BankSyncNotAvailableError,
     auto_reconcile,
     get_analytics,
     get_reconciliation_suggestions,
@@ -14,6 +15,7 @@ from app.services.banking.service import (
 )
 
 __all__ = [
+    "BankSyncNotAvailableError",
     "auto_reconcile",
     "get_analytics",
     "get_reconciliation_suggestions",

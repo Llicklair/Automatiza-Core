@@ -58,12 +58,33 @@ async def list_transactions(db: AsyncSession, tenant_id: uuid.UUID) -> list:
     return list(result.scalars().all())
 
 
-async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> dict:
-    """Genera movimientos DEMO simulando PSD2 (Plaid/Nordigen no integrado).
+class BankSyncNotAvailableError(Exception):
+    """El tenant no puede sincronizar: PSD2 sin configurar y demo desactivado."""
 
-    Cada transacción se prefija con `[DEMO]` para que las analíticas reales
-    puedan filtrarlas y no contaminar las métricas del tenant.
+
+async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> dict:
+    """Sincroniza movimientos bancarios.
+
+    Sin sync PSD2 real cableado todavía: si `BANKING_DEMO_SYNC` está activo
+    genera movimientos prefijados con `[DEMO]` (filtrados de las analíticas);
+    si no, lanza BankSyncNotAvailableError — un piloto no debe ver movimientos
+    inventados en su contabilidad.
     """
+    from app.core.config import settings
+    from app.services.banking.psd2 import get_psd2_credentials
+
+    if not settings.BANKING_DEMO_SYNC:
+        creds = await get_psd2_credentials(str(tenant_id))
+        if creds:
+            raise BankSyncNotAvailableError(
+                "La sincronización automática PSD2 aún no está disponible. "
+                "Importa el extracto bancario (Norma 43) desde Banca."
+            )
+        raise BankSyncNotAvailableError(
+            "PSD2 no configurado. Conecta tu banco en Integraciones "
+            "o importa el extracto bancario (Norma 43)."
+        )
+
     descriptions = [
         "Recibo Luz Gesternova",
         "Abono Cliente STRIPE",
