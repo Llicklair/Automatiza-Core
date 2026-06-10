@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { marketingApi, SocialAccount, ScheduledPost } from "@/lib/api/marketing";
 import { PLATFORM_ICONS } from "@/components/ui/social-icons";
+import { useToastStore } from "@/stores/toast";
+import { logError } from "@/lib/logger";
 
 // ── Plataformas ────────────────────────────────────────────────────────────────
 
@@ -174,7 +176,9 @@ function TabCuentas() {
         try {
             await marketingApi.accounts.disconnect(id);
             setAccounts((prev) => prev.filter((a) => a.id !== id));
-        } catch {}
+        } catch (err) {
+            setConnectError(err instanceof Error ? err.message : "Error al desconectar la cuenta");
+        }
     };
 
     return (
@@ -385,6 +389,7 @@ function TabCrear() {
 // ── Tab: Programados ───────────────────────────────────────────────────────────
 
 function TabProgramados() {
+    const toast = useToastStore();
     const [posts, setPosts] = useState<ScheduledPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>("all");
@@ -393,7 +398,8 @@ function TabProgramados() {
         try {
             const data = await marketingApi.posts.list(filter !== "all" ? { status: filter } : undefined);
             setPosts(data);
-        } catch {
+        } catch (err) {
+            logError("marketing/programados", err);
         } finally {
             setLoading(false);
         }
@@ -405,7 +411,9 @@ function TabProgramados() {
         try {
             await marketingApi.posts.delete(id);
             setPosts((prev) => prev.filter((p) => p.id !== id));
-        } catch {}
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Error al eliminar la publicación");
+        }
     };
 
     const fmt = (iso: string | null) => iso

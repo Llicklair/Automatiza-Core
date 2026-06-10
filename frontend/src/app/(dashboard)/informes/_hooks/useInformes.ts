@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type CompanySnapshot, type FiscalSnapshot, type ReportDoc } from "@/lib/api";
+import { logError } from "@/lib/logger";
 
 // ─── Pure helpers (no React) ──────────────────────────────────────────────────
 
@@ -103,7 +104,9 @@ export function useInformes() {
         try {
             const data = await api.reports.list();
             setReports(data);
-        } catch { }
+        } catch (e) {
+            logError("informes/list", e);
+        }
     }
 
     async function handleGenerate() {
