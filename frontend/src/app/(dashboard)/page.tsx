@@ -66,10 +66,12 @@ export default function DashboardPage() {
             {/* Mapa de nodos en vivo: agentes IA */}
             <LiveTeamSection />
 
-            {/* Resumen ejecutivo: qué hizo la IA y qué decisiones esperan */}
+            {/* Resumen ejecutivo: primero lo accionable (decisiones que esperan),
+                después qué hizo la IA, y al final las métricas secundarias. */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Columna Izquierda Ancha */}
                 <div className="lg:col-span-2 space-y-6">
+                    <ApprovalsSection loading={loading} approvals={approvals} />
                     <AiActivitySection loading={loading} tasks={tasks} />
                     {!loading && <AiInsightsSection insights={analytics.insights} />}
                     {!loading && <CashflowChart cashflow={analytics.cashflow} />}
@@ -78,10 +80,9 @@ export default function DashboardPage() {
 
                 {/* Columna Derecha Estrecha */}
                 <div className="space-y-6">
-                    <ApprovalsSection loading={loading} approvals={approvals} />
                     <TimeSavedCard />
-                    <UsageWidget />
                     <RrhhWidget loading={loading} employees={employees} working={workingNow} />
+                    <UsageWidget />
                     <IntegrationsWidget {...integrations} />
                 </div>
             </div>

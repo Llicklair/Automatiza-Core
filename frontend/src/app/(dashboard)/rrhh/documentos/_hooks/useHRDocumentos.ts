@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { hrDocuments } from "@/lib/api/hr_documents";
 import type { HRDocument } from "@/lib/api/hr_documents";
+import { logError } from "@/lib/logger";
 
 export function parseNLIntent(text: string): { doc_type: string; employee_name: string; instructions: string } {
     const t = text.toLowerCase();
@@ -91,7 +92,8 @@ export function useHRDocumentos() {
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
     const loadDocs = useCallback(async () => {
-        try { setDocs(await hrDocuments.list({ limit: 50 })); } catch {}
+        try { setDocs(await hrDocuments.list({ limit: 50 })); }
+        catch (err) { logError("rrhh/documentos", err); setError("No se pudieron cargar los documentos"); }
     }, []);
 
     useEffect(() => { setLoading(true); loadDocs().finally(() => setLoading(false)); }, [loadDocs]);

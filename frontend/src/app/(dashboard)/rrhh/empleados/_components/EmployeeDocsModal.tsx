@@ -31,7 +31,7 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
     const load = useCallback(async () => {
         try {
             setDocs(await api.hr.employees.documents.list(employee.id));
-        } catch { }
+        } catch { setError("No se pudieron cargar los documentos"); }
         setLoading(false);
     }, [employee.id]);
 
@@ -53,7 +53,7 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
         try {
             await api.hr.employees.documents.delete(employee.id, docId);
             setDocs(prev => prev.filter(d => d.id !== docId));
-        } catch { }
+        } catch (err) { setError(err instanceof Error ? err.message : "Error al eliminar el documento"); }
         setDeletingId(null);
     };
 

@@ -97,7 +97,7 @@ export function useIntegraciones() {
                         setFeedback({ type: "success", msg: `${provider === "google" ? "Google" : "Microsoft"} conectado correctamente` });
                         load();
                     }
-                } catch {}
+                } catch { /* polling OAuth: errores transitorios esperados, reintenta en 2s */ }
                 if (attempts >= 60) {
                     clearInterval(poll);
                     setConnecting(false);

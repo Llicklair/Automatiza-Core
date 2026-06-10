@@ -11,6 +11,11 @@ import {
     type EmailCampaign,
     type EmailTemplate,
 } from "@/lib/api/email_marketing";
+import { useToastStore } from "@/stores/toast";
+import { logError } from "@/lib/logger";
+
+const errMsg = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
@@ -82,6 +87,7 @@ export default function EmailMarketingPage() {
 // ── Tab: Campañas ──────────────────────────────────────────────────────────────
 
 function TabCampaigns() {
+    const toast = useToastStore();
     const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [recipientCount, setRecipientCount] = useState(0);
@@ -101,7 +107,7 @@ function TabCampaigns() {
             setCampaigns(c);
             setTemplates(t);
             setRecipientCount(r.count);
-        } catch {} finally { setLoading(false); }
+        } catch (err) { logError("email-marketing/campaigns", err); } finally { setLoading(false); }
     }, []);
 
     useEffect(() => { load(); }, [load]);
@@ -125,7 +131,8 @@ function TabCampaigns() {
             });
             setCampaigns((prev) => [c, ...prev]);
             setForm({ name: "", subject: "", html_body: "", template_id: "", scheduled_at: "" });
-        } catch {} finally { setCreating(false); }
+            toast.success("Campaña creada");
+        } catch (err) { toast.error(errMsg(err, "Error al crear la campaña")); } finally { setCreating(false); }
     };
 
     const send = async (id: string) => {
@@ -133,14 +140,15 @@ function TabCampaigns() {
         try {
             await emailMarketingApi.campaigns.send(id);
             await load();
-        } catch {} finally { setSending(null); }
+            toast.success("Campaña en proceso de envío");
+        } catch (err) { toast.error(errMsg(err, "Error al enviar la campaña")); } finally { setSending(null); }
     };
 
     const remove = async (id: string) => {
         try {
             await emailMarketingApi.campaigns.delete(id);
             setCampaigns((prev) => prev.filter((c) => c.id !== id));
-        } catch {}
+        } catch (err) { toast.error(errMsg(err, "Error al eliminar la campaña")); }
     };
 
     return (
@@ -292,6 +300,7 @@ function TabCampaigns() {
 // ── Tab: Plantillas ────────────────────────────────────────────────────────────
 
 function TabTemplates() {
+    const toast = useToastStore();
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<EmailTemplate | null>(null);
@@ -301,7 +310,7 @@ function TabTemplates() {
 
     const load = useCallback(async () => {
         try { setTemplates(await emailMarketingApi.templates.list()); }
-        catch {} finally { setLoading(false); }
+        catch (err) { logError("email-marketing/templates", err); } finally { setLoading(false); }
     }, []);
 
     useEffect(() => { load(); }, [load]);
@@ -331,14 +340,15 @@ function TabTemplates() {
             }
             setEditing(null);
             setForm({ name: "", subject: "", html_body: "" });
-        } catch {} finally { setSaving(false); }
+            toast.success("Plantilla guardada");
+        } catch (err) { toast.error(errMsg(err, "Error al guardar la plantilla")); } finally { setSaving(false); }
     };
 
     const remove = async (id: string) => {
         try {
             await emailMarketingApi.templates.delete(id);
             setTemplates((prev) => prev.filter((t) => t.id !== id));
-        } catch {}
+        } catch (err) { toast.error(errMsg(err, "Error al eliminar la plantilla")); }
     };
 
     const isFormOpen = editing !== null || (form.name !== "" || form.html_body !== "");
