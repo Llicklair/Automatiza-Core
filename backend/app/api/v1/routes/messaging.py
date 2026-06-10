@@ -170,9 +170,9 @@ async def send_email(
     current_user: User = Depends(get_current_user),
 ):
     """Envía un email usando las credenciales del tenant (Gmail > Outlook > SMTP)."""
-    from app.agents.email.agent import send_email_direct
+    from app.services.email_sender import send_email as send_email_service
 
-    result = await send_email_direct(
+    result = await send_email_service(
         tenant_id=str(current_user.tenant_id),
         to=payload.to,
         subject=payload.subject,
@@ -190,7 +190,7 @@ async def instruct_email_agent(
     current_user: User = Depends(get_current_user),
 ):
     """Ejecuta el email agent con una instrucción en lenguaje natural."""
-    from app.agents.email.agent import run_email_agent
+    from app.agents.email import run_email_agent
 
     result = await run_email_agent(
         user_intent=payload.message,
