@@ -45,10 +45,18 @@ menor: `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
 - [x] **#8 PageHeader** (5dacc49): ui/PageHeader borrado, shared/ es el canónico.
 - [x] **#3 loading.tsx** (7a28add): 10 rutas frecuentes con spinner estándar.
 
-Pendiente (proyectos, no aprobados): #9 páginas monstruo (>700 líneas),
-#10 polling → invalidación, #7 a11y, #11 tokens de diseño/PageContainer,
-#6 tabs unificados, migración i18n real por módulos, alert de
-`portal-cliente/page.tsx` (necesita ToastContainer en su layout propio).
+- [x] **#9 páginas monstruo** (2026-06-11, 7 commits): troceadas al patrón
+  `_components/`/`_hooks/`, pure-move, 5.209 → ~906 líneas de page.tsx —
+  marketing 743→63 (e84eb61), analitica 969→163 (0fd3a2f), portal 763→145
+  (f868429), correos 660→145 (3ec520b), usuarios 609→179 (b62e1a2),
+  clientes 537→153 (e0c743a), email-marketing 528→58 (9eb154a).
+  tsc por página + next build final verde. Pendiente anotado: doble carga
+  de `accounts()` entre TabCuentas/TabCrear (marketing).
+
+Pendiente (proyectos, no aprobados): #10 polling → invalidación, #7 a11y,
+#11 tokens de diseño/PageContainer, #6 tabs unificados, migración i18n
+real por módulos, alert de `portal-cliente/page.tsx` (necesita
+ToastContainer en su layout propio).
 
 ---
 

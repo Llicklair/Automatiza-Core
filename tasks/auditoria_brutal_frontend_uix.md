@@ -5,7 +5,13 @@
 > (2714dcb — bonus: el toast store NO tenía renderer, todos los toasts del repo eran
 > invisibles), #4 alert/confirm 16 callsites (406affc), #8-PageHeader (5dacc49),
 > #3 loading.tsx ×10 (7a28add).
-> Pendientes (proyectos, no quick-wins): #9 páginas monstruo, #10 polling, #7 a11y,
+> ✅ **#9 páginas monstruo COMPLETADO 2026-06-11** — 7 páginas troceadas al patrón
+> `_components/`/`_hooks/` (5.209 → ~906 líneas de page.tsx): marketing 743→63
+> (e84eb61), analitica 969→163 (0fd3a2f), portal 763→145 (f868429), correos 660→145
+> (3ec520b), usuarios 609→179 (b62e1a2), clientes 537→153 (e0c743a), email-marketing
+> 528→58 (9eb154a). Pure-move verificado con tsc por página + next build final.
+> Pendiente anotado: doble carga de accounts() entre TabCuentas/TabCrear (marketing).
+> Pendientes (proyectos, no quick-wins): #10 polling, #7 a11y,
 > #11 tokens de diseño/PageContainer, #6 tabs, migración i18n real (#1 fase 2),
 > y el alert de `portal-cliente/page.tsx` (fuera del layout, sin ToastContainer).
 
