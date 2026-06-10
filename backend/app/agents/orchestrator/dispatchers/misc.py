@@ -6,12 +6,12 @@ Todos invocan agentes autónomos via LangGraph graph.ainvoke.
 import inspect
 import logging
 
-from app.agents.orchestrator.helpers import (
-    _messages_already_generated_pdf,
-    _save_ai_result_as_document,
+from app.services.orchestration import (
+    format_summary,
+    messages_already_generated_pdf,
+    save_ai_result_as_document,
 )
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.agents.orchestrator.utils import _format_summary
 from app.skills.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)
@@ -57,8 +57,8 @@ async def _run_graph_agent(
 
         # No duplicar si el agente ya creó un PDF profesional por su cuenta.
         messages = result_state.get("messages", [])
-        if success and final_text and not _messages_already_generated_pdf(messages):
-            await _save_ai_result_as_document(
+        if success and final_text and not messages_already_generated_pdf(messages):
+            await save_ai_result_as_document(
                 tenant_id=tenant_id,
                 task_id=state["task_id"],
                 category=category,
@@ -71,7 +71,7 @@ async def _run_graph_agent(
             "agent": agent_name,
             "success": success,
             "output": output,
-            "summary": _format_summary(
+            "summary": format_summary(
                 agent_name, output, success, None if success else final_text
             ),
             "error": None if success else final_text,
@@ -123,7 +123,7 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
         final_text = agent_result.action or "Operación de email completada."
 
         try:
-            await _save_ai_result_as_document(
+            await save_ai_result_as_document(
                 tenant_id=state["tenant_id"],
                 task_id=state["task_id"],
                 category="correos",
@@ -142,7 +142,7 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
             "agent": "email",
             "success": agent_result.success,
             "output": _email_output,
-            "summary": _format_summary(
+            "summary": format_summary(
                 "email", _email_output, agent_result.success, agent_result.error
             ),
             "error": agent_result.error,
@@ -172,7 +172,7 @@ async def _dispatch_workflow(state: OrchestratorState, subtask: dict) -> AgentRe
         )
 
         if agent_result.success:
-            await _save_ai_result_as_document(
+            await save_ai_result_as_document(
                 tenant_id=state["tenant_id"],
                 task_id=state["task_id"],
                 category="automatizaciones",

@@ -1,6 +1,4 @@
-"""
-Utilidades del orquestador: formateo de resúmenes y extracción de fechas.
-"""
+"""Formateo de resúmenes de agentes y extracción de fechas en español."""
 
 import re
 from datetime import datetime, timedelta
@@ -17,7 +15,7 @@ def _summary_from_response(output: dict, prefix: str = "✅") -> str | None:
     return f"{prefix} {first_line[:200]}{'…' if len(first_line) > 200 else ''}"
 
 
-def _format_summary(agent: str, output: dict, success: bool, error: str | None = None) -> str:
+def format_summary(agent: str, output: dict, success: bool, error: str | None = None) -> str:
     """Convierte el output de un agente en una frase legible para el usuario."""
     if not success:
         return f"❌ {error or 'Error desconocido en el agente.'}"
@@ -157,7 +155,7 @@ _MESES_ES = {
 }
 
 
-def _extract_month_year(intent: str) -> tuple[int, int]:
+def extract_month_year(intent: str) -> tuple[int, int]:
     """Extrae (mes, año) de un texto en lenguaje natural español.
 
     Maneja:

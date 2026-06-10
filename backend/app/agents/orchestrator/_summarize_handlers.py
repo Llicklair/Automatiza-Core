@@ -31,9 +31,9 @@ async def summarize_node(state: OrchestratorState) -> dict:
     # el caso en que un workflow se enrute a un dispatcher sin handler de
     # aprobación (custom, hr, etc.) — antes la PendingApproval no se creaba.
     try:
-        from app.agents.orchestrator.helpers import _ensure_pending_approval
+        from app.services.orchestration import ensure_pending_approval
 
-        approval_id = await _ensure_pending_approval(
+        approval_id = await ensure_pending_approval(
             tenant_id=str(state["tenant_id"]),
             task_id=str(state["task_id"]),
             agent_results=list(results),

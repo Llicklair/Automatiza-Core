@@ -321,9 +321,9 @@ class NodeEngine:
                 # Detectar si el skill disparó "aprobación humana requerida"
                 # y crear PendingApproval enlazado al workflow execution.
                 try:
-                    from app.agents.orchestrator.helpers import (
-                        _ensure_pending_approval,
-                        _response_indicates_approval,
+                    from app.services.orchestration import (
+                        ensure_pending_approval,
+                        response_indicates_approval,
                     )
                     output_text = ""
                     if isinstance(output, dict):
@@ -335,8 +335,8 @@ class NodeEngine:
                         )
                     elif isinstance(output, str):
                         output_text = output
-                    if output_text and _response_indicates_approval(output_text):
-                        await _ensure_pending_approval(
+                    if output_text and response_indicates_approval(output_text):
+                        await ensure_pending_approval(
                             tenant_id=self.tenant_id,
                             execution_id=self.execution_id,
                             agent_results=[{

@@ -11,7 +11,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import and_, func, select
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.agents.orchestrator.utils import _extract_month_year
+from app.services.orchestration import extract_month_year
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import (
     BankTransaction,
@@ -32,7 +32,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
     intent = subtask.get("params", {}).get("intent", state.get("user_intent", ""))
 
     # Extraer mes del intent con lógica robusta de lenguaje natural
-    _month, _year = _extract_month_year(intent)
+    _month, _year = extract_month_year(intent)
     month_str = f"{_year}-{_month:02d}"
 
     try:
