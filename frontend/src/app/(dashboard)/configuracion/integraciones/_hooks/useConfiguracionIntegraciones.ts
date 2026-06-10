@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import type { TelegramStatus } from "@/lib/api/messaging";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 export function useConfiguracionIntegraciones() {
     const show = useToastStore((s) => s.show);
@@ -51,7 +52,11 @@ export function useConfiguracionIntegraciones() {
     };
 
     const handleTelegramDisconnect = async () => {
-        if (!confirm("¿Desconectar Telegram? El chat dejará de recibir respuestas.")) return;
+        if (!(await showConfirm({
+            message: "¿Desconectar Telegram? El chat dejará de recibir respuestas.",
+            confirmLabel: "Desconectar",
+            confirmVariant: "danger",
+        }))) return;
         setTgLoading(true);
         try {
             await api.messaging.telegram.disconnect();

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type JournalEntry, type JournalLine } from "@/lib/api";
 import { logError } from "@/lib/logger";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 export type NewEntryState = {
     date: string;
@@ -90,7 +91,11 @@ export function useLibroDiario() {
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
     const deleteEntry = async (id: string) => {
-        if (!confirm("¿Eliminar este asiento contable? Esta acción no se puede deshacer.")) return;
+        if (!(await showConfirm({
+            message: "¿Eliminar este asiento contable? Esta acción no se puede deshacer.",
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         try {
             await api.accounting.journal.delete(id);
             loadData();

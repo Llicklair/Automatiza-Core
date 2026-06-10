@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import type { LogoStatus } from "@/lib/api/tenant";
 import { Button } from "@/components/ui/button";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 const ALLOWED = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB — sincronizado con el backend
@@ -84,7 +85,11 @@ export function LogoSection() {
     };
 
     const handleDelete = async () => {
-        if (!confirm("¿Eliminar el logo? Los próximos informes se generarán sin él.")) return;
+        if (!(await showConfirm({
+            message: "¿Eliminar el logo? Los próximos informes se generarán sin él.",
+            confirmLabel: "Eliminar",
+            confirmVariant: "danger",
+        }))) return;
         setIsDeleting(true);
         try {
             await api.tenant.logo.delete();

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
+import { useToastStore } from "@/stores/toast";
 
 export function useWarehouseScanner() {
     const [token, setToken] = useState<{ token: string; expires_at: string; scope: string } | null>(null);
@@ -16,7 +17,7 @@ export function useWarehouseScanner() {
             const data = await api.scanner.generateQR();
             setToken(data);
         } catch (e: any) {
-            alert(e?.message || "Error generando token");
+            useToastStore.getState().error(e?.message || "Error generando token");
         }
         setLoading(false);
     };

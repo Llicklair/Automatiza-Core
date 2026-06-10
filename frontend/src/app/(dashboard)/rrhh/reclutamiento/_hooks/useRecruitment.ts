@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { RecruitmentPosition, Candidate } from "@/lib/api/recruitment";
+import { useToastStore } from "@/stores/toast";
 
 const EMPTY_FORM = { title: "", department: "", description: "", required_skills: "", experience_min_years: 0 };
 
@@ -59,7 +60,7 @@ export function useRecruitment() {
             loadCandidates(selectedPos.id);
             loadPositions(); // refresh counts
         } catch (err: any) {
-            alert(err?.message || "Error subiendo CV");
+            useToastStore.getState().error(err?.message || "Error subiendo CV");
         }
         setUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";

@@ -4,6 +4,7 @@ import { useCallback, useRef, useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import { api } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
+import { showConfirm } from "@/stores/confirm";
 
 // ─── Sanitization ─────────────────────────────────────────────────────────────
 
@@ -111,7 +112,7 @@ export function useGenerativeUI({ html, onRefresh }: UseGenerativeUIOptions) {
             }
         }
 
-        if (confirmMsg && !window.confirm(confirmMsg)) return;
+        if (confirmMsg && !(await showConfirm(confirmMsg))) return;
 
         const normalized = action.replace(/_/g, "-");
         const resolved = resolveAction(normalized, payload);

@@ -7,6 +7,8 @@ import type { Client } from "@/lib/api/erp";
 import { clientPortalAdmin } from "@/lib/api/client_portal";
 import type { PortalTokenStatus } from "@/lib/api/client_portal";
 import { PageHeader } from "@/components/shared";
+import { showConfirm } from "@/stores/confirm";
+import { useToastStore } from "@/stores/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,6 +33,7 @@ function PortalStatusBadge({ status }: { status: PortalTokenStatus | undefined |
 }
 
 export default function PortalClientesPage() {
+    const toast = useToastStore();
     const [clients, setClients] = useState<Client[]>([]);
     const [statuses, setStatuses] = useState<Record<string, PortalTokenStatus | null>>({});
     const [loading, setLoading] = useState(true);
@@ -83,10 +86,14 @@ export default function PortalClientesPage() {
         const hasActive =
             current?.has_token && current.expires_at && new Date(current.expires_at) > new Date();
         if (hasActive) {
-            const ok = confirm(
-                "Al regenerar el enlace, el anterior dejará de funcionar inmediatamente. " +
-                "Si ya se lo habías enviado al cliente, tendrás que mandarle el nuevo. ¿Continuar?"
-            );
+            const ok = await showConfirm({
+                title: "Regenerar enlace",
+                message:
+                    "Al regenerar el enlace, el anterior dejará de funcionar inmediatamente. " +
+                    "Si ya se lo habías enviado al cliente, tendrás que mandarle el nuevo. ¿Continuar?",
+                confirmLabel: "Regenerar",
+                confirmVariant: "warning",
+            });
             if (!ok) return;
         }
 
@@ -104,14 +111,18 @@ export default function PortalClientesPage() {
             const updated = await clientPortalAdmin.getTokenStatus(client.id);
             setStatuses((prev) => ({ ...prev, [client.id]: updated }));
         } catch {
-            alert("Error al generar el enlace");
+            toast.error("Error al generar el enlace");
         } finally {
             setGenerating(null);
         }
     };
 
     const handleRevoke = async (clientId: string) => {
-        if (!confirm("¿Revocar acceso? El cliente no podrá acceder al portal.")) return;
+        if (!(await showConfirm({
+            message: "¿Revocar acceso? El cliente no podrá acceder al portal.",
+            confirmLabel: "Revocar",
+            confirmVariant: "danger",
+        }))) return;
         setRevoking(clientId);
         try {
             await clientPortalAdmin.revokeToken(clientId);
@@ -120,7 +131,7 @@ export default function PortalClientesPage() {
                 [clientId]: { has_token: false, expires_at: null, created_at: null, last_used_at: null },
             }));
         } catch {
-            alert("Error al revocar el acceso");
+            toast.error("Error al revocar el acceso");
         } finally {
             setRevoking(null);
         }
