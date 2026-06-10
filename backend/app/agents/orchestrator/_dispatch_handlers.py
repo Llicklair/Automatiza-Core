@@ -158,7 +158,7 @@ async def _invoke_dynamic_employee(
                     message=f"Ejecutó tarea: {final_text[:200]}",
                 )
             except Exception:
-                pass
+                logger.debug("No se pudo registrar la actividad del employee; continúo", exc_info=True)
             employee.status = "idle"
             await db.commit()
             return {

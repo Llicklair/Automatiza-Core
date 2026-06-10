@@ -61,7 +61,7 @@ def get_machine_id() -> str:
             guid, _ = winreg.QueryValueEx(k, "MachineGuid")
             return str(guid)
         except Exception:
-            pass
+            logger.debug("No se pudo leer MachineGuid del registro; uso uuid.getnode()", exc_info=True)
     return str(uuid.getnode())
 
 
@@ -170,7 +170,7 @@ async def validate_license() -> LicenseResult:
                 logger.info("[LICENSE] Caché válida (%s)", age)
                 return LicenseResult(valid=True, plan=cache.get("plan", "pro"))
         except Exception:
-            pass
+            logger.debug("Fecha de caché ilegible; revalido contra el servidor", exc_info=True)
 
     # Llamada al servidor
     try:
@@ -203,7 +203,7 @@ async def validate_license() -> LicenseResult:
                     logger.info("[LICENSE] Gracia offline concedida")
                     return LicenseResult(valid=True, plan=cache.get("plan", "pro"), reason="offline")
             except Exception:
-                pass
+                logger.debug("Fecha de última validación ilegible; sin gracia offline", exc_info=True)
         return LicenseResult(valid=False, reason="No se pudo verificar la licencia y el período de gracia ha expirado.")
 
 

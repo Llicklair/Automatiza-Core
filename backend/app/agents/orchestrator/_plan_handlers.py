@@ -299,7 +299,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
                 try:
                     await llm_cache.invalidate(_tenant_id, _cache_key)
                 except Exception:
-                    pass
+                    logger.debug("No se pudo invalidar la caché del plan; continúo", exc_info=True)
         except Exception:
             logger.debug("Caché de plan corrupto, continuando con LLM", exc_info=True)
 

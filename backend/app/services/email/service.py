@@ -174,6 +174,7 @@ def read_inbox(
                         )
                     )
                 except Exception:
+                    _logger.debug("No se pudo parsear un correo; salto al siguiente", exc_info=True)
                     continue
 
     except imaplib.IMAP4.error as e:
@@ -219,6 +220,7 @@ def read_unread(credentials: EmailCredentials, max_results: int = 10) -> list[Em
                         )
                     )
                 except Exception:
+                    _logger.debug("No se pudo parsear un correo no leído; salto al siguiente", exc_info=True)
                     continue
     except imaplib.IMAP4.error as e:
         raise ConnectionError(f"Error IMAP: {e}")

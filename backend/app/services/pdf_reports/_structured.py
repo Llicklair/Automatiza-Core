@@ -12,6 +12,7 @@ Soporta: KPIs, tablas, callouts (info/warning/success/danger) y gráficos
 from __future__ import annotations
 
 import io
+import logging
 import os
 from datetime import datetime
 from typing import Literal
@@ -23,6 +24,8 @@ from app.services.documents._pdf_base import (
     _common_styles,
     _make_doc,
 )
+
+logger = logging.getLogger(__name__)
 
 if REPORTLAB_AVAILABLE:
     from reportlab.graphics.charts.barcharts import VerticalBarChart
@@ -472,7 +475,7 @@ def _draw_footer(
                     preserveAspectRatio=True,
                 )
         except Exception:
-            pass
+            logger.debug("No se pudo dibujar el logo en el pie del informe; continúo", exc_info=True)
 
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(colors.HexColor(C["FOOTER"]))

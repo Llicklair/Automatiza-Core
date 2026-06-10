@@ -44,6 +44,10 @@ async def run_node_engine(execution_id: str, tenant_id: str | None = None):
                     )
                     return result
                 except Exception:
+                    logger.debug(
+                        "Reintento %d de run_node_engine:%s falló", attempt + 1, execution_id,
+                        exc_info=True,
+                    )
                     continue
         raise exc
 
@@ -81,6 +85,10 @@ async def resume_node_engine(execution_id: str, from_node_id: str, tenant_id: st
                     )
                     return result
                 except Exception:
+                    logger.debug(
+                        "Reintento %d de resume_node_engine:%s falló", attempt + 1, idempotency_key,
+                        exc_info=True,
+                    )
                     continue
         raise exc
 

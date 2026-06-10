@@ -309,7 +309,7 @@ async def get_albaran_pdf_data(albaran_id: UUID, tenant_id: UUID, db: AsyncSessi
 
         theme = await get_default_theme(tenant_id, "albaran", db)
     except Exception:
-        pass
+        logger.debug("No se pudo cargar el theme del albarán; uso el predeterminado", exc_info=True)
 
     albaran_data: dict[str, Any] = {
         "albaran_number": note.albaran_number,

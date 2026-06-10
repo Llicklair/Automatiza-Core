@@ -39,7 +39,7 @@ async def release_employee(db, employee, *, label: str) -> None:
     try:
         await db.rollback()
     except Exception:
-        pass
+        logger.debug("[ORCHESTRATOR] rollback de limpieza falló; continúo", exc_info=True)
     try:
         employee.status = "idle"
         await asyncio.wait_for(db.commit(), timeout=10)
