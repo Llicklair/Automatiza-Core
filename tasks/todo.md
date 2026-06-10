@@ -30,6 +30,28 @@ menor: `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
 
 ---
 
+## Auditoría frontend/UIX — ✅ quick-wins COMPLETADOS 2026-06-11
+
+`tasks/auditoria_brutal_frontend_uix.md`: rondas 4664abd/b126a3a (#5, #8-EmptyState,
+#2 parcial) + esta ronda, 1 commit por hallazgo:
+
+- [x] **#1 i18n fachada** (2744a34): solo "es" en el selector hasta tener
+  traducciones reales; cookies heredadas hacen fallback a es.
+- [x] **#2 marketing** (d6f36f7): crear/publicar/eliminar post con toast.error.
+- [x] **#12 sonner** (2714dcb): **bonus — el toast store no tenía renderer**,
+  todos los toast.* del repo eran invisibles. Nuevo `ToastContainer` en el
+  layout; sonner eliminado (dep + wrapper).
+- [x] **#4 alert/confirm nativos** (406affc): 16 callsites → showConfirm/toast.
+- [x] **#8 PageHeader** (5dacc49): ui/PageHeader borrado, shared/ es el canónico.
+- [x] **#3 loading.tsx** (7a28add): 10 rutas frecuentes con spinner estándar.
+
+Pendiente (proyectos, no aprobados): #9 páginas monstruo (>700 líneas),
+#10 polling → invalidación, #7 a11y, #11 tokens de diseño/PageContainer,
+#6 tabs unificados, migración i18n real por módulos, alert de
+`portal-cliente/page.tsx` (necesita ToastContainer en su layout propio).
+
+---
+
 ## Plan activo (2026-06-09) — Ciclo de vida de tokens OAuth en Marketing
 
 Objetivo: que los posts programados dejen de fallar para siempre cuando el token
