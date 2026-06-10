@@ -364,6 +364,8 @@
     "addressPlaceholder": "[GL] Calle Principal 123",
     "cityPlaceholder": "[GL] Madrid",
     "postalCodePlaceholder": "[GL] 28001",
+    "marketingConsent": "Acepta comunicacións comerciais",
+    "marketingConsentHint": "O cliente deu o seu consentimento para recibir emails de marketing (RXPD)",
     "searchPlaceholder": "[GL] Buscar por nombre, NIF o email...",
     "emptyTitle": "[GL] Anade tu primer cliente",
     "emptyDescription": "[GL] Gestiona tu cartera, consulta el historial de facturas y manten todos los datos en un solo lugar.",

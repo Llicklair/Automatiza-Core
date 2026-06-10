@@ -6,6 +6,7 @@ from .common import (
     JSONB,
     UUID,
     Base,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -45,6 +46,8 @@ class Client(Base):
     city = Column(String(255))
     postal_code = Column(String(50))
     client_type = Column(String(50), default="customer")
+    # Opt-in RGPD: solo los clientes con consentimiento reciben email marketing
+    marketing_consent = Column(Boolean, nullable=False, default=False, server_default=text("false"))
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

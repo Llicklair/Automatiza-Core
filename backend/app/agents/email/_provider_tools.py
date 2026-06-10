@@ -205,4 +205,72 @@ def build_real_tools(
         except Exception as e:
             return f"Error al enviar correo ({provider}): {e}"
 
-    return check_inbox_real, check_unread_real, send_email_real
+    @tool
+    async def reply_email_real(
+        tenant_id: str,
+        message_id: str,
+        body: str,
+        provider: str = default_provider,
+        confirm: bool = False,
+    ) -> str:
+        """Responde a un correo existente manteniendo el hilo de conversación.
+        IMPORTANTE: llama siempre con confirm=False primero para mostrar el borrador al usuario.
+        Solo llama con confirm=True cuando el usuario haya aprobado explícitamente el envío.
+        Args:
+            tenant_id: ID del tenant
+            message_id: ID del mensaje al que responder (obtenido al leer la bandeja)
+            body: Cuerpo de la respuesta en texto plano
+            provider: Proveedor de correo a usar
+            confirm: False = mostrar borrador sin enviar (por defecto). True = enviar.
+        """
+        if provider not in providers:
+            return f"Error: proveedor '{provider}' no disponible. Usa uno de: {provider_desc}"
+        if provider not in ("gmail", "outlook"):
+            return "Error: responder a un hilo solo está soportado en Gmail y Outlook. Para IMAP usa send_email."
+        if not confirm:
+            return (
+                f"Borrador de respuesta ({provider}) al mensaje {message_id}:\n"
+                f"  Cuerpo:\n{body}\n\n"
+                "¿Confirmas el envío? Responde 'sí, envía' para proceder o 'no' para cancelar."
+            )
+        try:
+            if provider == "gmail":
+                client = GmailClient(providers["gmail"])
+            else:
+                client = OutlookClient(providers["outlook"])
+            try:
+                await client.reply_message(message_id, body)
+                return f"Respuesta enviada via {provider} al mensaje {message_id}."
+            finally:
+                await client.close()
+        except Exception as e:
+            return f"Error al responder correo ({provider}): {e}"
+
+    @tool
+    async def mark_read_real(
+        tenant_id: str, message_id: str, provider: str = default_provider
+    ) -> str:
+        """Marca un correo como leído.
+        Args:
+            tenant_id: ID del tenant
+            message_id: ID del mensaje a marcar como leído
+            provider: Proveedor de correo a usar
+        """
+        if provider not in providers:
+            return f"Error: proveedor '{provider}' no disponible. Usa uno de: {provider_desc}"
+        if provider not in ("gmail", "outlook"):
+            return "Error: marcar como leído solo está soportado en Gmail y Outlook."
+        try:
+            if provider == "gmail":
+                client = GmailClient(providers["gmail"])
+            else:
+                client = OutlookClient(providers["outlook"])
+            try:
+                await client.mark_read(message_id)
+                return f"Mensaje {message_id} marcado como leído ({provider})."
+            finally:
+                await client.close()
+        except Exception as e:
+            return f"Error al marcar como leído ({provider}): {e}"
+
+    return check_inbox_real, check_unread_real, send_email_real, reply_email_real, mark_read_real

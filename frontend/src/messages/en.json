@@ -364,6 +364,8 @@
     "addressPlaceholder": "123 Main Street",
     "cityPlaceholder": "London",
     "postalCodePlaceholder": "SW1A 1AA",
+    "marketingConsent": "Accepts marketing communications",
+    "marketingConsentHint": "The client has consented to receive marketing emails (GDPR)",
     "searchPlaceholder": "Search by name, tax ID or email...",
     "emptyTitle": "Add your first client",
     "emptyDescription": "Manage your portfolio, check invoice history and keep all data in one place.",

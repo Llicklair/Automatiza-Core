@@ -364,6 +364,8 @@
     "addressPlaceholder": "[EU] Calle Principal 123",
     "cityPlaceholder": "[EU] Madrid",
     "postalCodePlaceholder": "[EU] 28001",
+    "marketingConsent": "Merkataritza-komunikazioak onartzen ditu",
+    "marketingConsentHint": "Bezeroak marketin-emailak jasotzeko baimena eman du (DBEO)",
     "searchPlaceholder": "[EU] Buscar por nombre, NIF o email...",
     "emptyTitle": "[EU] Anade tu primer cliente",
     "emptyDescription": "[EU] Gestiona tu cartera, consulta el historial de facturas y manten todos los datos en un solo lugar.",
