@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Database, Download, RefreshCw, Trash2, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { useToastStore } from "@/stores/toast";
 
 import { system, type BackupItem } from "@/lib/api/system";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ function formatDate(iso: string): string {
 }
 
 export default function BackupsPage() {
+    const toast = useToastStore();
     const [items, setItems] = useState<BackupItem[] | null>(null);
     const [creating, setCreating] = useState(false);
     const [busyFile, setBusyFile] = useState<string | null>(null);

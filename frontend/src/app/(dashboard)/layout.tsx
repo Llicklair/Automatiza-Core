@@ -6,9 +6,9 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import { useToastStore } from "@/stores/toast";
 import { useNotificationStore } from "@/stores/notifications";
-import { Toaster } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/api/client";
 import { hydrateSecureStore } from "@/lib/secureStore";
@@ -165,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </ErrorBoundary>
                 </main>
             </div>
-            <Toaster />
+            <ToastContainer />
             <ConfirmDialog />
         </div>
     );
