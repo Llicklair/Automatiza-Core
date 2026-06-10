@@ -41,6 +41,10 @@ async def apply_tenant_rls(session: AsyncSession) -> str | None:
     except (ValueError, TypeError):
         return None
 
-    # SET LOCAL no acepta parámetros bindeados — interpolación validada.
-    await session.execute(text(f"SET LOCAL app.current_tenant = '{parsed}'"))
+    # set_config(..., true) ≡ SET LOCAL (scope transacción) y sí acepta
+    # bind params — evita el único f-string SQL del repo.
+    await session.execute(
+        text("SELECT set_config('app.current_tenant', :tid, true)"),
+        {"tid": parsed},
+    )
     return parsed
