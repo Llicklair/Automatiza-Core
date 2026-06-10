@@ -6,6 +6,7 @@ import type { AIEmployee, ActivityEntry } from "@/lib/api/ai_employees";
 import { RefreshCw, ChevronDown, Bot } from "lucide-react";
 import { InboxMessage, CATEGORY_CONFIG } from "./InboxMessage";
 import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 interface ActivityTabProps {
     isActive?: boolean;
@@ -41,11 +42,10 @@ export function ActivityTab({ isActive = true }: ActivityTabProps) {
             fetchEntries(true),
             api.aiEmployees.list().then(setEmployees).catch(() => {}),
         ]).finally(() => setLoading(false));
+    }, [fetchEntries]);
 
-        if (!isActive) return;
-        const interval = setInterval(() => fetchEntries(true), 60_000);
-        return () => clearInterval(interval);
-    }, [fetchEntries, isActive]);
+    // Respaldo del socket `activity_new` (cubre eventos perdidos por desconexión).
+    usePolling(() => { void fetchEntries(true); }, 60_000, { enabled: isActive });
 
     useNotificationSocket({
         activity_new: (msg) => {

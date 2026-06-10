@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useNotificationSocket } from "./useNotificationSocket";
+import { usePolling } from "./usePolling";
 
 /**
  * Número de aprobaciones pendientes del tenant. Fetch inicial + push WS
@@ -23,9 +24,9 @@ export function usePendingApprovalsCount(): number {
 
     useEffect(() => {
         refresh();
-        const id = setInterval(refresh, 60_000);
-        return () => clearInterval(id);
     }, [refresh]);
+
+    usePolling(refresh, 60_000);
 
     useNotificationSocket({ approval_created: refresh });
 
