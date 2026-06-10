@@ -14,6 +14,7 @@ import { getToken } from "@/lib/api/client";
 import { hydrateSecureStore } from "@/lib/secureStore";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 function decodeJwtName(token: string): string {
     try {
@@ -127,31 +128,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, hydrated);
 
     // Polling: workflow completions (30s)
-    useEffect(() => {
-        if (!hydrated) return;
-        const token = getToken();
-        if (!token) return;
-
-        const poll = async () => {
-            try {
-                const since = lastCheckRef.current;
-                lastCheckRef.current = Date.now() / 1000;
-                const items = await api.workflows.recentCompletions(since);
-                for (const item of items) {
-                    const ok = item.status === "completed" || item.status === "success";
-                    const msg = `Automatización "${item.workflow_name}" ${ok ? "completada" : "falló"}`;
-                    const type = ok ? "success" : "error";
-                    showToast(msg, type);
-                    pushNotification(msg, type);
-                }
-                if (items.length > 0) triggerRefresh();
-            } catch { /* silencioso */ }
-        };
-
-        const interval = setInterval(poll, 30_000);
-        return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const pollCompletions = async () => {
+        try {
+            const since = lastCheckRef.current;
+            lastCheckRef.current = Date.now() / 1000;
+            const items = await api.workflows.recentCompletions(since);
+            for (const item of items) {
+                const ok = item.status === "completed" || item.status === "success";
+                const msg = `Automatización "${item.workflow_name}" ${ok ? "completada" : "falló"}`;
+                const type = ok ? "success" : "error";
+                showToast(msg, type);
+                pushNotification(msg, type);
+            }
+            if (items.length > 0) triggerRefresh();
+        } catch { /* silencioso */ }
+    };
+    usePolling(pollCompletions, 30_000, { enabled: hydrated && !!getToken() });
 
     return (
         <div className="flex h-screen bg-background overflow-hidden">
