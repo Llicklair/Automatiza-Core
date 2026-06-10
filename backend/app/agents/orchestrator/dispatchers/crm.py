@@ -6,12 +6,12 @@ al formato del orquestador.
 
 import logging
 
-from app.agents.orchestrator.helpers import (
-    _messages_already_generated_pdf,
-    _save_ai_result_as_document,
+from app.services.orchestration import (
+    format_summary,
+    messages_already_generated_pdf,
+    save_ai_result_as_document,
 )
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.agents.orchestrator.utils import _format_summary
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,8 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
             "response": final_text,
         }
 
-        if success and final_text and not _messages_already_generated_pdf(messages):
-            await _save_ai_result_as_document(
+        if success and final_text and not messages_already_generated_pdf(messages):
+            await save_ai_result_as_document(
                 tenant_id=tenant_id,
                 task_id=state["task_id"],
                 category="crm",
@@ -94,7 +94,7 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
             "agent": "crm",
             "success": success,
             "output": _crm_output,
-            "summary": _format_summary(
+            "summary": format_summary(
                 "crm", _crm_output, success, None if success else final_text
             ),
             "error": None if success else final_text,

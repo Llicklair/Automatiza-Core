@@ -1,6 +1,5 @@
-"""
-Funciones auxiliares del orquestador: bloqueo de documentos, guardado de resultados IA.
-"""
+"""Persistencia compartida de la orquestación: documentos generados por IA,
+bloqueo de documentos y creación centralizada de PendingApproval."""
 
 import logging
 import uuid
@@ -8,7 +7,7 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-async def _lock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID) -> bool:
+async def lock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID) -> bool:
     """Intenta bloquear un documento para una tarea específica."""
     from datetime import UTC, datetime
 
@@ -28,7 +27,7 @@ async def _lock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID) -> bool:
     return True
 
 
-async def _unlock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID):
+async def unlock_document(db, doc_id: uuid.UUID, task_id: uuid.UUID):
     """Libera el bloqueo de un documento."""
     from app.db.models.models import TenantDocument
 
@@ -59,14 +58,14 @@ _APPROVAL_PHRASES = (
 )
 
 
-def _response_indicates_approval(text: str) -> bool:
+def response_indicates_approval(text: str) -> bool:
     if not text:
         return False
     lower = text.lower()
     return any(phrase in lower for phrase in _APPROVAL_PHRASES)
 
 
-async def _ensure_pending_approval(
+async def ensure_pending_approval(
     tenant_id: str,
     task_id: str | None = None,
     agent_results: list | None = None,
@@ -103,7 +102,7 @@ async def _ensure_pending_approval(
         if out.get("action") == "approval_required" and out.get("approval_id"):
             return out["approval_id"]
         candidate = out.get("response") or step.get("summary") or ""
-        if _response_indicates_approval(candidate):
+        if response_indicates_approval(candidate):
             triggering_text = candidate
             triggering_agent = step.get("agent", "?")
             break
@@ -157,7 +156,7 @@ async def _ensure_pending_approval(
         return None
 
 
-def _messages_already_generated_pdf(messages: list) -> bool:
+def messages_already_generated_pdf(messages: list) -> bool:
     """True si alguno de los messages del agente ya invocó una tool de PDF.
 
     Usado por los dispatchers para no duplicar guardando un "análisis"
@@ -174,7 +173,7 @@ def _messages_already_generated_pdf(messages: list) -> bool:
     return False
 
 
-async def _save_ai_result_as_document(
+async def save_ai_result_as_document(
     tenant_id: str,
     task_id: str,
     category: str,
@@ -246,7 +245,7 @@ async def _save_ai_result_as_document(
 
             if existing_doc:
                 # INTENTAR BLOQUEO PARA CONCURRENCIA
-                if not await _lock_document(db, existing_doc.id, uuid.UUID(task_id)):
+                if not await lock_document(db, existing_doc.id, uuid.UUID(task_id)):
                     logger.warning(
                         f"[ORCHESTRATOR] Archivo {filename} bloqueado por otro agente. Esperando..."
                     )
@@ -262,7 +261,7 @@ async def _save_ai_result_as_document(
                 existing_doc.parsed_content = content
 
                 # Liberar bloqueo
-                await _unlock_document(db, existing_doc.id, uuid.UUID(task_id))
+                await unlock_document(db, existing_doc.id, uuid.UUID(task_id))
             else:
                 doc = TenantDocument(
                     tenant_id=uuid.UUID(tenant_id),
@@ -281,7 +280,7 @@ async def _save_ai_result_as_document(
         logger.exception("Error guardando resultado como documento")
 
 
-async def _save_ai_result_as_csv(
+async def save_ai_result_as_csv(
     tenant_id: str, task_id: str, category: str, filename: str, data: list[dict]
 ) -> None:
     """Exporta una lista de diccionarios a CSV y la registra en TenantDocument."""
@@ -296,9 +295,9 @@ async def _save_ai_result_as_csv(
         return
 
     try:
-        _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-        upload_dir = os.path.normpath(os.path.join(_THIS_DIR, "..", "uploads"))
-        os.makedirs(upload_dir, exist_ok=True)
+        from app.agents.agent_tools.reports import _resolve_upload_dir
+
+        upload_dir = _resolve_upload_dir(category)
         file_path = os.path.join(upload_dir, filename)
 
         keys = data[0].keys()

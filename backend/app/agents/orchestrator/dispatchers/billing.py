@@ -7,12 +7,12 @@ al formato del orquestador.
 import logging
 from datetime import UTC, datetime, timedelta
 
-from app.agents.orchestrator.helpers import (
-    _messages_already_generated_pdf,
-    _save_ai_result_as_document,
+from app.services.orchestration import (
+    format_summary,
+    messages_already_generated_pdf,
+    save_ai_result_as_document,
 )
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.agents.orchestrator.utils import _format_summary
 
 logger = logging.getLogger(__name__)
 
@@ -139,12 +139,12 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
         }
 
         # No duplicar si el agente ya creó un PDF profesional por su cuenta.
-        already_pdf = _messages_already_generated_pdf(messages)
+        already_pdf = messages_already_generated_pdf(messages)
 
         # Guardar resultado como documento visible
         if success and final_text and not already_pdf:
             if is_query:
-                await _save_ai_result_as_document(
+                await save_ai_result_as_document(
                     tenant_id=tenant_id,
                     task_id=state["task_id"],
                     category="facturas",
@@ -152,7 +152,7 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
                     content=final_text,
                 )
             elif is_creation:
-                await _save_ai_result_as_document(
+                await save_ai_result_as_document(
                     tenant_id=tenant_id,
                     task_id=state["task_id"],
                     category="facturas",
@@ -206,7 +206,7 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
             "agent": "billing",
             "success": success,
             "output": _billing_output,
-            "summary": _format_summary(
+            "summary": format_summary(
                 "billing", _billing_output, success, None if success else final_text
             ),
             "error": None if success else final_text,

@@ -7,7 +7,7 @@ al formato del orquestador.
 import logging
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.agents.orchestrator.utils import _format_summary
+from app.services.orchestration import format_summary
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
             "agent": "documents",
             "success": success,
             "output": _doc_output,
-            "summary": _format_summary(
+            "summary": format_summary(
                 "documents", _doc_output, success, None if success else final_text
             ),
             "error": None if success else final_text,
