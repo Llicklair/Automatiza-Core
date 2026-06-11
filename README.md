@@ -318,16 +318,16 @@ Clasificación mecánica (regex + keywords, 0 tokens LLM en ~90% docs)
   ↓  Entidades extraídas: NIF, importes, fechas, IBAN
 Smart Chunker (respeta estructura del PDF)
   ↓  Chunks con metadatos: página, tipo de elemento, bounding box
-Embedder (BAAI/bge-m3, 768 dim)
+Embedder (BAAI/bge-m3, 1024 dim)
   ↓
-DocumentEmbedding (pgvector) — listo para RAG
+DocumentEmbedding (JSONB) — listo para RAG
 ```
 
 **OpenDataLoader** (Java) extrae markdown + JSON estructurado de PDFs con metadatos: tipo de elemento, página, bounding box. Si no hay JRE, cae a `pypdf`. En Electron se auto-descarga Adoptium JRE 21.
 
-**Clasificador sin tokens** (`backend/app/services/document_classifier.py`): regex para patrones españoles (NIF, IBAN, importes). Solo llama al LLM si confianza < 0.7 (~10% de docs). Ahorra tokens masivamente.
+**Clasificador sin tokens** (`backend/app/services/documents/classifier.py`): regex para patrones españoles (NIF, IBAN, importes). Solo llama al LLM si confianza < 0.7 (~10% de docs). Ahorra tokens masivamente.
 
-**Smart Chunker** (`backend/app/services/smart_chunker.py`):
+**Smart Chunker** (`backend/app/services/documents/smart_chunker.py`):
 - Tablas nunca se parten (chunk atómico)
 - Headings inician chunk nuevo
 - Párrafos se agrupan hasta 2000 caracteres
@@ -339,13 +339,19 @@ DocumentEmbedding (pgvector) — listo para RAG
 document_embeddings:
   document_id, tenant_id, chunk_index, text_content,
   page_number, element_type (table|paragraph|heading),
-  bounding_box (JSONB), embedding (pgvector 768-dim)
+  bounding_box (JSONB), embedding (JSONB, lista de floats)
 ```
 
-### Consulta RAG (`rag_agent.py`)
+> Los embeddings se guardan en una columna **JSONB**, no en `pgvector`: la app
+> desktop distribuye un Postgres portable sin la extensión `pgvector`. La
+> búsqueda por similitud se hace en Python (coseno) sobre los vectores cargados.
+> La dimensión depende del proveedor: **1024** con `BAAI/bge-m3` (local, por
+> defecto), 1536 con `text-embedding-3-small` (OpenAI).
+
+### Consulta RAG (`agents/rag/`)
 
 1. Keywords en nombre de archivo (filtrado rápido)
-2. Búsqueda semántica vía pgvector (cosine distance)
+2. Búsqueda semántica por similitud coseno en Python (`cosine_topk`)
 3. Contexto enriquecido con páginas y tipos
 4. LLM sintetiza respuesta con citas a fuentes específicas
 

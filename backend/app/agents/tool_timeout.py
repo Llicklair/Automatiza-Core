@@ -38,7 +38,7 @@ _TIMEOUT_OVERRIDES: dict[str, float] = {
     "generate_all_payrolls": 240.0,
     # answer_from_documents: RAG retrieval + LLM grounded en docs.
     "answer_from_documents": 120.0,
-    # search_documents_semantic: pgvector + reranking sobre corpus grande.
+    # search_documents_semantic: coseno en Python + reranking sobre corpus grande.
     "search_documents_semantic": 90.0,
 }
 
