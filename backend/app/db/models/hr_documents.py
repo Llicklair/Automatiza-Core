@@ -23,6 +23,8 @@ class HRDocument(Base):
     employee_name = Column(String(200), nullable=True)
     content_html = Column(Text, nullable=False)
     status = Column(String(20), default="draft")  # draft | approved
+    # Folio correlativo de gestoría, asignado al aprobar (ej. DOC-2026-0001).
+    doc_number = Column(String(40), nullable=True, index=True)
     instructions = Column(Text, nullable=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))

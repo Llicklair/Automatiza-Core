@@ -96,7 +96,7 @@ export function useHRDocumentos() {
     };
 
     const handleApprove = async (id: string) => {
-        try { await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const } : d)); showToast(t("toasts.documentApproved")); }
+        try { const res = await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const, doc_number: res.doc_number } : d)); showToast(t("toasts.documentApproved")); }
         catch { showToast(t("toasts.documentApproveError")); }
     };
 
