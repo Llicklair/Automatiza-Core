@@ -23,6 +23,7 @@ from app.services.signing.autofirma import (
     parse_autofirma_response,
 )
 from app.services.signing.sessions import (
+    get_signing_status,
     process_signed_callback,
     start_signing_session,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "build_autofirma_uri",
     "extract_signature_metadata",
     "parse_autofirma_response",
+    "get_signing_status",
     "process_signed_callback",
     "start_signing_session",
 ]

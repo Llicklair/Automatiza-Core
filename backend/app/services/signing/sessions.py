@@ -130,6 +130,26 @@ async def process_signed_callback(
     return _signed_doc_to_dict(sd) | {"signed_bytes": signed_bytes}
 
 
+async def get_signing_status(
+    db: AsyncSession, tenant_id: UUID, session_token: str
+) -> dict | None:
+    """Estado de una sesión de firma (para polling del frontend). None si no existe."""
+    res = await db.execute(
+        sa.select(SignedDocument).where(
+            SignedDocument.session_token == session_token,
+            SignedDocument.tenant_id == tenant_id,
+        )
+    )
+    sd = res.scalar_one_or_none()
+    if sd is None:
+        return None
+    return {
+        "session_token": sd.session_token,
+        "status": sd.status,
+        "signed_hash": sd.signed_hash,
+    }
+
+
 def _signed_doc_to_dict(sd: SignedDocument) -> dict[str, Any]:
     return {
         "id": str(sd.id),
