@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Megaphone, Link2, PenSquare, CalendarClock, Sparkles } from "lucide-react";
+import { Megaphone, Link2, PenSquare, CalendarClock, Sparkles, BarChart3 } from "lucide-react";
 import { TabCuentas } from "./_components/TabCuentas";
 import { TabCrear } from "./_components/TabCrear";
 import { TabProgramados } from "./_components/TabProgramados";
 import { TabPlanIA } from "./_components/TabPlanIA";
+import { TabAnalitica } from "./_components/TabAnalitica";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -15,6 +16,7 @@ const TABS = [
     { key: "cuentas",     label: "Cuentas",     icon: Link2 },
     { key: "crear",       label: "Crear post",  icon: PenSquare },
     { key: "programados", label: "Programados",  icon: CalendarClock },
+    { key: "analitica",   label: "Analítica",   icon: BarChart3 },
     { key: "plan-ia",     label: "Plan IA",     icon: Sparkles },
 ] as const;
 
@@ -57,6 +59,7 @@ export default function MarketingPage() {
             {tab === "cuentas"     && <TabCuentas />}
             {tab === "crear"       && <TabCrear />}
             {tab === "programados" && <TabProgramados />}
+            {tab === "analitica"   && <TabAnalitica />}
             {tab === "plan-ia"     && <TabPlanIA />}
         </PageContainer>
     );
