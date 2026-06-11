@@ -11,6 +11,7 @@ import DocRow from "@/components/documentos/DocRow";
 import DocCard from "@/components/documentos/DocCard";
 import RagChatBox from "@/components/documentos/RagChatBox";
 import DocSemanticSearch from "@/components/documentos/DocSemanticSearch";
+import ContractWizard from "@/components/documentos/ContractWizard";
 import { useDocumentos } from "./_hooks/useDocumentos";
 
 const FOLDERS = [
@@ -118,6 +119,8 @@ export default function DocumentosPage() {
             <RagChatBox />
 
             <DocSemanticSearch />
+
+            <ContractWizard />
 
             {error && (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 flex items-center gap-2">

@@ -21,6 +21,12 @@ export interface ContractTemplate {
     created_at: string;
 }
 
+export interface ContractInterviewResult {
+    message: string;
+    done: boolean;
+    contract: string | null;
+}
+
 export interface SemanticHit {
     document_id: string;
     file_name: string | null;
@@ -76,6 +82,20 @@ export const documents = {
         request<SemanticHit[]>(
             `/api/v1/documents/search?q=${encodeURIComponent(q)}&limit=${limit}`
         ),
+    contracts: {
+        /** Avanza la entrevista del asistente de contratos. */
+        interview: (contract_type: string, messages: { role: string; content: string }[]) =>
+            request<ContractInterviewResult>("/api/v1/documents/contracts/interview", {
+                method: "POST",
+                body: JSON.stringify({ contract_type, messages }),
+            }),
+        /** Guarda el contrato redactado como documento Markdown. */
+        save: (contract_type: string, title: string, content: string) =>
+            request<Document>("/api/v1/documents/contracts/save", {
+                method: "POST",
+                body: JSON.stringify({ contract_type, title, content }),
+            }),
+    },
     upload: (file: File, category?: string): Promise<Document> => {
         const form = new FormData();
         form.append("file", file);
