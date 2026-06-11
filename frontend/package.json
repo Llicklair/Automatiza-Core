@@ -12,7 +12,8 @@
         "test": "vitest",
         "test:ci": "vitest run --coverage",
         "test:ui": "vitest --ui",
-        "test:a11y": "vitest run src/test/a11y"
+        "test:a11y": "vitest run src/test/a11y",
+        "i18n:check": "node scripts/check_i18n_parity.mjs"
     },
     "dependencies": {
         "@radix-ui/react-avatar": "^1.1.11",
