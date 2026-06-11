@@ -1,3 +1,5 @@
+from sqlalchemy import Date, UniqueConstraint
+
 from .common import (
     UUID,
     Base,
@@ -81,3 +83,39 @@ class ScheduledPost(Base):
     tenant = relationship("Tenant")
     campaign = relationship("Campaign", back_populates="posts")
     social_account = relationship("SocialAccount", back_populates="posts")
+    metrics = relationship(
+        "ScheduledPostMetrics", back_populates="post", cascade="all, delete-orphan"
+    )
+
+
+class ScheduledPostMetrics(Base):
+    """Snapshot diario de métricas de un post publicado (engagement por red).
+
+    Una fila por (post, día): el job de sincronización hace upsert sobre la fecha
+    para que las métricas reflejen el último valor consultado a la plataforma.
+    """
+
+    __tablename__ = "scheduled_post_metrics"
+    __table_args__ = (
+        UniqueConstraint("scheduled_post_id", "metric_date", name="uq_post_metric_day"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    scheduled_post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("scheduled_posts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    metric_date = Column(Date, nullable=False)
+    impressions = Column(Integer, nullable=False, default=0)
+    reach = Column(Integer, nullable=False, default=0)
+    likes = Column(Integer, nullable=False, default=0)
+    comments = Column(Integer, nullable=False, default=0)
+    shares = Column(Integer, nullable=False, default=0)
+    clicks = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    post = relationship("ScheduledPost", back_populates="metrics")
