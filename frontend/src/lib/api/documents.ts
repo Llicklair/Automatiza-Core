@@ -21,6 +21,16 @@ export interface ContractTemplate {
     created_at: string;
 }
 
+export interface SemanticHit {
+    document_id: string;
+    file_name: string | null;
+    chunk_index: string | null;
+    text: string;
+    page_number: number | null;
+    element_type: string | null;
+    similarity: number;
+}
+
 /** Respuesta de GET .../contract-templates/:id/preview-html (mammoth) */
 export interface ContractPreviewHtml {
     html: string;
@@ -61,6 +71,11 @@ export const documents = {
         const q = new URLSearchParams(params as Record<string, string>).toString();
         return request<Document[]>(`/api/v1/documents${q ? "?" + q : ""}`);
     },
+    /** Búsqueda semántica (RAG) sobre los documentos del tenant. */
+    search: (q: string, limit = 8) =>
+        request<SemanticHit[]>(
+            `/api/v1/documents/search?q=${encodeURIComponent(q)}&limit=${limit}`
+        ),
     upload: (file: File, category?: string): Promise<Document> => {
         const form = new FormData();
         form.append("file", file);
