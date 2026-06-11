@@ -75,7 +75,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 | 2.17 | Venta/POS → decremento de stock (inventario no enlazado a ventas) | PENDIENTE | integración ventas↔inventario | depth-audit |
 
 ### BYOK / IA / Pricing
-| 2.18 | Token ledger persistente a BD (hoy `agent_budget` en memoria) | PARCIAL | `services/agent_budget*` | plan-gtm |
+| 2.18 | ~~Token ledger persistente a BD~~ **HECHO**: modelo `TokenLedger` (`db/models/llm_usage.py`) + `record_token_usage` (cableado en orquestador/empleados/budget_guard) + gate de gasto mensual por tenant | HECHO | `services/agent_budget.py` | plan-gtm |
 | 2.19 | LLM usage dashboard UI (`UsageWidget` vacío; endpoint `/llm-usage/stats` existe) | PARCIAL | `frontend/.../_components/UsageWidget.tsx` | plan-gtm |
 
 ### Frontend / i18n
@@ -97,7 +97,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 |---|---|---|---|
 | 3.1 | Analytics de marketing (modelo métricas + fetch por red + job diario; publisher ya guarda `platform_post_id`) | PENDIENTE | roadmap_impl |
 | 3.2 | Normativa fiscal → RAG (hoy hardcoded en `compliance/tools.py`; reusa BOEScraper + `cosine_topk`) | PENDIENTE | roadmap_impl |
-| 3.3 | Modelo 131 (IRPF módulos) y Modelo 200 (Sociedades) | PENDIENTE | backlog |
+| 3.3 | Modelo 131 (IRPF módulos) — PENDIENTE. ~~Modelo 200 (Sociedades)~~ **HECHO** (`build_modelo_200_data` + ruta) | PARCIAL | backlog |
 | 3.4 | Multi-currency banca (`requires_manual_review`) (INT.CUR) | PENDIENTE | backlog |
 | 3.5 | Búsqueda semántica: ~~endpoint REST dedicado~~ **HECHO** (2026-06-11): `GET /documents/search` (coseno en Python, scoped por tenant, +4 tests); **falta UI** frontend | PARCIAL (backend hecho) | `api/v1/routes/documents.py` | depth-audit |
 | 3.6 | REGAP: consulta real a AEAT (hoy mockeado) | PARCIAL | plan-gtm, scoping |
