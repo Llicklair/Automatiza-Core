@@ -9,6 +9,7 @@ La lógica vive en:
 
 from app.services.pdf_reports._fiscal_modelo303 import generate_modelo_303_pdf  # noqa: F401
 from app.services.pdf_reports._fiscal_modelos import (  # noqa: F401
+    generate_modelo_100_pdf,
     generate_modelo_111_pdf,
     generate_modelo_115_pdf,
     generate_modelo_130_pdf,
@@ -25,6 +26,7 @@ from app.services.pdf_reports._fiscal_report import (  # noqa: F401
 
 __all__ = [
     "generate_modelo_303_pdf",
+    "generate_modelo_100_pdf",
     "generate_modelo_130_pdf",
     "generate_modelo_111_pdf",
     "generate_modelo_115_pdf",

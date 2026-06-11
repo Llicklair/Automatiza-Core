@@ -414,3 +414,40 @@ def generate_modelo_200_pdf(data: dict) -> bytes:
         ))
     el += _footer(s, C)
     return _build(el)
+
+
+# ── Modelo 100 — IRPF (Declaración de la Renta, preview) ───────────────────────
+
+def generate_modelo_100_pdf(data: dict) -> bytes:
+    if not REPORTLAB_AVAILABLE:
+        return f"MODELO 100 BORRADOR {data.get('ejercicio')}\n".encode()
+    s = _common_styles(); C = s["C"]
+    el = _header("Modelo 100", "IRPF · Declaración de la Renta (preview)",
+                 data.get("tenant", {}), "Ejercicio anual", data.get("ejercicio", ""), s, C)
+    el.append(Paragraph("Rendimiento de actividad económica", s["section"]))
+    el.append(_kv_table([
+        ("Ingresos (facturas emitidas)", _eur(data.get("ingresos")), False),
+        ("Gastos (facturas recibidas)", _eur(data.get("gastos_facturas")), False),
+        ("Coste de personal (nóminas + SS empresa)", _eur(data.get("coste_nominas")), False),
+        ("Rendimiento neto", _eur(data.get("rendimiento_neto")), True),
+    ], s, C))
+    el.append(Spacer(1, 6 * mm))
+    el.append(Paragraph("Liquidación", s["section"]))
+    el.append(_kv_table([
+        ("Mínimo personal y familiar", _eur(data.get("minimo_personal")), False),
+        ("Base liquidable", _eur(data.get("base_liquidable")), True),
+        ("Cuota íntegra (escala IRPF)", _eur(data.get("cuota_integra")), True),
+        ("Retenciones soportadas", _eur(data.get("retenciones_soportadas")), False),
+        ("Pagos fraccionados (Modelo 130)", _eur(data.get("pagos_fraccionados_pagados")), False),
+        ("RESULTADO DE LA DECLARACIÓN", _eur(data.get("resultado_declaracion")), True),
+    ], s, C))
+    warning = data.get("_warning")
+    if warning:
+        el.append(Spacer(1, 5 * mm))
+        el.append(Paragraph(
+            str(warning),
+            ParagraphStyle("Warn100", parent=s["styles"]["Normal"], fontSize=8,
+                           fontName="Helvetica-Oblique", textColor=colors.HexColor(C["AMBER"])),
+        ))
+    el += _footer(s, C)
+    return _build(el)

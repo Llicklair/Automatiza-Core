@@ -15,9 +15,10 @@
   (mig `0034_reconciliation_rejections`). **Falta**: razón explícita
   ("= factura #X porque {monto exacto / fecha ±3d / concepto contiene NIF}")
   + un-click aceptar/rechazar en UI + aprendizaje del rechazo.
-- [ ] **F2.8 Modelo 100 + presentación AEAT** — Modelo 200 (datos + endpoint +
-  PDF `GET /200/pdf`) ✅. **Falta**: Modelo 100 (mismo patrón) y presentación
-  telemática real del 200 (requiere certificado AEAT).
+- [ ] **F2.8 Presentación telemática AEAT (200/100)** — Modelo 200 (datos +
+  endpoint + PDF) ✅ y **Modelo 100** (IRPF Renta preview: datos + escala IRPF
+  progresiva + `GET /100` + PDF `GET /100/pdf`) ✅ (2026-06-12). **Falta**: la
+  presentación telemática real (requiere certificado AEAT — bloqueada).
 
 ## Gestoría / Firma
 
