@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CalendarClock, Loader2, Clock, AlertCircle, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Clock, AlertCircle, Trash2, CalendarDays, List } from "lucide-react";
 import { marketingApi, ScheduledPost } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
 import { PLATFORMS } from "./constants";
+import { PostsCalendar } from "./PostsCalendar";
 
 const STATUS_CONFIG = {
     draft:     { label: "Borrador",    color: "text-muted-foreground bg-muted/50 border-border" },
@@ -21,6 +22,7 @@ export function TabProgramados() {
     const [posts, setPosts] = useState<ScheduledPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>("all");
+    const [view, setView] = useState<"list" | "calendar">("list");
 
     const load = useCallback(async () => {
         try {
@@ -67,6 +69,23 @@ export function TabProgramados() {
                 ))}
             </div>
 
+            {/* Toggle Lista / Calendario */}
+            <div className="flex justify-end">
+                <div className="inline-flex bg-card border border-border rounded-lg p-0.5">
+                    {([["list", "Lista"], ["calendar", "Calendario"]] as const).map(([v, label]) => (
+                        <button
+                            key={v}
+                            onClick={() => setView(v)}
+                            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
+                                view === v ? "bg-pink-500/10 text-pink-400" : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            {v === "list" ? <List className="w-3.5 h-3.5" /> : <CalendarDays className="w-3.5 h-3.5" />} {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {loading && (
                 <div className="flex justify-center py-10">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -80,6 +99,9 @@ export function TabProgramados() {
                 </div>
             )}
 
+            {view === "calendar" && <PostsCalendar posts={posts} onRemove={remove} />}
+
+            {view === "list" && (
             <div className="space-y-3">
                 {posts.map((post) => {
                     const cfg = STATUS_CONFIG[post.status];
@@ -118,6 +140,7 @@ export function TabProgramados() {
                     );
                 })}
             </div>
+            )}
         </div>
     );
 }
