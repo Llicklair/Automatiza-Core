@@ -308,6 +308,29 @@ async def create_campaign(
     return campaign
 
 
+@router.get("/campaigns/{campaign_id}/metrics")
+async def campaign_metrics(
+    campaign_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Métricas agregadas de una campaña (impresiones, alcance y engagement por post).
+
+    Devuelve la última métrica conocida de cada post (el job diario las refresca).
+    """
+    from app.services.marketing.metrics import get_campaign_metrics
+
+    result = await db.execute(
+        select(Campaign).where(
+            Campaign.id == campaign_id,
+            Campaign.tenant_id == current_user.tenant_id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Campaña no encontrada")
+    return await get_campaign_metrics(db, current_user.tenant_id, campaign_id)
+
+
 # ── Posts ──────────────────────────────────────────────────────────────────────
 
 

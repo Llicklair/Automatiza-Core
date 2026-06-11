@@ -55,5 +55,10 @@ from .tenant import (  # noqa: F401
 )
 from .workflow_template import WorkflowTemplate  # noqa: F401
 from .workflows import DomainEvent, Workflow, WorkflowExecution  # noqa: F401
-from .marketing import Campaign, ScheduledPost, SocialAccount  # noqa: F401
+from .marketing import (  # noqa: F401
+    Campaign,
+    ScheduledPost,
+    ScheduledPostMetrics,
+    SocialAccount,
+)
 from .email_marketing import EmailCampaign, EmailCampaignRecipient, EmailTemplate  # noqa: F401
