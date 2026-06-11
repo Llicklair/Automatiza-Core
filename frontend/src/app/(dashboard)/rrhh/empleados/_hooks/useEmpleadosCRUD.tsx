@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { ColumnDef } from "@tanstack/react-table";
 import { api, Employee, Payroll } from "@/lib/api";
 import { useNotificationStore } from "@/stores/notifications";
@@ -16,27 +18,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmployeeForm, EMPTY_FORM } from "./useEmpleadosTypes";
 
-const LEAVE_LABELS: Record<string, { label: string; className: string }> = {
-    baja_medica: { label: "Baja médica", className: "bg-red-500/10 text-red-400 border-red-500/20" },
-    vacaciones:  { label: "Vacaciones",  className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-    excedencia:  { label: "Excedencia",  className: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+// I18N — config estructural + labelKey; el componente traduce en render.
+const LEAVE_LABELS: Record<string, { labelKey: string; className: string }> = {
+    baja_medica: { labelKey: "empleados.leaveTypes.bajaMedica", className: "bg-red-500/10 text-red-400 border-red-500/20" },
+    vacaciones:  { labelKey: "empleados.leaveTypes.vacaciones",  className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+    excedencia:  { labelKey: "empleados.leaveTypes.excedencia",  className: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
 };
 
 function EmployeeStatusBadge({ emp }: { emp: Employee }) {
+    const t = useTranslations("rrhh");
     if (emp.status === "leave") {
-        const leave = LEAVE_LABELS[emp.leave_type ?? ""] ?? { label: "De baja", className: "bg-orange-500/10 text-orange-400 border-orange-500/20" };
-        return <Badge variant="outline" className={`text-xs ${leave.className}`}>{leave.label}</Badge>;
+        const leave = LEAVE_LABELS[emp.leave_type ?? ""] ?? { labelKey: "empleados.status.leave", className: "bg-orange-500/10 text-orange-400 border-orange-500/20" };
+        return <Badge variant="outline" className={`text-xs ${leave.className}`}>{t(leave.labelKey)}</Badge>;
     }
-    if (emp.status === "inactive") return <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground">Inactivo</Badge>;
-    return <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/20">Activo</Badge>;
+    if (emp.status === "inactive") return <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground">{t("empleados.status.inactive")}</Badge>;
+    return <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/20">{t("empleados.status.active")}</Badge>;
 }
-
-export const currencyFmt = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
 export function useEmpleadosCRUD(
     setDocsEmp: (emp: Employee | null) => void,
 ) {
     const toast = useToastStore();
+    const t = useTranslations("rrhh");
+    const tc = useTranslations("common");
+    const { fmtCurrency, fmtDate } = useFormat();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -94,13 +99,13 @@ export function useEmpleadosCRUD(
     };
 
     const handleDelete = async (emp: Employee) => {
-        if (!await showConfirm({ message: `¿Eliminar a "${emp.name}"? Esta acción no se puede deshacer.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("empleados.deleteConfirm", { name: emp.name }), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         setDeletingId(emp.id);
         try {
             await api.hr.employees.delete(emp.id);
             await loadData();
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : "Error al eliminar");
+            toast.error(err instanceof Error ? err.message : t("toasts.deleteError"));
         } finally {
             setDeletingId(null);
         }
@@ -139,7 +144,7 @@ export function useEmpleadosCRUD(
             setShowModal(false);
             await loadData();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Error al crear empleado");
+            setError(err instanceof Error ? err.message : t("empleados.form.saveError"));
         } finally {
             setSaving(false);
         }
@@ -160,9 +165,9 @@ export function useEmpleadosCRUD(
     };
 
     const departmentOptions = useMemo(() => {
-        const depts = new Set(employees.map((e) => e.department || "General"));
+        const depts = new Set(employees.map((e) => e.department || t("empleados.generalDept")));
         return Array.from(depts).sort().map((d) => ({ label: d, value: d }));
-    }, [employees]);
+    }, [employees, t]);
 
     const activeCount = employees.filter((e) => e.status === "active").length;
     const totalSalary = employees.reduce((acc, emp) => acc + (emp.base_salary || 0), 0);
@@ -170,7 +175,7 @@ export function useEmpleadosCRUD(
     const columns = useMemo<ColumnDef<Employee>[]>(() => [
         {
             accessorKey: "name",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Empleado" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("empleados.table.employee")} />,
             cell: ({ row }) => {
                 const emp = row.original;
                 return (
@@ -180,7 +185,7 @@ export function useEmpleadosCRUD(
                         </div>
                         <div>
                             <div className="font-medium text-foreground">{emp.name}</div>
-                            <div className="text-xs text-muted-foreground">{emp.nif || "S/NIF"}</div>
+                            <div className="text-xs text-muted-foreground">{emp.nif || t("empleados.table.noNif")}</div>
                             {emp.email && <div className="text-xs text-muted-foreground">{emp.email}</div>}
                         </div>
                     </div>
@@ -194,47 +199,47 @@ export function useEmpleadosCRUD(
         },
         {
             accessorKey: "department",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Departamento" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("empleados.table.department")} />,
             cell: ({ row }) => {
                 const emp = row.original;
                 return (
                     <div>
                         <div className="flex items-center gap-2 text-foreground">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
-                            {emp.department || "General"}
+                            {emp.department || t("empleados.generalDept")}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                             <GraduationCap className="h-3.5 w-3.5" />
-                            {emp.role || "Staff"}
+                            {emp.role || t("empleados.staffRole")}
                         </div>
                         {emp.join_date && (
                             <div className="text-xs text-muted-foreground/60 mt-1">
-                                Alta: {new Date(emp.join_date).toLocaleDateString("es-ES")}
+                                {t("empleados.table.joinedOn", { date: fmtDate(emp.join_date) })}
                             </div>
                         )}
                     </div>
                 );
             },
             filterFn: (row, _id, filterValue: string[]) => {
-                const dept = row.original.department || "General";
+                const dept = row.original.department || t("empleados.generalDept");
                 return filterValue.includes(dept);
             },
         },
         {
             accessorKey: "base_salary",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Salario Base" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("empleados.table.baseSalary")} />,
             cell: ({ row }) => {
                 const salary = row.original.base_salary;
                 return (
                     <span className="font-medium text-foreground">
-                        {salary ? currencyFmt.format(salary) : "---"}
+                        {salary ? fmtCurrency(salary) : "---"}
                     </span>
                 );
             },
         },
         {
             accessorKey: "status",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Estado" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("empleados.table.status")} />,
             cell: ({ row }) => <EmployeeStatusBadge emp={row.original} />,
             filterFn: (row, _id, filterValue: string[]) => {
                 return filterValue.includes(row.original.status);
@@ -242,34 +247,34 @@ export function useEmpleadosCRUD(
         },
         {
             id: "actions",
-            header: () => <div className="text-right">Acciones</div>,
+            header: () => <div className="text-right">{t("empleados.table.actions")}</div>,
             cell: ({ row }) => {
                 const emp = row.original;
                 return (
                     <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => openPayrolls(emp)} title="Ver nóminas">
+                            onClick={() => openPayrolls(emp)} title={t("empleados.actions.viewPayrolls")}>
                             <WalletCards className="h-4 w-4" />
-                            <span className="sr-only">Ver nóminas</span>
+                            <span className="sr-only">{t("empleados.actions.viewPayrolls")}</span>
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => setDocsEmp(emp)} title="Documentos del empleado">
+                            onClick={() => setDocsEmp(emp)} title={t("empleados.actions.documents")}>
                             <Paperclip className="h-4 w-4" />
-                            <span className="sr-only">Documentos</span>
+                            <span className="sr-only">{t("empleados.actions.documents")}</span>
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8"
-                            onClick={() => openEdit(emp)} title="Editar">
+                            onClick={() => openEdit(emp)} title={tc("edit")}>
                             <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Editar</span>
+                            <span className="sr-only">{tc("edit")}</span>
                         </Button>
                         <Button variant="ghost" size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => handleDelete(emp)}
-                            disabled={deletingId === emp.id} title="Eliminar">
+                            disabled={deletingId === emp.id} title={tc("delete")}>
                             {deletingId === emp.id
                                 ? <Loader2 className="h-4 w-4 animate-spin" />
                                 : <Trash2 className="h-4 w-4" />}
-                            <span className="sr-only">Eliminar</span>
+                            <span className="sr-only">{tc("delete")}</span>
                         </Button>
                     </div>
                 );
@@ -278,7 +283,7 @@ export function useEmpleadosCRUD(
             enableHiding: false,
         },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    ], [deletingId]);
+    ], [deletingId, t, tc, fmtCurrency, fmtDate]);
 
     return {
         employees, isLoading, columns, departmentOptions, activeCount, totalSalary,

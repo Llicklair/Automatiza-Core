@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { FormModal, FormField } from "@/components/shared";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,34 +31,35 @@ export interface EmpleadoFormModalProps {
 export function EmpleadoFormModal({
     open, onClose, editingId, form, setForm, saving, error, onSubmit,
 }: EmpleadoFormModalProps) {
+    const t = useTranslations("rrhh");
     return (
         <FormModal
             open={open}
             onClose={onClose}
-            title={editingId ? "Editar Empleado" : "Nuevo Empleado"}
+            title={editingId ? t("empleados.form.editTitle") : t("empleados.form.newTitle")}
             onSubmit={onSubmit}
             isSubmitting={saving}
-            submitLabel={saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear empleado"}
+            submitLabel={saving ? t("empleados.form.saving") : editingId ? t("empleados.form.saveChanges") : t("empleados.form.create")}
         >
             <div className="space-y-4">
-                <FormField label="Nombre completo" required>
+                <FormField label={t("empleados.form.fullName")} required>
                     <Input
                         required
                         value={form.name}
                         onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        placeholder="Ej: María García López"
+                        placeholder={t("empleados.form.fullNamePlaceholder")}
                     />
                 </FormField>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <FormField label="NIF">
+                    <FormField label={t("empleados.form.nif")}>
                         <Input
                             value={form.nif}
                             onChange={(e) => setForm((f) => ({ ...f, nif: e.target.value }))}
                             placeholder="12345678A"
                         />
                     </FormField>
-                    <FormField label="Salario base (€/mes)">
+                    <FormField label={t("empleados.form.baseSalary")}>
                         <Input
                             type="number"
                             value={form.base_salary}
@@ -68,7 +70,7 @@ export function EmpleadoFormModal({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <FormField label="Pagas anuales">
+                    <FormField label={t("empleados.form.annualPayments")}>
                         <Select
                             value={form.num_pagas}
                             onValueChange={(v) => setForm((f) => ({ ...f, num_pagas: v, prorratear_pagas: v === "12" ? false : f.prorratear_pagas }))}
@@ -77,22 +79,22 @@ export function EmpleadoFormModal({
                                 <SelectValue placeholder="12" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="12">12 pagas</SelectItem>
-                                <SelectItem value="14">14 pagas (2 extras)</SelectItem>
+                                <SelectItem value="12">{t("empleados.form.payments12")}</SelectItem>
+                                <SelectItem value="14">{t("empleados.form.payments14")}</SelectItem>
                             </SelectContent>
                         </Select>
                     </FormField>
-                    <FormField label="Jornada">
+                    <FormField label={t("empleados.form.workday")}>
                         <Select
                             value={form.jornada_tipo}
                             onValueChange={(v) => setForm((f) => ({ ...f, jornada_tipo: v, jornada_horas_semana: v === "completa" ? "" : f.jornada_horas_semana }))}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Completa" />
+                                <SelectValue placeholder={t("empleados.form.workdayFullShort")} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="completa">Completa (40h)</SelectItem>
-                                <SelectItem value="parcial">Parcial</SelectItem>
+                                <SelectItem value="completa">{t("empleados.form.workdayFull")}</SelectItem>
+                                <SelectItem value="parcial">{t("empleados.form.workdayPartial")}</SelectItem>
                             </SelectContent>
                         </Select>
                     </FormField>
@@ -106,12 +108,12 @@ export function EmpleadoFormModal({
                             onChange={(e) => setForm((f) => ({ ...f, prorratear_pagas: e.target.checked }))}
                             className="h-4 w-4 rounded border-border"
                         />
-                        Prorratear pagas extra en la nómina mensual
+                        {t("empleados.form.prorate")}
                     </label>
                 )}
 
                 {form.jornada_tipo === "parcial" && (
-                    <FormField label="Horas por semana">
+                    <FormField label={t("empleados.form.hoursPerWeek")}>
                         <Input
                             type="number"
                             min="1"
@@ -124,74 +126,74 @@ export function EmpleadoFormModal({
                     </FormField>
                 )}
 
-                <FormField label="Email">
+                <FormField label={t("empleados.form.email")}>
                     <Input
                         type="email"
                         value={form.email}
                         onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                        placeholder="empleado@empresa.com"
+                        placeholder={t("empleados.form.emailPlaceholder")}
                     />
                 </FormField>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <FormField label="Departamento">
+                    <FormField label={t("empleados.form.department")}>
                         <Input
                             value={form.department}
                             onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
-                            placeholder="Administración"
+                            placeholder={t("empleados.form.departmentPlaceholder")}
                         />
                     </FormField>
-                    <FormField label="Cargo">
+                    <FormField label={t("empleados.form.role")}>
                         <Input
                             value={form.role}
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                            placeholder="Contable"
+                            placeholder={t("empleados.form.rolePlaceholder")}
                         />
                     </FormField>
                 </div>
 
-                <FormField label="Estado">
+                <FormField label={t("empleados.form.status")}>
                     <Select
                         value={form.status}
                         onValueChange={(v) => setForm((f) => ({ ...f, status: v, leave_type: v !== "leave" ? "" : f.leave_type }))}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar estado" />
+                            <SelectValue placeholder={t("empleados.form.selectStatus")} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="active">Activo</SelectItem>
-                            <SelectItem value="inactive">Inactivo</SelectItem>
-                            <SelectItem value="leave">De baja</SelectItem>
+                            <SelectItem value="active">{t("empleados.status.active")}</SelectItem>
+                            <SelectItem value="inactive">{t("empleados.status.inactive")}</SelectItem>
+                            <SelectItem value="leave">{t("empleados.status.leave")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </FormField>
 
                 {form.status === "leave" && (
                     <>
-                        <FormField label="Tipo de baja">
+                        <FormField label={t("empleados.form.leaveType")}>
                             <Select
                                 value={form.leave_type}
                                 onValueChange={(v) => setForm((f) => ({ ...f, leave_type: v }))}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar tipo" />
+                                    <SelectValue placeholder={t("empleados.form.selectType")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {LEAVE_TYPE_OPTIONS.map((o) => (
-                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                        <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </FormField>
                         <div className="grid grid-cols-2 gap-3">
-                            <FormField label="Inicio de baja">
+                            <FormField label={t("empleados.form.leaveStart")}>
                                 <Input
                                     type="date"
                                     value={form.leave_start}
                                     onChange={(e) => setForm((f) => ({ ...f, leave_start: e.target.value }))}
                                 />
                             </FormField>
-                            <FormField label="Fin de baja (est.)">
+                            <FormField label={t("empleados.form.leaveEnd")}>
                                 <Input
                                     type="date"
                                     value={form.leave_end}
@@ -203,14 +205,14 @@ export function EmpleadoFormModal({
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                    <FormField label="Fecha de alta">
+                    <FormField label={t("empleados.form.joinDate")}>
                         <Input
                             type="date"
                             value={form.join_date}
                             onChange={(e) => setForm((f) => ({ ...f, join_date: e.target.value }))}
                         />
                     </FormField>
-                    <FormField label="Fin de contrato">
+                    <FormField label={t("empleados.form.contractEnd")}>
                         <Input
                             type="date"
                             value={form.contract_end_date}

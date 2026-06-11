@@ -428,5 +428,600 @@
     "goLogin": "Ir al login",
     "critical": "Error critico",
     "unrecoverable": "La aplicacion encontro un error irrecuperable"
+  },
+  "rrhh": {
+    "common": {
+      "download": "Descargar",
+      "downloadPdf": "Descargar PDF",
+      "approve": "Aprobar",
+      "payrollStatus": {
+        "draft": "Borrador",
+        "sent": "Emitida",
+        "paid": "Pagada"
+      }
+    },
+    "home": {
+      "title": "Recursos Humanos",
+      "subtitle": "Gestión de plantilla, nóminas automatizadas y selección de personal asistida por IA.",
+      "open": "Abrir",
+      "sections": {
+        "empleados": {
+          "title": "Empleados",
+          "description": "Directorio de plantilla, roles, salarios y contratos. Base para el agente de nóminas."
+        },
+        "nominas": {
+          "title": "Nóminas",
+          "description": "Pre-cálculo y aprobación de nóminas mensuales generadas por el agente IA."
+        },
+        "documentos": {
+          "title": "Documentos",
+          "description": "Contratos, nóminas firmadas y archivos del trabajador centralizados."
+        },
+        "reclutamiento": {
+          "title": "Reclutamiento",
+          "description": "Pipeline de candidatos y fases del proceso de selección."
+        },
+        "analisisCv": {
+          "title": "Análisis de CV",
+          "description": "El agente IA extrae y puntúa candidaturas automáticamente desde PDF."
+        },
+        "horarios": {
+          "title": "Horarios",
+          "description": "Plantilla semanal fija por empleado: hora de entrada y salida por día."
+        },
+        "fichajes": {
+          "title": "Fichajes",
+          "description": "Control de presencia en tiempo real: quién está trabajando ahora mismo."
+        },
+        "vacaciones": {
+          "title": "Vacaciones",
+          "description": "Solicitudes de ausencia: vacaciones, bajas y excedencias con flujo de aprobación."
+        },
+        "gastos": {
+          "title": "Gastos",
+          "description": "Gestión de dietas y gastos: el empleado envía el justificante y el admin aprueba y reembolsa."
+        }
+      }
+    },
+    "jornada": {
+      "tabs": {
+        "horarios": "Horarios",
+        "fichajes": "Fichajes",
+        "vacaciones": "Vacaciones"
+      }
+    },
+    "empleados": {
+      "title": "Directorio de Empleados",
+      "description": "Gestiona las altas, roles y salarios. El Agente RRHH usará esta tabla para pre-calcular nóminas.",
+      "importCsv": "Importar CSV",
+      "addEmployee": "Añadir Empleado",
+      "emptyTitle": "No hay empleados registrados",
+      "emptyDescription": "Añade tu primer empleado para empezar a gestionar la plantilla.",
+      "addFirst": "Añadir el primero",
+      "searchPlaceholder": "Buscar por nombre o NIF...",
+      "noResults": "No se encontraron empleados.",
+      "deleteConfirm": "¿Eliminar a \"{name}\"? Esta acción no se puede deshacer.",
+      "generalDept": "General",
+      "staffRole": "Staff",
+      "kpi": {
+        "activeHeadcount": "Plantilla Activa",
+        "monthlySalaryCost": "Gasto Salarial (Mensual)",
+        "legalStatus": "Status Legal",
+        "legalStatusOk": "En regla",
+        "legalStatusDescription": "Contratos en regla. El sistema generará borradores el día 26."
+      },
+      "csv": {
+        "name": "Nombre",
+        "nif": "NIF",
+        "email": "Email",
+        "department": "Departamento",
+        "role": "Rol",
+        "baseSalary": "Salario base",
+        "status": "Estado",
+        "joinDate": "Fecha alta",
+        "irpf": "IRPF %"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo",
+        "leave": "De baja"
+      },
+      "leaveTypes": {
+        "bajaMedica": "Baja médica",
+        "vacaciones": "Vacaciones",
+        "excedencia": "Excedencia"
+      },
+      "table": {
+        "employee": "Empleado",
+        "department": "Departamento",
+        "baseSalary": "Salario Base",
+        "status": "Estado",
+        "actions": "Acciones",
+        "noNif": "S/NIF",
+        "joinedOn": "Alta: {date}"
+      },
+      "actions": {
+        "viewPayrolls": "Ver nóminas",
+        "documents": "Documentos del empleado"
+      },
+      "form": {
+        "editTitle": "Editar Empleado",
+        "newTitle": "Nuevo Empleado",
+        "saving": "Guardando…",
+        "saveChanges": "Guardar cambios",
+        "create": "Crear empleado",
+        "saveError": "Error al crear empleado",
+        "fullName": "Nombre completo",
+        "fullNamePlaceholder": "Ej: María García López",
+        "nif": "NIF",
+        "baseSalary": "Salario base (€/mes)",
+        "annualPayments": "Pagas anuales",
+        "payments12": "12 pagas",
+        "payments14": "14 pagas (2 extras)",
+        "workday": "Jornada",
+        "workdayFullShort": "Completa",
+        "workdayFull": "Completa (40h)",
+        "workdayPartial": "Parcial",
+        "prorate": "Prorratear pagas extra en la nómina mensual",
+        "hoursPerWeek": "Horas por semana",
+        "email": "Email",
+        "emailPlaceholder": "empleado@empresa.com",
+        "department": "Departamento",
+        "departmentPlaceholder": "Administración",
+        "role": "Cargo",
+        "rolePlaceholder": "Contable",
+        "status": "Estado",
+        "selectStatus": "Seleccionar estado",
+        "leaveType": "Tipo de baja",
+        "selectType": "Seleccionar tipo",
+        "leaveStart": "Inicio de baja",
+        "leaveEnd": "Fin de baja (est.)",
+        "joinDate": "Fecha de alta",
+        "contractEnd": "Fin de contrato"
+      },
+      "docsModal": {
+        "title": "Documentos — {name}",
+        "fileCount": "{n, plural, one {1 archivo} other {# archivos}}",
+        "closeAria": "Cerrar documentos del empleado",
+        "uploading": "Subiendo…",
+        "upload": "Adjuntar documento",
+        "empty": "Sin documentos adjuntos",
+        "loadError": "No se pudieron cargar los documentos",
+        "uploadError": "Error al subir",
+        "deleteError": "Error al eliminar el documento"
+      },
+      "payrollDrawer": {
+        "title": "Nóminas de {name}",
+        "empty": "Este empleado no tiene nóminas generadas.",
+        "goGenerate": "Ir a Nóminas para generar",
+        "gross": "Bruto: {amount}",
+        "net": "Neto: {amount}",
+        "viewAll": "Ver todas las nóminas →"
+      }
+    },
+    "nominas": {
+      "title": "Emisión de Nóminas",
+      "description": "Revisa, aprueba y descarga las pre-nóminas generadas por la IA.",
+      "aiFirst": "IA-First",
+      "autoCalculate": "Calcular automática",
+      "generating": "Generando…",
+      "generateWithAi": "Generar con IA",
+      "approveAll": "Aprobar todos ({n})",
+      "closeNotificationAria": "Cerrar notificación",
+      "kpi": {
+        "monthlyCost": "Coste nóminas (mes)",
+        "totalSs": "Total SS (mes)",
+        "totalIrpf": "Total IRPF (mes)"
+      },
+      "filters": {
+        "searchPlaceholder": "Buscar empleado...",
+        "byMonth": "Filtrar por mes",
+        "allEmployees": "Todos los empleados",
+        "clear": "Limpiar filtros",
+        "drafts": "Borradores: {n}"
+      },
+      "table": {
+        "employee": "Empleado",
+        "period": "Período",
+        "gross": "Bruto",
+        "deductions": "Deducciones",
+        "net": "Neto",
+        "status": "Estado",
+        "actions": "Acciones",
+        "emptyTitle": "No hay nóminas aún",
+        "emptyDescription": "Usa \"Calcular automática\" (preview + reglas fijas) o \"Generar con IA\" para el agente RRHH.",
+        "extraProrate": "P. extra {amount}",
+        "extraOvertime": "H. extra {amount}",
+        "extraSickLeave": "IT {amount} ({days} días)"
+      },
+      "autoModal": {
+        "title": "Nómina automática (mes actual)",
+        "noEmployees": "No hay empleados. Crea uno en RRHH primero.",
+        "employee": "Empleado",
+        "salaryPerMonth": "{amount}/mes",
+        "noBaseSalary": "sin salario base",
+        "period": "Período:",
+        "previewTitle": "Previsualización del cálculo",
+        "gross": "Bruto",
+        "ssContributions": "Cotizaciones SS (empleado, régimen general)",
+        "commonContingencies": "Contingencias comunes",
+        "unemployment": "Desempleo",
+        "professionalTraining": "Formación profesional",
+        "mei": "MEI",
+        "totalSs": "SS total",
+        "irpf": "IRPF ({rate}%)",
+        "totalDeductions": "Deducciones totales",
+        "estimatedNet": "Neto estimado",
+        "selectEmployeeHint": "Selecciona un empleado con salario base.",
+        "createDraft": "Crear borrador"
+      }
+    },
+    "documentos": {
+      "title": "Gestoría Documental",
+      "description": "Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar.",
+      "nlPlaceholder": "Ej: quiero un contrato para Laura Martínez de contratación indefinida",
+      "generating": "Generando…",
+      "generate": "Generar",
+      "generateDocument": "Generar documento",
+      "docType": "Tipo de documento",
+      "employeeName": "Nombre del empleado",
+      "employeeNamePlaceholder": "Ej: María López",
+      "instructions": "Instrucciones",
+      "instructionsHint": "(edita los corchetes con los datos reales)",
+      "instructionsPlaceholder": "Describe los detalles del documento…",
+      "draftWarning": "⚠️ Borradores orientativos. Revisa y aprueba antes de cualquier uso legal.",
+      "generatingDraft": "Generando borrador…",
+      "generateDraft": "Generar borrador",
+      "listTitle": "Documentos ({n})",
+      "empty": "Sin documentos todavía",
+      "copyHtml": "Copiar HTML",
+      "toggleExpandAria": "Expandir o contraer documento",
+      "loadError": "No se pudieron cargar los documentos",
+      "generateError": "Error al generar",
+      "selectTypeError": "Selecciona el tipo de documento",
+      "status": {
+        "approved": "Aprobado",
+        "draft": "Borrador"
+      },
+      "types": {
+        "contract": "Contrato de trabajo",
+        "nda": "Acuerdo de Confidencialidad (NDA)",
+        "termination": "Carta de despido",
+        "settlement": "Finiquito",
+        "addendum": "Adenda contractual",
+        "other": "Otro documento laboral"
+      },
+      "templates": {
+        "contract": "Tipo de contrato: indefinido / temporal (indica cuál).\nJornada: completa 40h/semana / parcial [X]h/semana.\nSalario bruto anual: [X €] / mensual: [X €].\nPuesto: [nombre del puesto].\nDepartamento: [departamento].\nFecha de incorporación: [DD/MM/AAAA].\nCentro de trabajo: [ciudad].\nPeríodo de prueba: [X meses] (máx. 6 meses técnicos, 2 meses resto).",
+        "nda": "Partes: la empresa y [nombre del trabajador / colaborador].\nInformación confidencial que se protege: [describir — código fuente, clientes, estrategia, etc.].\nDuración de la obligación: [X años tras fin de relación laboral].\nÁmbito geográfico: [nacional / internacional].\nConsecuencias de incumplimiento: [indemnización / acciones legales].",
+        "termination": "Tipo de despido: disciplinario / objetivo / colectivo.\nMotivo: [describir causa concreta].\nFecha efectiva del despido: [DD/MM/AAAA].\nPreaviso: [X días / no aplica despido disciplinario].\nIndemnización: [según ley: 20 días/año objetivo | 33 días/año improcedente | 0 disciplinario].\nAcumulación de vacaciones pendientes: [X días].",
+        "settlement": "Fecha de baja: [DD/MM/AAAA].\nMotivo de la baja: [despido / renuncia voluntaria / fin de contrato].\nSalario pendiente del mes en curso (días trabajados): [X €].\nVacaciones no disfrutadas: [X días = X €].\nPagas extras proporcionales pendientes: [X €].\nIndemnización (si aplica): [X €].",
+        "addendum": "Contrato original fecha: [DD/MM/AAAA].\nCláusula(s) que se modifican: [describir qué cambia].\nNueva condición: [texto de la nueva cláusula].\nMotivo del cambio: [acuerdo mutuo / cambio de funciones / ascenso / etc.].\nFecha de entrada en vigor: [DD/MM/AAAA].",
+        "other": "Describe el documento que necesitas:\nPartes involucradas: [nombres y roles].\nObjeto del documento: [qué regula o certifica].\nCondiciones principales: [listar].\nFecha: [DD/MM/AAAA]."
+      }
+    },
+    "fichajes": {
+      "loading": "Cargando fichajes…",
+      "title": "Fichajes en tiempo real",
+      "description": "Controla quién está trabajando ahora mismo. Se actualiza automáticamente.",
+      "clockIn": "Fichar entrada",
+      "workingNow": "Trabajando ahora ({n})",
+      "nobodyWorking": "Nadie fichado en este momento.",
+      "since": "Desde {time}",
+      "clockOut": "Salida",
+      "todayLog": "Registro de hoy ({n})",
+      "noRecordsToday": "Sin fichajes hoy.",
+      "inProgress": "En curso",
+      "table": {
+        "employee": "Empleado",
+        "clockIn": "Entrada",
+        "clockOut": "Salida",
+        "duration": "Duración",
+        "note": "Nota"
+      },
+      "modal": {
+        "title": "Registrar entrada",
+        "selectEmployee": "Seleccionar empleado…",
+        "noteOptional": "Nota (opcional)",
+        "notePlaceholder": "Ej: Trabajo remoto"
+      }
+    },
+    "horarios": {
+      "loading": "Cargando horarios…",
+      "title": "Horarios semanales",
+      "description": "Configura la plantilla horaria fija de cada empleado.",
+      "aiAssistant": "Asistente IA",
+      "exportExcel": "Exportar Excel",
+      "exportPdf": "Exportar PDF",
+      "sendByEmail": "Enviar por correo",
+      "noActiveEmployees": "No hay empleados activos.",
+      "howToEditTitle": "Cómo editar un horario manualmente",
+      "howToEditDescription": "Marca el <b>check de cada día laborable</b> y luego edita las horas de entrada/salida. Los días en gris son libres. Pulsa <b>Guardar</b> después de cambiar.",
+      "weeklyHours": "{hours}h / semana",
+      "weekdaysPreset": "L–V 9 a 17",
+      "weekdaysPresetTitle": "Marca lunes a viernes de 09:00 a 17:00 y deja libre el fin de semana",
+      "dayActiveTitle": "Día laborable. Desmarca para libranza.",
+      "dayInactiveTitle": "Día libre. Marca para asignar horario.",
+      "dayOff": "Libre",
+      "days": {
+        "short": {
+          "mon": "Lun",
+          "tue": "Mar",
+          "wed": "Mié",
+          "thu": "Jue",
+          "fri": "Vie",
+          "sat": "Sáb",
+          "sun": "Dom"
+        },
+        "full": {
+          "mon": "Lunes",
+          "tue": "Martes",
+          "wed": "Miércoles",
+          "thu": "Jueves",
+          "fri": "Viernes",
+          "sat": "Sábado",
+          "sun": "Domingo"
+        }
+      },
+      "toasts": {
+        "writeInstruction": "Escribe una instrucción",
+        "noProposals": "La IA no devolvió propuestas. Reformula la instrucción.",
+        "proposalAppliedRationale": "Propuesta aplicada: {rationale}",
+        "proposalAppliedCount": "Propuesta aplicada a {n, plural, one {1 empleado} other {# empleados}}",
+        "proposalError": "Error al generar propuesta",
+        "noEmployeesToExport": "No hay empleados para exportar",
+        "exported": "Exportado",
+        "exportError": "Error al exportar",
+        "missingRecipient": "Falta el destinatario",
+        "emailSent": "Correo enviado",
+        "sendError": "Error al enviar"
+      },
+      "emailModal": {
+        "title": "Enviar horarios por correo",
+        "defaultSubject": "Horarios semanales",
+        "defaultMessage": "Adjunto los horarios semanales del equipo.",
+        "to": "Destinatario *",
+        "toPlaceholder": "ejemplo@empresa.com",
+        "subject": "Asunto",
+        "message": "Mensaje",
+        "tableNote": "La tabla de horarios se incluirá automáticamente debajo de tu mensaje.",
+        "send": "Enviar"
+      },
+      "aiModal": {
+        "title": "Generar horarios con IA",
+        "instruction": "Instrucción",
+        "placeholder": "Ej: 'Todos de lunes a viernes 9 a 18, sábados y domingos libranza' o 'Marcos atiende mañanas 8-14, el resto turno completo 9-17'",
+        "note": "La IA solo propone los horarios; tendrás que pulsar <b>Guardar</b> en cada empleado para confirmar los cambios.",
+        "generateProposal": "Generar propuesta"
+      },
+      "email": {
+        "tableEmployee": "Empleado",
+        "tableHoursPerWeek": "h/sem"
+      }
+    },
+    "vacaciones": {
+      "title": "Vacaciones y ausencias",
+      "description": "Gestiona solicitudes de vacaciones, bajas y excedencias",
+      "newRequest": "Nueva solicitud",
+      "daysShort": "{n}d",
+      "reject": "Rechazar",
+      "requiredFieldsError": "Completa todos los campos obligatorios.",
+      "createError": "Error al crear la solicitud.",
+      "tabs": {
+        "all": "Todas",
+        "pending": "Pendientes",
+        "approved": "Aprobadas",
+        "rejected": "Rechazadas"
+      },
+      "empty": {
+        "all": "No hay solicitudes",
+        "pending": "No hay solicitudes pendientes",
+        "approved": "No hay solicitudes aprobadas",
+        "rejected": "No hay solicitudes rechazadas"
+      },
+      "leaveTypes": {
+        "bajaMedica": "Baja médica",
+        "vacaciones": "Vacaciones",
+        "excedencia": "Excedencia",
+        "otros": "Otros"
+      },
+      "status": {
+        "pending": "Pendiente",
+        "approved": "Aprobada",
+        "rejected": "Rechazada"
+      },
+      "table": {
+        "employee": "Empleado",
+        "type": "Tipo",
+        "from": "Desde",
+        "to": "Hasta",
+        "days": "Días",
+        "status": "Estado",
+        "notes": "Notas"
+      },
+      "modal": {
+        "title": "Nueva solicitud de ausencia",
+        "employee": "Empleado *",
+        "selectEmployee": "Selecciona empleado",
+        "leaveType": "Tipo de ausencia *",
+        "startDate": "Fecha inicio *",
+        "endDate": "Fecha fin *",
+        "notesPlaceholder": "Motivo o comentario adicional…",
+        "saving": "Guardando…",
+        "create": "Crear solicitud"
+      }
+    },
+    "gastos": {
+      "title": "Gestión de Gastos",
+      "description": "Aprueba y reembolsa dietas y gastos de empleados.",
+      "scanTicket": "Escanear ticket",
+      "scanningTicket": "Leyendo ticket…",
+      "newExpense": "Nuevo gasto",
+      "emptyCategory": "No hay gastos en esta categoría",
+      "receiptView": "Ver",
+      "receiptUpload": "Subir",
+      "requiredFieldsError": "Completa los campos obligatorios.",
+      "createError": "Error al crear el gasto.",
+      "kpi": {
+        "pendingCount": "Pendientes de aprobar",
+        "pendingAmount": "Importe pendiente",
+        "approvedAmount": "Aprobado (pendiente reembolso)"
+      },
+      "tabs": {
+        "all": "Todos",
+        "pending": "Pendientes",
+        "approved": "Aprobados",
+        "reimbursed": "Reembolsados",
+        "rejected": "Rechazados"
+      },
+      "status": {
+        "pending": "Pendiente",
+        "approved": "Aprobado",
+        "rejected": "Rechazado",
+        "reimbursed": "Reembolsado"
+      },
+      "categories": {
+        "viaje": "Viaje / Transporte",
+        "dieta": "Dieta / Manutención",
+        "alojamiento": "Alojamiento",
+        "material": "Material de oficina",
+        "formacion": "Formación",
+        "otro": "Otro"
+      },
+      "table": {
+        "employee": "Empleado",
+        "category": "Categoría",
+        "description": "Descripción",
+        "date": "Fecha",
+        "amount": "Importe",
+        "status": "Estado",
+        "receipt": "Recibo",
+        "actions": "Acciones"
+      },
+      "actions": {
+        "reject": "Rechazar",
+        "reimburse": "Marcar reembolsado"
+      },
+      "scan": {
+        "onlyImages": "Solo se aceptan imágenes (JPG, PNG, WEBP).",
+        "ticketDescription": "Ticket de {merchant}",
+        "merchant": "Comercio: {merchant}",
+        "nif": "NIF: {nif}",
+        "vat": "IVA: {amount} €",
+        "vatWithRate": "IVA: {amount} € ({rate}%)",
+        "readSuccess": "Ticket leído: {merchant} · {amount} €",
+        "readError": "No se pudo leer el ticket"
+      },
+      "modal": {
+        "reviewScannedTitle": "Revisar gasto escaneado",
+        "detected": "Detectado: {merchant}.",
+        "extractedFromTicket": "Datos extraídos del ticket.",
+        "confidence": "Confianza {pct}%",
+        "reviewBeforeSave": "· revisa antes de guardar",
+        "employee": "Empleado *",
+        "selectEmployee": "Seleccionar empleado…",
+        "amount": "Importe (€) *",
+        "date": "Fecha *",
+        "category": "Categoría *",
+        "descriptionLabel": "Descripción *",
+        "descriptionPlaceholder": "Ej: Viaje Madrid-Barcelona AVE",
+        "notes": "Notas",
+        "notesPlaceholder": "Opcional…",
+        "saving": "Guardando…",
+        "create": "Crear gasto"
+      }
+    },
+    "reclutamiento": {
+      "title": "Reclutamiento",
+      "description": "Gestiona puestos abiertos, analiza CVs con IA y crea candidatos.",
+      "newPosition": "Nuevo puesto",
+      "tabs": {
+        "vacantes": "Vacantes y candidatos",
+        "cv": "Análisis de CV"
+      },
+      "positions": {
+        "title": "Puestos",
+        "empty": "Sin puestos. Crea el primero."
+      },
+      "candidateStatus": {
+        "new": "Nuevo",
+        "reviewed": "Revisado",
+        "shortlisted": "Preseleccionado",
+        "rejected": "Descartado",
+        "hired": "Contratado"
+      },
+      "candidates": {
+        "selectPositionHint": "Selecciona un puesto para ver sus candidatos",
+        "title": "Candidatos — {position}",
+        "analyzing": "Analizando...",
+        "uploadCv": "Subir CV",
+        "emptyTitle": "Sin candidatos",
+        "emptyDescription": "Sube un CV en PDF para que la IA lo analice y puntúe",
+        "pendingAnalysis": "Pendiente de análisis",
+        "email": "Email:",
+        "phone": "Tel:",
+        "experience": "Experiencia:",
+        "experienceYears": "{n, plural, one {1 año} other {# años}}",
+        "education": "Formación:",
+        "aiScore": "Puntuación IA",
+        "shortlist": "Preseleccionar",
+        "reject": "Descartar",
+        "hire": "Contratar",
+        "markReviewed": "Marcar revisado"
+      },
+      "positionModal": {
+        "closeAria": "Cerrar formulario de puesto",
+        "titlePlaceholder": "Título del puesto *",
+        "departmentPlaceholder": "Departamento",
+        "descriptionPlaceholder": "Descripción del puesto",
+        "skillsPlaceholder": "Habilidades requeridas (separadas por coma)",
+        "minExperience": "Exp. mínima (años):",
+        "create": "Crear puesto"
+      }
+    },
+    "analisisCv": {
+      "analyzingFile": "Analizando <name></name>…",
+      "extractingInfo": "La IA está extrayendo la información",
+      "dropHint": "Arrastra un CV aquí o <b>haz clic para seleccionar</b>",
+      "fileConstraints": "Solo PDF · Máximo 10MB",
+      "nameNotDetected": "Nombre no detectado",
+      "yearsExp": "años exp.",
+      "aiSummary": "Resumen IA",
+      "education": "Formación",
+      "skills": "Habilidades ({n})",
+      "languages": "Idiomas",
+      "addAsCandidate": "Añadir como candidato",
+      "createPositionFirst": "Crea primero una vacante en la pestaña «Vacantes y candidatos» para poder asignar este CV.",
+      "selectPosition": "Selecciona una vacante…",
+      "createCandidate": "Crear candidato",
+      "onlyPdfError": "Solo se aceptan archivos PDF",
+      "analyzeError": "Error al analizar el CV"
+    },
+    "toasts": {
+      "deleteError": "Error al eliminar",
+      "deleted": "Eliminado",
+      "draftGenerated": "Borrador generado",
+      "documentApproved": "Documento aprobado",
+      "documentApproveError": "Error al aprobar",
+      "employeesLoadError": "No se pudieron cargar empleados.",
+      "previewUnavailable": "Preview no disponible",
+      "autoDraftCreated": "Nómina en borrador creada con cálculo determinista.",
+      "autoDraftError": "No se pudo crear la nómina",
+      "agentLaunched": "Agente RRHH lanzado. Generando nóminas de {month} {year}...",
+      "agentLaunchError": "No se pudo lanzar el agente RRHH",
+      "errorPrefix": "Error: {msg}",
+      "payrollApproved": "Nómina de {name} aprobada. PDF generado en Documentos > Nóminas.",
+      "approveError": "Error al aprobar: {msg}",
+      "downloadPdfError": "Error descargando PDF: {msg}",
+      "clockInSuccess": "Entrada registrada",
+      "clockInError": "Error al fichar",
+      "clockOutSuccess": "Salida registrada",
+      "clockOutError": "Error al registrar salida",
+      "scheduleSaved": "Horario guardado",
+      "scheduleSaveError": "Error al guardar",
+      "cvUploadError": "Error subiendo CV",
+      "candidateCreated": "Candidato creado en la vacante",
+      "candidateCreateError": "No se pudo crear el candidato"
+    }
   }
 }

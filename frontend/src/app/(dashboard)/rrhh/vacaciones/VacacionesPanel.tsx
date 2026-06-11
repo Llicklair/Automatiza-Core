@@ -1,7 +1,8 @@
 "use client";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { Umbrella, Plus, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
     DialogContent,
@@ -20,16 +21,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
     useVacaciones,
-    LEAVE_TYPE_LABELS,
-    STATUS_LABELS,
+    LEAVE_TYPE_LABEL_KEYS,
+    STATUS_LABEL_KEYS,
     type StatusFilter,
 } from "./_hooks/useVacaciones";
 
-const STATUS_TABS: { label: string; value: StatusFilter }[] = [
-    { label: "Todas", value: "all" },
-    { label: "Pendientes", value: "pending" },
-    { label: "Aprobadas", value: "approved" },
-    { label: "Rechazadas", value: "rejected" },
+// I18N — config estructural + labelKey/emptyKey; el componente traduce en render.
+const STATUS_TABS: { labelKey: string; emptyKey: string; value: StatusFilter }[] = [
+    { labelKey: "vacaciones.tabs.all", emptyKey: "vacaciones.empty.all", value: "all" },
+    { labelKey: "vacaciones.tabs.pending", emptyKey: "vacaciones.empty.pending", value: "pending" },
+    { labelKey: "vacaciones.tabs.approved", emptyKey: "vacaciones.empty.approved", value: "approved" },
+    { labelKey: "vacaciones.tabs.rejected", emptyKey: "vacaciones.empty.rejected", value: "rejected" },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -38,16 +40,15 @@ const STATUS_BADGE: Record<string, string> = {
     rejected: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
-function formatDate(d: string) {
-    return new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 function daysBetween(start: string, end: string) {
     const ms = new Date(end).getTime() - new Date(start).getTime();
     return Math.round(ms / 86400000) + 1;
 }
 
 export function VacacionesPanel() {
+    const t = useTranslations("rrhh");
+    const tc = useTranslations("common");
+    const { fmtDate } = useFormat();
     const {
         requests,
         employees,
@@ -68,6 +69,9 @@ export function VacacionesPanel() {
         getEmployee,
     } = useVacaciones();
 
+    const formatDate = (d: string) => fmtDate(d, { day: "2-digit", month: "short", year: "numeric" });
+    const activeTab = STATUS_TABS.find((tab) => tab.value === statusFilter) ?? STATUS_TABS[0];
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -77,13 +81,13 @@ export function VacacionesPanel() {
                         <Umbrella className="w-5 h-5 text-cyan-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground tracking-tight">Vacaciones y ausencias</h1>
-                        <p className="text-xs text-muted-foreground">Gestiona solicitudes de vacaciones, bajas y excedencias</p>
+                        <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("vacaciones.title")}</h1>
+                        <p className="text-xs text-muted-foreground">{t("vacaciones.description")}</p>
                     </div>
                 </div>
                 <Button onClick={openModal} size="sm" className="gap-2">
                     <Plus className="w-4 h-4" />
-                    Nueva solicitud
+                    {t("vacaciones.newRequest")}
                 </Button>
             </div>
 
@@ -99,31 +103,31 @@ export function VacacionesPanel() {
                                 : "border-transparent text-muted-foreground hover:text-foreground"
                         }`}
                     >
-                        {tab.label}
+                        {t(tab.labelKey)}
                     </button>
                 ))}
             </div>
 
             {/* Table */}
             {loading ? (
-                <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">Cargando…</div>
+                <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">{tc("loading")}</div>
             ) : requests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
                     <Umbrella className="w-8 h-8 opacity-30" />
-                    <p className="text-sm">No hay solicitudes{statusFilter !== "all" ? ` ${STATUS_LABELS[statusFilter]?.toLowerCase()}s` : ""}</p>
+                    <p className="text-sm">{t(activeTab.emptyKey)}</p>
                 </div>
             ) : (
                 <div className="rounded-xl border border-border overflow-hidden">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/30 text-muted-foreground">
                             <tr>
-                                <th className="text-left px-4 py-3 font-medium">Empleado</th>
-                                <th className="text-left px-4 py-3 font-medium">Tipo</th>
-                                <th className="text-left px-4 py-3 font-medium">Desde</th>
-                                <th className="text-left px-4 py-3 font-medium">Hasta</th>
-                                <th className="text-left px-4 py-3 font-medium">Días</th>
-                                <th className="text-left px-4 py-3 font-medium">Estado</th>
-                                <th className="text-left px-4 py-3 font-medium">Notas</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.employee")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.type")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.from")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.to")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.days")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.status")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("vacaciones.table.notes")}</th>
                                 <th className="px-4 py-3" />
                             </tr>
                         </thead>
@@ -136,16 +140,16 @@ export function VacacionesPanel() {
                                             {emp?.name ?? req.employee_id.slice(0, 8)}
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
-                                            {LEAVE_TYPE_LABELS[req.leave_type] ?? req.leave_type}
+                                            {LEAVE_TYPE_LABEL_KEYS[req.leave_type] ? t(LEAVE_TYPE_LABEL_KEYS[req.leave_type]) : req.leave_type}
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">{formatDate(req.start_date)}</td>
                                         <td className="px-4 py-3 text-muted-foreground">{formatDate(req.end_date)}</td>
                                         <td className="px-4 py-3 text-muted-foreground">
-                                            {daysBetween(req.start_date, req.end_date)}d
+                                            {t("vacaciones.daysShort", { n: daysBetween(req.start_date, req.end_date) })}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[req.status] ?? ""}`}>
-                                                {STATUS_LABELS[req.status] ?? req.status}
+                                                {STATUS_LABEL_KEYS[req.status] ? t(STATUS_LABEL_KEYS[req.status]) : req.status}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[160px] truncate">
@@ -157,25 +161,25 @@ export function VacacionesPanel() {
                                                     <>
                                                         <button
                                                             onClick={() => handleApprove(req.id)}
-                                                            title="Aprobar"
+                                                            title={t("common.approve")}
                                                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-400 transition-colors"
-                                                         aria-label="Aprobar">
+                                                         aria-label={t("common.approve")}>
                                                             <Check className="w-4 h-4" aria-hidden="true" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleReject(req.id)}
-                                                            title="Rechazar"
+                                                            title={t("vacaciones.reject")}
                                                             className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
-                                                         aria-label="Rechazar">
+                                                         aria-label={t("vacaciones.reject")}>
                                                             <X className="w-4 h-4" aria-hidden="true" />
                                                         </button>
                                                     </>
                                                 )}
                                                 <button
                                                     onClick={() => handleDelete(req.id)}
-                                                    title="Eliminar"
+                                                    title={tc("delete")}
                                                     className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                                 aria-label="Eliminar">
+                                                 aria-label={tc("delete")}>
                                                     <Trash2 className="w-4 h-4" aria-hidden="true" />
                                                 </button>
                                             </div>
@@ -192,17 +196,17 @@ export function VacacionesPanel() {
             <Dialog open={showModal} onOpenChange={setShowModal}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Nueva solicitud de ausencia</DialogTitle>
+                        <DialogTitle>{t("vacaciones.modal.title")}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
-                            <Label>Empleado *</Label>
+                            <Label>{t("vacaciones.modal.employee")}</Label>
                             <Select
                                 value={form.employee_id}
                                 onValueChange={(v) => setForm((f) => ({ ...f, employee_id: v }))}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona empleado" />
+                                    <SelectValue placeholder={t("vacaciones.modal.selectEmployee")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {employees.map((e) => (
@@ -212,7 +216,7 @@ export function VacacionesPanel() {
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label>Tipo de ausencia *</Label>
+                            <Label>{t("vacaciones.modal.leaveType")}</Label>
                             <Select
                                 value={form.leave_type}
                                 onValueChange={(v) => setForm((f) => ({ ...f, leave_type: v }))}
@@ -221,15 +225,15 @@ export function VacacionesPanel() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {Object.entries(LEAVE_TYPE_LABELS).map(([k, v]) => (
-                                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                                    {Object.entries(LEAVE_TYPE_LABEL_KEYS).map(([k, labelKey]) => (
+                                        <SelectItem key={k} value={k}>{t(labelKey)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label>Fecha inicio *</Label>
+                                <Label>{t("vacaciones.modal.startDate")}</Label>
                                 <Input
                                     type="date"
                                     value={form.start_date}
@@ -237,7 +241,7 @@ export function VacacionesPanel() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label>Fecha fin *</Label>
+                                <Label>{t("vacaciones.modal.endDate")}</Label>
                                 <Input
                                     type="date"
                                     value={form.end_date}
@@ -246,21 +250,21 @@ export function VacacionesPanel() {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label>Notas</Label>
+                            <Label>{t("vacaciones.table.notes")}</Label>
                             <Input
                                 value={form.notes}
                                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                                placeholder="Motivo o comentario adicional…"
+                                placeholder={t("vacaciones.modal.notesPlaceholder")}
                             />
                         </div>
                         {error && <p className="text-xs text-destructive">{error}</p>}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowModal(false)} disabled={saving}>
-                            Cancelar
+                            {tc("cancel")}
                         </Button>
                         <Button onClick={handleCreate} disabled={saving}>
-                            {saving ? "Guardando…" : "Crear solicitud"}
+                            {saving ? t("vacaciones.modal.saving") : t("vacaciones.modal.create")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
