@@ -1060,5 +1060,149 @@
         }
       }
     }
+  },
+  "banca": {
+    "page": {
+      "title": "PSD2 Banking",
+      "description": "Real-time financial view of your bank accounts",
+      "connectBank": "Connect bank",
+      "tabs": {
+        "saldos": "Balances",
+        "transacciones": "Transactions",
+        "conciliacion": "Reconciliation",
+        "resumen": "Monthly summary"
+      }
+    },
+    "saldos": {
+      "loading": "Fetching accounts…",
+      "demoBanner": "Bank not connected — demo data.",
+      "demoBannerLink": "Connect a real bank",
+      "totalLabel": "Total consolidated balance",
+      "accountsLinked": "{n, plural, one {# linked account} other {# linked accounts}}",
+      "emptyTitle": "No accounts available",
+      "emptyDescription": "Connect your bank to see your accounts and balances in real time.",
+      "emptyAction": "Connect bank",
+      "refresh": "Refresh"
+    },
+    "transacciones": {
+      "columns": {
+        "date": "Date",
+        "concept": "Description",
+        "status": "Status",
+        "amount": "Amount",
+        "actions": "Actions"
+      },
+      "statusReconciled": "Reconciled",
+      "statusPending": "Pending",
+      "reconcileAction": "Reconcile",
+      "kpiIngresos": "Income",
+      "kpiGastos": "Expenses",
+      "kpiNeto": "Net",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "clearDates": "Clear dates",
+      "importN43Title": "Import bank statement Norma 43 (AEB)",
+      "importing": "Importing…",
+      "importN43": "Import N43",
+      "exportCsv": "Export CSV",
+      "syncing": "Syncing…",
+      "syncDownload": "Download transactions",
+      "searchPlaceholder": "Search by description…",
+      "emptyMessage": "Click 'Download transactions' to import from your bank.",
+      "filterStatus": "Status",
+      "importSuccess": "Statement imported: {imported} new, {skipped} duplicates, {reconciled} reconciled",
+      "importErrors": "{n} transactions with errors",
+      "syncError": "Could not sync the bank.",
+      "importN43Error": "Error importing the N43 file.",
+      "reconcileError": "Error reconciling the transaction.",
+      "csvHeader": "Date;Description;Amount;Status",
+      "modal": {
+        "title": "Reconcile Transaction",
+        "associateLabel": "Associate pending invoices",
+        "selectInvoice": "-- Select invoice --",
+        "noNumber": "N/A",
+        "clientPrefix": "Cl",
+        "noPendingInvoices": "You have no pending invoices with payments.",
+        "cancel": "Cancel",
+        "confirm": "Match (Reconcile)"
+      }
+    },
+    "conciliacion": {
+      "loading": "Loading reconciliation…",
+      "kpiPending": "Pending",
+      "kpiPendingAmount": "Pending amount",
+      "kpiReconciled": "Reconciled",
+      "kpiIgnored": "Ignored",
+      "pendingTitle": "Pending transactions ({n})",
+      "pendingHint": "Suggestions are computed by amount match (±0.02€).",
+      "processing": "Processing…",
+      "autoMatch": "Auto-reconcile",
+      "allReconciled": "All reconciled",
+      "noMatches": "No matches",
+      "bestCandidateConfidence": "Best candidate confidence",
+      "suggestionsCount": "{n, plural, one {# suggestion} other {# suggestions}}",
+      "noNumber": "N/A",
+      "punctuate": "Match",
+      "ignoreTitle": "Ignore (no invoice required)",
+      "reconciledSection": "Reconciled ({n})",
+      "expandHint": "(click to expand)",
+      "undo": "Undo",
+      "undoTitle": "Undo reconciliation",
+      "ignoredSection": "Ignored ({n})",
+      "restore": "Restore",
+      "restoreTitle": "Restore to pending",
+      "toast": {
+        "loadError": "Error loading reconciliation data",
+        "autoMatched": "Auto-reconciled {n} transactions",
+        "noAutoMatches": "No automatic matches found",
+        "autoMatchError": "Auto-reconciliation error",
+        "reconcileError": "Error reconciling",
+        "ignoreError": "Error ignoring",
+        "undoError": "Error undoing"
+      }
+    },
+    "resumen": {
+      "demoBanner": "This account is new and has no historical data. You are seeing precalculated demo data for the summary cards.",
+      "demoBannerLink": "Connect your real bank",
+      "demoBannerSuffix": "and register invoices to see live metrics.",
+      "kpiIngresos": "Income",
+      "kpiGastos": "Expenses",
+      "kpiNeto": "Net result",
+      "kpiMargen": "Margin",
+      "expensesBreakdown": "Expense breakdown",
+      "total": "Total",
+      "netMonthly": "Monthly net result",
+      "last6Months": "Last 6 months",
+      "connectForTrend": "Connect your bank to see the trend",
+      "marginOnRevenue": "Margin on revenue",
+      "marginHealthy": "Healthy margin",
+      "marginTight": "Tight margin",
+      "marginLow": "Low margin",
+      "agentAnalysis": "AI agent analysis",
+      "generating": "Generating…",
+      "regenerate": "Regenerate",
+      "agentAnalyzing": "The agent is analyzing your finances…",
+      "agentPlaceholder": "Click Regenerate so the AI analyzes your transactions for the month and generates personalized recommendations.",
+      "loadError": "Error loading banking data",
+      "months": {
+        "sep": "Sep",
+        "oct": "Oct",
+        "nov": "Nov",
+        "dic": "Dec",
+        "ene": "Jan",
+        "feb": "Feb"
+      },
+      "categories": {
+        "nominas": "Payroll",
+        "proveedor_servicio": "Soft/Services",
+        "suministros": "Utilities",
+        "financiero": "Financial",
+        "alquiler": "Rent",
+        "proveedor_material": "Materials",
+        "impuestos": "Taxes",
+        "proveedores": "Suppliers",
+        "otros": "Other"
+      }
+    }
   }
 }

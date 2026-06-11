@@ -1060,5 +1060,149 @@
         }
       }
     }
+  },
+  "banca": {
+    "page": {
+      "title": "Banca PSD2",
+      "description": "Visión financiera en tiempo real de tus cuentas bancarias",
+      "connectBank": "Conectar banco",
+      "tabs": {
+        "saldos": "Saldos",
+        "transacciones": "Transacciones",
+        "conciliacion": "Conciliación",
+        "resumen": "Resumen del mes"
+      }
+    },
+    "saldos": {
+      "loading": "Consultando cuentas…",
+      "demoBanner": "Banco no conectado — datos de demostración.",
+      "demoBannerLink": "Conectar banco real",
+      "totalLabel": "Saldo total consolidado",
+      "accountsLinked": "{n, plural, one {# cuenta vinculada} other {# cuentas vinculadas}}",
+      "emptyTitle": "Sin cuentas disponibles",
+      "emptyDescription": "Conecta tu banco para ver tus cuentas y saldos en tiempo real.",
+      "emptyAction": "Conectar banco",
+      "refresh": "Actualizar"
+    },
+    "transacciones": {
+      "columns": {
+        "date": "Fecha",
+        "concept": "Concepto",
+        "status": "Estado",
+        "amount": "Importe",
+        "actions": "Acciones"
+      },
+      "statusReconciled": "Conciliada",
+      "statusPending": "Pendiente",
+      "reconcileAction": "Conciliar",
+      "kpiIngresos": "Ingresos",
+      "kpiGastos": "Gastos",
+      "kpiNeto": "Neto",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "clearDates": "Limpiar fechas",
+      "importN43Title": "Importar extracto bancario Norma 43 (AEB)",
+      "importing": "Importando…",
+      "importN43": "Importar N43",
+      "exportCsv": "Exportar CSV",
+      "syncing": "Sincronizando…",
+      "syncDownload": "Descargar movimientos",
+      "searchPlaceholder": "Buscar por concepto…",
+      "emptyMessage": "Pulsa en 'Descargar movimientos' para importar desde tu banco.",
+      "filterStatus": "Estado",
+      "importSuccess": "Extracto importado: {imported} nuevos, {skipped} duplicados, {reconciled} conciliados",
+      "importErrors": "{n} movimientos con errores",
+      "syncError": "No se pudo sincronizar el banco.",
+      "importN43Error": "Error al importar el fichero N43.",
+      "reconcileError": "Error al conciliar la transacción.",
+      "csvHeader": "Fecha;Concepto;Importe;Estado",
+      "modal": {
+        "title": "Conciliar Transacción",
+        "associateLabel": "Asociar facturas pendientes",
+        "selectInvoice": "-- Selecciona factura --",
+        "noNumber": "S/N",
+        "clientPrefix": "Cl",
+        "noPendingInvoices": "No tienes facturas pendientes con pagos.",
+        "cancel": "Cancelar",
+        "confirm": "Puntear (Conciliar)"
+      }
+    },
+    "conciliacion": {
+      "loading": "Cargando conciliación…",
+      "kpiPending": "Pendientes",
+      "kpiPendingAmount": "Importe pendiente",
+      "kpiReconciled": "Conciliadas",
+      "kpiIgnored": "Ignoradas",
+      "pendingTitle": "Transacciones pendientes ({n})",
+      "pendingHint": "Las sugerencias se calculan por coincidencia de importe (±0,02€).",
+      "processing": "Procesando…",
+      "autoMatch": "Auto-conciliar",
+      "allReconciled": "Todo conciliado",
+      "noMatches": "Sin coincidencias",
+      "bestCandidateConfidence": "Confianza del mejor candidato",
+      "suggestionsCount": "{n, plural, one {# sugerencia} other {# sugerencias}}",
+      "noNumber": "S/N",
+      "punctuate": "Puntear",
+      "ignoreTitle": "Ignorar (no requiere factura)",
+      "reconciledSection": "Conciliadas ({n})",
+      "expandHint": "(haz clic para expandir)",
+      "undo": "Deshacer",
+      "undoTitle": "Deshacer conciliación",
+      "ignoredSection": "Ignoradas ({n})",
+      "restore": "Restaurar",
+      "restoreTitle": "Restaurar a pendiente",
+      "toast": {
+        "loadError": "Error al cargar datos de conciliación",
+        "autoMatched": "Auto-conciliadas {n} transacciones",
+        "noAutoMatches": "No se encontraron coincidencias automáticas",
+        "autoMatchError": "Error en auto-conciliación",
+        "reconcileError": "Error al conciliar",
+        "ignoreError": "Error al ignorar",
+        "undoError": "Error al deshacer"
+      }
+    },
+    "resumen": {
+      "demoBanner": "Esta cuenta es nueva y no tiene datos históricos. Estás viendo información precalculada de demostración para las tarjetas de resumen.",
+      "demoBannerLink": "Conecta tu banco real",
+      "demoBannerSuffix": "y registra facturas para ver métricas en vivo.",
+      "kpiIngresos": "Ingresos",
+      "kpiGastos": "Gastos",
+      "kpiNeto": "Resultado neto",
+      "kpiMargen": "Margen",
+      "expensesBreakdown": "Desglose de gastos",
+      "total": "Total",
+      "netMonthly": "Resultado neto mensual",
+      "last6Months": "Últimos 6 meses",
+      "connectForTrend": "Conecta tu banco para ver la tendencia",
+      "marginOnRevenue": "Margen sobre ingresos",
+      "marginHealthy": "Margen saludable",
+      "marginTight": "Margen ajustado",
+      "marginLow": "Margen bajo",
+      "agentAnalysis": "Análisis del agente IA",
+      "generating": "Generando…",
+      "regenerate": "Regenerar",
+      "agentAnalyzing": "El agente está analizando tus finanzas…",
+      "agentPlaceholder": "Haz clic en Regenerar para que la IA analice tus movimientos del mes y genere recomendaciones personalizadas.",
+      "loadError": "Error al cargar datos bancarios",
+      "months": {
+        "sep": "Sep",
+        "oct": "Oct",
+        "nov": "Nov",
+        "dic": "Dic",
+        "ene": "Ene",
+        "feb": "Feb"
+      },
+      "categories": {
+        "nominas": "Nóminas",
+        "proveedor_servicio": "Soft/Servicios",
+        "suministros": "Suministros",
+        "financiero": "Financiero",
+        "alquiler": "Alquileres",
+        "proveedor_material": "Materiales",
+        "impuestos": "Impuestos",
+        "proveedores": "Proveedores",
+        "otros": "Otros"
+      }
+    }
   }
 }

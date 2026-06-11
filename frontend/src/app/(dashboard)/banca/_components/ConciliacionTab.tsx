@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     ArrowDownLeft, ArrowUpRight, Check, CheckCircle2,
     EyeOff, Loader2, RefreshCw, Sparkles, Undo2, X,
@@ -17,6 +18,7 @@ const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
 
 export function ConciliacionTab() {
+    const t = useTranslations("banca");
     const toast = useToastStore();
     const [suggestions, setSuggestions] = useState<ReconciliationSuggestion[]>([]);
     const [reconciled, setReconciled] = useState<BankTransaction[]>([]);
@@ -41,7 +43,7 @@ export function ConciliacionTab() {
             setIgnored(txAll.filter((t) => t.status === "ignored"));
             setAllInvoices(invAll.filter((i) => i.status !== "paid"));
         } catch {
-            toast.error("Error al cargar datos de conciliación");
+            toast.error(t("conciliacion.toast.loadError"));
         } finally {
             setIsLoading(false);
         }
@@ -54,13 +56,13 @@ export function ConciliacionTab() {
         try {
             const res = await api.banking.reconciliation.autoMatch();
             if (res.matched > 0) {
-                toast.success(`Auto-conciliadas ${res.matched} transacciones`);
+                toast.success(t("conciliacion.toast.autoMatched", { n: res.matched }));
                 await load();
             } else {
-                toast.info("No se encontraron coincidencias automáticas");
+                toast.info(t("conciliacion.toast.noAutoMatches"));
             }
         } catch {
-            toast.error("Error en auto-conciliación");
+            toast.error(t("conciliacion.toast.autoMatchError"));
         } finally {
             setIsAutoMatching(false);
         }
@@ -72,7 +74,7 @@ export function ConciliacionTab() {
             await api.banking.transactions.reconcile(txId, invoiceId);
             await load();
         } catch (e: any) {
-            toast.error(e?.message ?? "Error al conciliar");
+            toast.error(e?.message ?? t("conciliacion.toast.reconcileError"));
         } finally {
             setActionId(null);
         }
@@ -84,7 +86,7 @@ export function ConciliacionTab() {
             await api.banking.transactions.ignore(txId);
             await load();
         } catch {
-            toast.error("Error al ignorar");
+            toast.error(t("conciliacion.toast.ignoreError"));
         } finally {
             setActionId(null);
         }
@@ -96,7 +98,7 @@ export function ConciliacionTab() {
             await api.banking.transactions.unreconcile(txId);
             await load();
         } catch {
-            toast.error("Error al deshacer");
+            toast.error(t("conciliacion.toast.undoError"));
         } finally {
             setActionId(null);
         }
@@ -107,7 +109,7 @@ export function ConciliacionTab() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-48 text-muted-foreground text-sm gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Cargando conciliación…
+                <Loader2 className="w-4 h-4 animate-spin" /> {t("conciliacion.loading")}
             </div>
         );
     }
@@ -116,20 +118,20 @@ export function ConciliacionTab() {
         <div className="space-y-6">
             {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <KpiCard title="Pendientes" value={suggestions.length} icon={RefreshCw} />
-                <KpiCard title="Importe pendiente" value={fmt(pendingAmount)} icon={RefreshCw} />
-                <KpiCard title="Conciliadas" value={reconciled.length} icon={CheckCircle2} />
-                <KpiCard title="Ignoradas" value={ignored.length} icon={EyeOff} />
+                <KpiCard title={t("conciliacion.kpiPending")} value={suggestions.length} icon={RefreshCw} />
+                <KpiCard title={t("conciliacion.kpiPendingAmount")} value={fmt(pendingAmount)} icon={RefreshCw} />
+                <KpiCard title={t("conciliacion.kpiReconciled")} value={reconciled.length} icon={CheckCircle2} />
+                <KpiCard title={t("conciliacion.kpiIgnored")} value={ignored.length} icon={EyeOff} />
             </div>
 
             {/* Auto-match */}
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-sm font-semibold text-foreground">
-                        Transacciones pendientes ({suggestions.length})
+                        {t("conciliacion.pendingTitle", { n: suggestions.length })}
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                        Las sugerencias se calculan por coincidencia de importe (±0,02€).
+                        {t("conciliacion.pendingHint")}
                     </p>
                 </div>
                 <Button
@@ -138,8 +140,8 @@ export function ConciliacionTab() {
                     disabled={isAutoMatching || suggestions.length === 0}
                 >
                     {isAutoMatching
-                        ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Procesando…</>
-                        : <><Sparkles className="mr-2 h-3.5 w-3.5" />Auto-conciliar</>}
+                        ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />{t("conciliacion.processing")}</>
+                        : <><Sparkles className="mr-2 h-3.5 w-3.5" />{t("conciliacion.autoMatch")}</>}
                 </Button>
             </div>
 
@@ -147,7 +149,7 @@ export function ConciliacionTab() {
             {suggestions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground rounded-xl border border-border bg-card">
                     <CheckCircle2 className="w-6 h-6 opacity-40 text-emerald-400" />
-                    <p className="text-sm">Todo conciliado</p>
+                    <p className="text-sm">{t("conciliacion.allReconciled")}</p>
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -185,7 +187,7 @@ export function ConciliacionTab() {
                                     {/* Invoice selector */}
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {invoicePool.length === 0 ? (
-                                            <span className="text-xs text-muted-foreground italic">Sin coincidencias</span>
+                                            <span className="text-xs text-muted-foreground italic">{t("conciliacion.noMatches")}</span>
                                         ) : (
                                             <>
                                                 {suggs.length > 0 && (() => {
@@ -196,8 +198,8 @@ export function ConciliacionTab() {
                                                             ? "text-amber-400 bg-amber-500/10 border-amber-500/20"
                                                             : "text-muted-foreground bg-muted/30 border-border";
                                                     return (
-                                                        <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${tone}`} title={`Confianza del mejor candidato`}>
-                                                            {suggs.length} sugerencia{suggs.length > 1 ? "s" : ""}{topScore ? ` · ${topScore}%` : ""}
+                                                        <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${tone}`} title={t("conciliacion.bestCandidateConfidence")}>
+                                                            {t("conciliacion.suggestionsCount", { n: suggs.length })}{topScore ? ` · ${topScore}%` : ""}
                                                         </span>
                                                     );
                                                 })()}
@@ -211,7 +213,7 @@ export function ConciliacionTab() {
                                                         const scoreLabel = suggested?.score ? ` · ★${suggested.score}` : "";
                                                         return (
                                                             <option key={inv.id} value={inv.id}>
-                                                                {inv.invoice_number ?? "S/N"} · {fmt(inv.amount_total)}{inv.client_name ? ` · ${inv.client_name}` : ""}{scoreLabel}
+                                                                {inv.invoice_number ?? t("conciliacion.noNumber")} · {fmt(inv.amount_total)}{inv.client_name ? ` · ${inv.client_name}` : ""}{scoreLabel}
                                                             </option>
                                                         );
                                                     })}
@@ -231,7 +233,7 @@ export function ConciliacionTab() {
                                         >
                                             {busy
                                                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                : <><Check className="mr-1 h-3.5 w-3.5" />Puntear</>}
+                                                : <><Check className="mr-1 h-3.5 w-3.5" />{t("conciliacion.punctuate")}</>}
                                         </Button>
                                     )}
                                     <Button
@@ -240,8 +242,8 @@ export function ConciliacionTab() {
                                         className="text-muted-foreground hover:text-foreground"
                                         disabled={busy}
                                         onClick={() => handleIgnore(tx.id)}
-                                        title="Ignorar (no requiere factura)"
-                                     aria-label="Ignorar (no requiere factura)">
+                                        title={t("conciliacion.ignoreTitle")}
+                                     aria-label={t("conciliacion.ignoreTitle")}>
                                         <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
                                     </Button>
                                 </div>
@@ -256,8 +258,8 @@ export function ConciliacionTab() {
                 <details className="group">
                     <summary className="cursor-pointer text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-2 select-none">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        Conciliadas ({reconciled.length})
-                        <span className="text-xs font-normal">(haz clic para expandir)</span>
+                        {t("conciliacion.reconciledSection", { n: reconciled.length })}
+                        <span className="text-xs font-normal">{t("conciliacion.expandHint")}</span>
                     </summary>
                     <div className="mt-3 space-y-2">
                         {reconciled.map((tx) => (
@@ -273,12 +275,12 @@ export function ConciliacionTab() {
                                     className="text-muted-foreground hover:text-destructive text-xs gap-1"
                                     disabled={actionId === tx.id}
                                     onClick={() => handleUnreconcile(tx.id)}
-                                    title="Deshacer conciliación"
+                                    title={t("conciliacion.undoTitle")}
                                 >
                                     {actionId === tx.id
                                         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                         : <Undo2 className="h-3.5 w-3.5" />}
-                                    Deshacer
+                                    {t("conciliacion.undo")}
                                 </Button>
                             </div>
                         ))}
@@ -291,7 +293,7 @@ export function ConciliacionTab() {
                 <details className="group">
                     <summary className="cursor-pointer text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-2 select-none">
                         <EyeOff className="w-4 h-4" />
-                        Ignoradas ({ignored.length})
+                        {t("conciliacion.ignoredSection", { n: ignored.length })}
                     </summary>
                     <div className="mt-3 space-y-2">
                         {ignored.map((tx) => (
@@ -307,9 +309,9 @@ export function ConciliacionTab() {
                                     className="text-muted-foreground hover:text-foreground text-xs gap-1"
                                     disabled={actionId === tx.id}
                                     onClick={() => handleUnreconcile(tx.id)}
-                                    title="Restaurar a pendiente"
+                                    title={t("conciliacion.restoreTitle")}
                                 >
-                                    <Undo2 className="h-3.5 w-3.5" /> Restaurar
+                                    <Undo2 className="h-3.5 w-3.5" /> {t("conciliacion.restore")}
                                 </Button>
                             </div>
                         ))}

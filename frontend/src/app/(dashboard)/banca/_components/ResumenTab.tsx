@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Banknote, Loader2, RefreshCw, TrendingDown, TrendingUp, Wifi, WifiOff } from "lucide-react";
 import { api } from "@/lib/api";
 import { KpiCard } from "@/components/shared/KpiCard";
@@ -17,21 +18,24 @@ const catColors: Record<string, string> = {
     financiero: "#facc15", alquiler: "#f472b6", proveedor_material: "#fb923c",
     impuestos: "#f87171", otros: "#71717a"
 };
-const catLabels: Record<string, string> = {
-    nominas: "Nóminas", proveedor_servicio: "Soft/Servicios", suministros: "Suministros",
-    financiero: "Financiero", alquiler: "Alquileres", proveedor_material: "Materiales",
-    impuestos: "Impuestos"
+// I18N: las claves de categoría referencian resumen.categories.<key>; el
+// label se traduce en render con t(`resumen.categories.${catKey}`).
+const catKeys: Record<string, string> = {
+    nominas: "nominas", proveedor_servicio: "proveedor_servicio", suministros: "suministros",
+    financiero: "financiero", alquiler: "alquiler", proveedor_material: "proveedor_material",
+    impuestos: "impuestos"
 };
 
 const DEFAULT_CATEGORIAS = [
-    { label: "Nóminas", value: 7000, color: "#60a5fa" },
-    { label: "Proveedores", value: 2800, color: "#c084fc" },
-    { label: "Suministros", value: 1500, color: "#22d3ee" },
-    { label: "Financiero", value: 1100, color: "#facc15" },
-    { label: "Otros", value: 330, color: "#71717a" },
+    { catKey: "nominas", value: 7000, color: "#60a5fa" },
+    { catKey: "proveedores", value: 2800, color: "#c084fc" },
+    { catKey: "suministros", value: 1500, color: "#22d3ee" },
+    { catKey: "financiero", value: 1100, color: "#facc15" },
+    { catKey: "otros", value: 330, color: "#71717a" },
 ];
 
 export function ResumenTab() {
+    const t = useTranslations("banca");
     const { launch, status, result, error } = useAgentPolling();
     const output = extractOutput(result);
     const resumenTexto = (output.resumen_financiero ?? output.resumen ?? null) as string | null;
@@ -47,7 +51,7 @@ export function ResumenTab() {
         const gastosCat = Object.entries(porCategoriaRaw)
             .filter(([_, data]) => data.total < 0)
             .map(([cat, data]) => ({
-                label: catLabels[cat] || "Otros",
+                catKey: catKeys[cat] || "otros",
                 value: Math.abs(data.total),
                 color: catColors[cat] || catColors.otros
             }))
@@ -61,7 +65,7 @@ export function ResumenTab() {
     useEffect(() => {
         api.banking.summary().then((d) => {
             setMetrics({ ingresos: d.ingresos, gastos: d.gastos, neto: d.neto, margen: d.margen, isDemo: d.is_demo });
-        }).catch(err => useToastStore.getState().error(err?.message || "Error al cargar datos bancarios"));
+        }).catch(err => useToastStore.getState().error(err?.message || t("resumen.loadError")));
 
         launch("resumen financiero mes");
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -71,35 +75,35 @@ export function ResumenTab() {
             {(isDemo || metrics.isDemo) && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-warning/20 bg-warning/5 text-warning text-sm">
                     <WifiOff className="w-4 h-4 flex-shrink-0" />
-                    <span>Esta cuenta es nueva y no tiene datos históricos. Estás viendo información precalculada de demostración para las tarjetas de resumen. <a href="/integraciones" className="underline hover:opacity-80">Conecta tu banco real</a> y registra facturas para ver métricas en vivo.</span>
+                    <span>{t("resumen.demoBanner")} <a href="/integraciones" className="underline hover:opacity-80">{t("resumen.demoBannerLink")}</a> {t("resumen.demoBannerSuffix")}</span>
                 </div>
             )}
             {error && <div className="px-4 py-3 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive text-sm">{error}</div>}
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard title="Ingresos" value={`+${metrics.ingresos.toLocaleString("es-ES")}€`} icon={TrendingUp} />
-                <KpiCard title="Gastos" value={`-${metrics.gastos.toLocaleString("es-ES")}€`} icon={TrendingDown} />
-                <KpiCard title="Resultado neto" value={`${metrics.neto >= 0 ? "+" : ""}${metrics.neto.toLocaleString("es-ES")}€`} icon={Banknote} />
-                <KpiCard title="Margen" value={`${metrics.margen}%`} icon={Wifi} />
+                <KpiCard title={t("resumen.kpiIngresos")} value={`+${metrics.ingresos.toLocaleString("es-ES")}€`} icon={TrendingUp} />
+                <KpiCard title={t("resumen.kpiGastos")} value={`-${metrics.gastos.toLocaleString("es-ES")}€`} icon={TrendingDown} />
+                <KpiCard title={t("resumen.kpiNeto")} value={`${metrics.neto >= 0 ? "+" : ""}${metrics.neto.toLocaleString("es-ES")}€`} icon={Banknote} />
+                <KpiCard title={t("resumen.kpiMargen")} value={`${metrics.margen}%`} icon={Wifi} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardContent className="p-6">
-                        <p className="text-sm font-medium text-foreground mb-5">Desglose de gastos</p>
+                        <p className="text-sm font-medium text-foreground mb-5">{t("resumen.expensesBreakdown")}</p>
                         <div className="flex items-center gap-6">
                             <div className="relative flex-shrink-0">
                                 <DonutChart segments={categorias} />
                                 <div className="absolute inset-0 flex items-center justify-center flex-col">
-                                    <span className="text-xs text-muted-foreground">Total</span>
+                                    <span className="text-xs text-muted-foreground">{t("resumen.total")}</span>
                                     <span className="text-sm font-bold text-foreground">{totalGastos.toLocaleString("es-ES")}€</span>
                                 </div>
                             </div>
                             <div className="flex-1 space-y-2.5">
                                 {categorias.map(c => (
-                                    <div key={c.label}>
+                                    <div key={c.catKey}>
                                         <div className="flex justify-between text-xs mb-1">
-                                            <span className="text-muted-foreground">{c.label}</span>
+                                            <span className="text-muted-foreground">{t(`resumen.categories.${c.catKey}`)}</span>
                                             <span className="text-foreground tabular-nums">{c.value.toLocaleString("es-ES")}€</span>
                                         </div>
                                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -116,24 +120,24 @@ export function ResumenTab() {
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-start justify-between mb-5">
-                            <p className="text-sm font-medium text-foreground">Resultado neto mensual</p>
-                            <span className="text-xs text-muted-foreground">Últimos 6 meses</span>
+                            <p className="text-sm font-medium text-foreground">{t("resumen.netMonthly")}</p>
+                            <span className="text-xs text-muted-foreground">{t("resumen.last6Months")}</span>
                         </div>
                         {mensual.length === 0 ? (
-                            <div className="h-[60px] flex items-center justify-center text-sm text-muted-foreground">Conecta tu banco para ver la tendencia</div>
+                            <div className="h-[60px] flex items-center justify-center text-sm text-muted-foreground">{t("resumen.connectForTrend")}</div>
                         ) : (
                             <>
                                 <BarSparkline values={mensual} color={metrics.neto >= 0 ? "#6366f1" : "#ef4444"} />
                                 <div className="flex justify-between mt-2">
-                                    {["Sep", "Oct", "Nov", "Dic", "Ene", "Feb"].map((m, i) => (
-                                        <span key={i} className="text-xs text-muted-foreground/60">{m}</span>
+                                    {["sep", "oct", "nov", "dic", "ene", "feb"].map((m, i) => (
+                                        <span key={i} className="text-xs text-muted-foreground/60">{t(`resumen.months.${m}`)}</span>
                                     ))}
                                 </div>
                             </>
                         )}
                         <div className="mt-6 pt-5 border-t border-border">
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="text-muted-foreground">Margen sobre ingresos</span>
+                                <span className="text-muted-foreground">{t("resumen.marginOnRevenue")}</span>
                                 <span className="font-bold text-primary">{metrics.margen}%</span>
                             </div>
                             <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -141,7 +145,7 @@ export function ResumenTab() {
                                     style={{ width: `${Math.min(100, Math.max(0, metrics.margen))}%` }} />
                             </div>
                             <p className="text-xs text-muted-foreground/60 mt-1.5">
-                                {metrics.margen >= 30 ? "Margen saludable" : metrics.margen >= 15 ? "Margen ajustado" : "Margen bajo"}
+                                {metrics.margen >= 30 ? t("resumen.marginHealthy") : metrics.margen >= 15 ? t("resumen.marginTight") : t("resumen.marginLow")}
                             </p>
                         </div>
                     </CardContent>
@@ -151,23 +155,23 @@ export function ResumenTab() {
             <Card>
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm font-medium text-foreground">Análisis del agente IA</p>
+                        <p className="text-sm font-medium text-foreground">{t("resumen.agentAnalysis")}</p>
                         <Button variant="ghost" size="sm"
                             onClick={() => launch("resumen financiero mes")}
                             disabled={status === "polling" || status === "creating"}
                             className="text-muted-foreground"
                         >
                             {status === "polling" || status === "creating" ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1.5 h-3 w-3" />}
-                            {status === "polling" ? "Generando…" : "Regenerar"}
+                            {status === "polling" ? t("resumen.generating") : t("resumen.regenerate")}
                         </Button>
                     </div>
                     {status === "creating" || status === "polling" ? (
                         <div className="flex items-center gap-3 text-muted-foreground text-sm py-4">
-                            <Loader2 className="w-4 h-4 animate-spin" /> El agente está analizando tus finanzas…
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t("resumen.agentAnalyzing")}
                         </div>
                     ) : (
                         <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-                            {resumenTexto ?? "Haz clic en Regenerar para que la IA analice tus movimientos del mes y genere recomendaciones personalizadas."}
+                            {resumenTexto ?? t("resumen.agentPlaceholder")}
                         </p>
                     )}
                 </CardContent>

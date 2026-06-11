@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, Building2, CreditCard, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { AgentLoader } from "./BancaCharts";
 interface Saldo { account_id: string; iban: string; nombre: string; saldo: number; moneda: string; error?: string; }
 
 export function SaldosTab() {
+    const t = useTranslations("banca");
     const { launch, status, result, error } = useAgentPolling();
     const output = extractOutput(result);
     const saldos = (output.saldos ?? output.balances ?? []) as Saldo[];
@@ -20,14 +22,14 @@ export function SaldosTab() {
 
     useEffect(() => { launch("saldo balance cuentas"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (status === "creating" || status === "polling") return <AgentLoader label="Consultando cuentas…" />;
+    if (status === "creating" || status === "polling") return <AgentLoader label={t("saldos.loading")} />;
 
     return (
         <div className="space-y-6">
             {isDemo && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-warning/20 bg-warning/5 text-warning text-sm">
                     <WifiOff className="w-4 h-4 flex-shrink-0" />
-                    <span>Banco no conectado — datos de demostración. <a href="/integraciones" className="underline hover:opacity-80">Conectar banco real</a></span>
+                    <span>{t("saldos.demoBanner")} <a href="/integraciones" className="underline hover:opacity-80">{t("saldos.demoBannerLink")}</a></span>
                 </div>
             )}
 
@@ -37,13 +39,13 @@ export function SaldosTab() {
 
             <Card className="border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
                 <CardContent className="p-7">
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Saldo total consolidado</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">{t("saldos.totalLabel")}</p>
                     <p className="text-5xl font-bold text-foreground tabular-nums">
                         {totalSaldo.toLocaleString("es-ES", { minimumFractionDigits: 2 })}
                         <span className="text-2xl text-muted-foreground ml-2">€</span>
                     </p>
                     {saldos.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-3">{saldos.length} cuenta{saldos.length !== 1 ? "s" : ""} vinculada{saldos.length !== 1 ? "s" : ""}</p>
+                        <p className="text-xs text-muted-foreground mt-3">{t("saldos.accountsLinked", { n: saldos.length })}</p>
                     )}
                 </CardContent>
             </Card>
@@ -73,9 +75,9 @@ export function SaldosTab() {
             ) : (
                 <EmptyState
                     icon={CreditCard}
-                    title="Sin cuentas disponibles"
-                    description="Conecta tu banco para ver tus cuentas y saldos en tiempo real."
-                    action={{ label: "Conectar banco", href: "/integraciones" }}
+                    title={t("saldos.emptyTitle")}
+                    description={t("saldos.emptyDescription")}
+                    action={{ label: t("saldos.emptyAction"), href: "/integraciones" }}
                 />
             )}
 
@@ -86,7 +88,7 @@ export function SaldosTab() {
             ))}
 
             <Button variant="ghost" size="sm" onClick={() => launch("saldo balance cuentas")} className="text-muted-foreground">
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Actualizar
+                <RefreshCw className="mr-2 h-3.5 w-3.5" /> {t("saldos.refresh")}
             </Button>
         </div>
     );

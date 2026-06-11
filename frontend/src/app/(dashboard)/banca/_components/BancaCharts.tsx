@@ -1,6 +1,6 @@
 "use client";
 
-export function DonutChart({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+export function DonutChart({ segments }: { segments: { value: number; color: string }[] }) {
     const total = segments.reduce((s, x) => s + Math.abs(x.value), 0);
     if (total === 0) return null;
 
