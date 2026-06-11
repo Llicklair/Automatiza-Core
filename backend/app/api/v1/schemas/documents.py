@@ -56,6 +56,28 @@ class ContractBodyHtmlIn(BaseModel):
     html: str
 
 
+class ContractChatMsg(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ContractInterviewIn(BaseModel):
+    contract_type: str  # servicios | trabajo | nda | alquiler
+    messages: list[ContractChatMsg] = []
+
+
+class ContractInterviewOut(BaseModel):
+    message: str
+    done: bool
+    contract: str | None = None
+
+
+class ContractSaveIn(BaseModel):
+    contract_type: str
+    title: str
+    content: str  # markdown del contrato redactado
+
+
 class SemanticSearchHit(BaseModel):
     """Un fragmento (chunk) relevante de la búsqueda semántica RAG."""
     document_id: str

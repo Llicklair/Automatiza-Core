@@ -11,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.documents import (
     ContractBodyHtmlIn,
+    ContractInterviewIn,
+    ContractInterviewOut,
     ContractPreviewHtmlOut,
+    ContractSaveIn,
     ContractTemplateOut,
     DocumentOut,
     ImportDBOut,
@@ -112,6 +115,52 @@ async def search_documents(
         )
         for emb, dist in scored
     ]
+
+
+@router.post("/contracts/interview", response_model=ContractInterviewOut)
+async def contract_interview(
+    body: ContractInterviewIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Asistente de contratos: entrevista paso a paso y redacta el contrato final.
+
+    El LLM hace una pregunta por turno; cuando termina, devuelve `done=true` y el
+    contrato redactado en `contract`.
+    """
+    from app.services.documents.contracts_interview import run_interview
+
+    try:
+        return await run_interview(
+            current_user.tenant_id,
+            db,
+            body.contract_type,
+            [m.model_dump() for m in body.messages],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.post("/contracts/save", response_model=DocumentOut)
+async def contract_save(
+    body: ContractSaveIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Guarda el contrato redactado como documento (Markdown) en su categoría."""
+    from app.services.documents.contracts_interview import CONTRACT_TYPES
+
+    meta = CONTRACT_TYPES.get(body.contract_type) or {"category": "otros"}
+    safe_title = (body.title or "contrato").replace("/", "-").strip()
+    return await svc.upload_single(
+        f"{safe_title}.md",
+        body.content.encode("utf-8"),
+        "text/markdown",
+        current_user.tenant_id,
+        current_user.id,
+        db,
+        meta["category"],
+    )
 
 
 @limiter.limit("30/minute")
