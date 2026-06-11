@@ -1151,6 +1151,9 @@
       "ignoredSection": "Ignoradas ({n})",
       "restore": "Restaurar",
       "restoreTitle": "Restaurar a pendiente",
+      "reject": "Rechazar",
+      "rejectTitle": "Descartar esta sugerencia — no volverá a aparecer",
+      "matchedBy": "Coincide por:",
       "toast": {
         "loadError": "Error al cargar datos de conciliación",
         "autoMatched": "Auto-conciliadas {n} transacciones",
@@ -1158,6 +1161,7 @@
         "autoMatchError": "Error en auto-conciliación",
         "reconcileError": "Error al conciliar",
         "ignoreError": "Error al ignorar",
+        "rejectError": "Error al rechazar la sugerencia",
         "undoError": "Error al deshacer"
       }
     },
