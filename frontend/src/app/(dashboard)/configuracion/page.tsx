@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import {
     Building2, Puzzle, User, Users, RefreshCw, Key, HardDrive, ArrowRight, Settings
 } from "lucide-react";
@@ -11,8 +12,8 @@ const SECTIONS = [
         color: "text-indigo-400",
         bg: "bg-indigo-500/10 border-indigo-500/20",
         glow: "group-hover:shadow-indigo-500/10",
-        title: "Empresa",
-        description: "Nombre, NIF, logo, dirección fiscal y datos de contacto de la organización.",
+        titleKey: "index.sections.empresa.title",
+        descriptionKey: "index.sections.empresa.description",
     },
     {
         href: "/configuracion/perfil",
@@ -20,8 +21,8 @@ const SECTIONS = [
         color: "text-sky-400",
         bg: "bg-sky-500/10 border-sky-500/20",
         glow: "group-hover:shadow-sky-500/10",
-        title: "Perfil de Usuario",
-        description: "Nombre, email, contraseña y preferencias personales de tu cuenta.",
+        titleKey: "index.sections.perfil.title",
+        descriptionKey: "index.sections.perfil.description",
     },
     {
         href: "/configuracion/usuarios",
@@ -29,8 +30,8 @@ const SECTIONS = [
         color: "text-cyan-400",
         bg: "bg-cyan-500/10 border-cyan-500/20",
         glow: "group-hover:shadow-cyan-500/10",
-        title: "Usuarios del tenant",
-        description: "Administra el acceso del equipo: alta, roles, activación y eliminación de cuentas.",
+        titleKey: "index.sections.usuarios.title",
+        descriptionKey: "index.sections.usuarios.description",
     },
     {
         href: "/configuracion/integraciones",
@@ -38,8 +39,8 @@ const SECTIONS = [
         color: "text-violet-400",
         bg: "bg-violet-500/10 border-violet-500/20",
         glow: "group-hover:shadow-violet-500/10",
-        title: "Integraciones",
-        description: "Conecta servicios externos: email, banca PSD2, ERP, almacenamiento en la nube.",
+        titleKey: "index.sections.integraciones.title",
+        descriptionKey: "index.sections.integraciones.description",
     },
     {
         href: "/configuracion/api-keys",
@@ -47,8 +48,8 @@ const SECTIONS = [
         color: "text-amber-400",
         bg: "bg-amber-500/10 border-amber-500/20",
         glow: "group-hover:shadow-amber-500/10",
-        title: "API Keys",
-        description: "Gestiona las claves de API para integraciones externas y el agente IA.",
+        titleKey: "index.sections.apiKeys.title",
+        descriptionKey: "index.sections.apiKeys.description",
     },
     {
         href: "/configuracion/backups",
@@ -56,8 +57,8 @@ const SECTIONS = [
         color: "text-emerald-400",
         bg: "bg-emerald-500/10 border-emerald-500/20",
         glow: "group-hover:shadow-emerald-500/10",
-        title: "Copias de Seguridad",
-        description: "Programa y descarga backups automáticos de la base de datos y documentos.",
+        titleKey: "index.sections.backups.title",
+        descriptionKey: "index.sections.backups.description",
     },
     {
         href: "/configuracion/actualizaciones",
@@ -65,12 +66,13 @@ const SECTIONS = [
         color: "text-pink-400",
         bg: "bg-pink-500/10 border-pink-500/20",
         glow: "group-hover:shadow-pink-500/10",
-        title: "Actualizaciones",
-        description: "Comprueba y aplica nuevas versiones del sistema. Historial de cambios.",
+        titleKey: "index.sections.actualizaciones.title",
+        descriptionKey: "index.sections.actualizaciones.description",
     },
 ] as const;
 
-export default function ConfiguracionPage() {
+export default async function ConfiguracionPage() {
+    const t = await getTranslations("configuracion");
     return (
         <PageContainer width="5xl" className="space-y-8">
             <div>
@@ -78,10 +80,10 @@ export default function ConfiguracionPage() {
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
                         <Settings className="w-5 h-5 text-indigo-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Configuración</h1>
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("index.title")}</h1>
                 </div>
                 <p className="text-sm text-muted-foreground ml-[52px]">
-                    Ajustes de empresa, integraciones, seguridad y preferencias del sistema.
+                    {t("index.subtitle")}
                 </p>
             </div>
 
@@ -93,11 +95,11 @@ export default function ConfiguracionPage() {
                                 <s.icon className={`w-5 h-5 ${s.color}`} />
                             </div>
                             <div className="flex-1">
-                                <p className="text-sm font-semibold text-foreground mb-1">{s.title}</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">{s.description}</p>
+                                <p className="text-sm font-semibold text-foreground mb-1">{t(s.titleKey)}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{t(s.descriptionKey)}</p>
                             </div>
                             <div className={`flex items-center gap-1 text-xs font-medium ${s.color} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                                Abrir <ArrowRight className="w-3 h-3" />
+                                {t("index.open")} <ArrowRight className="w-3 h-3" />
                             </div>
                         </div>
                     </Link>
