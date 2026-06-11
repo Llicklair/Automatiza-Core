@@ -386,9 +386,10 @@ async def build_modelo_190_data(
 
     Es la consolidación anual del Modelo 111: suma de retenciones practicadas
     durante todo el año, agrupadas por perceptor con clave de percepción.
-    Para MVP usamos clave "A" (rendimientos del trabajo) para todos los
-    empleados; las claves G (actividades profesionales) y K (premios) requieren
-    los campos de retención en `Invoice` pendientes para v1.1.
+    Incluye clave "A" (rendimientos del trabajo, desde nóminas) y clave "G"
+    (actividades profesionales, desde facturas recibidas con retención IRPF —
+    Art. 95 LIRPF). La clave K (premios) queda fuera de alcance por no existir
+    todavía un modelo de datos de premios.
     """
     start = date(year, 1, 1)
     end = date(year, 12, 31)
@@ -437,6 +438,61 @@ async def build_modelo_190_data(
         }
         for e in by_employee.values()
     ]
+    # Clave G — actividades profesionales (Art. 95 LIRPF): facturas recibidas
+    # con retención IRPF durante todo el año, agrupadas por proveedor.
+    prof_q = await db.execute(
+        select(Invoice).where(
+            and_(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_type == "received",
+                Invoice.retencion_irpf_amount.isnot(None),
+                Invoice.retencion_irpf_amount > 0,
+                func.date(Invoice.date) >= start,
+                func.date(Invoice.date) <= end,
+            )
+        )
+    )
+    by_supplier: dict[Any, dict[str, Any]] = {}
+    for inv in prof_q.scalars().all():
+        entry = by_supplier.setdefault(
+            inv.client_id,
+            {
+                "clave_percepcion": "G",  # actividades profesionales
+                "client_id": str(inv.client_id),
+                "nombre": None,
+                "nif": None,
+                "percepcion_integra": Decimal("0"),
+                "retencion_practicada": Decimal("0"),
+                "num_facturas": 0,
+            },
+        )
+        entry["percepcion_integra"] += Decimal(inv.amount_base or 0)
+        entry["retencion_practicada"] += Decimal(inv.retencion_irpf_amount or 0)
+        entry["num_facturas"] += 1
+
+    if by_supplier:
+        cli_q = await db.execute(
+            select(Client).where(Client.id.in_(list(by_supplier.keys())))
+        )
+        for cli in cli_q.scalars().all():
+            entry = by_supplier.get(cli.id)
+            if entry is not None:
+                entry["nombre"] = cli.name
+                entry["nif"] = getattr(cli, "nif", None)
+
+    perceptores.extend(
+        {
+            "clave_percepcion": e["clave_percepcion"],
+            "client_id": e["client_id"],
+            "nombre": e["nombre"],
+            "nif": e["nif"],
+            "percepcion_integra": float(e["percepcion_integra"]),
+            "retencion_practicada": float(e["retencion_practicada"]),
+            "num_facturas": e["num_facturas"],
+        }
+        for e in by_supplier.values()
+    )
+
     perceptores.sort(key=lambda p: (p["clave_percepcion"], p["nif"] or ""))
 
     total_percepcion = sum(Decimal(str(p["percepcion_integra"])) for p in perceptores)
@@ -450,7 +506,6 @@ async def build_modelo_190_data(
         "num_perceptores": len(perceptores),
         "total_percepcion_integra": float(total_percepcion),
         "total_retencion_practicada": float(total_retencion),
-        "_pending_v1_1": "claves G/K (profesionales/premios) — requiere retencion_irpf en Invoice",
     }
 
 

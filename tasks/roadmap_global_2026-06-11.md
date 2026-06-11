@@ -47,7 +47,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 | # | Ítem | Estado | Archivos | Fuente |
 |---|---|---|---|---|
 | 2.1 | XML oficial para 111/347/349/390 (hoy solo 303/130 tienen XML; resto solo datos+PDF) | PARCIAL | `services/reports/modelos_aeat.py`, patrón `modelo_303_xml.py` | scoping fiscal |
-| 2.2 | Modelo 190 claves G/K (profesionales) — falta `retencion_irpf_amount` en `Invoice` | PARCIAL | `db/models/models.py` + migración + `modelos_aeat.py` | backlog, scoping |
+| 2.2 | ~~Modelo 190 clave G (profesionales)~~ **HECHO** (2026-06-11): `build_modelo_190_data` incluye clave G desde facturas con retención IRPF; `retencion_irpf_amount` ya existía (sin migración); +2 tests. Clave K (premios) fuera de alcance (sin modelo de datos). | HECHO | `services/reports/modelos_aeat.py` | backlog, scoping |
 | 2.3 | Asistente fiscal preventivo (widget `/impuestos` + notificación) — reusa `services/aeat/` | PENDIENTE | nuevo widget + `preventive_check.py` existente | todo F1.4 |
 
 ### Facturación / Contabilidad
