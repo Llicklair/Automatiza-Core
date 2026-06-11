@@ -55,10 +55,10 @@ Features a medias que restan valor/UX una vez hay usuarios.
 | 2.5 | VeriFactu: auditoría de envíos (`verifactu_submissions`) | PENDIENTE | nueva tabla + logs | roadmap_impl |
 
 ### Documentos / Gestoría
-| 2.6 | Servicio de generación de documentos (template + LLM + ReportLab) | PENDIENTE | `services/documents/generate.py` | scoping docs |
-| 2.7 | Plantillas reales de gestoría (contrato, despido, nómina formal, poder) | PENDIENTE | catálogo + prompts; hoy `template_service.py` solo presets de color | scoping docs |
-| 2.8 | Numeración + pie legal de docs de gestoría (extender `numbering.py`) | PENDIENTE | `services/billing/numbering.py` (extender) | scoping docs |
-| 2.9 | Cablear firma (`signed_documents`/AutoFirma) a la generación | PENDIENTE | `routes/signing.py` (existe, desacoplado) | scoping docs |
+| 2.6 | ~~Servicio de generación de documentos (template + LLM)~~ **YA EXISTÍA** (`services/hr/commands.py::generate_document`): genera contrato/NDA/despido/finiquito/adenda con LLM + prompts estructurados + UI `rrhh/documentos`. El scoping lo dio por ausente; era falso. | HECHO | `services/hr/commands.py` | scoping docs |
+| 2.7 | ~~Plantillas reales de gestoría (contrato, despido, finiquito…)~~ **YA EXISTÍAN** como prompts estructurados profesionales (cabecera SEPE, estructura completa) en `hr/queries.py` (`DOC_TYPE_LABELS`, `_HEADER_INSTRUCTIONS`). Falta solo "escritura de poder" (notarial, fuera de alcance). | HECHO | `services/hr/queries.py` | scoping docs |
+| 2.8 | ~~Numeración de documentos de gestoría~~ **HECHO** (2026-06-11): folio correlativo `DOC-{año}-{NNNN}` por tenant, asignado al aprobar (`hr_documents.doc_number`, mig 0058), mostrado en `DocumentCard`, +3 tests. Pendiente menor: pie legal con ref. de colegio en el contenido. | HECHO | `services/hr/commands.py`, `rrhh/documentos/_components/DocumentCard.tsx` | scoping docs |
+| 2.9 | Cablear firma (AutoFirma) a documentos de gestoría — hoy `init_autofirma` opera sobre `TenantDocument`, no sobre `HRDocument` generado | PENDIENTE | `routes/signing.py` (existe, desacoplado de HR docs) | scoping docs |
 
 ### Onboarding
 | 2.10 | Agente de onboarding (Fase 2 spec): `agents/onboarding/` (wrapper de wizard/regap/simulate_303) | PENDIENTE | crear agente | onboarding-spec |

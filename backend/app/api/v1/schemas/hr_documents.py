@@ -19,6 +19,7 @@ class HRDocumentOut(BaseModel):
     employee_name: str | None
     content_html: str
     status: str
+    doc_number: str | None = None
     instructions: str | None
     created_at: datetime
     approved_at: datetime | None

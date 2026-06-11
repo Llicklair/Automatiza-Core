@@ -11,7 +11,7 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.hr import (
@@ -212,14 +212,43 @@ async def generate_document(
         "employee_name": doc.employee_name,
         "content_html": doc.content_html,
         "status": doc.status,
+        "doc_number": doc.doc_number,
         "instructions": doc.instructions,
         "created_at": doc.created_at.isoformat(),
         "approved_at": None,
     }
 
 
+async def _next_doc_number(db: AsyncSession, tenant_id, year: int) -> str:
+    """Siguiente folio correlativo de gestoría para (tenant, año): DOC-{año}-{NNNN}.
+
+    El padding a 4 dígitos hace que MAX() lexicográfico = máximo numérico dentro
+    del mismo año. Advisory lock en PostgreSQL para evitar colisiones; SQLite es
+    single-writer. El caller debe estar en una transacción abierta.
+    """
+    if db.bind is not None and db.bind.dialect.name == "postgresql":
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
+            {"k": f"hrdoc:{tenant_id}:{year}"},
+        )
+    prefix = f"DOC-{year}-"
+    res = await db.execute(
+        select(func.max(HRDocument.doc_number)).where(
+            HRDocument.tenant_id == tenant_id,
+            HRDocument.doc_number.like(f"{prefix}%"),
+        )
+    )
+    last = res.scalar()
+    seq = (int(last.rsplit("-", 1)[-1]) + 1) if last else 1
+    return f"{prefix}{seq:04d}"
+
+
 async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
-    """Mark a document as approved. Raises ValueError if not found."""
+    """Mark a document as approved. Raises ValueError if not found.
+
+    Al aprobar por primera vez se asigna un folio correlativo de gestoría
+    (`doc_number`) para trazabilidad y referencia legal.
+    """
     result = await db.execute(
         select(HRDocument).where(
             HRDocument.id == doc_id,
@@ -232,8 +261,15 @@ async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
 
     doc.status = "approved"
     doc.approved_at = datetime.now(UTC)
+    if not doc.doc_number:
+        doc.doc_number = await _next_doc_number(db, tenant_id, doc.approved_at.year)
     await db.commit()
-    return {"id": str(doc.id), "status": "approved", "approved_at": doc.approved_at.isoformat()}
+    return {
+        "id": str(doc.id),
+        "status": "approved",
+        "approved_at": doc.approved_at.isoformat(),
+        "doc_number": doc.doc_number,
+    }
 
 
 async def delete_document(doc_id: str, tenant_id, db: AsyncSession) -> None:

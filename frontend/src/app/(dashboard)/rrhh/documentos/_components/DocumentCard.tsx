@@ -58,6 +58,11 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-medium text-foreground truncate">{doc.title}</h3>
                         <StatusBadge status={doc.status} />
+                        {doc.doc_number && (
+                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                {doc.doc_number}
+                            </span>
+                        )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">{docTypeLabel} · {doc.employee_name} · {date}</p>
                 </div>

@@ -7,6 +7,7 @@ export interface HRDocument {
     employee_name: string;
     content_html: string;
     status: "draft" | "approved";
+    doc_number: string | null;
     instructions: string | null;
     created_at: string;
     approved_at: string | null;
@@ -40,7 +41,7 @@ export const hrDocuments = {
         request<HRDocument>(`/api/v1/hr/documents/${id}`),
 
     approve: (id: string) =>
-        request<{ id: string; status: string; approved_at: string }>(`/api/v1/hr/documents/${id}/approve`, { method: "POST" }),
+        request<{ id: string; status: string; approved_at: string; doc_number: string | null }>(`/api/v1/hr/documents/${id}/approve`, { method: "POST" }),
 
     delete: (id: string) =>
         request<void>(`/api/v1/hr/documents/${id}`, { method: "DELETE" }),
