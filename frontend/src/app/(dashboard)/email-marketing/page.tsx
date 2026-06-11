@@ -6,6 +6,7 @@ import TabCampaigns from "./_components/CampaignsTab";
 import TabTemplates from "./_components/TemplatesTab";
 import TabStats from "./_components/StatsTab";
 import { PageContainer } from "@/components/shared/PageContainer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
@@ -33,22 +34,20 @@ export default function EmailMarketingPage() {
                 </div>
             </div>
 
-            <div className="flex gap-1 border-b border-border">
-                {TABS.map(({ key, label, icon: Icon }) => (
-                    <button
-                        key={key}
-                        onClick={() => setTab(key)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                            tab === key
-                                ? "border-blue-500 text-blue-400"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
-                    >
-                        <Icon className="w-3.5 h-3.5" />
-                        {label}
-                    </button>
-                ))}
-            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+                <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0">
+                    {TABS.map(({ key, label, icon: Icon }) => (
+                        <TabsTrigger
+                            key={key}
+                            value={key}
+                            className="-mb-px flex items-center gap-2 rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-400 data-[state=active]:shadow-none"
+                        >
+                            <Icon className="w-3.5 h-3.5" />
+                            {label}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
 
             {tab === "campaigns" && <TabCampaigns />}
             {tab === "templates" && <TabTemplates />}
