@@ -80,6 +80,18 @@ export function ConciliacionTab() {
         }
     };
 
+    const handleReject = async (txId: string, invoiceId: string) => {
+        setActionId(txId);
+        try {
+            await api.banking.reconciliation.reject(txId, invoiceId);
+            await load();
+        } catch {
+            toast.error(t("conciliacion.toast.rejectError"));
+        } finally {
+            setActionId(null);
+        }
+    };
+
     const handleIgnore = async (txId: string) => {
         setActionId(txId);
         try {
@@ -221,6 +233,20 @@ export function ConciliacionTab() {
                                             </>
                                         )}
                                     </div>
+                                    {(() => {
+                                        const selSug = suggs.find((su) => su.id === sel);
+                                        if (!selSug?.reasons?.length) return null;
+                                        return (
+                                            <div className="w-full flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-[10px] text-muted-foreground">{t("conciliacion.matchedBy")}</span>
+                                                {selSug.reasons.map((r) => (
+                                                    <span key={r.code} className="text-[10px] text-muted-foreground bg-muted/40 border border-border rounded-full px-2 py-0.5">
+                                                        {r.label}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 {/* Right: actions */}
@@ -234,6 +260,19 @@ export function ConciliacionTab() {
                                             {busy
                                                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 : <><Check className="mr-1 h-3.5 w-3.5" />{t("conciliacion.punctuate")}</>}
+                                        </Button>
+                                    )}
+                                    {suggs.length > 0 && sel && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-muted-foreground hover:text-red-400"
+                                            disabled={busy}
+                                            onClick={() => handleReject(tx.id, sel)}
+                                            title={t("conciliacion.rejectTitle")}
+                                            aria-label={t("conciliacion.rejectTitle")}
+                                        >
+                                            <X className="h-3.5 w-3.5" aria-hidden="true" />
                                         </Button>
                                     )}
                                     <Button

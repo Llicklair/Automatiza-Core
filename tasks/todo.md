@@ -10,11 +10,12 @@
 
 ## Fiscal
 
-- [ ] **F2.6 Conciliación bancaria explicable** — ya existen: matching por
-  monto+fecha (`agents/banking/_reconciliation_tools.py`) + almacén de rechazos
-  (mig `0034_reconciliation_rejections`). **Falta**: razón explícita
-  ("= factura #X porque {monto exacto / fecha ±3d / concepto contiene NIF}")
-  + un-click aceptar/rechazar en UI + aprendizaje del rechazo.
+- [x] **F2.6 Conciliación bancaria explicable** ✅ (2026-06-12) — backend ya
+  tenía `_explain_match` (score + reasons: importe/fecha/cliente/Nº factura),
+  endpoints suggestions/reconcile/reject (con aprendizaje vía mig `0034`) y
+  auto-match. **Cerrado el gap de UI** en `ConciliacionTab`: muestra los motivos
+  ("Coincide por: …") por sugerencia + botón "Rechazar" que llama al endpoint de
+  aprendizaje (el par no vuelve a sugerirse).
 - [ ] **F2.8 Presentación telemática AEAT (200/100)** — Modelo 200 (datos +
   endpoint + PDF) ✅ y **Modelo 100** (IRPF Renta preview: datos + escala IRPF
   progresiva + `GET /100` + PDF `GET /100/pdf`) ✅ (2026-06-12). **Falta**: la
