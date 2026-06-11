@@ -185,20 +185,20 @@ Notas de verificación: `orchestrator/tools.py` NO existe (no tocado); Dashboard
   3. En "Publishing status" pulsar **"PUBLISH APP"** → "Confirm"
   4. Estado pasa de *Testing* a *In production* (sin verificar).
   Resultado: refresh tokens dejan de caducar a 7 días, los usuarios fuera del listado Test users pueden hacer login (ven warning "Google hasn't verified" — aceptable hasta tener 5+ clientes y meterse en OAuth verification, que es F1.3-bis cuando toque).
-- [ ] **F1.4 Asistente fiscal preventivo** — cruce facturas recibidas vs 303 simulado antes de cerrar trimestre, alerta de IVA deducible olvidado, IRPF retenido descuadrado, etc. Reusa `services/aeat/` + agente compliance. Output: nuevo widget en `/impuestos` + push notif.
+- [x] **F1.4 Asistente fiscal preventivo** ✅ (verificado 2026-06-12) — `services/aeat/preventive_check.py` (`check_quarter` + 5 checks) + endpoint `GET /preventive-check` + widget `impuestos/_components/PreventiveCheckCard.tsx`.
 
 ### Fase 2 — Subir nivel a motores ya construidos (objetivo: 3-4 sem)
 
-- [ ] **F2.5 OCR con aprendizaje por proveedor** — template store en BD por NIF emisor. Primera vez: extracción LLM + guarda layout (bounding boxes de campos clave). Siguientes facturas del mismo NIF: extracción regex sobre el layout aprendido, sin LLM. Meta: >95% precisión, ~0 tokens en proveedores repetidos.
-- [ ] **F2.6 Conciliación bancaria explicable** — `services/banking/reconciliation.py` ya tiene scoring (commit 581068a). Falta: sugerencia "Este movimiento = factura #1234 porque {monto exacto, fecha ±3d, concepto contiene NIF}" + un-click aceptar/rechazar + aprendizaje del rechazo.
-- [ ] **F2.7 Tesorería Beta → Producción** — cashflow proyectado real (cobros pendientes + pagos previstos), remesas SEPA XML (Pain.001.001.03 cobros, Pain.008.001.02 adeudos), simulador de tesorería.
-- [ ] **F2.8 Modelo 100 sociedades** — mismo patrón que 303 (builder + presentación AEAT + WORM). Cubre S.L. enteras, no solo autónomos.
+- [x] **F2.5 OCR con aprendizaje por proveedor** ✅ (verificado 2026-06-12) — `services/ocr/supplier_learning.py` + modelo `SupplierInvoiceTemplate` (store por NIF), cableado en `invoice_scanner.py`.
+- [ ] **F2.6 Conciliación bancaria explicable** — PARCIAL: matching por monto+fecha (`agents/banking/_reconciliation_tools.py`) + almacén de rechazos (mig `0034_reconciliation_rejections`). **Falta**: razón explícita "= factura #X porque {monto/fecha/NIF}" + un-click aceptar/rechazar en UI + aprendizaje del rechazo.
+- [x] **F2.7 Tesorería SEPA** ✅ (verificado 2026-06-12) — `services/treasury/sepa.py` (Pain.001.001.03 + Pain.008.001.02) + `projection.py` (cashflow proyectado) + mig `0052_sepa_remittances`.
+- [ ] **F2.8 Modelo 100/200 sociedades** — PARCIAL: `build_modelo_200_data` + endpoint `GET /200` existen. **Falta**: PDF del Modelo 200, Modelo 100 y presentación telemática AEAT.
 
 ### Fase 3 — Capacidades nuevas con dependencias externas (objetivo: 1-3 meses)
 
-- [ ] **F3.9 Inteligencia de cobros** — predictor de morosidad sobre histórico (días-medios-cobro por cliente, % facturas vencidas, ticket medio). Recordatorios escalonados: aviso amistoso D-3, recordatorio D+0, requerimiento D+15, intereses D+30. ML simple (logistic regression sobre features de cliente) si no hay datos suficientes → ranking por reglas.
-- [ ] **F3.10 Marketplace de workflows** — catálogo curado + import/export YAML + moderación. Empaqueta workflows existentes (`gestoria_mensual`, `cierre_trimestral`) como plantillas reutilizables. Network effect sin centralizar datos.
-- [ ] **F3.11 Firma electrónica eIDAS (AutoFirma)** — integración con AutoFirma del Estado (gratis). RRHH ya genera contratos, falta: invocar AutoFirma → certificado FNMT del usuario → PAdES (PDF firmado) + sello de tiempo TSA gratuito @firma. Sustituye Signaturit en escenarios B2B simples.
+- [x] **F3.9 Inteligencia de cobros** ✅ (reglas, verificado 2026-06-12) — `routes/collections.py`: `/risk` (risk_level por cliente) + `/due-reminders` (recordatorios escalonados, `invoices_due_for_reminder`). ML logistic-regression queda como mejora futura opcional.
+- [x] **F3.10 Marketplace de workflows** ✅ (verificado 2026-06-12) — `routes/marketplace.py` (import/export YAML) + `WorkflowTemplate` (mig `0035_workflow_templates`).
+- [ ] **F3.11 Firma electrónica eIDAS (AutoFirma)** — PARCIAL: backend completo (`services/signing/autofirma.py` build_autofirma_uri/PAdES + `routes/signing.py`) + PDF server-side de gestoría (commit `fae47f2`). **Falta**: botón "Firmar" en UI (handshake `afirma://` + polling; requiere AutoFirma instalado para probar e2e).
 
 ---
 
@@ -247,12 +247,12 @@ principio ERP "IA accede a todo", razón de ser de los AIEmployees custom).
 
 ### Tareas concretas derivadas
 
-- [ ] **Audit script `scripts/audit_domain_completeness.py`** ✅ CREADO 2026-05-20.
+- [x] **Audit script `scripts/audit_domain_completeness.py`** ✅ CREADO 2026-05-20.
   Cruza VALID_DOMAINS × DISPATCHER_MAP × _KEYWORD_MAP × tools registradas en
   `tool_registry.py`. Salida tabla + exit code 1 si hay asimetría. Ejecutar
   en pre-commit y antes de cualquier PR que añada un dominio nuevo.
 
-- [ ] **Migración `0029_aiemployee_contract`** ✅ CREADA 2026-05-20.
+- [x] **Migración `0029_aiemployee_contract`** ✅ CREADA 2026-05-20.
   Añade columnas `scope` (JSONB), `memory_enabled` (Bool default False),
   `knowledge_enabled` (Bool default False), `workflows` (JSONB) a
   `ai_employees`. Modelo SQLAlchemy actualizado. Tablas `employee_memory` y
