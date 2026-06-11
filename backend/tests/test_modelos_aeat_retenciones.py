@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from app.db.models.billing import Invoice
+from app.db.models.crm import Client
 from app.db.models.hr import Employee, Payroll
 from app.services.reports.modelos_aeat import (
     build_modelo_111_data,
@@ -149,3 +151,62 @@ class TestModelo190:
 
         result_2026 = await build_modelo_190_data(db, tenant.id, year=2026)
         assert result_2026["perceptores"][0]["num_nominas"] == 1
+
+    async def test_incluye_clave_g_profesionales(self, db, seed_tenant_and_user):
+        tenant, _, _ = seed_tenant_and_user
+        # Clave A: empleado con nómina
+        emp = _employee(tenant.id, name="Trabajador", nif="11111111H")
+        db.add(emp)
+        await db.flush()
+        db.add(_payroll(
+            tenant.id, emp.id,
+            period_start=datetime(2026, 6, 1, tzinfo=UTC),
+            base_irpf=Decimal("2000.00"), irpf=Decimal("300.00"),
+        ))
+        # Clave G: factura recibida de profesional con retención IRPF (Art. 95)
+        cli = Client(tenant_id=tenant.id, name="Asesor SL", nif="B12345678")
+        db.add(cli)
+        await db.flush()
+        db.add(Invoice(
+            tenant_id=tenant.id,
+            client_id=cli.id,
+            date=datetime(2026, 3, 15, tzinfo=UTC),
+            amount_base=Decimal("1000.00"),
+            amount_total=Decimal("1060.00"),
+            invoice_type="received",
+            retencion_irpf_rate=Decimal("15.00"),
+            retencion_irpf_amount=Decimal("150.00"),
+        ))
+        await db.commit()
+
+        result = await build_modelo_190_data(db, tenant.id, year=2026)
+        assert result["num_perceptores"] == 2
+        assert {p["clave_percepcion"] for p in result["perceptores"]} == {"A", "G"}
+        prof = next(p for p in result["perceptores"] if p["clave_percepcion"] == "G")
+        assert prof["nombre"] == "Asesor SL"
+        assert prof["nif"] == "B12345678"
+        assert prof["percepcion_integra"] == 1000.0
+        assert prof["retencion_practicada"] == 150.0
+        assert prof["num_facturas"] == 1
+        # Totales: A (2000/300) + G (1000/150)
+        assert result["total_percepcion_integra"] == 3000.0
+        assert result["total_retencion_practicada"] == 450.0
+
+    async def test_factura_sin_retencion_no_genera_clave_g(self, db, seed_tenant_and_user):
+        tenant, _, _ = seed_tenant_and_user
+        cli = Client(tenant_id=tenant.id, name="Proveedor normal", nif="B87654321")
+        db.add(cli)
+        await db.flush()
+        db.add(Invoice(
+            tenant_id=tenant.id,
+            client_id=cli.id,
+            date=datetime(2026, 4, 1, tzinfo=UTC),
+            amount_base=Decimal("500.00"),
+            amount_total=Decimal("605.00"),
+            invoice_type="received",
+        ))
+        await db.commit()
+
+        result = await build_modelo_190_data(db, tenant.id, year=2026)
+        assert result["num_perceptores"] == 0
+        assert "_pending_v1_1" not in result
