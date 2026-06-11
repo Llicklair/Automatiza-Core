@@ -241,8 +241,8 @@ export function ConciliacionTab() {
                                         disabled={busy}
                                         onClick={() => handleIgnore(tx.id)}
                                         title="Ignorar (no requiere factura)"
-                                    >
-                                        <EyeOff className="h-3.5 w-3.5" />
+                                     aria-label="Ignorar (no requiere factura)">
+                                        <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
                                     </Button>
                                 </div>
                             </div>

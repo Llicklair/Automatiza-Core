@@ -126,8 +126,8 @@ export default function PedidosCompraPage() {
                                         {!["cancelled", "received"].includes(order.status) && (
                                             <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleCancel(order)}>Cancelar</Button>
                                         )}
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(order.id)} disabled={deletingId === order.id}>
-                                            {deletingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(order.id)} disabled={deletingId === order.id} aria-label="Eliminar pedido">
+                                            {deletingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                         </Button>
                                     </div>
                                 </div>

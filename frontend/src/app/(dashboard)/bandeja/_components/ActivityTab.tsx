@@ -85,8 +85,8 @@ export function ActivityTab({ isActive = true }: ActivityTabProps) {
                 )}
                 <div className="flex-1" />
                 <button onClick={() => { setRefreshing(true); fetchEntries(true).finally(() => setRefreshing(false)); }}
-                    className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors">
-                    <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                    className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors" aria-label="Actualizar actividad">
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
                 </button>
             </div>
 

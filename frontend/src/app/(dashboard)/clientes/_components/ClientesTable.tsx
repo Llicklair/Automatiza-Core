@@ -127,8 +127,8 @@ export function ClientesTable({
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() => openEditClient(row.original)}
-                    >
-                        <Pencil className="h-3.5 w-3.5" />
+                     aria-label="Editar cliente">
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -136,8 +136,8 @@ export function ClientesTable({
                         className="h-8 w-8 text-red-400/60 hover:text-red-400 hover:bg-red-500/10"
                         onClick={() => handleDeleteClient(row.original)}
                         disabled={deleting}
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
+                     aria-label="Eliminar cliente">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                 </div>
             ),

@@ -19,8 +19,8 @@ export function ProveedorModal({ editingId, form, setForm, saving, onClose, onSu
             <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-lg shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-bold text-foreground">{editingId ? "Editar proveedor" : "Nuevo proveedor"}</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <X className="w-5 h-5" />
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Cerrar formulario de proveedor">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
                 <form onSubmit={onSubmit} className="space-y-4">

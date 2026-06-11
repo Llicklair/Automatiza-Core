@@ -109,8 +109,8 @@ export default function PayrollsPage() {
                         : <AlertCircle className="w-5 h-5 shrink-0" />
                     }
                     <span className="flex-1">{toast.msg}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)}>
-                        <X className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label="Cerrar notificación">
+                        <X className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>
             )}

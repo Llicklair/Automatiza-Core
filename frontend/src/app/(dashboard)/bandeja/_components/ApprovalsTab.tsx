@@ -156,8 +156,8 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
                             <button
                                 onClick={() => setRejectingId(null)}
                                 className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <X className="w-5 h-5" />
+                             aria-label="Cancelar rechazo">
+                                <X className="w-5 h-5" aria-hidden="true" />
                             </button>
                         </div>
 

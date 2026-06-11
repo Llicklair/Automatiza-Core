@@ -135,8 +135,8 @@ export function ClientesCardGrid({
                                         size="icon"
                                         className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                         onClick={() => openEditClient(client)}
-                                    >
-                                        <Pencil className="h-3 w-3" />
+                                     aria-label="Editar cliente">
+                                        <Pencil className="h-3 w-3" aria-hidden="true" />
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -144,8 +144,8 @@ export function ClientesCardGrid({
                                         className="h-7 w-7 text-red-400/60 hover:text-red-400 hover:bg-red-500/10"
                                         onClick={() => handleDeleteClient(client)}
                                         disabled={deleting}
-                                    >
-                                        <Trash2 className="h-3 w-3" />
+                                     aria-label="Eliminar cliente">
+                                        <Trash2 className="h-3 w-3" aria-hidden="true" />
                                     </Button>
                                 </div>
                             </div>

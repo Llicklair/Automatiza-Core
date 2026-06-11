@@ -322,8 +322,8 @@ export default function GastosPage() {
                                                         title="Aprobar"
                                                         disabled={actionId === exp.id}
                                                         onClick={() => handleAction(exp.id, "approve")}
-                                                    >
-                                                        {actionId === exp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                                     aria-label="Aprobar">
+                                                        {actionId === exp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
                                                     </Button>
                                                     <Button
                                                         variant="ghost" size="icon"
@@ -331,8 +331,8 @@ export default function GastosPage() {
                                                         title="Rechazar"
                                                         disabled={actionId === exp.id}
                                                         onClick={() => handleAction(exp.id, "reject")}
-                                                    >
-                                                        <X className="h-3.5 w-3.5" />
+                                                     aria-label="Rechazar">
+                                                        <X className="h-3.5 w-3.5" aria-hidden="true" />
                                                     </Button>
                                                 </>
                                             )}
@@ -343,8 +343,8 @@ export default function GastosPage() {
                                                     title="Marcar reembolsado"
                                                     disabled={actionId === exp.id}
                                                     onClick={() => handleAction(exp.id, "reimburse")}
-                                                >
-                                                    {actionId === exp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                                 aria-label="Marcar reembolsado">
+                                                    {actionId === exp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
                                                 </Button>
                                             )}
                                             <Button
@@ -353,8 +353,8 @@ export default function GastosPage() {
                                                 title="Eliminar"
                                                 disabled={actionId === exp.id}
                                                 onClick={() => handleAction(exp.id, "delete")}
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                             aria-label="Eliminar">
+                                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                                             </Button>
                                         </div>
                                     </td>

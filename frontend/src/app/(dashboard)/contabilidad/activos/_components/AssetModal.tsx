@@ -49,8 +49,8 @@ export function AssetModal({ editingId, form, saving, onClose, onSubmit, setFiel
                         <Archive className="w-4 h-4 text-primary" />
                         {editingId ? "Editar Activo" : "Nuevo Activo Fijo"}
                     </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-                        <X className="w-5 h-5" />
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar formulario de activo">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4 overflow-y-auto">

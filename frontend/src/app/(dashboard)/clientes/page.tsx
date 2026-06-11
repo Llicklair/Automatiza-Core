@@ -74,8 +74,8 @@ export default function ClientesPage() {
                                 className="h-7 w-7"
                                 onClick={() => setViewMode("table")}
                                 title="Vista tabla"
-                            >
-                                <List className="h-3.5 w-3.5" />
+                             aria-label="Vista tabla">
+                                <List className="h-3.5 w-3.5" aria-hidden="true" />
                             </Button>
                             <Button
                                 variant={viewMode === "cards" ? "secondary" : "ghost"}
@@ -83,8 +83,8 @@ export default function ClientesPage() {
                                 className="h-7 w-7"
                                 onClick={() => setViewMode("cards")}
                                 title="Vista tarjetas"
-                            >
-                                <LayoutGrid className="h-3.5 w-3.5" />
+                             aria-label="Vista tarjetas">
+                                <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
                             </Button>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>

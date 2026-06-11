@@ -31,8 +31,8 @@ export function CreateOpportunityModal({
                     <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                         <UserPlus className="w-5 h-5 text-primary" /> Nueva Oportunidad
                     </CardTitle>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-                        <X className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Cerrar formulario de oportunidad">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </Button>
                 </CardHeader>
                 <form onSubmit={onSubmit} className="p-6 space-y-5">

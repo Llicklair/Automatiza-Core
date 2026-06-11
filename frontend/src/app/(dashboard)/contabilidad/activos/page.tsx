@@ -129,11 +129,11 @@ export default function ActivosFijosPage() {
                                     <div className="col-span-1 text-right text-xs text-muted-foreground font-mono">{fmt(monthly)}</div>
                                     <div className="col-span-1 text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEdit(asset)}>
-                                                <Pencil className="w-3.5 h-3.5" />
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEdit(asset)} aria-label="Editar activo">
+                                                <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10" onClick={() => handleDelete(asset.id, asset.name)} disabled={deletingId === asset.id}>
-                                                {deletingId === asset.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10" onClick={() => handleDelete(asset.id, asset.name)} disabled={deletingId === asset.id} aria-label="Eliminar activo">
+                                                {deletingId === asset.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                             </Button>
                                         </div>
                                     </div>

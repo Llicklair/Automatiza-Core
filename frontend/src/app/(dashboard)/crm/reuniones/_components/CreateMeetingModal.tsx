@@ -27,7 +27,7 @@ export function CreateMeetingModal({ clients, form, setForm, creating, onSubmit,
             <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
                 <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
                     <h2 className="text-lg font-medium text-foreground flex items-center gap-2"><Video className="w-5 h-5 text-blue-400" /> Programar Reunión</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar formulario de reunión"><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>

@@ -159,15 +159,15 @@ export function VacacionesPanel() {
                                                             onClick={() => handleApprove(req.id)}
                                                             title="Aprobar"
                                                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-400 transition-colors"
-                                                        >
-                                                            <Check className="w-4 h-4" />
+                                                         aria-label="Aprobar">
+                                                            <Check className="w-4 h-4" aria-hidden="true" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleReject(req.id)}
                                                             title="Rechazar"
                                                             className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
-                                                        >
-                                                            <X className="w-4 h-4" />
+                                                         aria-label="Rechazar">
+                                                            <X className="w-4 h-4" aria-hidden="true" />
                                                         </button>
                                                     </>
                                                 )}
@@ -175,8 +175,8 @@ export function VacacionesPanel() {
                                                     onClick={() => handleDelete(req.id)}
                                                     title="Eliminar"
                                                     className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
+                                                 aria-label="Eliminar">
+                                                    <Trash2 className="w-4 h-4" aria-hidden="true" />
                                                 </button>
                                             </div>
                                         </td>

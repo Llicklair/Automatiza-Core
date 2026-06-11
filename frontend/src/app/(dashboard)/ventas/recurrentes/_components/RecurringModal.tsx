@@ -31,7 +31,7 @@ export default function RecurringModal({
             <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-bold text-foreground">{editingId ? t("editRecurring") : t("newRecurring")}</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Cerrar formulario de factura recurrente"><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={onSubmit} className="space-y-5">
                     <div>
@@ -96,8 +96,8 @@ export default function RecurringModal({
                                     </div>
                                     <div className="col-span-1 flex justify-end">
                                         <button type="button" onClick={() => removeLine(i)} disabled={form.lines.length === 1}
-                                            className="p-1.5 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30">
-                                            <X className="w-3.5 h-3.5" />
+                                            className="p-1.5 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30" aria-label="Eliminar línea">
+                                            <X className="w-3.5 h-3.5" aria-hidden="true" />
                                         </button>
                                     </div>
                                 </div>

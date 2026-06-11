@@ -119,8 +119,8 @@ export default function QuotesTable({ quotes, isLoading, convertingId, onConvert
                                         onClick={() => onDelete(q.id)}
                                         className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
                                         title={t("deleteQuote")}
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                     aria-label={t("deleteQuote")}>
+                                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                     </button>
                                 </div>
                             </td>

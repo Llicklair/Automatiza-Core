@@ -56,26 +56,26 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                     <button onClick={handleDownloadPdf} title="Descargar PDF"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        <Download className="w-4 h-4" />
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Descargar PDF">
+                        <Download className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button onClick={handleCopy} title="Copiar HTML"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        {copying ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Copiar HTML">
+                        {copying ? <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
                     </button>
                     {doc.status === "draft" && (
                         <button onClick={() => onApprove(doc.id)} title="Aprobar"
-                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors">
-                            <CheckCircle2 className="w-4 h-4" />
+                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors" aria-label="Aprobar">
+                            <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                         </button>
                     )}
                     <button onClick={() => onDelete(doc.id)} title="Eliminar"
-                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
-                        <Trash2 className="w-4 h-4" />
+                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Eliminar">
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button onClick={() => setExpanded(v => !v)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors" aria-label="Expandir o contraer documento">
+                        {expanded ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
                     </button>
                 </div>
             </div>

@@ -80,8 +80,8 @@ export function PayrollTable({
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-1.5">
                                         <button onClick={() => handleDownloadPdf(payroll)} disabled={downloadingId === payroll.id}
-                                            className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50" title="Descargar PDF">
-                                            {downloadingId === payroll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                            className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50" title="Descargar PDF" aria-label="Descargar PDF">
+                                            {downloadingId === payroll.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
                                         </button>
                                         {payroll.status === "draft" && (
                                             <button onClick={() => handleApprove(payroll)} disabled={approvingId === payroll.id}

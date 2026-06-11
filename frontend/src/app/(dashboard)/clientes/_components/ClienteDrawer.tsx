@@ -104,8 +104,8 @@ export function ClienteDrawer({
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
-                                    <X className="h-5 w-5" />
+                                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0" aria-label="Cerrar ficha de cliente">
+                                    <X className="h-5 w-5" aria-hidden="true" />
                                 </Button>
                             </div>
                         </div>
@@ -214,8 +214,8 @@ export function ClienteDrawer({
                                                     onClick={() => downloadInvoicePdf(inv.id, inv.invoice_number, t("errorDownloadPdf"))}
                                                     title={t("downloadPdf")}
                                                     className="shrink-0"
-                                                >
-                                                    <Download className="h-4 w-4" />
+                                                 aria-label={t("downloadPdf")}>
+                                                    <Download className="h-4 w-4" aria-hidden="true" />
                                                 </Button>
                                             </div>
                                         ))}
