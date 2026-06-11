@@ -54,3 +54,14 @@ class ContractPreviewHtmlOut(BaseModel):
 
 class ContractBodyHtmlIn(BaseModel):
     html: str
+
+
+class SemanticSearchHit(BaseModel):
+    """Un fragmento (chunk) relevante de la búsqueda semántica RAG."""
+    document_id: str
+    file_name: str | None = None
+    chunk_index: str | None = None
+    text: str
+    page_number: int | None = None
+    element_type: str | None = None
+    similarity: float

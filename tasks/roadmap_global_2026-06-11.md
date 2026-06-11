@@ -51,7 +51,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 | 2.3 | Asistente fiscal preventivo (widget `/impuestos` + notificación) — reusa `services/aeat/` | PENDIENTE | nuevo widget + `preventive_check.py` existente | todo F1.4 |
 
 ### Facturación / Contabilidad
-| 2.4 | billing→accounting: asiento automático al emitir factura (verificar wiring de `auto_accounting.py`) | PARCIAL | `services/billing/auto_accounting.py`, `commands.py` | depth-audit |
+| 2.4 | ~~billing→accounting: asiento automático al emitir factura~~ **HECHO** (ya cableado): `create_invoice_journal_entry` se invoca en creación (agente) e importación de facturas | HECHO | `services/billing/auto_accounting.py` | depth-audit |
 | 2.5 | VeriFactu: auditoría de envíos (`verifactu_submissions`) | PENDIENTE | nueva tabla + logs | roadmap_impl |
 
 ### Documentos / Gestoría
@@ -99,10 +99,10 @@ Features a medias que restan valor/UX una vez hay usuarios.
 | 3.2 | Normativa fiscal → RAG (hoy hardcoded en `compliance/tools.py`; reusa BOEScraper + `cosine_topk`) | PENDIENTE | roadmap_impl |
 | 3.3 | Modelo 131 (IRPF módulos) y Modelo 200 (Sociedades) | PENDIENTE | backlog |
 | 3.4 | Multi-currency banca (`requires_manual_review`) (INT.CUR) | PENDIENTE | backlog |
-| 3.5 | Búsqueda semántica: UI/endpoint dedicado (el tool de agente ya existe) | PARCIAL | depth-audit |
+| 3.5 | Búsqueda semántica: ~~endpoint REST dedicado~~ **HECHO** (2026-06-11): `GET /documents/search` (coseno en Python, scoped por tenant, +4 tests); **falta UI** frontend | PARCIAL (backend hecho) | `api/v1/routes/documents.py` | depth-audit |
 | 3.6 | REGAP: consulta real a AEAT (hoy mockeado) | PARCIAL | plan-gtm, scoping |
-| 3.7 | Scheduler: dominio por defecto "billing" → "chat" | PENDIENTE | auditoria_backend |
-| 3.8 | Quitar datos DEMO aleatorios en producción (banca genera txs `[DEMO]`) | PENDIENTE | auditoria_backend |
+| 3.7 | ~~Scheduler: dominio por defecto "billing" → "chat"~~ **HECHO**: `_infer_domain_from_text` ya devuelve "chat" por defecto | HECHO | auditoria_backend |
+| 3.8 | ~~Quitar datos DEMO aleatorios en producción~~ **HECHO**: gated tras `BANKING_DEMO_SYNC` + `BankSyncNotAvailableError` si off + `[DEMO]` excluido de analíticas | HECHO | auditoria_backend |
 | 3.9 | README: añadir N43/retenciones/tesorería al estado de módulos | PENDIENTE | auditoria_06-10 |
 | 3.10 | **TicketBAI** (País Vasco/Navarra) — reusa 80-90% (XAdES/cert/cadena) | PENDIENTE | scoping fiscal |
 
