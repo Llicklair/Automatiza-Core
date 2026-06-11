@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/hooks/useFormat";
 import { CheckCircle2, Copy, Download, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import type { HRDocument } from "@/lib/api/hr_documents";
+import { hrDocuments, type HRDocument } from "@/lib/api/hr_documents";
 import { DOC_TYPES } from "../_hooks/useHRDocumentos";
 
 function StatusBadge({ status }: { status: HRDocument["status"] }) {
@@ -42,13 +42,20 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
         setTimeout(() => setCopying(false), 1500);
     };
 
-    const handleDownloadPdf = () => {
-        const win = window.open("", "_blank");
-        if (!win) return;
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>@media print{body{margin:0}}</style></head><body>${doc.content_html}</body></html>`);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); }, 400);
+    const handleDownloadPdf = async () => {
+        const filename = `${doc.doc_number || doc.title || "documento"}.pdf`;
+        try {
+            // PDF server-side (incluye el folio); mismos bytes que se usan para firmar.
+            await hrDocuments.downloadPdf(doc.id, filename);
+        } catch {
+            // Fallback: impresión desde el navegador si el render server-side falla.
+            const win = window.open("", "_blank");
+            if (!win) return;
+            win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>@media print{body{margin:0}}</style></head><body>${doc.content_html}</body></html>`);
+            win.document.close();
+            win.focus();
+            setTimeout(() => { win.print(); }, 400);
+        }
     };
 
     return (

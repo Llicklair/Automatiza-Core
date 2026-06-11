@@ -272,6 +272,61 @@ async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
     }
 
 
+def _render_hr_document_pdf(doc: HRDocument) -> bytes:
+    """Renderiza el `content_html` de un documento de gestoría a PDF (xhtml2pdf).
+
+    Incluye el folio (`doc_number`) en una cabecera discreta para trazabilidad.
+    Estos bytes sirven tanto para descarga como para firma con AutoFirma
+    (`/signing/autofirma/init` acepta el documento en base64).
+    """
+    import html as _html
+    import io
+
+    try:
+        from xhtml2pdf import pisa
+    except ImportError as e:  # pragma: no cover - dependencia de entorno
+        raise RuntimeError("Falta xhtml2pdf para generar el PDF: " + str(e)) from e
+
+    folio = doc.doc_number or "BORRADOR (sin aprobar)"
+    header = _html.escape(f"Folio: {folio} · {doc.title}")
+    full_html = (
+        '<!DOCTYPE html><html><head><meta charset="utf-8"/>'
+        "<style>"
+        "@page { size: A4; margin: 2.2cm 2cm; }"
+        "body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1a1a1a; }"
+        "table { width: 100%; border-collapse: collapse; }"
+        "td, th { border: 1px solid #ddd; padding: 4px; }"
+        "h1 { font-size: 18px; } h2 { font-size: 14px; }"
+        ".gestoria-folio { font-size: 8px; color: #888; border-bottom: 1px solid #eee;"
+        " padding-bottom: 4px; margin-bottom: 12px; }"
+        "</style></head><body>"
+        f'<div class="gestoria-folio">{header}</div>'
+        f"{doc.content_html or ''}"
+        "</body></html>"
+    )
+    buffer = io.BytesIO()
+    status = pisa.CreatePDF(full_html, dest=buffer, encoding="utf-8")
+    if status.err:
+        raise RuntimeError(f"xhtml2pdf falló al generar el PDF ({status.err} errores)")
+    return buffer.getvalue()
+
+
+async def get_document_pdf(doc_id, tenant_id, db: AsyncSession) -> tuple[bytes, str]:
+    """Devuelve (pdf_bytes, filename) de un documento de gestoría. ValueError si no existe."""
+    result = await db.execute(
+        select(HRDocument).where(
+            HRDocument.id == doc_id,
+            HRDocument.tenant_id == tenant_id,
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise ValueError("Documento no encontrado")
+    pdf = _render_hr_document_pdf(doc)
+    base = (doc.doc_number or doc.title or "documento").replace("/", "-").replace(" ", "_")
+    return pdf, f"{base}.pdf"
+
+
 async def delete_document(doc_id: str, tenant_id, db: AsyncSession) -> None:
     """Delete a document. Raises ValueError if not found."""
     result = await db.execute(
