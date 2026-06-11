@@ -192,7 +192,7 @@ Notas de verificación: `orchestrator/tools.py` NO existe (no tocado); Dashboard
 - [x] **F2.5 OCR con aprendizaje por proveedor** ✅ (verificado 2026-06-12) — `services/ocr/supplier_learning.py` + modelo `SupplierInvoiceTemplate` (store por NIF), cableado en `invoice_scanner.py`.
 - [ ] **F2.6 Conciliación bancaria explicable** — PARCIAL: matching por monto+fecha (`agents/banking/_reconciliation_tools.py`) + almacén de rechazos (mig `0034_reconciliation_rejections`). **Falta**: razón explícita "= factura #X porque {monto/fecha/NIF}" + un-click aceptar/rechazar en UI + aprendizaje del rechazo.
 - [x] **F2.7 Tesorería SEPA** ✅ (verificado 2026-06-12) — `services/treasury/sepa.py` (Pain.001.001.03 + Pain.008.001.02) + `projection.py` (cashflow proyectado) + mig `0052_sepa_remittances`.
-- [ ] **F2.8 Modelo 100/200 sociedades** — PARCIAL: `build_modelo_200_data` + endpoint `GET /200` existen. **Falta**: PDF del Modelo 200, Modelo 100 y presentación telemática AEAT.
+- [ ] **F2.8 Modelo 100/200 sociedades** — PARCIAL: `build_modelo_200_data` + endpoint `GET /200` + **PDF `GET /200/pdf`** ✅ (2026-06-12, `generate_modelo_200_pdf`). **Falta**: Modelo 100 y presentación telemática AEAT del 200.
 
 ### Fase 3 — Capacidades nuevas con dependencias externas (objetivo: 1-3 meses)
 

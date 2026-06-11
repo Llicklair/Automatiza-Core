@@ -212,6 +212,28 @@ async def download_modelo_190_pdf(
     return _pdf_response(generate_modelo_190_pdf(data), f"modelo-190-{y}.pdf")
 
 
+@router.get("/200/pdf")
+async def download_modelo_200_pdf(
+    year: int = Query(default=None),
+    tipo_impositivo_pct: float | None = Query(default=None, ge=0, le=100),
+    pagos_fraccionados_pagados: float = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """PDF borrador imprimible del Modelo 200 (Impuesto sobre Sociedades, preview)."""
+    from app.services.pdf_reports import generate_modelo_200_pdf
+
+    y = year or (_current_year() - 1)
+    data = await build_modelo_200_data(
+        db,
+        user.tenant_id,
+        y,
+        tipo_impositivo_pct=tipo_impositivo_pct,
+        pagos_fraccionados_pagados=pagos_fraccionados_pagados,
+    )
+    return _pdf_response(generate_modelo_200_pdf(data), f"modelo-200-{y}.pdf")
+
+
 @router.get("/347/pdf")
 async def download_modelo_347_pdf(
     year: int = Query(default=None),
