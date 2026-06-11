@@ -13,6 +13,7 @@ import { useCatalogPage } from "./_hooks/useCatalogPage";
 import { ProductModal } from "./_components/ProductModal";
 import { ImportCsvModal } from "@/components/shared/ImportCsvModal";
 import { api } from "@/lib/api";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const fmt = (val: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(val);
@@ -105,7 +106,7 @@ export default function CatalogPage() {
     ];
 
     return (
-        <div className="p-6 space-y-6">
+        <PageContainer width="full">
             <PageHeader
                 title="Catálogo de Artículos"
                 description="Gestiona productos y servicios. La IA los usa para emitir facturas y presupuestos."
@@ -166,6 +167,6 @@ export default function CatalogPage() {
                 onImport={(rows) => api.importBulk.products(rows)}
                 onSuccess={() => window.location.reload()}
             />
-        </div>
+        </PageContainer>
     );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Download, FileText, Loader2, Trash2, CheckCircle2, Clock, XCircle, Send } from "lucide-react";
 import { useFacturaDetalle } from "./_hooks/useFacturaDetalle";
 import { Button } from "@/components/ui/button";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
     pending:   <Send className="w-3.5 h-3.5" />,
@@ -26,7 +27,7 @@ export default function FacturaDetallePage() {
     } = useFacturaDetalle();
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-6">
+        <PageContainer width="5xl">
             <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2 min-w-0">
                     <Link
@@ -203,6 +204,6 @@ export default function FacturaDetallePage() {
                     </div>
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }

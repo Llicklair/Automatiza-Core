@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { useToastStore } from "@/stores/toast";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const fmt = (n: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
@@ -68,7 +69,7 @@ export default function FacturacionElectronicaPage() {
     const pending = invoices.filter((i) => !i.verifactu_status).length;
 
     return (
-        <div className="p-6 space-y-6">
+        <PageContainer width="full">
             <PageHeader
                 title="Facturación electrónica"
                 description="Genera FacturaE 3.2.2 y envía facturas a Verifactu (AEAT)"
@@ -178,6 +179,6 @@ export default function FacturacionElectronicaPage() {
             <p className="text-xs text-muted-foreground">
                 FacturaE 3.2.2 — formato estándar AEAT para B2G y B2B. Verifactu funciona en modo simulación hasta integrar certificado digital.
             </p>
-        </div>
+        </PageContainer>
     );
 }

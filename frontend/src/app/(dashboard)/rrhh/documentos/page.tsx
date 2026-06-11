@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function HRDocumentosPage() {
     const {
@@ -17,7 +18,7 @@ export default function HRDocumentosPage() {
     } = useHRDocumentos();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             {toast && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border text-foreground text-sm px-5 py-2.5 rounded-full shadow-lg">{toast}</div>
             )}
@@ -101,6 +102,6 @@ export default function HRDocumentosPage() {
                     ))}
                 </div>
             </div>
-        </div>
+        </PageContainer>
     );
 }

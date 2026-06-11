@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { useToastStore } from "@/stores/toast";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const TYPE_META: Record<string, { label: string; icon: React.ElementType; href: string }> = {
     overdue_invoice:  { label: "Factura vencida",           icon: ReceiptText, href: "/ventas/facturas" },
@@ -80,7 +81,7 @@ export default function AlertasPage() {
     const infos    = alerts.filter((a) => a.severity === "info").length;
 
     return (
-        <div className="p-6 space-y-6">
+        <PageContainer width="full">
             <PageHeader
                 title="Alertas automáticas"
                 description="Condiciones de negocio detectadas por el sistema (facturas, stock, nóminas)"
@@ -165,6 +166,6 @@ export default function AlertasPage() {
             <p className="text-xs text-muted-foreground">
                 Las alertas se comprueban automáticamente cada día a las 08:30. Las mismas alertas no se repiten antes de 24h.
             </p>
-        </div>
+        </PageContainer>
     );
 }

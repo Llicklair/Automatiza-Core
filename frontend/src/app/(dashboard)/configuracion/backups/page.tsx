@@ -24,6 +24,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type ConfirmKind = null | "restore" | "delete";
 
@@ -127,7 +128,7 @@ export default function BackupsPage() {
     };
 
     return (
-        <div className="space-y-6 p-6">
+        <PageContainer width="full">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
                     <div>
@@ -273,6 +274,6 @@ export default function BackupsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageContainer>
     );
 }

@@ -6,6 +6,7 @@ import { ProveedorModal } from "./_components/ProveedorModal";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function ProveedoresPage() {
     const {
@@ -18,7 +19,7 @@ export default function ProveedoresPage() {
     } = useProveedores();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title="Proveedores"
                 description="Gestiona el directorio de proveedores y sus datos de contacto."
@@ -129,6 +130,6 @@ export default function ProveedoresPage() {
                     onSubmit={handleSubmit}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

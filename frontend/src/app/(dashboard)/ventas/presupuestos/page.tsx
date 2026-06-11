@@ -8,6 +8,7 @@ import { FileText, Plus, Search, Clock } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function QuotesPage() {
     const {
@@ -23,7 +24,7 @@ export default function QuotesPage() {
     } = usePresupuestos();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title={t("quotes")}
                 description={t("quotesDescription")}
@@ -81,6 +82,6 @@ export default function QuotesPage() {
             )}
 
             {toast && <QuoteToast toast={toast} onClose={() => setToast(null)} />}
-        </div>
+        </PageContainer>
     );
 }

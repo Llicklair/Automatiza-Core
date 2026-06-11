@@ -8,6 +8,7 @@ import { LlmProvidersCard } from "./_components/LlmProvidersCard";
 import { EmbeddingsCard } from "./_components/EmbeddingsCard";
 import { ClaudeCodeCard } from "./_components/ClaudeCodeCard";
 import { UsageStatsCard } from "./_components/UsageStatsCard";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function ApiKeysPage() {
     const router = useRouter();
@@ -28,7 +29,7 @@ export default function ApiKeysPage() {
     }
 
     return (
-        <div className="p-8 max-w-2xl mx-auto">
+        <PageContainer width="full" className="max-w-2xl mx-auto">
             <button
                 onClick={() => router.back()}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-6"
@@ -79,6 +80,6 @@ export default function ApiKeysPage() {
                     Guardar configuración
                 </button>
             </div>
-        </div>
+        </PageContainer>
     );
 }

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useProyectosListado, statusConfig } from "./_hooks/useProyectosListado";
 import { CreateProjectModal } from "./_components/CreateProjectModal";
 import { EditProjectModal } from "./_components/EditProjectModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function ProyectosListado() {
     const {
@@ -20,7 +21,7 @@ export default function ProyectosListado() {
     } = useProyectosListado();
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <PageContainer width="7xl" className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground mb-2">Proyectos</h1>
@@ -118,6 +119,6 @@ export default function ProyectosListado() {
                     onClose={() => setEditProject(null)}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

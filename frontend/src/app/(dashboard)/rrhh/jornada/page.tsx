@@ -6,6 +6,7 @@ import { Clock, Timer, Umbrella } from "lucide-react";
 import { HorariosPanel } from "../horarios/HorariosPanel";
 import { FichajesPanel } from "../fichajes/FichajesPanel";
 import { VacacionesPanel } from "../vacaciones/VacacionesPanel";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "horarios" | "fichajes" | "vacaciones";
 
@@ -23,7 +24,7 @@ export default function JornadaPage() {
     ];
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <div className="flex items-center gap-1 border-b border-border">
                 {tabs.map(t => {
                     const Icon = t.icon;
@@ -46,6 +47,6 @@ export default function JornadaPage() {
             {tab === "horarios" && <HorariosPanel />}
             {tab === "fichajes" && <FichajesPanel />}
             {tab === "vacaciones" && <VacacionesPanel />}
-        </div>
+        </PageContainer>
     );
 }

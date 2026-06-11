@@ -3,6 +3,7 @@
 import { Loader2, Save } from "lucide-react";
 import { LogoSection } from "./_components/LogoSection";
 import { useConfiguracionEmpresa } from "./_hooks/useConfiguracionEmpresa";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function EmpresaConfigPage() {
     const {
@@ -16,7 +17,7 @@ export default function EmpresaConfigPage() {
     } = useConfiguracionEmpresa();
 
     return (
-        <div className="p-8 max-w-3xl mx-auto space-y-6">
+        <PageContainer width="3xl">
             <div>
                 <h1 className="text-3xl font-bold text-foreground mb-1">Datos de mi empresa</h1>
                 <p className="text-muted-foreground text-sm mt-2">
@@ -137,6 +138,6 @@ export default function EmpresaConfigPage() {
             </div>
 
             <LogoSection />
-        </div>
+        </PageContainer>
     );
 }

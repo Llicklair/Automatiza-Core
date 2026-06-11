@@ -8,12 +8,13 @@ import {
     Play, Lock
 } from "lucide-react";
 import { usePrimerosPassos, STEPS, COLOR_MAP, IA_EXAMPLES } from "./_hooks/usePrimerosPassos";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PrimerosPassPage() {
     const { completed, expanded, iaExample, toggle, expand, completedCount, totalSteps, pct, isLocked } = usePrimerosPassos();
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8 max-w-4xl mx-auto">
+        <PageContainer width="4xl" className="min-h-screen bg-background text-foreground">
 
             {/* Header */}
             <div className="mb-10">
@@ -262,6 +263,6 @@ export default function PrimerosPassPage() {
                     })}
                 </div>
             </div>
-        </div>
+        </PageContainer>
     );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
     Activity, Calendar, TrendingUp, Video, BookOpen, ArrowRight
 } from "lucide-react";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const SECTIONS = [
     {
@@ -53,7 +54,7 @@ const SECTIONS = [
 
 export default function CRMPage() {
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -86,6 +87,6 @@ export default function CRMPage() {
                     </Link>
                 ))}
             </div>
-        </div>
+        </PageContainer>
     );
 }

@@ -6,12 +6,13 @@ import { useTasksKanban } from "./_hooks/useTasksKanban";
 import { KanbanColumn } from "./_components/KanbanColumn";
 import { CreateTaskModal } from "./_components/CreateTaskModal";
 import { EditTaskModal } from "./_components/EditTaskModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 function TasksKanbanContent() {
     const k = useTasksKanban();
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8">
+        <PageContainer width="full" className="min-h-screen bg-background text-foreground">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
                     <h1 className="text-3xl font-light text-foreground flex items-center gap-3">
@@ -84,7 +85,7 @@ function TasksKanbanContent() {
                     onSubmit={k.handleEditSave}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }
 

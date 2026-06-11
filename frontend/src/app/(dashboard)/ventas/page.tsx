@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
     FileText, ShoppingCart, FileCheck, RefreshCw, Package, ArrowRight, TrendingUp
 } from "lucide-react";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const SECTIONS = [
     {
@@ -53,7 +54,7 @@ const SECTIONS = [
 
 export default function VentasPage() {
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -86,6 +87,6 @@ export default function VentasPage() {
                     </Link>
                 ))}
             </div>
-        </div>
+        </PageContainer>
     );
 }

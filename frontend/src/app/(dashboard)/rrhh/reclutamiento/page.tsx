@@ -10,6 +10,7 @@ import { CreatePositionModal } from "./_components/CreatePositionModal";
 import { CvAnalysisTab } from "./_components/CvAnalysisTab";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "vacantes" | "cv";
 
@@ -31,7 +32,7 @@ export default function RecruitmentPage() {
     ];
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title="Reclutamiento"
                 description="Gestiona puestos abiertos, analiza CVs con IA y crea candidatos."
@@ -104,6 +105,6 @@ export default function RecruitmentPage() {
                     onCreate={createPosition}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

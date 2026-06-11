@@ -9,6 +9,7 @@ import { type PurchaseOrder } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -35,7 +36,7 @@ export default function PedidosCompraPage() {
     const [receiveOrder, setReceiveOrder] = useState<PurchaseOrder | null>(null);
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title="Pedidos de Compra"
                 description="Gestiona los pedidos a tus proveedores antes de recibir la factura."
@@ -173,6 +174,6 @@ export default function PedidosCompraPage() {
             />
 
             <RecibirModal order={receiveOrder} onClose={() => setReceiveOrder(null)} onReceived={load} />
-        </div>
+        </PageContainer>
     );
 }

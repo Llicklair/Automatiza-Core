@@ -11,6 +11,7 @@ import { usePayrolls } from "./_hooks/usePayrolls";
 import { AutoPayrollModal } from "./_components/AutoPayrollModal";
 import { PayrollFilters } from "./_components/PayrollFilters";
 import { PayrollTable } from "./_components/PayrollTable";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PayrollsPage() {
     const {
@@ -24,7 +25,7 @@ export default function PayrollsPage() {
     } = usePayrolls();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title="Emisión de Nóminas"
                 description={
@@ -114,6 +115,6 @@ export default function PayrollsPage() {
                     </Button>
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }
