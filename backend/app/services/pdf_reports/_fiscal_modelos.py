@@ -377,3 +377,40 @@ def _q(periodo) -> int:
         return int(str(periodo).rstrip("Tt"))
     except (TypeError, ValueError):
         return 0
+
+
+# ── Modelo 200 — Impuesto sobre Sociedades ─────────────────────────────────────
+
+def generate_modelo_200_pdf(data: dict) -> bytes:
+    if not REPORTLAB_AVAILABLE:
+        return f"MODELO 200 BORRADOR {data.get('ejercicio')}\n".encode()
+    s = _common_styles(); C = s["C"]
+    el = _header("Modelo 200", "Impuesto sobre Sociedades · Declaración (preview)",
+                 data.get("tenant", {}), "Ejercicio anual", data.get("ejercicio", ""), s, C)
+    el.append(Paragraph("Resultado contable", s["section"]))
+    el.append(_kv_table([
+        ("Cifra de negocio (facturas emitidas)", _eur(data.get("cifra_negocio")), False),
+        ("Gastos (facturas recibidas)", _eur(data.get("gastos_facturas")), False),
+        ("Coste de personal (nóminas + SS empresa)", _eur(data.get("coste_nominas")), False),
+        ("Resultado contable", _eur(data.get("resultado_contable")), True),
+    ], s, C))
+    el.append(Spacer(1, 6 * mm))
+    el.append(Paragraph("Liquidación", s["section"]))
+    el.append(_kv_table([
+        ("Ajustes fiscales", _eur(data.get("ajustes_fiscales")), False),
+        ("Base imponible", _eur(data.get("base_imponible")), True),
+        ("Tipo impositivo", f"{float(data.get('tipo_impositivo_pct', 0) or 0):.2f} %", False),
+        ("Cuota íntegra", _eur(data.get("cuota_integra")), True),
+        ("Pagos fraccionados (Modelo 202)", _eur(data.get("pagos_fraccionados_pagados")), False),
+        ("RESULTADO DE LA DECLARACIÓN", _eur(data.get("resultado_declaracion")), True),
+    ], s, C))
+    warning = data.get("_warning")
+    if warning:
+        el.append(Spacer(1, 5 * mm))
+        el.append(Paragraph(
+            str(warning),
+            ParagraphStyle("Warn200", parent=s["styles"]["Normal"], fontSize=8,
+                           fontName="Helvetica-Oblique", textColor=colors.HexColor(C["AMBER"])),
+        ))
+    el += _footer(s, C)
+    return _build(el)
