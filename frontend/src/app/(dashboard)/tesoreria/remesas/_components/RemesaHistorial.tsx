@@ -96,8 +96,8 @@ export default function RemesaHistorial() {
                                         </Button>
                                     )}
                                     <Button variant="ghost" size="icon" className="h-7 w-7"
-                                        disabled={busy === r.id} onClick={() => download(r)} title="Descargar XML">
-                                        {busy === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                        disabled={busy === r.id} onClick={() => download(r)} title="Descargar XML" aria-label="Descargar XML">
+                                        {busy === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Download className="w-3.5 h-3.5" aria-hidden="true" />}
                                     </Button>
                                 </div>
                             </div>

@@ -23,8 +23,8 @@ export default function RemesaModal({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <h2 className="font-semibold text-foreground">Generando Remesa SEPA</h2>
                     {!isProcessing && (
-                        <button onClick={onCloseAndReset} className="text-muted-foreground hover:text-foreground">
-                            <X className="w-5 h-5" />
+                        <button onClick={onCloseAndReset} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar">
+                            <X className="w-5 h-5" aria-hidden="true" />
                         </button>
                     )}
                 </div>

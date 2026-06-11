@@ -16,8 +16,8 @@ export function Modal({
             <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 space-y-5">
                 <div className="flex items-start justify-between">
                     <h2 className="text-xl font-bold text-foreground">{title}</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-                        <X className="w-5 h-5" />
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
                 {children}

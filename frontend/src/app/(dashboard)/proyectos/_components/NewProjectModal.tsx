@@ -26,7 +26,7 @@ export function NewProjectModal({ form, onChange, onSubmit, onClose, saving, err
             <div className="w-full max-w-md rounded-2xl border border-border bg-card overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <h2 className="font-semibold text-foreground">Nuevo Proyecto</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar"><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>

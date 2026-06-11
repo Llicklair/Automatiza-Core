@@ -132,8 +132,8 @@ function MobileScannerInner() {
                         onClick={scanProduct}
                         disabled={loading || !code.trim()}
                         className="px-3 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-foreground"
-                    >
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
+                     aria-label="Escanear producto">
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <ScanLine className="w-4 h-4" aria-hidden="true" />}
                     </button>
                 </div>
             </div>
@@ -245,8 +245,8 @@ function MobileScannerInner() {
                         onClick={confirmDelivery}
                         disabled={loading || !albaranNum.trim()}
                         className="px-3 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-foreground"
-                    >
-                        <CheckCircle2 className="w-4 h-4" />
+                     aria-label="Confirmar entrega">
+                        <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                 </div>
             </div>

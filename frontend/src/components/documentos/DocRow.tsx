@@ -88,10 +88,10 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                                 disabled={cancelling}
                                 title="Cancelar procesamiento"
                                 className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
-                            >
+                             aria-label="Cancelar procesamiento">
                                 {cancelling
-                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    : <X className="w-3.5 h-3.5" />}
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                                    : <X className="w-3.5 h-3.5" aria-hidden="true" />}
                             </button>
                         )}
                         <button
@@ -101,15 +101,15 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                                 ? "text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
                                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
                                 }`}
-                        >
-                            <Download className="w-3.5 h-3.5" />
+                         aria-label={isPdf ? "Descargar PDF" : "Descargar archivo"}>
+                            <Download className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                         <button
                             onClick={handleDelete}
                             title="Eliminar documento"
                             className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
+                         aria-label="Eliminar documento">
+                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                         {hasParsed && !isPdf && (
                             <ChevronLeft className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${open ? "-rotate-90" : "rotate-180"}`} />

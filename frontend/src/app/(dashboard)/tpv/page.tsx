@@ -112,8 +112,8 @@ export default function TpvPage() {
                                 autoFocus
                             />
                         </div>
-                        <Button type="submit" disabled={busy || !code.trim()}>
-                            <Plus className="w-4 h-4" />
+                        <Button type="submit" disabled={busy || !code.trim()} aria-label="Añadir producto">
+                            <Plus className="w-4 h-4" aria-hidden="true" />
                         </Button>
                         <Button
                             type="button"

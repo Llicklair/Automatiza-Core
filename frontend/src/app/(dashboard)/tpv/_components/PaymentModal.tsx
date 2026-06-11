@@ -21,8 +21,8 @@ export function PaymentModal({ open, onClose, total, busy, onPay }: Props) {
             <div className="bg-card border border-border rounded-2xl w-full max-w-md overflow-hidden">
                 <div className="p-4 flex items-center justify-between border-b border-border">
                     <h3 className="text-sm font-medium text-foreground">Cobrar</h3>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} disabled={busy}>
-                        <X className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} disabled={busy} aria-label="Cerrar">
+                        <X className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>
                 <div className="p-6 space-y-5">

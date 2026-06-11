@@ -81,8 +81,8 @@ export function ConsultaRapida() {
                     onClick={() => submit(question)}
                     disabled={loading || !question.trim()}
                     size="icon"
-                >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                 aria-label="Enviar consulta">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Send className="w-4 h-4" aria-hidden="true" />}
                 </Button>
             </div>
 

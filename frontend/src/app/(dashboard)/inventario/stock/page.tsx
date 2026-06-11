@@ -134,8 +134,8 @@ export default function StockPage() {
                             className="h-6 w-6"
                             onClick={() => startEditAlert(product)}
                             title="Editar alerta mínima"
-                        >
-                            <Pencil className="w-3 h-3" />
+                         aria-label="Editar alerta mínima">
+                            <Pencil className="w-3 h-3" aria-hidden="true" />
                         </Button>
                     </div>
                 );
@@ -169,8 +169,8 @@ export default function StockPage() {
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Abrir menú de acciones">
+                                    <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -191,8 +191,8 @@ export default function StockPage() {
                             className="h-8 w-8"
                             onClick={() => toggleExpand(product.id)}
                             title="Ver lotes, caducidad, stock por almacén y movimientos"
-                        >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                         aria-label="Ver lotes, caducidad, stock por almacén y movimientos">
+                            {isExpanded ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
                         </Button>
                     </div>
                 );

@@ -31,7 +31,7 @@ export function InstructModal({ employee, onClose, onSent }: {
             <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="font-semibold text-foreground text-sm">Instrucción → {employee.name}</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg"><X className="w-4 h-4 text-muted-foreground" /></button>
+                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label="Cerrar"><X className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></button>
                 </div>
                 <p className="text-xs text-muted-foreground">La instrucción pasará por el coordinador, que decidirá cómo ejecutarla.</p>
                 <textarea

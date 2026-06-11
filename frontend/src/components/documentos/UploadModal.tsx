@@ -31,8 +31,8 @@ export default function UploadModal({
                     <button
                         onClick={onClose}
                         className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <X className="w-5 h-5" />
+                     aria-label="Cerrar">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 

@@ -45,8 +45,8 @@ export default function ConfirmDialog() {
                     <button
                         onClick={_cancel}
                         className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <X className="w-4 h-4" />
+                     aria-label="Cerrar">
+                        <X className="w-4 h-4" aria-hidden="true" />
                     </button>
                 </div>
 

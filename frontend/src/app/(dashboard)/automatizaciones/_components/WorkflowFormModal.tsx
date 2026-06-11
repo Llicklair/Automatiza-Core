@@ -55,8 +55,8 @@ export default function WorkflowFormModal({
                         <Zap className="w-5 h-5 text-primary" />
                         {editingWorkflow ? "Editar Automatización" : "Nueva Regla de Automatización"}
                     </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
-                        <X className="w-5 h-5" />
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition" aria-label="Cerrar">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4">

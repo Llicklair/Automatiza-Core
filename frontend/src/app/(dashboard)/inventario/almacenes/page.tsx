@@ -121,8 +121,8 @@ export default function WarehousesPage() {
                                         {editId === w.id ? (
                                             <span className="flex items-center gap-1">
                                                 <Input className="h-7" value={editName} onChange={e => setEditName(e.target.value)} />
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => saveName(w.id)}><Check className="w-3.5 h-3.5 text-emerald-400" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditId(null)}><X className="w-3.5 h-3.5" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => saveName(w.id)} aria-label="Guardar nombre"><Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditId(null)} aria-label="Cancelar edición"><X className="w-3.5 h-3.5" aria-hidden="true" /></Button>
                                             </span>
                                         ) : w.name}
                                     </td>
@@ -134,8 +134,8 @@ export default function WarehousesPage() {
                                     </td>
                                     <td className="p-3 text-right">
                                         {editId !== w.id && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditId(w.id); setEditName(w.name); }}>
-                                                <Pencil className="w-3.5 h-3.5" />
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditId(w.id); setEditName(w.name); }} aria-label="Editar nombre">
+                                                <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                                             </Button>
                                         )}
                                     </td>

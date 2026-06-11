@@ -109,23 +109,23 @@ export default function DocCard({ doc, onReload }: DocCardProps) {
                                 disabled={cancelling}
                                 title="Cancelar"
                                 className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition"
-                            >
-                                {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                             aria-label="Cancelar">
+                                {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <X className="w-3.5 h-3.5" aria-hidden="true" />}
                             </button>
                         )}
                         <button
                             onClick={handleDownload}
                             title="Descargar"
                             className="p-1.5 rounded-md hover:bg-indigo-500/10 text-muted-foreground hover:text-indigo-400 transition"
-                        >
-                            <Download className="w-3.5 h-3.5" />
+                         aria-label="Descargar">
+                            <Download className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                         <button
                             onClick={handleDelete}
                             title="Eliminar documento"
                             className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
+                         aria-label="Eliminar documento">
+                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                     </div>
                 </div>

@@ -40,8 +40,8 @@ export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClos
                         <Activity className="w-4 h-4 text-violet-400" />
                         <h2 className="font-semibold text-foreground text-sm">Consumo de {employee.name}</h2>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg">
-                        <X className="w-4 h-4 text-muted-foreground" />
+                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label="Cerrar">
+                        <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     </button>
                 </div>
 

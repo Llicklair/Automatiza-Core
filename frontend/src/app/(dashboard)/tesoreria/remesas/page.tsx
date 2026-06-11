@@ -93,7 +93,7 @@ export default function RemesasPage() {
                     toast.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400")}>
                     {toast.type === "ok" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                     {toast.msg}
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)}><X className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label="Cerrar notificación"><X className="w-4 h-4" aria-hidden="true" /></Button>
                 </div>
             )}
         </div>

@@ -115,8 +115,8 @@ export default function RagChatBox() {
                         type="submit"
                         disabled={chatLoading || !chatInput.trim()}
                         className="bg-indigo-600 hover:bg-indigo-500 text-foreground px-5 rounded-xl transition flex items-center justify-center disabled:opacity-50"
-                    >
-                        <Send className="w-4 h-4" />
+                     aria-label="Enviar pregunta">
+                        <Send className="w-4 h-4" aria-hidden="true" />
                     </button>
                 </form>
             </div>

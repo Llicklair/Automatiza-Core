@@ -99,8 +99,8 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
                         <Camera className="w-4 h-4 text-cyan-400" />
                         <h3 className="text-sm font-medium text-foreground">Escanear código</h3>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-                        <X className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Cerrar">
+                        <X className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>
 
