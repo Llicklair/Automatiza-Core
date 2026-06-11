@@ -1,4 +1,4 @@
-import { request, downloadBlob } from "./client";
+import { request, downloadBlob, fetchBlob } from "./client";
 
 export interface HRDocument {
     id: string;
@@ -43,6 +43,9 @@ export const hrDocuments = {
     /** Descarga el PDF server-side (incluye el folio); también es la base para firmar. */
     downloadPdf: (id: string, filename = "documento.pdf") =>
         downloadBlob(`/api/v1/hr/documents/${id}/pdf`, filename),
+
+    /** Obtiene el PDF como Blob (para firmar: convertir a base64 y enviar a AutoFirma). */
+    pdfBlob: (id: string) => fetchBlob(`/api/v1/hr/documents/${id}/pdf`),
 
     approve: (id: string) =>
         request<{ id: string; status: string; approved_at: string; doc_number: string | null }>(`/api/v1/hr/documents/${id}/approve`, { method: "POST" }),

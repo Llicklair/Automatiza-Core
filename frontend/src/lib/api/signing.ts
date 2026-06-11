@@ -47,6 +47,11 @@ export const signing = {
                     ...req,
                 }),
             }),
+        /** Estado de la sesión de firma (polling tras lanzar `afirma://`). */
+        status: (sessionToken: string) =>
+            request<SignedDocumentStatus>(
+                `/api/v1/signing/autofirma/status/${sessionToken}`,
+            ),
         /**
          * Convierte un File a base64 e inicia la firma. Devuelve la URI
          * `afirma://` lista para asignar a `window.location.href`.

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/hooks/useFormat";
-import { CheckCircle2, Copy, Download, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle2, Copy, Download, Trash2, ChevronDown, ChevronUp, PenLine, Loader2 } from "lucide-react";
 import { hrDocuments, type HRDocument } from "@/lib/api/hr_documents";
+import { signing } from "@/lib/api/signing";
+import { useToastStore } from "@/stores/toast";
 import { DOC_TYPES } from "../_hooks/useHRDocumentos";
 
 function StatusBadge({ status }: { status: HRDocument["status"] }) {
@@ -30,8 +32,10 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
     const t = useTranslations("rrhh");
     const tc = useTranslations("common");
     const { fmtDate } = useFormat();
+    const toast = useToastStore();
     const [expanded, setExpanded] = useState(false);
     const [copying, setCopying] = useState(false);
+    const [signingDoc, setSigningDoc] = useState(false);
     const docTypeKey = DOC_TYPES.find(d => d.value === doc.doc_type)?.labelKey;
     const docTypeLabel = docTypeKey ? t(docTypeKey) : doc.doc_type;
     const date = fmtDate(doc.created_at, { day: "numeric", month: "short", year: "numeric" });
@@ -55,6 +59,40 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
             win.document.close();
             win.focus();
             setTimeout(() => { win.print(); }, 400);
+        }
+    };
+
+    const handleSign = async () => {
+        setSigningDoc(true);
+        try {
+            const blob = await hrDocuments.pdfBlob(doc.id);
+            const b64: string = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onloadend = () => resolve(String(r.result).split(",")[1] ?? "");
+                r.onerror = reject;
+                r.readAsDataURL(blob);
+            });
+            const res = await signing.autofirma.init({ document_b64: b64, signature_format: "PAdES" });
+            toast.info(t("documentos.signLaunched"));
+            // Lanza AutoFirma (handler del protocolo afirma://). No navega la página.
+            window.location.href = res.autofirma_uri;
+            // Polling del estado hasta firmado/fallido (máx ~2 min).
+            const token = res.session_token;
+            let tries = 0;
+            const poll = async () => {
+                tries += 1;
+                try {
+                    const st = await signing.autofirma.status(token);
+                    if (st.status === "signed") { toast.success(t("documentos.signOk")); setSigningDoc(false); return; }
+                    if (st.status === "failed") { toast.error(t("documentos.signFailed")); setSigningDoc(false); return; }
+                } catch { /* transitorio: reintentar */ }
+                if (tries < 40) setTimeout(poll, 3000);
+                else setSigningDoc(false);
+            };
+            setTimeout(poll, 4000);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : t("documentos.signError"));
+            setSigningDoc(false);
         }
     };
 
@@ -86,6 +124,14 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
                         <button onClick={() => onApprove(doc.id)} title={t("common.approve")}
                             className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors" aria-label={t("common.approve")}>
                             <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                    )}
+                    {doc.status === "approved" && (
+                        <button onClick={handleSign} disabled={signingDoc} title={t("documentos.sign")}
+                            className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors disabled:opacity-50" aria-label={t("documentos.sign")}>
+                            {signingDoc
+                                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                                : <PenLine className="w-4 h-4" aria-hidden="true" />}
                         </button>
                     )}
                     <button onClick={() => onDelete(doc.id)} title={tc("delete")}

@@ -16,6 +16,7 @@ from app.middleware.rate_limit import limiter
 from app.services.signing import (
     AutoFirmaError,
     SignatureFormat,
+    get_signing_status,
     process_signed_callback,
     start_signing_session,
 )
@@ -89,6 +90,20 @@ async def init_autofirma(
         )
     except AutoFirmaError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.get("/autofirma/status/{session_token}")
+async def get_autofirma_status(
+    session_token: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Estado de una sesión de firma — para polling del frontend tras lanzar
+    `afirma://`. Devuelve {session_token, status: pending|signed|failed, signed_hash}."""
+    result = await get_signing_status(db, current_user.tenant_id, session_token)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Sesión de firma no encontrada.")
+    return result
 
 
 @router.post("/autofirma/callback")

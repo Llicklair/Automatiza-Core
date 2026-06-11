@@ -23,11 +23,12 @@
 
 ## Gestoría / Firma
 
-- [ ] **F3.11 Botón "Firmar" (AutoFirma) en UI** — backend completo
-  (`services/signing/autofirma.py`, `routes/signing.py`) + PDF server-side de
-  gestoría (`GET /hr/documents/{id}/pdf`) ✅. **Falta**: UI que lance la URI
-  `afirma://` + polling de estado (`signing.autofirma`). Requiere AutoFirma
-  instalado para probar end-to-end.
+- [~] **F3.11 Firma AutoFirma** ✅ implementado (2026-06-12) — backend
+  (`autofirma.py` + init/callback) + **endpoint de estado** `GET /signing/
+  autofirma/status/{token}` (3 tests) + **botón "Firmar"** en `DocumentCard`
+  (aprobados): obtiene el PDF → base64 → `init` → lanza `afirma://` → polling de
+  estado → toast. **Pendiente de verificación e2e**: requiere AutoFirma instalado
+  para probar el handshake del certificado FNMT (no verificable en CI).
 
 ## AIEmployee — Contrato del custom
 
@@ -52,9 +53,10 @@ Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅. Pendient
 
 ## Arquitectura
 
-- [ ] **F1.1 Ejecutar audit de dominios** — `scripts/audit_domain_completeness.py`
-  existe (`team` ya eliminado). Falta ejecutarlo y cerrar asimetrías residuales
-  (`VALID_DOMAINS` × `DISPATCHER_MAP` × `_KEYWORD_MAP` × tools de `tool_registry`).
+- [x] **F1.1 Audit de dominios** ✅ (2026-06-12) — `audit_domain_completeness.py`
+  ejecutado: **sync limpio** (EXIT=0) entre `VALID_DOMAINS`/`DISPATCHER_MAP`/
+  `_KEYWORD_MAP`/`_STRONG_KEYWORDS`. Sin asimetrías (coordinator/custom/skill son
+  dominios especiales esperados).
 - [ ] **#3 `AgentResult` end-to-end** (~5-7h, sesión dedicada) — añadir
   `run_agent(state) -> AgentResult` a cada `agent.py`, migrar los 11 dispatchers
   + `tool_registry.py` a `from app.agents.<dom>.tools import …`, limpiar
