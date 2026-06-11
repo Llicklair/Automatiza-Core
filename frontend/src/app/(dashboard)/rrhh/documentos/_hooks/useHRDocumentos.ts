@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { hrDocuments } from "@/lib/api/hr_documents";
 import type { HRDocument } from "@/lib/api/hr_documents";
 import { logError } from "@/lib/logger";
@@ -21,71 +22,34 @@ export function parseNLIntent(text: string): { doc_type: string; employee_name: 
     return { doc_type, employee_name, instructions };
 }
 
+// I18N — config estructural + labelKey; el componente traduce en render.
 export const DOC_TYPES = [
-    { value: "contract", label: "Contrato de trabajo" },
-    { value: "nda", label: "Acuerdo de Confidencialidad (NDA)" },
-    { value: "termination", label: "Carta de despido" },
-    { value: "settlement", label: "Finiquito" },
-    { value: "addendum", label: "Adenda contractual" },
-    { value: "other", label: "Otro documento laboral" },
+    { value: "contract", labelKey: "documentos.types.contract" },
+    { value: "nda", labelKey: "documentos.types.nda" },
+    { value: "termination", labelKey: "documentos.types.termination" },
+    { value: "settlement", labelKey: "documentos.types.settlement" },
+    { value: "addendum", labelKey: "documentos.types.addendum" },
+    { value: "other", labelKey: "documentos.types.other" },
 ];
 
-export const DOC_TEMPLATES: Record<string, string> = {
-    contract:
-`Tipo de contrato: indefinido / temporal (indica cuál).
-Jornada: completa 40h/semana / parcial [X]h/semana.
-Salario bruto anual: [X €] / mensual: [X €].
-Puesto: [nombre del puesto].
-Departamento: [departamento].
-Fecha de incorporación: [DD/MM/AAAA].
-Centro de trabajo: [ciudad].
-Período de prueba: [X meses] (máx. 6 meses técnicos, 2 meses resto).`,
-
-    nda:
-`Partes: la empresa y [nombre del trabajador / colaborador].
-Información confidencial que se protege: [describir — código fuente, clientes, estrategia, etc.].
-Duración de la obligación: [X años tras fin de relación laboral].
-Ámbito geográfico: [nacional / internacional].
-Consecuencias de incumplimiento: [indemnización / acciones legales].`,
-
-    termination:
-`Tipo de despido: disciplinario / objetivo / colectivo.
-Motivo: [describir causa concreta].
-Fecha efectiva del despido: [DD/MM/AAAA].
-Preaviso: [X días / no aplica despido disciplinario].
-Indemnización: [según ley: 20 días/año objetivo | 33 días/año improcedente | 0 disciplinario].
-Acumulación de vacaciones pendientes: [X días].`,
-
-    settlement:
-`Fecha de baja: [DD/MM/AAAA].
-Motivo de la baja: [despido / renuncia voluntaria / fin de contrato].
-Salario pendiente del mes en curso (días trabajados): [X €].
-Vacaciones no disfrutadas: [X días = X €].
-Pagas extras proporcionales pendientes: [X €].
-Indemnización (si aplica): [X €].`,
-
-    addendum:
-`Contrato original fecha: [DD/MM/AAAA].
-Cláusula(s) que se modifican: [describir qué cambia].
-Nueva condición: [texto de la nueva cláusula].
-Motivo del cambio: [acuerdo mutuo / cambio de funciones / ascenso / etc.].
-Fecha de entrada en vigor: [DD/MM/AAAA].`,
-
-    other:
-`Describe el documento que necesitas:
-Partes involucradas: [nombres y roles].
-Objeto del documento: [qué regula o certifica].
-Condiciones principales: [listar].
-Fecha: [DD/MM/AAAA].`,
+// Plantillas de instrucciones (texto editable visible en la UI) → claves i18n.
+export const DOC_TEMPLATE_KEYS: Record<string, string> = {
+    contract: "documentos.templates.contract",
+    nda: "documentos.templates.nda",
+    termination: "documentos.templates.termination",
+    settlement: "documentos.templates.settlement",
+    addendum: "documentos.templates.addendum",
+    other: "documentos.templates.other",
 };
 
 export function useHRDocumentos() {
+    const t = useTranslations("rrhh");
     const [docs, setDocs]             = useState<HRDocument[]>([]);
     const [loading, setLoading]       = useState(true);
     const [generating, setGenerating] = useState(false);
     const [error, setError]           = useState<string | null>(null);
     const [toast, setToast]           = useState<string | null>(null);
-    const [form, setForm]             = useState({ doc_type: "contract", employee_name: "", instructions: DOC_TEMPLATES["contract"] });
+    const [form, setForm]             = useState(() => ({ doc_type: "contract", employee_name: "", instructions: t(DOC_TEMPLATE_KEYS["contract"]) }));
     const [nlText, setNlText]         = useState("");
     const [nlGenerating, setNlGenerating] = useState(false);
 
@@ -93,8 +57,8 @@ export function useHRDocumentos() {
 
     const loadDocs = useCallback(async () => {
         try { setDocs(await hrDocuments.list({ limit: 50 })); }
-        catch (err) { logError("rrhh/documentos", err); setError("No se pudieron cargar los documentos"); }
-    }, []);
+        catch (err) { logError("rrhh/documentos", err); setError(t("documentos.loadError")); }
+    }, [t]);
 
     useEffect(() => { setLoading(true); loadDocs().finally(() => setLoading(false)); }, [loadDocs]);
 
@@ -110,13 +74,13 @@ export function useHRDocumentos() {
             });
             setDocs(prev => [doc, ...prev]);
             setNlText("");
-            showToast("Borrador generado");
-        } catch (e: any) { setError(e?.message ?? "Error al generar"); }
+            showToast(t("toasts.draftGenerated"));
+        } catch (e: any) { setError(e?.message ?? t("documentos.generateError")); }
         finally { setNlGenerating(false); }
     };
 
     const handleGenerate = async () => {
-        if (!form.doc_type) { setError("Selecciona el tipo de documento"); return; }
+        if (!form.doc_type) { setError(t("documentos.selectTypeError")); return; }
         setGenerating(true); setError(null);
         try {
             const doc = await hrDocuments.generate({
@@ -126,19 +90,19 @@ export function useHRDocumentos() {
             });
             setDocs(prev => [doc, ...prev]);
             setForm(f => ({ ...f, employee_name: "", instructions: "" }));
-            showToast("Borrador generado");
-        } catch (e: any) { setError(e?.message ?? "Error al generar"); }
+            showToast(t("toasts.draftGenerated"));
+        } catch (e: any) { setError(e?.message ?? t("documentos.generateError")); }
         finally { setGenerating(false); }
     };
 
     const handleApprove = async (id: string) => {
-        try { await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const } : d)); showToast("Documento aprobado"); }
-        catch { showToast("Error al aprobar"); }
+        try { await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const } : d)); showToast(t("toasts.documentApproved")); }
+        catch { showToast(t("toasts.documentApproveError")); }
     };
 
     const handleDelete = async (id: string) => {
-        try { await hrDocuments.delete(id); setDocs(prev => prev.filter(d => d.id !== id)); showToast("Eliminado"); }
-        catch { showToast("Error al eliminar"); }
+        try { await hrDocuments.delete(id); setDocs(prev => prev.filter(d => d.id !== id)); showToast(t("toasts.deleted")); }
+        catch { showToast(t("toasts.deleteError")); }
     };
 
     return {

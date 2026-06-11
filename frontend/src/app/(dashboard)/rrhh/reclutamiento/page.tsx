@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Briefcase, Plus, FileSearch } from "lucide-react";
 import { useRecruitment } from "./_hooks/useRecruitment";
@@ -14,7 +15,14 @@ import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "vacantes" | "cv";
 
+// I18N — config estructural + labelKey; el componente traduce en render.
+const TABS: { key: Tab; labelKey: string; icon: typeof Briefcase }[] = [
+    { key: "vacantes", labelKey: "reclutamiento.tabs.vacantes", icon: Briefcase },
+    { key: "cv", labelKey: "reclutamiento.tabs.cv", icon: FileSearch },
+];
+
 export default function RecruitmentPage() {
+    const t = useTranslations("rrhh");
     const {
         positions, selectedPos, candidates,
         loading, loadingCandidates, uploading,
@@ -26,21 +34,16 @@ export default function RecruitmentPage() {
     const searchParams = useSearchParams();
     const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "cv" ? "cv" : "vacantes");
 
-    const tabs: { key: Tab; label: string; icon: typeof Briefcase }[] = [
-        { key: "vacantes", label: "Vacantes y candidatos", icon: Briefcase },
-        { key: "cv", label: "Análisis de CV", icon: FileSearch },
-    ];
-
     return (
         <PageContainer>
             <PageHeader
-                title="Reclutamiento"
-                description="Gestiona puestos abiertos, analiza CVs con IA y crea candidatos."
+                title={t("reclutamiento.title")}
+                description={t("reclutamiento.description")}
                 icon={Briefcase}
                 actions={
                     tab === "vacantes" ? (
                         <Button onClick={() => setShowCreateModal(true)}>
-                            <Plus className="w-4 h-4 mr-2" /> Nuevo puesto
+                            <Plus className="w-4 h-4 mr-2" /> {t("reclutamiento.newPosition")}
                         </Button>
                     ) : undefined
                 }
@@ -48,19 +51,19 @@ export default function RecruitmentPage() {
 
             {/* Pestañas */}
             <div className="flex items-center gap-1 border-b border-border">
-                {tabs.map(t => {
-                    const Icon = t.icon;
-                    const active = tab === t.key;
+                {TABS.map(item => {
+                    const Icon = item.icon;
+                    const active = tab === item.key;
                     return (
                         <button
-                            key={t.key}
-                            onClick={() => setTab(t.key)}
+                            key={item.key}
+                            onClick={() => setTab(item.key)}
                             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                                 active
                                     ? "border-violet-500 text-foreground"
                                     : "border-transparent text-muted-foreground hover:text-foreground"
                             }`}>
-                            <Icon className="w-4 h-4" /> {t.label}
+                            <Icon className="w-4 h-4" /> {t(item.labelKey)}
                         </button>
                     );
                 })}

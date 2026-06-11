@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { api, Employee, AttendanceRecord } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
@@ -25,6 +27,8 @@ export function useElapsedTime(clockIn: string | null): string {
 }
 
 export function useFichajes() {
+    const t = useTranslations("rrhh");
+    const { fmtTime } = useFormat();
     const toast = useToastStore();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [working, setWorking] = useState<AttendanceRecord[]>([]);
@@ -63,13 +67,13 @@ export function useFichajes() {
         setSubmitting(true);
         try {
             await api.hr.attendance.clockIn(clockInEmpId, clockInNotes || undefined);
-            toast.success("Entrada registrada");
+            toast.success(t("toasts.clockInSuccess"));
             setShowModal(false);
             setClockInEmpId("");
             setClockInNotes("");
             await loadData();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Error al fichar");
+            toast.error(err instanceof Error ? err.message : t("toasts.clockInError"));
         } finally {
             setSubmitting(false);
         }
@@ -78,10 +82,10 @@ export function useFichajes() {
     const handleClockOut = async (attendanceId: string) => {
         try {
             await api.hr.attendance.clockOut(attendanceId);
-            toast.success("Salida registrada");
+            toast.success(t("toasts.clockOutSuccess"));
             await loadData();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Error al registrar salida");
+            toast.error(err instanceof Error ? err.message : t("toasts.clockOutError"));
         }
     };
 
@@ -90,7 +94,7 @@ export function useFichajes() {
     const isWorking = (empId: string) => working.some((r) => r.employee_id === empId);
 
     const formatTime = (iso: string | null) =>
-        iso ? new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "—";
+        iso ? fmtTime(iso, { hour: "2-digit", minute: "2-digit" }) : "—";
 
     const formatDuration = (clockIn: string, clockOut: string | null): string => {
         const end = clockOut ? new Date(clockOut).getTime() : Date.now();

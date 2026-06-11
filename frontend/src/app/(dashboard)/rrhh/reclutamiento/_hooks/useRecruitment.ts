@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { RecruitmentPosition, Candidate } from "@/lib/api/recruitment";
 import { useToastStore } from "@/stores/toast";
@@ -6,6 +7,7 @@ import { useToastStore } from "@/stores/toast";
 const EMPTY_FORM = { title: "", department: "", description: "", required_skills: "", experience_min_years: 0 };
 
 export function useRecruitment() {
+    const t = useTranslations("rrhh");
     const [positions, setPositions] = useState<RecruitmentPosition[]>([]);
     const [selectedPos, setSelectedPos] = useState<RecruitmentPosition | null>(null);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -60,7 +62,7 @@ export function useRecruitment() {
             loadCandidates(selectedPos.id);
             loadPositions(); // refresh counts
         } catch (err: any) {
-            useToastStore.getState().error(err?.message || "Error subiendo CV");
+            useToastStore.getState().error(err?.message || t("toasts.cvUploadError"));
         }
         setUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";

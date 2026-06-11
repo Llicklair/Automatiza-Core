@@ -1,6 +1,6 @@
 "use client";
 
-import { useEmpleadosCRUD, currencyFmt } from "./useEmpleadosCRUD";
+import { useEmpleadosCRUD } from "./useEmpleadosCRUD";
 import { useEmpleadosUpload } from "./useEmpleadosUpload";
 import { STATUS_OPTIONS } from "./useEmpleadosTypes";
 import type { Employee, Payroll } from "@/lib/api";
@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { EmployeeForm } from "./useEmpleadosTypes";
 
 // Re-export so existing imports from this file continue to work
-export { STATUS_OPTIONS, currencyFmt };
+export { STATUS_OPTIONS };
 export type { EmployeeForm };
 
 export interface UseEmpleadosReturn {

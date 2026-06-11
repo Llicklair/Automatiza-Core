@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { api } from "@/lib/api";
 import type { Employee, EmployeeDocument } from "@/lib/api/hr";
 import { X, Upload, Download, Trash2, FileText, Loader2, Paperclip } from "lucide-react";
@@ -21,6 +23,9 @@ function fileIcon(type: string | null) {
 }
 
 export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; onClose: () => void }) {
+    const t = useTranslations("rrhh");
+    const tc = useTranslations("common");
+    const { fmtDate } = useFormat();
     const [docs, setDocs] = useState<EmployeeDocument[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -31,9 +36,9 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
     const load = useCallback(async () => {
         try {
             setDocs(await api.hr.employees.documents.list(employee.id));
-        } catch { setError("No se pudieron cargar los documentos"); }
+        } catch { setError(t("empleados.docsModal.loadError")); }
         setLoading(false);
-    }, [employee.id]);
+    }, [employee.id, t]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -44,7 +49,7 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
         try {
             const doc = await api.hr.employees.documents.upload(employee.id, file);
             setDocs(prev => [doc, ...prev]);
-        } catch (err: any) { setError(err.message ?? "Error al subir"); }
+        } catch (err: any) { setError(err.message ?? t("empleados.docsModal.uploadError")); }
         finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
     };
 
@@ -53,7 +58,7 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
         try {
             await api.hr.employees.documents.delete(employee.id, docId);
             setDocs(prev => prev.filter(d => d.id !== docId));
-        } catch (err) { setError(err instanceof Error ? err.message : "Error al eliminar el documento"); }
+        } catch (err) { setError(err instanceof Error ? err.message : t("empleados.docsModal.deleteError")); }
         setDeletingId(null);
     };
 
@@ -65,11 +70,11 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                     <div className="flex items-center gap-2">
                         <Paperclip className="w-4 h-4 text-violet-400" />
                         <div>
-                            <p className="text-sm font-semibold text-foreground">Documentos — {employee.name}</p>
-                            <p className="text-xs text-muted-foreground">{docs.length} archivo{docs.length !== 1 ? "s" : ""}</p>
+                            <p className="text-sm font-semibold text-foreground">{t("empleados.docsModal.title", { name: employee.name })}</p>
+                            <p className="text-xs text-muted-foreground">{t("empleados.docsModal.fileCount", { n: docs.length })}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label="Cerrar documentos del empleado">
+                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label={t("empleados.docsModal.closeAria")}>
                         <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     </button>
                 </div>
@@ -80,7 +85,7 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                     <label htmlFor="emp-doc-upload"
                         className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border-2 border-dashed cursor-pointer transition-colors text-sm font-medium ${uploading ? "opacity-50 cursor-not-allowed border-border text-muted-foreground" : "border-violet-500/30 text-violet-400 hover:bg-violet-500/5"}`}>
                         {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                        {uploading ? "Subiendo…" : "Adjuntar documento"}
+                        {uploading ? t("empleados.docsModal.uploading") : t("empleados.docsModal.upload")}
                     </label>
                     {error && <p className="text-xs text-red-400 mt-1.5">{error}</p>}
                 </div>
@@ -92,7 +97,7 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                     ) : docs.length === 0 ? (
                         <div className="text-center py-8">
                             <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">Sin documentos adjuntos</p>
+                            <p className="text-sm text-muted-foreground">{t("empleados.docsModal.empty")}</p>
                         </div>
                     ) : docs.map(doc => (
                         <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/50 transition-colors">
@@ -100,21 +105,21 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm text-foreground truncate">{doc.file_name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                    {formatSize(doc.file_size)} · {doc.created_at ? new Date(doc.created_at).toLocaleDateString("es-ES") : ""}
+                                    {formatSize(doc.file_size)} · {doc.created_at ? fmtDate(doc.created_at) : ""}
                                 </p>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                                 <button
                                     onClick={() => api.hr.employees.documents.download(employee.id, doc.id, doc.file_name)}
                                     className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                    title="Descargar" aria-label="Descargar">
+                                    title={t("common.download")} aria-label={t("common.download")}>
                                     <Download className="w-3.5 h-3.5" aria-hidden="true" />
                                 </button>
                                 <button
                                     onClick={() => handleDelete(doc.id)}
                                     disabled={deletingId === doc.id}
                                     className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
-                                    title="Eliminar" aria-label="Eliminar">
+                                    title={tc("delete")} aria-label={tc("delete")}>
                                     {deletingId === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                 </button>
                             </div>

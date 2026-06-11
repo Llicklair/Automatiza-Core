@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Timer, Plus, LogOut, Loader2, UserCheck } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ function ElapsedCell({ clockIn }: { clockIn: string }) {
 }
 
 export function FichajesPanel() {
+    const t = useTranslations("rrhh");
+    const tc = useTranslations("common");
     const {
         employees, working, todayRecords, isLoading,
         showModal, setShowModal,
@@ -33,7 +36,7 @@ export function FichajesPanel() {
     if (isLoading) {
         return (
             <div className="p-8 flex items-center justify-center text-muted-foreground gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Cargando fichajes…
+                <Loader2 className="w-4 h-4 animate-spin" /> {t("fichajes.loading")}
             </div>
         );
     }
@@ -41,12 +44,12 @@ export function FichajesPanel() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Fichajes en tiempo real"
-                description="Controla quién está trabajando ahora mismo. Se actualiza automáticamente."
+                title={t("fichajes.title")}
+                description={t("fichajes.description")}
                 icon={Timer}
                 actions={
                     <Button onClick={() => setShowModal(true)}>
-                        <Plus className="w-4 h-4 mr-2" /> Fichar entrada
+                        <Plus className="w-4 h-4 mr-2" /> {t("fichajes.clockIn")}
                     </Button>
                 }
             />
@@ -58,12 +61,12 @@ export function FichajesPanel() {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                     </span>
-                    Trabajando ahora ({working.length})
+                    {t("fichajes.workingNow", { n: working.length })}
                 </h2>
 
                 {working.length === 0 ? (
                     <div className="text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl p-6 text-center">
-                        Nadie fichado en este momento.
+                        {t("fichajes.nobodyWorking")}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -85,7 +88,7 @@ export function FichajesPanel() {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs text-muted-foreground">Desde {formatTime(record.clock_in)}</p>
+                                                <p className="text-xs text-muted-foreground">{t("fichajes.since", { time: formatTime(record.clock_in) })}</p>
                                                 <ElapsedCell clockIn={record.clock_in} />
                                             </div>
                                             <Button
@@ -94,7 +97,7 @@ export function FichajesPanel() {
                                                 className="text-xs h-7 border-emerald-500/30 hover:bg-emerald-500/10"
                                                 onClick={() => handleClockOut(record.id)}
                                             >
-                                                <LogOut className="w-3 h-3 mr-1" /> Salida
+                                                <LogOut className="w-3 h-3 mr-1" /> {t("fichajes.clockOut")}
                                             </Button>
                                         </div>
                                         {record.notes && (
@@ -113,22 +116,22 @@ export function FichajesPanel() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <UserCheck className="w-4 h-4 text-muted-foreground" />
-                        Registro de hoy ({todayRecords.length})
+                        {t("fichajes.todayLog", { n: todayRecords.length })}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     {todayRecords.length === 0 ? (
-                        <p className="text-sm text-muted-foreground px-6 pb-6">Sin fichajes hoy.</p>
+                        <p className="text-sm text-muted-foreground px-6 pb-6">{t("fichajes.noRecordsToday")}</p>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-border text-xs text-muted-foreground">
-                                        <th className="px-6 py-3 text-left font-medium">Empleado</th>
-                                        <th className="px-4 py-3 text-left font-medium">Entrada</th>
-                                        <th className="px-4 py-3 text-left font-medium">Salida</th>
-                                        <th className="px-4 py-3 text-left font-medium">Duración</th>
-                                        <th className="px-4 py-3 text-left font-medium">Nota</th>
+                                        <th className="px-6 py-3 text-left font-medium">{t("fichajes.table.employee")}</th>
+                                        <th className="px-4 py-3 text-left font-medium">{t("fichajes.table.clockIn")}</th>
+                                        <th className="px-4 py-3 text-left font-medium">{t("fichajes.table.clockOut")}</th>
+                                        <th className="px-4 py-3 text-left font-medium">{t("fichajes.table.duration")}</th>
+                                        <th className="px-4 py-3 text-left font-medium">{t("fichajes.table.note")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -141,7 +144,7 @@ export function FichajesPanel() {
                                                 <td className="px-4 py-3 tabular-nums">
                                                     {r.clock_out
                                                         ? <span className="text-foreground">{formatTime(r.clock_out)}</span>
-                                                        : <span className="text-emerald-400 text-xs">En curso</span>}
+                                                        : <span className="text-emerald-400 text-xs">{t("fichajes.inProgress")}</span>}
                                                 </td>
                                                 <td className="px-4 py-3 text-muted-foreground tabular-nums">
                                                     {formatDuration(r.clock_in, r.clock_out)}
@@ -161,13 +164,13 @@ export function FichajesPanel() {
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                     <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4">
-                        <h2 className="text-lg font-semibold text-foreground mb-4">Registrar entrada</h2>
+                        <h2 className="text-lg font-semibold text-foreground mb-4">{t("fichajes.modal.title")}</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm text-muted-foreground mb-1.5 block">Empleado</label>
+                                <label className="text-sm text-muted-foreground mb-1.5 block">{t("fichajes.table.employee")}</label>
                                 <Select value={clockInEmpId} onValueChange={setClockInEmpId}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar empleado…" />
+                                        <SelectValue placeholder={t("fichajes.modal.selectEmployee")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {employees.map((e) => (
@@ -177,19 +180,19 @@ export function FichajesPanel() {
                                 </Select>
                             </div>
                             <div>
-                                <label className="text-sm text-muted-foreground mb-1.5 block">Nota (opcional)</label>
+                                <label className="text-sm text-muted-foreground mb-1.5 block">{t("fichajes.modal.noteOptional")}</label>
                                 <Input
                                     value={clockInNotes}
                                     onChange={(e) => setClockInNotes(e.target.value)}
-                                    placeholder="Ej: Trabajo remoto"
+                                    placeholder={t("fichajes.modal.notePlaceholder")}
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button>
+                            <Button variant="ghost" onClick={() => setShowModal(false)}>{tc("cancel")}</Button>
                             <Button disabled={!clockInEmpId || submitting} onClick={handleClockIn}>
                                 {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                Fichar entrada
+                                {t("fichajes.clockIn")}
                             </Button>
                         </div>
                     </div>

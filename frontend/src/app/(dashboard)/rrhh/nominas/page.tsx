@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
     WalletCards, CheckCircle2, Bot, Loader2, Sparkles,
     AlertCircle, X, Calculator, Wallet, ShieldCheck, Receipt,
@@ -24,15 +25,17 @@ export default function PayrollsPage() {
         payrolls,
     } = usePayrolls();
 
+    const t = useTranslations("rrhh");
+
     return (
         <PageContainer>
             <PageHeader
-                title="Emisión de Nóminas"
+                title={t("nominas.title")}
                 description={
                     <span className="flex items-center gap-2">
-                        Revisa, aprueba y descarga las pre-nóminas generadas por la IA.
+                        {t("nominas.description")}
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-medium">
-                            <Bot className="w-3 h-3" /> IA-First
+                            <Bot className="w-3 h-3" /> {t("nominas.aiFirst")}
                         </span>
                     </span>
                 }
@@ -40,12 +43,12 @@ export default function PayrollsPage() {
                 actions={
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" onClick={openAutoModal}>
-                            <Calculator className="w-4 h-4 mr-2 text-emerald-400" /> Calcular automática
+                            <Calculator className="w-4 h-4 mr-2 text-emerald-400" /> {t("nominas.autoCalculate")}
                         </Button>
                         <Button onClick={handleGeneratePayrolls} disabled={generatingPayrolls}>
                             {generatingPayrolls
-                                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generando…</>
-                                : <><Sparkles className="w-4 h-4 mr-2" /> Generar con IA</>
+                                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nominas.generating")}</>
+                                : <><Sparkles className="w-4 h-4 mr-2" /> {t("nominas.generateWithAi")}</>
                             }
                         </Button>
                         {drafts > 0 && (
@@ -58,7 +61,7 @@ export default function PayrollsPage() {
                                     }
                                 }}
                             >
-                                <CheckCircle2 className="w-4 h-4 mr-2" /> Aprobar todos ({drafts})
+                                <CheckCircle2 className="w-4 h-4 mr-2" /> {t("nominas.approveAll", { n: drafts })}
                             </Button>
                         )}
                     </div>
@@ -67,9 +70,9 @@ export default function PayrollsPage() {
 
             {/* KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard title="Coste nóminas (mes)" value={fmt(kpis.costeNominas)} icon={Wallet} />
-                <KpiCard title="Total SS (mes)"       value={fmt(kpis.totalSS)}      icon={ShieldCheck} />
-                <KpiCard title="Total IRPF (mes)"     value={fmt(kpis.totalIRPF)}    icon={Receipt} />
+                <KpiCard title={t("nominas.kpi.monthlyCost")} value={fmt(kpis.costeNominas)} icon={Wallet} />
+                <KpiCard title={t("nominas.kpi.totalSs")}     value={fmt(kpis.totalSS)}      icon={ShieldCheck} />
+                <KpiCard title={t("nominas.kpi.totalIrpf")}   value={fmt(kpis.totalIRPF)}    icon={Receipt} />
             </div>
 
             {/* Filters + Table */}
@@ -110,7 +113,7 @@ export default function PayrollsPage() {
                         : <AlertCircle className="w-5 h-5 shrink-0" />
                     }
                     <span className="flex-1">{toast.msg}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label="Cerrar notificación">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label={t("nominas.closeNotificationAria")}>
                         <X className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>

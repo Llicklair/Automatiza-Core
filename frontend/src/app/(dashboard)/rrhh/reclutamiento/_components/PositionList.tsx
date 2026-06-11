@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { RecruitmentPosition } from "@/lib/api/recruitment";
 import { Loader2, Users, ChevronRight } from "lucide-react";
 
@@ -11,13 +12,14 @@ interface PositionListProps {
 }
 
 export function PositionList({ positions, selectedPos, loading, onSelect }: PositionListProps) {
+    const t = useTranslations("rrhh");
     return (
         <div className="space-y-2">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Puestos</h2>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t("reclutamiento.positions.title")}</h2>
             {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : positions.length === 0 ? (
-                <div className="text-center py-8 text-xs text-muted-foreground">Sin puestos. Crea el primero.</div>
+                <div className="text-center py-8 text-xs text-muted-foreground">{t("reclutamiento.positions.empty")}</div>
             ) : positions.map(pos => (
                 <button
                     key={pos.id}

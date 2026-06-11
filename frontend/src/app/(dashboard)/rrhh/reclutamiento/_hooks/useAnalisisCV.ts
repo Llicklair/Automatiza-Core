@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { requestUpload } from "@/lib/api/client";
 
 export interface CVAnalysisResult {
@@ -15,6 +16,7 @@ export interface CVAnalysisResult {
 }
 
 export function useAnalisisCV() {
+    const t = useTranslations("rrhh");
     const fileRef  = useRef<HTMLInputElement>(null);
     const [dragging, setDragging]   = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
@@ -26,14 +28,14 @@ export function useAnalisisCV() {
     const [file, setFile]           = useState<File | null>(null);
 
     const analyzeFile = async (f: File) => {
-        if (!f.name.toLowerCase().endsWith(".pdf")) { setError("Solo se aceptan archivos PDF"); return; }
+        if (!f.name.toLowerCase().endsWith(".pdf")) { setError(t("analisisCv.onlyPdfError")); return; }
         setAnalyzing(true); setError(null); setResult(null); setFileName(f.name); setFile(f);
         try {
             const form = new FormData();
             form.append("file", f);
             const data = await requestUpload<CVAnalysisResult>("/api/v1/recruitment/analyze-cv", form);
             setResult(data);
-        } catch (e: any) { setError(e?.message ?? "Error al analizar el CV"); setFile(null); }
+        } catch (e: any) { setError(e?.message ?? t("analisisCv.analyzeError")); setFile(null); }
         finally { setAnalyzing(false); }
     };
 

@@ -1,16 +1,17 @@
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { WalletCards, Download, CheckCircle2, Loader2 } from "lucide-react";
 import type { Payroll } from "@/lib/api";
 import { PayrollStatusBadge } from "./PayrollStatusBadge";
 
-function devengoExtras(p: Payroll, fmt: (n: number) => string): string[] {
+// I18N — devuelve labelKey + params; el componente traduce en render.
+function devengoExtras(p: Payroll, fmt: (n: number) => string): { labelKey: string; params: Record<string, string | number> }[] {
     const d = p.devengos_json;
     if (!d) return [];
-    const extras: string[] = [];
-    if (d.prorrata_pagas_extra) extras.push(`P. extra ${fmt(d.prorrata_pagas_extra)}`);
-    if (d.horas_extra) extras.push(`H. extra ${fmt(d.horas_extra)}`);
-    if (d.prestacion_it) extras.push(`IT ${fmt(d.prestacion_it)} (${d.dias_baja_it} días)`);
+    const extras: { labelKey: string; params: Record<string, string | number> }[] = [];
+    if (d.prorrata_pagas_extra) extras.push({ labelKey: "nominas.table.extraProrate", params: { amount: fmt(d.prorrata_pagas_extra) } });
+    if (d.horas_extra) extras.push({ labelKey: "nominas.table.extraOvertime", params: { amount: fmt(d.horas_extra) } });
+    if (d.prestacion_it) extras.push({ labelKey: "nominas.table.extraSickLeave", params: { amount: fmt(d.prestacion_it), days: d.dias_baja_it ?? 0 } });
     return extras;
 }
 
@@ -28,18 +29,20 @@ export function PayrollTable({
     filtered, isLoading, fmt, downloadingId, approvingId,
     handleDownloadPdf, handleApprove,
 }: PayrollTableProps) {
+    const t = useTranslations("rrhh");
+    const { fmtDate } = useFormat();
     return (
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap min-w-[900px]">
                     <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                         <tr>
-                            <th className="px-6 py-4 font-medium">Empleado</th>
-                            <th className="px-6 py-4 font-medium">Período</th>
-                            <th className="px-6 py-4 font-medium text-right">Bruto</th>
-                            <th className="px-6 py-4 font-medium text-right">Deducciones</th>
-                            <th className="px-6 py-4 font-medium text-right border-l border-border">Neto</th>
-                            <th className="px-6 py-4 font-medium text-center">Estado</th>
-                            <th className="px-6 py-4 font-medium text-right">Acciones</th>
+                            <th className="px-6 py-4 font-medium">{t("nominas.table.employee")}</th>
+                            <th className="px-6 py-4 font-medium">{t("nominas.table.period")}</th>
+                            <th className="px-6 py-4 font-medium text-right">{t("nominas.table.gross")}</th>
+                            <th className="px-6 py-4 font-medium text-right">{t("nominas.table.deductions")}</th>
+                            <th className="px-6 py-4 font-medium text-right border-l border-border">{t("nominas.table.net")}</th>
+                            <th className="px-6 py-4 font-medium text-center">{t("nominas.table.status")}</th>
+                            <th className="px-6 py-4 font-medium text-right">{t("nominas.table.actions")}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/50">
@@ -50,9 +53,9 @@ export function PayrollTable({
                         ) : filtered.length === 0 ? (
                             <tr><td colSpan={7} className="px-6 py-16 text-center">
                                 <WalletCards className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                                <p className="text-muted-foreground font-medium">No hay nóminas aún</p>
+                                <p className="text-muted-foreground font-medium">{t("nominas.table.emptyTitle")}</p>
                                 <p className="text-muted-foreground text-xs mt-2">
-                                    Usa &quot;Calcular automática&quot; (preview + reglas fijas) o &quot;Generar con IA&quot; para el agente RRHH.
+                                    {t("nominas.table.emptyDescription")}
                                 </p>
                             </td></tr>
                         ) : filtered.map((payroll) => (
@@ -63,14 +66,14 @@ export function PayrollTable({
                                 </td>
                                 <td className="px-6 py-4 text-foreground">
                                     <span className="bg-muted text-xs px-2 py-1 rounded">
-                                        {format(new Date(payroll.period_start), "d MMM", { locale: es })} – {format(new Date(payroll.period_end), "d MMM yyyy", { locale: es })}
+                                        {fmtDate(payroll.period_start, { day: "numeric", month: "short" })} – {fmtDate(payroll.period_end, { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-right text-muted-foreground">
                                     {fmt(payroll.gross_salary ?? payroll.base_salary)}
                                     {devengoExtras(payroll, fmt).length > 0 && (
                                         <div className="text-[10px] text-muted-foreground/70">
-                                            {devengoExtras(payroll, fmt).join(" · ")}
+                                            {devengoExtras(payroll, fmt).map(e => t(e.labelKey, e.params)).join(" · ")}
                                         </div>
                                     )}
                                 </td>
@@ -80,14 +83,14 @@ export function PayrollTable({
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-1.5">
                                         <button onClick={() => handleDownloadPdf(payroll)} disabled={downloadingId === payroll.id}
-                                            className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50" title="Descargar PDF" aria-label="Descargar PDF">
+                                            className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50" title={t("common.downloadPdf")} aria-label={t("common.downloadPdf")}>
                                             {downloadingId === payroll.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
                                         </button>
                                         {payroll.status === "draft" && (
                                             <button onClick={() => handleApprove(payroll)} disabled={approvingId === payroll.id}
                                                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors disabled:opacity-50">
                                                 {approvingId === payroll.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                                                Aprobar
+                                                {t("common.approve")}
                                             </button>
                                         )}
                                     </div>

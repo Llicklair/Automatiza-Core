@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { api, type Employee, type Payroll, type PayrollCalculation } from "@/lib/api";
 import { logError } from "@/lib/logger";
 import { useNotificationStore } from "@/stores/notifications";
 
 export function usePayrolls() {
+    const t = useTranslations("rrhh");
+    const { fmtCurrency } = useFormat();
     const [payrolls, setPayrolls]                     = useState<Payroll[]>([]);
     const [isLoading, setIsLoading]                   = useState(true);
     const [generatingPayrolls, setGeneratingPayrolls] = useState(false);
@@ -59,7 +63,7 @@ export function usePayrolls() {
             setAutoEmpId(useList[0]?.id ?? "");
         } catch (e) {
             logError("rrhh/nominas/auto-employees", e);
-            showToast("No se pudieron cargar empleados.", "err");
+            showToast(t("toasts.employeesLoadError"), "err");
         } finally {
             setAutoEmpLoading(false);
         }
@@ -80,7 +84,7 @@ export function usePayrolls() {
             .catch((e: unknown) => {
                 if (!cancelled) {
                     logError("rrhh/nominas/preview", e);
-                    showToast(e instanceof Error ? e.message : "Preview no disponible", "err");
+                    showToast(e instanceof Error ? e.message : t("toasts.previewUnavailable"), "err");
                 }
             })
             .finally(() => { if (!cancelled) setAutoPreviewLoading(false); });
@@ -99,11 +103,11 @@ export function usePayrolls() {
                 issue_date:   format(now,                "yyyy-MM-dd"),
                 status: "draft",
             });
-            showToast("Nómina en borrador creada con cálculo determinista.", "ok");
+            showToast(t("toasts.autoDraftCreated"), "ok");
             setAutoOpen(false);
             await loadData();
         } catch (e: unknown) {
-            showToast(e instanceof Error ? e.message : "No se pudo crear la nómina", "err");
+            showToast(e instanceof Error ? e.message : t("toasts.autoDraftError"), "err");
         } finally {
             setAutoSubmitting(false);
         }
@@ -112,17 +116,18 @@ export function usePayrolls() {
     const handleGeneratePayrolls = async () => {
         setGeneratingPayrolls(true);
         const now = new Date();
-        const monthName = now.toLocaleString("es-ES", { month: "long" });
+        // La instrucción al agente va SIEMPRE en español (prompt de backend, no UI).
+        const promptMonth = now.toLocaleString("es", { month: "long" });
         const year = now.getFullYear();
         try {
             await api.tasks.create(
                 "hr",
-                `Genera todas las nóminas del mes de ${monthName} de ${year} para todos los empleados activos del tenant. Créalas en estado DRAFT para revisión humana.`
+                `Genera todas las nóminas del mes de ${promptMonth} de ${year} para todos los empleados activos del tenant. Créalas en estado DRAFT para revisión humana.`
             );
-            showToast(`Agente RRHH lanzado. Generando nóminas de ${monthName} ${year}...`, "ok");
+            showToast(t("toasts.agentLaunched", { month: promptMonth, year }), "ok");
             setTimeout(() => loadData(), 6000);
         } catch (e: any) {
-            showToast("Error: " + (e.message || "No se pudo lanzar el agente RRHH"), "err");
+            showToast(t("toasts.errorPrefix", { msg: e.message || t("toasts.agentLaunchError") }), "err");
         } finally {
             setGeneratingPayrolls(false);
         }
@@ -133,9 +138,9 @@ export function usePayrolls() {
         try {
             const updated = await api.hr.payrolls.approve(payroll.id);
             setPayrolls(prev => prev.map(p => p.id === updated.id ? updated : p));
-            showToast(`Nómina de ${payroll.employee?.name} aprobada. PDF generado en Documentos > Nóminas.`, "ok");
+            showToast(t("toasts.payrollApproved", { name: payroll.employee?.name ?? "" }), "ok");
         } catch (e: any) {
-            showToast("Error al aprobar: " + e.message, "err");
+            showToast(t("toasts.approveError", { msg: e.message }), "err");
         } finally {
             setApprovingId(null);
         }
@@ -148,7 +153,7 @@ export function usePayrolls() {
             const period = payroll.period_start ? format(new Date(payroll.period_start), "yyyy-MM") : "periodo";
             await api.hr.payrolls.downloadPdf(payroll.id, `Nomina_${empName}_${period}.pdf`);
         } catch (e: any) {
-            showToast("Error descargando PDF: " + e.message, "err");
+            showToast(t("toasts.downloadPdfError", { msg: e.message }), "err");
         } finally {
             setDownloadingId(null);
         }
@@ -180,7 +185,7 @@ export function usePayrolls() {
 
     const drafts = payrolls.filter(p => p.status === "draft").length;
 
-    const fmt = (v: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
+    const fmt = fmtCurrency;
 
     return {
         payrolls, filtered, isLoading, drafts, kpis, uniqueEmployees, fmt,

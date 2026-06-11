@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api, Employee, WorkSchedule } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
 
-export const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-export const DAYS_FULL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+// I18N — config estructural + claves; el componente traduce en render.
+export const DAYS = [
+    { shortKey: "horarios.days.short.mon", fullKey: "horarios.days.full.mon" },
+    { shortKey: "horarios.days.short.tue", fullKey: "horarios.days.full.tue" },
+    { shortKey: "horarios.days.short.wed", fullKey: "horarios.days.full.wed" },
+    { shortKey: "horarios.days.short.thu", fullKey: "horarios.days.full.thu" },
+    { shortKey: "horarios.days.short.fri", fullKey: "horarios.days.full.fri" },
+    { shortKey: "horarios.days.short.sat", fullKey: "horarios.days.full.sat" },
+    { shortKey: "horarios.days.short.sun", fullKey: "horarios.days.full.sun" },
+];
 
 export type DaySchedule = { start_time: string; end_time: string; active: boolean };
 export type EmployeeSchedule = Record<number, DaySchedule>;
@@ -36,6 +45,7 @@ function buildGrid(schedules: WorkSchedule[]): EmployeeSchedule {
 }
 
 export function useHorarios() {
+    const t = useTranslations("rrhh");
     const toast = useToastStore();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [grids, setGrids] = useState<Record<string, EmployeeSchedule>>({});
@@ -84,9 +94,9 @@ export function useHorarios() {
                 active: d.active,
             }));
             await api.hr.schedules.upsert(empId, schedules);
-            toast.success("Horario guardado");
+            toast.success(t("toasts.scheduleSaved"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Error al guardar");
+            toast.error(err instanceof Error ? err.message : t("toasts.scheduleSaveError"));
         } finally {
             setSaving((s) => ({ ...s, [empId]: false }));
         }
@@ -121,16 +131,23 @@ export function useHorarios() {
 
 // ── Export helpers ────────────────────────────────────────────────────────────
 
+export interface ScheduleHTMLLabels {
+    employee: string;
+    days: string[];          // nombres completos de los 7 días, ya traducidos
+    hoursPerWeek: string;
+}
+
 export function buildScheduleHTML(
     employees: Employee[],
-    grids: Record<string, EmployeeSchedule>
+    grids: Record<string, EmployeeSchedule>,
+    labels: ScheduleHTMLLabels
 ): string {
-    const headerCells = ["Empleado", ...DAYS_FULL, "h/sem"]
+    const headerCells = [labels.employee, ...labels.days, labels.hoursPerWeek]
         .map((h) => `<th style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 10px;font-size:12px;text-align:left;">${h}</th>`)
         .join("");
     const bodyRows = employees.map((emp) => {
         const grid = grids[emp.id] ?? {};
-        const cells = DAYS_FULL.map((_, i) => {
+        const cells = labels.days.map((_, i) => {
             const day = grid[i];
             const value = day?.active ? `${day.start_time}–${day.end_time}` : "—";
             return `<td style="border:1px solid #e5e7eb;padding:5px 8px;font-size:12px;color:#374151;">${value}</td>`;

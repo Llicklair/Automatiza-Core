@@ -1,19 +1,21 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Employee, LeaveRequest } from "@/lib/api";
 
-export const LEAVE_TYPE_LABELS: Record<string, string> = {
-    baja_medica: "Baja médica",
-    vacaciones: "Vacaciones",
-    excedencia: "Excedencia",
-    otros: "Otros",
+// I18N — config estructural + labelKey; el componente traduce en render.
+export const LEAVE_TYPE_LABEL_KEYS: Record<string, string> = {
+    baja_medica: "vacaciones.leaveTypes.bajaMedica",
+    vacaciones: "vacaciones.leaveTypes.vacaciones",
+    excedencia: "vacaciones.leaveTypes.excedencia",
+    otros: "vacaciones.leaveTypes.otros",
 };
 
-export const STATUS_LABELS: Record<string, string> = {
-    pending: "Pendiente",
-    approved: "Aprobada",
-    rejected: "Rechazada",
+export const STATUS_LABEL_KEYS: Record<string, string> = {
+    pending: "vacaciones.status.pending",
+    approved: "vacaciones.status.approved",
+    rejected: "vacaciones.status.rejected",
 };
 
 export type StatusFilter = "all" | "pending" | "approved" | "rejected";
@@ -35,6 +37,7 @@ const EMPTY_FORM: NewRequestForm = {
 };
 
 export function useVacaciones() {
+    const t = useTranslations("rrhh");
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading, setLoading] = useState(true);
@@ -68,7 +71,7 @@ export function useVacaciones() {
 
     const handleCreate = async () => {
         if (!form.employee_id || !form.leave_type || !form.start_date || !form.end_date) {
-            setError("Completa todos los campos obligatorios.");
+            setError(t("vacaciones.requiredFieldsError"));
             return;
         }
         setSaving(true);
@@ -85,7 +88,7 @@ export function useVacaciones() {
             setForm(EMPTY_FORM);
             await loadData();
         } catch {
-            setError("Error al crear la solicitud.");
+            setError(t("vacaciones.createError"));
         } finally {
             setSaving(false);
         }

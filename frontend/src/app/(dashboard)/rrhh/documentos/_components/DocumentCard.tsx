@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { useFormat } from "@/hooks/useFormat";
 import { CheckCircle2, Copy, Download, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import type { HRDocument } from "@/lib/api/hr_documents";
 import { DOC_TYPES } from "../_hooks/useHRDocumentos";
 
 function StatusBadge({ status }: { status: HRDocument["status"] }) {
+    const t = useTranslations("rrhh");
     return status === "approved" ? (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-3 h-3" /> Aprobado
+            <CheckCircle2 className="w-3 h-3" /> {t("documentos.status.approved")}
         </span>
     ) : (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            Borrador
+            {t("documentos.status.draft")}
         </span>
     );
 }
@@ -24,10 +27,14 @@ interface Props {
 }
 
 export function DocumentCard({ doc, onApprove, onDelete }: Props) {
+    const t = useTranslations("rrhh");
+    const tc = useTranslations("common");
+    const { fmtDate } = useFormat();
     const [expanded, setExpanded] = useState(false);
     const [copying, setCopying] = useState(false);
-    const docTypeLabel = DOC_TYPES.find(t => t.value === doc.doc_type)?.label ?? doc.doc_type;
-    const date = new Date(doc.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+    const docTypeKey = DOC_TYPES.find(d => d.value === doc.doc_type)?.labelKey;
+    const docTypeLabel = docTypeKey ? t(docTypeKey) : doc.doc_type;
+    const date = fmtDate(doc.created_at, { day: "numeric", month: "short", year: "numeric" });
 
     const handleCopy = async () => {
         setCopying(true);
@@ -55,26 +62,26 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
                     <p className="text-xs text-muted-foreground mt-1">{docTypeLabel} · {doc.employee_name} · {date}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={handleDownloadPdf} title="Descargar PDF"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Descargar PDF">
+                    <button onClick={handleDownloadPdf} title={t("common.downloadPdf")}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label={t("common.downloadPdf")}>
                         <Download className="w-4 h-4" aria-hidden="true" />
                     </button>
-                    <button onClick={handleCopy} title="Copiar HTML"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Copiar HTML">
+                    <button onClick={handleCopy} title={t("documentos.copyHtml")}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label={t("documentos.copyHtml")}>
                         {copying ? <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
                     </button>
                     {doc.status === "draft" && (
-                        <button onClick={() => onApprove(doc.id)} title="Aprobar"
-                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors" aria-label="Aprobar">
+                        <button onClick={() => onApprove(doc.id)} title={t("common.approve")}
+                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors" aria-label={t("common.approve")}>
                             <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                         </button>
                     )}
-                    <button onClick={() => onDelete(doc.id)} title="Eliminar"
-                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Eliminar">
+                    <button onClick={() => onDelete(doc.id)} title={tc("delete")}
+                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors" aria-label={tc("delete")}>
                         <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button onClick={() => setExpanded(v => !v)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors" aria-label="Expandir o contraer documento">
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors" aria-label={t("documentos.toggleExpandAria")}>
                         {expanded ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
                     </button>
                 </div>

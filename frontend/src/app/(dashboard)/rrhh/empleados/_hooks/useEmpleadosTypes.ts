@@ -28,14 +28,16 @@ export const EMPTY_FORM: EmployeeForm = {
     leave_type: "", leave_start: "", leave_end: "",
 };
 
+// I18N — las constantes guardan `labelKey` (clave bajo el namespace "rrhh");
+// el componente traduce en render: t(opt.labelKey).
 export const STATUS_OPTIONS = [
-    { label: "Activo", value: "active" },
-    { label: "Inactivo", value: "inactive" },
-    { label: "De baja", value: "leave" },
+    { labelKey: "empleados.status.active", value: "active" },
+    { labelKey: "empleados.status.inactive", value: "inactive" },
+    { labelKey: "empleados.status.leave", value: "leave" },
 ];
 
 export const LEAVE_TYPE_OPTIONS = [
-    { label: "Baja médica", value: "baja_medica" },
-    { label: "Vacaciones", value: "vacaciones" },
-    { label: "Excedencia", value: "excedencia" },
+    { labelKey: "empleados.leaveTypes.bajaMedica", value: "baja_medica" },
+    { labelKey: "empleados.leaveTypes.vacaciones", value: "vacaciones" },
+    { labelKey: "empleados.leaveTypes.excedencia", value: "excedencia" },
 ];
