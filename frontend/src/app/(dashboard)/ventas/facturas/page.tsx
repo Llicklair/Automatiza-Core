@@ -10,6 +10,7 @@ import { KpiCard } from "@/components/shared/KpiCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useFacturas } from "./_hooks/useFacturas";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function FacturasPage() {
     const t = useTranslations("ventas");
@@ -20,7 +21,7 @@ export default function FacturasPage() {
 
     if (!loading && invoices.length === 0) {
         return (
-            <div className="p-6 space-y-6">
+            <PageContainer width="full">
                 <PageHeader
                     title={t("title")}
                     description={t("description")}
@@ -37,12 +38,12 @@ export default function FacturasPage() {
                     description={t("emptyDescription")}
                     action={{ label: t("createInvoice"), href: "/ventas/facturas/nueva" }}
                 />
-            </div>
+            </PageContainer>
         );
     }
 
     return (
-        <div className="p-6 space-y-6">
+        <PageContainer width="full">
             <PageHeader
                 title={t("title")}
                 description={t("description")}
@@ -83,6 +84,6 @@ export default function FacturasPage() {
                 facetedFilters={[{ column: "status", title: t("status"), options: statusFilterOptions }]}
                 emptyMessage={t("noInvoicesFound")}
             />
-        </div>
+        </PageContainer>
     );
 }

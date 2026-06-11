@@ -16,6 +16,7 @@ import { ClientesEmptyState } from "./_components/ClientesEmptyState";
 import { ClienteFormModal } from "./_components/ClienteFormModal";
 import { ClientesImportModal } from "./_components/ClientesImportModal";
 import { ClientTypeMap } from "./_components/clientHealth";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -51,14 +52,14 @@ export default function ClientesPage() {
 
     if (error && !loading) {
         return (
-            <div className="p-8 max-w-7xl mx-auto">
+            <PageContainer width="7xl">
                 <EmptyState icon={Building2} title={t("errorLoading")} description={error} />
-            </div>
+            </PageContainer>
         );
     }
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-6 relative">
+        <PageContainer width="7xl" className="relative">
             {/* Header */}
             <PageHeader
                 title={t("title")}
@@ -148,6 +149,6 @@ export default function ClientesPage() {
             />
 
             <ClientesImportModal open={showImport} onClose={() => setShowImport(false)} />
-        </div>
+        </PageContainer>
     );
 }

@@ -15,6 +15,7 @@ import UsersTable from "./_components/UsersTable";
 import NewUserModal from "./_components/NewUserModal";
 import NewInvitationModal from "./_components/NewInvitationModal";
 import ShareInvitationModal from "./_components/ShareInvitationModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function UsuariosConfigPage() {
     const {
@@ -99,7 +100,7 @@ export default function UsuariosConfigPage() {
     const pendingInvitations = invitations.filter((i) => i.status === "pending");
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-6">
+        <PageContainer width="5xl">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground mb-1">Usuarios del tenant</h1>
@@ -174,6 +175,6 @@ export default function UsuariosConfigPage() {
                     onClose={() => setShareInvitation(null)}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

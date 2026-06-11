@@ -7,6 +7,7 @@ import { RefreshCw, Plus, Search, Loader2, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function RecurrentesPage() {
     const {
@@ -21,7 +22,7 @@ export default function RecurrentesPage() {
     } = useRecurrentes();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title={t("recurring")}
                 description={t("recurringDescription")}
@@ -103,6 +104,6 @@ export default function RecurrentesPage() {
                     t={t} tc={tc}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

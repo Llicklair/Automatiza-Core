@@ -5,12 +5,13 @@ import { cn } from "@/lib/utils";
 import { useCashflow } from "./_hooks/useCashflow";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function CashflowPage() {
     const { loading, filter, setFilter, totalIn, totalOut, netFlow, visibleEvents } = useCashflow();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+        <PageContainer className="animate-in fade-in duration-500">
             <PageHeader
                 title="Previsión de Tesorería (Cashflow)"
                 description="Analiza tus cobros y pagos futuros basados en facturas de venta, compra y nóminas."
@@ -106,6 +107,6 @@ export default function CashflowPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </PageContainer>
     );
 }

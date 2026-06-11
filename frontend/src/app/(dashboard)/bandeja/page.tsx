@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ShieldCheck, Inbox } from "lucide-react";
 import { ApprovalsTab } from "./_components/ApprovalsTab";
 import { ActivityTab } from "./_components/ActivityTab";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const TABS = [
     { key: "aprobaciones", label: "Aprobaciones", icon: ShieldCheck },
@@ -27,7 +28,7 @@ export default function BandejaPage() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+        <PageContainer width="5xl">
             {/* Header */}
             <div>
                 <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
@@ -71,6 +72,6 @@ export default function BandejaPage() {
             {activeTab === "actividad" && (
                 <ActivityTab isActive={activeTab === "actividad"} />
             )}
-        </div>
+        </PageContainer>
     );
 }

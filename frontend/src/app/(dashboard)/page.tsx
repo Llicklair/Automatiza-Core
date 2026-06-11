@@ -19,6 +19,7 @@ import { MorningBrief } from "./_components/MorningBrief";
 import { TimeSavedCard } from "./_components/TimeSavedCard";
 import { UsageWidget } from "./_components/UsageWidget";
 import { LlmNotConfiguredBanner } from "@/components/shared/LlmNotConfiguredBanner";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 function getGreeting(name: string) {
     const h = new Date().getHours();
@@ -40,7 +41,7 @@ export default function DashboardPage() {
 
     return (
         <ErrorBoundary section="inicio">
-        <div className="p-8 max-w-[1400px] mx-auto space-y-8 relative z-0">
+        <PageContainer className="space-y-8 relative z-0">
             {/* Ambient glow */}
             <div className="pointer-events-none fixed top-0 left-64 w-[600px] h-[400px] opacity-30" style={{ zIndex: -1 }}>
                 <div className="absolute top-0 left-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
@@ -86,7 +87,7 @@ export default function DashboardPage() {
                     <IntegrationsWidget {...integrations} />
                 </div>
             </div>
-        </div>
+        </PageContainer>
         </ErrorBoundary>
     );
 }

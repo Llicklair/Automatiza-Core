@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
     Users, Wallet, UserPlus, FileText, Brain, ArrowRight, Briefcase, Clock, Timer, Umbrella, Receipt
 } from "lucide-react";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const SECTIONS = [
     {
@@ -89,7 +90,7 @@ const SECTIONS = [
 
 export default function RRHHPage() {
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -122,6 +123,6 @@ export default function RRHHPage() {
                     </Link>
                 ))}
             </div>
-        </div>
+        </PageContainer>
     );
 }

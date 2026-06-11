@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useClienteDetalle } from "./_hooks/useClienteDetalle";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -47,17 +48,17 @@ export default function ClientDetailPage() {
 
     if (!client) {
         return (
-            <div className="p-8 max-w-4xl mx-auto text-center">
+            <PageContainer width="4xl" className="text-center">
                 <p className="text-muted-foreground">{t("contactNotFound")}</p>
                 <button onClick={() => router.back()} className="mt-4 text-primary hover:text-primary transition-colors text-sm">
                     {t("goBack")}
                 </button>
-            </div>
+            </PageContainer>
         );
     }
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             {/* Back */}
             <button onClick={() => router.back()} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm">
                 <ArrowLeft className="w-4 h-4" /> {t("backToContacts")}
@@ -173,6 +174,6 @@ export default function ClientDetailPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </PageContainer>
     );
 }

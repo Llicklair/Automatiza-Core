@@ -9,6 +9,7 @@ import { NewProjectModal } from "./_components/NewProjectModal";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function ProjectsPage() {
     const {
@@ -23,7 +24,7 @@ export default function ProjectsPage() {
     } = useProjectsPage();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title="Portfolio de Proyectos"
                 description="Monitoriza los tiempos de entrega. La IA puede convertir reuniones en tareas dentro de estos proyectos."
@@ -129,6 +130,6 @@ export default function ProjectsPage() {
                     error={error}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

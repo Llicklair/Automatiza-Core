@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useActualizaciones } from "./_hooks/useActualizaciones";
 import { UpdateChannelSelector } from "@/components/settings/UpdateChannelSelector";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 function StatusRow({ icon, label, status, detail }: {
     icon: React.ReactNode;
@@ -44,7 +45,7 @@ export default function ActualizacionesPage() {
     const { health, loading, error, updateStatus, updateError, downloadPercent, updateVersion, checks, loadHealth, checkForUpdates, installUpdate } = useActualizaciones();
 
     return (
-        <div className="p-8 max-w-3xl mx-auto space-y-8">
+        <PageContainer width="3xl" className="space-y-8">
             <div>
                 <h1 className="text-2xl font-bold text-foreground">Sistema</h1>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -228,6 +229,6 @@ export default function ActualizacionesPage() {
             <div className="bg-card border border-border rounded-2xl p-6">
                 <UpdateChannelSelector />
             </div>
-        </div>
+        </PageContainer>
     );
 }

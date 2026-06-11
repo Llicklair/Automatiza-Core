@@ -7,6 +7,7 @@ import { ServiceModal } from "./_components/ServiceModal";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function ServicesPage() {
     const t = useTranslations("ventas");
@@ -21,7 +22,7 @@ export default function ServicesPage() {
     } = useServicios();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title={t("serviceDatabase")}
                 description={t("serviceSubtitle")}
@@ -131,6 +132,6 @@ export default function ServicesPage() {
                     onSubmit={handleSubmit}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

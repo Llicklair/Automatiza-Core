@@ -7,6 +7,7 @@ import { ClipboardList, Plus, Search, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PedidosPage() {
     const {
@@ -20,7 +21,7 @@ export default function PedidosPage() {
     } = usePedidos();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+        <PageContainer>
             <PageHeader
                 title={t("orders")}
                 description={t("ordersDescription")}
@@ -99,6 +100,6 @@ export default function PedidosPage() {
                     t={t} tc={tc}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

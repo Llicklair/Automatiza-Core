@@ -6,6 +6,7 @@ import { BadgeCheck, Stamp, ShieldCheck } from "lucide-react";
 import { ModoVerifactuPanel } from "./ModoVerifactuPanel";
 import { ApoderamientoPanel } from "./ApoderamientoPanel";
 import { FirmaDigitalPanel } from "./FirmaDigitalPanel";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "verifactu" | "apoderamiento" | "firma";
 
@@ -23,7 +24,7 @@ export default function ConfiguracionFiscalPage() {
     ];
 
     return (
-        <div className="p-6 max-w-3xl space-y-6">
+        <PageContainer width="3xl">
             <div>
                 <h1 className="text-xl font-bold text-foreground">Configuración fiscal (AEAT)</h1>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -53,6 +54,6 @@ export default function ConfiguracionFiscalPage() {
             {tab === "verifactu" && <ModoVerifactuPanel />}
             {tab === "apoderamiento" && <ApoderamientoPanel />}
             {tab === "firma" && <FirmaDigitalPanel />}
-        </div>
+        </PageContainer>
     );
 }

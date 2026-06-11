@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
     Building2, Puzzle, User, Users, RefreshCw, Key, HardDrive, ArrowRight, Settings
 } from "lucide-react";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const SECTIONS = [
     {
@@ -71,7 +72,7 @@ const SECTIONS = [
 
 export default function ConfiguracionPage() {
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             <div>
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
@@ -102,6 +103,6 @@ export default function ConfiguracionPage() {
                     </Link>
                 ))}
             </div>
-        </div>
+        </PageContainer>
     );
 }

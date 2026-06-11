@@ -6,6 +6,7 @@ import { TabCuentas } from "./_components/TabCuentas";
 import { TabCrear } from "./_components/TabCrear";
 import { TabProgramados } from "./_components/TabProgramados";
 import { TabPlanIA } from "./_components/TabPlanIA";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ export default function MarketingPage() {
     const [tab, setTab] = useState<TabKey>("cuentas");
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-5">
+        <PageContainer width="5xl" className="space-y-5">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-pink-500/10 border border-pink-500/20">
@@ -58,6 +59,6 @@ export default function MarketingPage() {
             {tab === "crear"       && <TabCrear />}
             {tab === "programados" && <TabProgramados />}
             {tab === "plan-ia"     && <TabPlanIA />}
-        </div>
+        </PageContainer>
     );
 }

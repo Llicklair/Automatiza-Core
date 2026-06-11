@@ -9,6 +9,7 @@ import { VacacionesTab } from "./_components/VacacionesTab";
 import { GastosTab } from "./_components/GastosTab";
 import { LeaveRequestModal } from "./_components/LeaveRequestModal";
 import { ExpenseModal } from "./_components/ExpenseModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PortalPage() {
     const {
@@ -26,7 +27,7 @@ export default function PortalPage() {
     } = usePortal();
 
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-6">
+        <PageContainer width="4xl">
             {/* Header */}
             <PortalHeader
                 emp={emp}
@@ -140,6 +141,6 @@ export default function PortalPage() {
                 expenseError={expenseError}
                 onSubmit={handleSubmitExpense}
             />
-        </div>
+        </PageContainer>
     );
 }

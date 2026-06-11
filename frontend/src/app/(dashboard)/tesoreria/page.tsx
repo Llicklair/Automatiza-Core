@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TrendingUp, ArrowLeftRight, Send, ArrowRight, Landmark } from "lucide-react";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const SECTIONS = [
     {
@@ -33,7 +34,7 @@ const SECTIONS = [
 
 export default function TesoreriaPage() {
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             <div>
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
@@ -64,6 +65,6 @@ export default function TesoreriaPage() {
                     </Link>
                 ))}
             </div>
-        </div>
+        </PageContainer>
     );
 }

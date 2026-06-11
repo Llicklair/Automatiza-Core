@@ -8,6 +8,7 @@ import { usePagosYCobros } from "./_hooks/usePagosYCobros";
 import KpiCards from "./_components/KpiCards";
 import InvoiceTable from "./_components/InvoiceTable";
 import TransactionsTable from "./_components/TransactionsTable";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PagosYCobrosPage() {
     const {
@@ -24,7 +25,7 @@ export default function PagosYCobrosPage() {
     ] as const;
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+        <PageContainer className="animate-in fade-in duration-500">
             <PageHeader
                 title="Pagos y Cobros"
                 description="Control de liquidez y vencimientos de caja."
@@ -72,6 +73,6 @@ export default function PagosYCobrosPage() {
                 Los importes de cobros y pagos provienen de facturas emitidas y recibidas no cobradas/pagadas.
                 Los movimientos bancarios son importados via sincronizacion PSD2.
             </div>
-        </div>
+        </PageContainer>
     );
 }

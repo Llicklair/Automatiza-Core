@@ -5,6 +5,7 @@
 
 import { CheckCircle2, Layout, LayoutList } from "lucide-react";
 import { useDensity, type Density } from "@/hooks/useDensity";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const OPTIONS: { value: Density; label: string; description: string; icon: typeof Layout }[] = [
     {
@@ -27,7 +28,7 @@ export default function PreferenciasPage() {
     const { density, setDensity } = useDensity();
 
     return (
-        <div className="p-6 max-w-3xl space-y-6">
+        <PageContainer width="3xl">
             <header>
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">
                     Preferencias de visualización
@@ -92,6 +93,6 @@ export default function PreferenciasPage() {
                 La preferencia se guarda solo en este navegador. Si entras desde otro
                 equipo, deberás volver a elegirla.
             </aside>
-        </div>
+        </PageContainer>
     );
 }

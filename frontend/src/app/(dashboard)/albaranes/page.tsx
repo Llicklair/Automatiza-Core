@@ -3,6 +3,7 @@
 import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search } from "lucide-react";
 import { useAlbaranes, STATUS_LABELS, fmt } from "./_hooks/useAlbaranes";
 import { AlbaranModal } from "./_components/AlbaranModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function AlbaranesPage() {
     const {
@@ -14,7 +15,7 @@ export default function AlbaranesPage() {
     } = useAlbaranes();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+        <PageContainer className="animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground mb-1">Albaranes</h1>
@@ -137,6 +138,6 @@ export default function AlbaranesPage() {
                     onSubmit={handleCreate}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

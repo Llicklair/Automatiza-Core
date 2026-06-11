@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const CATEGORIES = [
     { value: "viaje", label: "Viaje / Transporte" },
@@ -186,7 +187,7 @@ export default function GastosPage() {
     };
 
     return (
-        <div className="p-6 space-y-6">
+        <PageContainer width="full">
             <PageHeader
                 title="Gestión de Gastos"
                 description="Aprueba y reembolsa dietas y gastos de empleados."
@@ -451,6 +452,6 @@ export default function GastosPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageContainer>
     );
 }

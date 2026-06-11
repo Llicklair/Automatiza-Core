@@ -17,6 +17,7 @@ import {
     type AppLocale,
 } from "@/hooks/useLocale";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function IdiomaPage() {
     const router = useRouter();
@@ -36,7 +37,7 @@ export default function IdiomaPage() {
     }
 
     return (
-        <div className="p-6 max-w-3xl space-y-6">
+        <PageContainer width="3xl">
             <PageHeader
                 title="Idioma de la interfaz"
                 description="Elige el idioma con el que se muestran los menús, formularios y mensajes. La preferencia se guarda en este navegador."
@@ -98,6 +99,6 @@ export default function IdiomaPage() {
             <p className="text-xs text-muted-foreground">
                 Al cambiar el idioma la página se recarga para aplicar las traducciones SSR.
             </p>
-        </div>
+        </PageContainer>
     );
 }

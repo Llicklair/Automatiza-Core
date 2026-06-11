@@ -9,6 +9,7 @@ import RemesaItemList from "./_components/RemesaItemList";
 import RemesaSummary from "./_components/RemesaSummary";
 import RemesaModal from "./_components/RemesaModal";
 import RemesaHistorial from "./_components/RemesaHistorial";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const fmt = (v: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
@@ -21,7 +22,7 @@ export default function RemesasPage() {
     } = useRemesas();
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
+        <PageContainer className="animate-in fade-in duration-500">
             <PageHeader
                 title="Remesas Bancarias SEPA"
                 description="Agrupa facturas y nominas para generar ficheros SEPA XML listos para tu banco."
@@ -96,6 +97,6 @@ export default function RemesasPage() {
                     <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label="Cerrar notificación"><X className="w-4 h-4" aria-hidden="true" /></Button>
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }

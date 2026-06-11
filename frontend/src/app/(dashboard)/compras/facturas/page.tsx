@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useFacturasRecibidas } from "./_hooks/useFacturasRecibidas";
 import { RegistrarFacturaModal } from "./_components/RegistrarFacturaModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const STATUS_FILTER_OPTIONS = [
     { label: "Borrador",  value: "draft" },
@@ -131,7 +132,7 @@ export default function FacturasRecibidasPage() {
     ], [handleDeleteInvoice, handleStatusChange]);
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <PageContainer width="6xl" className="space-y-8">
             <PageHeader
                 title="Facturas Recibidas"
                 description="Gestiona tus compras, gastos y proveedores."
@@ -225,6 +226,6 @@ export default function FacturasRecibidasPage() {
                 submitting={submitting}
                 onSubmit={handleRegister}
             />
-        </div>
+        </PageContainer>
     );
 }

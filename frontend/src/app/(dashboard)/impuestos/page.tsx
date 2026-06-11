@@ -6,6 +6,7 @@ import { Scale, FileText, Send } from "lucide-react";
 import { ResumenPanel } from "./ResumenPanel";
 import { ModelosPanel } from "./ModelosPanel";
 import { AsistidaPanel } from "./AsistidaPanel";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "resumen" | "modelos" | "asistida";
 
@@ -23,7 +24,7 @@ export default function ImpuestosPage() {
     ];
 
     return (
-        <div className="p-6 max-w-5xl space-y-6">
+        <PageContainer width="5xl">
             <div className="flex items-center gap-1 border-b border-border">
                 {tabs.map(t => {
                     const Icon = t.icon;
@@ -46,6 +47,6 @@ export default function ImpuestosPage() {
             {tab === "resumen" && <ResumenPanel />}
             {tab === "modelos" && <ModelosPanel />}
             {tab === "asistida" && <AsistidaPanel />}
-        </div>
+        </PageContainer>
     );
 }

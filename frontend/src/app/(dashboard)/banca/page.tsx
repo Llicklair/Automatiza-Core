@@ -8,6 +8,7 @@ import { SaldosTab } from "./_components/SaldosTab";
 import { TransaccionesTab } from "./_components/TransaccionesTab";
 import { ResumenTab } from "./_components/ResumenTab";
 import { ConciliacionTab } from "./_components/ConciliacionTab";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "saldos" | "transacciones" | "conciliacion" | "resumen";
 
@@ -22,7 +23,7 @@ export default function BancaPage() {
     const [tab, setTab] = useState<Tab>("saldos");
 
     return (
-        <div className="p-6 space-y-6">
+        <PageContainer width="full">
             <PageHeader
                 title="Banca PSD2"
                 description="Visión financiera en tiempo real de tus cuentas bancarias"
@@ -50,6 +51,6 @@ export default function BancaPage() {
             {tab === "transacciones" && <TransaccionesTab />}
             {tab === "conciliacion"  && <ConciliacionTab />}
             {tab === "resumen"       && <ResumenTab />}
-        </div>
+        </PageContainer>
     );
 }

@@ -11,6 +11,7 @@ import {
     FONTS, HEADER_STYLES, TABLE_STYLES, LOGO_POSITIONS,
 } from "./_components/templateOptions";
 import { usePlantillas } from "./_hooks/usePlantillas";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PlantillasPage() {
     const {
@@ -25,7 +26,7 @@ export default function PlantillasPage() {
     } = usePlantillas();
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
+        <PageContainer width="7xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
@@ -275,6 +276,6 @@ export default function PlantillasPage() {
                     )}
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }

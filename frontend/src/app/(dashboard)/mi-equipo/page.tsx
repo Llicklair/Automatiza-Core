@@ -8,6 +8,7 @@ import { TaskPanel } from "./_components/TaskPanel";
 import { useMiEquipo } from "./_hooks/useMiEquipo";
 import { useToastStore } from "@/stores/toast";
 import { LlmNotConfiguredBanner } from "@/components/shared/LlmNotConfiguredBanner";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function TareasPage() {
     const {
@@ -19,7 +20,7 @@ export default function TareasPage() {
     const toast = useToastStore();
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        <PageContainer width="6xl">
             {instructTarget && (
                 <InstructModal
                     employee={instructTarget}
@@ -145,6 +146,6 @@ export default function TareasPage() {
             {activeTab === "tareas" && (
                 <TaskPanel isActive={activeTab === "tareas"} />
             )}
-        </div>
+        </PageContainer>
     );
 }

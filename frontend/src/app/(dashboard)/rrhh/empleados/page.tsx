@@ -16,6 +16,7 @@ import { exportToCsv } from "@/lib/utils/export-csv";
 import type { Employee } from "@/lib/api";
 import { api } from "@/lib/api";
 import { ImportCsvModal } from "@/components/shared/ImportCsvModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function EmployeesPage() {
     const {
@@ -40,7 +41,7 @@ export default function EmployeesPage() {
         ]);
 
     return (
-        <div className="space-y-6 p-6">
+        <PageContainer width="full">
             {docsEmp && <EmployeeDocsModal employee={docsEmp} onClose={() => setDocsEmp(null)} />}
 
             <PageHeader
@@ -135,6 +136,6 @@ export default function EmployeesPage() {
                     loadingPayrolls={loadingPayrolls}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 }

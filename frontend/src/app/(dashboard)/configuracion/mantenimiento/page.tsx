@@ -20,6 +20,7 @@ import {
 import { system } from "@/lib/api/system";
 import { useToastStore } from "@/stores/toast";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function MantenimientoPage() {
     const toast = useToastStore();
@@ -58,7 +59,7 @@ export default function MantenimientoPage() {
     }
 
     return (
-        <div className="p-6 max-w-3xl space-y-6">
+        <PageContainer width="3xl">
             <PageHeader
                 title="Mantenimiento"
                 description="Herramientas de operación puntual. Solo admin. Pensadas para diagnosticar problemas o repoblar datos tras una migración."
@@ -163,6 +164,6 @@ export default function MantenimientoPage() {
                     </div>
                 ) : null}
             </section>
-        </div>
+        </PageContainer>
     );
 }

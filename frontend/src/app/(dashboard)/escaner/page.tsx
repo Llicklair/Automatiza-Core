@@ -10,6 +10,7 @@ import SelectedFilesList from "./_components/SelectedFilesList";
 import ScanResults from "./_components/ScanResults";
 import { ExcelImportPanel } from "./_components/ExcelImportPanel";
 import { FacturasImportPanel } from "./_components/FacturasImportPanel";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 type Tab = "escaner" | "facturas" | "excel";
 
@@ -34,7 +35,7 @@ export default function EscanerPage() {
     ];
 
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-6">
+        <PageContainer width="4xl">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-3 mb-1">
@@ -92,6 +93,6 @@ export default function EscanerPage() {
             ) : (
                 <ExcelImportPanel />
             )}
-        </div>
+        </PageContainer>
     );
 }

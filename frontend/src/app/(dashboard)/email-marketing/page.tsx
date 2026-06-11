@@ -5,6 +5,7 @@ import { Mail, FileText, BarChart3, Send } from "lucide-react";
 import TabCampaigns from "./_components/CampaignsTab";
 import TabTemplates from "./_components/TemplatesTab";
 import TabStats from "./_components/StatsTab";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
@@ -21,7 +22,7 @@ export default function EmailMarketingPage() {
     const [tab, setTab] = useState<TabKey>("campaigns");
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-5">
+        <PageContainer width="5xl" className="space-y-5">
             <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
                     <Mail className="w-5 h-5 text-blue-400" />
@@ -52,6 +53,6 @@ export default function EmailMarketingPage() {
             {tab === "campaigns" && <TabCampaigns />}
             {tab === "templates" && <TabTemplates />}
             {tab === "stats"     && <TabStats />}
-        </div>
+        </PageContainer>
     );
 }

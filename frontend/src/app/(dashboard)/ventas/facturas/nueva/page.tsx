@@ -8,6 +8,7 @@ import { useNuevaFactura } from "./_hooks/useNuevaFactura";
 import InvoiceHeader from "./_components/InvoiceHeader";
 import InvoiceLinesTable from "./_components/InvoiceLinesTable";
 import InvoiceTotals from "./_components/InvoiceTotals";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 function NuevaFacturaContent() {
     const t = useTranslations("ventas");
@@ -21,7 +22,7 @@ function NuevaFacturaContent() {
     } = useNuevaFactura();
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <PageContainer width="5xl" className="space-y-8">
             <div className="flex items-center gap-4">
                 <Link href="/ventas/facturas" className="p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors">
                     <ArrowLeft className="w-5 h-5" />
@@ -45,7 +46,7 @@ function NuevaFacturaContent() {
 
                 <InvoiceTotals totals={totals} submitting={submitting} />
             </form>
-        </div>
+        </PageContainer>
     );
 }
 

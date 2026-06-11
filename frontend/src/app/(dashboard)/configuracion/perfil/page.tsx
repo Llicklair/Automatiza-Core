@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import {
     User, ArrowLeft, Save, Loader2, CheckCircle2, AlertTriangle,
 } from "lucide-react";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PerfilPage() {
     const router = useRouter();
@@ -32,7 +33,7 @@ export default function PerfilPage() {
     }
 
     return (
-        <div className="p-8 max-w-lg mx-auto">
+        <PageContainer width="full" className="max-w-lg mx-auto">
             <button
                 onClick={() => router.back()}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition mb-6"
@@ -84,6 +85,6 @@ export default function PerfilPage() {
                     </button>
                 </div>
             </div>
-        </div>
+        </PageContainer>
     );
 }

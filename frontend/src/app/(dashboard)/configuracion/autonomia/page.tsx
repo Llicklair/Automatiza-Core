@@ -16,6 +16,7 @@ import { Loader2, RotateCcw, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AutonomyMode, PolicyList } from "@/lib/api/autonomy";
 import { useToastStore } from "@/stores/toast";
+import { PageContainer } from "@/components/shared/PageContainer";
 
 const DOMAIN_LABELS: Record<string, { name: string; hint: string }> = {
     banking_read: { name: "Banca · lectura", hint: "Consulta de saldos y movimientos." },
@@ -100,7 +101,7 @@ export default function AutonomyPage() {
     }
 
     return (
-        <div className="p-6 max-w-4xl space-y-6">
+        <PageContainer width="4xl">
             <header>
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">
                     Autonomía de los agentes
@@ -183,6 +184,6 @@ export default function AutonomyPage() {
                     );
                 })}
             </ul>
-        </div>
+        </PageContainer>
     );
 }
