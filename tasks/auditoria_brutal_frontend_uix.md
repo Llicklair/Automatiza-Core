@@ -18,9 +18,23 @@
 > hydrated/token, antes podía no arrancar), useMiEquipo, useTaskPanel, useFichajes,
 > useEscaner, useAutomatizacionesExecution (7619fdc). Polls acotados de OAuth/tasks
 > y UI ticks intactos a propósito (pausarlos rompería las esperas OAuth).
-> Pendientes (proyectos, no quick-wins): #7 a11y,
-> #11 tokens de diseño/PageContainer, #6 tabs, migración i18n real (#1 fase 2),
-> y el alert de `portal-cliente/page.tsx` (fuera del layout, sin ToastContainer).
+> ✅ **#7 a11y COMPLETADO 2026-06-11** — 126 botones icon-only etiquetados en 86
+> archivos: 75 en tablas/páginas de datos (d9cb554) + 51 en modales, inventario,
+> tpv, tesorería, proyectos, mi-equipo, documentos y layout (4ca1ff5).
+> `aria-label` descriptivo en español + `aria-hidden` en el icono lucide interno.
+> ✅ **#11 PageContainer COMPLETADO 2026-06-11** — componente
+> `shared/PageContainer` (p-6 único + width preservado por prop, 4 tests) en
+> 11a89f7; ~55 page.tsx migradas (3cb459a). Saltadas a propósito: tpv y
+> mis-tareas (layouts h-screen), documentos (drag&drop en el div raíz),
+> automatizaciones (superficie propia) y redirects. El barrido de 62 hex inline
+> sigue siendo oportunista (mayormente charts).
+> ✅ **#6 tabs COMPLETADO 2026-06-11** — bandeja (conserva sync URL + badge),
+> banca (pill → subrayado), marketing y email-marketing migradas a `ui/tabs`
+> Radix controlado con estilo subrayado unificado; contenido sigue en render
+> condicional para no cambiar el montado (1e44bd7).
+> ✅ **alert portal-cliente COMPLETADO 2026-06-11** — layout propio con
+> ToastContainer + `useToast().error` en la descarga (dff0e10).
+> Pendiente (proyecto grande, plan aparte): migración i18n real (#1 fase 2).
 
 Alcance: `frontend/src` (Next.js App Router + Tailwind + next-intl + Electron). Muestreo: home, bandeja, facturas (compras/ventas), banca, rrhh, marketing, analítica, configuración, `components/ui|shared`, stores, hooks.
 

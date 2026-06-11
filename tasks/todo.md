@@ -59,10 +59,23 @@ menor: `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
   6 polls continuos migrados, layout ahora reactivo a hydrated/token
   (7619fdc). Polls acotados OAuth/tasks y UI ticks intactos a propósito.
 
-Pendiente (proyectos, no aprobados): #7 a11y, #11 tokens de
-diseño/PageContainer, #6 tabs unificados, migración i18n real por
-módulos, alert de `portal-cliente/page.tsx` (necesita ToastContainer
-en su layout propio).
+- [x] **#7 a11y** (2026-06-11): 126 botones icon-only con aria-label en
+  español + aria-hidden en el icono — 75 en tablas/datos (d9cb554),
+  51 en modales y resto (4ca1ff5).
+
+- [x] **#11 PageContainer** (2026-06-11): componente `shared/PageContainer`
+  (p-6 único, width por prop, 4 tests) en 11a89f7; ~55 page.tsx migradas
+  (3cb459a). Saltadas: tpv/mis-tareas (h-screen), documentos (drag&drop),
+  automatizaciones, redirects. Hex inline sigue oportunista.
+
+- [x] **#6 tabs** (2026-06-11): bandeja/banca/marketing/email-marketing a
+  `ui/tabs` Radix controlado, estilo subrayado unificado, render
+  condicional intacto (1e44bd7).
+
+- [x] **alert portal-cliente** (2026-06-11): layout propio con
+  ToastContainer + useToast().error (dff0e10).
+
+Pendiente (proyecto grande, plan aparte): migración i18n real por módulos.
 
 ---
 
