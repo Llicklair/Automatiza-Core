@@ -76,7 +76,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 
 ### BYOK / IA / Pricing
 | 2.18 | ~~Token ledger persistente a BD~~ **HECHO**: modelo `TokenLedger` (`db/models/llm_usage.py`) + `record_token_usage` (cableado en orquestador/empleados/budget_guard) + gate de gasto mensual por tenant | HECHO | `services/agent_budget.py` | plan-gtm |
-| 2.19 | LLM usage dashboard UI (`UsageWidget` vacío; endpoint `/llm-usage/stats` existe) | PARCIAL | `frontend/.../_components/UsageWidget.tsx` | plan-gtm |
+| 2.19 | ~~LLM usage dashboard UI~~ **HECHO** (ya implementado): `UsageWidget` montado en el dashboard, `UsageStatsCard` en config/api-keys, `UsageModal` en mi-equipo — todos consumiendo `/llm-usage/stats` | HECHO | `_components/UsageWidget.tsx` | plan-gtm |
 
 ### Frontend / i18n
 | 2.20 | i18n: completar traducción o ocultar idiomas no traducidos (≈80% hardcoded, 53 "Cargando…") — **migración next-intl en curso** | PARCIAL (en progreso) | `frontend/src/messages/`, dominios pendientes | auditoria_frontend, git WIP |
@@ -99,7 +99,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 | 3.2 | Normativa fiscal → RAG (hoy hardcoded en `compliance/tools.py`; reusa BOEScraper + `cosine_topk`) | PENDIENTE | roadmap_impl |
 | 3.3 | Modelo 131 (IRPF módulos) — PENDIENTE. ~~Modelo 200 (Sociedades)~~ **HECHO** (`build_modelo_200_data` + ruta) | PARCIAL | backlog |
 | 3.4 | Multi-currency banca (`requires_manual_review`) (INT.CUR) | PENDIENTE | backlog |
-| 3.5 | Búsqueda semántica: ~~endpoint REST dedicado~~ **HECHO** (2026-06-11): `GET /documents/search` (coseno en Python, scoped por tenant, +4 tests); **falta UI** frontend | PARCIAL (backend hecho) | `api/v1/routes/documents.py` | depth-audit |
+| 3.5 | ~~Búsqueda semántica: endpoint REST + UI~~ **HECHO** (2026-06-11): `GET /documents/search` (coseno en Python, scoped por tenant, +4 tests) + barra de búsqueda `DocSemanticSearch` en la página de Documentos (complementa al chat RAG) | HECHO | `api/v1/routes/documents.py`, `components/documentos/DocSemanticSearch.tsx` | depth-audit |
 | 3.6 | REGAP: consulta real a AEAT (hoy mockeado) | PARCIAL | plan-gtm, scoping |
 | 3.7 | ~~Scheduler: dominio por defecto "billing" → "chat"~~ **HECHO**: `_infer_domain_from_text` ya devuelve "chat" por defecto | HECHO | auditoria_backend |
 | 3.8 | ~~Quitar datos DEMO aleatorios en producción~~ **HECHO**: gated tras `BANKING_DEMO_SYNC` + `BankSyncNotAvailableError` si off + `[DEMO]` excluido de analíticas | HECHO | auditoria_backend |
