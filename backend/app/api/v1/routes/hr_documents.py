@@ -12,6 +12,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.hr_documents import GenerateRequest, HRDocumentOut
@@ -75,6 +76,28 @@ async def get_hr_document(
         return await svc.get_document(doc_id, current_user.tenant_id, db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{doc_id}/pdf")
+async def hr_document_pdf(
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Renderiza el documento de gestoría a PDF (server-side, con su folio).
+
+    Los bytes sirven también para firmar con AutoFirma vía
+    `POST /signing/autofirma/init` (campo `document_b64`).
+    """
+    try:
+        pdf, filename = await svc.get_document_pdf(doc_id, current_user.tenant_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/{doc_id}/approve")

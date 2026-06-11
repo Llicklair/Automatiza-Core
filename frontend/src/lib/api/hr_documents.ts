@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, downloadBlob } from "./client";
 
 export interface HRDocument {
     id: string;
@@ -39,6 +39,10 @@ export const hrDocuments = {
 
     get: (id: string) =>
         request<HRDocument>(`/api/v1/hr/documents/${id}`),
+
+    /** Descarga el PDF server-side (incluye el folio); también es la base para firmar. */
+    downloadPdf: (id: string, filename = "documento.pdf") =>
+        downloadBlob(`/api/v1/hr/documents/${id}/pdf`, filename),
 
     approve: (id: string) =>
         request<{ id: string; status: string; approved_at: string; doc_number: string | null }>(`/api/v1/hr/documents/${id}/approve`, { method: "POST" }),
