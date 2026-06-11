@@ -6,8 +6,9 @@
 
 ## Auditoría brutal del backend — ✅ COMPLETADA 2026-06-11
 
-`tasks/auditoria_brutal_backend.md`: 16/16 hallazgos resueltos en commits
-atómicos (1 por hallazgo), tests dirigidos verdes en cada uno.
+Auditoría backend (detalle en historial git): 16/16 hallazgos resueltos en commits
+atómicos (1 por hallazgo), tests dirigidos verdes en cada uno. Pendientes vivos
+en [roadmap_global_2026-06-11.md](./roadmap_global_2026-06-11.md).
 
 - [x] **CRÍTICOS 1-3**: backup duplicado, idempotencia en DB (`idempotency_keys`,
   migración 0056), catch-up del scheduler (`_next_due_run`).
@@ -32,7 +33,7 @@ menor: `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
 
 ## Auditoría frontend/UIX — ✅ quick-wins COMPLETADOS 2026-06-11
 
-`tasks/auditoria_brutal_frontend_uix.md`: rondas 4664abd/b126a3a (#5, #8-EmptyState,
+Auditoría frontend/UIX (detalle en historial git): rondas 4664abd/b126a3a (#5, #8-EmptyState,
 #2 parcial) + esta ronda, 1 commit por hallazgo:
 
 - [x] **#1 i18n fachada** (2744a34): solo "es" en el selector hasta tener
