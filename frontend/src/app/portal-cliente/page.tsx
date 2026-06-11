@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, FileText, Loader2, LogOut } from "lucide-react";
 import { clientPortal } from "@/lib/api/client_portal";
 import type { PortalClientData } from "@/lib/api/client_portal";
+import { useToast } from "@/stores/toast";
 
 const fmt = (n: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
@@ -27,6 +28,7 @@ export default function PortalClientePage() {
     const [data, setData] = useState<PortalClientData | null>(null);
     const [downloading, setDownloading] = useState<string | null>(null);
     const [tab, setTab] = useState<"invoices" | "quotes">("invoices");
+    const toast = useToast();
 
     useEffect(() => {
         (async () => {
@@ -69,7 +71,7 @@ export default function PortalClientePage() {
         try {
             await clientPortal.downloadInvoicePdf(invoiceId, invoiceNumber);
         } catch {
-            alert("Error al descargar la factura");
+            toast.error("Error al descargar la factura");
         } finally {
             setDownloading(null);
         }
