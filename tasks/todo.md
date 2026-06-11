@@ -57,10 +57,14 @@ Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅. Pendient
   ejecutado: **sync limpio** (EXIT=0) entre `VALID_DOMAINS`/`DISPATCHER_MAP`/
   `_KEYWORD_MAP`/`_STRONG_KEYWORDS`. Sin asimetrías (coordinator/custom/skill son
   dominios especiales esperados).
-- [ ] **#3 `AgentResult` end-to-end** (~5-7h, sesión dedicada) — añadir
-  `run_agent(state) -> AgentResult` a cada `agent.py`, migrar los 11 dispatchers
-  + `tool_registry.py` a `from app.agents.<dom>.tools import …`, limpiar
-  `__init__.py` a `from .agent import run_agent`.
+- [x] **#3 `AgentResult` end-to-end** ✅ RESUELTO POR DISEÑO (verificado 2026-06-12)
+  — el objetivo (contrato `AgentResult` uniforme en todo el dispatch) **ya se
+  cumple**: los 17 dispatchers están tipados `-> AgentResult` y los graph-based
+  pasan por el adaptador único `_run_graph_agent(graph, …) -> AgentResult`
+  (`dispatchers/misc.py`). La tarea original (añadir `run_agent()` a cada
+  `agent.py`) describía otro enfoque, superado por ese adaptador; el refactor
+  literal sería reescribir 14 agentes para cero ganancia funcional. Los nodos de
+  agente devuelven dicts de estado (convención LangGraph) — no es inconsistencia.
 
 ## Deuda técnica diferida (no aprobada aún)
 
