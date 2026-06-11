@@ -1023,5 +1023,42 @@
       "candidateCreated": "Candidato creado en la vacante",
       "candidateCreateError": "No se pudo crear el candidato"
     }
+  },
+  "configuracion": {
+    "index": {
+      "title": "Configuración",
+      "subtitle": "Ajustes de empresa, integraciones, seguridad y preferencias del sistema.",
+      "open": "Abrir",
+      "sections": {
+        "empresa": {
+          "title": "Empresa",
+          "description": "Nombre, NIF, logo, dirección fiscal y datos de contacto de la organización."
+        },
+        "perfil": {
+          "title": "Perfil de Usuario",
+          "description": "Nombre, email, contraseña y preferencias personales de tu cuenta."
+        },
+        "usuarios": {
+          "title": "Usuarios del tenant",
+          "description": "Administra el acceso del equipo: alta, roles, activación y eliminación de cuentas."
+        },
+        "integraciones": {
+          "title": "Integraciones",
+          "description": "Conecta servicios externos: email, banca PSD2, ERP, almacenamiento en la nube."
+        },
+        "apiKeys": {
+          "title": "API Keys",
+          "description": "Gestiona las claves de API para integraciones externas y el agente IA."
+        },
+        "backups": {
+          "title": "Copias de Seguridad",
+          "description": "Programa y descarga backups automáticos de la base de datos y documentos."
+        },
+        "actualizaciones": {
+          "title": "Actualizaciones",
+          "description": "Comprueba y aplica nuevas versiones del sistema. Historial de cambios."
+        }
+      }
+    }
   }
 }

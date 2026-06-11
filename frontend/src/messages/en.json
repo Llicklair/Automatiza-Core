@@ -1023,5 +1023,42 @@
       "candidateCreated": "Candidate created in the position",
       "candidateCreateError": "Could not create the candidate"
     }
+  },
+  "configuracion": {
+    "index": {
+      "title": "Settings",
+      "subtitle": "Company settings, integrations, security and system preferences.",
+      "open": "Open",
+      "sections": {
+        "empresa": {
+          "title": "Company",
+          "description": "Name, tax ID, logo, registered address and contact details of the organization."
+        },
+        "perfil": {
+          "title": "User Profile",
+          "description": "Name, email, password and personal preferences for your account."
+        },
+        "usuarios": {
+          "title": "Tenant Users",
+          "description": "Manage team access: invites, roles, activation and account removal."
+        },
+        "integraciones": {
+          "title": "Integrations",
+          "description": "Connect external services: email, PSD2 banking, ERP, cloud storage."
+        },
+        "apiKeys": {
+          "title": "API Keys",
+          "description": "Manage API keys for external integrations and the AI agent."
+        },
+        "backups": {
+          "title": "Backups",
+          "description": "Schedule and download automatic backups of the database and documents."
+        },
+        "actualizaciones": {
+          "title": "Updates",
+          "description": "Check and apply new system versions. Change history."
+        }
+      }
+    }
   }
 }
