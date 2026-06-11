@@ -95,7 +95,7 @@ Features a medias que restan valor/UX una vez hay usuarios.
 
 | # | Ítem | Estado | Fuente |
 |---|---|---|---|
-| 3.1 | Analytics de marketing: ~~modelo métricas + fetch por red + job diario + endpoint~~ **HECHO** (2026-06-11): tabla `scheduled_post_metrics` (mig 0057), `services/marketing/metrics.py` (fetch twitter/facebook/instagram, sync diario 23:00), `GET /marketing/campaigns/{id}/metrics`, +5 tests. **Falta**: UI frontend y fetch de LinkedIn. | PARCIAL (backend hecho) | `services/marketing/metrics.py` | roadmap_impl |
+| 3.1 | ~~Analytics de marketing (modelo + fetch por red + job diario + endpoint + UI)~~ **HECHO** (2026-06-11): tabla `scheduled_post_metrics` (mig 0057), `services/marketing/metrics.py` (fetch twitter/facebook/instagram, sync diario 23:00), `GET /marketing/campaigns/{id}/metrics`, **pestaña "Analítica"** en marketing (`TabAnalitica.tsx`), +5 tests. Único pendiente: fetch de LinkedIn (permisos extra). | HECHO | `services/marketing/metrics.py`, `marketing/_components/TabAnalitica.tsx` | roadmap_impl |
 | 3.2 | Normativa fiscal → RAG (hoy hardcoded en `compliance/tools.py`; reusa BOEScraper + `cosine_topk`) | PENDIENTE | roadmap_impl |
 | 3.3 | Modelo 131 (IRPF módulos) — PENDIENTE. ~~Modelo 200 (Sociedades)~~ **HECHO** (`build_modelo_200_data` + ruta) | PARCIAL | backlog |
 | 3.4 | Multi-currency banca (`requires_manual_review`) (INT.CUR) | PENDIENTE | backlog |

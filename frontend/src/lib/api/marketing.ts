@@ -54,6 +54,33 @@ export interface GeneratePlanResponse {
     post_ids: string[];
 }
 
+export interface PostMetric {
+    post_id: string;
+    platform: string;
+    status: string;
+    metric_date: string | null;
+    impressions: number;
+    reach: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    clicks: number;
+}
+
+export interface CampaignMetrics {
+    campaign_id: string;
+    num_posts: number;
+    totals: {
+        impressions: number;
+        reach: number;
+        likes: number;
+        comments: number;
+        shares: number;
+        clicks: number;
+    };
+    posts: PostMetric[];
+}
+
 export interface PublishBatchResponse {
     published: string[];
     failed: string[];
@@ -74,6 +101,8 @@ export const marketingApi = {
                 method: "POST",
                 body: JSON.stringify(data),
             }),
+        metrics: (id: string) =>
+            request<CampaignMetrics>(`/api/v1/marketing/campaigns/${id}/metrics`),
     },
     posts: {
         list: (params?: { status?: string }) =>
