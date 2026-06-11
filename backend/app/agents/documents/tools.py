@@ -446,7 +446,7 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
 @tool
 async def search_documents_semantic(tenant_id: str, query: str, limit: int = 5) -> str:
     """
-    Busca documentos del tenant usando búsqueda semántica (RAG con pgvector).
+    Busca documentos del tenant usando búsqueda semántica (RAG, coseno en Python).
     Útil para preguntas como "busca contratos de 2024" o "facturas de Acme".
 
     Args:

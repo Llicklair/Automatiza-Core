@@ -48,18 +48,20 @@ Ejemplo de step:
 
 ## §4 SBOM por release
 
-**TODO Sprint 9 (post-MVP)**: generar SBOM CycloneDX por cada build de release. Permite a clientes B2B (especialmente gestorías que requieran due diligence) consultar inventario completo.
+**Implementado**: la generación de SBOM CycloneDX 1.5 ya existe vía
+[`scripts/generate_sbom.py`](../../scripts/generate_sbom.py) (cubierto por
+`backend/tests/test_generate_sbom.py`). Combina backend (`requirements.txt`),
+frontend/desktop (`package.json`) y binarios embebidos
+(`dependencies/embedded_binaries.json`). Ver la guía operacional completa en
+[`sbom_guide.md`](./sbom_guide.md).
 
 ```bash
-# Backend
-pip install cyclonedx-bom
-cyclonedx-py -r -i backend/requirements.txt -o sbom-backend.json
-
-# Frontend
-npx @cyclonedx/cyclonedx-npm --output-file sbom-frontend.json
+python scripts/generate_sbom.py --version 1.0.0 --output dist/sbom-cyclonedx-1.0.0.json
 ```
 
-SBOM se publica como release artifact junto al instalador firmado.
+**Pendiente**: añadir el paso de generación + attach al workflow de release
+(`.github/workflows/release.yml`) para publicar el SBOM como artifact junto al
+instalador firmado.
 
 ## §5 Verificación de binarios embebidos
 

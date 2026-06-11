@@ -46,7 +46,7 @@ async def search_documents(
 ) -> str:
     """
     Busca fragmentos relevantes en los documentos del tenant usando búsqueda
-    híbrida: nombre de archivo + búsqueda semántica con pgvector.
+    híbrida: nombre de archivo + búsqueda semántica (coseno en Python).
 
     Args:
         tenant_id: ID del tenant
