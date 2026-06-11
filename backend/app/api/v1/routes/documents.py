@@ -16,6 +16,7 @@ from app.api.v1.schemas.documents import (
     DocumentOut,
     ImportDBOut,
     ScanResultOut,
+    SemanticSearchHit,
 )
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
@@ -29,6 +30,88 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
+
+
+@router.get("/search", response_model=list[SemanticSearchHit])
+async def search_documents(
+    q: str,
+    limit: int = 5,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Búsqueda semántica (RAG, coseno en Python) sobre los documentos del tenant.
+
+    Devuelve los fragmentos más relevantes a la consulta `q`, con su documento
+    de origen, página y puntuación de similitud [0-1].
+    """
+    from app.agents.agent_tools.semantic_search import (
+        cosine_topk,
+        is_missing_table_or_extension,
+        similarity_from_distance,
+    )
+    from app.core.llm_factory import get_embedder
+    from app.db.models.tenant import TenantDocument
+
+    query = (q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="La consulta no puede estar vacía")
+
+    embedder = get_embedder()
+    if not embedder:
+        raise HTTPException(
+            status_code=503, detail="No hay proveedor de embeddings configurado"
+        )
+
+    query_vector = await embedder.aembed_query(query)
+    try:
+        scored = await cosine_topk(
+            db,
+            tenant_id=str(current_user.tenant_id),
+            query_vector=query_vector,
+            top_k=max(1, min(limit, 20)),
+        )
+    except Exception as exc:  # tabla aún no creada en este tenant → sin resultados
+        if is_missing_table_or_extension(exc):
+            return []
+        raise
+
+    if not scored:
+        return []
+
+    # Nombres de archivo en una sola consulta (evita N+1). Sólo IDs que sean
+    # UUID válidos — document_id se almacena como texto y podría traer datos
+    # legacy no-UUID que romperían el filtro tipado contra TenantDocument.id.
+    import uuid as _uuid
+
+    from sqlalchemy import select as _select
+
+    valid_ids = []
+    for emb, _ in scored:
+        try:
+            valid_ids.append(_uuid.UUID(str(emb.document_id)))
+        except (ValueError, TypeError):
+            continue
+    names: dict[str, str] = {}
+    if valid_ids:
+        names_q = await db.execute(
+            _select(TenantDocument.id, TenantDocument.file_name).where(
+                TenantDocument.id.in_(valid_ids)
+            )
+        )
+        names = {str(row.id): row.file_name for row in names_q.all()}
+
+    return [
+        SemanticSearchHit(
+            document_id=str(emb.document_id),
+            file_name=names.get(str(emb.document_id)),
+            chunk_index=emb.chunk_index,
+            text=(emb.text_content or "")[:500],
+            page_number=emb.page_number,
+            element_type=emb.element_type,
+            similarity=round(similarity_from_distance(dist), 4),
+        )
+        for emb, dist in scored
+    ]
 
 
 @limiter.limit("30/minute")
