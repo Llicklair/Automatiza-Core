@@ -114,8 +114,8 @@ export default function EtiquetasPage() {
                                     <Input type="number" min={1} value={copies}
                                         onChange={e => setCopies(product.id, parseInt(e.target.value) || 1)}
                                         className="h-8 w-20" />
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(product.id)}>
-                                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(product.id)} aria-label="Quitar producto">
+                                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
                                     </Button>
                                 </div>
                             ))}

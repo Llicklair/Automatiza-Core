@@ -16,7 +16,7 @@ export function EditProjectModal({ editForm, onChange, onSubmit, onClose }: Prop
             <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <h3 className="text-lg font-semibold text-foreground">Editar Proyecto</h3>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar"><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>

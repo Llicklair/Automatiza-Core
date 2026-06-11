@@ -28,8 +28,8 @@ export default function RestoreModal({ onClose }: RestoreModalProps) {
                             <p className="text-xs text-muted-foreground">Sobreescribira todos los datos actuales</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
-                        <X className="w-5 h-5" />
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition" aria-label="Cerrar">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 

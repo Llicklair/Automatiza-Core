@@ -71,15 +71,15 @@ export default function NotificationBell() {
                                     onClick={clear}
                                     className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                                     title="Limpiar todo"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                 aria-label="Limpiar todo">
+                                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                 </button>
                             )}
                             <button
                                 onClick={() => setOpen(false)}
                                 className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-                            >
-                                <X className="w-3.5 h-3.5" />
+                             aria-label="Cerrar">
+                                <X className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
                         </div>
                     </div>

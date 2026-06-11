@@ -45,8 +45,8 @@ export function CoordinatorBar({ onSent }: { onSent: () => void }) {
                     <span className="text-xs text-emerald-400 shrink-0">✓ Enviado</span>
                 ) : (
                     <button onClick={handleSend} disabled={!text.trim() || loading}
-                        className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-foreground transition-colors shrink-0">
-                        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-foreground transition-colors shrink-0" aria-label="Enviar instrucción">
+                        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Send className="w-3.5 h-3.5" aria-hidden="true" />}
                     </button>
                 )}
             </div>

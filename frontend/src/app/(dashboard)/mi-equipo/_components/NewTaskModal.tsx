@@ -35,8 +35,8 @@ export function NewTaskModal({
                 onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <h2 className="font-semibold text-foreground text-base">Nueva tarea para la IA</h2>
-                    <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition">
-                        <X className="w-5 h-5" />
+                    <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition" aria-label="Cerrar">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 

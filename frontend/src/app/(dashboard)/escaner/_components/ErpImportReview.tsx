@@ -61,8 +61,8 @@ export function ErpImportReview({
                         Integrar «{fileName}» en el ERP
                     </span>
                 </div>
-                <button onClick={onClose} className="p-1 rounded hover:bg-muted text-muted-foreground">
-                    <X className="w-4 h-4" />
+                <button onClick={onClose} className="p-1 rounded hover:bg-muted text-muted-foreground" aria-label="Cerrar">
+                    <X className="w-4 h-4" aria-hidden="true" />
                 </button>
             </div>
 

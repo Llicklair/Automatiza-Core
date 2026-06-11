@@ -33,8 +33,8 @@ export default function NodeConfigPanel({ node, onUpdate, onDelete, onClose }: N
         <div className="w-72 bg-card border border-border rounded-xl p-4 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Configurar nodo</h3>
-                <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
-                    <X className="w-4 h-4" />
+                <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition" aria-label="Cerrar">
+                    <X className="w-4 h-4" aria-hidden="true" />
                 </button>
             </div>
 

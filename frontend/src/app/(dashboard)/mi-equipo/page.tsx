@@ -50,8 +50,8 @@ export default function TareasPage() {
                             <button
                                 onClick={handleRefresh}
                                 className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors"
-                            >
-                                <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                             aria-label="Actualizar equipo">
+                                <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
                             </button>
                             <button
                                 onClick={() => setShowNewModal(true)}

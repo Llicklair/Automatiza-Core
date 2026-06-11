@@ -197,11 +197,11 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
                                                     onChange={e => setEditForm(f => ({ ...f, cost_price: e.target.value }))} />
                                             </td>
                                             <td className="py-1.5 text-right whitespace-nowrap">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={saving} onClick={() => saveEdit(lot.id)} title="Guardar">
-                                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={saving} onClick={() => saveEdit(lot.id)} title="Guardar" aria-label="Guardar">
+                                                    <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditId(null)} title="Cancelar">
-                                                    <X className="w-3.5 h-3.5" />
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditId(null)} title="Cancelar" aria-label="Cancelar">
+                                                    <X className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </Button>
                                             </td>
                                         </>
@@ -214,8 +214,8 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
                                                 {lot.cost_price === null ? "—" : `${lot.cost_price.toFixed(2)} €`}
                                             </td>
                                             <td className="py-1.5 text-right">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(lot)} title="Editar lote">
-                                                    <Pencil className="w-3 h-3" />
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(lot)} title="Editar lote" aria-label="Editar lote">
+                                                    <Pencil className="w-3 h-3" aria-hidden="true" />
                                                 </Button>
                                             </td>
                                         </>

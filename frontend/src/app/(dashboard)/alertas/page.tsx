@@ -96,8 +96,8 @@ export default function AlertasPage() {
                             <option value={48}>Últimas 48h</option>
                             <option value={168}>Última semana</option>
                         </select>
-                        <Button size="sm" variant="outline" onClick={load} disabled={isLoading}>
-                            <RefreshCw className="h-3.5 w-3.5" />
+                        <Button size="sm" variant="outline" onClick={load} disabled={isLoading} aria-label="Recargar alertas">
+                            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                         <Button size="sm" onClick={handleCheck} disabled={isChecking}>
                             {isChecking

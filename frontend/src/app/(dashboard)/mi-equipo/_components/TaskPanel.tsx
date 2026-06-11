@@ -29,8 +29,8 @@ export function TaskPanel({ isActive }: TaskPanelProps) {
                         onClick={tp.load}
                         className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-border transition"
                         title="Actualizar"
-                    >
-                        <RefreshCw className="w-4 h-4" />
+                     aria-label="Actualizar">
+                        <RefreshCw className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
                         onClick={tp.cleanupTasks}
