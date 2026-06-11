@@ -94,8 +94,8 @@ export default function LibroDiarioPage() {
                                                 className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                                                 onClick={() => deleteEntry(entry.id)}
                                                 title="Eliminar asiento"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
+                                             aria-label="Eliminar asiento">
+                                                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                             </Button>
                                         </td>
                                     </tr>

@@ -64,8 +64,8 @@ export function AdvisoryChatPanel({ chatMessages, chatInput, setChatInput, chatL
                         type="submit"
                         disabled={chatLoading || !chatInput.trim()}
                         className="bg-primary hover:bg-primary text-foreground px-4 py-3 rounded-xl transition flex items-center justify-center disabled:opacity-50"
-                    >
-                        <Send className="w-4 h-4" />
+                     aria-label="Enviar mensaje">
+                        <Send className="w-4 h-4" aria-hidden="true" />
                     </button>
                 </form>
             </div>

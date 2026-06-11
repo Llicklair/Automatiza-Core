@@ -69,8 +69,8 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                             <p className="text-xs text-muted-foreground">{docs.length} archivo{docs.length !== 1 ? "s" : ""}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg">
-                        <X className="w-4 h-4 text-muted-foreground" />
+                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label="Cerrar documentos del empleado">
+                        <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     </button>
                 </div>
 
@@ -107,15 +107,15 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                                 <button
                                     onClick={() => api.hr.employees.documents.download(employee.id, doc.id, doc.file_name)}
                                     className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                    title="Descargar">
-                                    <Download className="w-3.5 h-3.5" />
+                                    title="Descargar" aria-label="Descargar">
+                                    <Download className="w-3.5 h-3.5" aria-hidden="true" />
                                 </button>
                                 <button
                                     onClick={() => handleDelete(doc.id)}
                                     disabled={deletingId === doc.id}
                                     className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
-                                    title="Eliminar">
-                                    {deletingId === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                    title="Eliminar" aria-label="Eliminar">
+                                    {deletingId === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                 </button>
                             </div>
                         </div>

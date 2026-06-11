@@ -85,8 +85,8 @@ export function PayrollDrawer({
                                         onClick={() => api.hr.payrolls.downloadPdf(p.id, `Nomina_${selectedEmp.name.replace(/\s+/g, "_")}_${format(new Date(p.period_start), "yyyy-MM")}.pdf`)}
                                         className="p-1.5 text-muted-foreground hover:text-primary bg-background hover:bg-primary/10 rounded-lg transition-colors"
                                         title="Descargar PDF"
-                                    >
-                                        <Download className="w-3.5 h-3.5" />
+                                     aria-label="Descargar PDF">
+                                        <Download className="w-3.5 h-3.5" aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>

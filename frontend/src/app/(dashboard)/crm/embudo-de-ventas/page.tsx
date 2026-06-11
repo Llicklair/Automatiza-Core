@@ -98,8 +98,8 @@ export default function CRMPipelinePage() {
                                                     size="icon"
                                                     className="h-6 w-6 absolute right-3 top-3 text-muted-foreground hover:text-destructive"
                                                     onClick={(e) => handleDelete(opp.id, e)}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                 aria-label="Eliminar oportunidad">
+                                                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </Button>
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">

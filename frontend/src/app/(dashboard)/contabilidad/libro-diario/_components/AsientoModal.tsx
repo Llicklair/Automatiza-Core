@@ -80,8 +80,8 @@ export function AsientoModal({
                                                     value={line.credit || ''} onChange={e => onLineChange(idx, 'credit', Number(e.target.value))} />
                                             </td>
                                             <td className="p-2 text-center">
-                                                <button type="button" onClick={() => onRemoveLine(idx)} disabled={newEntry.lines.length <= 2} className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded transition-colors disabled:opacity-30">
-                                                    <Trash2 className="w-4 h-4" />
+                                                <button type="button" onClick={() => onRemoveLine(idx)} disabled={newEntry.lines.length <= 2} className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded transition-colors disabled:opacity-30" aria-label="Eliminar línea">
+                                                    <Trash2 className="w-4 h-4" aria-hidden="true" />
                                                 </button>
                                             </td>
                                         </tr>

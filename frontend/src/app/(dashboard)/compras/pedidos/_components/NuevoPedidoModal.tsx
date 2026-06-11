@@ -30,7 +30,7 @@ export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, prod
             <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-bold text-foreground">Nuevo pedido de compra</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Cerrar formulario de pedido"><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={onSubmit} className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
@@ -91,8 +91,8 @@ export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, prod
                                     <div className="col-span-1 flex items-end justify-end">
                                         <button type="button" onClick={() => setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))}
                                             disabled={form.lines.length === 1}
-                                            className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30">
-                                            <X className="w-3.5 h-3.5" />
+                                            className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30" aria-label="Eliminar línea">
+                                            <X className="w-3.5 h-3.5" aria-hidden="true" />
                                         </button>
                                     </div>
                                     <div className="col-span-12 text-right text-xs text-muted-foreground">

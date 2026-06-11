@@ -107,11 +107,11 @@ export default function ProveedoresPage() {
                                 ) : <span className="text-muted-foreground italic text-sm">—</span>}
                             </div>
                             <div className="col-span-1 flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(s)}>
-                                    <Pencil className="w-3.5 h-3.5" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(s)} aria-label="Editar proveedor">
+                                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id}>
-                                    {deletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id} aria-label="Eliminar proveedor">
+                                    {deletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                 </Button>
                             </div>
                         </div>

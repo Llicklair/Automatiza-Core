@@ -98,8 +98,8 @@ export default function ServicesPage() {
                                                     className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                     onClick={() => openEdit(srv)}
                                                     title={tc("edit")}
-                                                >
-                                                    <Pencil className="w-4 h-4" />
+                                                 aria-label={tc("edit")}>
+                                                    <Pencil className="w-4 h-4" aria-hidden="true" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -108,8 +108,8 @@ export default function ServicesPage() {
                                                     onClick={() => handleDelete(srv.id, srv.name)}
                                                     disabled={deletingId === srv.id}
                                                     title={tc("delete")}
-                                                >
-                                                    {deletingId === srv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                 aria-label={tc("delete")}>
+                                                    {deletingId === srv.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
                                                 </Button>
                                             </div>
                                         </td>

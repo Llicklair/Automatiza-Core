@@ -40,8 +40,8 @@ export default function MeetingsPage() {
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                     onClick={() => handleDelete(m.id)}
-                >
-                    <Trash2 className="w-4 h-4" />
+                 aria-label="Eliminar reunión">
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </Button>
             </div>
             {m.description && <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{m.description}</p>}

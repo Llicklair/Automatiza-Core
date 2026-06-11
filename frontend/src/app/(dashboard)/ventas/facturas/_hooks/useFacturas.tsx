@@ -172,8 +172,8 @@ export function useFacturas() {
                             className="h-8 w-8"
                             onClick={() => api.erp.invoices.downloadPdf(inv.id, inv.invoice_number)}
                             title={t("downloadPdf")}
-                        >
-                            <Download className="h-4 w-4" />
+                         aria-label={t("downloadPdf")}>
+                            <Download className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                             variant="ghost"
@@ -181,8 +181,8 @@ export function useFacturas() {
                             className="h-8 w-8"
                             onClick={() => router.push(`/ventas/facturas/nueva?duplicate_id=${inv.id}`)}
                             title={t("duplicate")}
-                        >
-                            <Copy className="h-4 w-4" />
+                         aria-label={t("duplicate")}>
+                            <Copy className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                             variant="ghost"
@@ -190,8 +190,8 @@ export function useFacturas() {
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => handleDeleteInvoice(inv.id)}
                             title={tc("delete")}
-                        >
-                            <Trash2 className="h-4 w-4" />
+                         aria-label={tc("delete")}>
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                     </div>
                 );

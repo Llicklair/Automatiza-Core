@@ -29,8 +29,8 @@ export function ProductModal({ editingId, form, onChange, onSubmit, onClose, isS
                         <Package className="w-4 h-4 text-primary" />
                         {editingId ? "Editar Artículo" : "Nuevo Artículo"}
                     </h2>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-                        <X className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Cerrar formulario de artículo">
+                        <X className="h-5 w-5" aria-hidden="true" />
                     </Button>
                 </div>
 

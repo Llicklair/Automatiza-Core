@@ -22,7 +22,7 @@ export function EventDetailModal({ event, clientName, deleting, onDelete, onClos
                         <h2 className="text-lg font-medium text-foreground">{event.title}</h2>
                         <span className="text-xs text-primary capitalize">{event.type}</span>
                     </div>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-4"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-4" aria-label="Cerrar detalle del evento"><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <div className="p-5 space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

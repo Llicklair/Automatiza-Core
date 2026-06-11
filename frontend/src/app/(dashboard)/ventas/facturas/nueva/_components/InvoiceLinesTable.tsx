@@ -85,8 +85,8 @@ export default function InvoiceLinesTable({
                                     </td>
                                     <td className="py-2">
                                         <button type="button" onClick={() => onRemoveLine(line._key)} disabled={lines.length === 1}
-                                            className="p-1 text-muted-foreground hover:text-red-400 disabled:opacity-30 transition-colors">
-                                            <Trash2 className="w-4 h-4" />
+                                            className="p-1 text-muted-foreground hover:text-red-400 disabled:opacity-30 transition-colors" aria-label="Eliminar línea">
+                                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                                         </button>
                                     </td>
                                 </tr>

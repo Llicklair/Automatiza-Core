@@ -117,8 +117,8 @@ export default function ActivitiesPage() {
                                                     className="h-6 w-6 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     onClick={() => deleteActivity(act.id)}
                                                     title="Eliminar"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                 aria-label="Eliminar">
+                                                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </Button>
                                             </div>
                                         </div>

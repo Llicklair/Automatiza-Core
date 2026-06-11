@@ -31,12 +31,12 @@ export default function CalendarPage() {
                 actions={
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
-                                <ChevronLeft className="w-4 h-4" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth} aria-label="Mes anterior">
+                                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                             </Button>
                             <Button variant="ghost" className="h-8 px-3 text-sm" onClick={goToToday}>Hoy</Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
-                                <ChevronRight className="w-4 h-4" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth} aria-label="Mes siguiente">
+                                <ChevronRight className="w-4 h-4" aria-hidden="true" />
                             </Button>
                         </div>
                         <Button onClick={() => setShowCreate(true)}>

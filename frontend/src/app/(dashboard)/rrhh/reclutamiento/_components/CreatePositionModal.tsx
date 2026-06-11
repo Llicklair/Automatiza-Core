@@ -15,7 +15,7 @@ export function CreatePositionModal({ form, setForm, onClose, onCreate }: Create
             <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-foreground">Nuevo puesto</h3>
-                    <button onClick={onClose}><X className="w-4 h-4 text-muted-foreground" /></button>
+                    <button onClick={onClose} aria-label="Cerrar formulario de puesto"><X className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></button>
                 </div>
                 <div className="space-y-3">
                     <input
