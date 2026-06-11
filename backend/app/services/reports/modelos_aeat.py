@@ -820,6 +820,127 @@ async def build_modelo_349_data(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Modelo 100 — IRPF (Declaración de la Renta) — preview anual (F2.8)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Escala general del IRPF (estatal + autonómica, tipo medio orientativo
+# 2024/2025). La parte autonómica varía por comunidad — esto es un PREVIEW.
+_IRPF_BRACKETS: list[tuple[Decimal | None, Decimal]] = [
+    (Decimal("12450"), Decimal("19")),
+    (Decimal("20200"), Decimal("24")),
+    (Decimal("35200"), Decimal("30")),
+    (Decimal("60000"), Decimal("37")),
+    (Decimal("300000"), Decimal("45")),
+    (None, Decimal("47")),
+]
+MINIMO_PERSONAL_DEFAULT = Decimal("5550")
+
+
+def _irpf_cuota(base: Decimal) -> Decimal:
+    """Cuota IRPF aplicando la escala progresiva por tramos sobre la base."""
+    if base <= 0:
+        return Decimal("0.00")
+    cuota = Decimal("0")
+    prev = Decimal("0")
+    for limite, tipo in _IRPF_BRACKETS:
+        top = base if limite is None else min(base, limite)
+        if top > prev:
+            cuota += (top - prev) * tipo / Decimal("100")
+            prev = top
+        if limite is None or base <= limite:
+            break
+    return cuota.quantize(Decimal("0.01"))
+
+
+async def build_modelo_100_data(
+    db: AsyncSession,
+    tenant_id: UUID,
+    year: int,
+    *,
+    minimo_personal: Decimal | float | None = None,
+    pagos_fraccionados_pagados: Decimal | float = 0,
+) -> dict[str, Any]:
+    """Preview del Modelo 100 (IRPF — Renta) para autónomos en estimación directa.
+
+    **MVP / preview**. La Renta real integra rendimientos del trabajo, capital
+    mobiliario/inmobiliario, ganancias/pérdidas patrimoniales, mínimos personales
+    y familiares completos y deducciones autonómicas que no están en el ERP.
+    Aquí estimamos solo el rendimiento de actividad económica:
+
+        Ingresos (facturas emitidas)
+      - Gastos (facturas recibidas + coste de personal)
+      = Rendimiento neto de la actividad
+      - mínimo personal y familiar (5.550€ por defecto)
+      = Base liquidable
+      × escala IRPF progresiva
+      = Cuota íntegra
+      - retenciones soportadas (IRPF retenido en facturas emitidas)
+      - pagos fraccionados (Modelo 130 ya presentados)
+      = Resultado de la declaración
+    """
+    start = date(year, 1, 1)
+    end = date(year, 12, 31)
+    tenant_name, tenant_nif = await _get_tenant_info(db, tenant_id)
+
+    issued = await _invoices_in_period(db, tenant_id, invoice_type="issued", start=start, end=end)
+    received = await _invoices_in_period(db, tenant_id, invoice_type="received", start=start, end=end)
+    payrolls = await _payrolls_in_period(db, tenant_id, start=start, end=end)
+
+    ingresos = sum((Decimal(i.amount_base or 0) for i in issued), Decimal(0))
+    gastos_facturas = sum((Decimal(i.amount_base or 0) for i in received), Decimal(0))
+
+    coste_nominas = Decimal(0)
+    for p in payrolls:
+        bruto = Decimal(p.gross_salary or p.base_salary or 0)
+        cuotas = p.cuotas_empresa_json or {}
+        if isinstance(cuotas, dict) and cuotas:
+            ss_empresa = sum(Decimal(str(v or 0)) for v in cuotas.values())
+        else:
+            ss_empresa = bruto * Decimal("0.30")
+        coste_nominas += bruto + ss_empresa
+
+    rendimiento_neto = ingresos - gastos_facturas - coste_nominas
+    minp = (
+        Decimal(str(minimo_personal)) if minimo_personal is not None
+        else MINIMO_PERSONAL_DEFAULT
+    )
+    base_liquidable = max(Decimal(0), rendimiento_neto - minp)
+    cuota_integra = _irpf_cuota(base_liquidable)
+
+    retenciones = sum((Decimal(i.retencion_irpf_amount or 0) for i in issued), Decimal(0))
+    pagos = Decimal(str(pagos_fraccionados_pagados or 0))
+    resultado = cuota_integra - retenciones - pagos
+
+    return {
+        "modelo": "100",
+        "ejercicio": year,
+        "tenant": {"name": tenant_name, "nif": tenant_nif},
+        "ingresos": float(ingresos),
+        "gastos_facturas": float(gastos_facturas),
+        "coste_nominas": float(round(coste_nominas, 2)),
+        "rendimiento_neto": float(round(rendimiento_neto, 2)),
+        "minimo_personal": float(minp),
+        "base_liquidable": float(round(base_liquidable, 2)),
+        "cuota_integra": float(cuota_integra),
+        "retenciones_soportadas": float(round(retenciones, 2)),
+        "pagos_fraccionados_pagados": float(pagos),
+        "resultado_declaracion": float(round(resultado, 2)),
+        "signo": (
+            "ingresar" if resultado > 0
+            else "devolver" if resultado < 0
+            else "cero"
+        ),
+        "_warning": (
+            "Preview no oficial. La Declaración de la Renta (Modelo 100) real "
+            "incluye rendimientos del trabajo, del capital, ganancias/pérdidas "
+            "patrimoniales, mínimos familiares y deducciones autonómicas que no "
+            "están en el ERP. Esta estimación cubre solo el rendimiento de "
+            "actividad económica. Revísala con tu asesor antes de presentar."
+        ),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Modelo 200 — Impuesto sobre Sociedades (F2.8)
 # ─────────────────────────────────────────────────────────────────────────────
 

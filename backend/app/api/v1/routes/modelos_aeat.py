@@ -21,6 +21,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.services.reports.modelos_aeat import (
+    build_modelo_100_data,
     build_modelo_111_data,
     build_modelo_115_data,
     build_modelo_130_data,
@@ -232,6 +233,47 @@ async def download_modelo_200_pdf(
         pagos_fraccionados_pagados=pagos_fraccionados_pagados,
     )
     return _pdf_response(generate_modelo_200_pdf(data), f"modelo-200-{y}.pdf")
+
+
+@router.get("/100")
+async def get_modelo_100(
+    year: int = Query(default=None),
+    minimo_personal: float | None = Query(default=None, ge=0),
+    pagos_fraccionados_pagados: float = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Modelo 100 — IRPF (Declaración de la Renta), preview anual de autónomo."""
+    y = year or (_current_year() - 1)  # por defecto, ejercicio anterior cerrado
+    return await build_modelo_100_data(
+        db,
+        user.tenant_id,
+        y,
+        minimo_personal=minimo_personal,
+        pagos_fraccionados_pagados=pagos_fraccionados_pagados,
+    )
+
+
+@router.get("/100/pdf")
+async def download_modelo_100_pdf(
+    year: int = Query(default=None),
+    minimo_personal: float | None = Query(default=None, ge=0),
+    pagos_fraccionados_pagados: float = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """PDF borrador imprimible del Modelo 100 (IRPF Renta, preview)."""
+    from app.services.pdf_reports import generate_modelo_100_pdf
+
+    y = year or (_current_year() - 1)
+    data = await build_modelo_100_data(
+        db,
+        user.tenant_id,
+        y,
+        minimo_personal=minimo_personal,
+        pagos_fraccionados_pagados=pagos_fraccionados_pagados,
+    )
+    return _pdf_response(generate_modelo_100_pdf(data), f"modelo-100-{y}.pdf")
 
 
 @router.get("/347/pdf")

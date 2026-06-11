@@ -5,6 +5,7 @@ for backward compatibility with ``from app.services.pdf_reports import ...``.
 
 from app.services.pdf_reports._fiscal import (
     generate_fiscal_report_pdf,
+    generate_modelo_100_pdf,
     generate_modelo_111_pdf,
     generate_modelo_115_pdf,
     generate_modelo_130_pdf,
@@ -32,6 +33,7 @@ __all__ = [
     "generate_snapshot_pdf",
     "_snapshot_text_fallback",
     "generate_modelo_303_pdf",
+    "generate_modelo_100_pdf",
     "generate_modelo_130_pdf",
     "generate_modelo_111_pdf",
     "generate_modelo_115_pdf",
