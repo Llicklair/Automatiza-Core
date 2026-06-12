@@ -238,6 +238,8 @@ function startBackend(extraEnv = {}) {
     PYTHONPATH: `${BACKEND_DIR};${SITE_PACKAGES}`,
     PYTHONIOENCODING: "utf-8",
     PYTHONUTF8: "1",
+    // Build empaquetado → desactiva el bypass de licencia por AP_DEVMODE.
+    ...(app && app.isPackaged ? { AUTOMATIZA_RELEASE: "1" } : {}),
     ...extraEnv,
   };
 

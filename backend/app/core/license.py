@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import platform
 import secrets
 import uuid
@@ -143,7 +144,10 @@ class LicenseResult:
 async def validate_license() -> LicenseResult:
     """Valida la licencia. Llama al servidor solo si la caché expiró."""
 
-    if settings.AP_DEVMODE == "1":
+    # DEVMODE solo en builds NO release. El launcher de la app empaquetada fija
+    # AUTOMATIZA_RELEASE=1, así un usuario final no puede activar el bypass por
+    # entorno aunque conozca la variable.
+    if settings.AP_DEVMODE == "1" and os.environ.get("AUTOMATIZA_RELEASE") != "1":
         return LicenseResult(valid=True, plan="dev")
 
     machine_id = get_machine_id()
