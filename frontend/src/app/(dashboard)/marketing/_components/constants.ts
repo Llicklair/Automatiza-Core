@@ -30,3 +30,14 @@ export const PLATFORMS = [
         iconBg: "bg-zinc-500/15",
     },
 ] as const;
+
+// LinkedIn oculto temporalmente: dar de alta su app requiere una Company Page de
+// LinkedIn, y crear la página exige un mínimo de conexiones (bloqueo del lado de
+// LinkedIn, no del producto). El backend ya lo soporta vía proxy. Para reactivar:
+// quita "linkedin" de HIDDEN_PLATFORM_IDS y pon LINKEDIN_CLIENT_ID/SECRET en Render.
+export const HIDDEN_PLATFORM_IDS = new Set<string>(["linkedin"]);
+
+// Plataformas que el usuario puede conectar (excluye las ocultas). PLATFORMS se
+// mantiene completa a propósito para que las búsquedas de visualización
+// (icono/nombre/color) sigan resolviendo cualquier post existente sin romper.
+export const CONNECTABLE_PLATFORMS = PLATFORMS.filter((p) => !HIDDEN_PLATFORM_IDS.has(p.id));

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Loader2, CheckCircle2, AlertCircle, Plus } from "lucide-react";
 import { marketingApi, SocialAccount } from "@/lib/api/marketing";
 import { PLATFORM_ICONS } from "@/components/ui/social-icons";
-import { PLATFORMS } from "./constants";
+import { CONNECTABLE_PLATFORMS } from "./constants";
 
 // ── Tab: Cuentas ───────────────────────────────────────────────────────────────
 
@@ -90,7 +90,7 @@ export function TabCuentas() {
             </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {PLATFORMS.map((p) => {
+            {CONNECTABLE_PLATFORMS.map((p) => {
                 const Icon = PLATFORM_ICONS[p.id];
                 const account = accounts.find((a) => a.platform === p.id && a.is_active);
                 const isConnecting = connecting === p.id;
