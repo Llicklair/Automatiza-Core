@@ -42,9 +42,9 @@ def _ensure_java():
     """Configura JAVA_HOME si el JRE portable de Electron está disponible."""
     if os.environ.get("JAVA_HOME"):
         return True
-    # Buscar JRE portable en APPDATA (descargado por jre-manager.js)
-    appdata = os.environ.get("APPDATA", "")
-    jre_path = os.path.join(appdata, "AutomatizaCore", "jre")
+    # Buscar JRE portable en el data dir de la app (descargado por jre-manager.js)
+    from app.core.paths import app_data_dir
+    jre_path = str(app_data_dir("jre"))
     java_exe = os.path.join(jre_path, "bin", "java.exe")
     if os.path.exists(java_exe):
         os.environ["JAVA_HOME"] = jre_path

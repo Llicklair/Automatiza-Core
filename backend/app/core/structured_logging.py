@@ -21,7 +21,6 @@ estos archivos JSONL y los empaqueta en un ZIP exportable.
 
 import json
 import logging
-import os
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -77,18 +76,10 @@ class JSONFormatter(logging.Formatter):
 
 
 def get_log_dir() -> Path:
-    """Devuelve el directorio de logs según el SO.
+    """Devuelve el directorio de logs de la app (`…/logs`), creándolo si no existe."""
+    from app.core.paths import app_data_dir
 
-    - Windows: `%APPDATA%/AutomatizaCore/logs/`
-    - POSIX: `~/.local/share/AutomatizaCore/logs/`
-
-    Crea el directorio si no existe.
-    """
-    if os.name == "nt":
-        base = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
-        log_dir = base / "AutomatizaCore" / "logs"
-    else:
-        log_dir = Path.home() / ".local" / "share" / "AutomatizaCore" / "logs"
+    log_dir = app_data_dir("logs")
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir
 

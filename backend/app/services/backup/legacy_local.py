@@ -29,27 +29,20 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.core.config import settings
+from app.core.paths import app_data_dir
 
 logger = logging.getLogger(__name__)
 
 
 def _default_backup_dir() -> Path:
-    """`%APPDATA%\\AutomatizaCore\\backups` en Windows, equivalente XDG en otros."""
-    if sys.platform == "win32":
-        appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        return Path(appdata) / "AutomatizaCore" / "backups"
-    xdg = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
-    return Path(xdg) / "AutomatizaCore" / "backups"
+    """Directorio de backups dentro del data dir de la app (`…/backups`)."""
+    return app_data_dir("backups")
 
 
 def _portable_postgres_bin() -> Path | None:
     """Devuelve el path al directorio bin del Postgres portable que gestiona
     la app desktop, o None si no existe."""
-    if sys.platform == "win32":
-        appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        candidate = Path(appdata) / "AutomatizaCore" / "pgsql" / "bin"
-    else:
-        candidate = Path.home() / ".local" / "share" / "AutomatizaCore" / "pgsql" / "bin"
+    candidate = app_data_dir("pgsql", "bin")
     return candidate if candidate.exists() else None
 
 

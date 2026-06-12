@@ -12,17 +12,16 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import platform
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import httpx
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from app.core.config import settings
+from app.core.paths import app_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +46,7 @@ def _verify_server_sig(nonce: str, plan: str, sig_b64: str) -> bool:
     except (InvalidSignature, Exception):
         return False
 
-_appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
-LICENSE_FILE = Path(_appdata) / "AutomatizaCore" / "license.json"
+LICENSE_FILE = app_data_dir("license.json")
 
 
 # ── Machine ID ────────────────────────────────────────────────────────────────

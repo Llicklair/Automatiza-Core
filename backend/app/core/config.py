@@ -122,7 +122,7 @@ class Settings(BaseSettings):
 
     # Backups automáticos de la BD del usuario.
     BACKUP_ENABLED: bool = True
-    BACKUP_DIR: str = ""  # Vacío → %APPDATA%/AutomatizaCore/backups (default por OS)
+    BACKUP_DIR: str = ""  # Vacío → %APPDATA%/AutomatizaPyme/backups (default por OS)
     BACKUP_RETENTION_DAYS: int = 7
 
     # Tope de gasto LLM mensual AGREGADO por tenant (USD). None/0 → desactivado.
