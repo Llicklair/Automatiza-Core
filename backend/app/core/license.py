@@ -30,7 +30,7 @@ OFFLINE_GRACE_DAYS = 7
 REQUEST_TIMEOUT   = 8
 
 # Ed25519 public key — hardcoded to prevent fake-server attacks
-_PUBLIC_KEY_B64 = "Jen8cURct8egCXVhCxHlnXjo8Qaczi7X9Ml6uAkHHxY="
+_PUBLIC_KEY_B64 = "0Pop065Ihkr11kYsaA3mwv5vUPH+Vx7C9vIvCtDRgQA="
 
 def _verify_server_sig(nonce: str, plan: str, sig_b64: str) -> bool:
     """Verify that the validate response was signed by our real server."""
