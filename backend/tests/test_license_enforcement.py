@@ -50,3 +50,21 @@ class TestDevmodeGate:
         monkeypatch.setattr(lic_mod, "LICENSE_FILE", tmp_path / "license.json")
         res = await validate_license()
         assert res.valid is False
+
+
+@pytest.mark.asyncio
+class TestPeriodicRevalidation:
+    async def test_refresh_updates_app_state(self, monkeypatch):
+        monkeypatch.setattr(lic_mod.settings, "AP_DEVMODE", "1")
+        monkeypatch.delenv("AUTOMATIZA_RELEASE", raising=False)
+
+        class _State:
+            pass
+
+        class _App:
+            state = _State()
+
+        app = _App()
+        await lic_mod.refresh_app_license_state(app)
+        assert app.state.license_valid is True
+        assert app.state.license_plan == "dev"

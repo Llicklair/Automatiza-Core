@@ -72,9 +72,26 @@ async def lifespan(app: FastAPI):
 
     await llm_usage_tracker.load_from_db()
     # Arrancar scheduler
-    from app.services.scheduler import start_scheduler, stop_scheduler
+    from app.services.scheduler import scheduler, start_scheduler, stop_scheduler
 
     await start_scheduler()
+
+    # L5 — revalidación periódica de licencia (cada 24 h) para que sesiones
+    # largas no queden con un estado obsoleto. Captura `app` para refrescar
+    # `app.state.license_valid` desde el job.
+    import functools as _functools
+
+    from apscheduler.triggers.interval import IntervalTrigger as _IntervalTrigger
+
+    from app.core.license import refresh_app_license_state
+
+    scheduler.add_job(
+        _functools.partial(refresh_app_license_state, app),
+        _IntervalTrigger(hours=24),
+        id="revalidate_license",
+        replace_existing=True,
+        max_instances=1,
+    )
     # Relay WebSocket ↔ Redis (sólo cuando REDIS_URL está configurado)
     from app.services.ws_relay import start_ws_relay, stop_ws_relay
     await start_ws_relay()

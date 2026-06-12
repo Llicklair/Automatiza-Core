@@ -92,7 +92,7 @@ Antes de distribuir auto-updates:
 |---|---|---|---|---|
 | 1 | **L2**: middleware fail-closed (`default=False`) | 1 línea | Cierra fail-open inmediato | ✅ HECHO 2026-06-12 (+ default defensivo en `main.py` lifespan + try/except) |
 | 2 | **L4**: excluir `AP_DEVMODE` de release | bajo | Cierra bypass por entorno | ✅ HECHO 2026-06-12 (gateado por `AUTOMATIZA_RELEASE`; el launcher empaquetado lo fija en `python-manager.js`) |
-| 3 | **L5**: revalidación periódica (24 h) en scheduler | bajo | Reduce ventana de caché forjada | pendiente |
+| 3 | **L5**: revalidación periódica (24 h) en scheduler | bajo | Reduce ventana de caché forjada | ✅ HECHO 2026-06-12 (`refresh_app_license_state` + job `revalidate_license` 24 h en el lifespan) |
 | 4 | **L1**: compilar/ofuscar backend | alto (estratégico) | Única defensa real client-side | pendiente (decisión de producto) |
 | 5 | **L3**: reducir TTL de caché / forzar online más a menudo | bajo | Mitigación parcial (el fix real es L1) | pendiente |
 
