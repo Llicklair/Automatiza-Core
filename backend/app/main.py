@@ -40,6 +40,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("%s v%s arrancando", settings.APP_NAME, settings.APP_VERSION)
+    # Fail-closed: hasta validar la licencia, el estado por defecto es inválido
+    # (si algún paso del lifespan falla antes de validar, el middleware bloquea).
+    app.state.license_valid = False
+    app.state.license_plan = ""
     # ALB.4 — el esquema lo aplica Alembic desde `desktop/python-manager.js:runMigrations()`
     # antes de levantar el backend (ALB.5). El runtime ya NO emite DDL — toda
     # evolución de esquema vive en `backend/app/db/migrations/versions/`.
@@ -52,13 +56,17 @@ async def lifespan(app: FastAPI):
     # Validar licencia al arranque
     from app.core.license import validate_license
 
-    lic = await validate_license()
-    app.state.license_valid = lic.valid
-    app.state.license_plan = lic.plan
-    if not lic.valid:
-        logger.warning("[LICENSE] Licencia no válida: %s", lic.reason)
-    else:
-        logger.info("[LICENSE] Licencia OK · plan=%s", lic.plan)
+    try:
+        lic = await validate_license()
+        app.state.license_valid = lic.valid
+        app.state.license_plan = lic.plan
+        if not lic.valid:
+            logger.warning("[LICENSE] Licencia no válida: %s", lic.reason)
+        else:
+            logger.info("[LICENSE] Licencia OK · plan=%s", lic.plan)
+    except Exception:
+        logger.exception("[LICENSE] Error validando licencia — fail-closed")
+        app.state.license_valid = False
     # Restaurar el consumo LLM persistido para que el dashboard sobreviva al reinicio.
     from app.services import llm_usage_tracker
 

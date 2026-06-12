@@ -24,7 +24,9 @@ class LicenseCheckMiddleware(BaseHTTPMiddleware):
         if any(path == p or path.startswith(p) for p in _ALLOWED_PREFIXES):
             return await call_next(request)
 
-        if not getattr(request.app.state, "license_valid", True):
+        # Fail-closed: si el flag no se fijó (excepción en el lifespan antes de
+        # validar), bloqueamos en vez de dejar pasar todo.
+        if not getattr(request.app.state, "license_valid", False):
             return JSONResponse(
                 {
                     "detail": "Licencia no válida. Ve a Configuración → Licencia para activarla.",

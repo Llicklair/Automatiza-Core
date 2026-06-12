@@ -88,13 +88,13 @@ Antes de distribuir auto-updates:
 
 ## Recomendaciones priorizadas
 
-| # | Acción | Coste | Efecto |
-|---|---|---|---|
-| 1 | **L2**: middleware fail-closed (`default=False`) | 1 línea | Cierra fail-open inmediato |
-| 2 | **L4**: excluir `AP_DEVMODE` de release | bajo | Cierra bypass por entorno |
-| 3 | **L5**: revalidación periódica (24 h) en scheduler | bajo | Reduce ventana de caché forjada |
-| 4 | **L1**: compilar/ofuscar backend | alto (estratégico) | Única defensa real client-side |
-| 5 | **L3**: reducir TTL de caché / forzar online más a menudo | bajo | Mitigación parcial (el fix real es L1) |
+| # | Acción | Coste | Efecto | Estado |
+|---|---|---|---|---|
+| 1 | **L2**: middleware fail-closed (`default=False`) | 1 línea | Cierra fail-open inmediato | ✅ HECHO 2026-06-12 (+ default defensivo en `main.py` lifespan + try/except) |
+| 2 | **L4**: excluir `AP_DEVMODE` de release | bajo | Cierra bypass por entorno | ✅ HECHO 2026-06-12 (gateado por `AUTOMATIZA_RELEASE`; el launcher empaquetado lo fija en `python-manager.js`) |
+| 3 | **L5**: revalidación periódica (24 h) en scheduler | bajo | Reduce ventana de caché forjada | pendiente |
+| 4 | **L1**: compilar/ofuscar backend | alto (estratégico) | Única defensa real client-side | pendiente (decisión de producto) |
+| 5 | **L3**: reducir TTL de caché / forzar online más a menudo | bajo | Mitigación parcial (el fix real es L1) | pendiente |
 
 **Veredicto:** la criptografía servidor↔cliente (Ed25519 + nonce) está bien,
 pero el enforcement **client-side es eludible** mientras el backend se distribuya
