@@ -11,10 +11,12 @@
  *   - Observabilidad/tracing del desarrollador: LANGFUSE_*, LLM_TRACE_*.
  *   - Bypass de licencia: AP_DEVMODE (además gateado por AUTOMATIZA_RELEASE).
  *
- * NOTA: las credenciales OAuth de la app (GOOGLE_*, redes sociales) SÍ se
- * conservan porque hoy el login depende de ellas. Shippear secretos OAuth en un
- * binario es un riesgo conocido; migrarlo a un proxy backend / OAuth por-tenant
- * es una decisión de producto pendiente (ver desktop/docs/auto_update_guide.md).
+ * NOTA Google: GOOGLE_CLIENT_SECRET SÍ se conserva. Google exige el secret en el
+ * intercambio aunque uses PKCE (incluso con un cliente Desktop, donde el secret
+ * NO es confidencial por diseño), y el token de Gmail debe quedarse local — por
+ * eso Google NO pasa por el proxy. El flujo usa PKCE (S256) como protección extra
+ * (ver app/integrations/google_oauth.py). Los *_CLIENT_SECRET de redes sociales
+ * en cambio SÍ se eliminan: viven en el proxy de Render (ver DENY_EXACT abajo).
  */
 const fs = require("fs");
 const path = require("path");

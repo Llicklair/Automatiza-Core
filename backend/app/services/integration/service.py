@@ -15,19 +15,21 @@ from app.services.encryption import decrypt_credentials, encrypt_credentials
 
 logger = logging.getLogger(__name__)
 
-# OAuth state store en memoria con TTL
-_oauth_states: dict[str, tuple[str, float]] = {}
+# OAuth state store en memoria con TTL. Guarda también el code_verifier PKCE
+# (Google) para reenviarlo en el callback; None para flujos sin PKCE (Microsoft).
+_oauth_states: dict[str, tuple[str, float, str | None]] = {}
 _OAUTH_STATE_TTL = 600
 
 
-def set_oauth_state(state: str, tenant_id: str) -> None:
-    _oauth_states[state] = (tenant_id, _time.time() + _OAUTH_STATE_TTL)
+def set_oauth_state(state: str, tenant_id: str, code_verifier: str | None = None) -> None:
+    _oauth_states[state] = (tenant_id, _time.time() + _OAUTH_STATE_TTL, code_verifier)
 
 
-def pop_oauth_state(state: str) -> str | None:
+def pop_oauth_state(state: str) -> tuple[str, str | None] | None:
+    """Devuelve (tenant_id, code_verifier) o None si no existe o expiró."""
     entry = _oauth_states.pop(state, None)
     if entry and entry[1] > _time.time():
-        return entry[0]
+        return entry[0], entry[2]
     return None
 
 
@@ -207,9 +209,10 @@ async def handle_oauth_callback(
     db: AsyncSession,
 ) -> str | None:
     """Procesa OAuth callback. Retorna tenant_id o None si state inválido."""
-    tenant_id = pop_oauth_state(state)
-    if not tenant_id:
+    popped = pop_oauth_state(state)
+    if not popped:
         return None
+    tenant_id, code_verifier = popped
 
     if provider == "google":
         from app.integrations.google_oauth import exchange_code
@@ -221,7 +224,11 @@ async def handle_oauth_callback(
         integration_types = ("outlook", "onedrive")
 
     try:
-        tokens = await exchange_code(code)
+        # Google usa PKCE → reenvía el verifier; Microsoft no lo acepta.
+        if provider == "google":
+            tokens = await exchange_code(code, code_verifier)
+        else:
+            tokens = await exchange_code(code)
     except Exception:
         logger.exception("OAuth token exchange failed for provider=%s", provider)
         return None

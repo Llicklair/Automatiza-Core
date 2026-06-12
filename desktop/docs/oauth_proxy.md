@@ -8,7 +8,7 @@
 ## Activación
 
 1. Implementar los endpoints de abajo en el servidor de Render (mismo despliegue
-   que el license-server, p. ej. `https://automatizacore-license-server.onrender.com`).
+   que el license-server: `https://automatizapyme-license-server.onrender.com`).
 2. Mover los secrets `FACEBOOK_CLIENT_SECRET`, `INSTAGRAM_*`, `TWITTER_CLIENT_SECRET`,
    `LINKEDIN_CLIENT_SECRET` a las env vars del servidor de Render (NO en el cliente).
 3. Fijar en el cliente `OAUTH_PROXY_URL=https://…onrender.com` (vía
@@ -46,8 +46,29 @@ Response: `{ "access_token": "<long_lived_token>" }`
 - HTTPS obligatorio. Validar `state`/origen si se amplía.
 - **Stateless**: no almacenar tokens de usuario; solo intercambiar y devolver.
 - El proxy ve los tokens del usuario momentáneamente (inevitable en el
-  intercambio). Para Google se recomienda PKCE-loopback (no proxy) y así su token
-  no transita el servidor — ver nota en `auto_update_guide.md`.
+  intercambio). Por eso **Google NO usa el proxy** (ver sección siguiente): su
+  token de Gmail no debe transitar el servidor.
+
+## Google (Gmail + Drive) — NO usa proxy, usa PKCE
+
+A diferencia de las redes sociales, Google se queda **100% local** porque su token
+da acceso al correo del usuario y no debe pasar por Render. El flujo
+(`backend/app/integrations/google_oauth.py`) usa **PKCE S256** (RFC 7636):
+
+- `generate_auth_url()` genera un `code_verifier` por flujo y envía
+  `code_challenge=base64url(sha256(verifier))` + `code_challenge_method=S256`.
+- El `verifier` se guarda junto al `state` (in-memory, TTL 600 s) y se reenvía en
+  `exchange_code()` en el callback. El `redirect_uri` ya es local (el backend
+  corre en `localhost`), así que es efectivamente un flujo loopback.
+
+**El `GOOGLE_CLIENT_SECRET` se sigue embebiendo** (`sanitize-env.js` lo conserva):
+Google exige el secret en el intercambio incluso con PKCE. Para que ese secret
+deje de ser sensible, cambia el cliente OAuth en Google Cloud Console a tipo
+**"Aplicación de escritorio" (Desktop app)**: Google trata su secret como **no
+confidencial** por diseño, y PKCE aporta la protección real contra robo del code.
+Mientras siga siendo un cliente *Web*, el secret es sensible pero PKCE igualmente
+protege el intercambio. Cambiar de tipo de cliente no requiere tocar código (solo
+`GOOGLE_CLIENT_ID`/`SECRET` nuevos en el `.env`).
 
 ## Cold start (Render free)
 
