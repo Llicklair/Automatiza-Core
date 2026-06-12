@@ -20,7 +20,13 @@ async def marketing_agent_node(state: AgentState) -> dict:
         # Sin esto el LLM ve el literal "{tenant_id}" y pide al usuario que
         # lo proporcione.
         tenant_id = str(state.get("tenant_id") or "")
-        prompt_text = MARKETING_SYSTEM_PROMPT.replace("{tenant_id}", tenant_id)
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        prompt_text = (
+            MARKETING_SYSTEM_PROMPT
+            .replace("{tenant_id}", tenant_id)
+            .replace("{today}", today)
+        )
         state["messages"] = [
             make_cached_system_message(prompt_text),
             HumanMessage(
