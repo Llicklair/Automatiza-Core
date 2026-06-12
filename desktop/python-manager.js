@@ -18,12 +18,13 @@ const PYTHON_DIR = path.join(APPDATA_DIR, "python");
 const PYTHON_EXE = path.join(PYTHON_DIR, "python.exe");
 const SITE_PACKAGES = path.join(PYTHON_DIR, "Lib", "site-packages");
 let PROJECT_ROOT;
+let IS_PACKAGED = false; // módulo-scope: usado también en startBackend()
 try {
   const { app } = require("electron");
-  PROJECT_ROOT =
-    app && app.isPackaged
-      ? path.join(process.resourcesPath, "project")
-      : path.resolve(__dirname, "..");
+  IS_PACKAGED = !!(app && app.isPackaged);
+  PROJECT_ROOT = IS_PACKAGED
+    ? path.join(process.resourcesPath, "project")
+    : path.resolve(__dirname, "..");
 } catch {
   PROJECT_ROOT = path.resolve(__dirname, "..");
 }
@@ -239,7 +240,7 @@ function startBackend(extraEnv = {}) {
     PYTHONIOENCODING: "utf-8",
     PYTHONUTF8: "1",
     // Build empaquetado → desactiva el bypass de licencia por AP_DEVMODE.
-    ...(app && app.isPackaged ? { AUTOMATIZA_RELEASE: "1" } : {}),
+    ...(IS_PACKAGED ? { AUTOMATIZA_RELEASE: "1" } : {}),
     ...extraEnv,
   };
 
