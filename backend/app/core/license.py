@@ -226,3 +226,22 @@ async def activate_license(key: str) -> LicenseResult:
         return LicenseResult(valid=False, reason=detail)
     except Exception as e:
         return LicenseResult(valid=False, reason=f"No se pudo conectar al servidor: {e}")
+
+
+async def refresh_app_license_state(app) -> None:
+    """Revalida la licencia y refresca `app.state` (L5 — revalidación periódica).
+
+    Pensado para el scheduler (cada 24 h): sesiones largas no se quedan con un
+    estado obsoleto. Si la revalidación lanza un error inesperado, deja el estado
+    como estaba (no bloquea por un fallo transitorio); `validate_license` ya
+    gestiona la gracia offline internamente.
+    """
+    try:
+        lic = await validate_license()
+        app.state.license_valid = lic.valid
+        app.state.license_plan = lic.plan
+        logger.info(
+            "[LICENSE] Revalidación periódica: valid=%s plan=%s", lic.valid, lic.plan
+        )
+    except Exception:
+        logger.exception("[LICENSE] Revalidación periódica falló (estado sin cambios)")
