@@ -97,7 +97,7 @@ export function TabPlanIA() {
                         type="text"
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Ej: Plan semanal para el lanzamiento del producto X con posts en Instagram y LinkedIn…"
+                        placeholder="Ej: Plan semanal para el lanzamiento del producto X con posts en Instagram y Facebook…"
                         className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                         onKeyDown={(e) => e.key === "Enter" && !generating && generate()}
                         disabled={generating}
