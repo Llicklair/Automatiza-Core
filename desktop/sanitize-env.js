@@ -9,7 +9,6 @@
  *     SECRET_KEY, TENANT_ENCRYPTION_KEY.
  *   - Infra per-install (la genera el desktop): POSTGRES_*, DATABASE_URL.
  *   - Observabilidad/tracing del desarrollador: LANGFUSE_*, LLM_TRACE_*.
- *   - Bypass de licencia: AP_DEVMODE (además gateado por AUTOMATIZA_RELEASE).
  *
  * NOTA Google: GOOGLE_CLIENT_SECRET SÍ se conserva. Google exige el secret en el
  * intercambio aunque uses PKCE (incluso con un cliente Desktop, donde el secret
@@ -28,7 +27,6 @@ const OUT = path.join(__dirname, ".env.dist");
 const DENY_EXACT = new Set([
   "SECRET_KEY",
   "TENANT_ENCRYPTION_KEY",
-  "AP_DEVMODE",
   "DATABASE_URL",
   "POSTGRES_USER",
   "POSTGRES_PASSWORD",

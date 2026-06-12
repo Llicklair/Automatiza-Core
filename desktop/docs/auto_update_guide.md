@@ -188,7 +188,9 @@ desarrollador a cada cliente**. Ahora `predist` ejecuta
   Electron safeStorage (`service-manager.js::getOrCreateSecrets`).
 - `POSTGRES_*`, `DATABASE_URL` → la BD es per-install (`getDatabaseURL`).
 - `LANGFUSE_*`, `LLM_TRACE_*` → observabilidad del desarrollador.
-- `AP_DEVMODE` → bypass de licencia (además gateado por `AUTOMATIZA_RELEASE`).
+
+> Nota: `AP_DEVMODE` se eliminó por completo del código (ya no existe bypass de
+> licencia por entorno), así que no hay nada que filtrar por ese lado.
 
 `extraResources` ahora copia `.env.dist` (no `../.env`).
 

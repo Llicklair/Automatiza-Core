@@ -1,4 +1,4 @@
-"""Tests de endurecimiento de licencia: middleware fail-closed + DEVMODE gateado."""
+"""Tests de endurecimiento de licencia: middleware fail-closed + sin bypass."""
 import pytest
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
@@ -36,17 +36,9 @@ class TestMiddlewareFailClosed:
 
 
 @pytest.mark.asyncio
-class TestDevmodeGate:
-    async def test_devmode_bypass_in_dev(self, monkeypatch):
-        monkeypatch.setattr(lic_mod.settings, "AP_DEVMODE", "1")
-        monkeypatch.delenv("AUTOMATIZA_RELEASE", raising=False)
-        res = await validate_license()
-        assert res.valid is True and res.plan == "dev"
-
-    async def test_devmode_ignored_in_release(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(lic_mod.settings, "AP_DEVMODE", "1")
-        monkeypatch.setenv("AUTOMATIZA_RELEASE", "1")
-        # En release, DEVMODE no aplica: sin licencia/servidor → inválida.
+class TestNoBypass:
+    async def test_no_license_is_invalid(self, monkeypatch, tmp_path):
+        # Sin licencia y sin bypass por entorno → inválida (ya no existe modo dev).
         monkeypatch.setattr(lic_mod, "LICENSE_FILE", tmp_path / "license.json")
         res = await validate_license()
         assert res.valid is False
@@ -55,8 +47,10 @@ class TestDevmodeGate:
 @pytest.mark.asyncio
 class TestPeriodicRevalidation:
     async def test_refresh_updates_app_state(self, monkeypatch):
-        monkeypatch.setattr(lic_mod.settings, "AP_DEVMODE", "1")
-        monkeypatch.delenv("AUTOMATIZA_RELEASE", raising=False)
+        async def fake_validate():
+            return lic_mod.LicenseResult(valid=True, plan="pro")
+
+        monkeypatch.setattr(lic_mod, "validate_license", fake_validate)
 
         class _State:
             pass
@@ -67,4 +61,4 @@ class TestPeriodicRevalidation:
         app = _App()
         await lic_mod.refresh_app_license_state(app)
         assert app.state.license_valid is True
-        assert app.state.license_plan == "dev"
+        assert app.state.license_plan == "pro"
