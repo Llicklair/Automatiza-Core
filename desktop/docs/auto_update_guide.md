@@ -75,26 +75,31 @@ patch menor.
 Sin configuración extra. Verificable inspeccionando los assets del
 release: deben aparecer `latest.yml`, `<setup>.exe`, `<setup>.exe.blockmap`.
 
-## §4 Configuración pendiente
+## §4 Publish (estado 2026-06-12)
 
-[`desktop/package.json`](../desktop/package.json) ya tiene el bloque
-`build.publish` con provider `github`, pero `owner` y `repo` están
-con placeholder `TU_USUARIO_GITHUB`:
+[`desktop/package.json`](../desktop/package.json) → `build.publish` apunta al
+repo real:
 
 ```json
 "publish": {
   "provider": "github",
-  "owner": "TU_USUARIO_GITHUB",
-  "repo": "automatizacore-desktop"
+  "owner": "Llicklair",
+  "repo": "Automatiza-Core"
 }
 ```
 
-**Acción pre-release**: el fundador (DEC.04 / DIS.SIG) debe:
+⚠️ **El repo es PRIVADO.** electron-updater **no puede** actualizar a clientes
+desde un repo privado sin un token embebido en el binario (inseguro: cualquiera
+con el .exe lo extrae). Opciones antes de distribuir:
 
-1. Crear el repo `<org>/automatizacore-desktop` en GitHub (privado OK,
-   electron-updater soporta privado vía PAT).
-2. Actualizar `owner` y `repo` en el bloque publish.
-3. Generar un `GH_TOKEN` con scope `repo` para el workflow de release.
+1. **(Recomendado)** Repo de releases **público** dedicado (p. ej.
+   `Llicklair/automatizacore-releases`) — solo binarios, sin código. Apuntar
+   `publish.repo` ahí. El código sigue privado.
+2. Hacer público el repo actual (expone el código — desaconsejado).
+3. Embeber un PAT de solo-lectura (inseguro; descartado).
+
+Para el workflow de release: `GH_TOKEN` con scope `repo` (solo en CI, nunca en
+el binario) + `npm run dist -- --publish always`.
 
 ## §5 Code signing (cross-ref DIS.SIG)
 
@@ -110,6 +115,22 @@ Hasta que el cert esté firmado:
 
 `forceCodeSigning: false` en el config actual permite buildear sin
 cert local — útil para CI sin secretos.
+
+### Cómo firmar cuando haya certificado
+
+electron-builder firma automáticamente si encuentra estas variables de entorno
+(no requieren cambios en `package.json`):
+
+```bash
+# .pfx en base64 o ruta al fichero
+set CSC_LINK=base64-del-certificado-o-ruta.pfx
+set CSC_KEY_PASSWORD=contraseña-del-pfx
+cd desktop && npm run dist -- --publish always
+```
+
+En CI: guardar `CSC_LINK`/`CSC_KEY_PASSWORD` como secrets. Para forzar que un
+build de release NO salga sin firmar, poner `forceCodeSigning: true` solo en el
+pipeline de release (dejarlo `false` para builds de dev).
 
 ## §6 IPC bridge expuesto al renderer
 
@@ -155,3 +176,34 @@ cert local — útil para CI sin secretos.
 | Update se descarga pero no instala | Backend tiene handle abierto sobre python.exe | Resolved en DIS.SVC: `install-update` llama `stopAll()` antes. |
 | Beta no aparece tras switch | El último beta release no incluye `beta.yml` | Verificar que electron-builder publicó con `--publish always` Y que el tag es pre-release. |
 | Windows SmartScreen alerta | Falta cert EV firmado (DIS.SIG) | Cliente acepta el warning; planear DIS.SIG. |
+
+## §10 Saneado de secretos en el instalador (2026-06-12)
+
+Antes, `extraResources` horneaba el `.env` real → **filtraba secretos del
+desarrollador a cada cliente**. Ahora `predist` ejecuta
+[`desktop/sanitize-env.js`](../desktop/sanitize-env.js), que genera
+`desktop/.env.dist` (gitignorado) eliminando claves que NO deben distribuirse:
+
+- `SECRET_KEY`, `TENANT_ENCRYPTION_KEY` → se generan por-instalación vía
+  Electron safeStorage (`service-manager.js::getOrCreateSecrets`).
+- `POSTGRES_*`, `DATABASE_URL` → la BD es per-install (`getDatabaseURL`).
+- `LANGFUSE_*`, `LLM_TRACE_*` → observabilidad del desarrollador.
+- `AP_DEVMODE` → bypass de licencia (además gateado por `AUTOMATIZA_RELEASE`).
+
+`extraResources` ahora copia `.env.dist` (no `../.env`).
+
+### ⚠️ Decisión pendiente — credenciales OAuth de la app
+
+`.env.dist` **todavía incluye** los secretos OAuth de la app (`GOOGLE_CLIENT_SECRET`,
+y los de Twitter/Facebook/Instagram) porque el login depende de ellos hoy.
+Embeber secretos OAuth en un binario distribuido es un riesgo conocido
+(cualquiera con el .exe los extrae → puede suplantar la app). Opciones:
+
+1. **Proxy backend de OAuth**: el secreto vive en un servidor tuyo; el desktop
+   solo recibe el resultado. Es lo correcto, pero requiere infra.
+2. **OAuth por-tenant (BYOK social)**: cada cliente registra su propia app OAuth.
+3. Aceptar el riesgo por ahora (rotar los secretos si se filtran).
+
+Hasta decidir, los secretos OAuth siguen viajando. **Recomendado**: al menos
+rotar `LANGFUSE_*` si alguna build previa con el `.env` completo llegó a
+distribuirse (esos sí eran fuga pura).
