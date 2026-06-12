@@ -12,6 +12,7 @@ import base64
 import hashlib
 import secrets
 import time
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import HTTPException
@@ -83,38 +84,51 @@ def _oauth_url(platform: str, state: str) -> str:
         )
     redirect = _redirect_uri()
 
-    # Twitter OAuth2 exige PKCE: verifier aleatorio por flujo, guardado keyed por
-    # state (no viaja en la redirect); enviamos el challenge S256.
-    twitter_challenge = ""
-    if platform == "twitter":
-        verifier, twitter_challenge = _make_pkce()
-        _pkce_set(state, verifier)
+    # Todos los parámetros se codifican con urlencode: el redirect_uri (://, /) y el
+    # state (base64 con =, -, _) deben ir percent-encoded o la URL queda malformada
+    # y el strict-mode de Facebook rechaza el redirect_uri por no coincidir.
+    if platform in ("facebook", "instagram"):
+        scope = (
+            "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement"
+            if platform == "instagram"
+            else "pages_show_list,pages_manage_posts,pages_read_engagement"
+        )
+        params = {
+            "client_id": client_id,
+            "redirect_uri": redirect,
+            "scope": scope,
+            "state": state,
+            "response_type": "code",
+        }
+        return f"https://www.facebook.com/v22.0/dialog/oauth?{urlencode(params)}"
 
-    urls = {
-        "instagram": (
-            f"https://www.facebook.com/v22.0/dialog/oauth"
-            f"?client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement"
-            f"&state={state}"
-        ),
-        "facebook": (
-            f"https://www.facebook.com/v22.0/dialog/oauth"
-            f"?client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=pages_show_list,pages_manage_posts,pages_read_engagement&state={state}"
-        ),
-        "linkedin": (
-            f"https://www.linkedin.com/oauth/v2/authorization"
-            f"?response_type=code&client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=openid+profile+w_member_social&state={state}"
-        ),
-        "twitter": (
-            f"https://x.com/i/oauth2/authorize"
-            f"?response_type=code&client_id={client_id}&redirect_uri={redirect}"
-            f"&scope=tweet.write+users.read+offline.access"
-            f"&state={state}&code_challenge={twitter_challenge}&code_challenge_method=S256"
-        ),
-    }
-    return urls[platform]
+    if platform == "linkedin":
+        params = {
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect,
+            "scope": "openid profile w_member_social",
+            "state": state,
+        }
+        return f"https://www.linkedin.com/oauth/v2/authorization?{urlencode(params)}"
+
+    if platform == "twitter":
+        # Twitter OAuth2 exige PKCE: verifier aleatorio por flujo, guardado keyed por
+        # state (no viaja en la redirect); enviamos el challenge S256.
+        verifier, challenge = _make_pkce()
+        _pkce_set(state, verifier)
+        params = {
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect,
+            "scope": "tweet.write users.read offline.access",
+            "state": state,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+        }
+        return f"https://x.com/i/oauth2/authorize?{urlencode(params)}"
+
+    raise HTTPException(status_code=400, detail=f"Plataforma no soportada: {platform}")
 
 
 async def _exchange_token(platform: str, code: str, state: str = "") -> dict:
