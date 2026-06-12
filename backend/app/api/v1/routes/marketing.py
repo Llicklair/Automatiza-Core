@@ -1,6 +1,7 @@
 """Marketing: social accounts, campaigns, scheduled posts, OAuth callbacks."""
 
 import datetime
+import traceback
 from typing import Optional
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
+from app.core.paths import app_data_dir
 from app.db.base import get_db
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
 from app.db.models.models import User
@@ -26,6 +28,20 @@ from app.services.marketing.oauth import (
 )
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
+
+
+def _log_oauth_error(stage: str, exc: Exception) -> None:
+    """Vuelca el traceback completo del fallo OAuth a oauth_debug.log (diagnóstico)."""
+    try:
+        p = app_data_dir("oauth_debug.log")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        with p.open("a", encoding="utf-8") as f:
+            f.write(f"\n===== {ts} · {stage} =====\n")
+            f.write(f"{type(exc).__name__}: {exc!r}\n")
+            f.write(traceback.format_exc())
+    except Exception:
+        pass
 
 
 def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLResponse:
@@ -208,9 +224,11 @@ async def oauth_callback(
     try:
         token_data = await _exchange_token(platform, code, state)
     except HTTPException as e:
-        return _popup_html(False, message=e.detail)
+        _log_oauth_error(f"exchange:{platform}", e)
+        return _popup_html(False, message=str(e.detail))
     except Exception as e:
-        return _popup_html(False, message=f"Error al obtener token: {e}")
+        _log_oauth_error(f"exchange:{platform}", e)
+        return _popup_html(False, message=f"Error al obtener token: {e!r}")
 
     access_token = token_data.get("access_token", "")
     refresh_token = token_data.get("refresh_token")
@@ -227,9 +245,11 @@ async def oauth_callback(
         try:
             target = await resolver(access_token)
         except HTTPException as e:
-            return _popup_html(False, message=e.detail)
+            _log_oauth_error(f"resolve:{platform}", e)
+            return _popup_html(False, message=str(e.detail))
         except Exception as e:
-            return _popup_html(False, message=f"Error al resolver la cuenta de {platform}: {e}")
+            _log_oauth_error(f"resolve:{platform}", e)
+            return _popup_html(False, message=f"Error al resolver la cuenta de {platform}: {e!r}")
         access_token = target["access_token"]
         account_id_str, account_name = target["id"], target["name"]
         token_expires_at = None

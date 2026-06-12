@@ -65,6 +65,13 @@ def _decode_state(state: str) -> tuple[str, str]:
 
 
 def _redirect_uri() -> str:
+    # Con proxy activo, el redirect va al rebote HTTPS de Render: Facebook/X/LinkedIn
+    # NO admiten http://localhost. El rebote (/oauth/cb) reenvía code/state a este
+    # backend local. El mismo valor se usa en la auth-url y en el intercambio (deben
+    # coincidir). Sin proxy (fallback local), se usa localhost directo.
+    proxy = _proxy_url()
+    if proxy:
+        return f"{proxy}/oauth/cb"
     return settings.OAUTH_REDIRECT_URI
 
 
