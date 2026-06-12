@@ -31,6 +31,12 @@ const DENY_EXACT = new Set([
   "POSTGRES_USER",
   "POSTGRES_PASSWORD",
   "POSTGRES_DB",
+  // Secrets OAuth de redes sociales → ahora viven en el proxy (Render), no en
+  // el binario. Los CLIENT_ID se quedan (públicos, para construir la URL de login).
+  "FACEBOOK_CLIENT_SECRET",
+  "INSTAGRAM_CLIENT_SECRET",
+  "TWITTER_CLIENT_SECRET",
+  "LINKEDIN_CLIENT_SECRET",
 ]);
 const DENY_PREFIX = ["LANGFUSE_", "LLM_TRACE_"];
 

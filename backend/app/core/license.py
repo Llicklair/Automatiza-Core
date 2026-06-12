@@ -26,7 +26,7 @@ from app.core.paths import app_data_dir
 
 logger = logging.getLogger(__name__)
 
-LICENSE_SERVER    = "https://automatizacore-license-server.onrender.com"
+LICENSE_SERVER    = "https://automatizapyme-license-server.onrender.com"
 CACHE_TTL_HOURS   = 24
 OFFLINE_GRACE_DAYS = 7
 REQUEST_TIMEOUT   = 8

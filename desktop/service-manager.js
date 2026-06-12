@@ -251,6 +251,9 @@ function getBackendEnv(lanIP) {
     MICROSOFT_CLIENT_ID:   envVar("MICROSOFT_CLIENT_ID"),
     MICROSOFT_CLIENT_SECRET: envVar("MICROSOFT_CLIENT_SECRET"),
     MICROSOFT_REDIRECT_URI:  envVar("MICROSOFT_REDIRECT_URI"),
+    // Proxy OAuth (Render): el intercambio code→token de redes sociales se hace
+    // en el servidor (que guarda los client_secret), no en el binario.
+    OAUTH_PROXY_URL: envVar("OAUTH_PROXY_URL", "https://automatizapyme-license-server.onrender.com"),
     // SMTP
     SMTP_HOST:     envVar("SMTP_HOST"),
     SMTP_PORT:     envVar("SMTP_PORT", "587"),
