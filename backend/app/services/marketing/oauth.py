@@ -92,13 +92,13 @@ def _oauth_url(platform: str, state: str) -> str:
 
     urls = {
         "instagram": (
-            f"https://www.facebook.com/v18.0/dialog/oauth"
+            f"https://www.facebook.com/v22.0/dialog/oauth"
             f"?client_id={client_id}&redirect_uri={redirect}"
             f"&scope=instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement"
             f"&state={state}"
         ),
         "facebook": (
-            f"https://www.facebook.com/v18.0/dialog/oauth"
+            f"https://www.facebook.com/v22.0/dialog/oauth"
             f"?client_id={client_id}&redirect_uri={redirect}"
             f"&scope=pages_show_list,pages_manage_posts,pages_read_engagement&state={state}"
         ),
@@ -155,7 +155,7 @@ async def _exchange_token(platform: str, code: str, state: str = "") -> dict:
     async with httpx.AsyncClient(timeout=15) as client:
         if platform in ("instagram", "facebook"):
             r = await client.post(
-                "https://graph.facebook.com/v18.0/oauth/access_token",
+                "https://graph.facebook.com/v22.0/oauth/access_token",
                 data={
                     "client_id": client_id,
                     "client_secret": client_secret,
@@ -245,7 +245,7 @@ async def _facebook_pages(user_token: str) -> list[dict]:
             long_token = lr.json().get("access_token", user_token) if lr.status_code == 200 else user_token
         else:
             long = await client.get(
-                "https://graph.facebook.com/v18.0/oauth/access_token",
+                "https://graph.facebook.com/v22.0/oauth/access_token",
                 params={
                     "grant_type": "fb_exchange_token",
                     "client_id": settings.FACEBOOK_CLIENT_ID,
@@ -257,9 +257,9 @@ async def _facebook_pages(user_token: str) -> list[dict]:
         # 2) páginas gestionadas (+ IG Business vinculada en una sola llamada).
         # Solo usa long_token (sin secret) → siempre local.
         pages = await client.get(
-            "https://graph.facebook.com/v18.0/me/accounts",
+            "https://graph.facebook.com/v22.0/me/accounts",
             params={
-                "fields": "id,name,access_token,instagram_business_account{id,username}",
+                "fields": "id,name,access_token,instagram_business_account{id,username},connected_instagram_account{id,username}",
                 "access_token": long_token,
             },
         )
@@ -291,7 +291,15 @@ async def _resolve_instagram_account(user_token: str) -> dict:
     Página de Facebook; se publica con el Page token y el IG user id.
     """
     for page in await _facebook_pages(user_token):
-        ig = page.get("instagram_business_account") or {}
+        # Meta rellena uno u otro campo según cómo se vinculó el Instagram:
+        # `instagram_business_account` (vinculado como activo de negocio) o
+        # `connected_instagram_account` (vinculado desde Ajustes de la página).
+        # Aceptamos cualquiera de los dos.
+        ig = (
+            page.get("instagram_business_account")
+            or page.get("connected_instagram_account")
+            or {}
+        )
         if ig.get("id"):
             return {
                 "id": ig["id"],
