@@ -30,8 +30,10 @@ export function TabPlanIA() {
             const resp = await marketingApi.agent.generatePlan(prompt);
             setSummary(resp.summary);
             if (resp.post_ids.length > 0) {
-                const allDrafts = await marketingApi.posts.list({ status: "draft" });
-                setDrafts(allDrafts.filter((p) => resp.post_ids.includes(p.id)));
+                // Todos los estados: la campaña crea posts "scheduled" (no "draft"),
+                // si filtráramos por draft no aparecerían (p. ej. los de Instagram).
+                const all = await marketingApi.posts.list();
+                setDrafts(all.filter((p) => resp.post_ids.includes(p.id)));
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Error al generar el plan");

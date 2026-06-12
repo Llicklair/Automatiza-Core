@@ -443,26 +443,30 @@ async def generate_plan(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Llama al agente de marketing con un prompt y crea los borradores en DB."""
+    """Llama al agente de marketing con un prompt y crea los posts en DB."""
     from app.agents.marketing import run_agent
+
+    run_started = datetime.datetime.now(datetime.timezone.utc)
 
     results = await run_agent(
         prompt=body.prompt,
         tenant_id=str(current_user.tenant_id),
     )
 
-    # Recoge los IDs de posts creados por el agente (via tool create_post)
+    # Devuelve los posts creados EN ESTA EJECUCIÓN, en cualquier estado: borradores
+    # (create_post) Y programados de campaña (create_campaign → status=scheduled).
+    # Filtrar por status="draft" ocultaba las campañas (p. ej. los posts de Instagram).
     posts_result = await db.execute(
         select(ScheduledPost)
         .where(
             ScheduledPost.tenant_id == current_user.tenant_id,
-            ScheduledPost.status == "draft",
+            ScheduledPost.created_at >= run_started,
         )
         .order_by(ScheduledPost.created_at.desc())
-        .limit(20)
+        .limit(50)
     )
-    recent_drafts = posts_result.scalars().all()
-    post_ids = [str(p.id) for p in recent_drafts]
+    created = posts_result.scalars().all()
+    post_ids = [str(p.id) for p in created]
 
     summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
     return GeneratePlanResponse(summary=summary, post_ids=post_ids)
