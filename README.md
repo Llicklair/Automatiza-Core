@@ -20,9 +20,10 @@
 10. [Multi-tenancy y BD](#multi-tenancy-y-bd)
 11. [Integraciones OAuth](#integraciones-oauth)
 12. [Seguridad](#seguridad)
-13. [Arranque rápido](#arranque-rápido)
-14. [Limitaciones conocidas](#limitaciones-conocidas)
-15. [Documentación adicional](#documentación-adicional)
+13. [Servidor de licencias y proxy OAuth (Render + Neon)](#servidor-de-licencias-y-proxy-oauth-render--neon)
+14. [Arranque rápido](#arranque-rápido)
+15. [Limitaciones conocidas](#limitaciones-conocidas)
+16. [Documentación adicional](#documentación-adicional)
 
 ---
 
@@ -102,11 +103,11 @@ Instalable como `.exe` sin requerir Docker, ni Postgres preinstalado, ni Python,
 
 ```
 ┌──────────────────────────────────────────┐      ┌─────────────────────────┐
-│           CLIENTE (local)                │      │    VPS LICENCIAS        │
-│                                          │      │                         │
-│  Electron (PostgreSQL portable + Python) │◄────►│  Valida la licencia     │
-│  Next.js Frontend                        │ HTTPS│  No accede a datos ERP  │
-│  FastAPI                                 │      │                         │
+│           CLIENTE (local)                │      │  SERVIDOR LICENCIAS     │
+│                                          │      │  Render (FastAPI)       │
+│  Electron (PostgreSQL portable + Python) │◄────►│  + Neon (Postgres)      │
+│  Next.js Frontend                        │ HTTPS│  Valida licencia + proxy│
+│  FastAPI                                 │      │  OAuth · No ve datos ERP│
 └────────────┬─────────────────────────────┘      └─────────────────────────┘
              │
              │ HTTPS (sólo en llamadas LLM y embeddings cloud opcional)
@@ -143,9 +144,9 @@ Para clientes con requisitos estrictos (ciberseguridad, legal sensible, sanitari
 | Privacidad de datos en reposo | ✅ Garantizada (BD local) |
 | Brecha masiva (servidor central) | ✅ Imposible (no hay servidor con datos) |
 | Llamadas LLM | 🟡 Bajo DPA del proveedor configurado por el cliente |
-| Integridad del binario distribuido | ✅ Ofuscación del mecanismo de licencias |
-| Comunicación con VPS de licencias | ✅ HTTPS pre-cifrado |
-| Caída del VPS de licencias | ✅ Periodo de gracia local |
+| Falsificación de licencias | ✅ Respuesta firmada Ed25519 + caché HMAC; sin bypass por entorno |
+| Comunicación con el servidor de licencias (Render) | ✅ HTTPS + firma del servidor verificada en cliente |
+| Caída del servidor de licencias | ✅ Gracia offline local (7 días) |
 | Software malicioso en máquina del cliente | ❌ Fuera de alcance (responsabilidad del entorno) |
 
 ---
@@ -546,6 +547,70 @@ La aplicación **no arranca** si estas variables tienen valores por defecto. Es 
 - **Cifrado de credenciales**: PBKDF2 (100k iteraciones) + Fernet para tokens OAuth
 - **Audit log inmutable**: WORM, requerido por compliance fiscal
 - **DB indexes**: compuestos en `tenant_id + created_at`
+
+---
+
+## Servidor de licencias y proxy OAuth (Render + Neon)
+
+El cliente valida su licencia y enruta el OAuth de redes sociales contra un
+servidor propio. **No es un VPS**: son servicios gestionados (cold start incluido).
+
+### Topología
+
+```
+  App escritorio  ──HTTPS──►  Render (FastAPI)      ──►  Neon (PostgreSQL)
+  (valida/activa)             license-server             tabla `licenses`
+                              + proxy OAuth              (persistente)
+```
+
+- **Render** corre el `license-server` (FastAPI): valida/activa licencias, **firma
+  las respuestas con Ed25519**, y hace de **proxy OAuth** de redes sociales (el
+  `client_secret` de Meta/X vive aquí, nunca en el binario distribuido).
+- **Neon** es la base de datos PostgreSQL **persistente** (plan gratis). Render se
+  conecta vía `DATABASE_URL`. Sustituye al SQLite efímero anterior, que se borraba
+  en cada redeploy. La app **nunca** habla con Neon — solo con Render; Neon es
+  almacenamiento pasivo (el "disco" de licencias que no se borra).
+
+### Variables de entorno en Render
+
+| Variable | Para qué |
+|----------|----------|
+| `DATABASE_URL` | Connection string de Neon (Postgres persistente). |
+| `ADMIN_TOKEN` | Protege el panel y la API de administración (`/admin`). |
+| `LICENSE_SIGNING_KEY` | Privada Ed25519 (base64) que firma `/validate`. Su pública va incrustada en el cliente (`core/license.py`). |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` | Alta automática de licencias al completarse el pago. |
+| `SMTP_*` | Envío opcional de la clave por email. |
+| `FACEBOOK_*`, `INSTAGRAM_*`, `TWITTER_*`, `LINKEDIN_*` `_CLIENT_SECRET` | Secrets del proxy OAuth (no viajan al cliente). |
+
+> El cliente activa el proxy con `OAUTH_PROXY_URL`; si está vacío, usa el secret
+> local (fallback). Google se queda local con PKCE (su token de Gmail no transita
+> el servidor).
+
+### Gestión de licencias (sin tocar código)
+
+Panel web protegido por `ADMIN_TOKEN`:
+
+```
+https://automatizapyme-license-server.onrender.com/admin
+```
+
+Crear, listar, revocar, reactivar, **liberar equipo** (`reset-machine`) y borrar
+licencias, con **caducidad opcional en días**. Mismas acciones por API
+(`POST/GET/DELETE /admin/licenses…` con cabecera `X-Admin-Token`).
+
+### Validación, firma y gracia offline
+
+`POST /licenses/validate` responde firmada con Ed25519 (`nonce:plan`). El cliente
+verifica la firma contra la pública incrustada → rechaza servidores falsos. Caché
+local 24 h y **gracia offline de 7 días** si el servidor no responde. Sin bypass
+por entorno (no existe `AP_DEVMODE`).
+
+### Setup nuevo (resumen)
+
+1. Crear proyecto en [Neon](https://neon.tech) → copiar el connection string.
+2. En Render → Environment: `DATABASE_URL`, `ADMIN_TOKEN`, `LICENSE_SIGNING_KEY`
+   (+ las de Stripe/SMTP/OAuth). Guardar → redeploy.
+3. Abrir `/admin`, introducir el `ADMIN_TOKEN` y emitir la primera licencia.
 
 ---
 
