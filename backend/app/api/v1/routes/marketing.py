@@ -206,7 +206,7 @@ async def oauth_callback(
         return _popup_html(False, message="Estado OAuth inválido o expirado")
 
     try:
-        token_data = await _exchange_token(platform, code)
+        token_data = await _exchange_token(platform, code, state)
     except HTTPException as e:
         return _popup_html(False, message=e.detail)
     except Exception as e:
