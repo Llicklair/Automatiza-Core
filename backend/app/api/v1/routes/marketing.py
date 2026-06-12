@@ -213,7 +213,9 @@ async def oauth_callback(
         return _popup_html(False, message=f"El usuario denegó el acceso: {error}")
 
     if not code or not state:
-        return _popup_html(False, message="Parámetros de callback incompletos")
+        detail = f"code={'sí' if code else 'NO'} · state={'sí' if state else 'NO'} · error={error!r}"
+        _log_oauth_error("callback-incompleto", Exception(detail))
+        return _popup_html(False, message=f"Parámetros de callback incompletos ({detail})")
 
     try:
         platform, tenant_id_str = _decode_state(state)
