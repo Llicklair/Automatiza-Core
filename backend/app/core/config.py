@@ -83,6 +83,11 @@ class Settings(BaseSettings):
 
     # OAuth — Redes sociales (Marketing)
     OAUTH_REDIRECT_URI: str = "http://localhost:8080/api/v1/marketing/oauth/callback"
+    # Proxy OAuth (Render): si está definido, el intercambio code→token y el
+    # fb_exchange_token se hacen en el servidor (que guarda el client_secret),
+    # no en el cliente. Vacío → comportamiento actual (secret local). Ver
+    # desktop/docs/oauth_proxy.md para el contrato del endpoint.
+    OAUTH_PROXY_URL: str = ""
     TWITTER_CLIENT_ID: str = ""
     TWITTER_CLIENT_SECRET: str = ""
     FACEBOOK_CLIENT_ID: str = ""

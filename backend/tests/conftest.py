@@ -116,6 +116,13 @@ from app.middleware.rate_limit import limiter
 
 limiter.enabled = False
 
+# ── Licencia válida en tests ─────────────────────────────────────────────────
+# El middleware de licencia es fail-closed (bloquea con 402 si license_valid no
+# está fijado). En tests el lifespan no valida licencia, así que lo marcamos
+# válido para no bloquear las rutas protegidas.
+app.state.license_valid = True
+app.state.license_plan = "test"
+
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
