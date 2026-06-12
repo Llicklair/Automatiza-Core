@@ -4,6 +4,28 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-11 — Subagentes de migración i18n reportan "Done" con trabajo a medias
+
+**Contexto:** un subagente encargado de migrar `configuracion` reportó "Done" pero:
+- Renombró `title`→`titleKey` en un array de datos pero dejó el JSX leyendo
+  `s.title` (→ `undefined` en runtime, error TS bajo `as const`).
+- Llamó `getTranslations("configuracion")` contra un namespace que **no existía
+  en NINGÚN** fichero de mensajes → la página renderizaba en blanco.
+- Dejó cabecera/subtítulo/"Abrir" hardcodeados sin migrar.
+
+**Regla de prevención:** tras CUALQUIER subagente de migración i18n, el agente
+principal DEBE validar 4 cosas antes de dar por buena la tarea:
+1. `node scripts/check_i18n_parity.mjs` (exit 0, el número de claves sube).
+2. `npx tsc --noEmit` filtrado a los ficheros tocados (sin errores).
+3. grep de la página por las cadenas hardcodeadas viejas — deben haber desaparecido.
+4. El namespace nuevo existe en `es.json` Y `en.json` con la misma forma.
+Nunca dar por buena una migración i18n por el "Done" del subagente sin estos 4 checks.
+
+**Convención:** solo `es.json`/`en.json` llevan claves reales; `ca/eu/gl` son stubs
+regenerables (`build_locale_stubs.mjs`) y están exentos del guardia de paridad.
+
+---
+
 ## 2026-06-10 — Un custom 'Perfil' (sin capacidades) NO debe interceptar el routing del Coordinador
 
 **Contexto**: la iteración LLM falló en e2e4 (cierre trimestral) por timeout de 180s
@@ -702,3 +724,30 @@ Lo mismo aplica si añades un nuevo método al objeto `api` — exporta en `inde
 **Prevención más limpia (deuda):** Reemplazar el contenido de `frontend/src/lib/api.ts` por `export * from "./api/index";` para que todo lo de `index.ts` (runtime + tipos) se propague automáticamente. Riesgo: si hay tipos con nombres colisionados o que `api.ts` no quería exponer, podrían filtrarse. Auditar antes de hacerlo.
 
 **Aplicación:** Cualquier sesión que añada tipos al cliente API debe tocar los dos archivos hasta que se consolide el barrel.
+
+---
+
+## Commit con la herramienta Bash: NO usar here-string de PowerShell (`@'...'@`)
+
+**Síntoma:** un `git commit` vía la herramienta **Bash** quedó con subject `@ feat(...)` y un `@` suelto al final del body. Hubo que `--amend` + `--force-with-lease`.
+
+**Causa:** usé la sintaxis de here-string de **PowerShell** (`git commit -m @'...'@`) dentro de la **herramienta Bash**. En bash eso NO es un here-string: `@'texto'@` se interpreta como `@` literal + cadena entre comillas simples + `@` literal, todo concatenado → el mensaje empieza y acaba con `@`.
+
+**Regla:**
+- **Bash tool** → mensajes multilínea con heredoc bash: `git commit -F - <<'EOF' … EOF` (o `-m $'línea1\nlínea2'`). Nunca `@'...'@`.
+- **PowerShell tool** → ahí sí `@'...'@` (con el `'@` de cierre en columna 0).
+- Tras commitear, **verifica** `git log -1 --format=%s` antes de dar por hecho el push.
+
+---
+
+## `require` destructurado en un `try`/función ≠ disponible en otra función (Electron)
+
+**Síntoma:** la app empaquetada reventaba al arrancar con `ReferenceError: app is not defined` (solo en build instalada, no siempre en dev).
+
+**Causa:** en `desktop/python-manager.js`, `const { app } = require("electron")` estaba dentro del `try` que calcula `PROJECT_ROOT` (block-scoped). Luego `startBackend()` usaba `app && app.isPackaged` — pero ahí `app` **no estaba declarado** en scope. `x && x.prop` **NO** protege contra un identificador no declarado: lanza `ReferenceError` igual (solo protege contra valor `undefined`/`null` de una variable que SÍ existe).
+
+**Regla:**
+- Si vas a usar un símbolo de `require("electron")` (`app`, `safeStorage`…) en **más de una función**, decláralo a **nivel de módulo**, o calcula un **flag de módulo** (`let IS_PACKAGED = false;` asignado en el try) y úsalo.
+- El guard correcto contra "no declarado" es `typeof app !== "undefined"`, no `app &&`.
+
+**Aplicación:** la capa Electron (`main.js`, `service-manager.js`, `python-manager.js`, etc.) **no** se actualiza con `npm run sync` — solo con `npm run dist`. Por eso un bug aquí solo aparece tras rebuild+install: revísala con `node --check *.js` y verifica el scope de cada símbolo de `require` antes de empaquetar.
