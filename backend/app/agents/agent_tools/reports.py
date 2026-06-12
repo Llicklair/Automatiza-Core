@@ -48,8 +48,8 @@ def _resolve_upload_dir(category: str = "") -> str:
     if env and env != "/app/uploads":
         upload_dir = env
     elif os.name == "nt":
-        appdata = os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming")
-        upload_dir = os.path.join(appdata, "AutomatizaCore", "uploads")
+        from app.core.paths import app_data_dir
+        upload_dir = str(app_data_dir("uploads"))
     else:
         upload_dir = os.path.abspath("uploads")
 
