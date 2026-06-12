@@ -24,6 +24,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # pycairo compila contra la lib de sistema Cairo (PEP 517 sdist). Sin estos
+      # paquetes el build aborta con "Dependency cairo not found".
+      - name: Install system deps (Cairo)
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -82,6 +87,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install system deps (Cairo)
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -116,7 +124,7 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:
-          file: backend/coverage.xml
+          files: backend/coverage.xml
           flags: backend
         continue-on-error: true
 
@@ -176,7 +184,7 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:
-          file: frontend/coverage/coverage-final.json
+          files: frontend/coverage/coverage-final.json
           flags: frontend
         continue-on-error: true
 
