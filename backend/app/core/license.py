@@ -4,7 +4,7 @@ Protecciones:
 - Caché firmada con HMAC(machine_id) → edición manual invalida la firma.
 - machine_id verificado en caché → el JSON copiado a otra máquina no sirve.
 - Gracia offline limitada a 7 días → bloquear el servidor solo aguanta una semana.
-- Variable de desarrollo no obvia → AP_DEVMODE=1.
+- Sin bypass por entorno: no existe modo desarrollo que salte la validación.
 """
 
 import base64
@@ -12,7 +12,6 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 import platform
 import secrets
 import uuid
@@ -21,7 +20,6 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from app.core.config import settings
 from app.core.paths import app_data_dir
 
 logger = logging.getLogger(__name__)
@@ -142,14 +140,12 @@ class LicenseResult:
 
 
 async def validate_license() -> LicenseResult:
-    """Valida la licencia. Llama al servidor solo si la caché expiró."""
+    """Valida la licencia. Llama al servidor solo si la caché expiró.
 
-    # DEVMODE solo en builds NO release. El launcher de la app empaquetada fija
-    # AUTOMATIZA_RELEASE=1, así un usuario final no puede activar el bypass por
-    # entorno aunque conozca la variable.
-    if settings.AP_DEVMODE == "1" and os.environ.get("AUTOMATIZA_RELEASE") != "1":
-        return LicenseResult(valid=True, plan="dev")
-
+    Sin bypass por entorno: la única vía de acceso es una licencia válida emitida
+    por el servidor. Los tests fijan `app.state.license_valid` directamente; el
+    flujo de validación nunca se cortocircuita.
+    """
     machine_id = get_machine_id()
     cache = _read_cache()
     key = cache.get("key")
