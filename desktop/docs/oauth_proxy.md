@@ -25,7 +25,7 @@ Request: `{ "platform": "facebook|instagram|twitter|linkedin", "code": "...", "r
 
 El servidor replica la lógica de `_exchange_token` (ver
 `backend/app/services/marketing/oauth.py`) con su `client_id`+`client_secret`:
-- facebook/instagram → `POST graph.facebook.com/v18.0/oauth/access_token`
+- facebook/instagram → `POST graph.facebook.com/v22.0/oauth/access_token`
 - linkedin → `POST linkedin.com/oauth/v2/accessToken`
 - twitter → `POST api.twitter.com/2/oauth2/token` (Basic auth client_id:secret)
 
@@ -40,6 +40,66 @@ Response: `{ "access_token": "<long_lived_token>" }`
 
 > El listado de páginas (`/me/accounts`) y los perfiles NO requieren secret →
 > siguen ejecutándose en el cliente; no hay endpoint proxy para ellos.
+
+### `GET /oauth/cb` — rebote HTTPS → callback local
+
+Facebook/X/LinkedIn **no admiten `http://localhost`** como `redirect_uri` (error
+"el dominio de esta URL no está incluido en los dominios de la aplicación"; además
+el toggle "Aplicar HTTPS" está bloqueado en las apps nuevas). Solución: el redirect
+registrado en cada red es esta URL **HTTPS** de Render, que hace `302` al callback
+local:
+
+```
+GET /oauth/cb?code=…&state=…  →  302  http://localhost:8080/api/v1/marketing/oauth/callback?code=…&state=…
+```
+
+La red social solo ve una URL HTTPS válida; el navegador sí puede saltar a
+`localhost`. Es *stateless* (no toca BD ni secrets).
+
+## Flujo completo de conexión (redes sociales)
+
+```
+1. App → backend local POST /accounts/connect/{platform}  → devuelve auth_url
+2. auth_url se abre en el navegador.
+   redirect_uri = https://…onrender.com/oauth/cb  (lo fija _redirect_uri() cuando
+   OAUTH_PROXY_URL está activo)
+3. El usuario autoriza en la red social
+4. Red social → 302 a https://…onrender.com/oauth/cb?code&state
+5. Render /oauth/cb → 302 a http://localhost:8080/api/v1/marketing/oauth/callback?code&state
+6. Backend local: decode state → POST {proxy}/oauth/exchange {code, redirect_uri=/oauth/cb, …}
+7. Render /oauth/exchange usa el client_secret → token → lo devuelve al backend
+8. Backend resuelve la Página/IG (sin secret) y guarda la cuenta cifrada
+```
+
+**Clave:** el `redirect_uri` de los pasos 2 y 6 **debe ser idéntico** (`/oauth/cb`)
+o la red social rechaza el intercambio. Lo garantiza `_redirect_uri()`. Diagnóstico:
+los fallos del callback se vuelcan a `%APPDATA%/AutomatizaPyme/oauth_debug.log`.
+
+## Alta en el panel de cada red (checklist)
+
+### Facebook / Instagram (developers.facebook.com)
+1. **Casos de uso**: añade **"Administra todo en tu página"** (permisos `pages_*`)
+   y, para IG, **"Administrar mensajes y contenido en Instagram"** por **Facebook
+   Login** (NO la "Instagram API with Instagram Login", que usa scopes
+   `instagram_business_*` distintos a los del código).
+2. **Facebook Login → Configuración → URIs de redirección de OAuth válidos**:
+   `https://automatizapyme-license-server.onrender.com/oauth/cb`
+3. **Configuración → Básica → Dominios de la aplicación**:
+   `automatizapyme-license-server.onrender.com`
+4. **Roles**: tu cuenta como Admin/Tester (y **aceptar** la invitación). Para IG,
+   además **Instagram Tester** aceptado desde la app de Instagram.
+5. **Env vars en Render**: `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`
+   (Instagram reusa los de Facebook). La cuenta IG debe ser Business/Creator
+   vinculada a una Página.
+6. **Producción** (que conecten clientes reales): exige **App Review** + verificación
+   de negocio + política de privacidad + vídeo demo. En modo desarrollo solo
+   funcionan las cuentas con rol aceptado.
+
+### X (Twitter) y LinkedIn
+- Mismo `redirect_uri` de rebote (`/oauth/cb`) en su panel + secrets `TWITTER_*` /
+  `LINKEDIN_*` en Render.
+- X usa **PKCE** (lo gestiona el cliente). LinkedIn está **aparcado** (su alta exige
+  una Company Page, que pide un mínimo de conexiones).
 
 ## Seguridad del proxy
 
