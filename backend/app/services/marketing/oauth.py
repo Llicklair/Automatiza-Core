@@ -9,11 +9,44 @@ solo orquesta estos helpers y persiste el resultado.
 from __future__ import annotations
 
 import base64
+import hashlib
+import secrets
+import time
 
 import httpx
 from fastapi import HTTPException
 
 from app.core.config import settings
+
+# ── PKCE (Twitter OAuth2 lo exige) ──────────────────────────────────────────────
+# El verifier NO puede viajar en el `state` (iría en la misma redirect que el
+# `code` y anularía PKCE). Se guarda aquí en memoria, keyed por state, entre la
+# generación de la URL y el callback. Mismo proceso (backend local) → persiste
+# entre ambas requests. Si el backend reinicia, el flujo caduca y se reconecta.
+_PKCE_TTL = 600
+_pkce_store: dict[str, tuple[str, float]] = {}
+
+
+def _make_pkce() -> tuple[str, str]:
+    """Devuelve (code_verifier, code_challenge S256) — base64url sin padding."""
+    verifier = secrets.token_urlsafe(64)
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
+        .decode("ascii")
+        .rstrip("=")
+    )
+    return verifier, challenge
+
+
+def _pkce_set(state: str, verifier: str) -> None:
+    _pkce_store[state] = (verifier, time.time() + _PKCE_TTL)
+
+
+def _pkce_pop(state: str) -> str | None:
+    entry = _pkce_store.pop(state, None)
+    if entry and entry[1] > time.time():
+        return entry[0]
+    return None
 
 
 def _encode_state(platform: str, tenant_id: str) -> str:
@@ -49,6 +82,14 @@ def _oauth_url(platform: str, state: str) -> str:
             detail=f"OAuth para {platform} no configurado. Añade {cred_platform.upper()}_CLIENT_ID al .env",
         )
     redirect = _redirect_uri()
+
+    # Twitter OAuth2 exige PKCE: verifier aleatorio por flujo, guardado keyed por
+    # state (no viaja en la redirect); enviamos el challenge S256.
+    twitter_challenge = ""
+    if platform == "twitter":
+        verifier, twitter_challenge = _make_pkce()
+        _pkce_set(state, verifier)
+
     urls = {
         "instagram": (
             f"https://www.facebook.com/v18.0/dialog/oauth"
@@ -70,23 +111,35 @@ def _oauth_url(platform: str, state: str) -> str:
             f"https://x.com/i/oauth2/authorize"
             f"?response_type=code&client_id={client_id}&redirect_uri={redirect}"
             f"&scope=tweet.write+users.read+offline.access"
-            f"&state={state}&code_challenge=challenge&code_challenge_method=plain"
+            f"&state={state}&code_challenge={twitter_challenge}&code_challenge_method=S256"
         ),
     }
     return urls[platform]
 
 
-async def _exchange_token(platform: str, code: str) -> dict:
+async def _exchange_token(platform: str, code: str, state: str = "") -> dict:
     """Intercambia el authorization code por un access token."""
     redirect = _redirect_uri()
     proxy = _proxy_url()
+
+    # Twitter: recupera el verifier PKCE generado al construir la URL. Si falta
+    # (state expirado o backend reiniciado), el intercambio no puede completar PKCE.
+    code_verifier: str | None = None
+    if platform == "twitter":
+        code_verifier = _pkce_pop(state)
+        if not code_verifier:
+            raise HTTPException(
+                status_code=400,
+                detail="Flujo OAuth de Twitter expirado. Vuelve a conectar la cuenta.",
+            )
+
     if proxy:
         # El servidor (Render) guarda el client_secret y hace el intercambio.
+        payload = {"platform": platform, "code": code, "redirect_uri": redirect}
+        if code_verifier:
+            payload["code_verifier"] = code_verifier
         async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.post(
-                f"{proxy}/oauth/exchange",
-                json={"platform": platform, "code": code, "redirect_uri": redirect},
-            )
+            r = await client.post(f"{proxy}/oauth/exchange", json=payload)
         if r.status_code != 200:
             raise HTTPException(
                 status_code=502,
@@ -129,7 +182,7 @@ async def _exchange_token(platform: str, code: str) -> dict:
                     "grant_type": "authorization_code",
                     "code": code,
                     "redirect_uri": redirect,
-                    "code_verifier": "challenge",
+                    "code_verifier": code_verifier,
                 },
                 auth=(client_id, client_secret),
             )
