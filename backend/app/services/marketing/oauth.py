@@ -34,6 +34,11 @@ def _redirect_uri() -> str:
     return settings.OAUTH_REDIRECT_URI
 
 
+def _proxy_url() -> str:
+    """Base del proxy OAuth (Render) o cadena vacía si se usa el secret local."""
+    return (settings.OAUTH_PROXY_URL or "").rstrip("/")
+
+
 def _oauth_url(platform: str, state: str) -> str:
     # Instagram publica vía Instagram Graph API, que usa la misma app de Facebook.
     cred_platform = "facebook" if platform == "instagram" else platform
@@ -73,11 +78,26 @@ def _oauth_url(platform: str, state: str) -> str:
 
 async def _exchange_token(platform: str, code: str) -> dict:
     """Intercambia el authorization code por un access token."""
-    # Instagram usa las credenciales de la app de Facebook (Instagram Graph API).
+    redirect = _redirect_uri()
+    proxy = _proxy_url()
+    if proxy:
+        # El servidor (Render) guarda el client_secret y hace el intercambio.
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(
+                f"{proxy}/oauth/exchange",
+                json={"platform": platform, "code": code, "redirect_uri": redirect},
+            )
+        if r.status_code != 200:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Error {r.status_code} en proxy OAuth ({platform}): {r.text[:300]}",
+            )
+        return r.json()
+
+    # Fallback local: intercambio con el client_secret de la app.
     cred_platform = "facebook" if platform == "instagram" else platform
     client_id = getattr(settings, f"{cred_platform.upper()}_CLIENT_ID", "")
     client_secret = getattr(settings, f"{cred_platform.upper()}_CLIENT_SECRET", "")
-    redirect = _redirect_uri()
 
     async with httpx.AsyncClient(timeout=15) as client:
         if platform in ("instagram", "facebook"):
@@ -163,21 +183,26 @@ async def _facebook_pages(user_token: str) -> list[dict]:
     """Intercambia el user token por uno de larga duración (60 días) y devuelve
     las páginas gestionadas. Cada página trae su Page token (larga duración, sin
     expiración) y, si la hay, su cuenta de Instagram Business vinculada."""
-    client_id = settings.FACEBOOK_CLIENT_ID
-    client_secret = settings.FACEBOOK_CLIENT_SECRET
+    proxy = _proxy_url()
     async with httpx.AsyncClient(timeout=15) as client:
-        # 1) user token de larga duración (si falla, seguimos con el de corta vida)
-        long = await client.get(
-            "https://graph.facebook.com/v18.0/oauth/access_token",
-            params={
-                "grant_type": "fb_exchange_token",
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "fb_exchange_token": user_token,
-            },
-        )
-        long_token = long.json().get("access_token", user_token) if long.status_code == 200 else user_token
-        # 2) páginas gestionadas (+ IG Business vinculada en una sola llamada)
+        # 1) user token de larga duración. fb_exchange_token requiere el secret →
+        # vía proxy si está configurado; si no, intercambio local.
+        if proxy:
+            lr = await client.post(f"{proxy}/oauth/fb-longtoken", json={"user_token": user_token})
+            long_token = lr.json().get("access_token", user_token) if lr.status_code == 200 else user_token
+        else:
+            long = await client.get(
+                "https://graph.facebook.com/v18.0/oauth/access_token",
+                params={
+                    "grant_type": "fb_exchange_token",
+                    "client_id": settings.FACEBOOK_CLIENT_ID,
+                    "client_secret": settings.FACEBOOK_CLIENT_SECRET,
+                    "fb_exchange_token": user_token,
+                },
+            )
+            long_token = long.json().get("access_token", user_token) if long.status_code == 200 else user_token
+        # 2) páginas gestionadas (+ IG Business vinculada en una sola llamada).
+        # Solo usa long_token (sin secret) → siempre local.
         pages = await client.get(
             "https://graph.facebook.com/v18.0/me/accounts",
             params={
