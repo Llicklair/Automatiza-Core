@@ -120,8 +120,8 @@ async def email_status(
 async def google_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     from app.integrations.google_oauth import generate_auth_url
 
-    url, state = generate_auth_url(str(current_user.tenant_id))
-    svc.set_oauth_state(state, str(current_user.tenant_id))
+    url, state, verifier = generate_auth_url(str(current_user.tenant_id))
+    svc.set_oauth_state(state, str(current_user.tenant_id), verifier)
     return {"auth_url": url, "state": state}
 
 
