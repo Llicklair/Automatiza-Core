@@ -171,9 +171,9 @@ async def create_campaign(
     """
     Crea una campaña de marketing y programa sus posts para publicación
     automática. Los posts quedan en estado 'scheduled' y el publicador los
-    enviará a cada red social en la fecha indicada. Por la política de
-    autonomía (CONFIRM por defecto) la campaña puede quedar pendiente de
-    aprobación humana antes de programarse.
+    enviará a cada red social en la fecha indicada. Aparecen en la pestaña
+    "Programados" de la UI, donde el usuario puede revisarlos, editarlos o
+    borrarlos antes de su fecha. No hay un paso de aprobación aparte.
 
     Args:
         tenant_id: ID del tenant actual

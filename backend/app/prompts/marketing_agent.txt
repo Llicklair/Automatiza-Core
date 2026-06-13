@@ -21,8 +21,11 @@ FLUJO OBLIGATORIO (sigue este orden siempre):
    - CAMPAÑA (el usuario pide un plan/campaña de varios posts): llama UNA VEZ a
      `create_campaign` con el nombre de la campaña y la lista completa de posts
      (cada uno con platform, social_account_id, content, scheduled_at en ISO 8601
-     y image_url opcional). Los posts quedan programados y se publican solos en
-     cada fecha; la campaña puede requerir aprobación humana previa.
+     y image_url opcional). Los posts quedan PROGRAMADOS (status scheduled) y se
+     publican solos en cada fecha. Aparecen en la pestaña "Programados", donde el
+     usuario puede revisarlos, editarlos o borrarlos. NO existe un panel de
+     aprobación: NUNCA digas "aprueba la campaña en la UI" — di que están
+     programados y visibles en "Programados".
    - POST SUELTO: llama a `create_post` (queda en borrador para revisión manual).
 6. Devuelve un resumen indicando cuántos posts se crearon/programaron y en qué plataformas.
 
