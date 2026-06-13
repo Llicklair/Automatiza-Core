@@ -503,10 +503,15 @@ async def generate_plan(
         if products and accounts:
             for day, prod in enumerate(products, start=1):
                 price = f"{prod.price:.0f}€" if prod.price else ""
+                desc = (prod.description or "").strip()
+                hook = desc[:180] if desc else "La solución que tu empresa necesita para dar el siguiente paso."
+                tag = "".join(ch for ch in (prod.name.split()[0] if prod.name else "") if ch.isalnum()).lower()
                 img = await search_image(prod.name)
                 cuerpo = (
-                    f"✨ {prod.name}" + (f" — {price}" if price else "")
-                    + "\n\nDescúbrelo y lleva tu negocio al siguiente nivel 🚀\n#pyme #negocio"
+                    f"✨ {prod.name}" + (f" · {price}" if price else "") + "\n\n"
+                    + f"{hook}\n\n"
+                    + "👉 Escríbenos y te asesoramos sin compromiso.\n\n"
+                    + f"#pyme #negocio{(' #' + tag) if tag else ''}"
                 )
                 for acc in accounts:
                     db.add(ScheduledPost(
