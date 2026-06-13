@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CalendarClock, Loader2, Clock, AlertCircle, Trash2, CalendarDays, List } from "lucide-react";
+import { CalendarClock, Loader2, Clock, AlertCircle, Trash2, CalendarDays, List, Send } from "lucide-react";
 import { marketingApi, ScheduledPost } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
@@ -23,6 +23,7 @@ export function TabProgramados() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>("all");
     const [view, setView] = useState<"list" | "calendar">("list");
+    const [publishing, setPublishing] = useState<Set<string>>(new Set());
 
     const load = useCallback(async () => {
         try {
@@ -43,6 +44,22 @@ export function TabProgramados() {
             setPosts((prev) => prev.filter((p) => p.id !== id));
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Error al eliminar la publicación");
+        }
+    };
+
+    const publishNow = async (id: string) => {
+        setPublishing((prev) => new Set([...prev, id]));
+        try {
+            const updated = await marketingApi.posts.publish(id);
+            setPosts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Error al publicar";
+            setPosts((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, status: "failed" as const, error_message: msg } : p))
+            );
+            toast.error(msg);
+        } finally {
+            setPublishing((prev) => { const s = new Set(prev); s.delete(id); return s; });
         }
     };
 
@@ -122,6 +139,18 @@ export function TabProgramados() {
                                         <Clock className="w-3 h-3" />
                                         {fmt(post.scheduled_at ?? post.published_at)}
                                     </span>
+                                    {post.status !== "published" && (
+                                        <button
+                                            onClick={() => publishNow(post.id)}
+                                            disabled={publishing.has(post.id)}
+                                            className="text-[11px] px-2.5 py-1 rounded-lg bg-pink-600/20 hover:bg-pink-600/40 text-pink-400 border border-pink-500/20 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                        >
+                                            {publishing.has(post.id)
+                                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                : <Send className="w-3 h-3" />}
+                                            Publicar ahora
+                                        </button>
+                                    )}
                                     {post.status !== "published" && (
                                         <button onClick={() => remove(post.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
                                             <Trash2 className="w-3.5 h-3.5" />
