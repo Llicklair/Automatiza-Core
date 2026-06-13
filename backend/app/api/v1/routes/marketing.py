@@ -478,6 +478,50 @@ async def generate_plan(
         results = await run_agent(prompt=forced, tenant_id=str(current_user.tenant_id))
         created = await _created_since()
 
+    # ── Fallback determinista: si el agente (claude_code) NO creó nada, generamos
+    # un plan básico desde el catálogo, sin depender del LLM. Borradores editables.
+    fallback_used = False
+    if not created:
+        from app.db.models.inventory import Product
+        from app.services.marketing.image_search import search_image
+
+        prod_res = await db.execute(
+            select(Product)
+            .where(Product.tenant_id == current_user.tenant_id)
+            .order_by(Product.created_at.desc())
+            .limit(3)
+        )
+        products = prod_res.scalars().all()
+        acc_res = await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.tenant_id == current_user.tenant_id,
+                SocialAccount.is_active.is_(True),
+            )
+        )
+        accounts = acc_res.scalars().all()
+
+        if products and accounts:
+            for day, prod in enumerate(products, start=1):
+                price = f"{prod.price:.0f}€" if prod.price else ""
+                img = await search_image(prod.name)
+                cuerpo = (
+                    f"✨ {prod.name}" + (f" — {price}" if price else "")
+                    + "\n\nDescúbrelo y lleva tu negocio al siguiente nivel 🚀\n#pyme #negocio"
+                )
+                for acc in accounts:
+                    db.add(ScheduledPost(
+                        tenant_id=current_user.tenant_id,
+                        social_account_id=acc.id,
+                        platform=acc.platform,
+                        content=cuerpo[:280] if acc.platform == "twitter" else cuerpo[:2200],
+                        image_url=img,
+                        scheduled_at=run_started + datetime.timedelta(days=day, hours=10),
+                        status="draft",
+                    ))
+            await db.commit()
+            created = await _created_since()
+            fallback_used = bool(created)
+
     # ── Red de seguridad determinista ─────────────────────────────────────────
     # El LLM a veces ignora plataformas (solo crea 1 red) o no añade imagen. Aquí
     # garantizamos, sin depender del modelo: (1) un post por CADA cuenta conectada
@@ -527,7 +571,13 @@ async def generate_plan(
         await db.commit()
 
     post_ids = [str(p.id) for p in created]
-    summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
+    if fallback_used:
+        summary = (
+            f"Plan básico generado desde tu catálogo: {len(created)} posts en borrador "
+            "con imagen, listos para que los edites y publiques."
+        )
+    else:
+        summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
     return GeneratePlanResponse(summary=summary, post_ids=post_ids)
 
 
