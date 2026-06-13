@@ -478,6 +478,51 @@ async def generate_plan(
         results = await run_agent(prompt=forced, tenant_id=str(current_user.tenant_id))
         created = await _created_since()
 
+    # ── Red de seguridad determinista ─────────────────────────────────────────
+    # El LLM a veces ignora plataformas (solo crea 1 red) o no añade imagen. Aquí
+    # garantizamos, sin depender del modelo: (1) un post por CADA cuenta conectada
+    # (replicando contenido si falta), y (2) una imagen en todos los posts.
+    if created:
+        from app.services.marketing.image_search import search_image
+
+        acc_res = await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.tenant_id == current_user.tenant_id,
+                SocialAccount.is_active.is_(True),
+            )
+        )
+        accounts = acc_res.scalars().all()
+        covered = {p.platform for p in created}
+        template = created[0]
+
+        # (1) Cobertura: crea un post espejo en cada plataforma sin post.
+        for acc in accounts:
+            if acc.platform not in covered:
+                mirror = ScheduledPost(
+                    tenant_id=current_user.tenant_id,
+                    social_account_id=acc.id,
+                    platform=acc.platform,
+                    content=template.content,
+                    image_url=template.image_url,
+                    scheduled_at=template.scheduled_at,
+                    status=template.status,
+                )
+                db.add(mirror)
+                created.append(mirror)
+                covered.add(acc.platform)
+
+        # (2) Imágenes: rellena las que falten (Instagram las exige para publicar).
+        for p in created:
+            if not p.image_url:
+                try:
+                    img = await search_image(p.content[:80])
+                    if img:
+                        p.image_url = img
+                except Exception:
+                    pass
+
+        await db.commit()
+
     post_ids = [str(p.id) for p in created]
     summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
     return GeneratePlanResponse(summary=summary, post_ids=post_ids)
