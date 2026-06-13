@@ -448,26 +448,37 @@ async def generate_plan(
 
     run_started = datetime.datetime.now(datetime.timezone.utc)
 
-    results = await run_agent(
-        prompt=body.prompt,
-        tenant_id=str(current_user.tenant_id),
-    )
-
-    # Devuelve los posts creados EN ESTA EJECUCIÓN, en cualquier estado: borradores
-    # (create_post) Y programados de campaña (create_campaign → status=scheduled).
-    # Filtrar por status="draft" ocultaba las campañas (p. ej. los posts de Instagram).
-    posts_result = await db.execute(
-        select(ScheduledPost)
-        .where(
-            ScheduledPost.tenant_id == current_user.tenant_id,
-            ScheduledPost.created_at >= run_started,
+    async def _created_since():
+        # Posts creados EN ESTA EJECUCIÓN, en cualquier estado: borradores
+        # (create_post) y programados de campaña (create_campaign → scheduled).
+        r = await db.execute(
+            select(ScheduledPost)
+            .where(
+                ScheduledPost.tenant_id == current_user.tenant_id,
+                ScheduledPost.created_at >= run_started,
+            )
+            .order_by(ScheduledPost.created_at.desc())
+            .limit(50)
         )
-        .order_by(ScheduledPost.created_at.desc())
-        .limit(50)
-    )
-    created = posts_result.scalars().all()
-    post_ids = [str(p.id) for p in created]
+        return r.scalars().all()
 
+    results = await run_agent(prompt=body.prompt, tenant_id=str(current_user.tenant_id))
+    created = await _created_since()
+
+    if not created:
+        # El modelo respondió preguntando/ofreciendo opciones en vez de crear.
+        # Reintenta UNA vez forzando la acción (algunos modelos ignoran la regla
+        # del system prompt según el fraseo del usuario).
+        forced = (
+            body.prompt
+            + "\n\n[INSTRUCCIÓN OBLIGATORIA] No preguntes ni ofrezcas opciones: crea "
+            "YA los posts con create_campaign (varios) o create_post (uno) para TODAS "
+            "las cuentas conectadas. Debes dejar la campaña/borradores creados."
+        )
+        results = await run_agent(prompt=forced, tenant_id=str(current_user.tenant_id))
+        created = await _created_since()
+
+    post_ids = [str(p.id) for p in created]
     summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
     return GeneratePlanResponse(summary=summary, post_ids=post_ids)
 
