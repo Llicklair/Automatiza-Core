@@ -483,6 +483,8 @@ async def generate_plan(
     # garantizamos, sin depender del modelo: (1) un post por CADA cuenta conectada
     # (replicando contenido si falta), y (2) una imagen en todos los posts.
     if created:
+        import asyncio
+
         from app.services.marketing.image_search import search_image
 
         acc_res = await db.execute(
@@ -511,15 +513,16 @@ async def generate_plan(
                 created.append(mirror)
                 covered.add(acc.platform)
 
-        # (2) Imágenes: rellena las que falten (Instagram las exige para publicar).
-        for p in created:
-            if not p.image_url:
-                try:
-                    img = await search_image(p.content[:80])
-                    if img:
-                        p.image_url = img
-                except Exception:
-                    pass
+        # (2) Imágenes: rellena las que falten EN PARALELO (Instagram las exige).
+        missing = [p for p in created if not p.image_url]
+        if missing:
+            imgs = await asyncio.gather(
+                *(search_image(p.content[:80]) for p in missing),
+                return_exceptions=True,
+            )
+            for p, img in zip(missing, imgs):
+                if isinstance(img, str) and img:
+                    p.image_url = img
 
         await db.commit()
 
