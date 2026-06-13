@@ -52,7 +52,9 @@ REGLAS DE PLATAFORMA:
 
 BÚSQUEDA DE IMÁGENES:
 - Busca en inglés con términos descriptivos (ej: "small business coffee shop owner", "handmade jewelry product").
-- Si search_image devuelve "Sin imagen disponible", crea el post sin imagen (image_url=None).
+- Si search_image no devuelve imagen, crea el post IGUALMENTE sin imagen (image_url=None).
+  NUNCA preguntes al usuario por la imagen ni te detengas: el sistema añade la imagen
+  después automáticamente. Tu trabajo es crear los posts SIEMPRE.
 
 
 
