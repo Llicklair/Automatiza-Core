@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CalendarClock, Loader2, Clock, AlertCircle, Trash2, CalendarDays, List, Send } from "lucide-react";
+import { CalendarClock, Loader2, Clock, AlertCircle, Trash2, CalendarDays, List, Send, Pencil } from "lucide-react";
 import { marketingApi, ScheduledPost } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
 import { PLATFORMS } from "./constants";
 import { PostsCalendar } from "./PostsCalendar";
+import { EditPostModal } from "./EditPostModal";
 
 const STATUS_CONFIG = {
     draft:     { label: "Borrador",    color: "text-muted-foreground bg-muted/50 border-border" },
@@ -24,6 +25,7 @@ export function TabProgramados() {
     const [filter, setFilter] = useState<string>("all");
     const [view, setView] = useState<"list" | "calendar">("list");
     const [publishing, setPublishing] = useState<Set<string>>(new Set());
+    const [editing, setEditing] = useState<ScheduledPost | null>(null);
 
     const load = useCallback(async () => {
         try {
@@ -141,6 +143,15 @@ export function TabProgramados() {
                                     </span>
                                     {post.status !== "published" && (
                                         <button
+                                            onClick={() => setEditing(post)}
+                                            className="text-muted-foreground hover:text-pink-400 transition-colors"
+                                            title="Editar texto, imagen y fecha"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                    {post.status !== "published" && (
+                                        <button
                                             onClick={() => publishNow(post.id)}
                                             disabled={publishing.has(post.id)}
                                             className="text-[11px] px-2.5 py-1 rounded-lg bg-pink-600/20 hover:bg-pink-600/40 text-pink-400 border border-pink-500/20 transition-colors disabled:opacity-50 flex items-center gap-1"
@@ -169,6 +180,14 @@ export function TabProgramados() {
                     );
                 })}
             </div>
+            )}
+
+            {editing && (
+                <EditPostModal
+                    post={editing}
+                    onClose={() => setEditing(null)}
+                    onSaved={(u) => setPosts((prev) => prev.map((p) => (p.id === u.id ? u : p)))}
+                />
             )}
         </div>
     );
