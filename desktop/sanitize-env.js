@@ -37,6 +37,8 @@ const DENY_EXACT = new Set([
   "INSTAGRAM_CLIENT_SECRET",
   "TWITTER_CLIENT_SECRET",
   "LINKEDIN_CLIENT_SECRET",
+  // Key de Unsplash → vive en el proxy de Render (/images/search), no en el binario.
+  "UNSPLASH_ACCESS_KEY",
 ]);
 const DENY_PREFIX = ["LANGFUSE_", "LLM_TRACE_"];
 

@@ -14,7 +14,24 @@ _UNSPLASH_URL = "https://api.unsplash.com/search/photos"
 
 
 async def search_image(query: str) -> str | None:
-    """Devuelve la URL de la primera imagen relevante de Unsplash, o None si no hay key."""
+    """Devuelve la URL de una imagen de stock relevante, o None.
+
+    Prioridad: proxy de Render (la key de Unsplash vive ahí, no en el binario del
+    cliente) → si no hay proxy o no devuelve nada, key local del .env (fallback).
+    """
+    proxy = (settings.OAUTH_PROXY_URL or "").rstrip("/")
+    if proxy:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get(f"{proxy}/images/search", params={"query": query})
+            if r.status_code == 200:
+                url = r.json().get("url")
+                if url:
+                    return url
+        except Exception as e:
+            logger.warning("Proxy image search failed for %r: %s", query, e)
+        # proxy sin resultado o caído → intenta key local si existe
+
     if not settings.UNSPLASH_ACCESS_KEY:
         return None
     try:
