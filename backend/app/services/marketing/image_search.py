@@ -19,10 +19,12 @@ async def search_image(query: str) -> str | None:
     Prioridad: proxy de Render (la key de Unsplash vive ahí, no en el binario del
     cliente) → si no hay proxy o no devuelve nada, key local del .env (fallback).
     """
-    proxy = (settings.OAUTH_PROXY_URL or "").rstrip("/")
+    # URL fija de fallback: el proxy (con la key en Render) debe usarse aunque la
+    # capa Electron no inyecte OAUTH_PROXY_URL (sync no actualiza service-manager).
+    proxy = (settings.OAUTH_PROXY_URL or "https://automatizapyme-license-server.onrender.com").rstrip("/")
     if proxy:
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 r = await client.get(f"{proxy}/images/search", params={"query": query})
             if r.status_code == 200:
                 url = r.json().get("url")
