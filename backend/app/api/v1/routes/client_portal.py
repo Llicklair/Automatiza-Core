@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.datetime_utils import as_aware
 from app.core.dependencies import get_current_client_portal, get_current_user
 from app.core.security import create_client_portal_access_token
 from app.db.base import get_db
@@ -136,7 +137,7 @@ async def authenticate_portal(
     portal_token = res.scalar_one_or_none()
     if not portal_token:
         raise HTTPException(status_code=401, detail="Token inválido o revocado")
-    if portal_token.expires_at and portal_token.expires_at < now:
+    if portal_token.expires_at and as_aware(portal_token.expires_at) < now:
         raise HTTPException(status_code=401, detail="El enlace de acceso ha expirado")
 
     portal_token.last_used_at = now
