@@ -1,9 +1,9 @@
 """Sesión de BD para tools de agentes.
 
-`tool_session()` es el punto único para abrir sesiones desde tools: garantiza
-que el ContextVar de tenant esté seteado (el listener RLS de `app/db/rls.py`
-hace `SET LOCAL app.current_tenant` al iniciar cada transacción) y evita que
-una tool olvide el contexto y la sesión quede silenciosamente sin tenant.
+`tool_session()` es el punto único para abrir sesiones desde tools: fija el
+ContextVar de tenant para que el listener RLS de `app/db/rls.py` ejecute
+`SET LOCAL app.current_tenant` en cada statement de la sesión, y evita que una
+tool olvide el contexto y la sesión quede silenciosamente sin tenant.
 
 Uso:
     async with tool_session(tenant_id) as db:

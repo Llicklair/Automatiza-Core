@@ -419,6 +419,16 @@ else:
         Base.metadata.create_all(engine)
         command.stamp(c, "head")
         print("[MIGRATE] BD reconciliada y stamped a head.")
+
+# SEC.RLS — rol de aplicación no-superusuario (pyme_app) + policies RLS.
+# Idempotente y a nivel TOP (fuera del if/else) para cubrir TAMBIÉN la rama
+# "fresh" (create_all + stamp), que NO ejecuta los upgrade() de las migraciones
+# y por tanto se saltaría la 0016/0060. Corre como admin: en migraciones
+# DATABASE_URL apunta al rol pyme_user (superusuario).
+from app.db.security_bootstrap import ensure_security_objects
+with engine.begin() as _sec_conn:
+    ensure_security_objects(_sec_conn)
+print("[MIGRATE] SEC.RLS: rol pyme_app y policies aseguradas.")
 `;
   try {
     fs.writeFileSync(migrationScript, scriptContent);

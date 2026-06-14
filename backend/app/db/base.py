@@ -30,16 +30,17 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
+# SEC.RLS — registra el listener que aplica `SET LOCAL app.current_tenant` en
+# CADA statement de CUALQUIER sesión (get_db, tool_session, workers, servicios),
+# leyendo el ContextVar de tenant. Sin esto, solo get_db aplicaba el scoping.
+from app.db.rls import install_rls_listener  # noqa: E402
+
+install_rls_listener(engine)
+
 
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         try:
-            # SEC.RLS — aplicar `SET LOCAL app.current_tenant` si hay tenant
-            # en el ContextVar (lo setea TenantContextMiddleware tras decodificar
-            # el JWT). En SQLite (tests) la función no hace nada.
-            from app.db.rls import apply_tenant_rls
-            await apply_tenant_rls(session)
-
             yield session
             await session.commit()
         except Exception:

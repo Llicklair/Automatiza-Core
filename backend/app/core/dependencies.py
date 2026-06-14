@@ -110,6 +110,9 @@ async def get_current_client_portal(
     client = result.scalar_one_or_none()
     if client is None or str(client.tenant_id) != tenant_id:
         raise exc
+    # Fija el tenant del portal en el ContextVar para que la RLS ancle las
+    # consultas posteriores del request a este tenant (igual que get_current_user).
+    set_current_tenant(tenant_id)
     return client
 
 

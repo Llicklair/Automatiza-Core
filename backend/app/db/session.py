@@ -23,6 +23,13 @@ _sync_engine = create_engine(
     echo=False,
 )
 
+# SEC.RLS — mismo listener que el engine async: aplica `SET LOCAL
+# app.current_tenant` en cada statement de las sesiones síncronas (algunas tools
+# y scripts usan SessionLocal()).
+from app.db.rls import install_rls_listener  # noqa: E402
+
+install_rls_listener(_sync_engine)
+
 SessionLocal = sessionmaker(
     bind=_sync_engine,
     autocommit=False,
