@@ -110,10 +110,14 @@ _MD_KV_RE = re.compile(
     r"[\*_]{0,2}\s*"                    # opcional negrita/cursiva apertura
     r"([A-Za-zÁÉÍÓÚáéíóúÑñ ºª]+?)"     # etiqueta
     r"\s*[\*_]{0,2}\s*"                 # opcional negrita/cursiva cierre
-    r"[:\-–—]"                          # separador
+    r"[:–—]"                            # separador: SOLO ":" o guion largo. El guion
+                                        # plano "-" se excluyó: dentro de un ID
+                                        # ("Factura IA-001") se tomaba como separador
+                                        # y extraía una entidad basura.
     r"\s*[\*_]{0,2}\s*"                 # opcional negrita post-separador (**Factura:** valor)
-    r"([^\n]+?)"                        # valor (resto de la línea)
-    r"(?=\n|$)",
+    r"([^\n]+?)"                        # valor
+    r"(?=\n|$|\.\s)",                   # corta en fin de línea o límite de frase (". "),
+                                        # para no tragarse la oración siguiente.
 )
 
 # UUID v4-ish (acepta cualquier forma estándar 8-4-4-4-12 hex).
