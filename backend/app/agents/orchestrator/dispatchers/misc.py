@@ -11,6 +11,7 @@ from app.services.orchestration import (
     messages_already_generated_pdf,
     save_ai_result_as_document,
 )
+from app.agents.orchestrator.dispatchers._outcome import detect_failure
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.skills.registry import SkillRegistry
 
@@ -49,14 +50,14 @@ async def _run_graph_agent(
             }
         )
 
+        messages = result_state.get("messages", [])
         final_text = _extract_final_text(result_state)
-        is_error = final_text.lower().startswith("error")
+        is_error, error_text = detect_failure(messages, final_text, intent)
         success = not is_error
 
         output = {"action": "completed" if success else "failed", "response": final_text}
 
         # No duplicar si el agente ya creó un PDF profesional por su cuenta.
-        messages = result_state.get("messages", [])
         if success and final_text and not messages_already_generated_pdf(messages):
             await save_ai_result_as_document(
                 tenant_id=tenant_id,
@@ -72,9 +73,9 @@ async def _run_graph_agent(
             "success": success,
             "output": output,
             "summary": format_summary(
-                agent_name, output, success, None if success else final_text
+                agent_name, output, success, None if success else (error_text or final_text)
             ),
-            "error": None if success else final_text,
+            "error": None if success else (error_text or final_text),
         }
 
     except Exception as e:

@@ -12,6 +12,7 @@ from app.services.orchestration import (
     messages_already_generated_pdf,
     save_ai_result_as_document,
 )
+from app.agents.orchestrator.dispatchers._outcome import detect_failure
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 
 logger = logging.getLogger(__name__)
@@ -82,44 +83,14 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
             and any(kw in _lower for kw in ["factura creada", "borrador creado", "se ha creado la factura", "albarán creado"])
         )
 
-        # Detección robusta de error: prefix "error" + frases de fallo comunes.
-        # NOTA: is_error se calcula INDEPENDIENTE de is_creation. Si el intent
-        # decía "crea factura" pero la respuesta dice "no se pudo crear porque
-        # cliente no existe", debe ganar el error sobre la intención.
-        _error_signals = [
-            _lower.startswith("error"),
-            "no se pudo" in _lower,
-            "no fue posible" in _lower,
-            "falló" in _lower,
-            "fallo al" in _lower,
-            "imposible" in _lower,
-            "no existe" in _lower and not is_query,
-            # El agente pide al usuario más datos cuando le faltan campos
-            # obligatorios (cliente desconocido, NIF inexistente, etc.). Eso es
-            # operación NO completada — debe propagarse como error, no como
-            # "draft_created".
-            "no se encontró" in _lower and not is_query,
-            "no se ha encontrado" in _lower and not is_query,
-            "no encontrado" in _lower and not is_query,
-            "necesito el nif" in _lower,
-            "necesito que me proporciones" in _lower,
-            "podrías proporcionarme" in _lower,
-            "podrías proporcionármelo" in _lower,
-            # El LLM no consigue ejecutar una operación de write
-            # (update_invoice_status, update_invoice, send_invoice_by_email)
-            # tras varios intentos — generalmente porque le faltan UUIDs o
-            # los confunde. Debe propagarse como error.
-            "problema técnico" in _lower,
-            "uuid malformado" in _lower,
-            "factura no encontrada" in _lower and not is_query,
-        ]
-        is_error = any(_error_signals) and not is_approval
-
-        # Si el grafo del agente reportó status de error, respetar eso
-        agent_status = result_state.get("status", "")
-        if agent_status in ("failed", "error"):
-            is_error = True
-
+        # Detección ESTRUCTURADA de fallo (señal principal: intent de acción pero
+        # ninguna herramienta invocada). strict_not_found=not is_query: en una
+        # consulta "no hay facturas" es resultado válido; en una acción "el
+        # cliente no existe" es fallo. La aprobación pendiente nunca es fallo.
+        is_error, error_text = detect_failure(
+            messages, final_text, intent, strict_not_found=not is_query
+        )
+        is_error = is_error and not is_approval
         success = not is_error
 
         if is_error:
@@ -207,9 +178,9 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
             "success": success,
             "output": _billing_output,
             "summary": format_summary(
-                "billing", _billing_output, success, None if success else final_text
+                "billing", _billing_output, success, None if success else (error_text or final_text)
             ),
-            "error": None if success else final_text,
+            "error": None if success else (error_text or final_text),
         }
 
     except Exception as e:
