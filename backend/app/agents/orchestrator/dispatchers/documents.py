@@ -6,6 +6,7 @@ al formato del orquestador.
 
 import logging
 
+from app.agents.orchestrator.dispatchers._outcome import detect_failure
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 from app.services.orchestration import format_summary
 
@@ -68,7 +69,7 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
                 final_text = msg.content
                 break
 
-        is_error = final_text.lower().startswith("error")
+        is_error, error_text = detect_failure(messages, final_text, intent)
         success = not is_error
 
         _doc_output = {
@@ -88,9 +89,9 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
             "success": success,
             "output": _doc_output,
             "summary": format_summary(
-                "documents", _doc_output, success, None if success else final_text
+                "documents", _doc_output, success, None if success else (error_text or final_text)
             ),
-            "error": None if success else final_text,
+            "error": None if success else (error_text or final_text),
         }
 
     except Exception as e:

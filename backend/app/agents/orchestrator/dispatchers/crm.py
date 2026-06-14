@@ -11,6 +11,7 @@ from app.services.orchestration import (
     messages_already_generated_pdf,
     save_ai_result_as_document,
 )
+from app.agents.orchestrator.dispatchers._outcome import detect_failure
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
 
 logger = logging.getLogger(__name__)
@@ -47,32 +48,10 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
                 final_text = msg.content
                 break
 
-        # Detección robusta de error: prefix "error" + frases de fallo comunes
-        # que el LLM produce cuando una tool no existe / no devuelve datos / pide
-        # más info al usuario. Sin esto, respuestas como "Las herramientas del
-        # CRM no están disponibles" se clasificaban como success=True.
-        _lower = final_text.lower()
-        _error_signals = [
-            _lower.startswith("error"),
-            "no se pudo" in _lower,
-            "no fue posible" in _lower,
-            "falló" in _lower,
-            "fallo al" in _lower,
-            "imposible" in _lower,
-            "no such tool" in _lower,
-            # Solo detectar "no están disponibles" cuando se refiere a las
-            # tools/herramientas del agente — no a campos opcionales de datos
-            # que el LLM menciona como "tales campos no están disponibles".
-            "herramientas" in _lower and "no están disponibles" in _lower,
-            "herramientas no disponibles" in _lower,
-            "tool no está disponible" in _lower,
-            "no se encontró" in _lower,
-            "no se ha encontrado" in _lower,
-            "necesito el nif" in _lower,
-            "podrías proporcionarme" in _lower,
-        ]
-        agent_status = result_state.get("status", "")
-        is_error = any(_error_signals) or agent_status in ("failed", "error")
+        # Detección ESTRUCTURADA de fallo (señal principal: intent de acción pero
+        # ninguna herramienta invocada). Las frases curadas cazan los refusals
+        # tipo "las herramientas del CRM no están disponibles".
+        is_error, error_text = detect_failure(messages, final_text, intent)
         success = not is_error
 
         _crm_output = {
@@ -95,9 +74,9 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
             "success": success,
             "output": _crm_output,
             "summary": format_summary(
-                "crm", _crm_output, success, None if success else final_text
+                "crm", _crm_output, success, None if success else (error_text or final_text)
             ),
-            "error": None if success else final_text,
+            "error": None if success else (error_text or final_text),
         }
 
     except Exception as e:
