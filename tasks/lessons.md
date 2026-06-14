@@ -361,6 +361,15 @@ script smoke.
 
 ## 2026-05-03 — `db.delete()` en SQLAlchemy async NO es awaitable
 
+> ⚠️ **CORRECCIÓN 2026-06-14 — OBSOLETA PARA SQLAlchemy 2.0.** El runtime actual es
+> **SQLAlchemy 2.0.49**, donde `AsyncSession.delete()` **SÍ es coroutine** (pasó a ser
+> awaitable en 2.0 porque puede necesitar cargar relaciones/cascada). Verificado:
+> `inspect.iscoroutinefunction(AsyncSession.delete) == True`. Por tanto los ~38
+> `await db.delete(obj)` del backend **son CORRECTOS** — NO los toques.
+> **`add()`/`add_all()`/`expunge()` siguen síncronos** (no llevan `await`).
+> Regla vigente: `await db.delete(obj)` ✅ ; `db.add(obj)` (sin await) ✅.
+> El texto histórico abajo aplicaba a SQLAlchemy 1.4 async; se conserva como registro.
+
 **Contexto:** La operación DELETE de clientes fallaba silenciosamente. La causa era `await db.delete(obj)` en `services/sales/commands.py`. SQLAlchemy async hace que `session.execute()`, `session.commit()`, `session.refresh()`, `session.flush()`, `session.rollback()` sean awaitables, pero `session.delete()`, `session.add()`, `session.expunge()` son **síncronos** — añadir `await` provoca que se ignore la operación sin error visible.
 
 **Impacto descubierto:** El bug estaba en 28 puntos del backend (17 archivos): billing, crm, hr, sales, user_service, template_service, project_service, documents, workflow, agents.
