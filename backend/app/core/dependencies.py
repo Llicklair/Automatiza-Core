@@ -13,7 +13,10 @@ from app.db.models.crm import Client
 from app.db.models.models import Tenant, User
 from app.services import tenant_service
 
-bearer_scheme = HTTPBearer()
+# auto_error=False: si falta la cabecera Authorization devolvemos 401 (no el 403
+# por defecto de HTTPBearer). 401 es lo correcto en REST para credenciales
+# ausentes y lo que esperan los tests *_requiere_auth.
+bearer_scheme = HTTPBearer(auto_error=False)
 
 # Rol "employee": solo accede al portal del empleado, su propio perfil,
 # auth (refresh/logout) y datos básicos del tenant. Cualquier otro path → 403.
@@ -43,6 +46,8 @@ async def get_current_user(
         detail="No se pudo validar el token",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if credentials is None:
+        raise credentials_exception
     payload = decode_token(credentials.credentials)
     if payload is None or payload.get("type") != "access":
         raise credentials_exception
@@ -99,6 +104,8 @@ async def get_current_client_portal(
         detail="Token de portal inválido o expirado",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if credentials is None:
+        raise exc
     payload = decode_token(credentials.credentials)
     if payload is None or payload.get("type") != "client_portal":
         raise exc
