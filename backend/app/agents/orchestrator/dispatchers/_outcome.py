@@ -19,6 +19,8 @@ Un `search_*` que no encuentra nada es un resultado válido, no un fallo.
 
 from __future__ import annotations
 
+from typing import Any
+
 # Verbos de acción en el INTENT del usuario. Una acción contra el ERP siempre
 # pasa por una @tool (escribe en BD); si no se invocó ninguna, no se ejecutó.
 _ACTION_INTENT_KW = (
@@ -55,7 +57,7 @@ _NOT_FOUND_PHRASES = (
 )
 
 
-def tool_was_invoked(messages) -> bool:
+def tool_was_invoked(messages: list[Any]) -> bool:
     """True si algún AIMessage del historial invocó al menos una herramienta."""
     for m in messages or ():
         if getattr(m, "tool_calls", None):
@@ -64,7 +66,7 @@ def tool_was_invoked(messages) -> bool:
 
 
 def detect_failure(
-    messages,
+    messages: list[Any],
     final_text: str,
     intent: str | None,
     *,
