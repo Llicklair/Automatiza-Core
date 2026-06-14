@@ -323,6 +323,16 @@ Sigamos **una factura creada por lenguaje natural** y veamos cómo su informaci�
 
 ## 6. Riesgos y gaps de flujo de información (priorizados)
 
+> **Estado de resolución (2026-06-14):** atajados los 3 CRÍTICOS y 2 de los 3 ALTOS.
+> - ✅ **#1 (RLS inerte)** — rol de runtime no-superusuario `pyme_app` + listener SQLAlchemy que aplica `SET LOCAL` per-statement (`feat(security)`). La RLS ahora **aplica de verdad** cuando el tenant está en contexto; verificado contra Postgres real. El fail-open con tenant NULL se mantiene a propósito (fase 2: fail-closed + bypass del scheduler, pendiente).
+> - ✅ **#2 (docstrings mentían sobre el listener)** — corregidos; el listener ahora existe.
+> - ✅ **#3 (embeddings sin FK)** — FK `document_embeddings.document_id → tenant_documents(id) ON DELETE CASCADE` (`fix(rag)`).
+> - ✅ **#4 (propagación lossy)** — la prosa del paso inmediatamente anterior se propaga siempre (aunque haya `key_data` parcial) + log de detectabilidad; y el parser de markdown ya no extrae entidades basura (`fix(agents)`).
+> - ✅ **#5 (dispatchers ocultan fallos)** — `detect_failure` con señal estructurada (intent de acción + 0 tools → fallo), unificado en los 4 dispatchers (`fix(agents)`).
+> - ⏳ **#6 (entrega no garantizada en workflows reasoning)** — ABIERTO.
+> - 📝 **#8 (`emit_event` commit interno)** — contrato transaccional ahora **documentado** en el docstring; el commit es load-bearing, refactor a savepoint pendiente (no se tocó por riesgo de perder eventos).
+> - **#7, #9–#13** — ABIERTOS; en su mayoría tradeoffs deliberados (idempotencia por strings, ANN del RAG, escalabilidad del hub) o auditorías acotadas (políticas ON DELETE).
+
 ### CRÍTICOS (aislamiento / integridad)
 
 1. **Brecha de aislamiento en workers/tools/portal (fail-open de LECTURA).** No existe listener SQLAlchemy; el `SET LOCAL` solo corre en `get_db`. La policy RLS es **permisiva con tenant NULL** → cualquier query de `@tool`, worker o portal de cliente que **olvide `WHERE tenant_id`** devuelve filas de **todos los tenants** en SELECT. El aislamiento ahí es "best-effort por convención", no garantizado por la DB (~600 call-sites manuales). *Mitigante:* el `WITH CHECK` estricto impide la escritura cross-tenant, así que la fuga es de lectura. *Acción:* eliminar la cláusula `OR IS NULL OR = ''` (fail-closed) o introducir un listener que propague el ContextVar a `SET LOCAL` en toda sesión.
