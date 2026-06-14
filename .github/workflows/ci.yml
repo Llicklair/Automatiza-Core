@@ -112,14 +112,18 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run migrations
+      # Init del schema vía create_all + stamp head (ruta "fresh" del desktop),
+      # NO `alembic upgrade head`: la cadena de migraciones no es self-consistent
+      # desde una BD vacía (tablas que solo viven en modelos, p.ej. work_schedules;
+      # revision ids >32 chars). Ver backend/scripts/ci_init_db.py.
+      - name: Init DB schema (create_all + stamp)
         timeout-minutes: 3
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/automatizacore_test
           SECRET_KEY: ci-test-secret-key-not-for-production
           TENANT_ENCRYPTION_KEY: ci-test-encryption-key-1234567890abc
           OPENAI_API_KEY: sk-test-fake-key
-        run: poetry run alembic upgrade head
+        run: poetry run python scripts/ci_init_db.py
 
       - name: Run tests
         env:

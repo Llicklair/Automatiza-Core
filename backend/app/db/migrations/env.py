@@ -73,6 +73,21 @@ def run_migrations_online() -> None:
     connectable = create_engine(sync_url, poolclass=pool.NullPool)
     with connectable.connect() as connection:
         connection = connection.execution_options(isolation_level="AUTOCOMMIT")
+        # Los revision ids descriptivos superan los 32 chars por defecto de
+        # alembic_version.version_num (p.ej. 0032_employee_memory_and_rag_scope = 34).
+        # Garantizamos la columna ANCHA antes de migrar — BD nuevas (CREATE) y
+        # existentes (ALTER) — para evitar StringDataRightTruncation al hacer
+        # `alembic upgrade head` paso a paso. El bootstrap desktop ya lo hacía;
+        # esto lo cubre también en CI y dev.
+        if connection.dialect.name == "postgresql":
+            connection.exec_driver_sql(
+                "CREATE TABLE IF NOT EXISTS alembic_version ("
+                "version_num VARCHAR(128) NOT NULL, "
+                "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)"
+            )
         context.configure(connection=connection, target_metadata=target_metadata)
         context.run_migrations()
 
