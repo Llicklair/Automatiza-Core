@@ -243,6 +243,10 @@ class ExecutionContext:
         if not isinstance(output, dict):
             output = {"raw": str(output)}
 
+        # Snapshot de entidades ANTES de procesar este paso, para detectar si el
+        # paso aportó alguna entidad estructurada (ver log de pérdida silenciosa).
+        _entities_before = set(self.entities)
+
         # Extraer entidades conocidas del output (búsqueda recursiva 1 nivel)
         self._extract_entities(output)
 
@@ -281,6 +285,18 @@ class ExecutionContext:
                 # Sólo añadir si NO existía ya (vía _extract_entities arriba).
                 if k not in self.entities:
                     self.entities[k] = v
+
+        # Detectabilidad de pérdida silenciosa (lección 2026-05-18 SC-10): un paso
+        # con respuesta del que NO se extrajo ninguna entidad estructurada → los
+        # pasos siguientes dependerán solo del preview en prosa (capado, y frágil
+        # a cambios de formato). Se loguea para poder trazar un "step N+1 sin datos".
+        if success and response_text and set(self.entities) == _entities_before:
+            logger.debug(
+                "ExecutionContext: el paso '%s' (action=%s) devolvió respuesta pero "
+                "no aportó entidades estructuradas; los pasos siguientes dependen "
+                "solo del preview en prosa.",
+                agent, action,
+            )
 
         summary = {
             "agent": agent,
@@ -324,15 +340,20 @@ class ExecutionContext:
 
         lines = [base_intent, "", "--- Contexto de pasos anteriores ---"]
 
+        n_steps = len(self.step_summaries)
         for i, step in enumerate(self.step_summaries, start=1):
             status_icon = "✅" if step["success"] else "❌"
             lines.append(f"Paso {i} ({step['agent']}): {step['action']} {status_icon}")
             for k, v in step["key_data"].items():
                 lines.append(f"  · {k}: {v}")
-            # Si no hay key_data estructurado pero sí hay texto de respuesta,
-            # incluirlo para que el siguiente agente vea qué dijo el anterior.
+            # Incluir el texto de respuesta del paso cuando: (a) no hubo extracción
+            # estructurada, o (b) es el paso INMEDIATAMENTE anterior — su salida es
+            # la más relevante para el paso actual y la extracción estructurada pudo
+            # capturar solo PARTE (p.ej. invoice_id pero no el importe o el email
+            # del cliente que el siguiente paso necesita). Antes se suprimía en
+            # cuanto había cualquier key_data → pérdida silenciosa del resto.
             preview = step.get("response_preview")
-            if preview and not step["key_data"]:
+            if preview and (not step["key_data"] or i == n_steps):
                 # Indentar a 2 espacios para legibilidad del LLM
                 indented = "\n  ".join(preview.splitlines())
                 lines.append(f"  respuesta: {indented}")

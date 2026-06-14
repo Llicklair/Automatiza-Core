@@ -168,3 +168,78 @@ def test_default_extractable_keys_unchanged():
     assert "invoice_id" in ec._EXTRACTABLE_KEYS
     assert "client_name" in ec._EXTRACTABLE_KEYS
     assert "employee_name" in ec._EXTRACTABLE_KEYS
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# (d) El preview del ÚLTIMO paso se incluye aunque tenga key_data (no perder
+#     datos que la extracción estructurada no capturó)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _multi_state(results: list[dict]) -> dict:
+    return {
+        "tenant_id": "t1",
+        "task_id": "task1",
+        "user_id": "u1",
+        "user_intent": "intent original",
+        "agent_results": results,
+    }
+
+
+def test_last_step_preview_included_even_with_keydata():
+    # billing creó la factura (key_data invoice_id) PERO la prosa lleva datos que
+    # el paso siguiente (email) necesita y que no son claves canónicas.
+    output = {
+        "action": "draft_created",
+        "invoice_id": "inv-abc",
+        "response": "Factura creada. Email del cliente: pagos@acme.com. Importe: 1815 EUR.",
+    }
+    ctx = ExecutionContext.from_state(_state_with_result(output, agent="billing"))
+    enriched = ctx.build_enriched_intent("envía la factura por email")
+
+    assert "invoice_id: inv-abc" in enriched   # key_data estructurado presente
+    assert "pagos@acme.com" in enriched        # y la prosa del último paso TAMBIÉN
+    assert "respuesta:" in enriched
+
+
+def test_older_step_prose_suppressed_but_last_step_shown():
+    # Marcadores en prosa SIN patrón "Etiqueta: valor" ni IDs con guion, para no
+    # disparar el parser de markdown (que extraería entidades) y aislar así lo que
+    # este test verifica: la (no)inclusión del response_preview.
+    step1 = {
+        "agent": "billing",
+        "success": True,
+        "output": {
+            "action": "draft_created",
+            "invoice_id": "inv1",
+            "response": "Primer paso completado sin novedad MARCADORVIEJO aqui.",
+        },
+    }
+    step2 = {
+        "agent": "crm",
+        "success": True,
+        "output": {
+            "action": "completed",
+            "opportunity_id": "opp9",
+            "response": "Segundo paso completado MARCADORNUEVO aqui.",
+        },
+    }
+    ctx = ExecutionContext.from_state(_multi_state([step1, step2]))
+    enriched = ctx.build_enriched_intent("siguiente paso")
+
+    # El último paso (crm) muestra su prosa aunque tenga key_data.
+    assert "MARCADORNUEVO" in enriched
+    # El paso ANTERIOR (billing) con key_data NO incluye su prosa (solo key_data),
+    # para no inflar el prompt con prosa de pasos lejanos.
+    assert "MARCADORVIEJO" not in enriched
+    assert "invoice_id: inv1" in enriched
+    assert "opportunity_id: opp9" in enriched
+
+
+def test_logs_when_step_yields_no_structured_entities(caplog):
+    import logging
+
+    output = {"action": "completed", "response": "Texto en prosa sin etiquetas reconocibles."}
+    with caplog.at_level(logging.DEBUG, logger="app.services.execution_context"):
+        ExecutionContext.from_state(_state_with_result(output, agent="rag"))
+    assert "no aportó entidades" in caplog.text
