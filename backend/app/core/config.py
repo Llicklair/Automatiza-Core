@@ -44,7 +44,13 @@ class Settings(BaseSettings):
         return self
 
     # Base de datos
-    DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db"
+    # RUNTIME: conecta con el rol de aplicación `pyme_app` (NOSUPERUSER
+    # NOBYPASSRLS) para que la RLS de Postgres se aplique de verdad — un
+    # superusuario la bypassa por completo. Ver app.db.security_bootstrap.
+    DATABASE_URL: str = "postgresql+asyncpg://pyme_app:pyme_pass@localhost:5433/pyme_db"
+    # ADMIN: conexión privilegiada (rol bootstrap `pyme_user`) usada SOLO por las
+    # migraciones/DDL y por la creación del rol de app. NUNCA por el runtime.
+    ADMIN_DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db"
 
     # LLM
     DEFAULT_LLM_PROVIDER: str = (

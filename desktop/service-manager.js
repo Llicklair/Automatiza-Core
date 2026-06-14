@@ -32,6 +32,7 @@ const {
   waitForPostgres,
   createDatabase,
   getDatabaseURL,
+  getAdminDatabaseURL,
   PG_PORT,
 } = require("./postgres-manager");
 
@@ -551,7 +552,9 @@ async function startAll(onProgress) {
   }
 
   onProgress("Aplicando migraciones...", 60);
-  runMigrations(backendEnv);
+  // Las migraciones (DDL + creación del rol pyme_app) corren con el rol ADMIN
+  // superusuario, no con el rol de aplicación con el que arranca el backend.
+  runMigrations({ ...backendEnv, DATABASE_URL: getAdminDatabaseURL() });
 
   logBoot("Arrancando backend...");
   onProgress("Arrancando backend...", 65);

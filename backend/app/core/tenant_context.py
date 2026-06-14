@@ -1,8 +1,9 @@
 """Tenant context — fuente de verdad única del tenant activo en el contexto async.
 
-Lo setea el middleware FastAPI desde el JWT en cada request, y se propaga a
-workers Celery y agentes LangGraph en sus puntos de entrada. Es leído por:
-  - El listener SQLAlchemy (Fase 3 RLS) que ejecuta SET LOCAL app.current_tenant
+Lo setea la dependencia `get_current_user` desde el JWT en cada request, y se
+propaga a workers y agentes LangGraph en sus puntos de entrada. Es leído por:
+  - El listener SQLAlchemy de `app.db.rls` (SEC.RLS), que ejecuta
+    `SET LOCAL app.current_tenant` en cada statement de cada sesión
   - Código de la capa servicios que necesita scoping implícito de tenant
   - El decorador `enforce_tenant` en `app.agents.tenant_context` que protege
     las tools de LangChain contra prompt injection del LLM

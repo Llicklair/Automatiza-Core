@@ -25,13 +25,24 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Obtener DATABASE_URL del entorno (con driver async para SQLAlchemy asyncpg)
-_database_url = os.environ.get("DATABASE_URL", "")
+# Las migraciones corren con el rol ADMIN (privilegiado), NUNCA con el rol de
+# aplicación pyme_app (NOSUPERUSER, no puede hacer DDL ni CREATE ROLE). Orden de
+# preferencia: ADMIN_DATABASE_URL del entorno → DATABASE_URL del entorno (compat
+# / despliegues no-desktop donde apunta al rol admin) → settings.ADMIN_DATABASE_URL.
+_database_url = os.environ.get("ADMIN_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
+
+if not _database_url:
+    try:
+        from app.core.config import settings
+
+        _database_url = settings.ADMIN_DATABASE_URL
+    except Exception:
+        pass
 
 # Alembic necesita la URL correctamente configurada
 if not _database_url:
     raise RuntimeError(
-        "DATABASE_URL no está configurada. "
+        "Ni ADMIN_DATABASE_URL ni DATABASE_URL están configuradas. "
         "Asegúrate de que el archivo .env existe en backend/ o que la variable está en el entorno."
     )
 

@@ -30,6 +30,12 @@ const PG_PORT = "5433"; // Evitar conflicto con PG del sistema
 const DB_USER = "pyme_user";
 const DB_NAME = "pyme_db";
 const DB_PASS = "pyme_pass";
+// Rol de APLICACIÓN (NOSUPERUSER NOBYPASSRLS) con el que conecta el RUNTIME, para
+// que la RLS de Postgres se aplique de verdad: pyme_user es el superusuario de
+// bootstrap y bypassa todas las policies. Lo crea el paso de migración
+// (app.db.security_bootstrap.ensure_security_objects).
+const APP_USER = "pyme_app";
+const APP_PASS = "pyme_pass";
 
 let pgProcess = null;
 
@@ -285,9 +291,18 @@ function createDatabase() {
 }
 
 /**
- * Devuelve la DATABASE_URL para el backend.
+ * Devuelve la DATABASE_URL del RUNTIME (rol de aplicación pyme_app,
+ * NOSUPERUSER NOBYPASSRLS). Es la que recibe el backend.
  */
 function getDatabaseURL() {
+  return `postgresql+asyncpg://${APP_USER}:${APP_PASS}@localhost:${PG_PORT}/${DB_NAME}`;
+}
+
+/**
+ * Devuelve la DATABASE_URL ADMIN (rol bootstrap pyme_user, superusuario). SOLO
+ * para migraciones / DDL / creación del rol de app — NUNCA para el runtime.
+ */
+function getAdminDatabaseURL() {
   return `postgresql+asyncpg://${DB_USER}:${DB_PASS}@localhost:${PG_PORT}/${DB_NAME}`;
 }
 
@@ -341,6 +356,7 @@ module.exports = {
   waitForPostgres,
   createDatabase,
   getDatabaseURL,
+  getAdminDatabaseURL,
   PG_PORT,
   APPDATA_DIR,
 };

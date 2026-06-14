@@ -760,3 +760,121 @@ Lo mismo aplica si añades un nuevo método al objeto `api` — exporta en `inde
 - El guard correcto contra "no declarado" es `typeof app !== "undefined"`, no `app &&`.
 
 **Aplicación:** la capa Electron (`main.js`, `service-manager.js`, `python-manager.js`, etc.) **no** se actualiza con `npm run sync` — solo con `npm run dist`. Por eso un bug aquí solo aparece tras rebuild+install: revísala con `node --check *.js` y verifica el scope de cada símbolo de `require` antes de empaquetar.
+
+## Los tools `gitnexus_*` no funcionan: el server MCP nunca estuvo dado de alta
+
+**Síntoma:** tras reanalizar con la CLI (`npx gitnexus analyze`) e incluso reiniciar Claude Code, los tools `gitnexus_impact` / `detect_changes` / `query` seguían sin aparecer. `ToolSearch "gitnexus"` → 0 resultados.
+
+**Causa:** se usó GitNexus siempre por **CLI**. En la config solo había permisos `Bash(npx gitnexus:*)` y las skills `gitnexus-*`, pero **ningún servidor MCP registrado** (`claude mcp list` solo mostraba `unrealiq_ai_ue5` y `context-mode`). Reiniciar no podía arreglarlo: no hay nada que cargar. El índice en disco (`.gitnexus/kuzu`) estaba fresco — el problema era solo el alta del server.
+
+**Regla:**
+- GitNexus expone el MCP con `npx gitnexus mcp` (stdio, sirve todos los repos indexados). Alta: `claude mcp add gitnexus -s local -- cmd /c npx gitnexus mcp` (o `npx gitnexus setup`).
+- En **Windows usa `cmd /c npx ...`**: claude spawnea sin shell y no resuelve `npx.cmd` directamente.
+- **No registres el alta desde Git Bash**: MSYS convierte `/c` → `C:/` y queda `cmd C:/ npx ...` (Failed to connect). Hazlo desde **PowerShell** (o `MSYS_NO_PATHCONV=1`).
+- Verifica con `claude mcp list` → debe decir `✓ Connected`.
+
+**Aplicación:** registrar un MCP **no inyecta los tools en la sesión en curso** — Claude Code los carga solo al arrancar. Tras el alta + `✓ Connected`, hay que **reiniciar una vez más** para que los `gitnexus_*` estén disponibles.
+
+---
+
+## 2026-06-14 — `gitnexus impact` infra-reporta el blast-radius en la capa de agentes
+
+**Contexto:** trazando el estado del proyecto con GitNexus (vía CLI), `gitnexus impact`
+devolvió `risk=LOW / 0 callers` para símbolos centrales que **sí tienen llamadores
+reales**: `dispatch_node`, `classify_node`, `run_workflow`, `create_invoice`,
+`_dispatch_billing`, `resume_execution`. Verificado por `cypher` directo que las
+aristas existen (p. ej. `create_invoice` lo invocan la ruta `api/v1/routes/invoices.py`,
+`_invoice_write_tools.py` y los tests). Además `impact --include-tests` provocó un
+**segfault de npx**.
+
+**Causa raíz (3 modos de fallo distintos):**
+1. **Wiring dinámico**: los nodos LangGraph (`dispatch_node`, `classify_node`,
+   `build_orchestrator`) se registran por string en el grafo compilado y se invocan vía
+   `graph.ainvoke()`; el dispatch a dominios es por `DISPATCHER_MAP[domain]`; los jobs del
+   scheduler se registran en runtime con APScheduler. Nada de eso genera aristas `CALLS`
+   estáticas → `impact` reporta LOW, que es técnicamente correcto pero **engañoso**.
+2. **Colisión de nombres**: hay símbolos con el mismo nombre en varios ficheros
+   (`create_invoice` tiene **3 definiciones**: servicio `services/billing/commands.py`,
+   ruta `api/v1/routes/invoices.py`, tool `agents/billing/_invoice_write_tools.py`).
+   `impact <name>` resuelve UNA y subcuenta los llamadores de las otras.
+3. **Inestabilidad de la CLI**: `impact --include-tests` segfaultea.
+
+**Regla de prevención:**
+1. Para símbolos de la **capa IA/orquestación** (`agents/orchestrator/`, nodos de grafo,
+   dispatchers, tools `@tool`, jobs del scheduler) **NO te fíes de `impact`**. Usa `cypher`
+   dirigido: `MATCH (a:Function)-[r]->(b:Function {name:'X'}) WHERE NOT a.name STARTS WITH
+   'test_' RETURN a.name, a.filePath` — eso sí surfacea los llamadores reales. Complementa
+   con `gitnexus context`.
+2. Antes de usar `impact <name>`, comprueba colisiones:
+   `MATCH (f:Function {name:'X'}) RETURN f.filePath` — si hay >1, `impact` por nombre es
+   ambiguo; ánclate por `filePath`.
+3. `impact` SÍ es fiable para **rutas/servicios planos sin colisión** llamados
+   estáticamente (Python normal). El blast-radius bajo en la capa de agentes es un
+   artefacto del análisis estático, no una garantía de seguridad.
+
+**Aplicación:** la regla de CLAUDE.md "MUST run impact analysis before editing any symbol"
+da **falsa confianza** en el núcleo agéntico. Al editar `dispatch_node`, el classifier, un
+dispatcher o una `@tool`, traza los consumidores con `cypher`/`context`, no con `impact`.
+Nota relacionada: el grafo no materializa un Process estático para la cadena NL→factura
+(es dinámica vía LangGraph), así que tampoco esperes un flow auditable ahí.
+
+---
+
+## 2026-06-14 — La RLS era INERTE: el runtime conectaba como superusuario (bypassa toda policy)
+
+**Contexto:** auditando el flujo de información se detectó que la "única defensa fuerte"
+de aislamiento multi-tenant (RLS de Postgres, migración 0016) **no protegía nada**.
+Verificación empírica contra la BD viva: el rol con el que conecta la app, `pyme_user`,
+es `rolsuper=true rolbypassrls=true`. **Un superusuario (o rol `BYPASSRLS`) bypassa TODAS
+las policies aunque la tabla esté `FORCE ROW LEVEL SECURITY`.** Prueba: con un tenant
+inexistente en `app.current_tenant`, `pyme_user` veía las 31 facturas; un rol no-super
+veía 0. Es decir, el aislamiento dependía al 100% de los `WHERE tenant_id` manuales
+(~600 sitios); la RLS era decorativa.
+
+Dos gaps encadenados:
+1. **Rol superusuario**: `desktop/postgres-manager.js` hace `initdb --username=pyme_user`
+   (bootstrap superuser) y tanto la app como las migraciones conectaban con él.
+2. **El "listener SQLAlchemy" no existía**: los docstrings de `core/tenant_context.py`,
+   `db/rls.py` y `agents/shared/db.py` afirmaban que un listener ejecutaba
+   `SET LOCAL app.current_tenant` en cada transacción. En realidad **solo `get_db()`**
+   (ruta HTTP) llamaba a `apply_tenant_rls`; las ~166 sesiones que abren
+   `AsyncSessionLocal()` directo (tools, workers, services) nunca lo aplicaban → GUC sin
+   setear → la policy permisiva (`OR current_setting IS NULL`) devolvía todos los tenants.
+
+**Patrón antipatrón:**
+- Asumir que `ENABLE/FORCE ROW LEVEL SECURITY` protege sin comprobar **con qué rol conecta
+  el runtime**. `FORCE` solo somete al *owner* de la tabla; superusuarios y `BYPASSRLS`
+  siguen saltándosela. Una capa RLS con la app conectando como superusuario es teatro.
+- Docstrings que describen un mecanismo de seguridad (un "listener") que nadie implementó →
+  dan falsa confianza. Verifica que el hook EXISTE (`grep`), no que esté documentado.
+- Aplicar `SET LOCAL` una sola vez al abrir la sesión: el tenant se conoce TARDE (en HTTP
+  tras la SELECT del usuario) o cambia MID-transacción (el scheduler itera tenants) → un
+  `after_begin` único deja el GUC obsoleto. Hay que re-assertar **por statement**.
+
+**Regla de prevención (fix aplicado):**
+1. El runtime conecta con un rol **`NOSUPERUSER NOBYPASSRLS`** (`pyme_app`); `pyme_user`
+   (superusuario) queda SOLO para migraciones/DDL. Split: `settings.DATABASE_URL` (runtime)
+   vs `settings.ADMIN_DATABASE_URL` (migraciones). `env.py` prefiere ADMIN.
+2. Listener real en `db/rls.py:install_rls_listener` registrado en ambos engines
+   (`before_cursor_execute` + caché por-tx limpiada en `begin`), que re-asserta el GUC en
+   cada statement con UUID validado inline. Cubre las 166 sesiones sin tocarlas.
+3. `WITH CHECK` **simétrico** al `USING` (permisivo cuando no hay tenant): protege
+   escrituras cuando el contexto está fijado (bloquea cross-tenant) sin romper los flujos
+   sin contexto (login, portal, webhooks, lecturas globales del scheduler). Fail-closed
+   total queda como fase posterior (requiere bypass explícito para esas lecturas globales).
+4. **`_desktop_migrate.py` en BD nueva hace `create_all` + `stamp head` y SE SALTA los
+   `upgrade()`** → ni RLS (0016) ni el rol se crearían en instalaciones nuevas. Por eso la
+   creación de objetos de seguridad vive en `app/db/security_bootstrap.py` (fuente única) y
+   se invoca SIEMPRE post-migración (idempotente), además de en la migración 0060 para
+   despliegues incrementales.
+
+**Verificación:** rol no-super → bogus tenant lee 0 / real 31 / sin-tenant 31 (fail-open);
+write cross-tenant **bloqueado** por la policy; 84 tablas con policy simétrica; 342 tests
+OK (los 3 fallos `*_requiere_auth` son pre-existentes, 403 de HTTPBearer). Probado contra
+el Postgres portable real, no solo en SQLite (donde la RLS es no-op).
+
+**Aplicación:** ante cualquier afirmación de "tenemos RLS/seguridad a nivel de fila",
+comprobar SIEMPRE `SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname=<rol del
+runtime>`. Si es superusuario, la RLS no existe en la práctica. Y cualquier objeto de
+seguridad creado por migración `upgrade()` necesita un camino equivalente para las BD
+nuevas que arrancan por `create_all`+`stamp`.
