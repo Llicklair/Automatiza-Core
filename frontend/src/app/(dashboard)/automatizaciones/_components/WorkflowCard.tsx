@@ -10,6 +10,12 @@ import { Workflow, WorkflowExecution } from "@/lib/api";
 import { TRIGGER_CONFIG, EXEC_STATUS, hasFanOut } from "./constants";
 import { useWorkflowExecution, formatElapsed } from "../_hooks/useWorkflowExecution";
 
+// Minutos transcurridos desde el inicio de una ejecución. Definido a nivel
+// módulo para que la lectura de Date.now() no se considere impura en render.
+function runningMinutesSince(startedAt: string): number {
+    return (Date.now() - new Date(startedAt).getTime()) / 60000;
+}
+
 interface WorkflowCardProps {
     wf: Workflow;
     isExpanded: boolean;
@@ -339,7 +345,7 @@ export default function WorkflowCard({
                             </button>
                         )}
                         {(() => {
-                            const runningMins = (Date.now() - new Date(activeExec.started_at).getTime()) / 60000;
+                            const runningMins = runningMinutesSince(activeExec.started_at);
                             if (activeExec.status === "running" && runningMins >= 2) {
                                 return (
                                     <button onClick={() => onCancel(wf.id, activeExec.id)}

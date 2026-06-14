@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Send, ImageIcon, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, ImageIcon, CheckCircle2, Sparkles } from "lucide-react";
 import { marketingApi, SocialAccount } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
@@ -18,6 +18,7 @@ export function TabCrear() {
     const [scheduleAt, setScheduleAt] = useState("");
     const [publishNow, setPublishNow] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [genImg, setGenImg] = useState(false);
     const [success, setSuccess] = useState(false);
 
     const selectedPlatform = PLATFORMS.find(
@@ -52,6 +53,24 @@ export function TabCrear() {
             toast.error(err instanceof Error ? err.message : "No se pudo crear la publicación.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const generateImg = async () => {
+        const prompt = content.trim();
+        if (!prompt) {
+            toast.error("Escribe primero el contenido del post para generar una imagen acorde.");
+            return;
+        }
+        setGenImg(true);
+        try {
+            const { url } = await marketingApi.agent.generateImage(prompt);
+            setImageUrl(url);
+        } catch (err) {
+            logError("marketing/generar-imagen", err);
+            toast.error(err instanceof Error ? err.message : "No se pudo generar la imagen.");
+        } finally {
+            setGenImg(false);
         }
     };
 
@@ -99,17 +118,36 @@ export function TabCrear() {
 
             {/* Imagen */}
             <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">URL de imagen (opcional)</label>
+                <label className="text-xs font-medium text-muted-foreground">Imagen (opcional)</label>
                 <div className="flex gap-2">
                     <ImageIcon className="w-4 h-4 text-muted-foreground mt-2.5 flex-shrink-0" />
                     <input
                         type="url"
                         value={imageUrl}
                         onChange={(e) => setImageUrl(e.target.value)}
-                        placeholder="https://…"
+                        placeholder="https://… o genera una con IA"
                         className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                     />
+                    <button
+                        type="button"
+                        onClick={generateImg}
+                        disabled={genImg || !content.trim()}
+                        title="Genera una imagen con IA a partir del contenido del post"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-purple-500/30 text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 disabled:opacity-50 text-xs whitespace-nowrap transition-colors"
+                    >
+                        {genImg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        Generar IA
+                    </button>
                 </div>
+                {imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={imageUrl}
+                        alt="Vista previa"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        className="mt-2 max-h-40 rounded-lg border border-border object-cover"
+                    />
+                )}
             </div>
 
             {/* Programación */}
@@ -126,12 +164,18 @@ export function TabCrear() {
                     </label>
                 </div>
                 {!publishNow && (
-                    <input
-                        type="datetime-local"
-                        value={scheduleAt}
-                        onChange={(e) => setScheduleAt(e.target.value)}
-                        className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
-                    />
+                    <div className="space-y-1.5">
+                        <input
+                            type="datetime-local"
+                            value={scheduleAt}
+                            onChange={(e) => setScheduleAt(e.target.value)}
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
+                        />
+                        <p className="text-[11px] text-amber-400/90">
+                            ⚠️ La app debe permanecer abierta a la hora programada para que el post se publique.
+                            Las imágenes generadas con IA caducan (~2h): para programar a futuro, usa una URL fija.
+                        </p>
+                    </div>
                 )}
             </div>
 

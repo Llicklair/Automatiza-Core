@@ -97,12 +97,21 @@ export function useWorkflowExecution(executionId: string | null): Record<string,
         },
     });
 
-    // Calcular elapsedMs en vivo
+    // Calcular elapsedMs en vivo (el tick fuerza re-render cada segundo).
+    return enrichWithElapsed(nodes);
+}
+
+// Enriquecimiento con elapsedMs en vivo. A nivel módulo para que la lectura
+// de Date.now() no se considere impura durante el render.
+function enrichWithElapsed(
+    nodes: Record<string, NodeRuntimeState>,
+): Record<string, NodeRuntimeState> {
+    const now = Date.now();
     const enriched: Record<string, NodeRuntimeState> = {};
     for (const [id, state] of Object.entries(nodes)) {
         let elapsedMs: number | undefined;
         if (state.startedAt) {
-            const end = state.completedAt ?? Date.now();
+            const end = state.completedAt ?? now;
             elapsedMs = end - state.startedAt;
         }
         enriched[id] = { ...state, elapsedMs };

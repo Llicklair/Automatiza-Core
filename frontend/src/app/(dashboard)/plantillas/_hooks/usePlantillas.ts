@@ -35,14 +35,6 @@ export function usePlantillas() {
 
     useEffect(() => { if (activeType !== "contract") load(); }, [activeType]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Auto-refresh preview when form changes (only if preview was already opened)
-    useEffect(() => {
-        if (!showForm || !previewUrl) return;
-        if (previewDebounce.current) clearTimeout(previewDebounce.current);
-        previewDebounce.current = setTimeout(() => { handlePreview(); }, 1200);
-        return () => { if (previewDebounce.current) clearTimeout(previewDebounce.current); };
-    }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
-
     const handleSeedDefaults = async () => {
         try {
             await templatesApi.seedDefaults(activeType);
@@ -129,6 +121,14 @@ export function usePlantillas() {
             setPreviewing(false);
         }
     };
+
+    // Auto-refresh preview when form changes (only if preview was already opened)
+    useEffect(() => {
+        if (!showForm || !previewUrl) return;
+        if (previewDebounce.current) clearTimeout(previewDebounce.current);
+        previewDebounce.current = setTimeout(() => { handlePreview(); }, 1200);
+        return () => { if (previewDebounce.current) clearTimeout(previewDebounce.current); };
+    }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const setField = (key: keyof typeof form, value: any) =>
         setForm(f => ({ ...f, [key]: value }));

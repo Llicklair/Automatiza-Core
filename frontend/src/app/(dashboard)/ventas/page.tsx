@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import {
     FileText, ShoppingCart, FileCheck, RefreshCw, Package, ArrowRight, TrendingUp
 } from "lucide-react";
@@ -11,8 +12,7 @@ const SECTIONS = [
         color: "text-emerald-400",
         bg: "bg-emerald-500/10 border-emerald-500/20",
         glow: "group-hover:shadow-emerald-500/10",
-        title: "Facturas",
-        description: "Emite, gestiona y hace seguimiento de todas las facturas emitidas a clientes.",
+        key: "facturas",
     },
     {
         href: "/ventas/pedidos",
@@ -20,8 +20,7 @@ const SECTIONS = [
         color: "text-sky-400",
         bg: "bg-sky-500/10 border-sky-500/20",
         glow: "group-hover:shadow-sky-500/10",
-        title: "Pedidos",
-        description: "Órdenes de venta recibidas de clientes pendientes de procesar o entregar.",
+        key: "pedidos",
     },
     {
         href: "/ventas/presupuestos",
@@ -29,8 +28,7 @@ const SECTIONS = [
         color: "text-violet-400",
         bg: "bg-violet-500/10 border-violet-500/20",
         glow: "group-hover:shadow-violet-500/10",
-        title: "Presupuestos",
-        description: "Propuestas económicas enviadas a clientes. Convierte a factura con un clic.",
+        key: "presupuestos",
     },
     {
         href: "/ventas/recurrentes",
@@ -38,8 +36,7 @@ const SECTIONS = [
         color: "text-amber-400",
         bg: "bg-amber-500/10 border-amber-500/20",
         glow: "group-hover:shadow-amber-500/10",
-        title: "Facturas Recurrentes",
-        description: "Facturación periódica automatizada para contratos de suscripción o mantenimiento.",
+        key: "recurrentes",
     },
     {
         href: "/ventas/servicios",
@@ -47,12 +44,12 @@ const SECTIONS = [
         color: "text-pink-400",
         bg: "bg-pink-500/10 border-pink-500/20",
         glow: "group-hover:shadow-pink-500/10",
-        title: "Servicios",
-        description: "Catálogo de servicios y productos facturables para reutilizar en presupuestos.",
+        key: "servicios",
     },
 ] as const;
 
-export default function VentasPage() {
+export default async function VentasPage() {
+    const t = await getTranslations("ventas");
     return (
         <PageContainer width="5xl" className="space-y-8">
             {/* Header */}
@@ -61,10 +58,10 @@ export default function VentasPage() {
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Ventas</h1>
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("home.title")}</h1>
                 </div>
                 <p className="text-sm text-muted-foreground ml-[52px]">
-                    Facturación, presupuestos y gestión comercial del ciclo de venta completo.
+                    {t("home.subtitle")}
                 </p>
             </div>
 
@@ -77,11 +74,11 @@ export default function VentasPage() {
                                 <s.icon className={`w-5 h-5 ${s.color}`} />
                             </div>
                             <div className="flex-1">
-                                <p className="text-sm font-semibold text-foreground mb-1">{s.title}</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">{s.description}</p>
+                                <p className="text-sm font-semibold text-foreground mb-1">{t(`home.sections.${s.key}.title`)}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{t(`home.sections.${s.key}.description`)}</p>
                             </div>
                             <div className={`flex items-center gap-1 text-xs font-medium ${s.color} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                                Abrir <ArrowRight className="w-3 h-3" />
+                                {t("home.open")} <ArrowRight className="w-3 h-3" />
                             </div>
                         </div>
                     </Link>

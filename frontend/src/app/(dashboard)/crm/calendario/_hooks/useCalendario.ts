@@ -17,15 +17,13 @@ export function useCalendario() {
     const [isLoading, setIsLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
     const [creating, setCreating] = useState(false);
-    const [form, setForm] = useState({
+    const [form, setForm] = useState(() => ({
         title: "", description: "", type: "meeting", location_or_link: "", client_id: "",
         start_time: toLocalDatetime(new Date()),
         end_time: toLocalDatetime(new Date(Date.now() + 3600000)),
-    });
+    }));
     const [selected, setSelected] = useState<EventItem | null>(null);
     const [deleting, setDeleting] = useState(false);
-
-    useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -36,6 +34,8 @@ export function useCalendario() {
         } catch (e) { logError("crm/calendario/page", e); }
         finally { setIsLoading(false); }
     };
+
+    useEffect(() => { loadData(); }, []);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();

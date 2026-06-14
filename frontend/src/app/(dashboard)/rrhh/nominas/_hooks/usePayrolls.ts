@@ -32,8 +32,6 @@ export function usePayrolls() {
 
     const refreshKey = useNotificationStore((s) => s.refreshKey);
 
-    useEffect(() => { loadData(); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
     const loadData = async () => {
         setIsLoading(true);
         try {
@@ -41,6 +39,8 @@ export function usePayrolls() {
         } catch (e) { logError("rrhh/nominas/page", e); }
         finally { setIsLoading(false); }
     };
+
+    useEffect(() => { loadData(); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const showToast = (msg: string, type: "ok" | "err") => {
         setToast({ msg, type });

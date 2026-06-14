@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ShoppingBag, Plus, Search, Loader2, ChevronDown, Package, Calendar, Check, Truck, Trash2 } from "lucide-react";
 import { usePedidosCompra } from "./_hooks/usePedidosCompra";
 import { NuevoPedidoModal } from "./_components/NuevoPedidoModal";
@@ -13,13 +14,13 @@ import { PageContainer } from "@/components/shared/PageContainer";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    draft:     { label: "Borrador",   color: "text-muted-foreground", bg: "bg-muted",          border: "border-border" },
-    sent:      { label: "Enviado",    color: "text-blue-400",         bg: "bg-blue-500/10",     border: "border-blue-500/20" },
-    confirmed: { label: "Confirmado", color: "text-primary",          bg: "bg-primary/10",      border: "border-primary/20" },
-    partially_received: { label: "Recibido parcial", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-    received:  { label: "Recibido",   color: "text-emerald-400",      bg: "bg-emerald-500/10",  border: "border-emerald-500/20" },
-    cancelled: { label: "Cancelado",  color: "text-rose-400",         bg: "bg-rose-500/10",     border: "border-rose-500/20" },
+const STATUS_MAP: Record<string, { color: string; bg: string; border: string }> = {
+    draft:     { color: "text-muted-foreground", bg: "bg-muted",          border: "border-border" },
+    sent:      { color: "text-blue-400",         bg: "bg-blue-500/10",     border: "border-blue-500/20" },
+    confirmed: { color: "text-primary",          bg: "bg-primary/10",      border: "border-primary/20" },
+    partially_received: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    received:  { color: "text-emerald-400",      bg: "bg-emerald-500/10",  border: "border-emerald-500/20" },
+    cancelled: { color: "text-rose-400",         bg: "bg-rose-500/10",     border: "border-rose-500/20" },
 };
 
 const STATUS_FLOW: Record<string, string> = { draft: "sent", sent: "confirmed", confirmed: "received" };
@@ -33,26 +34,27 @@ export default function PedidosCompraPage() {
         handleSubmit, handleAdvance, handleCancel, handleDelete, load,
     } = usePedidosCompra();
 
+    const t = useTranslations("compras.pedidos");
     const [receiveOrder, setReceiveOrder] = useState<PurchaseOrder | null>(null);
 
     return (
         <PageContainer>
             <PageHeader
-                title="Pedidos de Compra"
-                description="Gestiona los pedidos a tus proveedores antes de recibir la factura."
+                title={t("title")}
+                description={t("description")}
                 icon={ShoppingBag}
                 actions={
                     <Button onClick={openNew}>
-                        <Plus className="w-4 h-4 mr-2" /> Nuevo pedido
+                        <Plus className="w-4 h-4 mr-2" /> {t("newOrder")}
                     </Button>
                 }
             />
 
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: "Pendientes de recibir", value: orders.filter(o => ["sent", "confirmed"].includes(o.status)).length, color: "text-amber-400" },
-                    { label: "Recibidos",             value: orders.filter(o => o.status === "received").length,                  color: "text-emerald-400" },
-                    { label: "Total comprometido",    value: fmt(orders.filter(o => o.status !== "cancelled").reduce((a, o) => a + o.amount_total, 0)), color: "text-foreground" },
+                    { label: t("stats.pendingReceive"), value: orders.filter(o => ["sent", "confirmed"].includes(o.status)).length, color: "text-amber-400" },
+                    { label: t("stats.received"),       value: orders.filter(o => o.status === "received").length,                  color: "text-emerald-400" },
+                    { label: t("stats.committedTotal"), value: fmt(orders.filter(o => o.status !== "cancelled").reduce((a, o) => a + o.amount_total, 0)), color: "text-foreground" },
                 ].map(stat => (
                     <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</p>
@@ -64,7 +66,7 @@ export default function PedidosCompraPage() {
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
-                    placeholder="Buscar por número o proveedor..."
+                    placeholder={t("searchPlaceholder")}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="pl-9"
@@ -73,17 +75,17 @@ export default function PedidosCompraPage() {
 
             {loading ? (
                 <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> Cargando pedidos…
+                    <Loader2 className="w-5 h-5 animate-spin" /> {t("loading")}
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center text-center">
                     <ShoppingBag className="w-12 h-12 text-muted-foreground mb-4" />
-                    <h2 className="text-lg font-bold text-foreground mb-2">{orders.length === 0 ? "Sin pedidos de compra" : "Sin resultados"}</h2>
+                    <h2 className="text-lg font-bold text-foreground mb-2">{orders.length === 0 ? t("emptyTitle") : t("noResultsTitle")}</h2>
                     <p className="text-sm text-muted-foreground max-w-sm">
-                        {orders.length === 0 ? "Crea tu primer pedido de compra a un proveedor." : `Sin resultados para "${search}"`}
+                        {orders.length === 0 ? t("emptyDescription") : t("noResultsDescription", { search })}
                     </p>
                     {orders.length === 0 && (
-                        <Button onClick={openNew} className="mt-6">Crear pedido</Button>
+                        <Button onClick={openNew} className="mt-6">{t("createOrder")}</Button>
                     )}
                 </div>
             ) : (
@@ -102,10 +104,10 @@ export default function PedidosCompraPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <p className="text-sm font-bold text-foreground font-mono">{order.order_number || "Sin número"}</p>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${st.bg} ${st.border} border ${st.color}`}>{st.label}</span>
+                                                <p className="text-sm font-bold text-foreground font-mono">{order.order_number || t("noNumber")}</p>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${st.bg} ${st.border} border ${st.color}`}>{t(`status.${order.status}`)}</span>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-0.5">{order.supplier?.name || "Proveedor desconocido"}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">{order.supplier?.name || t("unknownSupplier")}</p>
                                         </div>
                                         <div className="text-right flex-shrink-0">
                                             <p className="text-sm font-bold text-foreground">{fmt(order.amount_total)}</p>
@@ -116,18 +118,18 @@ export default function PedidosCompraPage() {
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {nextStatus && (
                                             <Button size="sm" variant="ghost" className="h-7 text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/30" onClick={() => handleAdvance(order)}>
-                                                <Check className="w-3 h-3 mr-1" /> {STATUS_MAP[nextStatus]?.label}
+                                                <Check className="w-3 h-3 mr-1" /> {t(`status.${nextStatus}`)}
                                             </Button>
                                         )}
                                         {["sent", "confirmed", "partially_received"].includes(order.status) && (
                                             <Button size="sm" variant="ghost" className="h-7 text-xs bg-blue-600/20 text-blue-400 border border-blue-500/20 hover:bg-blue-600/30" onClick={() => setReceiveOrder(order)}>
-                                                <Package className="w-3 h-3 mr-1" /> Recibir
+                                                <Package className="w-3 h-3 mr-1" /> {t("receive")}
                                             </Button>
                                         )}
                                         {!["cancelled", "received"].includes(order.status) && (
-                                            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleCancel(order)}>Cancelar</Button>
+                                            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleCancel(order)}>{t("cancel")}</Button>
                                         )}
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(order.id)} disabled={deletingId === order.id} aria-label="Eliminar pedido">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(order.id)} disabled={deletingId === order.id} aria-label={t("deleteOrder")}>
                                             {deletingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                         </Button>
                                     </div>
@@ -137,7 +139,7 @@ export default function PedidosCompraPage() {
                                     <div className="border-t border-border/50 px-6 py-4 bg-muted/40">
                                         {order.expected_delivery && (
                                             <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
-                                                <Calendar className="w-3 h-3" /> Entrega prevista: {new Date(order.expected_delivery).toLocaleDateString("es-ES")}
+                                                <Calendar className="w-3 h-3" /> {t("expectedDelivery", { date: new Date(order.expected_delivery).toLocaleDateString("es-ES") })}
                                             </p>
                                         )}
                                         <div className="space-y-2">

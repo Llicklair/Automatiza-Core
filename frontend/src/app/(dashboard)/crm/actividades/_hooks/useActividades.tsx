@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, Activity, Client } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -8,6 +9,7 @@ import { logError } from "@/lib/logger";
 import { Phone, Mail, StickyNote, Bot, CalendarCheck } from "lucide-react";
 
 export function useActividades() {
+    const t = useTranslations("crm");
     const toast = useToastStore();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
@@ -18,10 +20,6 @@ export function useActividades() {
     const [type, setType] = useState("note");
     const [description, setDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        loadData();
-    }, []);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -38,6 +36,10 @@ export function useActividades() {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        loadData();
+    }, []);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,19 +58,19 @@ export function useActividades() {
             await loadData();
         } catch (error) {
             logError("crm/actividades/page", error);
-            toast.error("Error al registrar actividad");
+            toast.error(t("actividades.createError"));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const deleteActivity = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar esta actividad del historial?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("actividades.deleteConfirm"), confirmLabel: t("actividades.delete"), confirmVariant: "danger" })) return;
         try {
             await api.crm.activities.delete(id);
             setActivities(prev => prev.filter(a => a.id !== id));
         } catch {
-            toast.error("Error al eliminar la actividad");
+            toast.error(t("actividades.deleteError"));
         }
     };
 
@@ -83,9 +85,9 @@ export function useActividades() {
     };
 
     const getClientName = (clientId: string | null) => {
-        if (!clientId) return "Sin asignar";
+        if (!clientId) return t("actividades.unassigned");
         const c = clients.find(c => c.id === clientId);
-        return c ? c.name : "Cliente Desconocido";
+        return c ? c.name : t("actividades.unknownClient");
     };
 
     return {

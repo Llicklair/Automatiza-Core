@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, createElement } from "react";
 import { Loader2, CheckCircle2, ChevronLeft, X, Download, Trash2 } from "lucide-react";
 import { api, type Document as DocType } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
@@ -16,7 +16,7 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
     const toast = useToastStore();
     const [open, setOpen] = useState(false);
     const [cancelling, setCancelling] = useState(false);
-    const Icon = fileIcon(doc.file_type);
+    const icon = fileIcon(doc.file_type);
     const st = STATUS_STYLE[doc.status] ?? STATUS_STYLE.uploaded;
     const hasParsed = Boolean(doc.parsed_content);
     const canCancel = doc.status === "processing" || doc.status === "uploaded";
@@ -64,7 +64,7 @@ export default function DocRow({ doc, onReload }: DocRowProps) {
                 }}
             >
                 <div className="col-span-5 flex items-center gap-3 min-w-0">
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${isPdf ? "text-indigo-400" : "text-muted-foreground"}`} />
+                    {createElement(icon, { className: `w-5 h-5 flex-shrink-0 ${isPdf ? "text-indigo-400" : "text-muted-foreground"}` })}
                     <span className="text-sm text-foreground truncate">{doc.file_name}</span>
                 </div>
                 <div className="col-span-2 text-xs text-muted-foreground">{formatSize(doc.file_size)}</div>

@@ -1,0 +1,202 @@
+{
+  "index": {
+    "title": "Purchases",
+    "subtitle": "Received invoices, supplier orders and supplier directory.",
+    "open": "Open",
+    "sections": {
+      "facturas": {
+        "title": "Received Invoices",
+        "description": "Record and manage supplier invoices. Reconcile with your bank payments."
+      },
+      "pedidos": {
+        "title": "Purchase Orders",
+        "description": "Purchase orders sent to suppliers and their receiving status."
+      },
+      "proveedores": {
+        "title": "Suppliers",
+        "description": "Supplier directory with payment terms, tax ID and purchase history."
+      }
+    }
+  },
+  "facturas": {
+    "title": "Received Invoices",
+    "description": "Manage your purchases, expenses and suppliers.",
+    "scanTooltip": "Upload a PDF invoice or photo. AI extracts supplier, line items, VAT and due date and records it automatically.",
+    "scanning": "Reading invoice…",
+    "scan": "Scan invoice",
+    "register": "Register Invoice",
+    "stats": {
+      "pending": "Pending Payment",
+      "paid30": "Paid (last 30d)"
+    },
+    "columns": {
+      "supplier": "Supplier",
+      "status": "Status",
+      "date": "Date",
+      "dueDate": "Due date",
+      "amount": "Amount",
+      "action": "Action"
+    },
+    "unknownSupplier": "Unknown",
+    "noNumber": "N/A",
+    "markPaid": "Mark as paid",
+    "deleteInvoice": "Delete invoice",
+    "statusOptions": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "paid": "Paid",
+      "cancelled": "Cancelled"
+    },
+    "empty": {
+      "title": "You have no purchase invoices recorded",
+      "description": "Record your first invoice to start managing your purchases.",
+      "action": "Record first invoice"
+    },
+    "searchPlaceholder": "Search by supplier or number...",
+    "noResults": "No results for your search.",
+    "modal": {
+      "title": "Register Received Invoice",
+      "description": "Fill in the purchase invoice details.",
+      "submit": "Register",
+      "supplier": "Supplier",
+      "existing": "Existing",
+      "new": "New",
+      "selectSupplier": "Select supplier...",
+      "supplierNamePlaceholder": "Supplier name",
+      "invoiceNumber": "Invoice No.",
+      "optional": "Optional",
+      "status": "Status",
+      "statusOptions": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "draft": "Draft"
+      },
+      "baseAmount": "Base amount (€)",
+      "vat": "% VAT",
+      "date": "Date",
+      "dueDate": "Due date",
+      "fiscalRegime": "Tax regime",
+      "fiscalRegimeOptions": {
+        "general": "General",
+        "intracomunitario": "Intra-community",
+        "isp": "Reverse charge"
+      },
+      "retention": "% Withholding tax",
+      "retentionPlaceholder": "0 (no withholding)"
+    }
+  },
+  "pedidos": {
+    "title": "Purchase Orders",
+    "description": "Manage orders to your suppliers before receiving the invoice.",
+    "newOrder": "New order",
+    "stats": {
+      "pendingReceive": "Pending receipt",
+      "received": "Received",
+      "committedTotal": "Total committed"
+    },
+    "searchPlaceholder": "Search by number or supplier...",
+    "loading": "Loading orders…",
+    "emptyTitle": "No purchase orders",
+    "noResultsTitle": "No results",
+    "emptyDescription": "Create your first purchase order to a supplier.",
+    "noResultsDescription": "No results for \"{search}\"",
+    "createOrder": "Create order",
+    "noNumber": "No number",
+    "unknownSupplier": "Unknown supplier",
+    "receive": "Receive",
+    "cancel": "Cancel",
+    "deleteOrder": "Delete order",
+    "expectedDelivery": "Expected delivery: {date}",
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "confirmed": "Confirmed",
+      "partially_received": "Partially received",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
+    "modal": {
+      "title": "New purchase order",
+      "close": "Close order form",
+      "supplier": "Supplier *",
+      "selectSupplier": "Select supplier…",
+      "noSuppliers": "Create suppliers in Purchases → Suppliers",
+      "expectedDelivery": "Expected delivery",
+      "lines": "Order lines",
+      "addLine": "Add",
+      "productDescription": "Product / Description",
+      "select": "Select…",
+      "descriptionPlaceholder": "Description",
+      "quantity": "Qty.",
+      "price": "Price",
+      "vat": "VAT %",
+      "deleteLine": "Delete line",
+      "lineTotal": "Total:",
+      "orderTotal": "Order total",
+      "notes": "Notes",
+      "notesPlaceholder": "Special terms, delivery instructions...",
+      "cancel": "Cancel",
+      "create": "Create order"
+    },
+    "receiveModal": {
+      "title": "Receive goods",
+      "subtitle": "Order {number} · {supplier}",
+      "warehouse": "Receiving warehouse",
+      "defaultSuffix": " (default)",
+      "errorNoQuantity": "Indicate at least one quantity to receive.",
+      "errorGeneric": "Could not record the receipt",
+      "ordered": "ordered {quantity} · pending {remaining}",
+      "receive": "Receive",
+      "lotNumber": "Lot no. (opt.)",
+      "expiry": "Expiry (opt.)",
+      "cancel": "Cancel",
+      "confirm": "Confirm receipt"
+    }
+  },
+  "proveedores": {
+    "title": "Suppliers",
+    "description": "Manage the supplier directory and their contact details.",
+    "newSupplier": "New supplier",
+    "stats": {
+      "total": "Total suppliers",
+      "withEmail": "With email",
+      "withNif": "With tax ID"
+    },
+    "searchPlaceholder": "Search by name, tax ID or email...",
+    "loading": "Loading suppliers…",
+    "emptyTitle": "No suppliers",
+    "noResultsTitle": "No results",
+    "emptyDescription": "Add your first supplier to manage purchases and payments.",
+    "noResultsDescription": "No suppliers match \"{search}\"",
+    "addSupplier": "Add supplier",
+    "columns": {
+      "supplier": "Supplier",
+      "nif": "Tax ID",
+      "email": "Email",
+      "city": "City",
+      "actions": "Actions"
+    },
+    "editSupplier": "Edit supplier",
+    "deleteSupplier": "Delete supplier",
+    "modal": {
+      "editTitle": "Edit supplier",
+      "newTitle": "New supplier",
+      "close": "Close supplier form",
+      "name": "Name / Legal name *",
+      "namePlaceholder": "Supplier Ltd.",
+      "nif": "Tax ID",
+      "nifPlaceholder": "B12345678",
+      "email": "Email",
+      "emailPlaceholder": "supplier@company.com",
+      "address": "Address",
+      "addressPlaceholder": "1 Main Street",
+      "city": "City",
+      "cityPlaceholder": "Madrid",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "28001",
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "create": "Create supplier"
+    }
+  }
+}

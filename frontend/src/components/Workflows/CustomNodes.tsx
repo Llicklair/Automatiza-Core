@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, createElement } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import {
     Zap, FileText, GitBranch, Clock, ShieldCheck,
@@ -122,7 +122,7 @@ TriggerNode.displayName = "TriggerNode";
 // ── Skill Node ────────────────────────────────────────────────────────────────
 export const SkillNode = memo(({ data }: NodeProps) => {
     const domain = data?.domain || "billing";
-    const Icon = getDomainIcon(domain);
+    const icon = getDomainIcon(domain);
     const rt = getRuntime(data);
     return (
         <div className="relative bg-card border-2 border-emerald-500 rounded-xl px-4 py-3 min-w-[180px] shadow-lg shadow-emerald-500/10">
@@ -131,7 +131,7 @@ export const SkillNode = memo(({ data }: NodeProps) => {
             <Handle type="source" position={Position.Bottom} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-emerald-300" />
             <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-emerald-400" />
+                    {createElement(icon, { className: "w-4 h-4 text-emerald-400" })}
                 </div>
                 <div className="min-w-0 flex-1">
                     <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">{rt?.agent ?? domain}</p>
@@ -220,7 +220,7 @@ ApprovalGateNode.displayName = "ApprovalGateNode";
 // ── Action Node (legacy / generic) ───────────────────────────────────────────
 export const ActionNode = memo(({ data }: NodeProps) => {
     const domain = data?.domain || "billing";
-    const Icon = getDomainIcon(domain);
+    const icon = getDomainIcon(domain);
     const rt = getRuntime(data);
     return (
         <div className="relative bg-card border-2 border-emerald-500 rounded-xl px-4 py-3 min-w-[180px] shadow-lg shadow-emerald-500/10">
@@ -229,7 +229,7 @@ export const ActionNode = memo(({ data }: NodeProps) => {
             <Handle type="source" position={Position.Bottom} className="!bg-emerald-500 !w-3 !h-3 !border-2 !border-emerald-300" />
             <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-emerald-400" />
+                    {createElement(icon, { className: "w-4 h-4 text-emerald-400" })}
                 </div>
                 <div className="min-w-0 flex-1">
                     <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">{domain}</p>

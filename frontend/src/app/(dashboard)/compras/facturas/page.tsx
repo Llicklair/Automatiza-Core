@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDownToLine, CheckCircle2, Clock, Plus, Inbox, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { type Invoice } from "@/lib/api";
@@ -14,13 +15,14 @@ import { RegistrarFacturaModal } from "./_components/RegistrarFacturaModal";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 const STATUS_FILTER_OPTIONS = [
-    { label: "Borrador",  value: "draft" },
-    { label: "Pendiente", value: "pending" },
-    { label: "Pagada",    value: "paid" },
-    { label: "Cancelada", value: "cancelled" },
+    { labelKey: "statusOptions.draft",     value: "draft" },
+    { labelKey: "statusOptions.pending",   value: "pending" },
+    { labelKey: "statusOptions.paid",      value: "paid" },
+    { labelKey: "statusOptions.cancelled", value: "cancelled" },
 ];
 
 export default function FacturasRecibidasPage() {
+    const t = useTranslations("compras.facturas");
     const {
         invoices, clients, loading,
         showModal, setShowModal,
@@ -58,12 +60,12 @@ export default function FacturasRecibidasPage() {
     const columns = useMemo<ColumnDef<Invoice, any>[]>(() => [
         {
             accessorKey: "supplier",
-            accessorFn: row => row.client?.name || "Desconocido",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Proveedor" />,
+            accessorFn: row => row.client?.name || t("unknownSupplier"),
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.supplier")} />,
             cell: ({ row }) => (
                 <div>
-                    <div className="font-semibold text-foreground">{row.original.client?.name || "Desconocido"}</div>
-                    <div className="text-xs text-muted-foreground font-mono mt-0.5">{row.original.invoice_number || "S/N"}</div>
+                    <div className="font-semibold text-foreground">{row.original.client?.name || t("unknownSupplier")}</div>
+                    <div className="text-xs text-muted-foreground font-mono mt-0.5">{row.original.invoice_number || t("noNumber")}</div>
                 </div>
             ),
             filterFn: (row, _id, filterValue: string) => {
@@ -75,13 +77,13 @@ export default function FacturasRecibidasPage() {
         },
         {
             accessorKey: "status",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Estado" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.status")} />,
             cell: ({ row }) => <StatusBadge status={row.original.status} />,
             filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
         },
         {
             accessorKey: "date",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Fecha" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.date")} />,
             cell: ({ row }) => (
                 <span className="text-sm text-muted-foreground">
                     {row.original.date ? new Date(row.original.date).toLocaleDateString("es-ES") : "—"}
@@ -90,7 +92,7 @@ export default function FacturasRecibidasPage() {
         },
         {
             accessorKey: "due_date",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Vencimiento" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.dueDate")} />,
             cell: ({ row }) => (
                 <span className="text-sm text-muted-foreground">
                     {row.original.due_date ? new Date(row.original.due_date).toLocaleDateString("es-ES") : "—"}
@@ -99,7 +101,7 @@ export default function FacturasRecibidasPage() {
         },
         {
             accessorKey: "amount_total",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Monto" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.amount")} />,
             cell: ({ row }) => (
                 <span className="font-bold text-foreground">
                     {Number(row.original.amount_total).toLocaleString("es-ES", { minimumFractionDigits: 2 })}€
@@ -108,7 +110,7 @@ export default function FacturasRecibidasPage() {
         },
         {
             id: "actions",
-            header: "Acción",
+            header: t("columns.action"),
             cell: ({ row }) => {
                 const inv = row.original;
                 return (
@@ -117,34 +119,36 @@ export default function FacturasRecibidasPage() {
                             <Button variant="outline" size="sm"
                                 className="text-xs text-emerald-500 border-emerald-500/20 hover:border-emerald-400/40 hover:text-emerald-400"
                                 onClick={() => handleStatusChange(inv.id, "paid")}>
-                                Marcar pagada
+                                {t("markPaid")}
                             </Button>
                         )}
                         <Button variant="ghost" size="icon"
                             className="h-8 w-8 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteInvoice(inv.id)} title="Eliminar factura" aria-label="Eliminar factura">
+                            onClick={() => handleDeleteInvoice(inv.id)} title={t("deleteInvoice")} aria-label={t("deleteInvoice")}>
                             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                     </div>
                 );
             },
         },
-    ], [handleDeleteInvoice, handleStatusChange]);
+    ], [handleDeleteInvoice, handleStatusChange, t]);
+
+    const statusFilterOptions = STATUS_FILTER_OPTIONS.map(o => ({ label: t(o.labelKey), value: o.value }));
 
     return (
         <PageContainer width="6xl" className="space-y-8">
             <PageHeader
-                title="Facturas Recibidas"
-                description="Gestiona tus compras, gastos y proveedores."
+                title={t("title")}
+                description={t("description")}
                 actions={
                     <div className="flex items-center gap-2">
                         <label
                             className={`inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 px-3 h-9 text-sm font-medium cursor-pointer transition-colors ${scanning ? "opacity-50 pointer-events-none" : ""}`}
-                            title="Sube una factura PDF o foto. La IA extrae proveedor, líneas, IVA y vencimiento y la registra automáticamente."
+                            title={t("scanTooltip")}
                         >
                             {scanning
-                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Leyendo factura…</>
-                                : <><Sparkles className="h-4 w-4" /> Escanear factura</>}
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("scanning")}</>
+                                : <><Sparkles className="h-4 w-4" /> {t("scan")}</>}
                             <input
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp,application/pdf"
@@ -157,7 +161,7 @@ export default function FacturasRecibidasPage() {
                             />
                         </label>
                         <Button onClick={() => setShowModal(true)}>
-                            <Plus className="mr-2 h-4 w-4" /> Registrar Factura
+                            <Plus className="mr-2 h-4 w-4" /> {t("register")}
                         </Button>
                     </div>
                 }
@@ -169,7 +173,7 @@ export default function FacturasRecibidasPage() {
                         <Clock className="w-6 h-6 text-amber-500" />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Pendiente de Pago</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">{t("stats.pending")}</p>
                         <p className="text-2xl font-bold text-amber-500">{totalPendiente.toLocaleString("es-ES", { minimumFractionDigits: 2 })}€</p>
                     </div>
                 </div>
@@ -178,7 +182,7 @@ export default function FacturasRecibidasPage() {
                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Pagado (últimos 30d)</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">{t("stats.paid30")}</p>
                         <p className="text-2xl font-bold text-emerald-500">{totalPagado30.toLocaleString("es-ES", { minimumFractionDigits: 2 })}€</p>
                     </div>
                 </div>
@@ -188,9 +192,9 @@ export default function FacturasRecibidasPage() {
                 <div className="bg-card border border-border rounded-2xl">
                     <EmptyState
                         icon={Inbox}
-                        title="No tienes facturas de compra registradas"
-                        description="Registra tu primera factura para empezar a gestionar tus compras."
-                        action={{ label: "Registrar primera factura", onClick: () => setShowModal(true) }}
+                        title={t("empty.title")}
+                        description={t("empty.description")}
+                        action={{ label: t("empty.action"), onClick: () => setShowModal(true) }}
                         size="sm"
                     />
                 </div>
@@ -200,10 +204,10 @@ export default function FacturasRecibidasPage() {
                         columns={columns}
                         data={invoices}
                         searchKey="supplier"
-                        searchPlaceholder="Buscar por proveedor o número..."
-                        facetedFilters={[{ column: "status", title: "Estado", options: STATUS_FILTER_OPTIONS }]}
+                        searchPlaceholder={t("searchPlaceholder")}
+                        facetedFilters={[{ column: "status", title: t("columns.status"), options: statusFilterOptions }]}
                         isLoading={loading}
-                        emptyMessage="Sin resultados para tu búsqueda."
+                        emptyMessage={t("noResults")}
                     />
                 </div>
             )}

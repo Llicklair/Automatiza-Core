@@ -6,25 +6,28 @@ export function DonutChart({ segments }: { segments: { value: number; color: str
 
     const r = 52, cx = 60, cy = 60, stroke = 16;
     const circumference = 2 * Math.PI * r;
-    let offset = 0;
+
+    // Offset acumulado de cada segmento (suma de los dash anteriores), calculado
+    // de forma pura sin reasignar variables durante el render
+    // (react-hooks/immutability): el offset de i es la suma de dashes [0..i).
+    const dashes = segments.map((seg) => (Math.abs(seg.value) / total) * circumference);
+    const arcs = segments.map((seg, i) => ({
+        dash: dashes[i],
+        gap: circumference - dashes[i],
+        offset: dashes.slice(0, i).reduce((s, d) => s + d, 0),
+        color: seg.color,
+    }));
 
     return (
         <svg width={120} height={120} viewBox="0 0 120 120" className="rotate-[-90deg]">
-            {segments.map((seg, i) => {
-                const pct = Math.abs(seg.value) / total;
-                const dash = pct * circumference;
-                const gap = circumference - dash;
-                const el = (
-                    <circle key={i} cx={cx} cy={cy} r={r}
-                        fill="none" stroke={seg.color} strokeWidth={stroke}
-                        strokeDasharray={`${dash} ${gap}`}
-                        strokeDashoffset={-offset}
-                        className="transition-all duration-700"
-                    />
-                );
-                offset += dash;
-                return el;
-            })}
+            {arcs.map((arc, i) => (
+                <circle key={i} cx={cx} cy={cy} r={r}
+                    fill="none" stroke={arc.color} strokeWidth={stroke}
+                    strokeDasharray={`${arc.dash} ${arc.gap}`}
+                    strokeDashoffset={-arc.offset}
+                    className="transition-all duration-700"
+                />
+            ))}
         </svg>
     );
 }

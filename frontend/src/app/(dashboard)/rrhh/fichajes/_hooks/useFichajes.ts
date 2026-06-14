@@ -9,15 +9,17 @@ import { logError } from "@/lib/logger";
 import { usePolling } from "@/lib/hooks/usePolling";
 
 export function useElapsedTime(clockIn: string | null): string {
-    const [, forceUpdate] = useState(0);
+    // `now` se actualiza vía intervalo; leerlo (en vez de Date.now() directo en
+    // render) mantiene el reloj en vivo sin violar react-hooks/purity.
+    const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         if (!clockIn) return;
-        const id = setInterval(() => forceUpdate((n) => n + 1), 1000);
+        const id = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(id);
     }, [clockIn]);
 
     if (!clockIn) return "—";
-    const diff = Math.floor((Date.now() - new Date(clockIn).getTime()) / 1000);
+    const diff = Math.floor((now - new Date(clockIn).getTime()) / 1000);
     const h = Math.floor(diff / 3600);
     const m = Math.floor((diff % 3600) / 60);
     const s = diff % 60;

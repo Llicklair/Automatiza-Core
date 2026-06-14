@@ -43,7 +43,7 @@ export default function FacturaDetallePage() {
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-2xl font-bold text-foreground truncate">
-                                {invoice?.invoice_number ? `Factura ${invoice.invoice_number}` : "Detalle de factura"}
+                                {invoice?.invoice_number ? t("invoiceTitle", { number: invoice.invoice_number }) : t("invoiceDetailTitle")}
                             </h1>
                             <p className="text-sm text-muted-foreground">
                                 {invoice?.client?.name ? invoice.client.name : "—"}
@@ -70,7 +70,7 @@ export default function FacturaDetallePage() {
                         {downloading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
                         PDF
                     </Button>
-                    <Button variant="ghost" size="icon" className="hover:bg-red-500/10 hover:text-red-400" disabled={!invoice || deleting} onClick={handleDelete} aria-label="Eliminar factura">
+                    <Button variant="ghost" size="icon" className="hover:bg-red-500/10 hover:text-red-400" disabled={!invoice || deleting} onClick={handleDelete} aria-label={t("deleteInvoice")}>
                         {deleting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
                     </Button>
                 </div>

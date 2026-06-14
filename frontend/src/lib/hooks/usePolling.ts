@@ -31,7 +31,9 @@ export function usePolling(
     { enabled = true, pauseWhenHidden = true }: UsePollingOptions = {},
 ): void {
     const fnRef = useRef(fn);
-    fnRef.current = fn;
+    useEffect(() => {
+        fnRef.current = fn;
+    });
 
     useEffect(() => {
         if (!enabled) return;

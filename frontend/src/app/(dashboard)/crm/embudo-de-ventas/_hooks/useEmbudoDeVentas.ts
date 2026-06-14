@@ -20,9 +20,6 @@ export function useEmbudoDeVentas() {
     const [clientId, setClientId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadData(); }, []);
-
     const loadData = async () => {
         setIsLoading(true);
         try {
@@ -33,6 +30,9 @@ export function useEmbudoDeVentas() {
         } catch (e) { logError("crm/embudo-de-ventas/page", e); }
         finally { setIsLoading(false); }
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, []);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();

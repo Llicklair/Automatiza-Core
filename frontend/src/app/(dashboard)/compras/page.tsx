@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { FileText, ShoppingCart, Building2, ArrowRight, PackageOpen } from "lucide-react";
 import { PageContainer } from "@/components/shared/PageContainer";
 
@@ -9,8 +10,8 @@ const SECTIONS = [
         color: "text-rose-400",
         bg: "bg-rose-500/10 border-rose-500/20",
         glow: "group-hover:shadow-rose-500/10",
-        title: "Facturas Recibidas",
-        description: "Registro y gestión de facturas de proveedores. Concilia con tus pagos bancarios.",
+        titleKey: "index.sections.facturas.title",
+        descriptionKey: "index.sections.facturas.description",
     },
     {
         href: "/compras/pedidos",
@@ -18,8 +19,8 @@ const SECTIONS = [
         color: "text-amber-400",
         bg: "bg-amber-500/10 border-amber-500/20",
         glow: "group-hover:shadow-amber-500/10",
-        title: "Pedidos de Compra",
-        description: "Órdenes de compra enviadas a proveedores y su estado de recepción.",
+        titleKey: "index.sections.pedidos.title",
+        descriptionKey: "index.sections.pedidos.description",
     },
     {
         href: "/compras/proveedores",
@@ -27,12 +28,13 @@ const SECTIONS = [
         color: "text-sky-400",
         bg: "bg-sky-500/10 border-sky-500/20",
         glow: "group-hover:shadow-sky-500/10",
-        title: "Proveedores",
-        description: "Directorio de proveedores con condiciones de pago, NIF y historial de compras.",
+        titleKey: "index.sections.proveedores.title",
+        descriptionKey: "index.sections.proveedores.description",
     },
 ] as const;
 
-export default function ComprasPage() {
+export default async function ComprasPage() {
+    const t = await getTranslations("compras");
     return (
         <PageContainer width="5xl" className="space-y-8">
             <div>
@@ -40,10 +42,10 @@ export default function ComprasPage() {
                     <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
                         <PackageOpen className="w-5 h-5 text-rose-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Compras</h1>
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("index.title")}</h1>
                 </div>
                 <p className="text-sm text-muted-foreground ml-[52px]">
-                    Facturas recibidas, pedidos a proveedores y directorio de suministradores.
+                    {t("index.subtitle")}
                 </p>
             </div>
 
@@ -55,11 +57,11 @@ export default function ComprasPage() {
                                 <s.icon className={`w-5 h-5 ${s.color}`} />
                             </div>
                             <div className="flex-1">
-                                <p className="text-sm font-semibold text-foreground mb-1">{s.title}</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">{s.description}</p>
+                                <p className="text-sm font-semibold text-foreground mb-1">{t(s.titleKey)}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{t(s.descriptionKey)}</p>
                             </div>
                             <div className={`flex items-center gap-1 text-xs font-medium ${s.color} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                                Abrir <ArrowRight className="w-3 h-3" />
+                                {t("index.open")} <ArrowRight className="w-3 h-3" />
                             </div>
                         </div>
                     </Link>
