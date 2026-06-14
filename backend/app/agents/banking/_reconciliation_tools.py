@@ -7,9 +7,9 @@ from datetime import date, timedelta
 from langchain_core.tools import tool
 from sqlalchemy import or_, select
 
-from app.services.banking.psd2 import get_psd2_credentials as _get_psd2_credentials
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Invoice
+from app.services.banking.psd2 import get_psd2_credentials as _get_psd2_credentials
 
 logger = logging.getLogger(__name__)
 

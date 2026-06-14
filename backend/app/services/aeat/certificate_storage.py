@@ -59,7 +59,6 @@ def _extract_metadata(pfx_bytes: bytes, password: str) -> CertificateMetadata:
     try:
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.serialization import pkcs12
-        from cryptography.x509 import load_der_x509_certificate
     except ImportError:
         return CertificateMetadata(None, None, None, None, None, None)
 

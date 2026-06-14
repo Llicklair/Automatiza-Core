@@ -7,11 +7,11 @@ from collections import namedtuple
 from datetime import UTC, datetime
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.marketing import ScheduledPost, SocialAccount
 from app.services.marketing.oauth_tokens import ensure_valid_token
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
