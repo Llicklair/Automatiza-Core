@@ -243,3 +243,28 @@ def test_logs_when_step_yields_no_structured_entities(caplog):
     with caplog.at_level(logging.DEBUG, logger="app.services.execution_context"):
         ExecutionContext.from_state(_state_with_result(output, agent="rag"))
     assert "no aportó entidades" in caplog.text
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# (e) El parser NO trata el guion de un ID como separador ni se traga la frase
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_markdown_parser_ignores_inline_hyphen_id():
+    # "Factura IA-001" inline (sin "Etiqueta: valor") NO debe extraer una entidad
+    # basura con la oración siguiente como valor.
+    out = _parse_markdown_entities("Factura IA-001. Texto adicional aquí.")
+    assert out.get("invoice_number") != "001. Texto adicional aquí"
+    assert "invoice_number" not in out
+
+
+def test_markdown_parser_value_stops_at_sentence_boundary():
+    out = _parse_markdown_entities("Cliente: Acme SL. Detalles irrelevantes que no son el valor.")
+    assert out["client_name"] == "Acme SL"
+
+
+def test_markdown_parser_preserves_decimals_in_value():
+    # El corte por ". " no debe romper decimales ("1815.00") porque el punto NO
+    # va seguido de espacio.
+    out = _parse_markdown_entities("Concepto: Servicios 1815.00 EUR")
+    assert out["concept"] == "Servicios 1815.00 EUR"
