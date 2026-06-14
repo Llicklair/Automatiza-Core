@@ -128,14 +128,27 @@ async def _publish_linkedin(token: str, content: str, image_url: str | None) -> 
 
 async def _publish_facebook(token: str, content: str, image_url: str | None) -> tuple[bool, str | None, str | None, int | None]:
     # `token` es un Page access token (ver _resolve_facebook_page en routes):
-    # con un token de Página, `/me/feed` apunta al feed de esa Página.
-    params: dict = {"message": content[:63206], "access_token": token}
-    if image_url:
-        params["link"] = image_url
+    # con un token de Página, `/me/...` apunta a esa Página.
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.post("https://graph.facebook.com/v18.0/me/feed", params=params)
+        if image_url:
+            # Foto NATIVA en el feed: `/me/photos?url=…` sube la imagen y el texto
+            # va como `caption`. (Antes se usaba `link=image_url` en /me/feed, que
+            # publica una tarjeta de enlace; para URLs de Unsplash/OpenAI el scraper
+            # de Open Graph no genera preview → el post salía sin imagen visible.)
+            r = await client.post(
+                "https://graph.facebook.com/v18.0/me/photos",
+                params={"url": image_url, "caption": content[:63206], "access_token": token},
+            )
+        else:
+            r = await client.post(
+                "https://graph.facebook.com/v18.0/me/feed",
+                params={"message": content[:63206], "access_token": token},
+            )
     if r.status_code == 200:
-        post_id = r.json().get("id")
+        data = r.json()
+        # /photos devuelve {id (de la foto), post_id (del post del feed)};
+        # /me/feed devuelve {id}. Preferimos el id del post del feed.
+        post_id = data.get("post_id") or data.get("id")
         return True, post_id, None, r.status_code
     return False, None, f"Facebook {r.status_code}: {r.text[:300]}", r.status_code
 
