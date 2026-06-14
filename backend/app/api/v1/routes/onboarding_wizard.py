@@ -13,10 +13,10 @@ from app.db.base import get_db
 from app.db.models.auth import User
 from app.services.onboarding.simulate_303 import simulate_modelo_303
 from app.services.onboarding.wizard import (
-    get_state,
     reset,
     set_step,
     skip_to_end,
+    sync_llm_config_step,
     to_dict,
 )
 
@@ -28,6 +28,7 @@ class WizardStateOut(BaseModel):
     step_cert: bool
     step_data: bool
     step_use_case: bool
+    step_llm_config: bool
     completed_at: str | None
     skipped_at: str | None
     is_dismissed: bool
@@ -38,14 +39,18 @@ async def get_wizard(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Devuelve el estado actual del wizard del tenant."""
-    record = await get_state(db, tenant_id=user.tenant_id)
+    """Devuelve el estado actual del wizard del tenant.
+
+    Auto-sincroniza el paso BYOK (`llm_config`) desde la readiness real de IA
+    antes de devolver, para que refleje si el tenant ya configuró su clave.
+    """
+    record = await sync_llm_config_step(db, tenant_id=user.tenant_id)
     await db.commit()
     return to_dict(record)
 
 
 class SetStepIn(BaseModel):
-    step: Literal["company", "cert", "data", "use_case"]
+    step: Literal["company", "cert", "data", "use_case", "llm_config"]
     value: bool
 
 
