@@ -33,9 +33,6 @@ export function useTasksKanban() {
     // Menu contextual
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadData(); }, [projectId]);
-
     // Cierra menu al hacer clic fuera
     useEffect(() => {
         const handler = () => setOpenMenuId(null);
@@ -54,6 +51,9 @@ export function useTasksKanban() {
             setIsLoading(false);
         }
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, [projectId]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();

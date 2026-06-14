@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, createElement } from "react";
 import { FileText, Loader2, X, Download, Trash2 } from "lucide-react";
 import { api, type Document as DocType } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
@@ -18,7 +18,7 @@ export default function DocCard({ doc, onReload }: DocCardProps) {
     const [pdfOpen, setPdfOpen] = useState(false);
     const [pdfUrl, setPdfUrl] = useState("");
     const [cancelling, setCancelling] = useState(false);
-    const Icon = fileIcon(doc.file_type);
+    const icon = fileIcon(doc.file_type);
     const st = STATUS_STYLE[doc.status] ?? STATUS_STYLE.uploaded;
     const hasParsed = Boolean(doc.parsed_content);
     const canCancel = doc.status === "processing" || doc.status === "uploaded";
@@ -78,7 +78,7 @@ export default function DocCard({ doc, onReload }: DocCardProps) {
                 {/* Header / Preview */}
                 <div className="h-32 bg-card rounded-t-2xl flex items-center justify-center p-4 relative overflow-hidden border-b border-border">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-card opacity-50 z-0"></div>
-                    <Icon className={`w-12 h-12 relative z-10 transition-transform group-hover:scale-110 ${isPdf ? "text-indigo-400" : "text-muted-foreground"}`} />
+                    {createElement(icon, { className: `w-12 h-12 relative z-10 transition-transform group-hover:scale-110 ${isPdf ? "text-indigo-400" : "text-muted-foreground"}` })}
 
                     <div className="absolute top-3 right-3 z-20 flex flex-col gap-2">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.color} shadow-sm backdrop-blur-md`}>

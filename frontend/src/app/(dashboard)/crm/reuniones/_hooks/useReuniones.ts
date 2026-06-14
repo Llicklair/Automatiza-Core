@@ -18,13 +18,11 @@ export function useReuniones() {
 
     const [showCreate, setShowCreate] = useState(false);
     const [creating, setCreating] = useState(false);
-    const [form, setForm] = useState({
+    const [form, setForm] = useState(() => ({
         title: "", description: "", location_or_link: "", client_id: "",
         start_time: toLocalDatetime(new Date()),
         end_time: toLocalDatetime(new Date(Date.now() + 3600000)),
-    });
-
-    useEffect(() => { loadData(); }, []);
+    }));
 
     const loadData = async () => {
         setIsLoading(true);
@@ -35,6 +33,8 @@ export function useReuniones() {
         } catch (e) { logError("crm/reuniones/page", e); }
         finally { setIsLoading(false); }
     };
+
+    useEffect(() => { loadData(); }, []);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();

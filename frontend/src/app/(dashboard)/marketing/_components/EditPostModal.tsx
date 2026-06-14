@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2, Save, ImageIcon, CalendarClock } from "lucide-react";
+import { X, Loader2, Save, ImageIcon, CalendarClock, Sparkles } from "lucide-react";
 import { marketingApi, ScheduledPost, UpdatePostInput } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
 
@@ -30,9 +30,24 @@ export function EditPostModal({
     const [imageUrl, setImageUrl] = useState(post.image_url ?? "");
     const [when, setWhen] = useState(toLocalInput(post.scheduled_at));
     const [saving, setSaving] = useState(false);
+    const [genImg, setGenImg] = useState(false);
 
     const limit = LIMITS[post.platform] ?? 2200;
     const over = content.length > limit;
+
+    const generateImg = async () => {
+        const prompt = content.trim();
+        if (!prompt) { toast.error("Escribe primero el texto del post para generar una imagen acorde."); return; }
+        setGenImg(true);
+        try {
+            const { url } = await marketingApi.agent.generateImage(prompt);
+            setImageUrl(url);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "No se pudo generar la imagen.");
+        } finally {
+            setGenImg(false);
+        }
+    };
 
     const save = async () => {
         if (over) { toast.error(`El texto supera el límite de ${limit} caracteres para ${post.platform}.`); return; }
@@ -80,14 +95,26 @@ export function EditPostModal({
                 {/* Imagen */}
                 <div>
                     <label className="text-xs text-muted-foreground flex items-center gap-1">
-                        <ImageIcon className="w-3.5 h-3.5" /> URL de imagen
+                        <ImageIcon className="w-3.5 h-3.5" /> Imagen
                     </label>
-                    <input
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        placeholder="https://…"
-                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground mt-1 focus:outline-none focus:ring-1 focus:ring-pink-500/50"
-                    />
+                    <div className="flex gap-2 mt-1">
+                        <input
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            placeholder="https://… o genera una con IA"
+                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
+                        />
+                        <button
+                            type="button"
+                            onClick={generateImg}
+                            disabled={genImg || !content.trim()}
+                            title="Genera una imagen con IA a partir del texto del post"
+                            className="flex items-center gap-1.5 px-3 rounded-lg border border-purple-500/30 text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 disabled:opacity-50 text-xs whitespace-nowrap transition-colors"
+                        >
+                            {genImg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                            Generar IA
+                        </button>
+                    </div>
                     {imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -111,6 +138,12 @@ export function EditPostModal({
                         className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground mt-1 focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                     />
                     <p className="text-[10px] text-muted-foreground mt-0.5">Al poner fecha, el post queda programado y se publica solo.</p>
+                    {when && (
+                        <p className="text-[10px] text-amber-400/90 mt-0.5">
+                            ⚠️ La app debe seguir abierta a esa hora. Las imágenes IA caducan (~2h): para
+                            programar a futuro usa una URL de imagen fija.
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">

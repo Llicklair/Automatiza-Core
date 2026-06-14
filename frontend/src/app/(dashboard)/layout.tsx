@@ -32,12 +32,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pushNotification = useNotificationStore((s) => s.push);
     const triggerRefresh = useNotificationStore((s) => s.triggerRefresh);
     const hydrateNotifications = useNotificationStore((s) => s.hydrate);
-    const lastCheckRef = useRef<number>(Date.now() / 1000);
+    const lastCheckRef = useRef<number>(0);
     const [hydrated, setHydrated] = useState(false);
 
     // SEC.JWT — hidratar tokens desde safeStorage (Electron) o localStorage (dev/web)
-    // antes de cualquier check de auth.
+    // antes de cualquier check de auth. Inicializa también el cursor de polling
+    // (Date.now en effect de mount, no en render, para no romper purity).
     useEffect(() => {
+        lastCheckRef.current = Date.now() / 1000;
         hydrateSecureStore().finally(() => setHydrated(true));
     }, []);
 

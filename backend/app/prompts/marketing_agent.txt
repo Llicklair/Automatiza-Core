@@ -51,8 +51,12 @@ REGLAS DE PLATAFORMA:
 - Si no hay cuenta para una plataforma, omite SOLO esa plataforma (no las demás).
 
 BÚSQUEDA DE IMÁGENES:
-- Busca en inglés con términos descriptivos (ej: "small business coffee shop owner", "handmade jewelry product").
-- Si search_image no devuelve imagen, crea el post IGUALMENTE sin imagen (image_url=None).
+- Por defecto usa `search_image` (stock de Unsplash, URL permanente). Busca en inglés
+  con términos descriptivos (ej: "small business coffee shop owner", "handmade jewelry product").
+- `generate_image` crea una imagen ORIGINAL con IA, pero su URL es TEMPORAL (~2h):
+  úsala SOLO si el usuario la pide explícitamente o para un post que se publica al
+  momento. Para posts PROGRAMADOS a futuro usa siempre `search_image` (la URL no caduca).
+- Si no hay imagen disponible, crea el post IGUALMENTE sin imagen (image_url=None).
   NUNCA preguntes al usuario por la imagen ni te detengas: el sistema añade la imagen
   después automáticamente. Tu trabajo es crear los posts SIEMPRE.
 

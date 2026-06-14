@@ -1,0 +1,223 @@
+{
+  "crm": {
+    "index": {
+      "title": "CRM",
+      "description": "Gestión de relaciones con clientes — actividades, pipeline y agenda comercial.",
+      "open": "Abrir",
+      "sections": {
+        "actividades": {
+          "title": "Actividades",
+          "description": "Muro de interacciones: llamadas, emails y resúmenes generados por IA."
+        },
+        "calendario": {
+          "title": "Calendario",
+          "description": "Vista mensual de eventos, citas y tareas programadas con clientes."
+        },
+        "embudo": {
+          "title": "Embudo de Ventas",
+          "description": "Pipeline kanban para mover oportunidades por las fases de cierre."
+        },
+        "reuniones": {
+          "title": "Reuniones",
+          "description": "Agenda y actas de reuniones con clientes y prospectos."
+        },
+        "reservas": {
+          "title": "Reservas",
+          "description": "Gestiona citas y reservas de servicios con tus contactos."
+        }
+      }
+    },
+    "actividades": {
+      "title": "Registro de Actividades",
+      "description": "Muro de interacciones. Registra llamadas o revisa resúmenes automáticos extraídos por IA de tus correos y reuniones.",
+      "newInteraction": "Registrar Interacción",
+      "searchPlaceholder": "Buscar en el historial (ej. 'presupuesto', 'llamada')…",
+      "allClients": "Todos los clientes",
+      "emptyTitle": "Aún no hay interacciones",
+      "emptyDescription": "Cuando envíes un correo, llames a un cliente o la IA procese un buzón, aparecerá aquí como un hilo temporal.",
+      "firstInteraction": "Primera interacción",
+      "delete": "Eliminar",
+      "aiGenerated": "Generado automáticamente por IA",
+      "unassigned": "Sin asignar",
+      "unknownClient": "Cliente Desconocido",
+      "createError": "Error al registrar actividad",
+      "deleteError": "Error al eliminar la actividad",
+      "deleteConfirm": "¿Eliminar esta actividad del historial?",
+      "modal": {
+        "title": "Registrar Actividad",
+        "clientLabel": "Cliente (Opcional)",
+        "clientNone": "Ninguno / General",
+        "typeLabel": "Tipo de interacción",
+        "types": {
+          "note": "Nota",
+          "call": "Llamada",
+          "email": "Email",
+          "meeting_log": "Reunión"
+        },
+        "descriptionLabel": "Resumen o Descripción",
+        "descriptionPlaceholder": "¿De qué hablasteis? ¿Qué se acordó?...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Registrar"
+      }
+    },
+    "calendario": {
+      "title": "Calendario",
+      "description": "Visualiza tus reuniones, demostraciones y recordatorios.",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente",
+      "today": "Hoy",
+      "schedule": "Agendar Cita",
+      "weekdays": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mie",
+        "thu": "Jue",
+        "fri": "Vie",
+        "sat": "Sab",
+        "sun": "Dom"
+      },
+      "createError": "Error al crear el evento",
+      "deleteConfirm": "¿Eliminar este evento?",
+      "modal": {
+        "title": "Agendar Cita",
+        "close": "Cerrar formulario de cita",
+        "titleLabel": "Título *",
+        "titlePlaceholder": "Ej: Demo con Cliente XYZ",
+        "startLabel": "Inicio *",
+        "endLabel": "Fin *",
+        "typeLabel": "Tipo",
+        "clientLabel": "Cliente",
+        "clientNone": "Sin cliente",
+        "linkLabel": "Enlace / Ubicación",
+        "linkPlaceholder": "https://meet.google.com/... o dirección",
+        "descriptionLabel": "Descripción",
+        "descriptionPlaceholder": "Notas del evento...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Agendar",
+        "types": {
+          "meeting": "Reunión",
+          "reminder": "Recordatorio",
+          "task_deadline": "Vencimiento"
+        }
+      },
+      "detail": {
+        "close": "Cerrar detalle del evento",
+        "clientLabel": "Cliente:",
+        "deleting": "Eliminando...",
+        "delete": "Eliminar evento"
+      }
+    },
+    "embudo": {
+      "title": "Embudo de Ventas (CRM)",
+      "description": "Gestiona tus leads o deja que la IA los cualifique.",
+      "searchPlaceholder": "Buscar oportunidad...",
+      "newDeal": "Nuevo Trato",
+      "sending": "Enviando...",
+      "askAi": "Pedir a la IA",
+      "deleteOpportunity": "Eliminar oportunidad",
+      "unknownClient": "Cliente desconocido",
+      "emptyStage": "Arrastra un trato aquí",
+      "createError": "Error al crear la oportunidad",
+      "deleteConfirm": "¿Eliminar esta oportunidad?",
+      "deleteLabel": "Eliminar",
+      "aiTaskSent": "Tarea de análisis CRM enviada a la IA. Revisa /tareas para ver el resultado.",
+      "aiTaskError": "Error al enviar tarea a la IA",
+      "aiTaskPrompt": "Analiza todas mis oportunidades nuevas y cualifícalas según su valor y potencial. Dame un resumen de cuáles debo priorizar esta semana.",
+      "stages": {
+        "new": "Nuevos",
+        "qualified": "Cualificados",
+        "proposal": "Propuesta",
+        "won": "Ganados",
+        "lost": "Perdidos"
+      },
+      "modal": {
+        "title": "Nueva Oportunidad",
+        "close": "Cerrar formulario de oportunidad",
+        "dealTitleLabel": "Nombre del Trato",
+        "dealTitlePlaceholder": "Ej: Renovación Licencias Anuales",
+        "clientLabel": "Cliente Relacionado",
+        "clientPlaceholder": "Selecciona un cliente",
+        "noNif": "Sin NIF",
+        "valueLabel": "Valor Esperado (€)",
+        "valuePlaceholder": "0.00",
+        "cancel": "Cancelar",
+        "creating": "Creando...",
+        "submit": "Crear Trato"
+      }
+    },
+    "reuniones": {
+      "title": "Reuniones (Meet)",
+      "description": "Gestiona tus videollamadas con clientes.",
+      "schedule": "Programar Reunión",
+      "searchPlaceholder": "Buscar reuniones...",
+      "delete": "Eliminar reunión",
+      "noLocation": "Ubicación no especificada",
+      "join": "Unirse",
+      "emptyTitle": "Despejado",
+      "emptyDescription": "No tienes reuniones agendadas.",
+      "upcoming": "Próximas y Hoy ({count})",
+      "past": "Finalizadas ({count})",
+      "createError": "Error al programar la reunión",
+      "deleteConfirm": "¿Eliminar esta reunión?",
+      "modal": {
+        "title": "Programar Reunión",
+        "close": "Cerrar formulario de reunión",
+        "titleLabel": "Título *",
+        "titlePlaceholder": "Ej: Llamada de seguimiento con ACME",
+        "startLabel": "Inicio *",
+        "endLabel": "Fin *",
+        "linkLabel": "Enlace (Meet/Zoom/Teams)",
+        "linkPlaceholder": "https://meet.google.com/...",
+        "clientLabel": "Cliente",
+        "clientNone": "Sin cliente",
+        "descriptionLabel": "Descripción",
+        "descriptionPlaceholder": "Agenda de la reunión...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Programar"
+      }
+    },
+    "reservas": {
+      "title": "Reservas y Espacios",
+      "description": "Gestiona las reservas de tus clientes sobre tus servicios o instalaciones.",
+      "newReservation": "Bloquear Espacio / Reservar",
+      "searchPlaceholder": "Buscar por cliente o nota...",
+      "count": "{count} reservas",
+      "columns": {
+        "client": "Cliente",
+        "start": "Inicio",
+        "end": "Fin",
+        "notes": "Notas",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "empty": "No hay reservas",
+      "confirm": "Confirmar",
+      "finish": "Finalizar",
+      "cancel": "Cancelar",
+      "selectClientWarning": "Selecciona un cliente",
+      "createError": "Error al crear la reserva",
+      "status": {
+        "pending": "Pendiente",
+        "confirmed": "Confirmada",
+        "cancelled": "Cancelada",
+        "completed": "Finalizada"
+      },
+      "modal": {
+        "title": "Nueva Reserva",
+        "close": "Cerrar formulario de reserva",
+        "clientLabel": "Cliente *",
+        "clientPlaceholder": "Selecciona un cliente",
+        "startLabel": "Inicio *",
+        "endLabel": "Fin *",
+        "notesLabel": "Notas",
+        "notesPlaceholder": "Sala A, equipamiento necesario...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Reservar"
+      }
+    }
+  }
+}

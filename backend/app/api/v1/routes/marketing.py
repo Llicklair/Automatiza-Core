@@ -11,12 +11,14 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.core.paths import app_data_dir
 from app.db.base import get_db
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
 from app.db.models.models import User
 from app.services.encryption import encrypt_str
+from app.services.marketing.image_generation import generate_image as _generate_image
 from app.services.marketing.oauth import (
     _decode_state,
     _encode_state,
@@ -162,6 +164,55 @@ async def list_accounts(
         )
     )
     return result.scalars().all()
+
+
+@router.get("/config-status")
+async def config_status(current_user: User = Depends(get_current_user)):
+    """Indica qué está listo para usar, sin exponer secretos.
+
+    Si hay proxy OAuth, el intercambio code→token ocurre en el servidor (que guarda
+    los client_secret), así que las plataformas son conectables aunque el .env local
+    esté vacío. Sin proxy, se comprueba la credencial local de cada plataforma.
+    """
+    proxy = bool(settings.OAUTH_PROXY_URL)
+    creds = {
+        "facebook": bool(settings.FACEBOOK_CLIENT_ID and settings.FACEBOOK_CLIENT_SECRET),
+        "instagram": bool(settings.INSTAGRAM_CLIENT_ID and settings.INSTAGRAM_CLIENT_SECRET),
+        "twitter": bool(settings.TWITTER_CLIENT_ID and settings.TWITTER_CLIENT_SECRET),
+        "linkedin": bool(settings.LINKEDIN_CLIENT_ID and settings.LINKEDIN_CLIENT_SECRET),
+    }
+    platforms = {p: (proxy or ok) for p, ok in creds.items()}
+    return {
+        "proxy": proxy,
+        "platforms": platforms,
+        "image_ai": bool(settings.OPENAI_API_KEY),
+        "stock_images": bool(settings.UNSPLASH_ACCESS_KEY) or proxy,
+    }
+
+
+class GenerateImageRequest(BaseModel):
+    prompt: str
+
+
+@router.post("/generate-image")
+async def generate_image_endpoint(
+    body: GenerateImageRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Genera una imagen con IA a partir de un prompt y devuelve su URL (temporal).
+
+    La URL la aloja OpenAI ~2h: pensada para previsualizar y publicar al momento.
+    """
+    prompt = (body.prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="El prompt no puede estar vacío")
+    url = await _generate_image(prompt)
+    if not url:
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudo generar la imagen. Revisa que OPENAI_API_KEY esté configurada.",
+        )
+    return {"url": url}
 
 
 @router.post("/accounts/connect/{platform}", status_code=status.HTTP_200_OK)

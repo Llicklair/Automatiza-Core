@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Client } from "@/lib/api";
 import { FormModal, FormField } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -36,29 +37,30 @@ export function RegistrarFacturaModal({
     fiscalRegime, setFiscalRegime, retencionRate, setRetencionRate,
     submitting, onSubmit,
 }: Props) {
+    const t = useTranslations("compras.facturas.modal");
     return (
         <FormModal
             open={open}
             onClose={onClose}
-            title="Registrar Factura Recibida"
-            description="Completa los datos de la factura de compra."
+            title={t("title")}
+            description={t("description")}
             onSubmit={onSubmit}
             isSubmitting={submitting}
-            submitLabel="Registrar"
+            submitLabel={t("submit")}
             className="sm:max-w-lg"
         >
-            <FormField label="Proveedor" required>
+            <FormField label={t("supplier")} required>
                 <div className="flex gap-2 mb-2">
                     <Button type="button" size="sm" variant={useExisting ? "default" : "outline"} onClick={() => setUseExisting(true)}>
-                        Existente
+                        {t("existing")}
                     </Button>
                     <Button type="button" size="sm" variant={!useExisting ? "default" : "outline"} onClick={() => setUseExisting(false)}>
-                        Nuevo
+                        {t("new")}
                     </Button>
                 </div>
                 {useExisting ? (
                     <Select value={supplierId} onValueChange={setSupplierId}>
-                        <SelectTrigger><SelectValue placeholder="Seleccionar proveedor..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t("selectSupplier")} /></SelectTrigger>
                         <SelectContent>
                             {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
@@ -68,29 +70,29 @@ export function RegistrarFacturaModal({
                         required={!useExisting}
                         value={supplierName}
                         onChange={e => setSupplierName(e.target.value)}
-                        placeholder="Nombre del proveedor"
+                        placeholder={t("supplierNamePlaceholder")}
                     />
                 )}
             </FormField>
 
             <div className="grid grid-cols-2 gap-4">
-                <FormField label="Nº Factura">
-                    <Input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="Opcional" />
+                <FormField label={t("invoiceNumber")}>
+                    <Input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder={t("optional")} />
                 </FormField>
-                <FormField label="Estado">
+                <FormField label={t("status")}>
                     <Select value={invStatus} onValueChange={setInvStatus}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="pending">Pendiente</SelectItem>
-                            <SelectItem value="paid">Pagada</SelectItem>
-                            <SelectItem value="draft">Borrador</SelectItem>
+                            <SelectItem value="pending">{t("statusOptions.pending")}</SelectItem>
+                            <SelectItem value="paid">{t("statusOptions.paid")}</SelectItem>
+                            <SelectItem value="draft">{t("statusOptions.draft")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </FormField>
-                <FormField label="Importe base (€)" required>
+                <FormField label={t("baseAmount")} required>
                     <Input type="number" required min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
                 </FormField>
-                <FormField label="% IVA">
+                <FormField label={t("vat")}>
                     <Select value={taxPct} onValueChange={setTaxPct}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -101,25 +103,25 @@ export function RegistrarFacturaModal({
                         </SelectContent>
                     </Select>
                 </FormField>
-                <FormField label="Fecha" required>
+                <FormField label={t("date")} required>
                     <Input type="date" required value={date} onChange={e => setDate(e.target.value)} />
                 </FormField>
-                <FormField label="Vencimiento">
+                <FormField label={t("dueDate")}>
                     <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                 </FormField>
-                <FormField label="Régimen fiscal">
+                <FormField label={t("fiscalRegime")}>
                     <Select value={fiscalRegime || "general"} onValueChange={v => setFiscalRegime(v === "general" ? "" : v)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="general">General</SelectItem>
-                            <SelectItem value="intracomunitario">Intracomunitario</SelectItem>
-                            <SelectItem value="isp">Inversión sujeto pasivo</SelectItem>
+                            <SelectItem value="general">{t("fiscalRegimeOptions.general")}</SelectItem>
+                            <SelectItem value="intracomunitario">{t("fiscalRegimeOptions.intracomunitario")}</SelectItem>
+                            <SelectItem value="isp">{t("fiscalRegimeOptions.isp")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </FormField>
-                <FormField label="% Retención IRPF">
+                <FormField label={t("retention")}>
                     <Input type="number" min="0" max="47" step="0.5" value={retencionRate}
-                        onChange={e => setRetencionRate(e.target.value)} placeholder="0 (sin retención)" />
+                        onChange={e => setRetencionRate(e.target.value)} placeholder={t("retentionPlaceholder")} />
                 </FormField>
             </div>
         </FormModal>

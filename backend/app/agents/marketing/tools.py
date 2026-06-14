@@ -15,6 +15,7 @@ from app.db.base import AsyncSessionLocal
 from app.db.models.inventory import Product
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
 from app.services.autonomy_gate import gated_tool
+from app.services.marketing.image_generation import generate_image as _generate_image
 from app.services.marketing.image_search import search_image as _search_image
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,22 @@ async def search_image(query: str, tenant_id: str = "") -> str:
     if url:
         return url
     return "Sin imagen disponible (configura UNSPLASH_ACCESS_KEY para activar búsqueda de imágenes)"
+
+
+@tool
+async def generate_image(prompt: str, tenant_id: str = "") -> str:
+    """
+    Genera una imagen ORIGINAL con IA (no stock) a partir de una descripción.
+    Útil cuando no hay foto de stock adecuada o se quiere una imagen a medida del
+    producto/marca. Devuelve una URL pública temporal (~2h): ideal para posts que
+    se publican al momento. Para posts programados a futuro prefiere search_image.
+
+    `tenant_id` se acepta por consistencia (el LLM lo pasa) pero se ignora.
+    """
+    url = await _generate_image(prompt)
+    if url:
+        return url
+    return "Generación de imagen no disponible (configura OPENAI_API_KEY). Usa search_image como alternativa."
 
 
 @tool
@@ -250,7 +267,7 @@ async def create_campaign(
         return f"Error al crear campaña: {e}"
 
 
-tools = [get_product_catalog, search_image, list_social_accounts, create_post, create_campaign, create_pdf_report, create_pdf_text_report]
+tools = [get_product_catalog, search_image, generate_image, list_social_accounts, create_post, create_campaign, create_pdf_report, create_pdf_text_report]
 
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar

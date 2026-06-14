@@ -56,9 +56,6 @@ export function useEmpleadosCRUD(
 
     const refreshKey = useNotificationStore((s) => s.refreshKey);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadData(); }, [refreshKey]);
-
     const loadData = async () => {
         setIsLoading(true);
         try {
@@ -70,6 +67,9 @@ export function useEmpleadosCRUD(
             setIsLoading(false);
         }
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, [refreshKey]);
 
     const openModal = () => {
         setEditingId(null);

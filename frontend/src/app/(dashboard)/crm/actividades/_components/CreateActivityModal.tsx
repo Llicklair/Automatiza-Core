@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Client } from "@/lib/api";
 import { Plus, StickyNote, Phone, Mail, CalendarCheck } from "lucide-react";
 
@@ -21,26 +22,27 @@ export function CreateActivityModal({
     type, setType, description, setDescription,
     isSubmitting, onSubmit, onClose,
 }: Props) {
+    const t = useTranslations("crm");
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-card border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
                 <div className="p-5 border-b border-border flex justify-between items-center bg-muted">
                     <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
                         <Plus className="w-4 h-4 text-pink-400" />
-                        Registrar Actividad
+                        {t("actividades.modal.title")}
                     </h2>
                     <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
                 </div>
 
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-sm text-muted-foreground mb-1.5">Cliente (Opcional)</label>
+                        <label className="block text-sm text-muted-foreground mb-1.5">{t("actividades.modal.clientLabel")}</label>
                         <select
                             value={selectedClient}
                             onChange={e => setSelectedClient(e.target.value)}
                             className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-pink-500"
                         >
-                            <option value="">Ninguno / General</option>
+                            <option value="">{t("actividades.modal.clientNone")}</option>
                             {clients.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}

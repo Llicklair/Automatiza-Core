@@ -32,8 +32,6 @@ export function useServicios() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    useEffect(() => { loadData(); }, []);
-
     const loadData = async () => {
         setIsLoading(true);
         try {
@@ -45,6 +43,8 @@ export function useServicios() {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => { loadData(); }, []);
 
     const openCreate = () => { setEditingId(null); setForm(emptyForm()); setShowModal(true); };
     const openEdit = (s: Product) => {

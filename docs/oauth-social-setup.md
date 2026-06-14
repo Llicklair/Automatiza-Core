@@ -9,9 +9,20 @@ se guarda en la BD local. Render/el servidor de licencias no interviene.
 
 ## Variables de entorno necesarias (`.env` del backend)
 
+> **Dos modos de redirect.** Las redes sociales rechazan `http://localhost` (exigen HTTPS).
+> - **Local/dev**: deja `OAUTH_PROXY_URL` vacío y registra el callback `localhost` de abajo.
+>   Solo funciona con plataformas que aceptan localhost en modo desarrollo.
+> - **Con proxy (recomendado para la app de escritorio)**: define `OAUTH_PROXY_URL`
+>   (Render). El intercambio code→token ocurre en el servidor y debes registrar
+>   `{OAUTH_PROXY_URL}/oauth/cb` como redirect en cada portal de desarrolladores.
+
 ```env
 # URL de callback — debe coincidir exactamente con lo registrado en cada plataforma
 OAUTH_REDIRECT_URI=http://localhost:8000/api/v1/marketing/oauth/callback
+
+# Proxy OAuth/imágenes (opcional). Si se define, registra {OAUTH_PROXY_URL}/oauth/cb
+# como redirect en lugar del callback local.
+OAUTH_PROXY_URL=
 
 # Instagram / Facebook (una sola app Meta cubre ambas)
 FACEBOOK_CLIENT_ID=tu_app_id
@@ -104,8 +115,9 @@ Frontend
 
 ## Notas de seguridad
 
-- Los `access_token` se guardan en texto plano en la BD local (PostgreSQL en `localhost`).
-  En producción multi-tenant considerar cifrado con `TENANT_ENCRYPTION_KEY`.
+- Los `access_token` se guardan **cifrados** en la BD (Fernet, AES-128 + HMAC) usando
+  `TENANT_ENCRYPTION_KEY`. Ver `app/services/encryption.py` y `app/services/marketing/oauth_tokens.py`.
+  Si la clave falta, el arranque del backend falla con instrucciones para generarla.
 - Los tokens de Meta expiran en 60 días (long-lived token). LinkedIn en 60 días.
   Twitter puede emitir refresh tokens si se solicita `offline.access`.
 - La `redirect_uri` debe ser exactamente igual en el `.env` y en el portal de desarrolladores.

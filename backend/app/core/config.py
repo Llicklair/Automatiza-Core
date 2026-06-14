@@ -98,6 +98,9 @@ class Settings(BaseSettings):
 
     # Búsqueda de imágenes (Marketing)
     UNSPLASH_ACCESS_KEY: str = ""
+    # Generación de imágenes con IA (usa OPENAI_API_KEY). dall-e-3 devuelve URL
+    # pública temporal (~2h); modelos que devuelven base64 no se soportan aquí.
+    OPENAI_IMAGE_MODEL: str = "dall-e-3"
 
     # Cifrado de credenciales de tenants
     TENANT_ENCRYPTION_KEY: str = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"

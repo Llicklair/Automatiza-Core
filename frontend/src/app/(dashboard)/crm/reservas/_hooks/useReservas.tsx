@@ -17,14 +17,12 @@ export function useReservas() {
 
     const [showCreate, setShowCreate] = useState(false);
     const [creating, setCreating] = useState(false);
-    const [form, setForm] = useState({
+    const [form, setForm] = useState(() => ({
         client_id: "", notes: "",
         start_time: toLocalDatetime(new Date()),
         end_time: toLocalDatetime(new Date(Date.now() + 3600000)),
         status: "pending",
-    });
-
-    useEffect(() => { loadData(); }, []);
+    }));
 
     const loadData = async () => {
         setIsLoading(true);
@@ -35,6 +33,8 @@ export function useReservas() {
         } catch (e) { logError("crm/reservas/page", e); }
         finally { setIsLoading(false); }
     };
+
+    useEffect(() => { loadData(); }, []);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();

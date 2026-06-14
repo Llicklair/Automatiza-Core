@@ -86,7 +86,15 @@ export interface PublishBatchResponse {
     failed: string[];
 }
 
+export interface MarketingConfigStatus {
+    proxy: boolean;
+    platforms: Record<string, boolean>;
+    image_ai: boolean;
+    stock_images: boolean;
+}
+
 export const marketingApi = {
+    configStatus: () => request<MarketingConfigStatus>("/api/v1/marketing/config-status"),
     accounts: {
         list: () => request<SocialAccount[]>("/api/v1/marketing/accounts"),
         connect: (platform: string) =>
@@ -132,6 +140,11 @@ export const marketingApi = {
     agent: {
         generatePlan: (prompt: string) =>
             request<GeneratePlanResponse>("/api/v1/marketing/agent/generate", {
+                method: "POST",
+                body: JSON.stringify({ prompt }),
+            }),
+        generateImage: (prompt: string) =>
+            request<{ url: string }>("/api/v1/marketing/generate-image", {
                 method: "POST",
                 body: JSON.stringify({ prompt }),
             }),

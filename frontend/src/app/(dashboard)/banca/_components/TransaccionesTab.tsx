@@ -89,8 +89,6 @@ export function TransaccionesTab() {
     const [importingN43, setImportingN43] = useState(false);
     const n43InputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
     const loadData = async () => {
         setIsLoading(true);
         try {
@@ -106,6 +104,8 @@ export function TransaccionesTab() {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSync = async () => {
         setIsSyncing(true);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { type Client, type Product, type PurchaseOrderLine } from "@/lib/api";
 import { Plus, X, Loader2 } from "lucide-react";
 import { type PedidoForm } from "../_hooks/usePedidosCompra";
@@ -23,28 +24,29 @@ interface Props {
 const EMPTY_LINE: PurchaseOrderLine = { description: "", quantity: 1, unit_price: 0, tax_percentage: 21 };
 
 export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, products, saving, orderTotal, lineTotal, setLine, onSubmit }: Props) {
+    const t = useTranslations("compras.pedidos.modal");
     if (!open) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm pt-16 pb-8 overflow-y-auto">
             <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-bold text-foreground">Nuevo pedido de compra</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Cerrar formulario de pedido"><X className="w-5 h-5" aria-hidden="true" /></button>
+                    <h2 className="text-lg font-bold text-foreground">{t("title")}</h2>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={t("close")}><X className="w-5 h-5" aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={onSubmit} className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Proveedor *</label>
+                            <label className="block text-xs text-muted-foreground mb-1.5 font-medium">{t("supplier")}</label>
                             <select required value={form.supplier_id} onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))}
                                 className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors">
-                                <option value="">Seleccionar proveedor…</option>
+                                <option value="">{t("selectSupplier")}</option>
                                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
-                            {suppliers.length === 0 && <p className="text-xs text-amber-400 mt-1">Crea proveedores en Compras → Proveedores</p>}
+                            {suppliers.length === 0 && <p className="text-xs text-amber-400 mt-1">{t("noSuppliers")}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Entrega prevista</label>
+                            <label className="block text-xs text-muted-foreground mb-1.5 font-medium">{t("expectedDelivery")}</label>
                             <input type="date" value={form.expected_delivery} onChange={e => setForm(f => ({ ...f, expected_delivery: e.target.value }))}
                                 className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors" />
                         </div>
@@ -52,23 +54,23 @@ export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, prod
 
                     <div>
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-sm font-semibold text-foreground">Líneas del pedido</p>
+                            <p className="text-sm font-semibold text-foreground">{t("lines")}</p>
                             <button type="button" onClick={() => setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE }] }))}
                                 className="text-xs text-primary hover:text-primary flex items-center gap-1 transition-colors">
-                                <Plus className="w-3 h-3" /> Añadir
+                                <Plus className="w-3 h-3" /> {t("addLine")}
                             </button>
                         </div>
                         <div className="space-y-2">
                             {form.lines.map((line, i) => (
                                 <div key={i} className="grid grid-cols-12 gap-2 items-end bg-muted rounded-xl p-3">
                                     <div className="col-span-5">
-                                        <label className="block text-xs text-muted-foreground mb-1">Producto / Descripción</label>
+                                        <label className="block text-xs text-muted-foreground mb-1">{t("productDescription")}</label>
                                         <select value={(line as any).product_id || ""} onChange={e => setLine(i, "product_id" as any, e.target.value || null)}
                                             className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary mb-1">
-                                            <option value="">Seleccionar…</option>
+                                            <option value="">{t("select")}</option>
                                             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                         </select>
-                                        <input type="text" placeholder="Descripción" value={line.description} onChange={e => setLine(i, "description", e.target.value)}
+                                        <input type="text" placeholder={t("descriptionPlaceholder")} value={line.description} onChange={e => setLine(i, "description", e.target.value)}
                                             className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary" />
                                     </div>
                                     <div className="col-span-2">

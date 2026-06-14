@@ -1,0 +1,202 @@
+{
+  "index": {
+    "title": "Compras",
+    "subtitle": "Facturas recibidas, pedidos a proveedores y directorio de suministradores.",
+    "open": "Abrir",
+    "sections": {
+      "facturas": {
+        "title": "Facturas Recibidas",
+        "description": "Registro y gestión de facturas de proveedores. Concilia con tus pagos bancarios."
+      },
+      "pedidos": {
+        "title": "Pedidos de Compra",
+        "description": "Órdenes de compra enviadas a proveedores y su estado de recepción."
+      },
+      "proveedores": {
+        "title": "Proveedores",
+        "description": "Directorio de proveedores con condiciones de pago, NIF e historial de compras."
+      }
+    }
+  },
+  "facturas": {
+    "title": "Facturas Recibidas",
+    "description": "Gestiona tus compras, gastos y proveedores.",
+    "scanTooltip": "Sube una factura PDF o foto. La IA extrae proveedor, líneas, IVA y vencimiento y la registra automáticamente.",
+    "scanning": "Leyendo factura…",
+    "scan": "Escanear factura",
+    "register": "Registrar Factura",
+    "stats": {
+      "pending": "Pendiente de Pago",
+      "paid30": "Pagado (últimos 30d)"
+    },
+    "columns": {
+      "supplier": "Proveedor",
+      "status": "Estado",
+      "date": "Fecha",
+      "dueDate": "Vencimiento",
+      "amount": "Monto",
+      "action": "Acción"
+    },
+    "unknownSupplier": "Desconocido",
+    "noNumber": "S/N",
+    "markPaid": "Marcar pagada",
+    "deleteInvoice": "Eliminar factura",
+    "statusOptions": {
+      "draft": "Borrador",
+      "pending": "Pendiente",
+      "paid": "Pagada",
+      "cancelled": "Cancelada"
+    },
+    "empty": {
+      "title": "No tienes facturas de compra registradas",
+      "description": "Registra tu primera factura para empezar a gestionar tus compras.",
+      "action": "Registrar primera factura"
+    },
+    "searchPlaceholder": "Buscar por proveedor o número...",
+    "noResults": "Sin resultados para tu búsqueda.",
+    "modal": {
+      "title": "Registrar Factura Recibida",
+      "description": "Completa los datos de la factura de compra.",
+      "submit": "Registrar",
+      "supplier": "Proveedor",
+      "existing": "Existente",
+      "new": "Nuevo",
+      "selectSupplier": "Seleccionar proveedor...",
+      "supplierNamePlaceholder": "Nombre del proveedor",
+      "invoiceNumber": "Nº Factura",
+      "optional": "Opcional",
+      "status": "Estado",
+      "statusOptions": {
+        "pending": "Pendiente",
+        "paid": "Pagada",
+        "draft": "Borrador"
+      },
+      "baseAmount": "Importe base (€)",
+      "vat": "% IVA",
+      "date": "Fecha",
+      "dueDate": "Vencimiento",
+      "fiscalRegime": "Régimen fiscal",
+      "fiscalRegimeOptions": {
+        "general": "General",
+        "intracomunitario": "Intracomunitario",
+        "isp": "Inversión sujeto pasivo"
+      },
+      "retention": "% Retención IRPF",
+      "retentionPlaceholder": "0 (sin retención)"
+    }
+  },
+  "pedidos": {
+    "title": "Pedidos de Compra",
+    "description": "Gestiona los pedidos a tus proveedores antes de recibir la factura.",
+    "newOrder": "Nuevo pedido",
+    "stats": {
+      "pendingReceive": "Pendientes de recibir",
+      "received": "Recibidos",
+      "committedTotal": "Total comprometido"
+    },
+    "searchPlaceholder": "Buscar por número o proveedor...",
+    "loading": "Cargando pedidos…",
+    "emptyTitle": "Sin pedidos de compra",
+    "noResultsTitle": "Sin resultados",
+    "emptyDescription": "Crea tu primer pedido de compra a un proveedor.",
+    "noResultsDescription": "Sin resultados para \"{search}\"",
+    "createOrder": "Crear pedido",
+    "noNumber": "Sin número",
+    "unknownSupplier": "Proveedor desconocido",
+    "receive": "Recibir",
+    "cancel": "Cancelar",
+    "deleteOrder": "Eliminar pedido",
+    "expectedDelivery": "Entrega prevista: {date}",
+    "status": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "confirmed": "Confirmado",
+      "partially_received": "Recibido parcial",
+      "received": "Recibido",
+      "cancelled": "Cancelado"
+    },
+    "modal": {
+      "title": "Nuevo pedido de compra",
+      "close": "Cerrar formulario de pedido",
+      "supplier": "Proveedor *",
+      "selectSupplier": "Seleccionar proveedor…",
+      "noSuppliers": "Crea proveedores en Compras → Proveedores",
+      "expectedDelivery": "Entrega prevista",
+      "lines": "Líneas del pedido",
+      "addLine": "Añadir",
+      "productDescription": "Producto / Descripción",
+      "select": "Seleccionar…",
+      "descriptionPlaceholder": "Descripción",
+      "quantity": "Cant.",
+      "price": "Precio",
+      "vat": "IVA %",
+      "deleteLine": "Eliminar línea",
+      "lineTotal": "Total:",
+      "orderTotal": "Total pedido",
+      "notes": "Notas",
+      "notesPlaceholder": "Condiciones especiales, instrucciones de entrega...",
+      "cancel": "Cancelar",
+      "create": "Crear pedido"
+    },
+    "receiveModal": {
+      "title": "Recibir mercancía",
+      "subtitle": "Pedido {number} · {supplier}",
+      "warehouse": "Almacén de recepción",
+      "defaultSuffix": " (por defecto)",
+      "errorNoQuantity": "Indica al menos una cantidad a recibir.",
+      "errorGeneric": "No se pudo registrar la recepción",
+      "ordered": "pedidas {quantity} · pendientes {remaining}",
+      "receive": "Recibir",
+      "lotNumber": "Nº lote (opc.)",
+      "expiry": "Caducidad (opc.)",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar recepción"
+    }
+  },
+  "proveedores": {
+    "title": "Proveedores",
+    "description": "Gestiona el directorio de proveedores y sus datos de contacto.",
+    "newSupplier": "Nuevo proveedor",
+    "stats": {
+      "total": "Total proveedores",
+      "withEmail": "Con email",
+      "withNif": "Con NIF/CIF"
+    },
+    "searchPlaceholder": "Buscar por nombre, NIF o email...",
+    "loading": "Cargando proveedores…",
+    "emptyTitle": "Sin proveedores",
+    "noResultsTitle": "Sin resultados",
+    "emptyDescription": "Añade tu primer proveedor para gestionar compras y pagos.",
+    "noResultsDescription": "No hay proveedores que coincidan con \"{search}\"",
+    "addSupplier": "Añadir proveedor",
+    "columns": {
+      "supplier": "Proveedor",
+      "nif": "NIF/CIF",
+      "email": "Email",
+      "city": "Ciudad",
+      "actions": "Acciones"
+    },
+    "editSupplier": "Editar proveedor",
+    "deleteSupplier": "Eliminar proveedor",
+    "modal": {
+      "editTitle": "Editar proveedor",
+      "newTitle": "Nuevo proveedor",
+      "close": "Cerrar formulario de proveedor",
+      "name": "Nombre / Razón social *",
+      "namePlaceholder": "Proveedor S.L.",
+      "nif": "NIF / CIF",
+      "nifPlaceholder": "B12345678",
+      "email": "Email",
+      "emailPlaceholder": "proveedor@empresa.com",
+      "address": "Dirección",
+      "addressPlaceholder": "Calle Mayor, 1",
+      "city": "Ciudad",
+      "cityPlaceholder": "Madrid",
+      "postalCode": "Código postal",
+      "postalCodePlaceholder": "28001",
+      "cancel": "Cancelar",
+      "save": "Guardar cambios",
+      "create": "Crear proveedor"
+    }
+  }
+}

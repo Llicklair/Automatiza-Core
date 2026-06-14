@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Search, Plus, Bot, UserCircle, Trash2, Activity as ActivityIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/select";
 
 export default function ActivitiesPage() {
+    const t = useTranslations("crm");
     const {
         activities, clients, isLoading,
         showModal, setShowModal,
@@ -31,13 +33,13 @@ export default function ActivitiesPage() {
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-6">
             <PageHeader
-                title="Registro de Actividades"
-                description="Muro de interacciones. Registra llamadas o revisa resúmenes automáticos extraídos por IA de tus correos y reuniones."
+                title={t("actividades.title")}
+                description={t("actividades.description")}
                 icon={ActivityIcon}
                 actions={
                     <Button onClick={() => setShowModal(true)}>
                         <Plus className="w-4 h-4 mr-2" />
-                        Registrar Interacción
+                        {t("actividades.newInteraction")}
                     </Button>
                 }
             />
@@ -47,7 +49,7 @@ export default function ActivitiesPage() {
                 <div className="relative flex-1">
                     <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                     <Input
-                        placeholder="Buscar en el historial (ej. 'presupuesto', 'llamada')…"
+                        placeholder={t("actividades.searchPlaceholder")}
                         className="pl-9"
                     />
                 </div>
@@ -56,10 +58,10 @@ export default function ActivitiesPage() {
                     onValueChange={(v) => setSelectedClient(v === "all" ? "" : v)}
                 >
                     <SelectTrigger className="w-full sm:w-52">
-                        <SelectValue placeholder="Todos los clientes" />
+                        <SelectValue placeholder={t("actividades.allClients")} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">Todos los clientes</SelectItem>
+                        <SelectItem value="all">{t("actividades.allClients")}</SelectItem>
                         {clients.map((c) => (
                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
@@ -76,12 +78,12 @@ export default function ActivitiesPage() {
                 ) : activities.length === 0 ? (
                     <div className="text-center py-20">
                         <ActivityIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground">Aún no hay interacciones</h3>
+                        <h3 className="text-lg font-medium text-foreground">{t("actividades.emptyTitle")}</h3>
                         <p className="text-muted-foreground mt-2 max-w-md mx-auto text-sm">
-                            Cuando envíes un correo, llames a un cliente o la IA procese un buzón, aparecerá aquí como un hilo temporal.
+                            {t("actividades.emptyDescription")}
                         </p>
                         <Button className="mt-4" onClick={() => setShowModal(true)}>
-                            <Plus className="w-4 h-4 mr-2" /> Primera interacción
+                            <Plus className="w-4 h-4 mr-2" /> {t("actividades.firstInteraction")}
                         </Button>
                     </div>
                 ) : (
@@ -116,8 +118,8 @@ export default function ActivitiesPage() {
                                                     size="icon"
                                                     className="h-6 w-6 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     onClick={() => deleteActivity(act.id)}
-                                                    title="Eliminar"
-                                                 aria-label="Eliminar">
+                                                    title={t("actividades.delete")}
+                                                 aria-label={t("actividades.delete")}>
                                                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </Button>
                                             </div>
@@ -127,7 +129,7 @@ export default function ActivitiesPage() {
                                         </p>
                                         {source === "ai" && (
                                             <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-xs text-primary font-medium">
-                                                <Bot className="w-3.5 h-3.5" /> Generado automáticamente por IA
+                                                <Bot className="w-3.5 h-3.5" /> {t("actividades.aiGenerated")}
                                             </div>
                                         )}
                                     </div>
