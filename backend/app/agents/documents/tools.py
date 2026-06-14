@@ -299,7 +299,7 @@ async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, par
             for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
                 db.add(
                     DocumentEmbedding(
-                        document_id=document_id,
+                        document_id=UUID(str(document_id)),
                         tenant_id=UUID(tenant_id),
                         chunk_index=str(i),
                         text_content=chunk.text,

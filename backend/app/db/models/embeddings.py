@@ -11,7 +11,16 @@ class DocumentEmbedding(Base):
     __tablename__ = "document_embeddings"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(String, index=True, nullable=False)
+    # FK a tenant_documents con ON DELETE CASCADE: al borrar un documento sus
+    # embeddings se eliminan en la BD, en CUALQUIER vía de borrado. Antes era un
+    # String sin FK → embeddings huérfanos y el RAG servía chunks de documentos
+    # ya borrados.
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant_documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     tenant_id = Column(UUID(as_uuid=True), index=True, nullable=False)
 
     # NULL = base de conocimiento del tenant (visible para todos los empleados).

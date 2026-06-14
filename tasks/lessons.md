@@ -878,3 +878,36 @@ comprobar SIEMPRE `SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname=<ro
 runtime>`. Si es superusuario, la RLS no existe en la práctica. Y cualquier objeto de
 seguridad creado por migración `upgrade()` necesita un camino equivalente para las BD
 nuevas que arrancan por `create_all`+`stamp`.
+
+---
+
+## 2026-06-14 — Limpieza cross-cutting de filas hijas: FK ON DELETE CASCADE, no parchear N call-sites
+
+**Contexto:** `document_embeddings.document_id` era un `String` SIN foreign key. Al borrar
+un `TenantDocument` los embeddings quedaban huérfanos y el RAG (`cosine_topk`, que filtra
+solo por `tenant_id`, sin join a `tenant_documents`) seguía sirviendo chunks de documentos
+borrados. Y había **varias** vías de borrado (`documents/service.delete_document`,
+`snapshot`, `_contracts`, rutas) — ninguna limpiaba embeddings.
+
+**Patrón antipatrón:** resolver una limpieza que debe ocurrir SIEMPRE que se borra una
+entidad padre parcheando cada call-site de borrado. Es frágil: cualquier vía nueva (o
+existente que se olvidó) reintroduce el huérfano. La integridad referencial es trabajo de
+la BD, no de la disciplina de cada caller.
+
+**Regla de prevención:**
+1. Si las filas hijas deben morir con el padre, modelarlo con **`ForeignKey(..., ondelete=
+   "CASCADE")`** + migración que (a) limpie huérfanos previos, (b) convierta el tipo si la
+   columna no casaba (aquí `String`→`uuid` con `USING document_id::uuid`), (c) añada el FK.
+   Una sola barrera en la BD cubre todas las vías de borrado, presentes y futuras.
+2. **`UUID(as_uuid=True)` exige objetos `uuid.UUID`, NO strings**: el bind processor hace
+   `value.hex` y un str peta con `'str' object has no attribute 'hex'`. Al pasar de una
+   columna `String` a `UUID`, coercer en TODO sitio de escritura (`UUID(str(x))`) y revisar
+   los tests que insertaban con `document_id="marcador"` o `str(uuid4())` — deben pasar
+   `uuid4()`/`UUID(...)`. (Producción solo tenía un punto de creación; el resto eran tests.)
+3. Con CASCADE en la BD, el retrieval no necesita defenderse del huérfano (no puede
+   existir) — menos código y sin coste por query.
+
+**Aplicación:** verificado contra Postgres real con el rol de runtime `pyme_app` y RLS
+activa: borrar el `TenantDocument` elimina sus embeddings por cascade (la policy RLS y los
+grants de `pyme_app` permiten el cascade dentro del tenant). Misma idea aplicable a otras
+columnas `*_id` tipo String sin FK que apunten a entidades borrables.

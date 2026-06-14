@@ -75,7 +75,7 @@ class TestCosineTopkAgainstDB:
         rows = [
             DocumentEmbedding(
                 id=uuid4(),
-                document_id="d-far",
+                document_id=uuid4(),
                 tenant_id=tenant.id,
                 chunk_index="0",
                 text_content="far",
@@ -83,7 +83,7 @@ class TestCosineTopkAgainstDB:
             ),
             DocumentEmbedding(
                 id=uuid4(),
-                document_id="d-mid",
+                document_id=uuid4(),
                 tenant_id=tenant.id,
                 chunk_index="0",
                 text_content="mid",
@@ -91,7 +91,7 @@ class TestCosineTopkAgainstDB:
             ),
             DocumentEmbedding(
                 id=uuid4(),
-                document_id="d-near",
+                document_id=uuid4(),
                 tenant_id=tenant.id,
                 chunk_index="0",
                 text_content="near",
@@ -123,12 +123,12 @@ class TestCosineTopkAgainstDB:
         db.add_all(
             [
                 DocumentEmbedding(
-                    id=uuid4(), document_id="a", tenant_id=tenant_a.id,
+                    id=uuid4(), document_id=uuid4(), tenant_id=tenant_a.id,
                     chunk_index="0", text_content="A doc",
                     embedding=[1.0, 0.0, 0.0],
                 ),
                 DocumentEmbedding(
-                    id=uuid4(), document_id="b", tenant_id=tenant_b.id,
+                    id=uuid4(), document_id=uuid4(), tenant_id=tenant_b.id,
                     chunk_index="0", text_content="B doc",
                     embedding=[1.0, 0.0, 0.0],
                 ),
