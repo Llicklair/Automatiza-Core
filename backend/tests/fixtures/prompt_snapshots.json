@@ -23,7 +23,7 @@
   "app/prompts/excel_agent.txt": "0912962d062312ae1221fc0341909e520ffe4cf709830b16575e6e578abbf761",
   "app/prompts/generative_ui.txt": "005d83c576f2aeb9db5370be72eaaf4a8aa1b55962cdfb0dcd22bacff9806934",
   "app/prompts/hr_documents.txt": "1154222991b70198062fc45915a7a1222ef8c9fbf5985e7d90fe02d5f63619a6",
-  "app/prompts/marketing_agent.txt": "cc8add6ef02d315dc40d94929c10c072978093f4e3acdb2659e5499baed3f0f6",
+  "app/prompts/marketing_agent.txt": "d6ddea525d9ffb1aaeb4fc016c27a10478f3fcd3639f88166529798754f90a22",
   "app/prompts/rag_agent.txt": "4a307e4649c7c8bbc7e2a653f1993fd3de147f14a9888148e582390e1e65acc0",
   "app/prompts/recruitment_agent.txt": "23ebf3c05664665e615e2ee31ff2707d55b795f2bdddd30c5af10dc4c0be97fc",
   "app/prompts/workflow_agent.txt": "baf9cbefd7149926c3ed899399056ad145f1b29cbd93c21c5092ab32eb1c6adf",
