@@ -97,7 +97,7 @@ class TenantDocument(Base):
 class TenantOnboarding(Base):
     """Estado del wizard de onboarding focado (UI.ONB).
 
-    Un registro por tenant. 4 pasos booleanos + timestamps. La FSM no es
+    Un registro por tenant. 5 pasos booleanos + timestamps. La FSM no es
     estricta — los pasos pueden completarse en cualquier orden o saltarse.
     """
 
@@ -109,6 +109,9 @@ class TenantOnboarding(Base):
     step_cert = Column(Boolean, nullable=False, default=False)
     step_data = Column(Boolean, nullable=False, default=False)
     step_use_case = Column(Boolean, nullable=False, default=False)
+    # BYOK: el usuario configura su clave de IA (proveedor + api_key). Se
+    # auto-marca desde la readiness real del tenant (ver wizard.sync_llm_config_step).
+    step_llm_config = Column(Boolean, nullable=False, default=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     skipped_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)

@@ -5,8 +5,11 @@ from app.services.onboarding.wizard import (
     reset,
     set_step,
     skip_to_end,
+    sync_llm_config_step,
     to_dict,
 )
+
+_ALL_STEPS = ("company", "cert", "data", "use_case", "llm_config")
 
 
 @pytest.mark.asyncio
@@ -21,6 +24,7 @@ class TestWizard:
         assert record.step_cert is False
         assert record.step_data is False
         assert record.step_use_case is False
+        assert record.step_llm_config is False
         assert record.completed_at is None
         assert record.skipped_at is None
 
@@ -33,14 +37,24 @@ class TestWizard:
         assert record.step_company is True
         assert record.step_cert is False
 
-    async def test_completar_los_4_setea_completed_at(self, db, seed_tenant_and_user):
+    async def test_completar_los_5_setea_completed_at(self, db, seed_tenant_and_user):
+        tenant, _u, _t = seed_tenant_and_user
+
+        for step in _ALL_STEPS:
+            record = await set_step(db, tenant_id=tenant.id, step=step, value=True)
+        await db.commit()
+
+        assert record.completed_at is not None
+
+    async def test_completar_4_sin_llm_no_completa(self, db, seed_tenant_and_user):
+        """El paso BYOK (llm_config) es obligatorio para completar el onboarding."""
         tenant, _u, _t = seed_tenant_and_user
 
         for step in ("company", "cert", "data", "use_case"):
             record = await set_step(db, tenant_id=tenant.id, step=step, value=True)
         await db.commit()
 
-        assert record.completed_at is not None
+        assert record.completed_at is None  # falta llm_config
 
     async def test_completed_at_no_se_resetea_al_revertir(
         self, db, seed_tenant_and_user
@@ -48,7 +62,7 @@ class TestWizard:
         tenant, _u, _t = seed_tenant_and_user
 
         # Completar todos
-        for step in ("company", "cert", "data", "use_case"):
+        for step in _ALL_STEPS:
             await set_step(db, tenant_id=tenant.id, step=step, value=True)
         await db.commit()
 
@@ -88,11 +102,13 @@ class TestWizard:
         tenant, _u, _t = seed_tenant_and_user
 
         await set_step(db, tenant_id=tenant.id, step="company", value=True)
+        await set_step(db, tenant_id=tenant.id, step="llm_config", value=True)
         await skip_to_end(db, tenant_id=tenant.id)
         record = await reset(db, tenant_id=tenant.id)
         await db.commit()
 
         assert record.step_company is False
+        assert record.step_llm_config is False
         assert record.skipped_at is None
         assert record.completed_at is None
 
@@ -102,7 +118,37 @@ class TestWizard:
         record = await get_state(db, tenant_id=tenant.id)
         out = to_dict(record)
         assert out["is_dismissed"] is False
+        assert out["step_llm_config"] is False  # incluido en la salida
 
         await skip_to_end(db, tenant_id=tenant.id)
         out2 = to_dict(record)
         assert out2["is_dismissed"] is True
+
+    async def test_sync_marca_step_si_ai_ready(
+        self, db, seed_tenant_and_user, monkeypatch
+    ):
+        """`sync_llm_config_step` auto-marca el paso si la IA está lista (BYOK)."""
+        tenant, _u, _t = seed_tenant_and_user
+
+        async def _fake_ready(_db, _tid):
+            return {"ai_ready": True}
+
+        monkeypatch.setattr("app.services.tenant_service.get_llm_config", _fake_ready)
+        record = await sync_llm_config_step(db, tenant_id=tenant.id)
+        await db.commit()
+
+        assert record.step_llm_config is True
+
+    async def test_sync_no_marca_si_ai_no_ready(
+        self, db, seed_tenant_and_user, monkeypatch
+    ):
+        tenant, _u, _t = seed_tenant_and_user
+
+        async def _fake_not_ready(_db, _tid):
+            return {"ai_ready": False}
+
+        monkeypatch.setattr("app.services.tenant_service.get_llm_config", _fake_not_ready)
+        record = await sync_llm_config_step(db, tenant_id=tenant.id)
+        await db.commit()
+
+        assert record.step_llm_config is False
