@@ -3,7 +3,6 @@ from sqlalchemy import Integer
 from .common import (
     UUID,
     Base,
-    Boolean,
     Column,
     DateTime,
     ForeignKey,

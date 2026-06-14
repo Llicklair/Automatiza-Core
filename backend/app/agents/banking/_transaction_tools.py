@@ -8,8 +8,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 
 from app.agents.banking._psd2_helpers import _DEMO_TXS, ALERT_THRESHOLDS
-from app.services.banking.psd2 import get_psd2_credentials as _get_psd2_credentials
 from app.core.llm_factory import get_llm
+from app.services.banking.psd2 import get_psd2_credentials as _get_psd2_credentials
 
 logger = logging.getLogger(__name__)
 

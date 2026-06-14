@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 from app.core.paths import app_data_dir
 
 logger = logging.getLogger(__name__)

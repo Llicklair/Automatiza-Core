@@ -12,7 +12,6 @@ import io
 import os
 import re as _re
 
-
 _PDF_STYLESHEET = """
 @page {
   size: A4;

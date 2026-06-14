@@ -7,11 +7,13 @@ import logging
 
 from langchain_core.tools import tool
 
-from app.services.email.service import read_inbox, read_unread, send_email_smtp
 from app.services.email.sender import (
     load_attachments as _load_attachments,
+)
+from app.services.email.sender import (
     resolve_smtp_attachments as _resolve_smtp_attachments,
 )
+from app.services.email.service import read_inbox, read_unread, send_email_smtp
 
 logger = logging.getLogger(__name__)
 

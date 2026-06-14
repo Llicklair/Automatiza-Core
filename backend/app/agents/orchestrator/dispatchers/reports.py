@@ -11,7 +11,6 @@ from datetime import UTC, date, datetime
 from sqlalchemy import and_, func, select
 
 from app.agents.orchestrator.state import AgentResult, OrchestratorState
-from app.services.orchestration import extract_month_year
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import (
     BankTransaction,
@@ -22,6 +21,7 @@ from app.db.models.models import (
     Tenant,
     TenantDocument,
 )
+from app.services.orchestration import extract_month_year
 from app.services.pdf import generate_snapshot_pdf
 
 logger = logging.getLogger(__name__)
