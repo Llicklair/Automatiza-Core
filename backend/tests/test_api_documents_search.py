@@ -33,12 +33,12 @@ class TestDocumentsSearch:
         db.add_all(
             [
                 DocumentEmbedding(
-                    id=uuid4(), document_id=str(uuid4()), tenant_id=tenant.id,
+                    id=uuid4(), document_id=uuid4(), tenant_id=tenant.id,
                     chunk_index="0", text_content="contrato cercano",
                     embedding=[0.9, 0.1, 0.0],
                 ),
                 DocumentEmbedding(
-                    id=uuid4(), document_id=str(uuid4()), tenant_id=tenant.id,
+                    id=uuid4(), document_id=uuid4(), tenant_id=tenant.id,
                     chunk_index="0", text_content="lejano",
                     embedding=[-1.0, 0.0, 0.0],
                 ),
@@ -66,7 +66,7 @@ class TestDocumentsSearch:
         # Embedding solo del tenant B — el auth_client (tenant A) no debe verlo.
         db.add(
             DocumentEmbedding(
-                id=uuid4(), document_id=str(uuid4()), tenant_id=tenant_b.id,
+                id=uuid4(), document_id=uuid4(), tenant_id=tenant_b.id,
                 chunk_index="0", text_content="documento ajeno",
                 embedding=[1.0, 0.0, 0.0],
             )
