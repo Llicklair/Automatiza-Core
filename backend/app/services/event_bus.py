@@ -44,8 +44,17 @@ async def emit_event(
     event_name: str,
     context: dict[str, Any] | None = None,
 ) -> list[str]:
-    """
-    Emite un evento de negocio, lo persiste y dispara todos los workflows asociados.
+    """Emite un evento de negocio, lo persiste y dispara los workflows asociados.
+
+    ⚠️ CONTRATO TRANSACCIONAL: esta función hace `await db.commit()` sobre la
+    sesión recibida — es necesario para que el DomainEvent + Task +
+    WorkflowExecution persistan y el worker pueda cargar la Task que se despacha.
+    Por tanto CONFIRMA TAMBIÉN cualquier cambio pendiente que el caller tuviera
+    en `db`. Llama a emit_event SOLO cuando tus escrituras de negocio ya estén
+    finalizadas (o pásale una sesión dedicada); NO la uses a mitad de una
+    transacción que debas poder revertir luego. (Acoplamiento transaccional
+    conocido — refactor a savepoint pendiente, ver
+    docs/architecture/information-flow.md §6.)
     """
     context = context or {}
 
