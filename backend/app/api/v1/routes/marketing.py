@@ -311,8 +311,18 @@ async def oauth_callback(
     else:
         try:
             account_id_str, account_name = await _fetch_profile(platform, access_token)
-        except Exception:
-            account_id_str, account_name = "", ""
+        except Exception as e:
+            # No persistir una cuenta 'unknown' fantasma (ni duplicarla al reconectar):
+            # abortar con popup de error si no podemos identificar la cuenta.
+            _log_oauth_error(f"profile:{platform}", e)
+            return _popup_html(
+                False, message=f"No se pudo obtener el perfil de {platform}: {e!r}"
+            )
+        if not account_id_str:
+            return _popup_html(
+                False,
+                message=f"No se pudo identificar la cuenta de {platform}; reinténtalo.",
+            )
 
     # Upsert: si ya existe una cuenta para esta plataforma+account_id, actualiza el token
     existing = await db.execute(

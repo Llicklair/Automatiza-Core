@@ -82,7 +82,7 @@ Estado: ⬜ pendiente · 🟡 fallo detectado / en arreglo · ✅ validado y con
 | **Ventas/Compras** | Pedido → albarán (reversa stock) → factura | ⬜ | — | |
 | **POS/TPV** | Abrir sesión → venta → cierre | ⬜ | — | |
 | **Compliance / AEAT** | Generar modelo 303/130 → **plantilla oficial** → presentación asistida | ⬜ | — | **plantilla debe ser la oficial → ver restructuracion-modulos.md** |
-| **Marketing** | Conectar red (OAuth) → crear campaña/post → publicar/programar | 🟡 | `test_e2e_marketing_publish.py`, `test_email_campaign_worker.py` | bugs #2 (publish 200 al fallar) y #3 (email-mkt 0 fallos) **arreglados**; quedan #1 (front), OAuth → `restructuracion-modulos.md` |
+| **Marketing** | Conectar red (OAuth) → crear campaña/post → publicar/programar | 🟡 | `test_e2e_marketing_publish.py`, `test_email_campaign_worker.py`, `test_marketing_oauth_callback.py` | bugs #2 (publish), #3 (email), #4 (OAuth `unknown`) **arreglados**; queda #1 front + menores (#5/#6/#7/#8) → `restructuracion-modulos.md` |
 | **Email marketing** | Lista → campaña → envío | ⬜ | — | |
 | **Documentos / RAG** | Subir documento → clasificar → preguntar (cita a página) | ⬜ | — | |
 | **Empleados IA** | Crear empleado IA desde NL → asignar skills → ejecutar | ⬜ | — | |
@@ -133,6 +133,13 @@ Actualiza esta línea base conforme se añadan tests de flujo real, para ver el 
 ---
 
 ## Registro de iteraciones
+
+### 2026-06-15 · Marketing OAuth · no crear cuentas 'unknown' (red→green)
+- **Cómo se simuló**: test de integración del callback (`GET /marketing/oauth/callback`) con `_exchange_token` ok y `_fetch_profile` que lanza.
+- **Fallo detectado** (🔴): para twitter/linkedin, un fallo de perfil se tragaba (`account_id_str=""`) y el upsert creaba una cuenta `account_id='unknown'` fantasma; reconectar la duplicaba. `routes/marketing.py:311-340`.
+- **Arreglo**: el callback **aborta con popup de error** si `_fetch_profile` falla o no devuelve id — no persiste nada.
+- **Test que lo blinda**: `tests/test_marketing_oauth_callback.py` (red→green ✔). Suite marketing/oauth/publisher: **87 passed**, sin regresión.
+- **Estado tabla §4**: 🟡 (queda #1 "Publicar ahora" en el front → Playwright).
 
 ### 2026-06-15 · Email-marketing · contar fallos de envío (red→green)
 - **Cómo se simuló**: test de servicio — campaña con 2 destinatarios y un tenant **sin credenciales de email** → `send_campaign`.
