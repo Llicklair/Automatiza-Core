@@ -4,6 +4,27 @@
 
 ---
 
+## 0. Terminología canónica
+
+Dos parejas de términos que se confunden a menudo. **Esta es la fuente única de verdad** (referenciada desde `README.md` y `CLAUDE.md`):
+
+| Concepto (jerga README) | Vive en el código | Qué hace |
+|---|---|---|
+| **Coordinador** (capa media) | `agents/orchestrator/` | Descompone UNA instrucción puntual: Classify → Plan → Validate → Dispatch. One-shot. |
+| **Orquestador** (capa superior) | `services/workflow/` | Workflows persistentes + scheduler + recovery. Multi-ejecución. |
+
+El directorio se llama `orchestrator/` por deuda histórica de naming (renombrarlo tocaría 200+ usos); **léase siempre como "Coordinador"**.
+
+Además, **no todo lo que cuelga de `agents/` es un agente de dominio**:
+
+| Bajo `agents/` | Es… |
+|---|---|
+| `accounting`, `banking`, … `workflow` (14) | **Agentes de dominio** (cada uno con su `graph`). |
+| `orchestrator/` | El **Coordinador**. |
+| `agent_tools/`, `shared/`, `base.py`, `types.py`, `tool_registry.py`, `tenant_context.py` | **Infraestructura compartida**, importable por cualquier agente. |
+
+---
+
 ## 1. Capas del sistema — Fronteras estrictas
 
 ```
@@ -67,24 +88,32 @@ Cada agente debe respetar esta estructura. Sin excepciones.
 ```
 agents/
 └── <domain>/
-    ├── __init__.py       ← exporta solo: run_agent()
-    ├── agent.py          ← LangGraph/LangChain graph + run_agent(input, tenant_id) → AgentResult
-    ├── tools.py          ← lista de tools declaradas al LLM (solo @tool + docstring)
+    ├── __init__.py       ← exporta el `graph` compilado + las funciones `@tool` del dominio
+    ├── agent.py          ← define y compila el LangGraph `graph` (estado + nodos)
+    ├── tools.py          ← tools declaradas al LLM (solo @tool + docstring)
     ├── prompts.py        ← SYSTEM_PROMPT y constantes de texto. Nada de lógica.
     └── _*.py             ← implementación privada. Prefijo _ = no importar desde fuera.
 ```
 
-### Firma obligatoria de `run_agent`
+### Cómo se invoca un agente
+
+El Coordinador **no** llama a una función `run_agent` por dominio. Despacha sobre el
+`graph` compilado del dominio a través de `DISPATCHER_MAP`
+(`agents/orchestrator/dispatchers/`), usando la entrada pública
+`invoke_dispatcher(state, subtask, agent_name)`:
 
 ```python
-async def run_agent(
-    instruction: str,
-    tenant_id: int,
-    db: AsyncSession,
-    context: dict | None = None,
-) -> AgentResult:
-    ...
+# patrón real de dispatch (agents/orchestrator/dispatchers/<domain>.py)
+from app.agents.billing import graph        # superficie pública del dominio
+result_state = await graph.ainvoke(enriched_state)
+# el dispatcher normaliza el result_state a AgentResult
 ```
+
+**Excepciones legítimas al patrón `graph`** (documentadas, no violaciones):
+- `email` expone `run_email_agent(...)` y `workflow` expone `run_workflow_agent(...)`,
+  que devuelven dataclasses tipadas propias.
+- `marketing` expone además `run_agent(prompt, tenant_id)` consumido por una **ruta**,
+  no por el dispatcher.
 
 ```python
 # agents/base.py — usar siempre este tipo de retorno
@@ -95,7 +124,7 @@ class AgentResult(BaseModel):
     error: str | None = None
 ```
 
-**Regla**: `run_agent` es la única función pública de cada agente. Los `_tools` son detalles de implementación. Nada externo los importa directamente.
+**Regla**: la superficie pública de un agente de dominio es su `graph` compilado y sus `@tool` (registradas en `agents/tool_registry.py`). Los `_*.py` privados no se importan desde fuera del dominio. Ningún agente de dominio importa a otro: la coordinación ocurre en el Coordinador vía `DISPATCHER_MAP`.
 
 ---
 
@@ -106,10 +135,14 @@ class AgentResult(BaseModel):
 from app.agents.billing._invoice_tools import create_invoice
 from app.agents.hr._employee_tools import get_employee
 
-# ✅ CORRECTO: comunicación solo a través del orquestador o servicios compartidos
-from app.agents.billing import run_agent as billing_agent
-result = await billing_agent(instruction, tenant_id, db)
+# ✅ CORRECTO: la coordinación entre dominios la hace el Coordinador, no un agente.
+#    Un dominio nunca importa a otro; si comparten lógica, vive en services/.
+#    El Coordinador despacha por el grafo registrado en DISPATCHER_MAP:
+from app.agents.orchestrator import invoke_dispatcher
+result = await invoke_dispatcher(state, subtask, "billing")
 ```
+
+**Matiz (norma redefinida)**: la prohibición aplica a los **agentes de dominio** (`billing`, `hr`, `crm`, …): ninguno importa a otro ni a sus `_tools` privados. **Sí** pueden importar la **infraestructura compartida que vive bajo `agents/`** — `agents/agent_tools/`, `agents/shared/`, `agents/base.py`, `agents/types.py`, `agents/tool_registry.py`, `agents/tenant_context.py` (ver §0) — porque no son agentes de dominio sino la capa de soporte. (Las ~96 aristas «agent→agent» que reporta el grafo de código son, en su mayoría, imports a esta infra o dispatch legítimo del Coordinador, no violaciones.)
 
 Si dos agentes necesitan el mismo dato, ese dato pertenece a un **servicio compartido** en `services/`:
 
@@ -161,6 +194,14 @@ async def create_invoice(body: ..., db: ...):
     await db.commit()
     ...
 ```
+
+**Umbral (norma aclarada)**: una ruta **puede** ejecutar consultas **read-only** (`select(...)`) para componer su respuesta cuando no hay lógica de negocio que delegar — esto es tolerable y hoy lo hacen ~42 rutas. Lo que una ruta **nunca** hace:
+
+- `db.add` / `db.commit` / `db.flush` / `db.delete` (mutar estado),
+- orquestar una transacción de varios pasos,
+- aplicar reglas de negocio (cálculos fiscales, validaciones de dominio).
+
+Eso pertenece a un **servicio de dominio** o a un **agente**. Backlog de saneamiento (rutas que hoy mutan en la propia ruta, ~14): priorizar `marketing.py`, `email_marketing.py`, luego `onboarding_*`, `treasury.py`, `tenant.py`.
 
 ---
 

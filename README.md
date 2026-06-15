@@ -2,7 +2,7 @@
 
 > **ERP español con IA agentica e instalación local.** Una plataforma completa de gestión empresarial (facturación, contabilidad, banca, CRM, RRHH, compliance fiscal) donde el usuario opera en **lenguaje natural** y agentes especializados ejecutan las acciones contra una base de datos que vive en su propia máquina.
 
-**Estado**: pre-producción · 67.350 LOC backend · 13 agentes · 48+ rutas API · 80+ páginas frontend · cumplimiento Verifactu
+**Estado**: pre-producción · 67.350 LOC backend · 14 agentes · 69 rutas API · 109 páginas frontend · cumplimiento Verifactu
 
 ---
 
@@ -189,13 +189,13 @@ Para clientes con requisitos estrictos (ciberseguridad, legal sensible, sanitari
 ┌──────────────────────────────────────────────────────────────────────┐
 │                  AGENTES ESPECIALIZADOS (capa base)                  │
 │                                                                      │
-│  13 agentes de dominio, cada uno con su LangGraph propio:            │
+│  14 agentes de dominio, cada uno con su LangGraph propio:            │
 │                                                                      │
-│  accounting │ banking    │ billing   │ compliance │ crm              │
-│  documents  │ email      │ excel     │ hr         │ marketing        │
-│  rag        │ recruitment│ workflow                                  │
+│  accounting · banking · billing · compliance · crm                   │
+│  documents · email · excel · hr · inventory                          │
+│  marketing · rag · recruitment · workflow                            │
 │                                                                      │
-│  Cada agente expone una función pública: run_agent(...) → AgentResult│
+│  Superficie pública por dominio: el grafo compilado + sus @tools     │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -706,7 +706,7 @@ que la instalada.
 ### Tests
 
 ```bash
-pytest tests/ -v                       # Suite completa (113 tests)
+pytest tests/ -v                       # Suite completa (215 ficheros de test)
 pytest tests/test_routing_seam.py -v   # Costuras críticas de routing
 pytest --cov=app --cov-report=term     # Con cobertura
 
@@ -735,7 +735,7 @@ cd frontend && npm run test:a11y       # Accesibilidad (axe-core)
 |---|---|
 | **Inferencia LLM cloud** | El contenido del usuario se envía al proveedor LLM configurado. Para clientes con requisitos estrictos de no-cloud, hay que reintegrar Ollama o LLM autohospedado (1–2 días de trabajo). |
 | **Sin clientes en producción** | A fecha de este README, el sistema está validado en testing pero no ha cerrado un ciclo fiscal real con AEAT. |
-| **Cobertura de tests baja** | 113 tests para 67K LOC backend (~0.17%). El seam crítico de routing está cubierto, el resto no. |
+| **Cobertura de tests baja** | 215 ficheros de test (~2.100 funciones) para 67K LOC backend. El seam crítico de routing está cubierto, el resto no. |
 | **Carga inicial de BAAI/bge-m3** | ~30s la primera vez (descarga ~600MB) |
 | **Cron muy frecuentes** | `*/2 * * * *` o más frecuente puede saturar si la tarea es larga |
 | **Groq tier gratuito** | Rate limit agresivo; usar Anthropic o Gemini en producción |
@@ -753,7 +753,7 @@ cd frontend && npm run test:a11y       # Accesibilidad (axe-core)
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Reglas de arquitectura, contrato `run_agent()`, capas, convenciones de código |
 | [CLAUDE.md](CLAUDE.md) | Reglas para asistentes IA (Claude Code) que trabajan en este repo |
-| [AGENTS.md](AGENTS.md) | Detalle de los 13 agentes especializados |
+| [AGENTS.md](AGENTS.md) | Detalle de los 14 agentes especializados |
 | [SCOPE.md](SCOPE.md) | Alcance funcional histórico |
 | [MARKETING.md](MARKETING.md) | Mensajes y positioning |
 | [tasks/roadmap.md](tasks/roadmap.md) | Roadmap detallado por sprints |
@@ -790,4 +790,4 @@ cd frontend && npm run test:a11y       # Accesibilidad (axe-core)
 
 ---
 
-*Última actualización: 2026-05-17 · 13 agentes · 48 rutas · 23 modelos · 30+ migraciones · 113 tests + E2E Playwright*
+*Última actualización: 2026-06-15 · 14 agentes · 69 rutas · 96 clases ORM · 60 migraciones · 215 ficheros de test + E2E Playwright*

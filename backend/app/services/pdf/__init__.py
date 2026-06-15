@@ -10,15 +10,6 @@ all work seamlessly.
 
 # ── HR documents ────────────────────────────────────────────────────────────
 # ── Base utilities (re-exported for legacy pdf_service importers) ─────────────
-from app.services.documents._pdf_base import (  # noqa: F401
-    REPORTLAB_AVAILABLE,
-    _common_styles,
-    _fmt_eur,
-    _format_date,
-    _make_doc,
-    _table_header_style,
-)
-
 # ── Albaranes ───────────────────────────────────────────────────────────────
 from app.services.pdf.albaranes import generate_albaran_pdf  # noqa: F401
 from app.services.pdf.hr import (  # noqa: F401
@@ -40,6 +31,14 @@ from app.services.pdf.parser import (  # noqa: F401
     ParsedDocument,
     ParsedElement,
     parse_pdf,
+)
+from app.services.pdf.pdf_base import (  # noqa: F401
+    REPORTLAB_AVAILABLE,
+    _common_styles,
+    _fmt_eur,
+    _format_date,
+    _make_doc,
+    _table_header_style,
 )
 
 # ── Reports (lazy re-export para evitar ciclo pdf ↔ pdf_reports) ────────────

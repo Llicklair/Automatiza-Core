@@ -20,13 +20,16 @@ Public surface (verificado con grep contra app/ + tests/):
   - orchestrator       (workers/tasks_orchestrator.py)
   - OrchestratorState  (workers/tasks_orchestrator.py)
   - TaskStatus         (services/ai/node_graph_helpers.py, workers/*)
+  - invoke_dispatcher  (services/workflow/_execution.py, services/ai/node_dispatch.py)
 """
 
 from app.agents.orchestrator._core import orchestrator
+from app.agents.orchestrator._dispatch_handlers import invoke_dispatcher
 from app.agents.orchestrator.state import OrchestratorState, TaskStatus
 
 __all__ = [
     "orchestrator",
     "OrchestratorState",
     "TaskStatus",
+    "invoke_dispatcher",
 ]

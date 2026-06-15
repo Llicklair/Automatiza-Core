@@ -1,4 +1,4 @@
-"""Tests del wrapper de métricas en _invoke_dispatcher.
+"""Tests del wrapper de métricas en invoke_dispatcher.
 
 Valida que:
 - AgentResult con success=True → status "success"
@@ -11,6 +11,7 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
+
 from app.agents.orchestrator import _dispatch_handlers
 
 
@@ -34,7 +35,7 @@ async def test_records_success_when_result_success_true(captured_runs, monkeypat
 
     monkeypatch.setattr(_dispatch_handlers, "_invoke_dispatcher_impl", fake_impl)
 
-    await _dispatch_handlers._invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "billing")
+    await _dispatch_handlers.invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "billing")
 
     assert len(captured_runs) == 1
     agent, status, duration = captured_runs[0]
@@ -49,7 +50,7 @@ async def test_records_failed_when_result_success_false(captured_runs, monkeypat
 
     monkeypatch.setattr(_dispatch_handlers, "_invoke_dispatcher_impl", fake_impl)
 
-    await _dispatch_handlers._invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "hr")
+    await _dispatch_handlers.invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "hr")
 
     assert captured_runs[0][1] == "failed"
 
@@ -61,7 +62,7 @@ async def test_records_timeout_and_reraises(captured_runs, monkeypatch):
     monkeypatch.setattr(_dispatch_handlers, "_invoke_dispatcher_impl", fake_impl)
 
     with pytest.raises(asyncio.TimeoutError):
-        await _dispatch_handlers._invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "documents")
+        await _dispatch_handlers.invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "documents")
 
     assert captured_runs[0][1] == "timeout"
 
@@ -73,7 +74,7 @@ async def test_records_error_and_reraises(captured_runs, monkeypatch):
     monkeypatch.setattr(_dispatch_handlers, "_invoke_dispatcher_impl", fake_impl)
 
     with pytest.raises(RuntimeError, match="boom"):
-        await _dispatch_handlers._invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "email")
+        await _dispatch_handlers.invoke_dispatcher({"tenant_id": "t"}, {"id": "x"}, "email")
 
     # Sin manejo explícito, el status default "error" persiste.
     assert captured_runs[0][1] == "error"

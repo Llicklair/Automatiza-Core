@@ -1,6 +1,6 @@
 """Generación de PDF borrador imprimible para los modelos AEAT 130/111/190/347/390.
 
-Reutiliza los helpers de reportlab de `_fiscal_modelo303.py` / `_pdf_base.py`.
+Reutiliza los helpers de reportlab de `_fiscal_modelo303.py` / `pdf_base.py`.
 Cada PDF es un BORRADOR informativo (no válido para presentación), pensado para
 descargar e imprimir con los datos del tenant. Defensivo: tolera campos ausentes.
 """
@@ -11,7 +11,7 @@ import io
 import logging
 from datetime import datetime
 
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _common_styles,
     _make_doc,

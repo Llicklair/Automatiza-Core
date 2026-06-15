@@ -78,7 +78,7 @@ def build_schedules_xlsx(grid: list[dict]) -> bytes:
 
 def build_schedules_pdf(grid: list[dict], company_name: str = "") -> bytes:
     """PDF apaisado-friendly con tabla de horarios semanales."""
-    from app.services.documents._pdf_base import (
+    from app.services.pdf.pdf_base import (
         REPORTLAB_AVAILABLE,
         _trad_table_style,
         _traditional_styles,

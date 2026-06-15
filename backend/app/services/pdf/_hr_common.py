@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
 )
 

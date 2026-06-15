@@ -3,7 +3,7 @@ Renderer de informes PDF generados por agentes IA.
 
 El agente devuelve un objeto Report (JSON validado con Pydantic) y este
 módulo lo convierte en un PDF profesional con la paleta corporativa
-definida en _pdf_base.py.
+definida en pdf_base.py.
 
 Soporta: KPIs, tablas, callouts (info/warning/success/danger) y gráficos
 (bar/line/pie) por sección.
@@ -19,7 +19,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _common_styles,
     _make_doc,

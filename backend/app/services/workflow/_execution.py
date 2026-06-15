@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.agents.orchestrator._dispatch_handlers import _invoke_dispatcher
+from app.agents.orchestrator import invoke_dispatcher
 from app.agents.tool_registry import call_tool
 from app.db.models import models
 from app.services.workflow.task_dispatch import (
@@ -353,7 +353,7 @@ async def _run_reasoning_step(
     try:
         # Routing unificado: built-in DISPATCHER_MAP → skill → AIEmployee custom.
         # Misma fuente que el orquestador, así los workflows reconocen agentes custom.
-        result = await _invoke_dispatcher(base_state, subtask, agent_name)
+        result = await invoke_dispatcher(base_state, subtask, agent_name)
         output_data = result.get("output", {})
         new_prev = (
             output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)
