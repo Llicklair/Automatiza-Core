@@ -136,3 +136,15 @@ async def send_email(
             return "[SIN CREDENCIALES] No hay proveedor de email configurado para este tenant."
     except Exception as e:
         return f"Error al enviar correo: {e}"
+
+
+# send_email NO lanza: comunica el resultado como string. Un FALLO empieza por una
+# de estas marcas; cualquier otro retorno (incluido None de un mock, o
+# "Correo enviado via …") se considera ÉXITO. Lo usa send_campaign para contar
+# correctamente sent vs failed (antes contaba como enviado todo lo que no lanzara).
+_SEND_ERROR_PREFIXES = ("Error", "[SIN CREDENCIALES]")
+
+
+def send_failed(result: object) -> bool:
+    """True si el string devuelto por send_email indica un fallo de envío."""
+    return isinstance(result, str) and result.startswith(_SEND_ERROR_PREFIXES)
