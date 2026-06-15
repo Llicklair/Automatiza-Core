@@ -1,6 +1,6 @@
 """Generadores PDF de Libros Contables Oficiales: Diario, Mayor, Balance, P&G.
 
-Reusa los helpers de `app.services.documents._pdf_base`. Diseño sobrio
+Reusa los helpers de `app.services.pdf.pdf_base`. Diseño sobrio
 orientado a presentar/legalizar (no diseño comercial).
 """
 

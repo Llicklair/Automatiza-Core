@@ -1,11 +1,11 @@
 """
 PDF generation for albaranes (delivery notes).
-Uses the same _pdf_base infrastructure as pdf_invoices.py.
+Uses the same pdf_base infrastructure as pdf_invoices.py.
 """
 
 import io
 
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     build_theme,
     table_style_commands,

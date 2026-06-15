@@ -2,14 +2,14 @@
 
 import io
 
-from app.services.documents._pdf_base import (
+from app.services.pdf._hr_common import _eur, _generate_simple_text, _make_hr_doc
+from app.services.pdf.pdf_base import (
     _TRAD_BORDER,
     REPORTLAB_AVAILABLE,
     _format_date,
     _trad_table_style,
     _traditional_styles,
 )
-from app.services.pdf._hr_common import _eur, _generate_simple_text, _make_hr_doc
 
 if REPORTLAB_AVAILABLE:
     from reportlab.lib.enums import TA_RIGHT

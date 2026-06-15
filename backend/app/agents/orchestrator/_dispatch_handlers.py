@@ -252,11 +252,15 @@ async def _invoke_dispatcher_impl(
     }
 
 
-async def _invoke_dispatcher(
+async def invoke_dispatcher(
     enriched_state: dict, subtask: dict, agent_name: str
 ) -> AgentResult:
-    """Wrapper que instrumenta latencia y status de cada invocación de agente.
-    El routing real está en _invoke_dispatcher_impl."""
+    """Entrada pública del Coordinador para invocar un agente (builtin/dinámico).
+
+    Es la superficie pública que consumen las capas de orquestación
+    (`services/workflow`, `services/ai`) sin acoplarse a internals del agente.
+    Instrumenta latencia y status; el routing real está en
+    `_invoke_dispatcher_impl`."""
     import time
 
     from app.core.observability import record_agent_run
@@ -293,7 +297,7 @@ async def _execute_one(
 
     for attempt in range(2):
         try:
-            result = await _invoke_dispatcher(enriched_state, subtask, agent_name)
+            result = await invoke_dispatcher(enriched_state, subtask, agent_name)
             return idx, subtask, result
         except TimeoutError:
             if attempt == 0:

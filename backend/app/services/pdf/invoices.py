@@ -4,7 +4,14 @@ Generación de PDFs de facturación: factura estándar, rectificativa y con rete
 
 import io
 
-from app.services.documents._pdf_base import (
+from app.services.pdf._invoice_sections import (
+    _generate_simple_text_pdf,
+    _invoice_lines_table,
+    _simple_header,
+    _themed_header,
+    _verifactu_qr_block,
+)
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _client_block,
     _common_styles,
@@ -13,13 +20,6 @@ from app.services.documents._pdf_base import (
     _make_doc,
     _table_header_style,
     build_theme,
-)
-from app.services.pdf._invoice_sections import (
-    _generate_simple_text_pdf,
-    _invoice_lines_table,
-    _simple_header,
-    _themed_header,
-    _verifactu_qr_block,
 )
 
 if REPORTLAB_AVAILABLE:

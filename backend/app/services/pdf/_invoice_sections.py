@@ -9,7 +9,7 @@ I18N.PDF: cada helper acepta `locale` opcional (default `es`) y usa
 """
 
 from app.i18n import translate
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _format_date,
     _table_header_style,

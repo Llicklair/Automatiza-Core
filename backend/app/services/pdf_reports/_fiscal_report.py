@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 _logger = logging.getLogger(__name__)
 
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _fmt_eur,
 )

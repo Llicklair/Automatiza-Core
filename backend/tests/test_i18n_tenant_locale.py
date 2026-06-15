@@ -65,7 +65,7 @@ class TestResolveLocale:
 
 def test_invoice_lines_table_acepta_locale():
     """Smoke: el helper de _invoice_sections acepta `locale` y no lanza."""
-    from app.services.documents._pdf_base import REPORTLAB_AVAILABLE
+    from app.services.pdf.pdf_base import REPORTLAB_AVAILABLE
     if not REPORTLAB_AVAILABLE:
         pytest.skip("reportlab no disponible en test env")
     from app.services.pdf._invoice_sections import _invoice_lines_table

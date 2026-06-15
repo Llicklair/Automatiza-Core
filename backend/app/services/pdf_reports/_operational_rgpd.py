@@ -8,7 +8,7 @@ from datetime import datetime
 
 _logger = logging.getLogger(__name__)
 
-from app.services.documents._pdf_base import (
+from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _common_styles,
     _make_doc,

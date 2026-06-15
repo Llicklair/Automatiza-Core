@@ -41,6 +41,15 @@ backend/data/uploads/
 *.log
 logs/
 
+# Celery Beat scheduler state (binario de runtime, se regenera al arrancar)
+celerybeat-schedule*
+
+# Transcripciones de sesión Claude Code commiteadas por error
+desktop/*.txt
+
+# Artefactos de auditoría arquitectónica (volcados de grafo en el árbol)
+tasks/reports/_audit/
+
 # Windows shell artifact: cuando un comando con `>/dev/null` se ejecuta en
 # PowerShell (en vez de bash/MSYS), Windows lo interpreta como un fichero
 # llamado `nul`. No es tracking-worthy, no usarlo nunca como nombre real.

@@ -169,7 +169,7 @@ Usuario instala → abre app → asistente guiado:
 - [ ] Precio y canal de distribución decididos (ver sección 6)
 
 ### v1.0 — Producto mínimo viable (actual)
-- [x] 9 agentes especializados funcionales
+- [x] 14 agentes especializados funcionales
 - [x] Orquestador con clasificación de intención
 - [x] 7 flujos críticos end-to-end
 - [ ] Panel de control horario (fichajes, horas extra, ausencias, calendario)
