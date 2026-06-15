@@ -56,6 +56,15 @@ async def download_backup(
     current_user: User = Depends(require_role("admin")),
 ):
     """Genera un pg_dump y lo devuelve como descarga .sql. Solo admin."""
+    # El backup usa pg_dump: solo aplica a PostgreSQL (la BD real del desktop).
+    # En entornos sin Postgres (p. ej. el SQLite de los tests) es una dependencia
+    # no disponible → 503, no 500. Evita además que pg_dump intente conectar a un
+    # localhost ajeno y devuelva un 500 confuso ("fe_sendauth: no password").
+    if not settings.DATABASE_URL.lower().startswith("postgres"):
+        raise HTTPException(
+            status_code=503,
+            detail="El backup requiere una base de datos PostgreSQL.",
+        )
     db_info = _parse_db_url(settings.DATABASE_URL)
 
     env = {"PGPASSWORD": db_info["password"]}
