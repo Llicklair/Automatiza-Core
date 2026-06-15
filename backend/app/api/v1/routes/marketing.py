@@ -721,9 +721,16 @@ async def publish_post_now(
     if post.status == "published":
         raise HTTPException(status_code=409, detail="El post ya está publicado")
 
-    await publish_post(post, db)
+    publish_result = await publish_post(post, db)
     await db.commit()
     await db.refresh(post)
+    if not publish_result.ok:
+        # No dar por publicado un post que falló: propagar el error al cliente
+        # (antes se devolvía 200 con status='failed' y el front lo daba por OK).
+        raise HTTPException(
+            status_code=502,
+            detail=post.error_message or "No se pudo publicar el post.",
+        )
     return post
 
 

@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.db.models.email_marketing import EmailCampaign, EmailCampaignRecipient
 from app.services.audit import log_action
-from app.services.email.sender import send_email
+from app.services.email.sender import send_email, send_failed
 
 logger = logging.getLogger(__name__)
 
@@ -55,19 +55,22 @@ async def send_campaign(campaign_id: str, tenant_id: str) -> None:
         failed = 0
         for r in rows:
             try:
-                await send_email(
+                result = await send_email(
                     tenant_id=tenant_id,
                     to=r.email,
                     subject=_render(campaign.subject, r),
                     body=_render(campaign.html_body, r),
                 )
+            except Exception as e:  # send_email no debería lanzar, pero por si acaso
+                result = f"Error al enviar correo: {e}"
+            if send_failed(result):
+                r.status = "failed"
+                r.error_message = str(result)[:500]
+                failed += 1
+            else:
                 r.status = "sent"
                 r.sent_at = datetime.now(UTC)
                 sent += 1
-            except Exception as e:
-                r.status = "failed"
-                r.error_message = str(e)[:500]
-                failed += 1
 
         campaign.status = "sent"
         campaign.sent_at = datetime.now(UTC)

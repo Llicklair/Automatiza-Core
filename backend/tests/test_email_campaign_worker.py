@@ -83,6 +83,33 @@ async def test_send_campaign_marca_fallos(db, seed_tenant_and_user):
     assert camp.sent_count == 0
 
 
+async def test_send_campaign_sin_credenciales_cuenta_fallos(db, seed_tenant_and_user):
+    """Bug: send_email NO lanza, devuelve un string de error. send_campaign debe
+    CONTAR esos fallos, no marcarlos como 'sent'. Aquí el tenant no tiene ningún
+    proveedor de email → send_email devuelve '[SIN CREDENCIALES] ...'."""
+    tenant, _u, _t = seed_tenant_and_user
+    camp = await _make_campaign(db, tenant.id, recipients=2)
+    await db.commit()
+
+    from app.services.email_marketing import sender
+
+    # send_email REAL (sin mock): el tenant de test no tiene credenciales de email.
+    with _patched_session(db):
+        await sender.send_campaign(str(camp.id), str(tenant.id))
+
+    await db.refresh(camp)
+    assert camp.failed_count == 2, "envíos sin credenciales deben contar como fallidos"
+    assert camp.sent_count == 0
+    rec_status = (
+        await db.execute(
+            select(EmailCampaignRecipient.status).where(
+                EmailCampaignRecipient.campaign_id == camp.id
+            )
+        )
+    ).scalars().all()
+    assert set(rec_status) == {"failed"}
+
+
 async def test_worker_envia_solo_vencidas(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     due = await _make_campaign(db, tenant.id, scheduled_at=datetime.now(UTC) - timedelta(minutes=5))
