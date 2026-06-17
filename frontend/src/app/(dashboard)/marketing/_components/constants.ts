@@ -29,13 +29,53 @@ export const PLATFORMS = [
         colorClass: "text-zinc-300 bg-zinc-500/10 border-zinc-500/20",
         iconBg: "bg-zinc-500/15",
     },
+    {
+        id: "tiktok",
+        name: "TikTok",
+        limit: 2200,
+        colorClass: "text-zinc-200 bg-zinc-700/20 border-zinc-500/20",
+        iconBg: "bg-zinc-700/30",
+    },
+    {
+        id: "youtube",
+        name: "YouTube",
+        limit: 5000,
+        colorClass: "text-red-400 bg-red-500/10 border-red-500/20",
+        iconBg: "bg-red-500/15",
+    },
+    {
+        id: "threads",
+        name: "Threads",
+        limit: 500,
+        colorClass: "text-zinc-200 bg-zinc-700/20 border-zinc-500/20",
+        iconBg: "bg-zinc-700/30",
+    },
+    {
+        id: "pinterest",
+        name: "Pinterest",
+        limit: 500,
+        colorClass: "text-red-400 bg-red-500/10 border-red-500/20",
+        iconBg: "bg-red-500/15",
+    },
+    {
+        id: "reddit",
+        name: "Reddit",
+        limit: 40000,
+        colorClass: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+        iconBg: "bg-orange-500/15",
+    },
+    {
+        id: "googlebusiness",
+        name: "Google Business",
+        limit: 1500,
+        colorClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+        iconBg: "bg-emerald-500/15",
+    },
 ] as const;
 
-// LinkedIn oculto temporalmente: dar de alta su app requiere una Company Page de
-// LinkedIn, y crear la página exige un mínimo de conexiones (bloqueo del lado de
-// LinkedIn, no del producto). El backend ya lo soporta vía proxy. Para reactivar:
-// quita "linkedin" de HIDDEN_PLATFORM_IDS y pon LINKEDIN_CLIENT_ID/SECRET en Render.
-export const HIDDEN_PLATFORM_IDS = new Set<string>(["linkedin"]);
+// Con Zernio (BYO) ya no hay apps OAuth propias por plataforma: Zernio es socio
+// oficial y gestiona los permisos/revisiones. Por eso no se oculta ninguna red.
+export const HIDDEN_PLATFORM_IDS = new Set<string>([]);
 
 // Plataformas que el usuario puede conectar (excluye las ocultas). PLATFORMS se
 // mantiene completa a propósito para que las búsquedas de visualización

@@ -442,8 +442,9 @@ async def publish_scheduled_posts():
 
 async def _publish_scheduled_posts():
     from app.db.models.marketing import ScheduledPost
-    from app.services.marketing.publisher import publish_post
+    from app.services.marketing.publishing import get_publisher
 
+    publisher = get_publisher()
     now = datetime.now(UTC)
     async with AsyncSessionLocal() as db:
         set_current_tenant(None)
@@ -459,7 +460,7 @@ async def _publish_scheduled_posts():
         published = retried = 0
         for post in posts:
             set_current_tenant(str(post.tenant_id))
-            outcome = _handle_publish_result(post, await publish_post(post, db), now)
+            outcome = _handle_publish_result(post, await publisher.publish_post(post, db), now)
             if outcome == "published":
                 published += 1
             elif outcome == "retried":
