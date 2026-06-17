@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Upload, Loader2, AlertCircle, CheckCircle2, FileText, Trash2, AlertTriangle, Package,
 } from "lucide-react";
@@ -15,7 +15,7 @@ type Row = { draft: InvoiceDraft; filename: string };
  * compra + asiento contable + (opcional) suma stock de las líneas que casan
  * con tu catálogo. Todo tras tu revisión.
  */
-export function FacturasImportPanel() {
+export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } = {}) {
     const [rows, setRows] = useState<Row[]>([]);
     const [scanning, setScanning] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -23,8 +23,7 @@ export function FacturasImportPanel() {
     const [summary, setSummary] = useState<string | null>(null);
     const fileRef = useRef<HTMLInputElement>(null);
 
-    async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
-        const files = Array.from(e.target.files || []);
+    async function processFiles(files: File[]) {
         if (!files.length) return;
         setScanning(true);
         setScanErrors([]);
@@ -46,6 +45,16 @@ export function FacturasImportPanel() {
             if (fileRef.current) fileRef.current.value = "";
         }
     }
+
+    async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+        await processFiles(Array.from(e.target.files || []));
+    }
+
+    // Auto-procesa las facturas enrutadas desde el intake unificado (sin re-subir).
+    useEffect(() => {
+        if (initialFiles?.length) void processFiles(initialFiles);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialFiles]);
 
     function patch(i: number, field: keyof InvoiceDraft, value: unknown) {
         setRows(prev => prev.map((r, idx) => idx === i ? { ...r, draft: { ...r.draft, [field]: value } } : r));

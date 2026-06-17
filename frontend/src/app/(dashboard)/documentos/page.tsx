@@ -2,10 +2,9 @@
 
 import {
     FileText, Loader2, AlertTriangle, FileImage, Upload, Download,
-    Grid2x2, List, Database, Sheet, Mail, User, ChevronLeft,
+    Grid2x2, List, Database, Sheet, Mail, User, ChevronLeft, ScanLine,
 } from "lucide-react";
-import UploadModal from "@/components/documentos/UploadModal";
-import ImportDbModal from "@/components/documentos/ImportDbModal";
+import { useRouter } from "next/navigation";
 import RestoreModal from "@/components/documentos/RestoreModal";
 import DocRow from "@/components/documentos/DocRow";
 import DocCard from "@/components/documentos/DocCard";
@@ -31,33 +30,15 @@ const FOLDERS = [
 export default function DocumentosPage() {
     const {
         docs, loading, error, activeFolder, setActiveFolder, viewMode, setViewMode,
-        uploadModalOpen, setUploadModalOpen, uploading, dragOver, setDragOver,
-        uploadSuccess, uploadCategory, setUploadCategory,
-        importModalOpen, setImportModalOpen, importing, importResults, importFiles, setImportFiles,
-        pageDragOver, setPageDragOver,
         exportingDocs, backingUp, restoreModalOpen, setRestoreModalOpen,
-        loadFolder, handleUpload, handleImportDB, handleExportDocs, handleBackup,
+        loadFolder, handleExportDocs, handleBackup,
     } = useDocumentos();
 
+    const router = useRouter();
     const activeInfo = FOLDERS.find(f => f.id === activeFolder);
 
     return (
-        <div
-            className="p-8 max-w-5xl mx-auto space-y-8 relative"
-            onDragOver={e => { e.preventDefault(); setPageDragOver(true); }}
-            onDragLeave={e => { if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setPageDragOver(false); }}
-            onDrop={e => { e.preventDefault(); setPageDragOver(false); handleUpload(e.dataTransfer.files); }}
-        >
-            {pageDragOver && (
-                <div className="fixed inset-0 z-40 bg-primary/5 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
-                    <div className="border-2 border-dashed border-primary rounded-2xl px-12 py-10 bg-card/90 shadow-2xl flex flex-col items-center gap-3">
-                        <Upload className="w-10 h-10 text-primary" />
-                        <p className="text-lg font-semibold text-foreground">Suelta aquí para subir</p>
-                        <p className="text-sm text-muted-foreground">Los archivos se subirán a la carpeta &quot;{uploadCategory}&quot;</p>
-                    </div>
-                </div>
-            )}
-
+        <div className="p-8 max-w-5xl mx-auto space-y-8 relative">
             {/* Header */}
             <div>
                 {activeFolder && (
@@ -94,9 +75,9 @@ export default function DocumentosPage() {
                         </button>
                     </div>
                 )}
-                <button onClick={() => { setImportModalOpen(true); }}
+                <button onClick={() => router.push("/escaner?mode=excel")}
                     className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-foreground px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 font-medium">
-                    <Database className="w-4 h-4" /> Importar BD
+                    <Database className="w-4 h-4" /> Importar Excel
                 </button>
                 <button onClick={handleExportDocs} disabled={exportingDocs}
                     className="inline-flex items-center gap-2 bg-primary hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-foreground px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-primary/20 font-medium">
@@ -110,9 +91,9 @@ export default function DocumentosPage() {
                     className="inline-flex items-center gap-2 bg-accent hover:bg-accent text-foreground px-5 py-2.5 rounded-xl transition-all shadow-lg font-medium border border-border">
                     <Upload className="w-4 h-4" /> Restaurar BD
                 </button>
-                <button onClick={() => setUploadModalOpen(true)}
+                <button onClick={() => router.push("/escaner")}
                     className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-foreground px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-primary/20 font-medium">
-                    <Upload className="w-4 h-4" /> Subir Archivos
+                    <ScanLine className="w-4 h-4" /> Escanear / Importar
                 </button>
             </div>
 
@@ -156,7 +137,7 @@ export default function DocumentosPage() {
                         <div className="rounded-xl border border-border bg-card flex flex-col items-center justify-center py-16 text-center">
                             <FileText className="w-10 h-10 text-muted-foreground mb-3" />
                             <p className="text-sm text-muted-foreground">Esta carpeta esta vacia</p>
-                            <p className="text-xs text-muted-foreground mt-1">Sube archivos desde &quot;Cargar Archivos&quot; en el menu superior</p>
+                            <p className="text-xs text-muted-foreground mt-1">Escanea o importa desde el botón «Escanear / Importar»</p>
                         </div>
                     ) : viewMode === "list" ? (
                         <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -178,21 +159,6 @@ export default function DocumentosPage() {
                 </div>
             )}
 
-            {uploadModalOpen && (
-                <UploadModal
-                    uploading={uploading} dragOver={dragOver} setDragOver={setDragOver}
-                    uploadSuccess={uploadSuccess} uploadCategory={uploadCategory}
-                    setUploadCategory={setUploadCategory} error={error}
-                    onUpload={handleUpload} onClose={() => setUploadModalOpen(false)}
-                />
-            )}
-            {importModalOpen && (
-                <ImportDbModal
-                    importing={importing} importResults={importResults}
-                    importFiles={importFiles} setImportFiles={setImportFiles}
-                    onImport={handleImportDB} onClose={() => setImportModalOpen(false)}
-                />
-            )}
             {restoreModalOpen && <RestoreModal onClose={() => setRestoreModalOpen(false)} />}
         </div>
     );
