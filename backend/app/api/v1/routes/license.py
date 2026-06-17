@@ -1,9 +1,9 @@
 """Endpoints de licencia: estado y activación."""
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 from pydantic import BaseModel
 
-from app.core.license import activate_license, get_stored_key
+from app.core.license import activate_license, get_stored_key, warm_up_server
 
 router = APIRouter(prefix="/license", tags=["license"])
 
@@ -32,4 +32,15 @@ async def license_activate(body: ActivateRequest, request: Request):
         request.app.state.license_valid = True
         request.app.state.license_plan = result.plan
         return {"ok": True, "plan": result.plan}
-    return {"ok": False, "reason": result.reason}
+    return {"ok": False, "reason": result.reason, "retriable": result.retriable}
+
+
+@router.post("/warmup")
+async def license_warmup(background: BackgroundTasks):
+    """Despierta el servidor de licencias en background (mitiga el cold start de Render).
+
+    Se llama al abrir el modal de activación para que un usuario nuevo no tope con
+    una espera larga al pulsar Activar.
+    """
+    background.add_task(warm_up_server)
+    return {"warming": True}

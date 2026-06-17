@@ -10,8 +10,11 @@ export const licenseApi = {
     status: () => request<LicenseStatus>("/api/v1/license/status"),
 
     activate: (key: string) =>
-        request<{ ok: boolean; plan?: string; reason?: string }>("/api/v1/license/activate", {
+        request<{ ok: boolean; plan?: string; reason?: string; retriable?: boolean }>("/api/v1/license/activate", {
             method: "POST",
             body: JSON.stringify({ key }),
         }),
+
+    warmup: () =>
+        request<{ warming: boolean }>("/api/v1/license/warmup", { method: "POST" }),
 };
