@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.services.migration.bulk_import import (
     BulkImportResult,
@@ -22,7 +22,14 @@ from app.services.migration.bulk_import import (
     import_products_rows,
 )
 
-router = APIRouter(prefix="/import", tags=["import"])
+# SEC.RBAC — importación masiva = operación de administración (puede crear/mutar
+# en bloque empleados, clientes, facturas, movimientos bancarios). Todo el router
+# exige rol admin; un usuario normal autenticado no debe poder importar en masa.
+router = APIRouter(
+    prefix="/import",
+    tags=["import"],
+    dependencies=[Depends(require_role("admin"))],
+)
 
 
 class ImportResult(BaseModel):

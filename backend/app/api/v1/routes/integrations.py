@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.integrations import EmailConnectRequest, Psd2ConnectRequest
 from app.core.config import settings
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
@@ -35,8 +35,11 @@ async def list_integrations(
 # ─── PSD2 ───────────────────────────────────────────────────────────────────
 
 
+# SEC.RBAC — conectar/desconectar e iniciar OAuth de integraciones = admin.
+# Un usuario normal no debe enlazar/cortar el banco, el email o Google/Microsoft
+# del tenant. Las rutas de solo lectura (status/recent/list) siguen abiertas.
 @limiter.limit("10/minute")
-@router.post("/psd2/connect", status_code=201)
+@router.post("/psd2/connect", status_code=201, dependencies=[Depends(require_role("admin"))])
 async def connect_psd2(
     request: Request,
     payload: Psd2ConnectRequest,
@@ -51,7 +54,7 @@ async def connect_psd2(
 
 
 @limiter.limit("10/minute")
-@router.delete("/psd2/disconnect")
+@router.delete("/psd2/disconnect", dependencies=[Depends(require_role("admin"))])
 async def disconnect_psd2(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -66,7 +69,7 @@ async def disconnect_psd2(
 
 
 @limiter.limit("10/minute")
-@router.post("/email/connect", status_code=201)
+@router.post("/email/connect", status_code=201, dependencies=[Depends(require_role("admin"))])
 async def connect_email(
     request: Request,
     payload: EmailConnectRequest,
@@ -91,7 +94,7 @@ async def connect_email(
 
 
 @limiter.limit("10/minute")
-@router.delete("/email/disconnect")
+@router.delete("/email/disconnect", dependencies=[Depends(require_role("admin"))])
 async def disconnect_email(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -116,7 +119,7 @@ async def email_status(
 
 
 @limiter.limit("10/minute")
-@router.get("/google/auth-url")
+@router.get("/google/auth-url", dependencies=[Depends(require_role("admin"))])
 async def google_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     from app.integrations.google_oauth import generate_auth_url
 
@@ -148,7 +151,7 @@ async def google_callback(
 
 
 @limiter.limit("10/minute")
-@router.delete("/gmail/disconnect")
+@router.delete("/gmail/disconnect", dependencies=[Depends(require_role("admin"))])
 async def disconnect_gmail(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -160,7 +163,7 @@ async def disconnect_gmail(
 
 
 @limiter.limit("10/minute")
-@router.delete("/gdrive/disconnect")
+@router.delete("/gdrive/disconnect", dependencies=[Depends(require_role("admin"))])
 async def disconnect_gdrive(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -215,7 +218,7 @@ async def gdrive_recent(
 
 
 @limiter.limit("10/minute")
-@router.get("/microsoft/auth-url")
+@router.get("/microsoft/auth-url", dependencies=[Depends(require_role("admin"))])
 async def microsoft_auth_url(request: Request, current_user: User = Depends(get_current_user)):
     from app.integrations.microsoft_oauth import generate_auth_url
 
@@ -249,7 +252,7 @@ async def microsoft_callback(
 
 
 @limiter.limit("10/minute")
-@router.delete("/outlook/disconnect")
+@router.delete("/outlook/disconnect", dependencies=[Depends(require_role("admin"))])
 async def disconnect_outlook(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -261,7 +264,7 @@ async def disconnect_outlook(
 
 
 @limiter.limit("10/minute")
-@router.delete("/onedrive/disconnect")
+@router.delete("/onedrive/disconnect", dependencies=[Depends(require_role("admin"))])
 async def disconnect_onedrive(
     request: Request,
     db: AsyncSession = Depends(get_db),

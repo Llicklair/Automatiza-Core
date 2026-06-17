@@ -3,6 +3,7 @@
  * Handles JWT auth, token refresh, and blob downloads.
  */
 import { ApiError } from "./errors";
+import { resolveApiBase } from "./base";
 import {
     clearAllSecureTokens,
     getCachedToken,
@@ -10,12 +11,10 @@ import {
     setSecureToken,
 } from "../secureStore";
 
-// Runtime resolution — never bake a build-time URL that may go stale.
-// In the browser, derive from window.location so LAN access works automatically.
-export const BASE =
-  typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8080`
-    : "http://127.0.0.1:8080";
+// Resolución en runtime (ver lib/api/base.ts): URL absoluta a :8080 en acceso
+// directo (Electron/LAN), o base vacía (mismo origen) tras un proxy/túnel para
+// acceso remoto. Nunca se hornea una URL en build que pueda quedar obsoleta.
+export const BASE = resolveApiBase();
 
 function parseDetail(raw: unknown): string {
     if (typeof raw === "string") return raw;

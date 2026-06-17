@@ -52,21 +52,27 @@ async def lifespan(app: FastAPI):
     # workflows huérfanos o ejecuciones colgadas.
     from app.services.workflow.recovery import recover_stale_executions
 
-    await recover_stale_executions()
-    # Validar licencia al arranque
-    from app.core.license import validate_license
-
     try:
-        lic = await validate_license()
-        app.state.license_valid = lic.valid
-        app.state.license_plan = lic.plan
-        if not lic.valid:
-            logger.warning("[LICENSE] Licencia no válida: %s", lic.reason)
-        else:
-            logger.info("[LICENSE] Licencia OK · plan=%s", lic.plan)
+        await recover_stale_executions()
     except Exception:
-        logger.exception("[LICENSE] Error validando licencia — fail-closed")
-        app.state.license_valid = False
+        # Un fallo del recovery (p. ej. BD recién limpiada/sin migrar) NO debe
+        # romper el arranque ni dejar el lifespan a medias (antes tumbaba el
+        # backend y el frontend se quedaba sin respuesta → modal de licencia colgado).
+        logger.exception("[STARTUP] recover_stale_executions falló (no bloquea el arranque)")
+
+    # Licencia: estado inicial INSTANTÁNEO desde la caché local (sin red, no cuelga
+    # el arranque ~60s en cold start). La validación real contra el servidor —que
+    # tolera el cold start de Render— corre en background y refresca app.state.
+    from app.core.license import cached_license_state, refresh_app_license_state
+
+    init = cached_license_state()
+    app.state.license_valid = init.valid
+    app.state.license_plan = init.plan
+    if init.valid:
+        logger.info("[LICENSE] Estado inicial desde caché · plan=%s", init.plan)
+    else:
+        logger.info("[LICENSE] Sin licencia válida en caché (%s) — revalidando en background", init.reason)
+    asyncio.create_task(refresh_app_license_state(app))
     # Restaurar el consumo LLM persistido para que el dashboard sobreviva al reinicio.
     from app.services import llm_usage_tracker
 
@@ -110,8 +116,13 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="SaaS de automatización administrativa multiagente para PYMEs",
+    # En producción (DEBUG=False) ocultamos docs/redoc Y el esquema OpenAPI: con
+    # acceso remoto el backend queda expuesto a internet y no debe revelar su
+    # superficie de API. El túnel además solo enruta /api/v1 y /ws (ver
+    # docs/remote-access-cloudflare.md), pero esto es defensa en profundidad.
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
     lifespan=lifespan,
 )
 
