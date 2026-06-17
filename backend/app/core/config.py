@@ -92,21 +92,17 @@ class Settings(BaseSettings):
     # fb_exchange_token se hacen en el servidor (que guarda el client_secret),
     # no en el cliente. Vacío → comportamiento actual (secret local). Ver
     # desktop/docs/oauth_proxy.md para el contrato del endpoint.
-    OAUTH_PROXY_URL: str = ""
-    TWITTER_CLIENT_ID: str = ""
-    TWITTER_CLIENT_SECRET: str = ""
-    FACEBOOK_CLIENT_ID: str = ""
-    FACEBOOK_CLIENT_SECRET: str = ""
-    INSTAGRAM_CLIENT_ID: str = ""
-    INSTAGRAM_CLIENT_SECRET: str = ""
-    LINKEDIN_CLIENT_ID: str = ""
-    LINKEDIN_CLIENT_SECRET: str = ""
+    OAUTH_PROXY_URL: str = ""  # usado por la generación/búsqueda de imágenes (proxy Render)
 
     # Búsqueda de imágenes (Marketing)
     UNSPLASH_ACCESS_KEY: str = ""
     # Generación de imágenes con IA (usa OPENAI_API_KEY). dall-e-3 devuelve URL
     # pública temporal (~2h); modelos que devuelven base64 no se soportan aquí.
     OPENAI_IMAGE_MODEL: str = "dall-e-3"
+
+    # Marketing social vía Zernio (BYO: cada usuario trae su propia API key,
+    # guardada cifrada en BD; aquí solo la base de la API).
+    ZERNIO_API_BASE: str = "https://zernio.com/api/v1"
 
     # Cifrado de credenciales de tenants
     TENANT_ENCRYPTION_KEY: str = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"
