@@ -7,7 +7,7 @@ import type { Document } from "@/lib/api/documents";
 import { ErpImportReview } from "./ErpImportReview";
 import { showConfirm } from "@/stores/confirm";
 
-export function ExcelImportPanel() {
+export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {}) {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [loadingList, setLoadingList] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -29,13 +29,13 @@ export function ExcelImportPanel() {
 
     useEffect(() => { loadDocuments(); }, []);
 
-    async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    async function processFiles(files: File[]) {
+        const sheets = files.filter(Boolean);
+        if (!sheets.length) return;
         setUploading(true);
         setResult(null);
         try {
-            const imported = await api.documents.importDB([file]);
+            const imported = await api.documents.importDB(sheets);
             const count = imported.length;
             setResult({ ok: true, message: `${count} hoja${count !== 1 ? "s" : ""} importada${count !== 1 ? "s" : ""} correctamente` });
             await loadDocuments();
@@ -46,6 +46,16 @@ export function ExcelImportPanel() {
             if (fileRef.current) fileRef.current.value = "";
         }
     }
+
+    async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        await processFiles(Array.from(e.target.files || []));
+    }
+
+    // Auto-importa los archivos enrutados desde el intake unificado (sin re-subir).
+    useEffect(() => {
+        if (initialFiles?.length) void processFiles(initialFiles);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialFiles]);
 
     async function handleDelete(id: string, filename: string) {
         if (!(await showConfirm({
