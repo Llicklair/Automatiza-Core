@@ -100,3 +100,6 @@ backups/
 backend/scripts/_runs/
 
 data-gym-cache/
+
+# Binario de cloudflared descargado para pruebas de acceso remoto (no versionar)
+tools/cloudflared.exe

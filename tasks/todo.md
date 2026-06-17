@@ -20,6 +20,34 @@
   endpoint + PDF) ✅ y **Modelo 100** (IRPF Renta preview: datos + escala IRPF
   progresiva + `GET /100` + PDF `GET /100/pdf`) ✅ (2026-06-12). **Falta**: la
   presentación telemática real (requiere certificado AEAT — bloqueada).
+- [x] **F2.9 Modelo 130 "calcado" oficial AEAT (borrador)** ✅ (2026-06-16) —
+  el PDF del 130 usaba `_kv_table` genérico (sin casillas). Ahora replica el
+  formulario oficial: casillas numeradas + estilo AEAT, manteniendo BORRADOR.
+  **Hecho:** nuevo `aeat/casillas_130.py` (`build_casillas_130`) + nuevo
+  `pdf_reports/_aeat_layout.py` (helpers compartidos) + reescrito
+  `generate_modelo_130_pdf` + `tests/test_casillas_130.py` (8 tests). **303 NO
+  tocado.** 50 tests verdes (130 + smoke modelos + 303 + datos AEAT).
+  Mapeo verificado (Verifácturamos + Infoautónomos):
+  - **Apartado I:** 01 Ingresos · 02 Gastos · 03 Rdto. neto [01−02] · 04 20%·03(≥0)
+    · 05 Pagos fracc. anteriores (0, editable) · 06 Retenciones (0, editable) · 07 [04−05−06].
+  - **Apartado III:** 12 [07+11] · 13 Deducción rentas bajas (0, editable) · 14 [12−13]
+    · 15 Result. neg. trim. ant. (0, editable) · 16 Préstamo vivienda (0, editable)
+    · 17 [14−15−16] · 18 A deducir compl. (0, editable) · 19 Resultado [17−18].
+  - Apartado II (agrícola 08–11) se omite por defecto. Editables a 0 con nota (NO inventar).
+  - **Cambios:** nuevo `aeat/casillas_130.py` (`build_casillas_130`) + reescribir
+    `generate_modelo_130_pdf` (layout AEAT) + (recomendado) extraer helpers a
+    `_aeat_layout.py` compartido 303/130 + `test_casillas_130.py`.
+  - **Línea roja:** mantener disclaimer; NO falsificar nº justificante / CSV / PDF417.
+- [~] **F2.9b Calcar el resto de modelos AEAT** — patrón sobre `_aeat_layout.py` +
+  `aeat/casillas_NNN.py` (con `aeat/_casilla.py` compartido). Investigación de
+  casillas hecha por workflow (16 agentes, verificación adversarial).
+  - [x] **111** ✅ casillas 01-09 (trabajo/act. económicas) + 28/29/30 liquidación.
+  - [x] **115** ✅ casillas 01-05 (resultado = 03 − 04).
+  - [x] **390** ✅ casillas clave IVA anual (01-06 devengado, 33/34/47, 48/49/64, 65/84/86).
+  - [ ] **190 / 347 / 349** (informativas-listado) — resumen con casillas + listado registro.
+  - [ ] **200 / 100** (resumen_grande) — casillas clave de liquidación (preview).
+  - [ ] Migrar el **303** al módulo compartido (cubierto por su batería de tests; al
+    migrar, pasar `pct_codes=_PCT_CASILLAS` en cada `_casillas_table` — sus 02/05/17… son %).
 
 ## Gestoría / Firma
 
