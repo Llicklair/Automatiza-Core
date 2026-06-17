@@ -19,13 +19,15 @@ class TestMarketingPublishFalla:
         self, auth_client: AsyncClient, db: AsyncSession, seed_tenant_and_user
     ):
         tenant, _user, _token = seed_tenant_and_user
-        # Cuenta SIN token → publish_post devuelve PublishResult(ok=False)
+        # Cuenta SIN config de Zernio (provider_config_id=None): al resolver el
+        # cliente, client_for_account lanza ZernioError → publish_post devuelve
+        # PublishResult(ok=False), sin llamada de red. (Modelo BYO: el antiguo
+        # access_token por cuenta desapareció con la migración a Zernio.)
         account = SocialAccount(
             tenant_id=tenant.id,
             platform="twitter",
             account_id="acc-1",
             account_name="@test",
-            access_token="",  # vacío → falla "sin token"
         )
         db.add(account)
         await db.flush()
