@@ -1613,5 +1613,138 @@
       "domainEmailLabel": "Email",
       "domainEmailDesc": "Inbox, replies and organizes"
     }
+  },
+  "proyectos": {
+    "misTareas": {
+      "stageTodo": "To Do",
+      "stageInProgress": "In Progress",
+      "stageDone": "Done",
+      "title": "My Tasks",
+      "subtitle": "Kanban board for your operational project tasks.",
+      "newTask": "New Task",
+      "unknownProject": "Unknown",
+      "deleteTaskTitle": "Delete task",
+      "dropHere": "Drop here",
+      "createError": "Failed to create task",
+      "deleteConfirm": "Delete the task \"{title}\"?",
+      "deleteError": "Failed to delete the task"
+    },
+    "newTaskModal": {
+      "title": "New Task",
+      "noProjects": "You need at least one active project to create tasks.",
+      "fieldTitle": "Title",
+      "fieldProject": "Associated project",
+      "fieldDescription": "Description",
+      "submit": "Add Task"
+    },
+    "page": {
+      "title": "Project Portfolio",
+      "description": "Track delivery timelines. AI can turn meetings into tasks within these projects.",
+      "newProject": "New Project",
+      "searchPlaceholder": "Search project…",
+      "viewRange": "View: {start} – {end}",
+      "createError": "Failed to create project"
+    },
+    "table": {
+      "project": "Project",
+      "timeline": "Timeline (Gantt)"
+    },
+    "empty": {
+      "title": "No active projects yet",
+      "createFirst": "+ Create the first one"
+    },
+    "row": {
+      "due": "Due: {date}",
+      "days": "{n} d",
+      "noDates": "No dates set"
+    },
+    "listado": {
+      "title": "Projects",
+      "subtitle": "Track the budget and status of your ongoing projects.",
+      "newProject": "New Project",
+      "loading": "Loading projects...",
+      "emptyTitle": "No Projects",
+      "emptyHint": "Click \"New Project\" to get started.",
+      "noDescription": "No description",
+      "budget": "Budget",
+      "createError": "Error creating the project",
+      "updateError": "Error updating the project",
+      "deleteConfirm": "Delete the project \"{name}\"? Its tasks will also be deleted.",
+      "deleteError": "Error deleting the project"
+    },
+    "createModal": {
+      "title": "Create Project",
+      "nameLabel": "Project Name",
+      "budgetLabel": "Budget (€)",
+      "descriptionLabel": "Short Description",
+      "submit": "Create"
+    },
+    "editModal": {
+      "title": "Edit Project",
+      "nameLabel": "Name",
+      "budgetLabel": "Budget (€)",
+      "statusLabel": "Status",
+      "statusActive": "Active",
+      "statusOnHold": "On Hold",
+      "statusCompleted": "Completed",
+      "descriptionLabel": "Description"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "onHold": "On Hold"
+    },
+    "tareas": {
+      "title": "Task Board",
+      "description": "Kanban board for the team. AI will break down meeting transcripts into measurable tasks and assign them here automatically.",
+      "filter": "Filter",
+      "addTask": "Add Task",
+      "columnTodo": "To Do",
+      "columnInProgress": "In Progress",
+      "columnDone": "Done"
+    },
+    "createTaskModal": {
+      "title": "New Task",
+      "titleLabel": "Title *",
+      "titlePlaceholder": "e.g. Review contract",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Details...",
+      "dueDateLabel": "Due date (optional)",
+      "submit": "Add to Board"
+    },
+    "editTaskModal": {
+      "title": "Edit Task",
+      "titleLabel": "Title *",
+      "descriptionLabel": "Description",
+      "dueDateLabel": "Due date",
+      "save": "Save Changes"
+    },
+    "kanbanColumn": {
+      "aiAssigneeTitle": "AI",
+      "humanAssigneeTitle": "Human",
+      "dropHint": "Drag tasks here"
+    },
+    "tasksKanban": {
+      "createError": "Error creating task",
+      "saveError": "Error saving task",
+      "deleteConfirm": "Delete the task \"{title}\"?",
+      "deleteError": "Error deleting task"
+    },
+    "newProjectModal": {
+      "title": "New Project",
+      "nameLabel": "Project name *",
+      "namePlaceholder": "e.g. Corporate website redesign",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Project objectives...",
+      "startDateLabel": "Start date",
+      "dueDateLabel": "Due date",
+      "budgetLabel": "Budget (€)",
+      "statusLabel": "Status",
+      "statusActive": "In progress",
+      "statusOnHold": "On hold",
+      "statusCompleted": "Completed",
+      "creating": "Creating…",
+      "submit": "Create project"
+    }
   }
 }

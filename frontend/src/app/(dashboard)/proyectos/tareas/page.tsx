@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { KanbanSquare, Plus, Search } from "lucide-react";
 import { useTasksKanban } from "./_hooks/useTasksKanban";
 import { KanbanColumn } from "./_components/KanbanColumn";
@@ -10,6 +11,7 @@ import { PageContainer } from "@/components/shared/PageContainer";
 
 function TasksKanbanContent() {
     const k = useTasksKanban();
+    const t = useTranslations("proyectos");
 
     return (
         <PageContainer width="full" className="min-h-screen bg-background text-foreground">
@@ -19,21 +21,21 @@ function TasksKanbanContent() {
                         <div className="p-2 bg-pink-500/10 rounded-xl">
                             <KanbanSquare className="w-8 h-8 text-pink-400" />
                         </div>
-                        Pizarra de Tareas
+                        {t("tareas.title")}
                     </h1>
                     <p className="text-muted-foreground mt-2 ml-14 text-sm max-w-2xl">
-                        Tablero Kanban para el equipo. La IA descompondrá las transcripciones de las reuniones en tareas medibles y las asignará aquí automáticamente.
+                        {t("tareas.description")}
                     </p>
                 </div>
                 <div className="flex gap-3">
                     <button className="flex items-center gap-2 bg-card border border-border hover:border-border hover:bg-muted text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
-                        <Search className="w-4 h-4" /> Filtrar
+                        <Search className="w-4 h-4" /> {t("tareas.filter")}
                     </button>
                     <button
                         onClick={() => k.setShowModal(true)}
                         className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-foreground shadow-lg shadow-pink-500/20 px-5 py-2.5 rounded-full font-medium transition-colors"
                     >
-                        <Plus className="w-4 h-4" /> Añadir Tarea
+                        <Plus className="w-4 h-4" /> {t("tareas.addTask")}
                     </button>
                 </div>
             </div>
@@ -47,7 +49,7 @@ function TasksKanbanContent() {
                     {(["todo", "in_progress", "done"] as const).map(status => (
                         <KanbanColumn
                             key={status}
-                            colTitle={status === "todo" ? "Por Hacer" : status === "in_progress" ? "En Curso" : "Completadas"}
+                            colTitle={status === "todo" ? t("tareas.columnTodo") : status === "in_progress" ? t("tareas.columnInProgress") : t("tareas.columnDone")}
                             status={status}
                             tasks={k.getTasksByStatus(status)}
                             openMenuId={k.openMenuId}

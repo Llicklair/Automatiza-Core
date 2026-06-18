@@ -1613,5 +1613,138 @@
       "domainEmailLabel": "Correos",
       "domainEmailDesc": "Bandeja de entrada, responde y organiza"
     }
+  },
+  "proyectos": {
+    "misTareas": {
+      "stageTodo": "Por Hacer",
+      "stageInProgress": "En Curso",
+      "stageDone": "Completado",
+      "title": "Mis Tareas",
+      "subtitle": "Board Kanban para tus tareas operativas de proyectos.",
+      "newTask": "Nueva Tarea",
+      "unknownProject": "Desconocido",
+      "deleteTaskTitle": "Eliminar tarea",
+      "dropHere": "Arrastra aquí",
+      "createError": "Error al crear tarea",
+      "deleteConfirm": "¿Eliminar la tarea \"{title}\"?",
+      "deleteError": "Error al eliminar la tarea"
+    },
+    "newTaskModal": {
+      "title": "Nueva Tarea",
+      "noProjects": "Necesitas tener al menos un proyecto activo para crear tareas.",
+      "fieldTitle": "Título",
+      "fieldProject": "Proyecto asociado",
+      "fieldDescription": "Descripción",
+      "submit": "Agregar Tarea"
+    },
+    "page": {
+      "title": "Portfolio de Proyectos",
+      "description": "Monitoriza los tiempos de entrega. La IA puede convertir reuniones en tareas dentro de estos proyectos.",
+      "newProject": "Nuevo Proyecto",
+      "searchPlaceholder": "Buscar proyecto…",
+      "viewRange": "Vista: {start} – {end}",
+      "createError": "Error al crear proyecto"
+    },
+    "table": {
+      "project": "Proyecto",
+      "timeline": "Cronograma (Gantt)"
+    },
+    "empty": {
+      "title": "Aún no hay proyectos activos",
+      "createFirst": "+ Crear el primero"
+    },
+    "row": {
+      "due": "Vence: {date}",
+      "days": "{n} d",
+      "noDates": "Fechas no definidas"
+    },
+    "listado": {
+      "title": "Proyectos",
+      "subtitle": "Controla el presupuesto y el estado de tus proyectos en curso.",
+      "newProject": "Nuevo Proyecto",
+      "loading": "Cargando proyectos...",
+      "emptyTitle": "Sin Proyectos",
+      "emptyHint": "Pulsa \"Nuevo Proyecto\" para empezar.",
+      "noDescription": "Sin descripción",
+      "budget": "Presupuesto",
+      "createError": "Error creando el proyecto",
+      "updateError": "Error actualizando el proyecto",
+      "deleteConfirm": "¿Eliminar el proyecto \"{name}\"? Se borrarán también sus tareas.",
+      "deleteError": "Error eliminando el proyecto"
+    },
+    "createModal": {
+      "title": "Crear Proyecto",
+      "nameLabel": "Nombre del Proyecto",
+      "budgetLabel": "Presupuesto (€)",
+      "descriptionLabel": "Descripción corta",
+      "submit": "Crear"
+    },
+    "editModal": {
+      "title": "Editar Proyecto",
+      "nameLabel": "Nombre",
+      "budgetLabel": "Presupuesto (€)",
+      "statusLabel": "Estado",
+      "statusActive": "Activo",
+      "statusOnHold": "En Pausa",
+      "statusCompleted": "Completado",
+      "descriptionLabel": "Descripción"
+    },
+    "status": {
+      "active": "Activo",
+      "completed": "Completado",
+      "onHold": "En Pausa"
+    },
+    "tareas": {
+      "title": "Pizarra de Tareas",
+      "description": "Tablero Kanban para el equipo. La IA descompondrá las transcripciones de las reuniones en tareas medibles y las asignará aquí automáticamente.",
+      "filter": "Filtrar",
+      "addTask": "Añadir Tarea",
+      "columnTodo": "Por Hacer",
+      "columnInProgress": "En Curso",
+      "columnDone": "Completadas"
+    },
+    "createTaskModal": {
+      "title": "Nueva Tarea",
+      "titleLabel": "Titulo *",
+      "titlePlaceholder": "Ej: Revisar contrato",
+      "descriptionLabel": "Descripcion",
+      "descriptionPlaceholder": "Detalles...",
+      "dueDateLabel": "Fecha limite (opcional)",
+      "submit": "Anadir al Tablero"
+    },
+    "editTaskModal": {
+      "title": "Editar Tarea",
+      "titleLabel": "Titulo *",
+      "descriptionLabel": "Descripcion",
+      "dueDateLabel": "Fecha limite",
+      "save": "Guardar Cambios"
+    },
+    "kanbanColumn": {
+      "aiAssigneeTitle": "IA",
+      "humanAssigneeTitle": "Humano",
+      "dropHint": "Arrastra tareas aqui"
+    },
+    "tasksKanban": {
+      "createError": "Error al crear tarea",
+      "saveError": "Error al guardar tarea",
+      "deleteConfirm": "¿Eliminar la tarea \"{title}\"?",
+      "deleteError": "Error al eliminar tarea"
+    },
+    "newProjectModal": {
+      "title": "Nuevo Proyecto",
+      "nameLabel": "Nombre del proyecto *",
+      "namePlaceholder": "Ej: Reforma web corporativa",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Objetivos del proyecto...",
+      "startDateLabel": "Fecha inicio",
+      "dueDateLabel": "Fecha límite",
+      "budgetLabel": "Presupuesto (€)",
+      "statusLabel": "Estado",
+      "statusActive": "En curso",
+      "statusOnHold": "Pausado",
+      "statusCompleted": "Completado",
+      "creating": "Creando…",
+      "submit": "Crear proyecto"
+    }
   }
 }
