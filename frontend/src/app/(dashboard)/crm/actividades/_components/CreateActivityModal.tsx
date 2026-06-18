@@ -50,38 +50,38 @@ export function CreateActivityModal({
                     </div>
 
                     <div>
-                        <label className="block text-sm text-muted-foreground mb-1.5">Tipo de interacción</label>
+                        <label className="block text-sm text-muted-foreground mb-1.5">{t("actividades.modal.typeLabel")}</label>
                         <div className="grid grid-cols-4 gap-2">
                             {[
-                                { id: 'note', icon: StickyNote, label: 'Nota' },
-                                { id: 'call', icon: Phone, label: 'Llamada' },
-                                { id: 'email', icon: Mail, label: 'Email' },
-                                { id: 'meeting_log', icon: CalendarCheck, label: 'Reunión' }
-                            ].map(t => (
+                                { id: 'note', icon: StickyNote, labelKey: 'actividades.modal.types.note' },
+                                { id: 'call', icon: Phone, labelKey: 'actividades.modal.types.call' },
+                                { id: 'email', icon: Mail, labelKey: 'actividades.modal.types.email' },
+                                { id: 'meeting_log', icon: CalendarCheck, labelKey: 'actividades.modal.types.meeting_log' }
+                            ].map(opt => (
                                 <button
-                                    key={t.id}
+                                    key={opt.id}
                                     type="button"
-                                    onClick={() => setType(t.id)}
-                                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-colors ${type === t.id
+                                    onClick={() => setType(opt.id)}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-colors ${type === opt.id
                                         ? 'bg-pink-500/10 border-pink-500/50 text-pink-400'
                                         : 'bg-background border-border text-muted-foreground hover:border-border hover:text-foreground'
                                         }`}
                                 >
-                                    <t.icon className="w-5 h-5 mb-1.5" />
-                                    <span className="text-xs font-medium">{t.label}</span>
+                                    <opt.icon className="w-5 h-5 mb-1.5" />
+                                    <span className="text-xs font-medium">{t(opt.labelKey)}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-sm text-muted-foreground mb-1.5">Resumen o Descripción</label>
+                        <label className="block text-sm text-muted-foreground mb-1.5">{t("actividades.modal.descriptionLabel")}</label>
                         <textarea
                             required
                             rows={4}
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            placeholder="¿De qué hablasteis? ¿Qué se acordó?..."
+                            placeholder={t("actividades.modal.descriptionPlaceholder")}
                             className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-pink-500 resize-none"
                         />
                     </div>
@@ -92,14 +92,14 @@ export function CreateActivityModal({
                             onClick={onClose}
                             className="px-5 py-2.5 text-foreground hover:text-foreground transition-colors font-medium border border-transparent hover:border-border rounded-lg"
                         >
-                            Cancelar
+                            {t("actividades.modal.cancel")}
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || !description}
                             className="bg-pink-600 hover:bg-pink-500 text-foreground px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-pink-500/20 disabled:opacity-50"
                         >
-                            {isSubmitting ? "Guardando..." : "Registrar"}
+                            {isSubmitting ? t("actividades.modal.saving") : t("actividades.modal.submit")}
                         </button>
                     </div>
                 </form>

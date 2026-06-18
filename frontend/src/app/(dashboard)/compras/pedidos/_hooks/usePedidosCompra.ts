@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type PurchaseOrder, type Client, type Product, type PurchaseOrderLine } from "@/lib/api";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
@@ -19,6 +20,8 @@ export type PedidoForm = {
 };
 
 export function usePedidosCompra() {
+    const t = useTranslations("compras.pedidos");
+    const tc = useTranslations("common");
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [suppliers, setSuppliers] = useState<Client[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -104,7 +107,7 @@ export function usePedidosCompra() {
     };
 
     const handleCancel = async (order: PurchaseOrder) => {
-        if (!await showConfirm({ message: "¿Cancelar este pedido?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("cancelConfirm"), confirmLabel: tc("cancel"), confirmVariant: "danger" })) return;
         try {
             const updated = await api.erp.purchaseOrders.update(order.id, { status: "cancelled" });
             setOrders(prev => prev.map(o => o.id === order.id ? updated : o));
@@ -112,7 +115,7 @@ export function usePedidosCompra() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar definitivamente?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("deleteConfirm"), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.purchaseOrders.delete(id);

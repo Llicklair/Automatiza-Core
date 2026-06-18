@@ -82,11 +82,11 @@ export default function RecurringList({
                                 className="p-1.5 rounded-lg hover:bg-amber-500/10 text-muted-foreground hover:text-amber-400 transition-colors" aria-label={rec.is_active ? t("recurringPause") : t("recurringActivate")}>
                                 {rec.is_active ? <Pause className="w-3.5 h-3.5" aria-hidden="true" /> : <Play className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />}
                             </button>
-                            <button onClick={() => onEdit(rec)} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" aria-label="Editar factura recurrente">
+                            <button onClick={() => onEdit(rec)} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" aria-label={t("editRecurringAria")}>
                                 <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
                             <button onClick={() => onDelete(rec.id)} disabled={deletingId === rec.id}
-                                className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors" aria-label="Eliminar factura recurrente">
+                                className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors" aria-label={t("deleteRecurringAria")}>
                                 {deletingId === rec.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                             </button>
                         </div>

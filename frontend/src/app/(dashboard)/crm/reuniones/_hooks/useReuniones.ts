@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, EventItem, Client } from "@/lib/api";
 import { isPast, isToday } from "date-fns";
 import { useToastStore } from "@/stores/toast";
@@ -10,6 +11,7 @@ import { logError } from "@/lib/logger";
 const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
 
 export function useReuniones() {
+    const t = useTranslations("crm");
     const toast = useToastStore();
     const [meetings, setMeetings] = useState<EventItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
@@ -49,12 +51,12 @@ export function useReuniones() {
             setShowCreate(false);
             setForm({ title: "", description: "", location_or_link: "", client_id: "", start_time: toLocalDatetime(new Date()), end_time: toLocalDatetime(new Date(Date.now() + 3600000)) });
             await loadData();
-        } catch { toast.error("Error al programar la reunión"); }
+        } catch { toast.error(t("reuniones.createError")); }
         finally { setCreating(false); }
     };
 
     const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar esta reunión?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("reuniones.deleteConfirm"), confirmLabel: t("reuniones.deleteLabel"), confirmVariant: "danger" })) return;
         try { await api.crm.events.delete(id); await loadData(); }
         catch (e) { logError("crm/reuniones/page", e); }
     };

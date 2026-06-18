@@ -3,6 +3,7 @@
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { format, isSameMonth, isToday } from "date-fns";
 import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 import { useCalendario } from "./_hooks/useCalendario";
 import { CreateEventModal } from "./_components/CreateEventModal";
 import { EventDetailModal } from "./_components/EventDetailModal";
@@ -10,6 +11,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 
 export default function CalendarPage() {
+    const t = useTranslations("crm");
     const {
         currentMonth, clients, isLoading,
         showCreate, setShowCreate,
@@ -25,22 +27,22 @@ export default function CalendarPage() {
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             <PageHeader
-                title="Calendario"
-                description="Visualiza tus reuniones, demostraciones y recordatorios."
+                title={t("calendario.title")}
+                description={t("calendario.description")}
                 icon={CalendarIcon}
                 actions={
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth} aria-label="Mes anterior">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth} aria-label={t("calendario.prevMonth")}>
                                 <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                             </Button>
-                            <Button variant="ghost" className="h-8 px-3 text-sm" onClick={goToToday}>Hoy</Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth} aria-label="Mes siguiente">
+                            <Button variant="ghost" className="h-8 px-3 text-sm" onClick={goToToday}>{t("calendario.today")}</Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth} aria-label={t("calendario.nextMonth")}>
                                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
                             </Button>
                         </div>
                         <Button onClick={() => setShowCreate(true)}>
-                            <Plus className="w-4 h-4 mr-2" /> Agendar Cita
+                            <Plus className="w-4 h-4 mr-2" /> {t("calendario.schedule")}
                         </Button>
                     </div>
                 }
@@ -51,8 +53,8 @@ export default function CalendarPage() {
                     <h2 className="text-xl font-medium text-foreground capitalize">{format(currentMonth, "MMMM yyyy", { locale: es })}</h2>
                 </div>
                 <div className="grid grid-cols-7 border-b border-border bg-background">
-                    {["Lun","Mar","Mie","Jue","Vie","Sab","Dom"].map(d => (
-                        <div key={d} className="py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">{d}</div>
+                    {["mon","tue","wed","thu","fri","sat","sun"].map(d => (
+                        <div key={d} className="py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">{t(`calendario.weekdays.${d}`)}</div>
                     ))}
                 </div>
                 <div className="flex-1 overflow-y-auto">

@@ -2,6 +2,7 @@
 
 import { CalendarRange, Plus, Search, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { useReservas } from "./_hooks/useReservas";
 import { CreateReservationModal } from "./_components/CreateReservationModal";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function ReservationsPage() {
+    const t = useTranslations("crm");
     const {
         clients, isLoading,
         search, setSearch,
@@ -21,12 +23,12 @@ export default function ReservationsPage() {
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             <PageHeader
-                title="Reservas y Espacios"
-                description="Gestiona las reservas de tus clientes sobre tus servicios o instalaciones."
+                title={t("reservas.title")}
+                description={t("reservas.description")}
                 icon={CalendarRange}
                 actions={
                     <Button onClick={() => setShowCreate(true)}>
-                        <Plus className="w-4 h-4 mr-2" /> Bloquear Espacio / Reservar
+                        <Plus className="w-4 h-4 mr-2" /> {t("reservas.newReservation")}
                     </Button>
                 }
             />
@@ -36,25 +38,25 @@ export default function ReservationsPage() {
                     <div className="relative">
                         <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                         <Input
-                            placeholder="Buscar por cliente o nota..."
+                            placeholder={t("reservas.searchPlaceholder")}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="pl-10 w-72"
                         />
                     </div>
-                    <span className="text-xs text-muted-foreground">{filtered.length} reservas</span>
+                    <span className="text-xs text-muted-foreground">{t("reservas.count", { count: filtered.length })}</span>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                             <tr>
-                                <th className="px-6 py-4 font-medium">Cliente</th>
-                                <th className="px-6 py-4 font-medium">Inicio</th>
-                                <th className="px-6 py-4 font-medium">Fin</th>
-                                <th className="px-6 py-4 font-medium">Notas</th>
-                                <th className="px-6 py-4 font-medium">Estado</th>
-                                <th className="px-6 py-4 font-medium">Acciones</th>
+                                <th className="px-6 py-4 font-medium">{t("reservas.columns.client")}</th>
+                                <th className="px-6 py-4 font-medium">{t("reservas.columns.start")}</th>
+                                <th className="px-6 py-4 font-medium">{t("reservas.columns.end")}</th>
+                                <th className="px-6 py-4 font-medium">{t("reservas.columns.notes")}</th>
+                                <th className="px-6 py-4 font-medium">{t("reservas.columns.status")}</th>
+                                <th className="px-6 py-4 font-medium">{t("reservas.columns.actions")}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -68,7 +70,7 @@ export default function ReservationsPage() {
                                 <tr>
                                     <td colSpan={6} className="px-6 py-16 text-center">
                                         <CalendarClock className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                                        <p className="text-muted-foreground font-medium">No hay reservas</p>
+                                        <p className="text-muted-foreground font-medium">{t("reservas.empty")}</p>
                                     </td>
                                 </tr>
                             ) : filtered.map((res) => {
@@ -86,21 +88,21 @@ export default function ReservationsPage() {
                                                     <Button size="sm" variant="ghost"
                                                         className="text-xs h-7 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
                                                         onClick={() => handleStatusChange(res.id, "confirmed")}>
-                                                        Confirmar
+                                                        {t("reservas.confirm")}
                                                     </Button>
                                                 )}
                                                 {res.status === "confirmed" && (
                                                     <Button size="sm" variant="ghost"
                                                         className="text-xs h-7 bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20"
                                                         onClick={() => handleStatusChange(res.id, "completed")}>
-                                                        Finalizar
+                                                        {t("reservas.finish")}
                                                     </Button>
                                                 )}
                                                 {(res.status === "pending" || res.status === "confirmed") && (
                                                     <Button size="sm" variant="ghost"
                                                         className="text-xs h-7 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
                                                         onClick={() => handleStatusChange(res.id, "cancelled")}>
-                                                        Cancelar
+                                                        {t("reservas.cancel")}
                                                     </Button>
                                                 )}
                                             </div>

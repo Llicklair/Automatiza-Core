@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Client } from "@/lib/api";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
@@ -8,6 +9,8 @@ import { logError } from "@/lib/logger";
 const EMPTY_FORM = { name: "", nif: "", email: "", address: "", city: "", postal_code: "" };
 
 export function useProveedores() {
+    const t = useTranslations("compras.proveedores");
+    const tc = useTranslations("common");
     const [suppliers, setSuppliers] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -58,7 +61,7 @@ export function useProveedores() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar este proveedor?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("deleteConfirm"), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         setDeletingId(id);
         try {
             await api.erp.clients.delete(id);
