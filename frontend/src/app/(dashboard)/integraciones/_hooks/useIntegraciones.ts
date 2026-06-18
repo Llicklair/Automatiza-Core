@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api, IntegrationStatus } from "@/lib/api";
 import type { EmailConnectInput } from "@/lib/api/integrations";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
 export function useIntegraciones() {
+    const t = useTranslations("integraciones");
+    const tc = useTranslations("common");
     const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -40,11 +43,11 @@ export function useIntegraciones() {
         const params = new URLSearchParams(window.location.search);
         const connected = params.get("connected");
         if (connected) {
-            setFeedback({ type: "success", msg: `${connected === "google" ? "Google" : "Microsoft"} conectado correctamente` });
+            setFeedback({ type: "success", msg: t("feedback.providerConnected", { provider: connected === "google" ? "Google" : "Microsoft" }) });
             window.history.replaceState({}, "", "/integraciones");
             load();
         }
-    }, [load]);
+    }, [load, t]);
 
     const getStatus = (type: string) => integrations.find(i => i.integration_type === type);
     const isConnected = (type: string) => getStatus(type)?.is_active ?? false;
@@ -54,25 +57,25 @@ export function useIntegraciones() {
         setConnectingPsd2(true); setFeedback(null);
         try {
             await api.integrations.connectPsd2(psd2Id, psd2Key);
-            setFeedback({ type: "success", msg: "Banco (PSD2) conectado correctamente" });
+            setFeedback({ type: "success", msg: t("feedback.psd2Connected") });
             setPsd2Id(""); setPsd2Key("");
             load();
         } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error desconocido" });
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : t("feedback.unknownError") });
         } finally {
             setConnectingPsd2(false);
         }
     }
 
     async function disconnectPsd2() {
-        if (!await showConfirm({ message: "¿Desconectar tu Banco?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("confirm.disconnectBank"), confirmLabel: t("actions.disconnect"), confirmVariant: "danger" })) return;
         setDisconnectingPsd2(true); setFeedback(null);
         try {
             await api.integrations.disconnectPsd2();
-            setFeedback({ type: "success", msg: "Banco desconectado" });
+            setFeedback({ type: "success", msg: t("feedback.bankDisconnected") });
             load();
         } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : tc("error") });
         } finally {
             setDisconnectingPsd2(false);
         }
@@ -94,7 +97,7 @@ export function useIntegraciones() {
                     if (connected) {
                         clearInterval(poll);
                         setConnecting(false);
-                        setFeedback({ type: "success", msg: `${provider === "google" ? "Google" : "Microsoft"} conectado correctamente` });
+                        setFeedback({ type: "success", msg: t("feedback.providerConnected", { provider: provider === "google" ? "Google" : "Microsoft" }) });
                         load();
                     }
                 } catch { /* polling OAuth: errores transitorios esperados, reintenta en 2s */ }
@@ -105,19 +108,19 @@ export function useIntegraciones() {
             }, 2000);
         } catch (err: unknown) {
             setConnecting(false);
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : tc("error") });
         }
     }
 
     async function disconnectIntegration(type: string, label: string) {
-        if (!await showConfirm({ message: `¿Desconectar ${label}?`, confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("confirm.disconnectLabel", { label }), confirmLabel: t("actions.disconnect"), confirmVariant: "danger" })) return;
         setFeedback(null);
         try {
             await api.integrations.disconnect(type);
-            setFeedback({ type: "success", msg: `${label} desconectado` });
+            setFeedback({ type: "success", msg: t("feedback.labelDisconnected", { label }) });
             load();
         } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : tc("error") });
         }
     }
 
@@ -125,11 +128,11 @@ export function useIntegraciones() {
         setConnectingEmail(true); setFeedback(null);
         try {
             await api.integrations.connectEmail(payload);
-            setFeedback({ type: "success", msg: "Correo IMAP/SMTP conectado correctamente" });
+            setFeedback({ type: "success", msg: t("feedback.emailConnected") });
             load();
             return true;
         } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error desconocido" });
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : t("feedback.unknownError") });
             return false;
         } finally {
             setConnectingEmail(false);
@@ -137,14 +140,14 @@ export function useIntegraciones() {
     }
 
     async function disconnectEmail() {
-        if (!await showConfirm({ message: "¿Desconectar tu correo IMAP/SMTP?", confirmLabel: "Desconectar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("confirm.disconnectEmail"), confirmLabel: t("actions.disconnect"), confirmVariant: "danger" })) return;
         setDisconnectingEmail(true); setFeedback(null);
         try {
             await api.integrations.disconnectEmail();
-            setFeedback({ type: "success", msg: "Correo IMAP/SMTP desconectado" });
+            setFeedback({ type: "success", msg: t("feedback.emailDisconnected") });
             load();
         } catch (err: unknown) {
-            setFeedback({ type: "error", msg: err instanceof Error ? err.message : "Error" });
+            setFeedback({ type: "error", msg: err instanceof Error ? err.message : tc("error") });
         } finally {
             setDisconnectingEmail(false);
         }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { type AuditEntry } from "@/lib/api";
 import { useAuditoria } from "./_hooks/useAuditoria";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -78,35 +79,36 @@ function EntryRow({ entry }: { entry: AuditEntry }) {
 }
 
 function AuditoriaContent() {
+    const t = useTranslations("auditoria");
     const { tasks, selectedId, setSelected, entries, loadingTasks, loadingLog } = useAuditoria();
 
     return (
         <div className="p-8 max-w-6xl mx-auto">
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-foreground">Auditoría</h1>
-                <p className="text-sm text-muted-foreground mt-1">Registro completo de todas las acciones ejecutadas por los agentes</p>
+                <h1 className="text-2xl font-bold text-foreground">{t("page.title")}</h1>
+                <p className="text-sm text-muted-foreground mt-1">{t("page.subtitle")}</p>
             </div>
 
             <div className="grid lg:grid-cols-4 gap-6">
                 {/* Selector de tarea */}
                 <div className="lg:col-span-1 rounded-xl border border-border bg-card overflow-hidden">
                     <div className="px-4 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Tarea
+                        {t("taskSelector.heading")}
                     </div>
                     <div className="divide-y divide-border max-h-[60vh] overflow-y-auto">
                         {loadingTasks ? (
-                            <div className="p-4 text-xs text-muted-foreground">Cargando…</div>
-                        ) : tasks.map(t => (
+                            <div className="p-4 text-xs text-muted-foreground">{t("common.loading")}</div>
+                        ) : tasks.map(task => (
                             <button
-                                key={t.id}
-                                onClick={() => setSelected(t.id)}
-                                className={`w-full text-left px-4 py-3 transition ${selectedId === t.id
+                                key={task.id}
+                                onClick={() => setSelected(task.id)}
+                                className={`w-full text-left px-4 py-3 transition ${selectedId === task.id
                                     ? "bg-primary/20 text-primary"
                                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                                     }`}
                             >
-                                <p className="text-xs font-medium truncate">{t.user_intent}</p>
-                                <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{t.id.slice(0, 8)}…</p>
+                                <p className="text-xs font-medium truncate">{task.user_intent}</p>
+                                <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{task.id.slice(0, 8)}…</p>
                             </button>
                         ))}
                     </div>
@@ -116,17 +118,17 @@ function AuditoriaContent() {
                 <div className="lg:col-span-3 rounded-xl border border-border bg-card overflow-hidden">
                     <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border
                           text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        <div className="col-span-2">Hora</div>
-                        <div className="col-span-2">Agente</div>
-                        <div className="col-span-4">Acción</div>
-                        <div className="col-span-2">Estado</div>
+                        <div className="col-span-2">{t("logTable.time")}</div>
+                        <div className="col-span-2">{t("logTable.agent")}</div>
+                        <div className="col-span-4">{t("logTable.action")}</div>
+                        <div className="col-span-2">{t("logTable.status")}</div>
                         <div className="col-span-2"></div>
                     </div>
                     {loadingLog ? (
-                        <div className="py-16 text-center text-muted-foreground text-sm">Cargando…</div>
+                        <div className="py-16 text-center text-muted-foreground text-sm">{t("common.loading")}</div>
                     ) : entries.length === 0 ? (
                         <div className="py-16 text-center text-muted-foreground text-sm">
-                            {selectedId ? "Sin registros para esta tarea" : "Selecciona una tarea"}
+                            {selectedId ? t("logTable.emptyForTask") : t("logTable.selectTask")}
                         </div>
                     ) : (
                         entries.map(e => <EntryRow key={e.id} entry={e} />)
@@ -137,9 +139,14 @@ function AuditoriaContent() {
     );
 }
 
+function AuditoriaFallback() {
+    const t = useTranslations("auditoria");
+    return <div className="p-8 text-muted-foreground">{t("page.loadingFallback")}</div>;
+}
+
 export default function AuditoriaPage() {
     return (
-        <Suspense fallback={<div className="p-8 text-muted-foreground">Cargando auditoría...</div>}>
+        <Suspense fallback={<AuditoriaFallback />}>
             <AuditoriaContent />
         </Suspense>
     );

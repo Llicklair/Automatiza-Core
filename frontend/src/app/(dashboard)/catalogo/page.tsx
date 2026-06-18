@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Package, Plus, Pencil, Trash2, Loader2, Upload } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Product } from "@/lib/api";
@@ -19,6 +20,8 @@ const fmt = (val: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(val);
 
 export default function CatalogPage() {
+    const t = useTranslations("catalogo");
+    const tc = useTranslations("common");
     const {
         products, isLoading,
         showModal, setShowModal,
@@ -39,7 +42,7 @@ export default function CatalogPage() {
         },
         {
             accessorKey: "name",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Nombre" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.name")} />,
             cell: ({ row }) => {
                 const prod = row.original;
                 return (
@@ -54,19 +57,19 @@ export default function CatalogPage() {
         },
         {
             accessorKey: "item_type",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Tipo" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.type")} />,
             cell: ({ row }) => <StatusBadge status={row.getValue("item_type")} />,
             filterFn: (row, id, value) => value.includes(row.getValue(id)),
         },
         {
             accessorKey: "price",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Precio base" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.basePrice")} />,
             cell: ({ row }) => {
                 const prod = row.original;
                 return (
                     <div className="text-right">
                         <span className="font-medium text-foreground tabular-nums">{fmt(prod.price)}</span>
-                        <span className="text-[10px] text-muted-foreground block">+{prod.tax_percentage}% IVA</span>
+                        <span className="text-[10px] text-muted-foreground block">{t("columns.vatSuffix", { pct: prod.tax_percentage })}</span>
                     </div>
                 );
             },
@@ -74,7 +77,7 @@ export default function CatalogPage() {
         {
             id: "pvp",
             accessorFn: (row) => row.price * (1 + row.tax_percentage / 100),
-            header: ({ column }) => <DataTableColumnHeader column={column} title="PVP (c/ IVA)" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("columns.pvp")} />,
             cell: ({ row }) => {
                 const pvp = row.original.price * (1 + row.original.tax_percentage / 100);
                 return <span className="font-semibold text-right tabular-nums text-primary">{fmt(pvp)}</span>;
@@ -86,7 +89,7 @@ export default function CatalogPage() {
                 const prod = row.original;
                 return (
                     <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(prod)} title="Editar" aria-label="Editar">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(prod)} title={tc("edit")} aria-label={tc("edit")}>
                             <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
@@ -95,8 +98,8 @@ export default function CatalogPage() {
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => handleDelete(prod.id, prod.name)}
                             disabled={deletingId === prod.id}
-                            title="Eliminar"
-                         aria-label="Eliminar">
+                            title={tc("delete")}
+                         aria-label={tc("delete")}>
                             {deletingId === prod.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                         </Button>
                     </div>
@@ -108,16 +111,16 @@ export default function CatalogPage() {
     return (
         <PageContainer width="full">
             <PageHeader
-                title="Catálogo de Artículos"
-                description="Gestiona productos y servicios. La IA los usa para emitir facturas y presupuestos."
+                title={t("header.title")}
+                description={t("header.description")}
                 icon={Package}
                 actions={
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
-                            <Upload className="mr-2 h-4 w-4" /> Importar CSV
+                            <Upload className="mr-2 h-4 w-4" /> {t("header.importCsv")}
                         </Button>
                         <Button onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" />Nuevo Artículo
+                            <Plus className="mr-2 h-4 w-4" />{t("header.newItem")}
                         </Button>
                     </div>
                 }
@@ -126,9 +129,9 @@ export default function CatalogPage() {
             {!isLoading && products.length === 0 ? (
                 <EmptyState
                     icon={Package}
-                    title="Tu catálogo está vacío"
-                    description="Añade productos y servicios para que la IA pueda generar facturas y presupuestos automáticamente."
-                    action={{ label: "Nuevo Artículo", onClick: openCreate }}
+                    title={t("empty.title")}
+                    description={t("empty.description")}
+                    action={{ label: t("header.newItem"), onClick: openCreate }}
                 />
             ) : (
                 <DataTable
@@ -136,8 +139,8 @@ export default function CatalogPage() {
                     data={products}
                     isLoading={isLoading}
                     searchKey="name"
-                    searchPlaceholder="Buscar por nombre..."
-                    emptyMessage="Sin artículos encontrados."
+                    searchPlaceholder={t("table.searchPlaceholder")}
+                    emptyMessage={t("table.empty")}
                 />
             )}
 
@@ -155,14 +158,14 @@ export default function CatalogPage() {
             <ImportCsvModal
                 open={showImport}
                 onClose={() => setShowImport(false)}
-                entityName="productos"
+                entityName={t("import.entityName")}
                 columns={[
-                    { header: "Nombre", field: "nombre", required: true, example: "Servicio de consultoría" },
+                    { header: t("import.cols.name"), field: "nombre", required: true, example: t("import.examples.name") },
                     { header: "SKU", field: "sku", example: "SRV-001" },
-                    { header: "Descripción", field: "descripcion", example: "Consultoría hora" },
-                    { header: "Precio", field: "precio", required: true, example: "150.00" },
-                    { header: "IVA %", field: "iva", example: "21" },
-                    { header: "Stock", field: "stock", example: "0" },
+                    { header: t("import.cols.description"), field: "descripcion", example: t("import.examples.description") },
+                    { header: t("import.cols.price"), field: "precio", required: true, example: "150.00" },
+                    { header: t("import.cols.vat"), field: "iva", example: "21" },
+                    { header: t("import.cols.stock"), field: "stock", example: "0" },
                 ]}
                 onImport={(rows) => api.importBulk.products(rows)}
                 onSuccess={() => window.location.reload()}

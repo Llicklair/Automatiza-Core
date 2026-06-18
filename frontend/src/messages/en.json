@@ -4590,5 +4590,1146 @@
       "createMissing": "Automatically create missing products",
       "createButton": "Create {count, plural, one {# purchase invoice} other {# purchase invoices}}"
     }
+  },
+  "bandeja": {
+    "title": "Inbox",
+    "subtitle": "Pending approvals and activity from your agents",
+    "tabs": {
+      "approvals": "Approvals",
+      "activity": "Activity"
+    },
+    "categories": {
+      "billing": "Billing",
+      "hr": "HR",
+      "crm": "CRM",
+      "email": "Email",
+      "banking": "Banking",
+      "compliance": "Compliance",
+      "documents": "Documents",
+      "system": "System"
+    },
+    "time": {
+      "now": "now",
+      "minutesAgo": "{mins}m ago",
+      "hoursAgo": "{hrs}h ago"
+    },
+    "inbox": {
+      "aiAgent": "AI Agent"
+    },
+    "activity": {
+      "allAgents": "All agents",
+      "allCategories": "All categories",
+      "clear": "Clear",
+      "refresh": "Refresh activity",
+      "emptyTitle": "Empty inbox",
+      "emptyDescription": "When your agents complete tasks or need your attention, they will appear here",
+      "loadMore": "Load more"
+    },
+    "approvals": {
+      "risk": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "riskBadge": "{level} risk",
+      "expiresIn": "Expires in {mins} min",
+      "expired": "Expired",
+      "viewDetails": "View action details",
+      "reject": "Reject",
+      "approve": "Approve",
+      "loading": "Loading…",
+      "emptyTitle": "No pending approvals",
+      "emptyDescription": "Your agents do not need your attention right now"
+    },
+    "cleanup": {
+      "confirmMessage": "Delete all expired and already resolved approvals?",
+      "confirmLabel": "Delete",
+      "buttonTitle": "Delete expired and resolved approvals",
+      "button": "Clear history"
+    },
+    "toasts": {
+      "decisionError": "Error processing the decision",
+      "rejectError": "Error processing the rejection",
+      "cleanupError": "Error cleaning up approvals"
+    },
+    "rejectModal": {
+      "title": "Reject Action",
+      "closeAria": "Cancel rejection",
+      "description": "You are about to reject this action. You can provide an optional reason so the agent takes it into account in future attempts.",
+      "reasonLabel": "Reason for rejection (optional)",
+      "reasonPlaceholder": "e.g. Missing data in the document...",
+      "cancel": "Cancel",
+      "confirm": "Confirm Rejection"
+    }
+  },
+  "auditoria": {
+    "page": {
+      "title": "Audit",
+      "subtitle": "Complete log of all actions executed by the agents",
+      "loadingFallback": "Loading audit..."
+    },
+    "common": {
+      "loading": "Loading…"
+    },
+    "taskSelector": {
+      "heading": "Task"
+    },
+    "logTable": {
+      "time": "Time",
+      "agent": "Agent",
+      "action": "Action",
+      "status": "Status",
+      "emptyForTask": "No records for this task",
+      "selectTask": "Select a task"
+    }
+  },
+  "documentos": {
+    "header": {
+      "title": "Documents",
+      "subtitle": "Select a folder to view the classified documents",
+      "folderSubtitle": "Files classified in the {folder} folder"
+    },
+    "toolbar": {
+      "importExcel": "Import Excel",
+      "exportDocs": "Export Docs",
+      "backupDb": "Backup DB",
+      "restoreDb": "Restore DB",
+      "scanImport": "Scan / Import"
+    },
+    "folders": {
+      "heading": "Folders",
+      "facturas": {
+        "label": "Invoices",
+        "desc": "Sales and Purchases"
+      },
+      "bancos": {
+        "label": "Banks",
+        "desc": "Statements and transactions"
+      },
+      "nominas": {
+        "label": "Payroll",
+        "desc": "Salary slips"
+      },
+      "fiscal": {
+        "label": "Tax Advisor",
+        "desc": "Taxes and alerts"
+      },
+      "crm": {
+        "label": "CRM",
+        "desc": "Sales and Opportunities"
+      },
+      "excels": {
+        "label": "Spreadsheets",
+        "desc": "Spreadsheets and data"
+      },
+      "informes": {
+        "label": "Reports",
+        "desc": "Analysis and profitability"
+      },
+      "correos": {
+        "label": "Emails",
+        "desc": "Email summaries"
+      },
+      "automatizaciones": {
+        "label": "Automation",
+        "desc": "Rules and Workflows"
+      },
+      "rrhh": {
+        "label": "HR",
+        "desc": "Contracts and Personnel"
+      },
+      "otros": {
+        "label": "Others",
+        "desc": "Miscellaneous documents"
+      }
+    },
+    "list": {
+      "loading": "Loading...",
+      "emptyTitle": "This folder is empty",
+      "emptyHint": "Scan or import using the «Scan / Import» button",
+      "colFile": "File",
+      "colSize": "Size",
+      "colStatus": "Status",
+      "colUploaded": "Uploaded"
+    },
+    "errors": {
+      "load": "Error loading documents"
+    },
+    "toasts": {
+      "exportSuccess": "Documents exported successfully",
+      "exportError": "Error exporting documents",
+      "backupSuccess": "Backup downloaded successfully",
+      "backupError": "Error generating the backup"
+    }
+  },
+  "informes": {
+    "page": {
+      "title": "AI Reports",
+      "subtitle": "Reports generated automatically by AI",
+      "tabGestion": "Management",
+      "tabFiscal": "Tax",
+      "reportsTitle": "Generated PDF reports",
+      "download": "Download"
+    },
+    "gestion": {
+      "refresh": "Refresh",
+      "generatePdf": "Generate PDF",
+      "genOk": "PDF generated and saved to documents",
+      "loadingPeriod": "Loading period data…",
+      "resumenEjecutivo": "Executive summary · {period}",
+      "kpiIngresos": "Income",
+      "kpiGastos": "Expenses",
+      "kpiMargenBruto": "Gross margin",
+      "kpiPendienteCobro": "Pending collection",
+      "facturasCount": "{count} invoices",
+      "margenSobreIngresos": "{pct}% of income",
+      "sectionFacturacion": "Invoicing",
+      "ingresosTotales": "Total income",
+      "gastosTotales": "Total expenses",
+      "margenBruto": "Gross margin",
+      "facturasEmitidas": "Invoices issued",
+      "facturasRecibidas": "Invoices received",
+      "pendientesCobro": "Pending collection",
+      "sectionPosicionBancaria": "Bank position",
+      "entradas": "Inflows",
+      "salidas": "Outflows",
+      "saldoNetoMes": "Net balance for the month",
+      "movimientosRegistrados": "Recorded transactions",
+      "reconciliados": "Reconciled",
+      "sectionRRHH": "Human Resources",
+      "empleadosActivos": "Active employees",
+      "costeNominas": "Payroll cost",
+      "nominasPagadas": "Payrolls paid",
+      "nominasPendientes": "Payrolls pending",
+      "sectionClientes": "Customers",
+      "totalClientes": "Total customers",
+      "nuevosPeriodo": "New this period",
+      "clientePrincipal": "Top customer",
+      "emptyTitle": "No data for {period}",
+      "emptySubtitle": "Try another month or record activity first"
+    },
+    "fiscal": {
+      "mensual": "Monthly",
+      "trimestral": "Quarterly",
+      "refresh": "Refresh",
+      "generatePdf": "Generate Tax PDF",
+      "genOk": "Tax PDF generated and saved",
+      "loadingData": "Loading tax data…",
+      "resumenFiscal": "Tax summary · {period}",
+      "kpiResultadoIva": "VAT result",
+      "kpiResultadoIvaIngresar": "To pay",
+      "kpiResultadoIvaCompensar": "To offset",
+      "kpiIrpfRetenciones": "Income tax withholdings",
+      "kpiIrpfSub": "Withholdings for the period",
+      "kpiIsEstimado": "Estimated corporate tax",
+      "kpiIsSub": "Rate {tipo}%",
+      "kpiTotalObligaciones": "Total obligations",
+      "kpiTotalSub": "Total estimate",
+      "sectionIva": "VAT — Output vs Input",
+      "ivaRepercutido21": "Output VAT (21%)",
+      "ivaRepercutido10": "Output VAT (10%)",
+      "ivaRepercutido4": "Output VAT (4%)",
+      "totalRepercutido": "Total output VAT",
+      "ivaSoportado21": "Input VAT (21%)",
+      "ivaSoportado10": "Input VAT (10%)",
+      "ivaSoportado4": "Input VAT (4%)",
+      "totalSoportado": "Total input VAT",
+      "resultadoIva": "VAT result",
+      "sectionRetencionesIrpf": "Income tax withholdings",
+      "retencionesNominas": "Payroll withholdings",
+      "retencionesFacturas": "Invoice withholdings",
+      "totalRetenciones": "Total withholdings",
+      "sectionImpuestoSociedades": "Corporate tax (est.)",
+      "ingresosBrutos": "Gross income",
+      "gastosDeducibles": "Deductible expenses",
+      "baseImponible": "Taxable base",
+      "tipoImpositivo": "Tax rate",
+      "cuotaEstimada": "Estimated amount",
+      "disclaimer": "Indicative estimate generated automatically. It does not replace professional tax advice or filings with the AEAT.",
+      "emptyTitle": "No tax data for {period}",
+      "emptySubtitle": "Try another period or record activity first"
+    },
+    "hooks": {
+      "months": "January,February,March,April,May,June,July,August,September,October,November,December",
+      "quarterLabel": "Q{q} {year}",
+      "errorLoadingData": "Error loading data",
+      "errorLoadingFiscalData": "Error loading tax data",
+      "errorUnknown": "Unknown error",
+      "errorGenerating": "Error generating report: {msg}",
+      "errorGeneratingFiscal": "Error generating tax report: {msg}",
+      "errorDownloading": "Error downloading: {msg}",
+      "errorDeleting": "Error deleting: {msg}",
+      "confirmDelete": "Delete this report? This action cannot be undone.",
+      "confirmLabel": "Delete"
+    }
+  },
+  "catalogo": {
+    "header": {
+      "title": "Item Catalog",
+      "description": "Manage products and services. The AI uses them to issue invoices and quotes.",
+      "importCsv": "Import CSV",
+      "newItem": "New Item"
+    },
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "basePrice": "Base price",
+      "pvp": "Retail price (incl. VAT)",
+      "vatSuffix": "+{pct}% VAT"
+    },
+    "empty": {
+      "title": "Your catalog is empty",
+      "description": "Add products and services so the AI can generate invoices and quotes automatically."
+    },
+    "table": {
+      "searchPlaceholder": "Search by name...",
+      "empty": "No items found."
+    },
+    "modal": {
+      "editTitle": "Edit Item",
+      "newTitle": "New Item",
+      "closeAria": "Close item form",
+      "saveChanges": "Save changes",
+      "create": "Create item"
+    },
+    "fields": {
+      "nameRequired": "Name *",
+      "sku": "SKU / Ref.",
+      "skuPlaceholder": "Optional",
+      "barcode": "Barcode",
+      "barcodePlaceholder": "EAN / UPC (optional)",
+      "category": "Category",
+      "categoryPlaceholder": "E.g. hardware, office, ...",
+      "location": "Warehouse location",
+      "locationPlaceholder": "E.g. Aisle 1, Section A-3, Shelf 4",
+      "description": "Description",
+      "nature": "Nature",
+      "unit": "Unit",
+      "vat": "VAT %",
+      "salePriceRequired": "Sale price *",
+      "costPrice": "Cost price",
+      "costPricePlaceholder": "For stock valuation",
+      "active": "Active",
+      "activeHint": "(deactivating hides it from the operational inventory)"
+    },
+    "nature": {
+      "product": "Product",
+      "service": "Service"
+    },
+    "vat": {
+      "standard": "21%",
+      "reduced": "10% (reduced)",
+      "superReduced": "4% (super-reduced)",
+      "exempt": "0% (exempt)"
+    },
+    "import": {
+      "entityName": "products",
+      "cols": {
+        "name": "Name",
+        "description": "Description",
+        "price": "Price",
+        "vat": "VAT %",
+        "stock": "Stock"
+      },
+      "examples": {
+        "name": "Consulting service",
+        "description": "Consulting hour"
+      }
+    },
+    "delete": {
+      "title": "Delete item",
+      "message": "Delete \"{name}\"? This action cannot be undone.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "toasts": {
+      "saveError": "Error saving",
+      "deleted": "Item deleted",
+      "deleteError": "Error deleting"
+    }
+  },
+  "tpv": {
+    "title": "POS",
+    "cancelSession": "Cancel session",
+    "header": {
+      "description": "Point of sale — scan products, adjust quantities and charge.",
+      "sessionInfo": "Session #{id} · opened {time}"
+    },
+    "empty": {
+      "title": "No open session",
+      "description": "Start a new session to begin selling.",
+      "openButton": "Open POS session"
+    },
+    "cancelConfirm": {
+      "title": "Cancel session",
+      "message": "All cart lines will be discarded. This action cannot be undone.",
+      "confirmLabel": "Cancel session",
+      "cancelLabel": "Back"
+    },
+    "scan": {
+      "placeholder": "Scan with a reader or type a barcode / SKU...",
+      "addProduct": "Add product",
+      "scanWithCamera": "Scan with camera",
+      "hintReader": "· Use a USB/Bluetooth reader: it triggers automatically when scanning.",
+      "hintCamera": "· Or tap the camera to read with your phone.",
+      "hintExisting": "· If you add a product already in the cart, it adds 1 to the quantity."
+    },
+    "cart": {
+      "title": "Cart",
+      "lineCount": "{count, plural, one {# line} other {# lines}}",
+      "empty": "Empty cart. Scan or enter a code to get started.",
+      "linePrice": "{price} · VAT {tax}%"
+    },
+    "totals": {
+      "subtotal": "Subtotal",
+      "tax": "VAT",
+      "total": "Total",
+      "charge": "Charge {amount}"
+    },
+    "scanner": {
+      "title": "Scan code",
+      "cameraError": "Could not open the camera",
+      "unsupportedTitle": "Camera scanning not supported",
+      "unsupportedDescription": "Your browser does not implement BarcodeDetector. Use a USB/Bluetooth reader or enter the code manually.",
+      "permissionHint": "Make sure to grant camera permission to the browser.",
+      "aimHint": "Point at the product's barcode or QR code"
+    },
+    "payment": {
+      "title": "Charge",
+      "amountLabel": "To charge",
+      "cash": "Cash",
+      "card": "Card",
+      "processing": "Processing payment…"
+    },
+    "toast": {
+      "openError": "Error opening session",
+      "productNotFound": "No product found for \"{code}\"",
+      "addProductError": "Error adding product",
+      "addLineError": "Error adding line",
+      "updateQuantityError": "Error updating quantity",
+      "removeLineError": "Error removing line",
+      "checkoutSuccess": "Payment recorded · {amount}",
+      "checkoutError": "Error charging",
+      "cancelSuccess": "Session cancelled",
+      "cancelError": "Error cancelling"
+    }
+  },
+  "albaranes": {
+    "title": "Delivery notes",
+    "subtitle": "Management of delivery notes and dispatch notes.",
+    "newAlbaran": "New delivery note",
+    "searchPlaceholder": "Search by number...",
+    "loading": "Loading delivery notes...",
+    "filter": {
+      "allStatuses": "All statuses"
+    },
+    "status": {
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "delivered": "Delivered"
+    },
+    "empty": {
+      "title": "No delivery notes",
+      "hint": "Create the first one with the “New delivery note” button."
+    },
+    "table": {
+      "number": "Note no.",
+      "date": "Date",
+      "client": "Client",
+      "status": "Status",
+      "total": "Total",
+      "actions": "Actions",
+      "noClient": "No client"
+    },
+    "actions": {
+      "downloadPdf": "Download PDF",
+      "convertToInvoice": "Convert to invoice"
+    },
+    "delete": {
+      "title": "Delete delivery note",
+      "message": "Delete this delivery note? This action cannot be undone."
+    },
+    "toasts": {
+      "needLine": "Add at least one line with a description.",
+      "created": "Delivery note created successfully",
+      "createError": "Error creating delivery note: {error}",
+      "deleted": "Delivery note deleted",
+      "unknownError": "Unknown error"
+    },
+    "modal": {
+      "title": "New delivery note",
+      "client": "Client",
+      "clientPlaceholder": "Client name (optional)",
+      "date": "Date",
+      "lines": "Lines",
+      "addLine": "Add line",
+      "colDescription": "Description",
+      "colQuantity": "Quantity",
+      "colUnitPrice": "Unit price",
+      "colTax": "VAT %",
+      "descriptionPlaceholder": "Description...",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional notes (optional)",
+      "submit": "Create delivery note"
+    }
+  },
+  "integraciones": {
+    "title": "Integrations",
+    "subtitle": "Connect your tools so the agents can act on them",
+    "status": {
+      "connected": "Connected",
+      "notConnected": "Not connected"
+    },
+    "card": {
+      "lastSync": "Last sync: {date}"
+    },
+    "banner": {
+      "title": "Connect your services",
+      "before": "Link your bank, email and storage so the agents can read invoices, send emails and sync documents automatically. Connections use OAuth —",
+      "highlight": "your credentials are never shared with us"
+    },
+    "actions": {
+      "connecting": "Connecting…",
+      "disconnecting": "Disconnecting…",
+      "disconnect": "Disconnect",
+      "connectGoogle": "Connect with Google",
+      "connectMicrosoft": "Connect with Microsoft"
+    },
+    "psd2": {
+      "title": "Bank (PSD2 / GoCardless)",
+      "subtitle": "Real balances and transactions",
+      "connectedInfo": "Your finance agent can now check your bank balances and transactions in real time.",
+      "disconnect": "Disconnect Bank",
+      "intro": {
+        "before": "To connect to your bank accounts we use GoCardless (formerly Nordigen), an aggregator regulated under the European",
+        "after": "directive."
+      },
+      "secretIdPlaceholder": "Secret ID (you can use: DEMO_PSD2_ID)",
+      "secretKeyPlaceholder": "Secret Key (you can use: DEMO_PSD2_ID)",
+      "connect": "Connect PSD2"
+    },
+    "gmail": {
+      "subtitle": "Email with Google",
+      "connectedInfo": "The email agent can read and send emails from your Gmail account.",
+      "disconnect": "Disconnect Gmail",
+      "intro": "Connect your Gmail account so the agent can read your inbox and send emails on your behalf.",
+      "oauthNote": "Connecting Google enables Gmail and Google Drive at the same time."
+    },
+    "gdrive": {
+      "subtitle": "Document storage and backup",
+      "connectedInfo": "Sync documents, upload invoices and run automatic backups to your Google Drive.",
+      "disconnect": "Disconnect Google Drive",
+      "intro": "Connect Google Drive to sync documents, export invoices and run automatic backups.",
+      "alreadyWithGmail": "Google Drive is already connected together with Gmail. Enable it above."
+    },
+    "outlook": {
+      "subtitle": "Email with Microsoft",
+      "connectedInfo": "The email agent can read and send emails from your Outlook account.",
+      "disconnect": "Disconnect Outlook",
+      "intro": "Connect your Outlook / Microsoft 365 account so the agent can manage your email.",
+      "oauthNote": "Connecting Microsoft enables Outlook and OneDrive at the same time."
+    },
+    "onedrive": {
+      "subtitle": "Document storage and backup",
+      "connectedInfo": "Sync documents, upload invoices and run automatic backups to your OneDrive.",
+      "disconnect": "Disconnect OneDrive",
+      "intro": "Connect OneDrive to sync documents, export invoices and run automatic backups.",
+      "alreadyWithOutlook": "OneDrive is already connected together with Outlook. Enable it above."
+    },
+    "email": {
+      "title": "IMAP / SMTP email",
+      "subtitle": "Own server, Yahoo, iCloud or fallback without OAuth",
+      "connectedInfo": "Your IMAP/SMTP email is connected. The email agent can read the inbox and send messages with attachments.",
+      "disconnect": "Disconnect email",
+      "verifying": "Verifying…",
+      "connect": "Connect email",
+      "intro": {
+        "before": "IMAP/SMTP connection — useful for your own servers, Yahoo, iCloud or when OAuth is not available. For",
+        "and": "and",
+        "after": "we recommend OAuth (buttons above)."
+      },
+      "fields": {
+        "provider": "Provider",
+        "address": "Email address",
+        "addressPlaceholder": "you@email.com",
+        "password": "Password",
+        "passwordPlaceholder": "App Password recommended",
+        "imapHost": "IMAP server",
+        "imapHostPlaceholder": "imap.example.com",
+        "imapPort": "IMAP port",
+        "smtpHost": "SMTP server",
+        "smtpHostPlaceholder": "smtp.example.com",
+        "smtpPort": "SMTP port"
+      },
+      "providers": {
+        "gmail": "Gmail (App Password)",
+        "outlook": "Outlook / Microsoft 365",
+        "yahoo": "Yahoo Mail",
+        "icloud": "iCloud Mail",
+        "custom": "Own server (custom)"
+      },
+      "help": {
+        "gmail": "You need an App Password (not your regular password). Generate it at myaccount.google.com → Security → 2-Step Verification → App passwords.",
+        "outlook": "Use your usual password or an app password if you have 2FA.",
+        "yahoo": "Yahoo requires an App Password. Go to Settings → Account security → Generate app password.",
+        "icloud": "You need an Apple App Password. Generate it at appleid.apple.com → Sign-In and Security → App-Specific Passwords.",
+        "custom": "Enter your provider's details. Ask your administrator if you don't know them."
+      }
+    },
+    "confirm": {
+      "disconnectBank": "Disconnect your Bank?",
+      "disconnectEmail": "Disconnect your IMAP/SMTP email?",
+      "disconnectLabel": "Disconnect {label}?"
+    },
+    "feedback": {
+      "providerConnected": "{provider} connected successfully",
+      "psd2Connected": "Bank (PSD2) connected successfully",
+      "bankDisconnected": "Bank disconnected",
+      "emailConnected": "IMAP/SMTP email connected successfully",
+      "emailDisconnected": "IMAP/SMTP email disconnected",
+      "labelDisconnected": "{label} disconnected",
+      "unknownError": "Unknown error"
+    }
+  },
+  "alertas": {
+    "header": {
+      "title": "Automatic alerts",
+      "description": "Business conditions detected by the system (invoices, stock, payroll)"
+    },
+    "range": {
+      "last24h": "Last 24h",
+      "last48h": "Last 48h",
+      "lastWeek": "Last week"
+    },
+    "actions": {
+      "reloadAria": "Reload alerts",
+      "checking": "Checking…",
+      "checkNow": "Check now"
+    },
+    "kpis": {
+      "total": "Total alerts",
+      "critical": "Critical",
+      "warnings": "Warnings",
+      "info": "Informational"
+    },
+    "types": {
+      "overdueInvoice": "Overdue invoice",
+      "dueSoonInvoice": "Invoice due soon",
+      "lowStock": "Low stock",
+      "pendingPayroll": "Payroll pending payment"
+    },
+    "list": {
+      "loading": "Loading alerts…",
+      "empty": "No alerts in the selected period",
+      "view": "View →"
+    },
+    "footer": {
+      "note": "Alerts are checked automatically every day at 08:30. The same alerts are not repeated within 24h."
+    },
+    "toasts": {
+      "loadError": "Error loading alerts",
+      "checkError": "Error running the check"
+    }
+  },
+  "calendario": {
+    "header": {
+      "title": "Unified calendar",
+      "description": "Meetings, due dates, reservations and payroll in a single view"
+    },
+    "sources": {
+      "event": "Meeting / event",
+      "reservation": "Reservation",
+      "invoiceDue": "Invoice due date",
+      "payroll": "Payroll"
+    },
+    "weekdays": {
+      "mon": "M",
+      "tue": "T",
+      "wed": "W",
+      "thu": "T",
+      "fri": "F",
+      "sat": "S",
+      "sun": "S"
+    },
+    "months": {
+      "jan": "January",
+      "feb": "February",
+      "mar": "March",
+      "apr": "April",
+      "may": "May",
+      "jun": "June",
+      "jul": "July",
+      "aug": "August",
+      "sep": "September",
+      "oct": "October",
+      "nov": "November",
+      "dec": "December"
+    },
+    "nav": {
+      "today": "Today",
+      "newEvent": "New event"
+    },
+    "grid": {
+      "loading": "Loading…",
+      "more": "+{count, plural, one {# more} other {# more}}"
+    },
+    "detail": {
+      "closeAria": "Close",
+      "createThisDay": "Create event on this day",
+      "empty": "No events on this day"
+    },
+    "modal": {
+      "title": "New event",
+      "fieldTitle": "Title *",
+      "titlePlaceholder": "Client meeting, demo, call...",
+      "type": "Type",
+      "start": "Start",
+      "end": "End",
+      "location": "Location or link",
+      "locationPlaceholder": "Room 1, Meet, Zoom URL...",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional details...",
+      "cancel": "Cancel",
+      "create": "Create event"
+    },
+    "eventTypes": {
+      "meeting": "Meeting",
+      "call": "Call",
+      "task": "Task",
+      "other": "Other"
+    },
+    "toasts": {
+      "loadError": "Error loading the calendar",
+      "missingTitle": "Title is missing",
+      "endBeforeStart": "End time must be after start time",
+      "created": "Event created",
+      "createError": "Error creating the event"
+    }
+  },
+  "emailMarketing": {
+    "header": {
+      "title": "Email Marketing",
+      "subtitle": "Bulk campaigns to your customers using your configured email account"
+    },
+    "tabs": {
+      "campaigns": "Campaigns",
+      "templates": "Templates",
+      "stats": "Statistics"
+    },
+    "status": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "sending": "Sending",
+      "sent": "Sent",
+      "failed": "Error"
+    },
+    "form": {
+      "newCampaign": "New campaign",
+      "recipients": "{count} recipients (customers with email)",
+      "namePlaceholder": "Internal campaign name",
+      "templateOptional": "Template (optional)",
+      "subjectPlaceholder": "Email subject",
+      "varsHint": "Available variables: '{{'nombre'}}', '{{'email'}}'",
+      "editor": "Editor",
+      "preview": "Preview",
+      "sampleName": "Customer",
+      "bodyPlaceholder": "Email body (HTML or plain text)",
+      "emptyForDraft": "Leave empty for draft",
+      "create": "Create"
+    },
+    "empty": {
+      "noCampaigns": "No campaigns yet"
+    },
+    "list": {
+      "send": "Send",
+      "recipientsShort": "{count} recip.",
+      "sentCount": "{count} sent",
+      "failedCount": "{count} failed",
+      "sentAt": "Sent {date}"
+    },
+    "toasts": {
+      "created": "Campaign created",
+      "createError": "Error creating the campaign",
+      "sending": "Campaign being sent",
+      "sendError": "Error sending the campaign",
+      "deleteError": "Error deleting the campaign"
+    },
+    "stats": {
+      "empty": "No campaigns sent yet",
+      "emailsSent": "Emails sent",
+      "failed": "Failed",
+      "successRate": "Success rate",
+      "recipientsCount": "{count} recipients",
+      "sentCount": "{count} sent",
+      "failedCount": "{count} failed"
+    },
+    "templates": {
+      "new": "New template",
+      "editingTitle": "Editing: {name}",
+      "editor": "Editor",
+      "preview": "Preview",
+      "namePlaceholder": "Template name",
+      "subjectPlaceholder": "Email subject",
+      "varsHint": "Available variables: '{{'nombre'}}', '{{'email'}}'",
+      "bodyPlaceholder": "Template HTML body…",
+      "sampleName": "Customer",
+      "cancel": "Cancel",
+      "saveChanges": "Save changes",
+      "createTemplate": "Create template",
+      "edit": "Edit",
+      "empty": "No saved templates"
+    },
+    "templatesToasts": {
+      "saved": "Template saved",
+      "saveError": "Error saving the template",
+      "deleteError": "Error deleting the template"
+    }
+  },
+  "plantillas": {
+    "header": {
+      "title": "Document templates",
+      "subtitle": "Customize the visual style of your invoices and payslips. The AI will use the default template.",
+      "newTemplate": "New template"
+    },
+    "types": {
+      "invoice": "Invoices",
+      "payroll": "Payslips",
+      "excel": "Excel / Exports",
+      "albaran": "Delivery notes",
+      "contract": "Word contracts"
+    },
+    "list": {
+      "empty": "There are no templates of this type.",
+      "createPresets": "Create presets"
+    },
+    "card": {
+      "default": "Default"
+    },
+    "form": {
+      "nameLabel": "Template name",
+      "namePlaceholder": "e.g. Blue corporate invoice",
+      "layoutLabel": "Design style",
+      "accentLabel": "Accent color",
+      "fontLabel": "Typography",
+      "headerLabel": "Header",
+      "tableLabel": "Line items table",
+      "logoLabel": "Logo / company position",
+      "footerLabel": "Footer text (optional)",
+      "footerPlaceholder": "e.g. Thank you for your trust · www.mycompany.com · +34 91 000 0000",
+      "useAsDefault": "Use as default template",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "saveChanges": "Save changes",
+      "createTemplate": "Create template",
+      "close": "Close"
+    },
+    "layout": {
+      "modern": {
+        "label": "Modern",
+        "desc": "Color band, logo on the left, striped table"
+      },
+      "classic": {
+        "label": "Classic",
+        "desc": "No band, centered logo, Times, bordered table"
+      },
+      "minimal": {
+        "label": "Minimal",
+        "desc": "Thin line, logo on the right, clean table"
+      },
+      "bold": {
+        "label": "Bold",
+        "desc": "Dark header, accented table, maximum impact"
+      }
+    },
+    "colors": {
+      "indigo": "Indigo",
+      "blue": "Blue",
+      "emerald": "Emerald",
+      "amber": "Amber",
+      "red": "Red",
+      "violet": "Violet",
+      "cyan": "Cyan",
+      "slate": "Slate"
+    },
+    "fonts": {
+      "helvetica": "Modern and clean",
+      "times": "Classic and formal",
+      "courier": "Monospaced"
+    },
+    "headers": {
+      "colorBand": {
+        "label": "Color band",
+        "desc": "Header filled with accent color"
+      },
+      "darkBand": {
+        "label": "Dark band",
+        "desc": "Black header with accent in text"
+      },
+      "lineOnly": {
+        "label": "Line",
+        "desc": "Just a separator line"
+      },
+      "none": {
+        "label": "No header",
+        "desc": "Typography only"
+      }
+    },
+    "tables": {
+      "striped": {
+        "label": "Alternating stripes",
+        "desc": "Alternating gray rows"
+      },
+      "bordered": {
+        "label": "Bordered",
+        "desc": "Full grid"
+      },
+      "clean": {
+        "label": "Clean",
+        "desc": "Horizontal lines only"
+      },
+      "accentHeader": {
+        "label": "Color header",
+        "desc": "Header with accent color"
+      }
+    },
+    "logoPositions": {
+      "left": "Left",
+      "center": "Center",
+      "right": "Right"
+    },
+    "variables": {
+      "nombreCliente": "Client full name",
+      "nifCliente": "Client tax ID (NIF/CIF)",
+      "direccionCliente": "Client address",
+      "nombreEmpresa": "Your company name",
+      "nifEmpresa": "Your company tax ID (NIF/CIF)",
+      "fecha": "Current date (dd/mm/yyyy)",
+      "fechaInicio": "Contract start date",
+      "fechaFin": "Contract end date",
+      "importe": "Total amount",
+      "numeroContrato": "Contract number"
+    },
+    "toasts": {
+      "loadError": "Error loading templates",
+      "seedSuccess": "Preset templates created",
+      "seedError": "Error creating presets",
+      "nameRequired": "Name is required",
+      "savedDefault": "Template saved and set as default",
+      "createdDefault": "Template created and set as default",
+      "saveError": "Error saving template",
+      "deleteSuccess": "Template deleted",
+      "deleteError": "Error deleting template",
+      "setDefaultSuccess": "\"{name}\" set as default",
+      "setDefaultError": "Error updating template",
+      "previewError": "Error generating preview"
+    },
+    "confirmDelete": {
+      "title": "Delete template",
+      "message": "Delete the template \"{name}\"? This action cannot be undone.",
+      "confirmLabel": "Delete"
+    },
+    "contracts": {
+      "intro": "Upload .docx templates with variables like <code>{{nombre_cliente}}</code>. The system will fill them with real data when generating contracts.",
+      "uploadDocx": "Upload .docx",
+      "emptyTitle": "No templates yet",
+      "emptyHint": "Click to upload your first .docx",
+      "generateDraft": "Generate draft",
+      "edit": "Edit",
+      "editTitle": "Edit in the browser (.docx only)",
+      "previewBtn": "Preview",
+      "previewTitle": "HTML preview (.docx only)",
+      "previewNote": "Read-only preview (HTML). The variables <code>{{nombre}}</code> are highlighted if they exist in the text.",
+      "converting": "Converting document…",
+      "varsInDoc": "Variables in the document",
+      "noVarsDetected": "No <code>{{ }}</code> were detected in the converted text.",
+      "generateFor": "Generate draft for:",
+      "client": "Client",
+      "employee": "Employee",
+      "loading": "Loading…",
+      "selectClient": "-- Select client --",
+      "selectEmployee": "-- Select employee --",
+      "generating": "Generating…",
+      "downloadDraft": "Download draft",
+      "cancel": "Cancel",
+      "availableVars": "Available variables",
+      "clickToCopy": "Click to copy",
+      "toasts": {
+        "loadError": "Error loading contract templates",
+        "editorDocxOnly": "In-browser editing is only available for .docx files",
+        "loadTemplateError": "The template could not be loaded",
+        "previewError": "Preview error",
+        "uploadSuccess": "Template uploaded successfully",
+        "uploadError": "Error uploading template",
+        "desktopOnly": "This feature is only available in the desktop app",
+        "deleteSuccess": "Template deleted",
+        "deleteError": "Error deleting template",
+        "entitiesError": "Error loading entities",
+        "generateSuccess": "Draft generated and downloaded",
+        "generateError": "Error generating contract",
+        "copied": "Copied: {key}"
+      },
+      "confirmDelete": {
+        "title": "Delete template",
+        "message": "Delete \"{name}\"?",
+        "confirmLabel": "Delete"
+      }
+    }
+  },
+  "primerosPasos": {
+    "header": {
+      "title": "Getting Started",
+      "subtitle": "Your guide to getting AutomatizaCore up and running"
+    },
+    "progress": {
+      "allDone": "Congratulations! Everything is set up 🎉",
+      "completed": "{count, plural, one {# of {total} step completed} other {# of {total} steps completed}}"
+    },
+    "iaDemo": {
+      "label": "AI Assistant — you can ask it things like:",
+      "realtime": "The AI agent acts in real time — it executes, creates and queries without you having to touch a single form."
+    },
+    "iaExamples": {
+      "0": "Invoice Acme Corp for 5 hours of consulting at €80/h",
+      "1": "How much have I invoiced this month?",
+      "2": "Create a draft payroll for all active employees",
+      "3": "Show me overdue and unpaid invoices",
+      "4": "Give me the quarterly expense summary by category",
+      "5": "Record the payment of invoice F-2024-012"
+    },
+    "capabilities": {
+      "canTitle": "The AI can do",
+      "can": {
+        "0": "Create invoices, delivery notes and quotes",
+        "1": "Generate payrolls and calculate IRPF/SS",
+        "2": "Answer questions about your data",
+        "3": "Record collections, payments and accounting entries",
+        "4": "Search for customers, products and employees",
+        "5": "Run scheduled automations",
+        "6": "Generate reports and Excel exports"
+      },
+      "requiresTitle": "Requires confirmation or prior data",
+      "requires": {
+        "0": "Delete records (always asks for confirmation)",
+        "1": "Send emails (requires Gmail/Outlook integration)",
+        "2": "Invoices: the customer must exist in Contacts",
+        "3": "Payrolls: employees must be registered",
+        "4": "Does not access external systems without an integration",
+        "5": "Does not make financial decisions for you",
+        "6": "Cannot access other tenants' data"
+      }
+    },
+    "badge": {
+      "done": "Done",
+      "locked": "Locked"
+    },
+    "actions": {
+      "markPending": "Mark as pending",
+      "markDone": "Mark as completed"
+    },
+    "modules": {
+      "title": "Explore all modules",
+      "ventas": "Sales",
+      "compras": "Purchases",
+      "contactos": "Contacts",
+      "catalogo": "Catalog",
+      "rrhh": "HR",
+      "contabilidad": "Accounting",
+      "automatizaciones": "Automations",
+      "analitica": "Analytics"
+    },
+    "steps": {
+      "empresa": {
+        "title": "Set up your company",
+        "description": "Add the name, tax ID and fiscal address. This data will appear on all your invoices.",
+        "detail": "Go to Settings → Company and fill in your business details. It only needs to be done once.",
+        "hrefLabel": "Go to Settings",
+        "tips": {
+          "0": "The tax ID (NIF/CIF) is mandatory to issue valid invoices in Spain.",
+          "1": "You can add your logo later from the same panel."
+        }
+      },
+      "apiKeys": {
+        "title": "Set up your AI key",
+        "description": "The agents use your own AI key (BYOK model). Without a key, the AI does not work.",
+        "detail": "Go to Settings → API Keys, choose a provider (Anthropic recommended; also OpenAI or Groq), paste your key and activate it. It is stored encrypted and you can change it whenever you want.",
+        "hrefLabel": "Go to API Keys",
+        "tips": {
+          "0": "Create the key on the provider's website (e.g. console.anthropic.com); you only pay for your usage.",
+          "1": "Claude Code only works if you have the Claude CLI installed (advanced/dev use)."
+        }
+      },
+      "clientes": {
+        "title": "Register your first customers",
+        "description": "Build your contacts directory: customers, suppliers or leads. The AI will use them when generating invoices.",
+        "detail": "In Contacts you can import them manually or let the AI detect them automatically when scanning received invoices.",
+        "hrefLabel": "Go to Contacts",
+        "tips": {
+          "0": "The customer's tax ID is validated automatically when issuing an invoice.",
+          "1": "Filter by type: Customer, Supplier, Lead or Company."
+        }
+      },
+      "catalogo": {
+        "title": "Create your products and services catalog",
+        "description": "Define the items or services you sell with their price and VAT. This way the AI can fill in invoices in seconds.",
+        "detail": "The catalog centralizes prices and VAT rates. When you ask the AI 'invoice Tech SL for 3 hours of consulting', it searches the catalog and completes the invoice automatically.",
+        "hrefLabel": "Go to the Catalog",
+        "tips": {
+          "0": "Assign SKUs/references if you have items with a code.",
+          "1": "The default VAT is 21% — change it to 0% for exports."
+        }
+      },
+      "factura": {
+        "title": "Issue your first invoice",
+        "description": "Create a real sales invoice or ask the AI to generate it for you in natural language.",
+        "detail": "You can create invoices manually from Sales → Invoices → New Invoice, or simply type in the AI chat: 'Invoice [customer] for [concept]' and the agent will create it and ask you for confirmation.",
+        "hrefLabel": "New Invoice",
+        "tips": {
+          "0": "Invoices in 'Draft' status do not count in the accounting until you mark them as 'Pending'.",
+          "1": "Download the PDF directly from the invoice list."
+        }
+      },
+      "ia": {
+        "title": "Talk to the AI",
+        "description": "The AI agent is available at all times. Write to it in natural language and it will execute real actions.",
+        "detail": "Click the AI assistant button (bottom-right corner) or from the AI Tasks panel. You can ask it things like: 'Show me invoices pending payment this month', 'Create a payroll for María García' or 'Give me the February sales summary'.",
+        "tips": {
+          "0": "The AI always asks you for confirmation before executing irreversible actions.",
+          "1": "You can speak in Spanish with accents, abbreviations or informal language.",
+          "2": "The task history is in the 'AI Tasks' panel."
+        }
+      },
+      "compras": {
+        "title": "Record your expenses and received invoices",
+        "description": "Scan or upload supplier invoices. The AI extracts the data and categorizes it automatically.",
+        "detail": "In Purchases → Invoices you can record supplier invoices manually, or use the Scanner to upload a PDF or photo — the AI will read the tax ID, amount and VAT for you.",
+        "hrefLabel": "Go to Purchases",
+        "tips": {
+          "0": "Recorded expenses automatically feed the P&L in Accounting.",
+          "1": "Mark invoices as 'Paid' to keep track of your treasury."
+        }
+      },
+      "automatizaciones": {
+        "title": "Set up an automation",
+        "description": "Define rules that the AI runs autonomously: payment reminders, weekly reports, due-date alerts…",
+        "detail": "Automations are natural-language instructions that the system runs on a schedule. Example: 'Every Monday at 9am send me a summary of overdue invoices' or 'If an invoice goes more than 30 days unpaid, notify me'.",
+        "hrefLabel": "Go to Automations",
+        "tips": {
+          "0": "An automation is different from a task: tasks are one-off ('do this for me now'), automations run on their own according to rules.",
+          "1": "You can pause or delete any automation at any time.",
+          "2": "Active automations are shown with a green indicator in the panel."
+        }
+      },
+      "analitica": {
+        "title": "Review your analytics and P&L",
+        "description": "With real data already recorded, check the income statement, the chart of accounts and the analytics dashboard.",
+        "detail": "The Accounting module calculates Profit & Loss directly from the journal entries (automatically generated by the invoices). Analytics shows trends in income, expenses and your top customers.",
+        "hrefLabel": "Go to Analytics",
+        "tips": {
+          "0": "The P&L updates in real time with every new invoice.",
+          "1": "The Chart of Accounts follows the Spanish General Accounting Plan (PGC)."
+        }
+      }
+    }
   }
 }

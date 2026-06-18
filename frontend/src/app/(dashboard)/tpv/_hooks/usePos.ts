@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type PosSession, type Product } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
 
 export function usePos() {
+    const t = useTranslations("tpv");
     const toast = useToastStore();
     const [session, setSession] = useState<PosSession | null>(null);
     const [loading, setLoading] = useState(true);
@@ -34,11 +36,11 @@ export function usePos() {
             const s = await api.pos.open();
             setSession(s);
         } catch (e: any) {
-            toast.error(e?.message || "Error abriendo sesión");
+            toast.error(e?.message || t("toast.openError"));
         } finally {
             setBusy(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     const addProductByCode = useCallback(
         async (code: string) => {
@@ -58,7 +60,7 @@ export function usePos() {
                         null;
                 }
                 if (!product) {
-                    toast.error(`No se encontró producto para "${code}"`);
+                    toast.error(t("toast.productNotFound", { code }));
                     return;
                 }
                 const existing = session.lines.find((l) => l.product_id === product!.id);
@@ -77,12 +79,12 @@ export function usePos() {
                     setSession(updated);
                 }
             } catch (e: any) {
-                toast.error(e?.message || "Error añadiendo producto");
+                toast.error(e?.message || t("toast.addProductError"));
             } finally {
                 setBusy(false);
             }
         },
-        [session, toast],
+        [session, toast, t],
     );
 
     const addCustomLine = useCallback(
@@ -98,12 +100,12 @@ export function usePos() {
                 });
                 setSession(updated);
             } catch (e: any) {
-                toast.error(e?.message || "Error añadiendo línea");
+                toast.error(e?.message || t("toast.addLineError"));
             } finally {
                 setBusy(false);
             }
         },
-        [session, toast],
+        [session, toast, t],
     );
 
     const updateLineQuantity = useCallback(
@@ -114,12 +116,12 @@ export function usePos() {
                 const updated = await api.pos.updateLine(session.id, lineId, quantity);
                 setSession(updated);
             } catch (e: any) {
-                toast.error(e?.message || "Error actualizando cantidad");
+                toast.error(e?.message || t("toast.updateQuantityError"));
             } finally {
                 setBusy(false);
             }
         },
-        [session, toast],
+        [session, toast, t],
     );
 
     const removeLine = useCallback(
@@ -130,12 +132,12 @@ export function usePos() {
                 const updated = await api.pos.removeLine(session.id, lineId);
                 setSession(updated);
             } catch (e: any) {
-                toast.error(e?.message || "Error eliminando línea");
+                toast.error(e?.message || t("toast.removeLineError"));
             } finally {
                 setBusy(false);
             }
         },
-        [session, toast],
+        [session, toast, t],
     );
 
     const checkout = useCallback(
@@ -145,17 +147,17 @@ export function usePos() {
             try {
                 const closed = await api.pos.checkout(session.id, { payment_method });
                 toast.success(
-                    `Cobro registrado · ${closed.amount_total.toFixed(2)} €`,
+                    t("toast.checkoutSuccess", { amount: `${closed.amount_total.toFixed(2)} €` }),
                 );
                 setCheckoutOpen(false);
                 setSession(null);
             } catch (e: any) {
-                toast.error(e?.message || "Error al cobrar");
+                toast.error(e?.message || t("toast.checkoutError"));
             } finally {
                 setBusy(false);
             }
         },
-        [session, toast],
+        [session, toast, t],
     );
 
     const cancelSession = useCallback(async () => {
@@ -163,14 +165,14 @@ export function usePos() {
         setBusy(true);
         try {
             await api.pos.cancel(session.id);
-            toast.success("Sesión cancelada");
+            toast.success(t("toast.cancelSuccess"));
             setSession(null);
         } catch (e: any) {
-            toast.error(e?.message || "Error cancelando");
+            toast.error(e?.message || t("toast.cancelError"));
         } finally {
             setBusy(false);
         }
-    }, [session, toast]);
+    }, [session, toast, t]);
 
     const subtotal = session
         ? session.lines.reduce(

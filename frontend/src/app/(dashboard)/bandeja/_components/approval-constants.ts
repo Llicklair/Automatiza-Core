@@ -5,9 +5,12 @@ export const RISK_STYLE: Record<string, string> = {
     critical: "text-red-200 bg-red-700/20 border-red-600/40",
 };
 
-export const RISK_LABEL: Record<string, string> = {
-    low: "Bajo", medium: "Medio", high: "Alto", critical: "Crítico",
-};
+export const buildRiskLabels = (t: (key: string) => string): Record<string, string> => ({
+    low: t("approvals.risk.low"),
+    medium: t("approvals.risk.medium"),
+    high: t("approvals.risk.high"),
+    critical: t("approvals.risk.critical"),
+});
 
 export const minutesUntil = (iso: string) => {
     const diff = new Date(iso).getTime() - Date.now();

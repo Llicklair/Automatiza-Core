@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Approval } from "@/lib/api";
 import { CheckCircle2, XCircle, Clock, ChevronDown } from "lucide-react";
-import { RISK_STYLE, RISK_LABEL, minutesUntil } from "./approval-constants";
+import { RISK_STYLE, buildRiskLabels, minutesUntil } from "./approval-constants";
 
 // Helper para evitar error de importación si CheckCircle2 no funciona bien a veces
 const CheckCircle = CheckCircle2;
@@ -19,7 +20,9 @@ export function ApprovalCard({
     onApprove: (id: string) => void;
     onRejectClick: (id: string) => void;
 }) {
+    const t = useTranslations("bandeja");
     const [open, setOpen] = useState(false);
+    const riskLabels = buildRiskLabels(t);
     const mins = minutesUntil(a.expires_at);
     const urgent = mins < 15;
 
@@ -34,11 +37,11 @@ export function ApprovalCard({
 
                     <div className="flex items-center gap-3 mt-3">
                         <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${RISK_STYLE[a.risk_level] ?? RISK_STYLE.low}`}>
-                            Riesgo {RISK_LABEL[a.risk_level] ?? a.risk_level}
+                            {t("approvals.riskBadge", { level: riskLabels[a.risk_level] ?? a.risk_level })}
                         </span>
                         <span className={`flex items-center gap-1 text-xs ${urgent ? "text-amber-400" : "text-muted-foreground"}`}>
                             <Clock className="w-3.5 h-3.5" />
-                            {mins > 0 ? `Expira en ${mins} min` : "Expirada"}
+                            {mins > 0 ? t("approvals.expiresIn", { mins }) : t("approvals.expired")}
                         </span>
                     </div>
 
@@ -48,7 +51,7 @@ export function ApprovalCard({
                                 onClick={() => setOpen(!open)}
                                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors select-none"
                             >
-                                <span>Ver detalles de la acción</span>
+                                <span>{t("approvals.viewDetails")}</span>
                                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
                             </button>
                             <div
@@ -71,14 +74,14 @@ export function ApprovalCard({
                         disabled={deciding === a.id || mins === 0}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-40 text-sm transition"
                     >
-                        <XCircle className="w-4 h-4" /> Rechazar
+                        <XCircle className="w-4 h-4" /> {t("approvals.reject")}
                     </button>
                     <button
                         onClick={() => onApprove(a.id)}
                         disabled={deciding === a.id || mins === 0}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-foreground text-sm transition shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                     >
-                        <CheckCircle className="w-4 h-4" /> Aprobar
+                        <CheckCircle className="w-4 h-4" /> {t("approvals.approve")}
                     </button>
                 </div>
             </div>

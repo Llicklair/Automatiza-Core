@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
     Mail, FileText, Loader2, Plus, Send, Trash2,
     CheckCircle2, Clock, AlertCircle, Eye, EyeOff, Users,
@@ -13,21 +14,23 @@ import {
 } from "@/lib/api/email_marketing";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
-import { errMsg, fmt, VARS_HINT } from "./constants";
+import { errMsg, fmt } from "./constants";
 
 // ── Status config ──────────────────────────────────────────────────────────────
 
-const STATUS_CFG = {
-    draft:     { label: "Borrador",   color: "text-muted-foreground bg-muted/50 border-border", icon: FileText },
-    scheduled: { label: "Programada", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", icon: Clock },
-    sending:   { label: "Enviando",   color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: Loader2 },
-    sent:      { label: "Enviada",    color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
-    failed:    { label: "Error",      color: "text-red-400 bg-red-500/10 border-red-500/20", icon: AlertCircle },
-} as const;
+const buildStatusCfg = (t: ReturnType<typeof useTranslations>) => ({
+    draft:     { label: t("status.draft"),     color: "text-muted-foreground bg-muted/50 border-border", icon: FileText },
+    scheduled: { label: t("status.scheduled"), color: "text-blue-400 bg-blue-500/10 border-blue-500/20", icon: Clock },
+    sending:   { label: t("status.sending"),   color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: Loader2 },
+    sent:      { label: t("status.sent"),      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
+    failed:    { label: t("status.failed"),    color: "text-red-400 bg-red-500/10 border-red-500/20", icon: AlertCircle },
+} as const);
 
 // ── Tab: Campañas ──────────────────────────────────────────────────────────────
 
 export default function TabCampaigns() {
+    const t = useTranslations("emailMarketing");
+    const STATUS_CFG = buildStatusCfg(t);
     const toast = useToastStore();
     const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -54,7 +57,7 @@ export default function TabCampaigns() {
     useEffect(() => { load(); }, [load]);
 
     const applyTemplate = (id: string) => {
-        const tpl = templates.find((t) => t.id === id);
+        const tpl = templates.find((tplItem) => tplItem.id === id);
         if (tpl) setForm((f) => ({ ...f, template_id: id, subject: tpl.subject, html_body: tpl.html_body }));
         else setForm((f) => ({ ...f, template_id: "" }));
     };
@@ -72,8 +75,8 @@ export default function TabCampaigns() {
             });
             setCampaigns((prev) => [c, ...prev]);
             setForm({ name: "", subject: "", html_body: "", template_id: "", scheduled_at: "" });
-            toast.success("Campaña creada");
-        } catch (err) { toast.error(errMsg(err, "Error al crear la campaña")); } finally { setCreating(false); }
+            toast.success(t("toasts.created"));
+        } catch (err) { toast.error(errMsg(err, t("toasts.createError"))); } finally { setCreating(false); }
     };
 
     const send = async (id: string) => {
@@ -81,15 +84,15 @@ export default function TabCampaigns() {
         try {
             await emailMarketingApi.campaigns.send(id);
             await load();
-            toast.success("Campaña en proceso de envío");
-        } catch (err) { toast.error(errMsg(err, "Error al enviar la campaña")); } finally { setSending(null); }
+            toast.success(t("toasts.sending"));
+        } catch (err) { toast.error(errMsg(err, t("toasts.sendError"))); } finally { setSending(null); }
     };
 
     const remove = async (id: string) => {
         try {
             await emailMarketingApi.campaigns.delete(id);
             setCampaigns((prev) => prev.filter((c) => c.id !== id));
-        } catch (err) { toast.error(errMsg(err, "Error al eliminar la campaña")); }
+        } catch (err) { toast.error(errMsg(err, t("toasts.deleteError"))); }
     };
 
     return (
@@ -97,10 +100,10 @@ export default function TabCampaigns() {
             {/* Formulario nueva campaña */}
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">Nueva campaña</h2>
+                    <h2 className="text-sm font-semibold text-foreground">{t("form.newCampaign")}</h2>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Users className="w-3.5 h-3.5" />
-                        <span>{recipientCount} destinatarios (clientes con email)</span>
+                        <span>{t("form.recipients", { count: recipientCount })}</span>
                     </div>
                 </div>
 
@@ -108,7 +111,7 @@ export default function TabCampaigns() {
                     <input
                         value={form.name}
                         onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        placeholder="Nombre interno de la campaña"
+                        placeholder={t("form.namePlaceholder")}
                         className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                     />
                     <select
@@ -116,9 +119,9 @@ export default function TabCampaigns() {
                         onChange={(e) => applyTemplate(e.target.value)}
                         className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                     >
-                        <option value="">Plantilla (opcional)</option>
-                        {templates.map((t) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
+                        <option value="">{t("form.templateOptional")}</option>
+                        {templates.map((tpl) => (
+                            <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                         ))}
                     </select>
                 </div>
@@ -126,32 +129,32 @@ export default function TabCampaigns() {
                 <input
                     value={form.subject}
                     onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-                    placeholder="Asunto del email"
+                    placeholder={t("form.subjectPlaceholder")}
                     className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                 />
 
                 <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">{VARS_HINT}</span>
+                        <span className="text-xs text-muted-foreground">{t("form.varsHint")}</span>
                         <button
                             onClick={() => setPreview((p) => !p)}
                             className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                         >
                             {preview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            {preview ? "Editor" : "Preview"}
+                            {preview ? t("form.editor") : t("form.preview")}
                         </button>
                     </div>
                     {preview ? (
                         <div
                             className="min-h-[180px] bg-white rounded-lg border border-border p-4 overflow-auto"
-                            dangerouslySetInnerHTML={{ __html: form.html_body.replace("{{nombre}}", "Cliente").replace("{{email}}", "cliente@ejemplo.com") }}
+                            dangerouslySetInnerHTML={{ __html: form.html_body.replace("{{nombre}}", t("form.sampleName")).replace("{{email}}", "cliente@ejemplo.com") }}
                         />
                     ) : (
                         <textarea
                             value={form.html_body}
                             onChange={(e) => setForm((f) => ({ ...f, html_body: e.target.value }))}
                             rows={7}
-                            placeholder="Cuerpo del email (HTML o texto plano)"
+                            placeholder={t("form.bodyPlaceholder")}
                             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50 resize-none font-mono"
                         />
                     )}
@@ -166,7 +169,7 @@ export default function TabCampaigns() {
                             onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))}
                             className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                         />
-                        <span className="text-xs text-muted-foreground">Dejar vacío para borrador</span>
+                        <span className="text-xs text-muted-foreground">{t("form.emptyForDraft")}</span>
                     </div>
                     <button
                         onClick={create}
@@ -174,7 +177,7 @@ export default function TabCampaigns() {
                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                     >
                         {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                        Crear
+                        {t("form.create")}
                     </button>
                 </div>
             </div>
@@ -185,7 +188,7 @@ export default function TabCampaigns() {
             {!loading && campaigns.length === 0 && (
                 <div className="flex flex-col items-center py-14 text-center">
                     <Mail className="w-8 h-8 text-muted-foreground/30 mb-3" />
-                    <p className="text-sm text-muted-foreground">Sin campañas todavía</p>
+                    <p className="text-sm text-muted-foreground">{t("empty.noCampaigns")}</p>
                 </div>
             )}
 
@@ -213,7 +216,7 @@ export default function TabCampaigns() {
                                             className="flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white transition-colors"
                                         >
                                             {sending === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                                            Enviar
+                                            {t("list.send")}
                                         </button>
                                     )}
                                     {c.status !== "sent" && (
@@ -224,11 +227,11 @@ export default function TabCampaigns() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                                <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.total_count} dest.</span>
-                                {c.sent_count > 0 && <span className="text-emerald-400">{c.sent_count} enviados</span>}
-                                {c.failed_count > 0 && <span className="text-red-400">{c.failed_count} fallidos</span>}
+                                <span className="flex items-center gap-1"><Users className="w-3 h-3" />{t("list.recipientsShort", { count: c.total_count })}</span>
+                                {c.sent_count > 0 && <span className="text-emerald-400">{t("list.sentCount", { count: c.sent_count })}</span>}
+                                {c.failed_count > 0 && <span className="text-red-400">{t("list.failedCount", { count: c.failed_count })}</span>}
                                 {c.scheduled_at && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{fmt(c.scheduled_at)}</span>}
-                                {c.sent_at && <span>Enviada {fmt(c.sent_at)}</span>}
+                                {c.sent_at && <span>{t("list.sentAt", { date: fmt(c.sent_at) })}</span>}
                             </div>
                         </div>
                     );
