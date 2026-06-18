@@ -67,10 +67,11 @@
   estado → toast. **Pendiente de verificación e2e**: requiere AutoFirma instalado
   para probar el handshake del certificado FNMT (no verificable en CI).
 
-## AIEmployee — Contrato del custom
+## AIEmployee — Contrato del custom (RETIRADO 2026-06-18)
 
-Para justificar existir frente a `default + system_prompt_addendum`, un custom
-debe aportar ≥2 de 4 capacidades; si solo tono/expertise → degradar a "Perfil".
+Históricamente un custom debía aportar ≥2 de 4 capacidades o se degradaba a
+"Perfil". **Ese contrato se retiró** (ver abajo): un custom "fino" (solo persona/
+`system_prompt`) es válido. Las 4 capacidades quedan como add-ons opcionales:
 
 | Capacidad | Campo BD |
 |---|---|
@@ -79,14 +80,28 @@ debe aportar ≥2 de 4 capacidades; si solo tono/expertise → degradar a "Perfi
 | Knowledge base privada | `knowledge_enabled` + filtro RAG por employee |
 | Workflows predefinidos | `workflows` (JSONB) |
 
-Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅. Pendiente:
-- [ ] **UI split "Empleado IA" vs "Perfil"** — el alta de custom obliga a marcar
-  ≥2 capacidades; si solo tono/expertise, redirige a alta de "Perfil".
-  Pendiente de **diseño UX** (no bloqueante para backend).
-- [ ] **Aplicar el contrato a customs existentes** — auditar `AIEmployees` con
-  `is_builtin=False`: los que no cumplan → "Perfil" (migración data-only) o
-  rellenar scope/workflows. Necesita **tu criterio** sobre cuáles son empleados
-  reales. (Origen: bug Yolanda Sánchez — custom roto que intercepta routing.)
+Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅.
+
+- [x] **Contrato del custom retirado** ✅ (2026-06-18) — un workflow multi-agente
+  (10 agentes, verificación adversarial) demostró que las 4 capacidades son casi
+  inertes en runtime (el comportamiento sale solo de `system_prompt` + skills;
+  scope/workflows no se leen, knowledge sin cablear, memory solo con skill) y que el
+  contrato `≥2 capacidades` penalizaba el uso REAL (tono/ángulo al redactar informes/
+  estrategias). **Decisión del usuario: quitar la traba**, no construir el split UI.
+  Hecho: eliminado el gate 422 en `create_employee` + `POST /ai-employees` (y
+  `EmployeeContractError`); frontend deja de hardcodear capacidades; docstrings
+  actualizados. `employee_contract.py` se conserva como utilidad de **auditoría**.
+  **Seguridad de routing intacta**: el guard que frena el bug Yolanda
+  (`classifier._meets_employee_contract`) es independiente del 422 y NO se tocó; los
+  customs rotos (prompt vacío) los frena el health-check del classifier, no el alta.
+  Por eso "aplicar el contrato a customs existentes" queda **obsoleto** (un custom
+  fino ya es válido; no hay nada que degradar). 131 tests verdes + tsc limpio.
+- [ ] **(Opcional, no urgente) Gancho de informes** — el `system_prompt` del custom
+  solo llega vía dispatch (instruct / `addressed_employee_id`); `/informes` genera por
+  periodo SIN selector de empleado y de forma determinista (no pasa por la IA), así que
+  el "ángulo" del custom NO se aplica hoy a los informes PDF automáticos. Para "informes
+  con enfoque del empleado" haría falta un selector de empleado en `/informes` (cambio
+  mayor) — pendiente de decisión del usuario.
 
 ## Arquitectura
 

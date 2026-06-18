@@ -21,8 +21,6 @@ export function NewEmployeeModal({ onClose, onCreated }: { onClose: () => void; 
             await api.aiEmployees.create({
                 name: fullName,
                 role_description: rol.trim(),
-                memory_enabled: true,
-                knowledge_enabled: true,
             });
             onCreated(); onClose();
         } catch (e: any) {

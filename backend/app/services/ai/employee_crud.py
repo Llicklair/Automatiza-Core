@@ -103,10 +103,6 @@ async def list_employees(tenant_id, db: AsyncSession) -> list[dict]:
     return [to_out(e) for e in result.scalars().all()]
 
 
-class EmployeeContractError(ValueError):
-    """El custom no cumple el contrato mínimo de capacidades."""
-
-
 async def create_employee(
     name: str,
     role_description: str,
@@ -119,24 +115,17 @@ async def create_employee(
     knowledge_enabled: bool = False,
     workflows: list | None = None,
 ) -> tuple[dict, str]:
-    """Crea empleado custom. Aplica el contrato (≥2 de 4 capacidades).
+    """Crea un empleado custom (nombre + rol/persona).
 
-    Si el contrato no se cumple, lanza `EmployeeContractError` y la ruta
-    responde 422 invitando a crear un "Perfil" en su lugar.
+    Las 4 capacidades (scope/memory/knowledge/workflows) son opcionales y por
+    defecto van vacías: un custom "fino" es válido — su valor está en el
+    `system_prompt`. El conteo de capacidades NO bloquea el alta; solo se usa,
+    de forma defensiva, en el classifier para que un custom sin capacidades no
+    intercepte el routing por mención incidental (ver
+    `agents/orchestrator/classifier.py`, `_meets_employee_contract`).
 
     Retorna (out_dict, employee_id) para que la ruta lance el BG task.
     """
-    from app.services.ai.employee_contract import validate_employee_contract
-
-    ok, msg = validate_employee_contract(
-        scope=scope,
-        memory_enabled=memory_enabled,
-        knowledge_enabled=knowledge_enabled,
-        workflows=workflows,
-    )
-    if not ok:
-        raise EmployeeContractError(msg)
-
     name_slug = name.lower().replace(" ", "-")
     employee = AIEmployee(
         id=uuid.uuid4(),
