@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Send, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -15,6 +16,8 @@ const fmt = (v: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
 
 export default function RemesasPage() {
+    const t = useTranslations("tesoreria");
+    const tc = useTranslations("common");
     const {
         loading, items, activeType, setActiveType, showModal, setShowModal,
         toast, setToast, agent, filtered, selected, totalSelected,
@@ -24,8 +27,8 @@ export default function RemesasPage() {
     return (
         <PageContainer className="animate-in fade-in duration-500">
             <PageHeader
-                title="Remesas Bancarias SEPA"
-                description="Agrupa facturas y nominas para generar ficheros SEPA XML listos para tu banco."
+                title={t("remesas.title")}
+                description={t("remesas.description")}
                 icon={Send}
                 actions={
                     <Button
@@ -35,7 +38,7 @@ export default function RemesasPage() {
                         {(agent.status === "creating" || agent.status === "polling")
                             ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
                             : <Send className="w-4 h-4 mr-2" />}
-                        {selected.length > 0 ? `Generar remesa (${fmt(totalSelected)})` : "Selecciona conceptos"}
+                        {selected.length > 0 ? t("remesas.generateRemesa", { total: fmt(totalSelected) }) : t("remesas.selectConcepts")}
                     </Button>
                 }
             />
@@ -65,18 +68,18 @@ export default function RemesasPage() {
                     <RemesaSummary selected={selected} totalSelected={totalSelected} />
                     <RemesaHistorial />
                     <div className="bg-card border border-border rounded-2xl p-5">
-                        <h3 className="text-sm font-semibold text-foreground mb-4">Configuracion SEPA</h3>
+                        <h3 className="text-sm font-semibold text-foreground mb-4">{t("remesas.sepaConfigTitle")}</h3>
                         <div className="space-y-3 text-xs">
-                            <div className="flex justify-between"><span className="text-muted-foreground">Identificador Acreedor</span><span className="font-mono text-foreground">ES99000B00000000</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">Banco por defecto</span><span className="text-foreground">BBVA Empresas</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">Esquema</span><span className="text-foreground">SEPA Credit Transfer (SCT)</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">Firma conjunta</span><span className="text-emerald-400 font-medium">Activada</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("remesas.creditorId")}</span><span className="font-mono text-foreground">ES99000B00000000</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("remesas.defaultBank")}</span><span className="text-foreground">BBVA Empresas</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("remesas.scheme")}</span><span className="text-foreground">SEPA Credit Transfer (SCT)</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("remesas.jointSignature")}</span><span className="text-emerald-400 font-medium">{t("remesas.jointSignatureEnabled")}</span></div>
                         </div>
                     </div>
                     <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
-                        <h3 className="text-xs font-semibold text-blue-400 mb-2">Automatizacion SEPA</h3>
+                        <h3 className="text-xs font-semibold text-blue-400 mb-2">{t("remesas.automationTitle")}</h3>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                            El sistema agrupa automaticamente los pagos validados en ficheros SEPA los dias 5 y 20 de cada mes y los envia a tu gestoria.
+                            {t("remesas.automationDescription")}
                         </p>
                     </div>
                 </div>
@@ -94,7 +97,7 @@ export default function RemesasPage() {
                     toast.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400")}>
                     {toast.type === "ok" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                     {toast.msg}
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label="Cerrar notificación"><X className="w-4 h-4" aria-hidden="true" /></Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label={tc("close")}><X className="w-4 h-4" aria-hidden="true" /></Button>
                 </div>
             )}
         </PageContainer>

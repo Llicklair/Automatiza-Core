@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Invoice, type Payroll } from "@/lib/api";
 import { logError } from "@/lib/logger";
 
@@ -15,6 +16,7 @@ export type CashflowEvent = {
 export type CashflowFilter = "all" | "in" | "out";
 
 export function useCashflow() {
+    const t = useTranslations("tesoreria");
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [payrolls, setPayrolls] = useState<Payroll[]>([]);
     const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export function useCashflow() {
             date: dateObj,
             type: isIncome ? "in" : "out",
             amount: Number(inv.amount_total) || 0,
-            description: `Factura ${inv.client?.name || "Cliente"}`,
+            description: t("cashflow.invoiceDescription", { name: inv.client?.name || t("cashflow.defaultClient") }),
             ref: inv.invoice_number || inv.id.substring(0, 8),
         });
     });
@@ -61,7 +63,7 @@ export function useCashflow() {
             date: new Date(pay.issue_date),
             type: "out",
             amount: Number(pay.net_salary) || 0,
-            description: `Nómina ${pay.employee?.name || "Empleado"}`,
+            description: t("cashflow.payrollDescription", { name: pay.employee?.name || t("cashflow.defaultEmployee") }),
             ref: `PAY-${pay.id.substring(0, 5).toUpperCase()}`,
         });
     });

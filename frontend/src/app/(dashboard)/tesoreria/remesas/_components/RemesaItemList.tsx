@@ -1,6 +1,9 @@
+"use client";
+
 import { Loader2, FileText, Building2, WalletCards } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { RemesaItem, RemesaType } from "../_hooks/useRemesas";
 import { TYPE_CONFIG } from "../_hooks/useRemesas";
@@ -20,17 +23,18 @@ interface RemesaItemListProps {
 export default function RemesaItemList({
     filtered, activeType, loading, onToggle, onSelectAll, onDeselectAll,
 }: RemesaItemListProps) {
+    const t = useTranslations("tesoreria");
     return (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
             {/* Toolbar */}
             <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-muted">
                 <span className="text-sm text-muted-foreground">
-                    {filtered.filter(i => i.selected).length} de {filtered.length} seleccionados
+                    {t("remesaItemList.selectedCount", { selected: filtered.filter(i => i.selected).length, total: filtered.length })}
                 </span>
                 <div className="flex gap-3 text-xs">
-                    <button onClick={onSelectAll} className="text-primary hover:text-primary transition-colors">Seleccionar todo</button>
+                    <button onClick={onSelectAll} className="text-primary hover:text-primary transition-colors">{t("remesaItemList.selectAll")}</button>
                     <span className="text-muted-foreground">|</span>
-                    <button onClick={onDeselectAll} className="text-muted-foreground hover:text-foreground transition-colors">Ninguno</button>
+                    <button onClick={onDeselectAll} className="text-muted-foreground hover:text-foreground transition-colors">{t("remesaItemList.selectNone")}</button>
                 </div>
             </div>
 
@@ -44,9 +48,9 @@ export default function RemesaItemList({
                     {activeType === "pagos" && <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />}
                     {activeType === "nominas" && <WalletCards className="w-10 h-10 text-muted-foreground mx-auto mb-3" />}
                     <p className="text-muted-foreground text-sm">
-                        {activeType === "cobros" && "No hay facturas emitidas pendientes de cobro"}
-                        {activeType === "pagos" && "No hay facturas recibidas pendientes de pago"}
-                        {activeType === "nominas" && "No hay nominas emitidas pendientes de transferencia"}
+                        {activeType === "cobros" && t("remesaItemList.emptyCobros")}
+                        {activeType === "pagos" && t("remesaItemList.emptyPagos")}
+                        {activeType === "nominas" && t("remesaItemList.emptyNominas")}
                     </p>
                 </div>
             ) : (

@@ -2,6 +2,7 @@ import type { BankTransaction } from "@/lib/api";
 import { Banknote, CheckCircle2, Clock, Loader2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 const fmt = (v: number) =>
@@ -14,15 +15,17 @@ interface TransactionsTableProps {
 }
 
 export default function TransactionsTable({ transactions, syncing, onSync }: TransactionsTableProps) {
+    const t = useTranslations("tesoreria");
+
     if (transactions.length === 0) {
         return (
             <div className="py-16 text-center">
                 <Banknote className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground font-medium">Sin movimientos bancarios</p>
-                <p className="text-xs text-muted-foreground mt-1">Pulsa &ldquo;Sincronizar banco&rdquo; para importar movimientos.</p>
+                <p className="text-muted-foreground font-medium">{t("transactionsTable.emptyTitle")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("transactionsTable.emptyDescription")}</p>
                 <button onClick={onSync} disabled={syncing} className="mt-4 flex items-center gap-2 mx-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-foreground text-sm font-medium rounded-xl transition-colors">
                     {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Sincronizar ahora
+                    {t("transactionsTable.syncNow")}
                 </button>
             </div>
         );
@@ -32,11 +35,11 @@ export default function TransactionsTable({ transactions, syncing, onSync }: Tra
         <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                 <tr>
-                    <th className="px-6 py-3 font-medium">Fecha</th>
-                    <th className="px-6 py-3 font-medium">Concepto</th>
-                    <th className="px-6 py-3 font-medium text-right">Importe</th>
-                    <th className="px-6 py-3 font-medium text-right">Saldo</th>
-                    <th className="px-6 py-3 font-medium">Estado</th>
+                    <th className="px-6 py-3 font-medium">{t("transactionsTable.colDate")}</th>
+                    <th className="px-6 py-3 font-medium">{t("transactionsTable.colConcept")}</th>
+                    <th className="px-6 py-3 font-medium text-right">{t("transactionsTable.colAmount")}</th>
+                    <th className="px-6 py-3 font-medium text-right">{t("transactionsTable.colBalance")}</th>
+                    <th className="px-6 py-3 font-medium">{t("transactionsTable.colStatus")}</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -50,16 +53,16 @@ export default function TransactionsTable({ transactions, syncing, onSync }: Tra
                             {tx.amount >= 0 ? "+" : ""}{fmt(tx.amount)}
                         </td>
                         <td className="px-6 py-4 text-right text-foreground text-xs">
-                            {tx.balance != null ? fmt(tx.balance) : "\u2014"}
+                            {tx.balance != null ? fmt(tx.balance) : "—"}
                         </td>
                         <td className="px-6 py-4">
                             {tx.status === "reconciled" ? (
                                 <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                                    <CheckCircle2 className="w-3 h-3" /> Conciliado
+                                    <CheckCircle2 className="w-3 h-3" /> {t("transactionsTable.statusReconciled")}
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                                    <Clock className="w-3 h-3" /> Pendiente
+                                    <Clock className="w-3 h-3" /> {t("transactionsTable.statusPending")}
                                 </span>
                             )}
                         </td>

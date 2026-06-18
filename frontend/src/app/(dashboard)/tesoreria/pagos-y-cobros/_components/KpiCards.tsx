@@ -3,6 +3,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
 import type { BankTransaction } from "@/lib/api";
 
@@ -21,10 +22,11 @@ interface KpiCardsProps {
     saldoNeto: number;
 }
 
-export default function KpiCards({
+export default async function KpiCards({
     loading, saldoCaja, ultimaTx, totalCobros, cobrosCount,
     totalPagos, pagosCount, overdueCount, saldoNeto,
 }: KpiCardsProps) {
+    const t = await getTranslations("tesoreria");
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Saldo caja */}
@@ -33,13 +35,13 @@ export default function KpiCards({
                     <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
                         <Wallet className="w-4 h-4 text-blue-400" />
                     </div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Caja Actual</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("kpiCards.cajaActual")}</span>
                 </div>
                 <p className={cn("text-2xl font-bold tracking-tight", saldoCaja >= 0 ? "text-foreground" : "text-red-400")}>
-                    {loading ? "\u2014" : fmt(saldoCaja)}
+                    {loading ? "—" : fmt(saldoCaja)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                    {ultimaTx ? `Ultimo mov. ${format(new Date(ultimaTx.date), "d MMM", { locale: es })}` : "Sin movimientos bancarios"}
+                    {ultimaTx ? t("kpiCards.ultimoMov", { fecha: format(new Date(ultimaTx.date), "d MMM", { locale: es }) }) : t("kpiCards.sinMovimientos")}
                 </p>
             </div>
 
@@ -49,12 +51,12 @@ export default function KpiCards({
                     <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <ArrowUpRight className="w-4 h-4 text-emerald-400" />
                     </div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Por Cobrar</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("kpiCards.porCobrar")}</span>
                 </div>
                 <p className="text-2xl font-bold text-emerald-400 tracking-tight">
-                    {loading ? "\u2014" : fmt(totalCobros)}
+                    {loading ? "—" : fmt(totalCobros)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{cobrosCount} factura{cobrosCount !== 1 ? "s" : ""} emitida{cobrosCount !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("kpiCards.facturasEmitidas", { count: cobrosCount })}</p>
             </div>
 
             {/* Pagos pendientes */}
@@ -63,12 +65,12 @@ export default function KpiCards({
                     <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                         <ArrowDownRight className="w-4 h-4 text-red-400" />
                     </div>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Por Pagar</span>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("kpiCards.porPagar")}</span>
                 </div>
                 <p className="text-2xl font-bold text-red-400 tracking-tight">
-                    {loading ? "\u2014" : fmt(totalPagos)}
+                    {loading ? "—" : fmt(totalPagos)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{pagosCount} factura{pagosCount !== 1 ? "s" : ""} recibida{pagosCount !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("kpiCards.facturasRecibidas", { count: pagosCount })}</p>
             </div>
 
             {/* Neto / alerta vencidos */}
@@ -80,20 +82,20 @@ export default function KpiCards({
                             : <TrendingUp className="w-4 h-4 text-muted-foreground" />}
                     </div>
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        {overdueCount > 0 ? "Vencidas" : "Neto periodo"}
+                        {overdueCount > 0 ? t("kpiCards.vencidas") : t("kpiCards.netoPeriodo")}
                     </span>
                 </div>
                 {overdueCount > 0 ? (
                     <>
-                        <p className="text-2xl font-bold text-red-400 tracking-tight">{overdueCount} factura{overdueCount !== 1 ? "s" : ""}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Requieren atencion inmediata</p>
+                        <p className="text-2xl font-bold text-red-400 tracking-tight">{t("kpiCards.facturasVencidas", { count: overdueCount })}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t("kpiCards.atencionInmediata")}</p>
                     </>
                 ) : (
                     <>
                         <p className={cn("text-2xl font-bold tracking-tight", saldoNeto >= 0 ? "text-foreground" : "text-red-400")}>
-                            {loading ? "\u2014" : fmt(saldoNeto)}
+                            {loading ? "—" : fmt(saldoNeto)}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">Ingresos - gastos acumulados</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t("kpiCards.ingresosGastos")}</p>
                     </>
                 )}
             </div>
