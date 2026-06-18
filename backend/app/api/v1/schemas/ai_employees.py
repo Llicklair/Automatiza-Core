@@ -25,12 +25,11 @@ class AIEmployeeOut(BaseModel):
 
 
 class AIEmployeeCreate(BaseModel):
-    """Alta de empleado IA custom.
+    """Alta de empleado IA custom (nombre + rol).
 
-    El servicio aplica el contrato "≥2 de 4 capacidades" para que el
-    empleado justifique existir frente a un default + system_prompt
-    addendum. Si no se cumple, la ruta responde 422 con la indicación de
-    crear un "Perfil" en su lugar.
+    Las 4 capacidades (scope/memory/knowledge/workflows) son opcionales: un
+    custom "fino" (solo system_prompt) es válido. El valor del empleado está en
+    su persona/rol; las capacidades son add-ons.
     """
 
     name: str

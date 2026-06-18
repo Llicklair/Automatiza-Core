@@ -1,17 +1,17 @@
-"""Validación del contrato del AIEmployee custom.
+"""Conteo del "contrato" de capacidades del AIEmployee custom (uso advisory).
 
-Un AIEmployee custom debe aportar al menos **2 de 4 capacidades**
-verificables para justificar existir como entidad propia frente a un
-default + system_prompt addendum. Si no cumple → la UI degrada a "Perfil"
-(lo que es esencialmente sólo un addendum de prompt).
+NOTA (2026-06-18): el alta de un custom YA NO exige ≥2 capacidades — un custom
+"fino" (solo `system_prompt`) es válido. Estas funciones se conservan como
+utilidad para AUDITAR qué customs son finos
+(`scripts/audit_aiemployees_contract.py`); NO se invocan en el alta. El guard
+defensivo de routing reimplementa su propio conteo en el classifier
+(`_meets_employee_contract`), independiente de este módulo.
 
-Capacidades verificables:
+Capacidades contadas:
     scope             — filtro JSONB no vacío
     memory_enabled    — bool True
     knowledge_enabled — bool True
     workflows         — lista no vacía
-
-Decisión completa en [tasks/todo.md] §"Decisión arquitectónica 2026-05-20".
 """
 
 from __future__ import annotations
@@ -50,11 +50,11 @@ def validate_employee_contract(
     knowledge_enabled: bool,
     workflows: list | None,
 ) -> tuple[bool, str]:
-    """Devuelve (ok, message).
+    """Devuelve (ok, message). Utilidad de AUDITORÍA — ya no bloquea el alta.
 
-    ok=True  → el custom aporta valor real (≥2 capacidades).
-    ok=False → el custom no se diferencia de un Perfil; la ruta debe
-               responder 422 invitando al alta como "Perfil".
+    ok=True  → el custom declara ≥2 capacidades.
+    ok=False → el custom es "fino" (0-1 capacidades); útil para reportar, no
+               para rechazar (el alta siempre se permite).
     """
     n = count_capabilities(
         scope=scope,

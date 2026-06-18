@@ -45,23 +45,17 @@ async def create_ai_employee(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        out, employee_id = await svc.create_employee(
-            payload.name,
-            payload.role_description,
-            payload.budget_limit_usd,
-            current_user.tenant_id,
-            db,
-            scope=payload.scope,
-            memory_enabled=payload.memory_enabled,
-            knowledge_enabled=payload.knowledge_enabled,
-            workflows=payload.workflows,
-        )
-    except svc.EmployeeContractError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    out, employee_id = await svc.create_employee(
+        payload.name,
+        payload.role_description,
+        payload.budget_limit_usd,
+        current_user.tenant_id,
+        db,
+        scope=payload.scope,
+        memory_enabled=payload.memory_enabled,
+        knowledge_enabled=payload.knowledge_enabled,
+        workflows=payload.workflows,
+    )
     background_tasks.add_task(
         svc.provision_employee_bg,
         employee_id=employee_id,
