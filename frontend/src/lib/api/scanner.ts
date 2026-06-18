@@ -29,18 +29,6 @@ export interface ScannedProduct {
     low_stock: boolean;
 }
 
-export interface StockMovementResult {
-    product_id: string;
-    sku: string | null;
-    barcode: string | null;
-    name: string;
-    movement_type: string;
-    quantity: number;
-    stock_before: number;
-    stock_after: number;
-    low_stock: boolean;
-}
-
 export interface ScannerWhoami {
     tenant_id: string;
     device: string;
