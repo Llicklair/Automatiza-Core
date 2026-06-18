@@ -38,16 +38,25 @@
     `generate_modelo_130_pdf` (layout AEAT) + (recomendado) extraer helpers a
     `_aeat_layout.py` compartido 303/130 + `test_casillas_130.py`.
   - **Línea roja:** mantener disclaimer; NO falsificar nº justificante / CSV / PDF417.
-- [~] **F2.9b Calcar el resto de modelos AEAT** — patrón sobre `_aeat_layout.py` +
-  `aeat/casillas_NNN.py` (con `aeat/_casilla.py` compartido). Investigación de
-  casillas hecha por workflow (16 agentes, verificación adversarial).
+- [x] **F2.9b Calcar el resto de modelos AEAT** ✅ (2026-06-18) — patrón sobre
+  `_aeat_layout.py` + `aeat/casillas_NNN.py` (con `aeat/_casilla.py` compartido).
+  Números de casilla verificados contra ≥2 fuentes (línea roja: no inventar). 57
+  tests verdes (casillas + smoke PDFs + batería 303).
   - [x] **111** ✅ casillas 01-09 (trabajo/act. económicas) + 28/29/30 liquidación.
   - [x] **115** ✅ casillas 01-05 (resultado = 03 − 04).
   - [x] **390** ✅ casillas clave IVA anual (01-06 devengado, 33/34/47, 48/49/64, 65/84/86).
-  - [ ] **190 / 347 / 349** (informativas-listado) — resumen con casillas + listado registro.
-  - [ ] **200 / 100** (resumen_grande) — casillas clave de liquidación (preview).
-  - [ ] Migrar el **303** al módulo compartido (cubierto por su batería de tests; al
-    migrar, pasar `pct_codes=_PCT_CASILLAS` en cada `_casillas_table` — sus 02/05/17… son %).
+  - [x] **190 / 347 / 349** ✅ (informativas) — `casillas_190.py` (01 nº perceptores,
+    02 Σ percepciones, 03 Σ retenciones; BOE EHA/3127/2009) y `casillas_347.py`
+    (01/02 operaciones >3.005,06€, 03/04 arrendamientos local negocio). El **349**
+    no numera el resumen → rótulos por etiqueta (nº operadores + importe), no casillas
+    inventadas. Los tres en estilo calcado: identificación + resumen + listado de registros.
+  - [x] **200 / 100** ✅ (preview liquidación) — `casillas_200.py` (00500/00552/00558%/
+    00562/00592/00601/00621; Manual Sociedades 2024) y `casillas_100.py` (0224/0500/
+    0519/0595/0596/0604/0670; Renta 2024/2025). Conceptos sin casilla-resumen única
+    (ajustes 00355–00414, retenciones 01785–01799) NO se inventan: se explican en nota.
+  - [x] Migrar el **303** al módulo compartido ✅ — eliminados los helpers duplicados
+    de `_fiscal_modelo303.py`; ahora usa `_aeat_layout` con `pct_codes=_PCT_CASILLAS`
+    en cada `_casillas_table`. Batería de tests del 303 verde sin cambios.
 
 ## Gestoría / Firma
 
@@ -114,11 +123,20 @@ Wiring de código OK + `desktop/package.json` `publish` corregido. Para distribu
 
 ## Acciones de usuario (no código)
 
-- [ ] **F1.3 OAuth Google → Production mode** — Cloud Console → "PUBLISH APP"
-  (~30 s). Sin esto, los refresh tokens caducan a 7 días.
-- [ ] OAuth verification + CASA assessment Tier 1 para `gmail.send` — cuando
-  haya 5+ clientes confirmados.
-- [ ] Roadmap M1-M2 (memorias): numeración correlativa, JWT safeStorage, AEAT FNMT.
+- [x] **F1.3 OAuth Google → Production mode** ✅ (2026-06-18) — app publicada en
+  Cloud Console; los refresh tokens ya no caducan a 7 días.
+- [ ] OAuth verification + CASA assessment Tier 1 para `gmail.send` — **NO hace
+  falta aún**: en Producción los scopes restringidos admiten hasta ~100 usuarios
+  sin verificación. Solo necesario al acercarse a ese tope (100 clientes).
+- [~] Roadmap M1-M2 (memorias) — contrastado con código (2026-06-18):
+  - [x] **Numeración correlativa** ✅ `services/billing/numbering.py` (`next_invoice_number`
+    → `A2026-0001`); HR docs `DOC-2026-0001`. (Único fuera de serie: `run_recurring`
+    `REC-<timestamp>`, ya listado en Deuda técnica diferida.)
+  - [x] **JWT safeStorage** ✅ `frontend/src/lib/secureStore.ts` → Electron
+    `safeStorage.encryptString` (DPAPI/Keychain); fallback localStorage solo dev/web.
+  - [ ] **AEAT FNMT** — solo AutoFirma (firma docs) hecho; la **presentación telemática
+    real a AEAT con cert FNMT** sigue pendiente (REGAP mockeado en `onboarding/regap.py`,
+    Verifactu simulado en `billing/facturae.py`). **Bloqueada por certificado** (= F2.8).
 
 ---
 
@@ -126,8 +144,9 @@ Wiring de código OK + `desktop/package.json` `publish` corregido. Para distribu
 
 - **Cambios backend exigen cerrar y reabrir `AutomatizaCore.exe`** (backend
   Python embebido por Electron — no recoge cambios en caliente).
-- **OAuth Google en Testing mode**: refresh tokens expiran a 7 días; 100 test
-  users máx de por vida. Producción exige publicar (ver F1.3).
+- **OAuth Google en Producción** (publicada 2026-06-18): refresh tokens ya NO
+  caducan a 7 días. Scopes restringidos (`gmail.send`) admiten ~100 usuarios sin
+  verificación CASA; verificar solo al acercarse a ese tope.
 - **El orchestrator requiere un `Task` real en DB** para `ainvoke` directo (FK
   desde `tenant_documents` y `audit_log`); `smoke_orchestrator.py` tiene
   `_create_task_row()`.

@@ -1,13 +1,16 @@
-"""Tests de los generadores de PDF borrador de modelos AEAT (130/111/190/347/390).
+"""Tests de los generadores de PDF borrador de modelos AEAT.
 
-Verifican que cada generador produce bytes no vacíos con datos realistas y que
-no revienta con listas vacías (sin perceptores / sin declarables).
+Cubre 130/111/115/190/347/349/390/200/100. Verifican que cada generador produce
+bytes no vacíos con datos realistas y que no revienta con listas vacías (sin
+perceptores / sin declarables / sin operaciones).
 """
 from app.services.pdf_reports import (
+    generate_modelo_100_pdf,
     generate_modelo_111_pdf,
     generate_modelo_115_pdf,
     generate_modelo_130_pdf,
     generate_modelo_190_pdf,
+    generate_modelo_200_pdf,
     generate_modelo_347_pdf,
     generate_modelo_349_pdf,
     generate_modelo_390_pdf,
@@ -126,3 +129,25 @@ def test_modelo_349_pdf_sin_operaciones():
     data = {"modelo": "349", "ejercicio": 2026, "periodo": "2T", "tenant": _TENANT,
             "operaciones": [], "num_operadores": 0, "total_base_imponible": 0.0}
     assert _is_pdf(generate_modelo_349_pdf(data))
+
+
+def test_modelo_200_pdf():
+    data = {
+        "modelo": "200", "ejercicio": 2026, "tenant": _TENANT,
+        "cifra_negocio": 250000.0, "gastos_facturas": 150000.0, "coste_nominas": 40000.0,
+        "resultado_contable": 60000.0, "ajustes_fiscales": 0.0, "base_imponible": 60000.0,
+        "tipo_impositivo_pct": 25.0, "cuota_integra": 15000.0,
+        "pagos_fraccionados_pagados": 5000.0, "resultado_declaracion": 10000.0,
+    }
+    assert _is_pdf(generate_modelo_200_pdf(data))
+
+
+def test_modelo_100_pdf():
+    data = {
+        "modelo": "100", "ejercicio": 2026, "tenant": _TENANT,
+        "ingresos": 80000.0, "gastos_facturas": 30000.0, "coste_nominas": 0.0,
+        "rendimiento_neto": 50000.0, "minimo_personal": 5550.0, "base_liquidable": 44450.0,
+        "cuota_integra": 12000.0, "retenciones_soportadas": 4000.0,
+        "pagos_fraccionados_pagados": 6000.0, "resultado_declaracion": 2000.0,
+    }
+    assert _is_pdf(generate_modelo_100_pdf(data))
