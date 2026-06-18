@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from app.db.models.inventory import Product, StockMovement
+from app.db.models.inventory import Product
 from app.services.sales.commands import (
     create_client,
     create_product,

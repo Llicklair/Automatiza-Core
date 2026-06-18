@@ -6,7 +6,6 @@ tz-naive vs tz-aware detectado en recovery.py y approval.py (iter 2026-05-19).
 
 from datetime import datetime, timezone
 
-import pytest
 from app.core.datetime_utils import as_aware
 
 
