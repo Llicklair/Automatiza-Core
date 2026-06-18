@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Document as DocType } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 
 export function useDocumentos() {
     const { show: showToast } = useToastStore();
+    const t = useTranslations("documentos");
 
     const [docs, setDocs]               = useState<DocType[]>([]);
     const [loading, setLoading]         = useState(false);
@@ -23,9 +25,9 @@ export function useDocumentos() {
         setError("");
         api.documents.list({ category: folderId })
             .then(setDocs)
-            .catch(() => setError("Error al cargar documentos"))
+            .catch(() => setError(t("errors.load")))
             .finally(() => setLoading(false));
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         if (activeFolder) loadFolder(activeFolder);
@@ -35,9 +37,9 @@ export function useDocumentos() {
         setExportingDocs(true);
         try {
             await api.documents.exportZip();
-            showToast("Documentos exportados correctamente", "success");
+            showToast(t("toasts.exportSuccess"), "success");
         } catch {
-            showToast("Error al exportar documentos", "error");
+            showToast(t("toasts.exportError"), "error");
         } finally {
             setExportingDocs(false);
         }
@@ -47,9 +49,9 @@ export function useDocumentos() {
         setBackingUp(true);
         try {
             await api.admin.downloadBackup();
-            showToast("Backup descargado correctamente", "success");
+            showToast(t("toasts.backupSuccess"), "success");
         } catch {
-            showToast("Error al generar el backup", "error");
+            showToast(t("toasts.backupError"), "error");
         } finally {
             setBackingUp(false);
         }

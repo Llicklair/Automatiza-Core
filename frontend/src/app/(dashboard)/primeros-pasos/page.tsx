@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
     Flag, CheckCircle2, ChevronRight, ChevronDown,
     Users2, FileText, Package, Zap,
     ShoppingCart, BookOpen, BarChart3, ArrowRight, Sparkles,
     Play, Lock
 } from "lucide-react";
-import { usePrimerosPassos, STEPS, COLOR_MAP, IA_EXAMPLES } from "./_hooks/usePrimerosPassos";
+import { usePrimerosPassos, COLOR_MAP } from "./_hooks/usePrimerosPassos";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PrimerosPassPage() {
-    const { completed, expanded, iaExample, toggle, expand, completedCount, totalSteps, pct, isLocked } = usePrimerosPassos();
+    const t = useTranslations("primerosPasos");
+    const { steps, iaExamples, completed, expanded, iaExample, toggle, expand, completedCount, totalSteps, pct, isLocked } = usePrimerosPassos();
 
     return (
         <PageContainer width="4xl" className="min-h-screen bg-background text-foreground">
@@ -23,8 +25,8 @@ export default function PrimerosPassPage() {
                         <Flag className="w-6 h-6 text-foreground" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-foreground tracking-tight">Primeros Pasos</h1>
-                        <p className="text-muted-foreground text-sm mt-0.5">Tu guía para poner en marcha AutomatizaCore</p>
+                        <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("header.title")}</h1>
+                        <p className="text-muted-foreground text-sm mt-0.5">{t("header.subtitle")}</p>
                     </div>
                 </div>
 
@@ -33,8 +35,8 @@ export default function PrimerosPassPage() {
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-medium text-foreground">
                             {completedCount === totalSteps
-                                ? "¡Enhorabuena! Todo configurado 🎉"
-                                : `${completedCount} de ${totalSteps} pasos completados`}
+                                ? t("progress.allDone")
+                                : t("progress.completed", { count: completedCount, total: totalSteps })}
                         </span>
                         <span className="text-sm font-bold text-primary">{pct}%</span>
                     </div>
@@ -45,7 +47,7 @@ export default function PrimerosPassPage() {
                         />
                     </div>
                     <div className="flex gap-1.5 mt-3">
-                        {STEPS.map(s => (
+                        {steps.map(s => (
                             <div
                                 key={s.id}
                                 className={`flex-1 h-1 rounded-full transition-all duration-500 ${completed.has(s.id) ? COLOR_MAP[s.color].dot : "bg-muted"}`}
@@ -61,16 +63,16 @@ export default function PrimerosPassPage() {
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-3">
                         <Sparkles className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-semibold text-primary uppercase tracking-wider">Asistente IA — puedes pedirle cosas como:</span>
+                        <span className="text-xs font-semibold text-primary uppercase tracking-wider">{t("iaDemo.label")}</span>
                     </div>
                     <div className="font-mono text-sm text-foreground bg-muted/70 border border-border rounded-xl px-4 py-3 min-h-[44px] flex items-center transition-all duration-500">
                         <span className="text-primary mr-2">▸</span>
                         <span key={iaExample} className="animate-in fade-in duration-500">
-                            &ldquo;{IA_EXAMPLES[iaExample]}&rdquo;
+                            &ldquo;{iaExamples[iaExample]}&rdquo;
                         </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                        El agente IA actúa en tiempo real — ejecuta, crea y consulta sin que tengas que tocar un formulario.
+                        {t("iaDemo.realtime")}
                     </p>
                 </div>
             </div>
@@ -79,17 +81,17 @@ export default function PrimerosPassPage() {
             <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-card border border-emerald-500/20 rounded-2xl p-5">
                     <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> La IA puede hacer
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("capabilities.canTitle")}
                     </h3>
                     <ul className="space-y-2">
                         {[
-                            "Crear facturas, albaranes y presupuestos",
-                            "Generar nóminas y calcular IRPF/SS",
-                            "Responder preguntas sobre tus datos",
-                            "Registrar cobros, pagos y asientos contables",
-                            "Buscar clientes, productos y empleados",
-                            "Ejecutar automatizaciones programadas",
-                            "Generar informes y exportaciones Excel",
+                            t("capabilities.can.0"),
+                            t("capabilities.can.1"),
+                            t("capabilities.can.2"),
+                            t("capabilities.can.3"),
+                            t("capabilities.can.4"),
+                            t("capabilities.can.5"),
+                            t("capabilities.can.6"),
                         ].map(item => (
                             <li key={item} className="flex items-start gap-2 text-xs text-foreground">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
@@ -100,17 +102,17 @@ export default function PrimerosPassPage() {
                 </div>
                 <div className="bg-card border border-border rounded-2xl p-5">
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5" /> Requiere confirmación o datos previos
+                        <Lock className="w-3.5 h-3.5" /> {t("capabilities.requiresTitle")}
                     </h3>
                     <ul className="space-y-2">
                         {[
-                            "Eliminar registros (siempre pide confirmación)",
-                            "Enviar emails (necesita integración Gmail/Outlook)",
-                            "Facturas: el cliente debe existir en Contactos",
-                            "Nóminas: los empleados deben estar dados de alta",
-                            "No accede a sistemas externos sin integración",
-                            "No toma decisiones financieras por ti",
-                            "No puede acceder a datos de otros tenants",
+                            t("capabilities.requires.0"),
+                            t("capabilities.requires.1"),
+                            t("capabilities.requires.2"),
+                            t("capabilities.requires.3"),
+                            t("capabilities.requires.4"),
+                            t("capabilities.requires.5"),
+                            t("capabilities.requires.6"),
                         ].map(item => (
                             <li key={item} className="flex items-start gap-2 text-xs text-muted-foreground">
                                 <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 mt-1.5" />
@@ -123,7 +125,7 @@ export default function PrimerosPassPage() {
 
             {/* Pasos */}
             <div className="space-y-3">
-                {STEPS.map((step, idx) => {
+                {steps.map((step, idx) => {
                     const done = completed.has(step.id);
                     const locked = isLocked(step);
                     const open = expanded === step.id;
@@ -173,8 +175,8 @@ export default function PrimerosPassPage() {
                                         <h3 className={`font-semibold text-sm ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
                                             {step.title}
                                         </h3>
-                                        {done && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">Hecho</span>}
-                                        {locked && <span className="text-[10px] text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-full font-medium">Bloqueado</span>}
+                                        {done && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">{t("badge.done")}</span>}
+                                        {locked && <span className="text-[10px] text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-full font-medium">{t("badge.locked")}</span>}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{step.description}</p>
                                 </div>
@@ -220,7 +222,7 @@ export default function PrimerosPassPage() {
                                                 }`}
                                             >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                                {done ? "Marcar como pendiente" : "Marcar como completado"}
+                                                {done ? t("actions.markPending") : t("actions.markDone")}
                                             </button>
                                         </div>
                                     </div>
@@ -234,18 +236,18 @@ export default function PrimerosPassPage() {
             {/* Footer */}
             <div className="mt-12 border-t border-border pt-8">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" /> Explora todos los módulos
+                    <BookOpen className="w-4 h-4" /> {t("modules.title")}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
-                        { label: "Ventas", href: "/ventas/facturas", icon: FileText, color: "indigo" },
-                        { label: "Compras", href: "/compras/facturas", icon: ShoppingCart, color: "rose" },
-                        { label: "Contactos", href: "/clientes", icon: Users2, color: "blue" },
-                        { label: "Catálogo", href: "/catalogo", icon: Package, color: "emerald" },
-                        { label: "RRHH", href: "/rrhh/empleados", icon: Users2, color: "violet" },
-                        { label: "Contabilidad", href: "/contabilidad/perdidas-y-ganancias", icon: BarChart3, color: "teal" },
-                        { label: "Automatizaciones", href: "/automatizaciones", icon: Zap, color: "amber" },
-                        { label: "Analítica", href: "/analitica", icon: BarChart3, color: "orange" },
+                        { label: t("modules.ventas"), href: "/ventas/facturas", icon: FileText, color: "indigo" },
+                        { label: t("modules.compras"), href: "/compras/facturas", icon: ShoppingCart, color: "rose" },
+                        { label: t("modules.contactos"), href: "/clientes", icon: Users2, color: "blue" },
+                        { label: t("modules.catalogo"), href: "/catalogo", icon: Package, color: "emerald" },
+                        { label: t("modules.rrhh"), href: "/rrhh/empleados", icon: Users2, color: "violet" },
+                        { label: t("modules.contabilidad"), href: "/contabilidad/perdidas-y-ganancias", icon: BarChart3, color: "teal" },
+                        { label: t("modules.automatizaciones"), href: "/automatizaciones", icon: Zap, color: "amber" },
+                        { label: t("modules.analitica"), href: "/analitica", icon: BarChart3, color: "orange" },
                     ].map(m => {
                         const c = COLOR_MAP[m.color];
                         const MIcon = m.icon;

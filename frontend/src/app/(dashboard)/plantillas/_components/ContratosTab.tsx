@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { FileText, Loader2, Trash2, Eye, FileCode2, Upload, ExternalLink, Copy, PenLine } from "lucide-react";
 import { sanitizeHTML } from "@/components/GenerativeUI";
 import { documents, ContractPreviewHtml, ContractTemplate } from "@/lib/api/documents";
@@ -10,7 +11,7 @@ import { hr } from "@/lib/api/hr";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { cn } from "@/lib/utils";
-import { CONTRACT_VARIABLES } from "./templateOptions";
+import { buildContractVariables } from "./templateOptions";
 
 const ContractTemplateEditor = dynamic(
     () => import("@/components/ContractTemplateEditor"),
@@ -28,6 +29,8 @@ type GeneratePanel = {
 };
 
 export default function ContratosTab() {
+    const t = useTranslations("plantillas");
+    const CONTRACT_VARIABLES = buildContractVariables(t);
     const { show: showToast } = useToastStore();
     const [templates, setTemplates] = useState<ContractTemplate[]>([]);
     const [loading, setLoading] = useState(true);
@@ -46,7 +49,7 @@ export default function ContratosTab() {
             const data = await documents.contractTemplates.list();
             setTemplates(data);
         } catch {
-            showToast("Error cargando plantillas de contrato", "error");
+            showToast(t("contracts.toasts.loadError"), "error");
         } finally {
             setLoading(false);
         }
@@ -56,7 +59,7 @@ export default function ContratosTab() {
 
     const openEditor = async (tpl: ContractTemplate) => {
         if (!tpl.file_name.toLowerCase().endsWith(".docx")) {
-            showToast("La edición en el navegador solo está disponible para archivos .docx", "warning");
+            showToast(t("contracts.toasts.editorDocxOnly"), "warning");
             return;
         }
         setOpeningEditorId(tpl.id);
@@ -64,7 +67,7 @@ export default function ContratosTab() {
             const data = await documents.contractTemplates.previewHtml(tpl.id);
             setEditorModal({ id: tpl.id, fileName: tpl.file_name, html: data.html_editable });
         } catch (err: unknown) {
-            showToast(err instanceof Error ? err.message : "No se pudo cargar la plantilla", "error");
+            showToast(err instanceof Error ? err.message : t("contracts.toasts.loadTemplateError"), "error");
         } finally {
             setOpeningEditorId(null);
         }
@@ -79,7 +82,7 @@ export default function ContratosTab() {
             const data = await documents.contractTemplates.previewHtml(tplId);
             setPreviewData(data);
         } catch (err: unknown) {
-            showToast(err instanceof Error ? err.message : "Error en vista previa", "error");
+            showToast(err instanceof Error ? err.message : t("contracts.toasts.previewError"), "error");
             setPreviewFor(null);
         } finally {
             setPreviewLoading(false);
@@ -92,10 +95,10 @@ export default function ContratosTab() {
         setUploading(true);
         try {
             await documents.contractTemplates.upload(file);
-            showToast("Plantilla subida correctamente", "success");
+            showToast(t("contracts.toasts.uploadSuccess"), "success");
             await load();
         } catch (err: any) {
-            showToast(err?.message ?? "Error al subir plantilla", "error");
+            showToast(err?.message ?? t("contracts.toasts.uploadError"), "error");
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -106,24 +109,24 @@ export default function ContratosTab() {
         if (typeof window !== "undefined" && (window as any).electronAPI?.openTemplateNative) {
             (window as any).electronAPI.openTemplateNative(tpl.file_path);
         } else {
-            showToast("Esta función solo está disponible en la app de escritorio", "warning");
+            showToast(t("contracts.toasts.desktopOnly"), "warning");
         }
     };
 
     const handleDelete = async (tpl: ContractTemplate) => {
         const confirmed = await showConfirm({
-            title: "Eliminar plantilla",
-            message: `¿Eliminar "${tpl.file_name}"?`,
-            confirmLabel: "Eliminar",
+            title: t("contracts.confirmDelete.title"),
+            message: t("contracts.confirmDelete.message", { name: tpl.file_name }),
+            confirmLabel: t("contracts.confirmDelete.confirmLabel"),
             confirmVariant: "danger",
         });
         if (!confirmed) return;
         try {
             await documents.contractTemplates.delete(tpl.id);
-            showToast("Plantilla eliminada", "success");
+            showToast(t("contracts.toasts.deleteSuccess"), "success");
             await load();
         } catch {
-            showToast("Error eliminando plantilla", "error");
+            showToast(t("contracts.toasts.deleteError"), "error");
         }
     };
 
@@ -140,7 +143,7 @@ export default function ContratosTab() {
             }
             setPanel(p => p ? { ...p, entities, loadingEntities: false } : null);
         } catch {
-            showToast("Error cargando entidades", "error");
+            showToast(t("contracts.toasts.entitiesError"), "error");
             setPanel(p => p ? { ...p, loadingEntities: false } : null);
         }
     };
@@ -156,10 +159,10 @@ export default function ContratosTab() {
             const a = document.createElement("a");
             a.href = url; a.download = `${baseName}_BORRADOR.docx`; a.click();
             URL.revokeObjectURL(url);
-            showToast("Borrador generado y descargado", "success");
+            showToast(t("contracts.toasts.generateSuccess"), "success");
             setPanel(null);
         } catch (err: any) {
-            showToast(err?.message ?? "Error generando contrato", "error");
+            showToast(err?.message ?? t("contracts.toasts.generateError"), "error");
         } finally {
             setPanel(p => p ? { ...p, generating: false } : null);
         }
@@ -167,7 +170,7 @@ export default function ContratosTab() {
 
     const copyVariable = (key: string) => {
         navigator.clipboard.writeText(key).catch(() => {});
-        showToast(`Copiado: ${key}`, "success");
+        showToast(t("contracts.toasts.copied", { key }), "success");
     };
 
     return (
@@ -184,12 +187,14 @@ export default function ContratosTab() {
             <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between mb-2">
                     <p className="text-xs text-muted-foreground">
-                        Sube plantillas .docx con variables como <code className="text-primary">{`{{nombre_cliente}}`}</code>. El sistema las rellenará con datos reales al generar contratos.
+                        {t.rich("contracts.intro", {
+                            code: (chunks) => <code className="text-primary">{chunks}</code>,
+                        })}
                     </p>
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                         className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
                         {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                        Subir .docx
+                        {t("contracts.uploadDocx")}
                     </button>
                     <input ref={fileInputRef} type="file" accept=".docx,.doc,.odt" className="hidden" onChange={handleUpload} />
                 </div>
@@ -202,8 +207,8 @@ export default function ContratosTab() {
                     <div onClick={() => fileInputRef.current?.click()}
                         className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-border transition-colors">
                         <FileCode2 className="w-10 h-10 text-muted-foreground mb-3" />
-                        <p className="text-muted-foreground text-sm font-medium">Sin plantillas aún</p>
-                        <p className="text-muted-foreground text-xs mt-1">Haz clic para subir tu primer .docx</p>
+                        <p className="text-muted-foreground text-sm font-medium">{t("contracts.emptyTitle")}</p>
+                        <p className="text-muted-foreground text-xs mt-1">{t("contracts.emptyHint")}</p>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -218,19 +223,19 @@ export default function ContratosTab() {
                                     <div className="flex items-center gap-1">
                                         <button onClick={() => panel?.tplId === tpl.id ? setPanel(null) : openGeneratePanel(tpl.id, "client")}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/20 border border-primary/20 text-primary hover:bg-primary/20 text-xs rounded-lg transition-colors">
-                                            <FileText className="w-3.5 h-3.5" /> Generar borrador
+                                            <FileText className="w-3.5 h-3.5" /> {t("contracts.generateDraft")}
                                         </button>
                                         <button type="button" onClick={() => void openEditor(tpl)} disabled={!!openingEditorId}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 border border-emerald-600/50 text-emerald-300/90 hover:bg-emerald-950/40 text-xs rounded-lg transition-colors disabled:opacity-50"
-                                            title="Editar en el navegador (solo .docx)">
+                                            title={t("contracts.editTitle")}>
                                             {openingEditorId === tpl.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PenLine className="w-3.5 h-3.5" />}
-                                            Editar
+                                            {t("contracts.edit")}
                                         </button>
                                         <button type="button" onClick={() => void togglePreview(tpl.id)} disabled={previewLoading && previewFor === tpl.id}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border text-foreground hover:bg-muted text-xs rounded-lg transition-colors disabled:opacity-50"
-                                            title="Vista previa HTML (solo .docx)">
+                                            title={t("contracts.previewTitle")}>
                                             {previewLoading && previewFor === tpl.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
-                                            Previsualizar
+                                            {t("contracts.previewBtn")}
                                         </button>
                                         <button onClick={() => handleOpen(tpl)}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border text-muted-foreground hover:text-foreground text-xs rounded-lg transition-colors">
@@ -246,19 +251,20 @@ export default function ContratosTab() {
                                 {previewFor === tpl.id && (
                                     <div className="border-t border-border p-3 bg-background space-y-3">
                                         <p className="text-xs text-muted-foreground">
-                                            Vista previa de solo lectura (HTML). Las variables{" "}
-                                            <code className="text-amber-400/90">{`{{nombre}}`}</code> se resaltan si existen en el texto.
+                                            {t.rich("contracts.previewNote", {
+                                                code: (chunks) => <code className="text-amber-400/90">{chunks}</code>,
+                                            })}
                                         </p>
                                         {previewLoading ? (
                                             <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-                                                <Loader2 className="w-5 h-5 animate-spin" /> Convirtiendo documento…
+                                                <Loader2 className="w-5 h-5 animate-spin" /> {t("contracts.converting")}
                                             </div>
                                         ) : previewData ? (
                                             <div className="flex flex-col lg:flex-row gap-4">
                                                 <div className="flex-1 min-h-[180px] max-h-[min(480px,55vh)] overflow-y-auto rounded-lg border border-border bg-card p-4 text-sm text-foreground [&_.apx-docx-var]:ring-1 [&_.apx-docx-var]:ring-amber-500/30"
                                                     dangerouslySetInnerHTML={{ __html: sanitizeHTML(previewData.html) }} />
                                                 <div className="w-full lg:w-52 shrink-0 space-y-2">
-                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Variables en el documento</p>
+                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">{t("contracts.varsInDoc")}</p>
                                                     {previewData.warnings.length > 0 && (
                                                         <div className="text-[10px] text-amber-400/90 bg-amber-500/10 rounded-lg p-2 space-y-1">
                                                             {previewData.warnings.slice(0, 6).map((w, i) => <p key={i} className="leading-snug">{w}</p>)}
@@ -266,7 +272,11 @@ export default function ContratosTab() {
                                                     )}
                                                     <ul className="text-xs space-y-1.5 max-h-48 overflow-y-auto">
                                                         {previewData.variables_detected.length === 0 ? (
-                                                            <li className="text-muted-foreground">No se detectaron <code>{`{{ }}`}</code> en el texto convertido.</li>
+                                                            <li className="text-muted-foreground">
+                                                                {t.rich("contracts.noVarsDetected", {
+                                                                    code: (chunks) => <code>{chunks}</code>,
+                                                                })}
+                                                            </li>
                                                         ) : (
                                                             previewData.variables_detected.map(v => (
                                                                 <li key={v}><code className="text-amber-400 font-mono text-[11px]">{`{{${v}}}`}</code></li>
@@ -281,36 +291,36 @@ export default function ContratosTab() {
 
                                 {panel?.tplId === tpl.id && (
                                     <div className="border-t border-border p-3 bg-background space-y-3">
-                                        <p className="text-xs text-muted-foreground font-medium">Generar borrador para:</p>
+                                        <p className="text-xs text-muted-foreground font-medium">{t("contracts.generateFor")}</p>
                                         <div className="flex gap-2">
                                             {(["client", "employee"] as const).map(type => (
                                                 <button key={type} onClick={() => openGeneratePanel(tpl.id, type)}
                                                     className={cn("flex-1 py-1.5 text-xs rounded-lg border transition-colors",
                                                         panel.entityType === type ? "border-primary bg-primary/20 text-primary" : "border-border text-muted-foreground hover:border-border")}>
-                                                    {type === "client" ? "Cliente" : "Empleado"}
+                                                    {type === "client" ? t("contracts.client") : t("contracts.employee")}
                                                 </button>
                                             ))}
                                         </div>
                                         {panel.loadingEntities ? (
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("contracts.loading")}
                                             </div>
                                         ) : (
                                             <select value={panel.entityId}
                                                 onChange={e => setPanel(p => p ? { ...p, entityId: e.target.value } : null)}
                                                 className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary">
-                                                <option value="">-- Seleccionar {panel.entityType === "client" ? "cliente" : "empleado"} --</option>
+                                                <option value="">{panel.entityType === "client" ? t("contracts.selectClient") : t("contracts.selectEmployee")}</option>
                                                 {panel.entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                             </select>
                                         )}
                                         <div className="flex gap-2">
                                             <button onClick={handleGenerate} disabled={!panel.entityId || panel.generating}
                                                 className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-primary hover:bg-primary text-foreground text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
-                                                {panel.generating ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</> : <><FileText className="w-3.5 h-3.5" /> Descargar borrador</>}
+                                                {panel.generating ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("contracts.generating")}</> : <><FileText className="w-3.5 h-3.5" /> {t("contracts.downloadDraft")}</>}
                                             </button>
                                             <button onClick={() => setPanel(null)}
                                                 className="px-3 py-1.5 border border-border text-muted-foreground text-xs rounded-lg hover:text-foreground transition-colors">
-                                                Cancelar
+                                                {t("contracts.cancel")}
                                             </button>
                                         </div>
                                     </div>
@@ -322,11 +332,11 @@ export default function ContratosTab() {
             </div>
 
             <div className="w-64 flex-shrink-0">
-                <p className="text-xs text-muted-foreground font-medium mb-3 uppercase tracking-wider">Variables disponibles</p>
+                <p className="text-xs text-muted-foreground font-medium mb-3 uppercase tracking-wider">{t("contracts.availableVars")}</p>
                 <div className="bg-card border border-border rounded-xl p-3 space-y-1">
                     {CONTRACT_VARIABLES.map(v => (
                         <button key={v.key} onClick={() => copyVariable(v.key)}
-                            className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-border transition-colors text-left group" title="Clic para copiar">
+                            className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-border transition-colors text-left group" title={t("contracts.clickToCopy")}>
                             <Copy className="w-3 h-3 text-muted-foreground group-hover:text-primary mt-0.5 flex-shrink-0 transition-colors" />
                             <div>
                                 <code className="text-xs text-primary font-mono">{v.key}</code>

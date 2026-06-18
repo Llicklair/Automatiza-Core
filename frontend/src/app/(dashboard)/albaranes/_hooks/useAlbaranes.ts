@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/api/client";
@@ -13,15 +14,17 @@ export type LineForm = { description: string; quantity: string; unit_price: stri
 
 export const emptyLine = (): LineForm => ({ description: "", quantity: "1", unit_price: "0", tax_percentage: "21" });
 
-export const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft:     { label: "Borrador",   color: "text-muted-foreground bg-muted border-border" },
-    confirmed: { label: "Confirmado", color: "text-primary bg-primary/10 border-primary/20" },
-    delivered: { label: "Entregado",  color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+export const STATUS_COLORS: Record<string, string> = {
+    draft:     "text-muted-foreground bg-muted border-border",
+    confirmed: "text-primary bg-primary/10 border-primary/20",
+    delivered: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
 };
 
 export const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
 export function useAlbaranes() {
+    const t = useTranslations("albaranes");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const router = useRouter();
     const [albaranes, setAlbaranes] = useState<DeliveryNote[]>([]);
@@ -52,7 +55,7 @@ export function useAlbaranes() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         const validLines = lines.filter(l => l.description.trim());
-        if (!validLines.length) { toast.warning("Añade al menos una línea con descripción."); return; }
+        if (!validLines.length) { toast.warning(t("toasts.needLine")); return; }
         setSaving(true);
         try {
             const payload: DeliveryNoteCreate = {
@@ -68,23 +71,23 @@ export function useAlbaranes() {
             };
             await api.albaranes.create(payload);
             setShowModal(false); resetModal(); await loadData();
-            toast.success("Albarán creado correctamente");
-        } catch (e: unknown) { toast.error("Error creando albarán: " + (e instanceof Error ? e.message : "Error desconocido")); }
+            toast.success(t("toasts.created"));
+        } catch (e: unknown) { toast.error(t("toasts.createError", { error: e instanceof Error ? e.message : t("toasts.unknownError") })); }
         finally { setSaving(false); }
     };
 
     const handleDelete = async (id: string) => {
-        const ok = await showConfirm({ title: "Eliminar albarán", message: "¿Eliminar este albarán? Esta acción no se puede deshacer.", confirmLabel: "Eliminar", cancelLabel: "Cancelar", confirmVariant: "danger" });
+        const ok = await showConfirm({ title: t("delete.title"), message: t("delete.message"), confirmLabel: tc("delete"), cancelLabel: tc("cancel"), confirmVariant: "danger" });
         if (!ok) return;
-        try { await api.albaranes.delete(id); setAlbaranes(prev => prev.filter(a => a.id !== id)); toast.success("Albarán eliminado"); }
-        catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Error desconocido"); }
+        try { await api.albaranes.delete(id); setAlbaranes(prev => prev.filter(a => a.id !== id)); toast.success(t("toasts.deleted")); }
+        catch (e: unknown) { toast.error(e instanceof Error ? e.message : t("toasts.unknownError")); }
     };
 
     const handleStatusChange = async (id: string, status: string) => {
         try {
             const updated = await api.albaranes.updateStatus(id, status);
             setAlbaranes(prev => prev.map(a => a.id === id ? updated : a));
-        } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Error desconocido"); }
+        } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t("toasts.unknownError")); }
     };
 
     const handleDownloadPdf = (id: string) => {

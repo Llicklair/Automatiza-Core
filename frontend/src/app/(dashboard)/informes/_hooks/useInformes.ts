@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type CompanySnapshot, type FiscalSnapshot, type ReportDoc } from "@/lib/api";
 import { logError } from "@/lib/logger";
 import { showConfirm } from "@/stores/confirm";
+
+type Translator = (key: string, values?: Record<string, any>) => string;
 
 // ─── Pure helpers (no React) ──────────────────────────────────────────────────
 
@@ -11,10 +14,9 @@ export function fmt(n: number) {
     return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function fmtMonth(m: string) {
+export function fmtMonth(t: Translator, m: string) {
     const [y, mo] = m.split("-");
-    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const months = t("hooks.months").split(",");
     return `${months[parseInt(mo) - 1]} ${y}`;
 }
 
@@ -41,9 +43,9 @@ export function currentQuarterStr() {
     return `${d.getFullYear()}-Q${q}`;
 }
 
-export function fmtQuarter(q: string) {
+export function fmtQuarter(t: Translator, q: string) {
     const [y, qn] = q.split("-Q");
-    return `T${qn} ${y}`;
+    return t("hooks.quarterLabel", { q: qn, year: y });
 }
 
 export function prevQuarter(q: string) {
@@ -61,6 +63,7 @@ export function nextQuarter(q: string) {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useInformes() {
+    const t = useTranslations("informes");
     const [tab, setTab] = useState<"gestion" | "fiscal">("gestion");
 
     // ── Gestión state ──
@@ -95,7 +98,7 @@ export function useInformes() {
             const data = await api.reports.snapshot(month);
             setSnap(data);
         } catch (e: any) {
-            setError(e.message || "Error cargando datos");
+            setError(e.message || t("hooks.errorLoadingData"));
         } finally {
             setLoading(false);
         }
@@ -119,8 +122,8 @@ export function useInformes() {
             setGenOk(true);
             await loadReports();
         } catch (e: any) {
-            const msg = e?.message || "Error desconocido";
-            setError(`Error generando informe: ${msg}`);
+            const msg = e?.message || t("hooks.errorUnknown");
+            setError(t("hooks.errorGenerating", { msg }));
             console.error("[informes] generate error:", e);
         } finally {
             setGenerating(false);
@@ -135,7 +138,7 @@ export function useInformes() {
             const data = await api.reports.fiscalSnapshot(fiscalPeriod);
             setFiscalSnap(data);
         } catch (e: any) {
-            setFiscalError(e.message || "Error cargando datos fiscales");
+            setFiscalError(e.message || t("hooks.errorLoadingFiscalData"));
         } finally {
             setFiscalLoading(false);
         }
@@ -150,8 +153,8 @@ export function useInformes() {
             setFiscalGenOk(true);
             await loadReports();
         } catch (e: any) {
-            const msg = e?.message || "Error desconocido";
-            setFiscalError(`Error generando informe fiscal: ${msg}`);
+            const msg = e?.message || t("hooks.errorUnknown");
+            setFiscalError(t("hooks.errorGeneratingFiscal", { msg }));
             console.error("[informes] fiscal generate error:", e);
         } finally {
             setFiscalGenerating(false);
@@ -165,16 +168,16 @@ export function useInformes() {
         try {
             await api.reports.download(id, fileName);
         } catch (e: any) {
-            const msg = e?.message || "Error desconocido";
+            const msg = e?.message || t("hooks.errorUnknown");
             const setErr = tab === "fiscal" ? setFiscalError : setError;
-            setErr(`Error descargando: ${msg}`);
+            setErr(t("hooks.errorDownloading", { msg }));
         }
     }
 
     async function handleDeleteReport(id: string) {
         if (!(await showConfirm({
-            message: "¿Eliminar este informe? Esta acción no se puede deshacer.",
-            confirmLabel: "Eliminar",
+            message: t("hooks.confirmDelete"),
+            confirmLabel: t("hooks.confirmLabel"),
             confirmVariant: "danger",
         }))) return;
         try {
@@ -182,7 +185,7 @@ export function useInformes() {
             setReports(prev => prev.filter(r => r.id !== id));
         } catch (e: any) {
             const setErr = tab === "fiscal" ? setFiscalError : setError;
-            setErr(`Error eliminando: ${e?.message || "Error desconocido"}`);
+            setErr(t("hooks.errorDeleting", { msg: e?.message || t("hooks.errorUnknown") }));
         }
     }
 

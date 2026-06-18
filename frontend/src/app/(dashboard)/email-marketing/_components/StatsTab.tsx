@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { BarChart3, Loader2 } from "lucide-react";
 import {
     emailMarketingApi,
@@ -11,6 +12,7 @@ import { fmt } from "./constants";
 // ── Tab: Estadísticas ──────────────────────────────────────────────────────────
 
 export default function TabStats() {
+    const t = useTranslations("emailMarketing");
     const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -30,7 +32,7 @@ export default function TabStats() {
     if (campaigns.length === 0) return (
         <div className="flex flex-col items-center py-16 text-center">
             <BarChart3 className="w-8 h-8 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">Todavía no hay campañas enviadas</p>
+            <p className="text-sm text-muted-foreground">{t("stats.empty")}</p>
         </div>
     );
 
@@ -39,9 +41,9 @@ export default function TabStats() {
             {/* Resumen global */}
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: "Emails enviados", value: totalSent, color: "text-emerald-400" },
-                    { label: "Fallidos", value: totalFailed, color: "text-red-400" },
-                    { label: "Tasa de éxito", value: totalRecipients ? `${Math.round((totalSent / totalRecipients) * 100)}%` : "—", color: "text-blue-400" },
+                    { label: t("stats.emailsSent"), value: totalSent, color: "text-emerald-400" },
+                    { label: t("stats.failed"), value: totalFailed, color: "text-red-400" },
+                    { label: t("stats.successRate"), value: totalRecipients ? `${Math.round((totalSent / totalRecipients) * 100)}%` : "—", color: "text-blue-400" },
                 ].map((s) => (
                     <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
                         <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -67,9 +69,9 @@ export default function TabStats() {
                                 <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />
                             </div>
                             <div className="flex gap-4 text-[11px] text-muted-foreground">
-                                <span>{c.total_count} destinatarios</span>
-                                <span className="text-emerald-400">{c.sent_count} enviados</span>
-                                {c.failed_count > 0 && <span className="text-red-400">{c.failed_count} fallidos</span>}
+                                <span>{t("stats.recipientsCount", { count: c.total_count })}</span>
+                                <span className="text-emerald-400">{t("stats.sentCount", { count: c.sent_count })}</span>
+                                {c.failed_count > 0 && <span className="text-red-400">{t("stats.failedCount", { count: c.failed_count })}</span>}
                             </div>
                         </div>
                     );

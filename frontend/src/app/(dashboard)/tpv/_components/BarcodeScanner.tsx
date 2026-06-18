@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Camera, X, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +19,8 @@ type BarcodeDetectorCtor = new (opts?: { formats?: string[] }) => {
 const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"];
 
 export function BarcodeScanner({ open, onClose, onScan }: Props) {
+    const t = useTranslations("tpv");
+    const tc = useTranslations("common");
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const rafRef = useRef<number | null>(null);
@@ -74,7 +77,7 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
             })
             .catch((e: Error) => {
                 if (cancelled) return;
-                setError(e.message || "No se pudo abrir la cámara");
+                setError(e.message || t("scanner.cameraError"));
                 setStarting(false);
             });
 
@@ -87,7 +90,7 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
                 streamRef.current = null;
             }
         };
-    }, [open, onScan]);
+    }, [open, onScan, t]);
 
     if (!open) return null;
 
@@ -97,9 +100,9 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
                 <div className="p-4 flex items-center justify-between border-b border-border">
                     <div className="flex items-center gap-2">
                         <Camera className="w-4 h-4 text-cyan-400" />
-                        <h3 className="text-sm font-medium text-foreground">Escanear código</h3>
+                        <h3 className="text-sm font-medium text-foreground">{t("scanner.title")}</h3>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Cerrar">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label={tc("close")}>
                         <X className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>
@@ -108,10 +111,9 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
                     {supported === false && (
                         <div className="text-center px-6 space-y-3 text-foreground">
                             <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
-                            <p className="text-sm font-medium">Lectura por cámara no soportada</p>
+                            <p className="text-sm font-medium">{t("scanner.unsupportedTitle")}</p>
                             <p className="text-xs text-muted-foreground">
-                                Tu navegador no implementa BarcodeDetector. Usa un lector USB/Bluetooth
-                                o introduce el código manualmente.
+                                {t("scanner.unsupportedDescription")}
                             </p>
                         </div>
                     )}
@@ -120,7 +122,7 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
                             <AlertTriangle className="w-10 h-10 text-rose-400 mx-auto" />
                             <p className="text-sm font-medium">{error}</p>
                             <p className="text-xs text-muted-foreground">
-                                Asegúrate de dar permiso de cámara al navegador.
+                                {t("scanner.permissionHint")}
                             </p>
                         </div>
                     )}
@@ -146,7 +148,7 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
                 </div>
 
                 <div className="p-3 text-[11px] text-center text-muted-foreground">
-                    Apunta al código de barras o QR del producto
+                    {t("scanner.aimHint")}
                 </div>
             </div>
         </div>

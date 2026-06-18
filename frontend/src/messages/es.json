@@ -4590,5 +4590,1146 @@
       "createMissing": "Crear automáticamente los productos que falten",
       "createButton": "Crear {count, plural, one {# factura de compra} other {# facturas de compra}}"
     }
+  },
+  "bandeja": {
+    "title": "Bandeja",
+    "subtitle": "Aprobaciones pendientes y actividad de tus agentes",
+    "tabs": {
+      "approvals": "Aprobaciones",
+      "activity": "Actividad"
+    },
+    "categories": {
+      "billing": "Facturación",
+      "hr": "RRHH",
+      "crm": "CRM",
+      "email": "Email",
+      "banking": "Banca",
+      "compliance": "Compliance",
+      "documents": "Documentos",
+      "system": "Sistema"
+    },
+    "time": {
+      "now": "ahora",
+      "minutesAgo": "hace {mins}m",
+      "hoursAgo": "hace {hrs}h"
+    },
+    "inbox": {
+      "aiAgent": "Agente IA"
+    },
+    "activity": {
+      "allAgents": "Todos los agentes",
+      "allCategories": "Todas las categorías",
+      "clear": "Limpiar",
+      "refresh": "Actualizar actividad",
+      "emptyTitle": "Bandeja vacía",
+      "emptyDescription": "Cuando tus agentes completen tareas o necesiten tu atención, aparecerán aquí",
+      "loadMore": "Cargar más"
+    },
+    "approvals": {
+      "risk": {
+        "low": "Bajo",
+        "medium": "Medio",
+        "high": "Alto",
+        "critical": "Crítico"
+      },
+      "riskBadge": "Riesgo {level}",
+      "expiresIn": "Expira en {mins} min",
+      "expired": "Expirada",
+      "viewDetails": "Ver detalles de la acción",
+      "reject": "Rechazar",
+      "approve": "Aprobar",
+      "loading": "Cargando…",
+      "emptyTitle": "Sin aprobaciones pendientes",
+      "emptyDescription": "Los agentes no requieren tu atención ahora mismo"
+    },
+    "cleanup": {
+      "confirmMessage": "¿Eliminar todas las aprobaciones expiradas y ya resueltas?",
+      "confirmLabel": "Eliminar",
+      "buttonTitle": "Eliminar aprobaciones expiradas y resueltas",
+      "button": "Limpiar historial"
+    },
+    "toasts": {
+      "decisionError": "Error al procesar la decisión",
+      "rejectError": "Error al procesar el rechazo",
+      "cleanupError": "Error al limpiar aprobaciones"
+    },
+    "rejectModal": {
+      "title": "Rechazar Acción",
+      "closeAria": "Cancelar rechazo",
+      "description": "Estás a punto de rechazar esta acción. Puedes indicar un motivo opcional para que el agente lo tenga en cuenta en futuros intentos.",
+      "reasonLabel": "Motivo del rechazo (opcional)",
+      "reasonPlaceholder": "Ej: Faltan datos en el documento...",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar Rechazo"
+    }
+  },
+  "auditoria": {
+    "page": {
+      "title": "Auditoría",
+      "subtitle": "Registro completo de todas las acciones ejecutadas por los agentes",
+      "loadingFallback": "Cargando auditoría..."
+    },
+    "common": {
+      "loading": "Cargando…"
+    },
+    "taskSelector": {
+      "heading": "Tarea"
+    },
+    "logTable": {
+      "time": "Hora",
+      "agent": "Agente",
+      "action": "Acción",
+      "status": "Estado",
+      "emptyForTask": "Sin registros para esta tarea",
+      "selectTask": "Selecciona una tarea"
+    }
+  },
+  "documentos": {
+    "header": {
+      "title": "Documentos",
+      "subtitle": "Selecciona una carpeta para ver los documentos clasificados",
+      "folderSubtitle": "Archivos clasificados en la carpeta {folder}"
+    },
+    "toolbar": {
+      "importExcel": "Importar Excel",
+      "exportDocs": "Exportar Docs",
+      "backupDb": "Backup BD",
+      "restoreDb": "Restaurar BD",
+      "scanImport": "Escanear / Importar"
+    },
+    "folders": {
+      "heading": "Carpetas",
+      "facturas": {
+        "label": "Facturas",
+        "desc": "Ventas y Compras"
+      },
+      "bancos": {
+        "label": "Bancos",
+        "desc": "Extractos y movimientos"
+      },
+      "nominas": {
+        "label": "Nóminas",
+        "desc": "Recibos de salario"
+      },
+      "fiscal": {
+        "label": "Asesor Fiscal",
+        "desc": "Impuestos y alertas"
+      },
+      "crm": {
+        "label": "CRM",
+        "desc": "Ventas y Oportunidades"
+      },
+      "excels": {
+        "label": "Excels",
+        "desc": "Hojas de cálculo y datos"
+      },
+      "informes": {
+        "label": "Informes",
+        "desc": "Análisis y rentabilidad"
+      },
+      "correos": {
+        "label": "Correos",
+        "desc": "Resúmenes de email"
+      },
+      "automatizaciones": {
+        "label": "Automatización",
+        "desc": "Reglas y Workflows"
+      },
+      "rrhh": {
+        "label": "RRHH",
+        "desc": "Contratos y Personal"
+      },
+      "otros": {
+        "label": "Otros",
+        "desc": "Documentos varios"
+      }
+    },
+    "list": {
+      "loading": "Cargando...",
+      "emptyTitle": "Esta carpeta esta vacia",
+      "emptyHint": "Escanea o importa desde el botón «Escanear / Importar»",
+      "colFile": "Archivo",
+      "colSize": "Tamano",
+      "colStatus": "Estado",
+      "colUploaded": "Subido"
+    },
+    "errors": {
+      "load": "Error al cargar documentos"
+    },
+    "toasts": {
+      "exportSuccess": "Documentos exportados correctamente",
+      "exportError": "Error al exportar documentos",
+      "backupSuccess": "Backup descargado correctamente",
+      "backupError": "Error al generar el backup"
+    }
+  },
+  "informes": {
+    "page": {
+      "title": "Informes IA",
+      "subtitle": "Informes generados automáticamente por IA",
+      "tabGestion": "Gestión",
+      "tabFiscal": "Fiscal",
+      "reportsTitle": "Informes PDF generados",
+      "download": "Descargar"
+    },
+    "gestion": {
+      "refresh": "Actualizar",
+      "generatePdf": "Generar PDF",
+      "genOk": "PDF generado y guardado en documentos",
+      "loadingPeriod": "Cargando datos del período…",
+      "resumenEjecutivo": "Resumen ejecutivo · {period}",
+      "kpiIngresos": "Ingresos",
+      "kpiGastos": "Gastos",
+      "kpiMargenBruto": "Margen bruto",
+      "kpiPendienteCobro": "Pendiente cobro",
+      "facturasCount": "{count} facturas",
+      "margenSobreIngresos": "{pct}% sobre ingresos",
+      "sectionFacturacion": "Facturación",
+      "ingresosTotales": "Ingresos totales",
+      "gastosTotales": "Gastos totales",
+      "margenBruto": "Margen bruto",
+      "facturasEmitidas": "Facturas emitidas",
+      "facturasRecibidas": "Facturas recibidas",
+      "pendientesCobro": "Pendientes de cobro",
+      "sectionPosicionBancaria": "Posición bancaria",
+      "entradas": "Entradas",
+      "salidas": "Salidas",
+      "saldoNetoMes": "Saldo neto del mes",
+      "movimientosRegistrados": "Movimientos registrados",
+      "reconciliados": "Reconciliados",
+      "sectionRRHH": "Recursos Humanos",
+      "empleadosActivos": "Empleados activos",
+      "costeNominas": "Coste nóminas",
+      "nominasPagadas": "Nóminas pagadas",
+      "nominasPendientes": "Nóminas pendientes",
+      "sectionClientes": "Clientes",
+      "totalClientes": "Total clientes",
+      "nuevosPeriodo": "Nuevos este período",
+      "clientePrincipal": "Cliente principal",
+      "emptyTitle": "Sin datos para {period}",
+      "emptySubtitle": "Prueba con otro mes o registra actividad primero"
+    },
+    "fiscal": {
+      "mensual": "Mensual",
+      "trimestral": "Trimestral",
+      "refresh": "Actualizar",
+      "generatePdf": "Generar PDF Fiscal",
+      "genOk": "PDF fiscal generado y guardado",
+      "loadingData": "Cargando datos fiscales…",
+      "resumenFiscal": "Resumen fiscal · {period}",
+      "kpiResultadoIva": "Resultado IVA",
+      "kpiResultadoIvaIngresar": "A ingresar",
+      "kpiResultadoIvaCompensar": "A compensar",
+      "kpiIrpfRetenciones": "IRPF Retenciones",
+      "kpiIrpfSub": "Retenciones del periodo",
+      "kpiIsEstimado": "IS Estimado",
+      "kpiIsSub": "Tipo {tipo}%",
+      "kpiTotalObligaciones": "Total obligaciones",
+      "kpiTotalSub": "Estimación total",
+      "sectionIva": "IVA — Repercutido vs Soportado",
+      "ivaRepercutido21": "IVA Repercutido (21%)",
+      "ivaRepercutido10": "IVA Repercutido (10%)",
+      "ivaRepercutido4": "IVA Repercutido (4%)",
+      "totalRepercutido": "Total repercutido",
+      "ivaSoportado21": "IVA Soportado (21%)",
+      "ivaSoportado10": "IVA Soportado (10%)",
+      "ivaSoportado4": "IVA Soportado (4%)",
+      "totalSoportado": "Total soportado",
+      "resultadoIva": "Resultado IVA",
+      "sectionRetencionesIrpf": "Retenciones IRPF",
+      "retencionesNominas": "Retenciones nóminas",
+      "retencionesFacturas": "Retenciones facturas",
+      "totalRetenciones": "Total retenciones",
+      "sectionImpuestoSociedades": "Impuesto de Sociedades (est.)",
+      "ingresosBrutos": "Ingresos brutos",
+      "gastosDeducibles": "Gastos deducibles",
+      "baseImponible": "Base imponible",
+      "tipoImpositivo": "Tipo impositivo",
+      "cuotaEstimada": "Cuota estimada",
+      "disclaimer": "Estimación orientativa generada automáticamente. No sustituye el asesoramiento fiscal profesional ni las declaraciones ante la AEAT.",
+      "emptyTitle": "Sin datos fiscales para {period}",
+      "emptySubtitle": "Prueba con otro periodo o registra actividad primero"
+    },
+    "hooks": {
+      "months": "Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre",
+      "quarterLabel": "T{q} {year}",
+      "errorLoadingData": "Error cargando datos",
+      "errorLoadingFiscalData": "Error cargando datos fiscales",
+      "errorUnknown": "Error desconocido",
+      "errorGenerating": "Error generando informe: {msg}",
+      "errorGeneratingFiscal": "Error generando informe fiscal: {msg}",
+      "errorDownloading": "Error descargando: {msg}",
+      "errorDeleting": "Error eliminando: {msg}",
+      "confirmDelete": "¿Eliminar este informe? Esta acción no se puede deshacer.",
+      "confirmLabel": "Eliminar"
+    }
+  },
+  "catalogo": {
+    "header": {
+      "title": "Catálogo de Artículos",
+      "description": "Gestiona productos y servicios. La IA los usa para emitir facturas y presupuestos.",
+      "importCsv": "Importar CSV",
+      "newItem": "Nuevo Artículo"
+    },
+    "columns": {
+      "name": "Nombre",
+      "type": "Tipo",
+      "basePrice": "Precio base",
+      "pvp": "PVP (c/ IVA)",
+      "vatSuffix": "+{pct}% IVA"
+    },
+    "empty": {
+      "title": "Tu catálogo está vacío",
+      "description": "Añade productos y servicios para que la IA pueda generar facturas y presupuestos automáticamente."
+    },
+    "table": {
+      "searchPlaceholder": "Buscar por nombre...",
+      "empty": "Sin artículos encontrados."
+    },
+    "modal": {
+      "editTitle": "Editar Artículo",
+      "newTitle": "Nuevo Artículo",
+      "closeAria": "Cerrar formulario de artículo",
+      "saveChanges": "Guardar cambios",
+      "create": "Crear artículo"
+    },
+    "fields": {
+      "nameRequired": "Nombre *",
+      "sku": "SKU / Ref.",
+      "skuPlaceholder": "Opcional",
+      "barcode": "Código de barras",
+      "barcodePlaceholder": "EAN / UPC (opcional)",
+      "category": "Categoría",
+      "categoryPlaceholder": "Ej. ferretería, oficina, ...",
+      "location": "Ubicación en almacén",
+      "locationPlaceholder": "Ej. Pasillo 1, Sección A-3, Estantería 4",
+      "description": "Descripción",
+      "nature": "Naturaleza",
+      "unit": "Unidad",
+      "vat": "% IVA",
+      "salePriceRequired": "Precio venta *",
+      "costPrice": "Precio coste",
+      "costPricePlaceholder": "Para valoración de stock",
+      "active": "Activo",
+      "activeHint": "(desactivar lo oculta del inventario operativo)"
+    },
+    "nature": {
+      "product": "Producto",
+      "service": "Servicio"
+    },
+    "vat": {
+      "standard": "21%",
+      "reduced": "10% (reducido)",
+      "superReduced": "4% (superreducido)",
+      "exempt": "0% (exento)"
+    },
+    "import": {
+      "entityName": "productos",
+      "cols": {
+        "name": "Nombre",
+        "description": "Descripción",
+        "price": "Precio",
+        "vat": "IVA %",
+        "stock": "Stock"
+      },
+      "examples": {
+        "name": "Servicio de consultoría",
+        "description": "Consultoría hora"
+      }
+    },
+    "delete": {
+      "title": "Eliminar artículo",
+      "message": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "confirm": "Eliminar",
+      "cancel": "Cancelar"
+    },
+    "toasts": {
+      "saveError": "Error guardando",
+      "deleted": "Artículo eliminado",
+      "deleteError": "Error eliminando"
+    }
+  },
+  "tpv": {
+    "title": "TPV",
+    "cancelSession": "Cancelar sesión",
+    "header": {
+      "description": "Punto de venta — escanea productos, ajusta cantidades y cobra.",
+      "sessionInfo": "Sesión #{id} · abierta {time}"
+    },
+    "empty": {
+      "title": "Sin sesión abierta",
+      "description": "Inicia una nueva sesión para empezar a vender.",
+      "openButton": "Abrir sesión TPV"
+    },
+    "cancelConfirm": {
+      "title": "Cancelar sesión",
+      "message": "Se descartarán todas las líneas del carrito. Esta acción no se puede deshacer.",
+      "confirmLabel": "Cancelar sesión",
+      "cancelLabel": "Volver"
+    },
+    "scan": {
+      "placeholder": "Escanea con lector o escribe código de barras / SKU...",
+      "addProduct": "Añadir producto",
+      "scanWithCamera": "Escanear con cámara",
+      "hintReader": "· Usa un lector USB/Bluetooth: dispara automáticamente al escanear.",
+      "hintCamera": "· O pulsa la cámara para leer con el móvil.",
+      "hintExisting": "· Si añades un producto que ya está en el carrito, suma 1 a la cantidad."
+    },
+    "cart": {
+      "title": "Carrito",
+      "lineCount": "{count, plural, one {# línea} other {# líneas}}",
+      "empty": "Carrito vacío. Escanea o introduce un código para empezar.",
+      "linePrice": "{price} · IVA {tax}%"
+    },
+    "totals": {
+      "subtotal": "Subtotal",
+      "tax": "IVA",
+      "total": "Total",
+      "charge": "Cobrar {amount}"
+    },
+    "scanner": {
+      "title": "Escanear código",
+      "cameraError": "No se pudo abrir la cámara",
+      "unsupportedTitle": "Lectura por cámara no soportada",
+      "unsupportedDescription": "Tu navegador no implementa BarcodeDetector. Usa un lector USB/Bluetooth o introduce el código manualmente.",
+      "permissionHint": "Asegúrate de dar permiso de cámara al navegador.",
+      "aimHint": "Apunta al código de barras o QR del producto"
+    },
+    "payment": {
+      "title": "Cobrar",
+      "amountLabel": "A cobrar",
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "processing": "Procesando cobro…"
+    },
+    "toast": {
+      "openError": "Error abriendo sesión",
+      "productNotFound": "No se encontró producto para \"{code}\"",
+      "addProductError": "Error añadiendo producto",
+      "addLineError": "Error añadiendo línea",
+      "updateQuantityError": "Error actualizando cantidad",
+      "removeLineError": "Error eliminando línea",
+      "checkoutSuccess": "Cobro registrado · {amount}",
+      "checkoutError": "Error al cobrar",
+      "cancelSuccess": "Sesión cancelada",
+      "cancelError": "Error cancelando"
+    }
+  },
+  "albaranes": {
+    "title": "Albaranes",
+    "subtitle": "Gestión de albaranes y notas de entrega.",
+    "newAlbaran": "Nuevo Albarán",
+    "searchPlaceholder": "Buscar por número...",
+    "loading": "Cargando albaranes...",
+    "filter": {
+      "allStatuses": "Todos los estados"
+    },
+    "status": {
+      "draft": "Borrador",
+      "confirmed": "Confirmado",
+      "delivered": "Entregado"
+    },
+    "empty": {
+      "title": "Sin albaranes",
+      "hint": "Crea el primero con el botón “Nuevo Albarán”."
+    },
+    "table": {
+      "number": "Nº Albarán",
+      "date": "Fecha",
+      "client": "Cliente",
+      "status": "Estado",
+      "total": "Total",
+      "actions": "Acciones",
+      "noClient": "Sin cliente"
+    },
+    "actions": {
+      "downloadPdf": "Descargar PDF",
+      "convertToInvoice": "Convertir a Factura"
+    },
+    "delete": {
+      "title": "Eliminar albarán",
+      "message": "¿Eliminar este albarán? Esta acción no se puede deshacer."
+    },
+    "toasts": {
+      "needLine": "Añade al menos una línea con descripción.",
+      "created": "Albarán creado correctamente",
+      "createError": "Error creando albarán: {error}",
+      "deleted": "Albarán eliminado",
+      "unknownError": "Error desconocido"
+    },
+    "modal": {
+      "title": "Nuevo Albarán",
+      "client": "Cliente",
+      "clientPlaceholder": "Nombre del cliente (opcional)",
+      "date": "Fecha",
+      "lines": "Líneas",
+      "addLine": "Añadir línea",
+      "colDescription": "Descripción",
+      "colQuantity": "Cantidad",
+      "colUnitPrice": "Precio unit.",
+      "colTax": "IVA %",
+      "descriptionPlaceholder": "Descripción...",
+      "notes": "Observaciones",
+      "notesPlaceholder": "Notas adicionales (opcional)",
+      "submit": "Crear Albarán"
+    }
+  },
+  "integraciones": {
+    "title": "Integraciones",
+    "subtitle": "Conecta tus herramientas para que los agentes puedan actuar sobre ellas",
+    "status": {
+      "connected": "Conectado",
+      "notConnected": "No conectado"
+    },
+    "card": {
+      "lastSync": "Última sincronización: {date}"
+    },
+    "banner": {
+      "title": "Conecta tus servicios",
+      "before": "Vincula tu banco, correo y almacenamiento para que los agentes puedan leer facturas, enviar emails y sincronizar documentos automáticamente. Las conexiones usan OAuth —",
+      "highlight": "tus credenciales nunca se comparten con nosotros"
+    },
+    "actions": {
+      "connecting": "Conectando…",
+      "disconnecting": "Desconectando…",
+      "disconnect": "Desconectar",
+      "connectGoogle": "Conectar con Google",
+      "connectMicrosoft": "Conectar con Microsoft"
+    },
+    "psd2": {
+      "title": "Banco (PSD2 / GoCardless)",
+      "subtitle": "Saldos y transacciones reales",
+      "connectedInfo": "Tu agente de finanzas ahora puede consultar tus saldos y transacciones bancarias en tiempo real.",
+      "disconnect": "Desconectar Banco",
+      "intro": {
+        "before": "Para conectarte a tus cuentas bancarias usamos GoCardless (antes Nordigen), un agregador regulado bajo directiva",
+        "after": "europea."
+      },
+      "secretIdPlaceholder": "Secret ID (puedes usar: DEMO_PSD2_ID)",
+      "secretKeyPlaceholder": "Secret Key (puedes usar: DEMO_PSD2_ID)",
+      "connect": "Conectar PSD2"
+    },
+    "gmail": {
+      "subtitle": "Correo electrónico con Google",
+      "connectedInfo": "El agente de email puede leer y enviar correos desde tu cuenta de Gmail.",
+      "disconnect": "Desconectar Gmail",
+      "intro": "Conecta tu cuenta de Gmail para que el agente pueda leer tu bandeja de entrada y enviar correos en tu nombre.",
+      "oauthNote": "Al conectar Google se habilitan Gmail y Google Drive simultáneamente."
+    },
+    "gdrive": {
+      "subtitle": "Almacenamiento y backup de documentos",
+      "connectedInfo": "Sincroniza documentos, sube facturas y realiza backups automáticos en tu Google Drive.",
+      "disconnect": "Desconectar Google Drive",
+      "intro": "Conecta Google Drive para sincronizar documentos, exportar facturas y hacer backups automáticos.",
+      "alreadyWithGmail": "Google Drive ya está conectado junto con Gmail. Actívalo arriba."
+    },
+    "outlook": {
+      "subtitle": "Correo electrónico con Microsoft",
+      "connectedInfo": "El agente de email puede leer y enviar correos desde tu cuenta de Outlook.",
+      "disconnect": "Desconectar Outlook",
+      "intro": "Conecta tu cuenta de Outlook / Microsoft 365 para que el agente gestione tu correo.",
+      "oauthNote": "Al conectar Microsoft se habilitan Outlook y OneDrive simultáneamente."
+    },
+    "onedrive": {
+      "subtitle": "Almacenamiento y backup de documentos",
+      "connectedInfo": "Sincroniza documentos, sube facturas y realiza backups automáticos en tu OneDrive.",
+      "disconnect": "Desconectar OneDrive",
+      "intro": "Conecta OneDrive para sincronizar documentos, exportar facturas y hacer backups automáticos.",
+      "alreadyWithOutlook": "OneDrive ya está conectado junto con Outlook. Actívalo arriba."
+    },
+    "email": {
+      "title": "Correo IMAP / SMTP",
+      "subtitle": "Servidor propio, Yahoo, iCloud o fallback sin OAuth",
+      "connectedInfo": "Tu correo IMAP/SMTP está conectado. El agente de email puede leer la bandeja y enviar mensajes con adjuntos.",
+      "disconnect": "Desconectar correo",
+      "verifying": "Verificando…",
+      "connect": "Conectar correo",
+      "intro": {
+        "before": "Conexión vía IMAP/SMTP — útil para servidores propios, Yahoo, iCloud o cuando OAuth no esté disponible. Para",
+        "and": "y",
+        "after": "recomendamos OAuth (botones arriba)."
+      },
+      "fields": {
+        "provider": "Proveedor",
+        "address": "Dirección de correo",
+        "addressPlaceholder": "tu@correo.com",
+        "password": "Contraseña",
+        "passwordPlaceholder": "App Password recomendado",
+        "imapHost": "Servidor IMAP",
+        "imapHostPlaceholder": "imap.ejemplo.com",
+        "imapPort": "Puerto IMAP",
+        "smtpHost": "Servidor SMTP",
+        "smtpHostPlaceholder": "smtp.ejemplo.com",
+        "smtpPort": "Puerto SMTP"
+      },
+      "providers": {
+        "gmail": "Gmail (App Password)",
+        "outlook": "Outlook / Microsoft 365",
+        "yahoo": "Yahoo Mail",
+        "icloud": "iCloud Mail",
+        "custom": "Servidor propio (custom)"
+      },
+      "help": {
+        "gmail": "Necesitas una App Password (no tu contraseña normal). Genérala en myaccount.google.com → Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones.",
+        "outlook": "Usa tu contraseña habitual o una contraseña de aplicación si tienes 2FA.",
+        "yahoo": "Yahoo exige App Password. Ve a Configuración → Seguridad de la cuenta → Generar contraseña de aplicación.",
+        "icloud": "Necesitas una App Password de Apple. Genérala en appleid.apple.com → Inicio de sesión y seguridad → Contraseñas específicas para apps.",
+        "custom": "Introduce los datos de tu proveedor. Pregunta a tu administrador si no los conoces."
+      }
+    },
+    "confirm": {
+      "disconnectBank": "¿Desconectar tu Banco?",
+      "disconnectEmail": "¿Desconectar tu correo IMAP/SMTP?",
+      "disconnectLabel": "¿Desconectar {label}?"
+    },
+    "feedback": {
+      "providerConnected": "{provider} conectado correctamente",
+      "psd2Connected": "Banco (PSD2) conectado correctamente",
+      "bankDisconnected": "Banco desconectado",
+      "emailConnected": "Correo IMAP/SMTP conectado correctamente",
+      "emailDisconnected": "Correo IMAP/SMTP desconectado",
+      "labelDisconnected": "{label} desconectado",
+      "unknownError": "Error desconocido"
+    }
+  },
+  "alertas": {
+    "header": {
+      "title": "Alertas automáticas",
+      "description": "Condiciones de negocio detectadas por el sistema (facturas, stock, nóminas)"
+    },
+    "range": {
+      "last24h": "Últimas 24h",
+      "last48h": "Últimas 48h",
+      "lastWeek": "Última semana"
+    },
+    "actions": {
+      "reloadAria": "Recargar alertas",
+      "checking": "Comprobando…",
+      "checkNow": "Comprobar ahora"
+    },
+    "kpis": {
+      "total": "Total alertas",
+      "critical": "Críticas",
+      "warnings": "Avisos",
+      "info": "Informativas"
+    },
+    "types": {
+      "overdueInvoice": "Factura vencida",
+      "dueSoonInvoice": "Factura próxima a vencer",
+      "lowStock": "Stock bajo",
+      "pendingPayroll": "Nómina pendiente de pago"
+    },
+    "list": {
+      "loading": "Cargando alertas…",
+      "empty": "Sin alertas en el periodo seleccionado",
+      "view": "Ver →"
+    },
+    "footer": {
+      "note": "Las alertas se comprueban automáticamente cada día a las 08:30. Las mismas alertas no se repiten antes de 24h."
+    },
+    "toasts": {
+      "loadError": "Error al cargar alertas",
+      "checkError": "Error al ejecutar comprobación"
+    }
+  },
+  "calendario": {
+    "header": {
+      "title": "Calendario unificado",
+      "description": "Reuniones, vencimientos, reservas y nóminas en una sola vista"
+    },
+    "sources": {
+      "event": "Reunión / evento",
+      "reservation": "Reserva",
+      "invoiceDue": "Vencimiento factura",
+      "payroll": "Nómina"
+    },
+    "weekdays": {
+      "mon": "L",
+      "tue": "M",
+      "wed": "X",
+      "thu": "J",
+      "fri": "V",
+      "sat": "S",
+      "sun": "D"
+    },
+    "months": {
+      "jan": "Enero",
+      "feb": "Febrero",
+      "mar": "Marzo",
+      "apr": "Abril",
+      "may": "Mayo",
+      "jun": "Junio",
+      "jul": "Julio",
+      "aug": "Agosto",
+      "sep": "Septiembre",
+      "oct": "Octubre",
+      "nov": "Noviembre",
+      "dec": "Diciembre"
+    },
+    "nav": {
+      "today": "Hoy",
+      "newEvent": "Nuevo evento"
+    },
+    "grid": {
+      "loading": "Cargando…",
+      "more": "+{count, plural, one {# más} other {# más}}"
+    },
+    "detail": {
+      "closeAria": "Cerrar",
+      "createThisDay": "Crear evento este día",
+      "empty": "Sin eventos este día"
+    },
+    "modal": {
+      "title": "Nuevo evento",
+      "fieldTitle": "Título *",
+      "titlePlaceholder": "Reunión con cliente, demo, llamada...",
+      "type": "Tipo",
+      "start": "Inicio",
+      "end": "Fin",
+      "location": "Ubicación o enlace",
+      "locationPlaceholder": "Sala 1, Meet, Zoom URL...",
+      "notes": "Notas",
+      "notesPlaceholder": "Detalles adicionales...",
+      "cancel": "Cancelar",
+      "create": "Crear evento"
+    },
+    "eventTypes": {
+      "meeting": "Reunión",
+      "call": "Llamada",
+      "task": "Tarea",
+      "other": "Otro"
+    },
+    "toasts": {
+      "loadError": "Error al cargar el calendario",
+      "missingTitle": "Falta el título",
+      "endBeforeStart": "La hora de fin debe ser posterior al inicio",
+      "created": "Evento creado",
+      "createError": "Error al crear el evento"
+    }
+  },
+  "emailMarketing": {
+    "header": {
+      "title": "Email Marketing",
+      "subtitle": "Campañas masivas a tus clientes usando tu cuenta de email configurada"
+    },
+    "tabs": {
+      "campaigns": "Campañas",
+      "templates": "Plantillas",
+      "stats": "Estadísticas"
+    },
+    "status": {
+      "draft": "Borrador",
+      "scheduled": "Programada",
+      "sending": "Enviando",
+      "sent": "Enviada",
+      "failed": "Error"
+    },
+    "form": {
+      "newCampaign": "Nueva campaña",
+      "recipients": "{count} destinatarios (clientes con email)",
+      "namePlaceholder": "Nombre interno de la campaña",
+      "templateOptional": "Plantilla (opcional)",
+      "subjectPlaceholder": "Asunto del email",
+      "varsHint": "Variables disponibles: '{{'nombre'}}', '{{'email'}}'",
+      "editor": "Editor",
+      "preview": "Preview",
+      "sampleName": "Cliente",
+      "bodyPlaceholder": "Cuerpo del email (HTML o texto plano)",
+      "emptyForDraft": "Dejar vacío para borrador",
+      "create": "Crear"
+    },
+    "empty": {
+      "noCampaigns": "Sin campañas todavía"
+    },
+    "list": {
+      "send": "Enviar",
+      "recipientsShort": "{count} dest.",
+      "sentCount": "{count} enviados",
+      "failedCount": "{count} fallidos",
+      "sentAt": "Enviada {date}"
+    },
+    "toasts": {
+      "created": "Campaña creada",
+      "createError": "Error al crear la campaña",
+      "sending": "Campaña en proceso de envío",
+      "sendError": "Error al enviar la campaña",
+      "deleteError": "Error al eliminar la campaña"
+    },
+    "stats": {
+      "empty": "Todavía no hay campañas enviadas",
+      "emailsSent": "Emails enviados",
+      "failed": "Fallidos",
+      "successRate": "Tasa de éxito",
+      "recipientsCount": "{count} destinatarios",
+      "sentCount": "{count} enviados",
+      "failedCount": "{count} fallidos"
+    },
+    "templates": {
+      "new": "Nueva plantilla",
+      "editingTitle": "Editando: {name}",
+      "editor": "Editor",
+      "preview": "Preview",
+      "namePlaceholder": "Nombre de la plantilla",
+      "subjectPlaceholder": "Asunto del email",
+      "varsHint": "Variables disponibles: '{{'nombre'}}', '{{'email'}}'",
+      "bodyPlaceholder": "Cuerpo HTML de la plantilla…",
+      "sampleName": "Cliente",
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar cambios",
+      "createTemplate": "Crear plantilla",
+      "edit": "Editar",
+      "empty": "Sin plantillas guardadas"
+    },
+    "templatesToasts": {
+      "saved": "Plantilla guardada",
+      "saveError": "Error al guardar la plantilla",
+      "deleteError": "Error al eliminar la plantilla"
+    }
+  },
+  "plantillas": {
+    "header": {
+      "title": "Plantillas de documentos",
+      "subtitle": "Personaliza el estilo visual de tus facturas y nóminas. La IA usará la plantilla por defecto.",
+      "newTemplate": "Nueva plantilla"
+    },
+    "types": {
+      "invoice": "Facturas",
+      "payroll": "Nóminas",
+      "excel": "Excel / Exportaciones",
+      "albaran": "Albaranes",
+      "contract": "Contratos Word"
+    },
+    "list": {
+      "empty": "No hay plantillas de este tipo.",
+      "createPresets": "Crear preestablecidas"
+    },
+    "card": {
+      "default": "Default"
+    },
+    "form": {
+      "nameLabel": "Nombre de la plantilla",
+      "namePlaceholder": "Ej: Factura corporativa azul",
+      "layoutLabel": "Estilo de diseño",
+      "accentLabel": "Color de acento",
+      "fontLabel": "Tipografía",
+      "headerLabel": "Cabecera",
+      "tableLabel": "Tabla de líneas",
+      "logoLabel": "Posición del logo / empresa",
+      "footerLabel": "Texto del pie (opcional)",
+      "footerPlaceholder": "Ej: Gracias por su confianza · www.miempresa.es · +34 91 000 0000",
+      "useAsDefault": "Usar como plantilla por defecto",
+      "preview": "Vista previa",
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar cambios",
+      "createTemplate": "Crear plantilla",
+      "close": "Cerrar"
+    },
+    "layout": {
+      "modern": {
+        "label": "Modern",
+        "desc": "Banda de color, logo izquierda, tabla con rayas"
+      },
+      "classic": {
+        "label": "Classic",
+        "desc": "Sin banda, logo centrado, Times, tabla con bordes"
+      },
+      "minimal": {
+        "label": "Minimal",
+        "desc": "Línea fina, logo derecha, tabla limpia"
+      },
+      "bold": {
+        "label": "Bold",
+        "desc": "Cabecera oscura, tabla con acento, máximo impacto"
+      }
+    },
+    "colors": {
+      "indigo": "Índigo",
+      "blue": "Azul",
+      "emerald": "Esmeralda",
+      "amber": "Ámbar",
+      "red": "Rojo",
+      "violet": "Violeta",
+      "cyan": "Cyan",
+      "slate": "Slate"
+    },
+    "fonts": {
+      "helvetica": "Moderna y limpia",
+      "times": "Clásica y formal",
+      "courier": "Monoespaciada"
+    },
+    "headers": {
+      "colorBand": {
+        "label": "Banda color",
+        "desc": "Cabecera rellena con color de acento"
+      },
+      "darkBand": {
+        "label": "Banda oscura",
+        "desc": "Cabecera negra con acento en texto"
+      },
+      "lineOnly": {
+        "label": "Línea",
+        "desc": "Solo una línea separadora"
+      },
+      "none": {
+        "label": "Sin cabecera",
+        "desc": "Solo tipografía"
+      }
+    },
+    "tables": {
+      "striped": {
+        "label": "Rayas alternas",
+        "desc": "Filas intercaladas gris"
+      },
+      "bordered": {
+        "label": "Con bordes",
+        "desc": "Cuadrícula completa"
+      },
+      "clean": {
+        "label": "Limpia",
+        "desc": "Solo líneas horizontales"
+      },
+      "accentHeader": {
+        "label": "Cabecera color",
+        "desc": "Header con color acento"
+      }
+    },
+    "logoPositions": {
+      "left": "Izquierda",
+      "center": "Centro",
+      "right": "Derecha"
+    },
+    "variables": {
+      "nombreCliente": "Nombre completo del cliente",
+      "nifCliente": "NIF/CIF del cliente",
+      "direccionCliente": "Dirección del cliente",
+      "nombreEmpresa": "Nombre de tu empresa",
+      "nifEmpresa": "NIF/CIF de tu empresa",
+      "fecha": "Fecha actual (dd/mm/aaaa)",
+      "fechaInicio": "Fecha de inicio del contrato",
+      "fechaFin": "Fecha de fin del contrato",
+      "importe": "Importe total",
+      "numeroContrato": "Número de contrato"
+    },
+    "toasts": {
+      "loadError": "Error cargando plantillas",
+      "seedSuccess": "Plantillas preestablecidas creadas",
+      "seedError": "Error creando preestablecidas",
+      "nameRequired": "El nombre es obligatorio",
+      "savedDefault": "Plantilla guardada y establecida como predeterminada",
+      "createdDefault": "Plantilla creada y establecida como predeterminada",
+      "saveError": "Error guardando plantilla",
+      "deleteSuccess": "Plantilla eliminada",
+      "deleteError": "Error eliminando plantilla",
+      "setDefaultSuccess": "\"{name}\" establecida como predeterminada",
+      "setDefaultError": "Error actualizando plantilla",
+      "previewError": "Error generando vista previa"
+    },
+    "confirmDelete": {
+      "title": "Eliminar plantilla",
+      "message": "¿Eliminar la plantilla \"{name}\"? Esta acción no se puede deshacer.",
+      "confirmLabel": "Eliminar"
+    },
+    "contracts": {
+      "intro": "Sube plantillas .docx con variables como <code>{{nombre_cliente}}</code>. El sistema las rellenará con datos reales al generar contratos.",
+      "uploadDocx": "Subir .docx",
+      "emptyTitle": "Sin plantillas aún",
+      "emptyHint": "Haz clic para subir tu primer .docx",
+      "generateDraft": "Generar borrador",
+      "edit": "Editar",
+      "editTitle": "Editar en el navegador (solo .docx)",
+      "previewBtn": "Previsualizar",
+      "previewTitle": "Vista previa HTML (solo .docx)",
+      "previewNote": "Vista previa de solo lectura (HTML). Las variables <code>{{nombre}}</code> se resaltan si existen en el texto.",
+      "converting": "Convirtiendo documento…",
+      "varsInDoc": "Variables en el documento",
+      "noVarsDetected": "No se detectaron <code>{{ }}</code> en el texto convertido.",
+      "generateFor": "Generar borrador para:",
+      "client": "Cliente",
+      "employee": "Empleado",
+      "loading": "Cargando…",
+      "selectClient": "-- Seleccionar cliente --",
+      "selectEmployee": "-- Seleccionar empleado --",
+      "generating": "Generando…",
+      "downloadDraft": "Descargar borrador",
+      "cancel": "Cancelar",
+      "availableVars": "Variables disponibles",
+      "clickToCopy": "Clic para copiar",
+      "toasts": {
+        "loadError": "Error cargando plantillas de contrato",
+        "editorDocxOnly": "La edición en el navegador solo está disponible para archivos .docx",
+        "loadTemplateError": "No se pudo cargar la plantilla",
+        "previewError": "Error en vista previa",
+        "uploadSuccess": "Plantilla subida correctamente",
+        "uploadError": "Error al subir plantilla",
+        "desktopOnly": "Esta función solo está disponible en la app de escritorio",
+        "deleteSuccess": "Plantilla eliminada",
+        "deleteError": "Error eliminando plantilla",
+        "entitiesError": "Error cargando entidades",
+        "generateSuccess": "Borrador generado y descargado",
+        "generateError": "Error generando contrato",
+        "copied": "Copiado: {key}"
+      },
+      "confirmDelete": {
+        "title": "Eliminar plantilla",
+        "message": "¿Eliminar \"{name}\"?",
+        "confirmLabel": "Eliminar"
+      }
+    }
+  },
+  "primerosPasos": {
+    "header": {
+      "title": "Primeros Pasos",
+      "subtitle": "Tu guía para poner en marcha AutomatizaCore"
+    },
+    "progress": {
+      "allDone": "¡Enhorabuena! Todo configurado 🎉",
+      "completed": "{count, plural, one {# de {total} paso completado} other {# de {total} pasos completados}}"
+    },
+    "iaDemo": {
+      "label": "Asistente IA — puedes pedirle cosas como:",
+      "realtime": "El agente IA actúa en tiempo real — ejecuta, crea y consulta sin que tengas que tocar un formulario."
+    },
+    "iaExamples": {
+      "0": "Factura a Acme Corp por 5 horas de consultoría a 80€/h",
+      "1": "¿Cuánto he facturado este mes?",
+      "2": "Crea una nómina borrador para todos los empleados activos",
+      "3": "Muéstrame las facturas vencidas y sin cobrar",
+      "4": "Dame el resumen de gastos del trimestre por categoría",
+      "5": "Registra el cobro de la factura F-2024-012"
+    },
+    "capabilities": {
+      "canTitle": "La IA puede hacer",
+      "can": {
+        "0": "Crear facturas, albaranes y presupuestos",
+        "1": "Generar nóminas y calcular IRPF/SS",
+        "2": "Responder preguntas sobre tus datos",
+        "3": "Registrar cobros, pagos y asientos contables",
+        "4": "Buscar clientes, productos y empleados",
+        "5": "Ejecutar automatizaciones programadas",
+        "6": "Generar informes y exportaciones Excel"
+      },
+      "requiresTitle": "Requiere confirmación o datos previos",
+      "requires": {
+        "0": "Eliminar registros (siempre pide confirmación)",
+        "1": "Enviar emails (necesita integración Gmail/Outlook)",
+        "2": "Facturas: el cliente debe existir en Contactos",
+        "3": "Nóminas: los empleados deben estar dados de alta",
+        "4": "No accede a sistemas externos sin integración",
+        "5": "No toma decisiones financieras por ti",
+        "6": "No puede acceder a datos de otros tenants"
+      }
+    },
+    "badge": {
+      "done": "Hecho",
+      "locked": "Bloqueado"
+    },
+    "actions": {
+      "markPending": "Marcar como pendiente",
+      "markDone": "Marcar como completado"
+    },
+    "modules": {
+      "title": "Explora todos los módulos",
+      "ventas": "Ventas",
+      "compras": "Compras",
+      "contactos": "Contactos",
+      "catalogo": "Catálogo",
+      "rrhh": "RRHH",
+      "contabilidad": "Contabilidad",
+      "automatizaciones": "Automatizaciones",
+      "analitica": "Analítica"
+    },
+    "steps": {
+      "empresa": {
+        "title": "Configura tu empresa",
+        "description": "Añade el nombre, NIF y dirección fiscal. Estos datos aparecerán en todas tus facturas.",
+        "detail": "Ve a Configuración → Empresa y rellena los datos de tu negocio. Solo se hace una vez.",
+        "hrefLabel": "Ir a Configuración",
+        "tips": {
+          "0": "El NIF/CIF es obligatorio para emitir facturas válidas en España.",
+          "1": "Puedes añadir tu logo más adelante desde el mismo panel."
+        }
+      },
+      "apiKeys": {
+        "title": "Configura tu clave de IA",
+        "description": "Los agentes usan tu propia clave de IA (modelo BYOK). Sin clave, la IA no funciona.",
+        "detail": "Ve a Configuración → Claves API, elige un proveedor (Anthropic recomendado; también OpenAI o Groq), pega tu clave y actívala. Se guarda cifrada y puedes cambiarla cuando quieras.",
+        "hrefLabel": "Ir a Claves API",
+        "tips": {
+          "0": "Crea la clave en la web del proveedor (p.ej. console.anthropic.com); pagas solo tu consumo.",
+          "1": "Claude Code solo funciona si tienes instalado el CLI de Claude (uso avanzado/dev)."
+        }
+      },
+      "clientes": {
+        "title": "Da de alta tus primeros clientes",
+        "description": "Crea el directorio de contactos: clientes, proveedores o leads. La IA los usará al generar facturas.",
+        "detail": "En Contactos puedes importarlos manualmente o dejar que la IA los detecte automáticamente al escanear facturas recibidas.",
+        "hrefLabel": "Ir a Contactos",
+        "tips": {
+          "0": "El NIF del cliente se valida automáticamente al emitir una factura.",
+          "1": "Filtra por tipo: Cliente, Proveedor, Lead o Empresa."
+        }
+      },
+      "catalogo": {
+        "title": "Crea tu catálogo de productos y servicios",
+        "description": "Define los artículos o servicios que vendes con su precio e IVA. Así la IA puede rellenar facturas en segundos.",
+        "detail": "El catálogo centraliza precios y tipos de IVA. Cuando pides a la IA 'factura a Tech SL por 3 horas de consultoría', busca en el catálogo y completa la factura automáticamente.",
+        "hrefLabel": "Ir al Catálogo",
+        "tips": {
+          "0": "Asigna SKU/referencias si tienes artículos con código.",
+          "1": "El IVA por defecto es 21% — cámbialo a 0% para exportaciones."
+        }
+      },
+      "factura": {
+        "title": "Emite tu primera factura",
+        "description": "Crea una factura de venta real o pide a la IA que la genere por ti en lenguaje natural.",
+        "detail": "Puedes crear facturas manualmente desde Ventas → Facturas → Nueva Factura, o simplemente escribir en el chat de IA: 'Factura a [cliente] por [concepto]' y el agente la creará y te pedirá confirmación.",
+        "hrefLabel": "Nueva Factura",
+        "tips": {
+          "0": "Las facturas en estado 'Borrador' no cuentan en la contabilidad hasta que las marcas como 'Pendiente'.",
+          "1": "Descarga el PDF directamente desde el listado de facturas."
+        }
+      },
+      "ia": {
+        "title": "Habla con la IA",
+        "description": "El agente IA está disponible en todo momento. Escríbele en lenguaje natural y ejecutará acciones reales.",
+        "detail": "Pulsa el botón del asistente IA (esquina inferior derecha) o desde el panel de Tareas IA. Puedes pedirle cosas como: 'Muéstrame las facturas pendientes de cobro de este mes', 'Crea una nómina para María García' o 'Dame el resumen de ventas de febrero'.",
+        "tips": {
+          "0": "La IA siempre te pide confirmación antes de ejecutar acciones irreversibles.",
+          "1": "Puedes hablar en español con acentos, abreviaturas o lenguaje informal.",
+          "2": "El historial de tareas está en el panel 'Tareas IA'."
+        }
+      },
+      "compras": {
+        "title": "Registra tus gastos y facturas recibidas",
+        "description": "Escanea o sube facturas de proveedores. La IA extrae los datos y los categoriza automáticamente.",
+        "detail": "En Compras → Facturas puedes registrar facturas de proveedores manualmente, o usar el Escáner para subir un PDF o foto — la IA leerá el NIF, importe e IVA por ti.",
+        "hrefLabel": "Ir a Compras",
+        "tips": {
+          "0": "Los gastos registrados alimentan automáticamente la P&G en Contabilidad.",
+          "1": "Marca facturas como 'Pagada' para llevar el control de tesorería."
+        }
+      },
+      "automatizaciones": {
+        "title": "Configura una automatización",
+        "description": "Define reglas que la IA ejecuta de forma autónoma: recordatorios de cobro, informes semanales, alertas de vencimiento…",
+        "detail": "Las automatizaciones son instrucciones en lenguaje natural que el sistema ejecuta de forma programada. Ejemplo: 'Cada lunes a las 9h envíame un resumen de facturas vencidas' o 'Si una factura lleva más de 30 días sin cobrar, notifícame'.",
+        "hrefLabel": "Ir a Automatizaciones",
+        "tips": {
+          "0": "Una automatización es diferente de una tarea: las tareas son puntuales ('hazme esto ahora'), las automatizaciones se ejecutan solas según reglas.",
+          "1": "Puedes pausar o eliminar cualquier automatización en cualquier momento.",
+          "2": "Las automatizaciones activas se muestran con un indicador verde en el panel."
+        }
+      },
+      "analitica": {
+        "title": "Revisa tu analítica y P&G",
+        "description": "Con datos reales ya registrados, consulta la cuenta de resultados, el cuadro de cuentas y el dashboard de analítica.",
+        "detail": "El módulo de Contabilidad calcula Pérdidas & Ganancias directamente desde los asientos del libro diario (generados automáticamente por las facturas). La Analítica muestra tendencias de ingresos, gastos y los mejores clientes.",
+        "hrefLabel": "Ir a Analítica",
+        "tips": {
+          "0": "La P&G se actualiza en tiempo real con cada nueva factura.",
+          "1": "El Cuadro de Cuentas sigue el Plan General Contable español (PGC)."
+        }
+      }
+    }
   }
 }

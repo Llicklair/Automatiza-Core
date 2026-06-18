@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
     Users2, FileText, Package, Bot, Zap, Building2,
     ShoppingCart, BarChart3, KeyRound
@@ -20,138 +21,138 @@ export interface Step {
     prerequisite?: string;
 }
 
-export const STEPS: Step[] = [
+export const buildSteps = (t: ReturnType<typeof useTranslations>): Step[] => [
     {
         id: "empresa",
-        title: "Configura tu empresa",
-        description: "Añade el nombre, NIF y dirección fiscal. Estos datos aparecerán en todas tus facturas.",
-        detail: "Ve a Configuración → Empresa y rellena los datos de tu negocio. Solo se hace una vez.",
+        title: t("steps.empresa.title"),
+        description: t("steps.empresa.description"),
+        detail: t("steps.empresa.detail"),
         icon: Building2,
         color: "indigo",
         href: "/configuracion/empresa",
-        hrefLabel: "Ir a Configuración",
+        hrefLabel: t("steps.empresa.hrefLabel"),
         tips: [
-            "El NIF/CIF es obligatorio para emitir facturas válidas en España.",
-            "Puedes añadir tu logo más adelante desde el mismo panel.",
+            t("steps.empresa.tips.0"),
+            t("steps.empresa.tips.1"),
         ],
     },
     {
         id: "api_keys",
-        title: "Configura tu clave de IA",
-        description: "Los agentes usan tu propia clave de IA (modelo BYOK). Sin clave, la IA no funciona.",
-        detail: "Ve a Configuración → Claves API, elige un proveedor (Anthropic recomendado; también OpenAI o Groq), pega tu clave y actívala. Se guarda cifrada y puedes cambiarla cuando quieras.",
+        title: t("steps.apiKeys.title"),
+        description: t("steps.apiKeys.description"),
+        detail: t("steps.apiKeys.detail"),
         icon: KeyRound,
         color: "violet",
         href: "/configuracion/api-keys",
-        hrefLabel: "Ir a Claves API",
+        hrefLabel: t("steps.apiKeys.hrefLabel"),
         tips: [
-            "Crea la clave en la web del proveedor (p.ej. console.anthropic.com); pagas solo tu consumo.",
-            "Claude Code solo funciona si tienes instalado el CLI de Claude (uso avanzado/dev).",
+            t("steps.apiKeys.tips.0"),
+            t("steps.apiKeys.tips.1"),
         ],
         prerequisite: "empresa",
     },
     {
         id: "clientes",
-        title: "Da de alta tus primeros clientes",
-        description: "Crea el directorio de contactos: clientes, proveedores o leads. La IA los usará al generar facturas.",
-        detail: "En Contactos puedes importarlos manualmente o dejar que la IA los detecte automáticamente al escanear facturas recibidas.",
+        title: t("steps.clientes.title"),
+        description: t("steps.clientes.description"),
+        detail: t("steps.clientes.detail"),
         icon: Users2,
         color: "blue",
         href: "/clientes",
-        hrefLabel: "Ir a Contactos",
+        hrefLabel: t("steps.clientes.hrefLabel"),
         tips: [
-            "El NIF del cliente se valida automáticamente al emitir una factura.",
-            "Filtra por tipo: Cliente, Proveedor, Lead o Empresa.",
+            t("steps.clientes.tips.0"),
+            t("steps.clientes.tips.1"),
         ],
         prerequisite: "api_keys",
     },
     {
         id: "catalogo",
-        title: "Crea tu catálogo de productos y servicios",
-        description: "Define los artículos o servicios que vendes con su precio e IVA. Así la IA puede rellenar facturas en segundos.",
-        detail: "El catálogo centraliza precios y tipos de IVA. Cuando pides a la IA 'factura a Tech SL por 3 horas de consultoría', busca en el catálogo y completa la factura automáticamente.",
+        title: t("steps.catalogo.title"),
+        description: t("steps.catalogo.description"),
+        detail: t("steps.catalogo.detail"),
         icon: Package,
         color: "emerald",
         href: "/catalogo",
-        hrefLabel: "Ir al Catálogo",
+        hrefLabel: t("steps.catalogo.hrefLabel"),
         tips: [
-            "Asigna SKU/referencias si tienes artículos con código.",
-            "El IVA por defecto es 21% — cámbialo a 0% para exportaciones.",
+            t("steps.catalogo.tips.0"),
+            t("steps.catalogo.tips.1"),
         ],
         prerequisite: "clientes",
     },
     {
         id: "factura",
-        title: "Emite tu primera factura",
-        description: "Crea una factura de venta real o pide a la IA que la genere por ti en lenguaje natural.",
-        detail: "Puedes crear facturas manualmente desde Ventas → Facturas → Nueva Factura, o simplemente escribir en el chat de IA: 'Factura a [cliente] por [concepto]' y el agente la creará y te pedirá confirmación.",
+        title: t("steps.factura.title"),
+        description: t("steps.factura.description"),
+        detail: t("steps.factura.detail"),
         icon: FileText,
         color: "violet",
         href: "/ventas/facturas/nueva",
-        hrefLabel: "Nueva Factura",
+        hrefLabel: t("steps.factura.hrefLabel"),
         tips: [
-            "Las facturas en estado 'Borrador' no cuentan en la contabilidad hasta que las marcas como 'Pendiente'.",
-            "Descarga el PDF directamente desde el listado de facturas.",
+            t("steps.factura.tips.0"),
+            t("steps.factura.tips.1"),
         ],
         prerequisite: "catalogo",
     },
     {
         id: "ia",
-        title: "Habla con la IA",
-        description: "El agente IA está disponible en todo momento. Escríbele en lenguaje natural y ejecutará acciones reales.",
-        detail: "Pulsa el botón del asistente IA (esquina inferior derecha) o desde el panel de Tareas IA. Puedes pedirle cosas como: 'Muéstrame las facturas pendientes de cobro de este mes', 'Crea una nómina para María García' o 'Dame el resumen de ventas de febrero'.",
+        title: t("steps.ia.title"),
+        description: t("steps.ia.description"),
+        detail: t("steps.ia.detail"),
         icon: Bot,
         color: "amber",
         tips: [
-            "La IA siempre te pide confirmación antes de ejecutar acciones irreversibles.",
-            "Puedes hablar en español con acentos, abreviaturas o lenguaje informal.",
-            "El historial de tareas está en el panel 'Tareas IA'.",
+            t("steps.ia.tips.0"),
+            t("steps.ia.tips.1"),
+            t("steps.ia.tips.2"),
         ],
         prerequisite: "factura",
     },
     {
         id: "compras",
-        title: "Registra tus gastos y facturas recibidas",
-        description: "Escanea o sube facturas de proveedores. La IA extrae los datos y los categoriza automáticamente.",
-        detail: "En Compras → Facturas puedes registrar facturas de proveedores manualmente, o usar el Escáner para subir un PDF o foto — la IA leerá el NIF, importe e IVA por ti.",
+        title: t("steps.compras.title"),
+        description: t("steps.compras.description"),
+        detail: t("steps.compras.detail"),
         icon: ShoppingCart,
         color: "rose",
         href: "/compras/facturas",
-        hrefLabel: "Ir a Compras",
+        hrefLabel: t("steps.compras.hrefLabel"),
         tips: [
-            "Los gastos registrados alimentan automáticamente la P&G en Contabilidad.",
-            "Marca facturas como 'Pagada' para llevar el control de tesorería.",
+            t("steps.compras.tips.0"),
+            t("steps.compras.tips.1"),
         ],
         prerequisite: "ia",
     },
     {
         id: "automatizaciones",
-        title: "Configura una automatización",
-        description: "Define reglas que la IA ejecuta de forma autónoma: recordatorios de cobro, informes semanales, alertas de vencimiento…",
-        detail: "Las automatizaciones son instrucciones en lenguaje natural que el sistema ejecuta de forma programada. Ejemplo: 'Cada lunes a las 9h envíame un resumen de facturas vencidas' o 'Si una factura lleva más de 30 días sin cobrar, notifícame'.",
+        title: t("steps.automatizaciones.title"),
+        description: t("steps.automatizaciones.description"),
+        detail: t("steps.automatizaciones.detail"),
         icon: Zap,
         color: "orange",
         href: "/automatizaciones",
-        hrefLabel: "Ir a Automatizaciones",
+        hrefLabel: t("steps.automatizaciones.hrefLabel"),
         tips: [
-            "Una automatización es diferente de una tarea: las tareas son puntuales ('hazme esto ahora'), las automatizaciones se ejecutan solas según reglas.",
-            "Puedes pausar o eliminar cualquier automatización en cualquier momento.",
-            "Las automatizaciones activas se muestran con un indicador verde en el panel.",
+            t("steps.automatizaciones.tips.0"),
+            t("steps.automatizaciones.tips.1"),
+            t("steps.automatizaciones.tips.2"),
         ],
         prerequisite: "compras",
     },
     {
         id: "analítica",
-        title: "Revisa tu analítica y P&G",
-        description: "Con datos reales ya registrados, consulta la cuenta de resultados, el cuadro de cuentas y el dashboard de analítica.",
-        detail: "El módulo de Contabilidad calcula Pérdidas & Ganancias directamente desde los asientos del libro diario (generados automáticamente por las facturas). La Analítica muestra tendencias de ingresos, gastos y los mejores clientes.",
+        title: t("steps.analitica.title"),
+        description: t("steps.analitica.description"),
+        detail: t("steps.analitica.detail"),
         icon: BarChart3,
         color: "teal",
         href: "/analitica",
-        hrefLabel: "Ir a Analítica",
+        hrefLabel: t("steps.analitica.hrefLabel"),
         tips: [
-            "La P&G se actualiza en tiempo real con cada nueva factura.",
-            "El Cuadro de Cuentas sigue el Plan General Contable español (PGC).",
+            t("steps.analitica.tips.0"),
+            t("steps.analitica.tips.1"),
         ],
         prerequisite: "compras",
     },
@@ -168,16 +169,22 @@ export const COLOR_MAP: Record<string, { bg: string; border: string; text: strin
     teal:   { bg: "bg-teal-500/10",   border: "border-teal-500/20",   text: "text-teal-400",   ring: "ring-teal-500/30",   dot: "bg-teal-500" },
 };
 
-export const IA_EXAMPLES = [
-    "Factura a Acme Corp por 5 horas de consultoría a 80€/h",
-    "¿Cuánto he facturado este mes?",
-    "Crea una nómina borrador para todos los empleados activos",
-    "Muéstrame las facturas vencidas y sin cobrar",
-    "Dame el resumen de gastos del trimestre por categoría",
-    "Registra el cobro de la factura F-2024-012",
+export const buildIaExamples = (t: ReturnType<typeof useTranslations>): string[] => [
+    t("iaExamples.0"),
+    t("iaExamples.1"),
+    t("iaExamples.2"),
+    t("iaExamples.3"),
+    t("iaExamples.4"),
+    t("iaExamples.5"),
 ];
 
+const IA_EXAMPLES_COUNT = 6;
+
 export function usePrimerosPassos() {
+    const t = useTranslations("primerosPasos");
+    const steps = buildSteps(t);
+    const iaExamples = buildIaExamples(t);
+
     const [completed, setCompleted] = useState<Set<string>>(new Set());
     const [expanded, setExpanded] = useState<string | null>("empresa");
     const [iaExample, setIaExample] = useState(0);
@@ -215,12 +222,12 @@ export function usePrimerosPassos() {
     const expand = (id: string) => setExpanded(prev => prev === id ? null : id);
 
     useEffect(() => {
-        const t = setInterval(() => setIaExample(i => (i + 1) % IA_EXAMPLES.length), 3000);
-        return () => clearInterval(t);
+        const timer = setInterval(() => setIaExample(i => (i + 1) % IA_EXAMPLES_COUNT), 3000);
+        return () => clearInterval(timer);
     }, []);
 
     const completedCount = completed.size;
-    const totalSteps = STEPS.length;
+    const totalSteps = steps.length;
     const pct = Math.round((completedCount / totalSteps) * 100);
 
     const isLocked = (step: Step) => {
@@ -228,5 +235,5 @@ export function usePrimerosPassos() {
         return !completed.has(step.prerequisite);
     };
 
-    return { completed, expanded, iaExample, toggle, expand, completedCount, totalSteps, pct, isLocked };
+    return { steps, iaExamples, completed, expanded, iaExample, toggle, expand, completedCount, totalSteps, pct, isLocked };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { templatesApi, DocumentTemplate, PreviewRequest } from "@/lib/api/templates";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -9,6 +10,7 @@ import { EMPTY_FORM } from "../_components/templateOptions";
 type ActiveType = "invoice" | "payroll" | "excel" | "albaran" | "contract";
 
 export function usePlantillas() {
+    const t = useTranslations("plantillas");
     const { show: showToast } = useToastStore();
     const [activeType, setActiveType] = useState<ActiveType>("invoice");
     const [templates, setTemplates]   = useState<DocumentTemplate[]>([]);
@@ -27,7 +29,7 @@ export function usePlantillas() {
             const data = await templatesApi.list(activeType);
             setTemplates(data);
         } catch {
-            showToast("Error cargando plantillas", "error");
+            showToast(t("toasts.loadError"), "error");
         } finally {
             setLoading(false);
         }
@@ -38,10 +40,10 @@ export function usePlantillas() {
     const handleSeedDefaults = async () => {
         try {
             await templatesApi.seedDefaults(activeType);
-            showToast("Plantillas preestablecidas creadas", "success");
+            showToast(t("toasts.seedSuccess"), "success");
             load();
         } catch {
-            showToast("Error creando preestablecidas", "error");
+            showToast(t("toasts.seedError"), "error");
         }
     };
 
@@ -61,22 +63,22 @@ export function usePlantillas() {
     };
 
     const handleSave = async () => {
-        if (!form.name.trim()) { showToast("El nombre es obligatorio", "warning"); return; }
+        if (!form.name.trim()) { showToast(t("toasts.nameRequired"), "warning"); return; }
         setSaving(true);
         try {
             if (editingId) {
                 await templatesApi.update(editingId, form);
                 await templatesApi.setDefault(editingId);
-                showToast("Plantilla guardada y establecida como predeterminada", "success");
+                showToast(t("toasts.savedDefault"), "success");
             } else {
                 const created = await templatesApi.create(form);
                 await templatesApi.setDefault(created.id);
-                showToast("Plantilla creada y establecida como predeterminada", "success");
+                showToast(t("toasts.createdDefault"), "success");
             }
             setShowForm(false);
             await load();
         } catch {
-            showToast("Error guardando plantilla", "error");
+            showToast(t("toasts.saveError"), "error");
         } finally {
             setSaving(false);
         }
@@ -84,28 +86,28 @@ export function usePlantillas() {
 
     const handleDelete = async (tpl: DocumentTemplate) => {
         const confirmed = await showConfirm({
-            title: "Eliminar plantilla",
-            message: `¿Eliminar la plantilla "${tpl.name}"? Esta acción no se puede deshacer.`,
-            confirmLabel: "Eliminar",
+            title: t("confirmDelete.title"),
+            message: t("confirmDelete.message", { name: tpl.name }),
+            confirmLabel: t("confirmDelete.confirmLabel"),
             confirmVariant: "danger",
         });
         if (!confirmed) return;
         try {
             await templatesApi.delete(tpl.id);
-            showToast("Plantilla eliminada", "success");
+            showToast(t("toasts.deleteSuccess"), "success");
             await load();
         } catch {
-            showToast("Error eliminando plantilla", "error");
+            showToast(t("toasts.deleteError"), "error");
         }
     };
 
     const handleSetDefault = async (tpl: DocumentTemplate) => {
         try {
             await templatesApi.setDefault(tpl.id);
-            showToast(`"${tpl.name}" establecida como predeterminada`, "success");
+            showToast(t("toasts.setDefaultSuccess", { name: tpl.name }), "success");
             await load();
         } catch {
-            showToast("Error actualizando plantilla", "error");
+            showToast(t("toasts.setDefaultError"), "error");
         }
     };
 
@@ -116,7 +118,7 @@ export function usePlantillas() {
             const url = await templatesApi.preview(form as PreviewRequest);
             setPreviewUrl(url);
         } catch {
-            showToast("Error generando vista previa", "error");
+            showToast(t("toasts.previewError"), "error");
         } finally {
             setPreviewing(false);
         }

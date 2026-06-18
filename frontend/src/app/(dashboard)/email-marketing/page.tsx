@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Mail, FileText, BarChart3, Send } from "lucide-react";
 import TabCampaigns from "./_components/CampaignsTab";
 import TabTemplates from "./_components/TemplatesTab";
@@ -10,16 +11,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
-const TABS = [
-    { key: "campaigns", label: "Campañas",   icon: Send },
-    { key: "templates", label: "Plantillas", icon: FileText },
-    { key: "stats",     label: "Estadísticas", icon: BarChart3 },
+const buildTabs = (t: ReturnType<typeof useTranslations>) => [
+    { key: "campaigns", label: t("tabs.campaigns"),  icon: Send },
+    { key: "templates", label: t("tabs.templates"),  icon: FileText },
+    { key: "stats",     label: t("tabs.stats"),       icon: BarChart3 },
 ] as const;
-type TabKey = typeof TABS[number]["key"];
+type TabKey = "campaigns" | "templates" | "stats";
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function EmailMarketingPage() {
+    const t = useTranslations("emailMarketing");
+    const TABS = buildTabs(t);
     const [tab, setTab] = useState<TabKey>("campaigns");
 
     return (
@@ -29,8 +32,8 @@ export default function EmailMarketingPage() {
                     <Mail className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                    <h1 className="text-lg font-semibold text-foreground">Email Marketing</h1>
-                    <p className="text-xs text-muted-foreground">Campañas masivas a tus clientes usando tu cuenta de email configurada</p>
+                    <h1 className="text-lg font-semibold text-foreground">{t("header.title")}</h1>
+                    <p className="text-xs text-muted-foreground">{t("header.subtitle")}</p>
                 </div>
             </div>
 
