@@ -16,7 +16,8 @@
     "no": "No",
     "error": "Error",
     "success": "Exito",
-    "noResults": "Sin resultados"
+    "noResults": "Sin resultados",
+    "send": "Enviar"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -1387,6 +1388,230 @@
       "viewInDocuments": "Ver en Documentos",
       "errorTitle": "Error al generar la remesa",
       "unknownError": "Error desconocido"
+    }
+  },
+  "miEquipo": {
+    "tabs": {
+      "tareas": "Tareas",
+      "equipo": "Equipo IA"
+    },
+    "toast": {
+      "instructionSent": "Instrucción enviada a {name}",
+      "employeeCreated": "Empleado IA creado"
+    },
+    "header": {
+      "title": "Tareas",
+      "subtitle": "Asigna tareas a tus agentes y gestiona tu equipo IA",
+      "refreshTeam": "Actualizar equipo",
+      "newAi": "Nueva IA"
+    },
+    "empty": {
+      "title": "Sin empleados aún",
+      "subtitle": "Crea el equipo inicial con Ana, Carlos y Sofía",
+      "creating": "Creando…",
+      "createInitialTeam": "Crear equipo inicial"
+    },
+    "team": {
+      "orgChart": "Organigrama · {count} empleados",
+      "activityHint": "Las actividades de tus agentes aparecen en la bandeja",
+      "viewInbox": "Ver bandeja de agentes →"
+    },
+    "chat": {
+      "assistantTitle": "Asistente IA",
+      "clearConversation": "Limpiar conversación",
+      "stopAria": "Detener generación del agente",
+      "stop": "Detener",
+      "inputPlaceholder": "Pregunta lo que quieras... ej: ¿Cuántas facturas pendientes tengo?",
+      "send": "Enviar"
+    },
+    "coordinatorBar": {
+      "sendError": "Error al enviar instrucción al coordinador",
+      "inputPlaceholder": "Dile al coordinador qué necesitas… Ej: necesito un empleado de marketing",
+      "sentBadge": "✓ Enviado",
+      "sendAriaLabel": "Enviar instrucción"
+    },
+    "card": {
+      "budgetHistoryTitle": "Ver historial de consumo",
+      "budgetLabel": "Presupuesto",
+      "statusIdle": "Disponible",
+      "statusWorking": "Trabajando…",
+      "statusPaused": "Pausado",
+      "statusBlocked": "Requiere firma",
+      "statusPendingSetup": "Configurando…",
+      "changeAppearance": "Cambiar apariencia",
+      "instruct": "Instrucción",
+      "activate": "Activar",
+      "pause": "Pausar"
+    },
+    "grid": {
+      "toastSeedCreated": "Equipo inicial creado",
+      "toastSeedError": "Error al crear equipo inicial",
+      "toastStatusError": "Error al cambiar estado del agente",
+      "deleteConfirm": "¿Eliminar a {name}? Esta acción no se puede deshacer.",
+      "deleteFallbackName": "este empleado",
+      "toastDeleteError": "Error al eliminar el empleado",
+      "toastInstructionSent": "Instruccion enviada a {name}",
+      "toastEmployeeCreated": "Empleado IA creado",
+      "newAi": "Nueva IA",
+      "emptyTitle": "Sin empleados aun",
+      "emptyDescription": "Crea el equipo inicial con Ana, Carlos y Sofia",
+      "seedingButton": "Creando...",
+      "seedButton": "Crear equipo inicial",
+      "orgChartHeader": "Organigrama · {count} empleados",
+      "activityHint": "Las actividades de tus agentes aparecen en la bandeja",
+      "viewInbox": "Ver bandeja de agentes →"
+    },
+    "iconPicker": {
+      "colorViolet": "Violeta",
+      "colorAmber": "Ámbar",
+      "colorBlue": "Azul",
+      "colorEmerald": "Verde",
+      "colorRose": "Rosa",
+      "colorOrange": "Naranja",
+      "colorCyan": "Cian",
+      "colorPink": "Rosa cl.",
+      "colorLime": "Lima",
+      "colorIndigo": "Índigo",
+      "circleColor": "Color del círculo",
+      "icon": "Icono"
+    },
+    "instructModal": {
+      "sendError": "Error al enviar instrucción",
+      "title": "Instrucción → {name}",
+      "description": "La instrucción pasará por el coordinador, que decidirá cómo ejecutarla.",
+      "placeholder": "Ej: Genera la nómina de enero para todos los empleados activos…"
+    },
+    "newEmployeeModal": {
+      "errorRoleRequired": "Describe el rol del agente",
+      "defaultAgentName": "Agente {role}",
+      "errorCreate": "Error al crear empleado",
+      "title": "Nuevo agente IA",
+      "firstNameLabel": "Nombre",
+      "firstNamePlaceholder": "Ej: Laura",
+      "lastNameLabel": "Apellidos",
+      "lastNamePlaceholder": "Ej: García",
+      "nameHint": "Si los dejas vacíos se asignará un nombre automáticamente.",
+      "roleLabel": "Rol",
+      "rolePlaceholder": "Ej: marketing, CTO, diseñador web, soporte al cliente…",
+      "coordinatorHint": "El coordinador asignará automáticamente las herramientas, skills y una carpeta de documentación según el rol que describes.",
+      "creating": "Creando…",
+      "createButton": "Crear agente"
+    },
+    "newTaskModal": {
+      "title": "Nueva tarea para la IA",
+      "assignToLabel": "¿A quién se lo asignas?",
+      "intentLabel": "¿Qué debe hacer?",
+      "placeholderCoordinator": "Ej: Lee los correos nuevos, extrae los presupuestos aceptados, crúzalos con los clientes del CRM y genera un Excel con el resumen...",
+      "placeholderBilling": "Ej: Crea una factura para cliente ACME S.L. por 1500€ de consultoría",
+      "placeholderDocuments": "Ej: Analiza el contrato que subí esta mañana y extrae las cláusulas importantes",
+      "placeholderHr": "Ej: Genera las nóminas de este mes para todos los empleados activos",
+      "placeholderCompliance": "Ej: ¿Cuáles son mis obligaciones fiscales del próximo trimestre?",
+      "placeholderDefault": "Describe qué debe hacer el agente...",
+      "submitting": "Enviando…",
+      "submit": "Asignar al agente"
+    },
+    "taskPanel": {
+      "subtitle": "Asigna una instrucción a un agente — él se encargará del resto.",
+      "refresh": "Actualizar",
+      "cleanupTitle": "Eliminar todas las tareas — las activas se cancelan",
+      "cleanup": "Limpiar",
+      "newTask": "Nueva tarea",
+      "infoTitle": "¿Qué es una tarea?",
+      "infoLink": "¿Buscas reglas automáticas? Ir a Automatizaciones →",
+      "inProgress": "En proceso ({n})",
+      "colInstruction": "Instrucción",
+      "colAgent": "Agente",
+      "colStatus": "Estado",
+      "colCreated": "Creada",
+      "colAction": "Acción",
+      "history": "Historial",
+      "loading": "Cargando…",
+      "emptyTitle": "No hay tareas aún.",
+      "emptyHint": "Crea la primera con el botón de arriba.",
+      "noneCompleted": "Ninguna tarea completada aún.",
+      "errorWithMessage": "Error: {message}",
+      "noResponse": "No se obtuvo respuesta.",
+      "aiTimeout": "La IA tardó demasiado. Inténtalo de nuevo.",
+      "couldNotProcess": "No se pudo procesar",
+      "generationStopped": "Generación detenida por el usuario.",
+      "errorCreating": "Error al crear la tarea",
+      "confirmCancel": "¿Cancelar esta tarea?",
+      "errorCancelling": "Error al cancelar la tarea",
+      "confirmCleanupActive": "¿Eliminar todas las tareas? {count} tarea(s) activa(s) serán canceladas.",
+      "confirmCleanupHistory": "¿Eliminar {count} tarea(s) del historial?",
+      "errorCleanup": "Error al limpiar tareas"
+    },
+    "taskRow": {
+      "replyPlaceholder": "Responde al agente para que continúe…",
+      "sending": "Enviando…",
+      "reply": "Responder",
+      "userPrompt": "Prompt del usuario",
+      "copyPrompt": "Copiar prompt",
+      "copied": "¡Copiado!",
+      "copy": "Copiar",
+      "executionError": "Error durante la ejecución",
+      "executionPlan": "Plan de Ejecución",
+      "agentLabel": "Agente:",
+      "agentResult": "Resultado del Agente",
+      "completed": "✅ Completado.",
+      "noResults": "No hay resultados aún."
+    },
+    "usageModal": {
+      "errorLoading": "Error cargando consumo",
+      "title": "Consumo de {name}",
+      "budget": "Presupuesto",
+      "statCalls": "Llamadas",
+      "statTokens": "Tokens",
+      "statTotalCost": "Coste total",
+      "emptyState": "Aún no hay llamadas registradas para este empleado.",
+      "colDate": "Fecha",
+      "colProvider": "Proveedor",
+      "colTokensIn": "Tokens in",
+      "colTokensOut": "Tokens out",
+      "colCost": "Coste"
+    },
+    "errors": {
+      "loadData": "Error cargando datos"
+    },
+    "toasts": {
+      "seedSuccess": "Equipo inicial creado",
+      "seedError": "Error al crear equipo inicial",
+      "toggleStatusError": "Error al cambiar estado del agente",
+      "deleteError": "Error al eliminar el empleado"
+    },
+    "delete": {
+      "confirm": "¿Eliminar a {name}? Esta acción no se puede deshacer.",
+      "defaultName": "este empleado",
+      "confirmLabel": "Eliminar"
+    },
+    "taskConstants": {
+      "statusPending": "Pendiente",
+      "statusPlanning": "Planificando",
+      "statusExecuting": "Ejecutando",
+      "statusAwaitingApproval": "Espera aprobación",
+      "statusDone": "Completada",
+      "statusFailed": "Fallida",
+      "statusCancelled": "Cancelada",
+      "chatLabel": "Chat",
+      "chatDesc": "Preguntas, dudas o consultas de estado",
+      "coordinatorLabel": "Coordinador General",
+      "coordinatorDesc": "Tarea compleja puntual: coordina varios agentes en secuencia para darte un único resultado",
+      "domainBillingLabel": "Facturación",
+      "domainBillingDesc": "Facturas, cobros, presupuestos",
+      "domainDocumentsLabel": "Documentos",
+      "domainDocumentsDesc": "OCR, análisis, clasificación de documentos",
+      "domainHrLabel": "RRHH",
+      "domainHrDesc": "Nóminas, empleados, gestión de personal",
+      "domainComplianceLabel": "Asesor Fiscal",
+      "domainComplianceDesc": "Obligaciones tributarias, BOE, alertas",
+      "domainBankingLabel": "Banca",
+      "domainBankingDesc": "Resumen bancario, movimientos, conciliación",
+      "domainCrmLabel": "CRM",
+      "domainCrmDesc": "Oportunidades, clientes, seguimiento comercial",
+      "domainExcelLabel": "Excel / Datos",
+      "domainExcelDesc": "Cruza tablas y elabora hojas de cálculo",
+      "domainEmailLabel": "Correos",
+      "domainEmailDesc": "Bandeja de entrada, responde y organiza"
     }
   }
 }

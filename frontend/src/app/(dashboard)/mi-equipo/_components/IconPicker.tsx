@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 export const ICON_POOL = [
     "🤖", "🦾", "🧑‍💼", "👩‍💼", "🧑‍💻", "👩‍💻", "🧑‍🔬", "🧑‍🎨", "🧑‍🏫", "🧑‍⚕️", "🕵️", "🎯",
@@ -28,6 +29,19 @@ export const COLOR_OPTIONS: { key: string; label: string; bg: string; border: st
     { key: "indigo",  label: "Índigo",   bg: "bg-indigo-500/10",  border: "border-indigo-500/20",  swatch: "bg-indigo-500" },
 ];
 
+const colorLabels = (t: (k: string) => string): Record<string, string> => ({
+    violet: t("iconPicker.colorViolet"),
+    amber: t("iconPicker.colorAmber"),
+    blue: t("iconPicker.colorBlue"),
+    emerald: t("iconPicker.colorEmerald"),
+    rose: t("iconPicker.colorRose"),
+    orange: t("iconPicker.colorOrange"),
+    cyan: t("iconPicker.colorCyan"),
+    pink: t("iconPicker.colorPink"),
+    lime: t("iconPicker.colorLime"),
+    indigo: t("iconPicker.colorIndigo"),
+});
+
 export function getAvatarClasses(color: string | null | undefined): string {
     const found = COLOR_OPTIONS.find(c => c.key === color);
     if (found) return `${found.bg} ${found.border}`;
@@ -41,6 +55,8 @@ export function AppearancePicker({ currentIcon, currentColor, onSelect, onClose 
     onClose: () => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
+    const t = useTranslations("miEquipo");
+    const labels = colorLabels(t);
 
     useEffect(() => {
         function handler(e: MouseEvent) {
@@ -53,15 +69,15 @@ export function AppearancePicker({ currentIcon, currentColor, onSelect, onClose 
     return (
         <div ref={ref} className="absolute z-50 top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-xl p-3 w-64">
             {/* Color */}
-            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Color del círculo</p>
+            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">{t("iconPicker.circleColor")}</p>
             <div className="flex flex-wrap gap-1.5 mb-3">
                 {COLOR_OPTIONS.map(c => (
-                    <button key={c.key} onClick={() => onSelect(undefined, c.key)} title={c.label}
+                    <button key={c.key} onClick={() => onSelect(undefined, c.key)} title={labels[c.key] ?? c.label}
                         className={`w-6 h-6 rounded-full ${c.swatch} ring-offset-1 ring-offset-card transition-all ${currentColor === c.key ? "ring-2 ring-foreground scale-110" : "hover:scale-110"}`} />
                 ))}
             </div>
             {/* Icon */}
-            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Icono</p>
+            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">{t("iconPicker.icon")}</p>
             <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
                 {ICON_POOL.map(icon => (
                     <button key={icon} onClick={() => { onSelect(icon, undefined); onClose(); }}

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
 import { Bot, Loader2, Send } from "lucide-react";
 
 export function CoordinatorBar({ onSent }: { onSent: () => void }) {
+    const t = useTranslations("miEquipo");
     const [text, setText] = useState("");
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
@@ -22,7 +24,7 @@ export function CoordinatorBar({ onSent }: { onSent: () => void }) {
             onSent();
         } catch (e: any) {
             if (surfaceIfConnectivity(e)) return;
-            setError(e?.message ?? "Error al enviar instrucción al coordinador");
+            setError(e?.message ?? t("coordinatorBar.sendError"));
             setTimeout(() => setError(null), 5000);
         }
         finally { setLoading(false); }
@@ -38,14 +40,14 @@ export function CoordinatorBar({ onSent }: { onSent: () => void }) {
                     value={text}
                     onChange={e => setText(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleSend()}
-                    placeholder="Dile al coordinador qué necesitas… Ej: necesito un empleado de marketing"
+                    placeholder={t("coordinatorBar.inputPlaceholder")}
                     className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 {sent ? (
-                    <span className="text-xs text-emerald-400 shrink-0">✓ Enviado</span>
+                    <span className="text-xs text-emerald-400 shrink-0">{t("coordinatorBar.sentBadge")}</span>
                 ) : (
                     <button onClick={handleSend} disabled={!text.trim() || loading}
-                        className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-foreground transition-colors shrink-0" aria-label="Enviar instrucción">
+                        className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-foreground transition-colors shrink-0" aria-label={t("coordinatorBar.sendAriaLabel")}>
                         {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Send className="w-3.5 h-3.5" aria-hidden="true" />}
                     </button>
                 )}
