@@ -80,7 +80,32 @@
     "feature1": "Agentes IA que ejecutan tareas en lenguaje natural",
     "feature2": "Facturación automática con numeración correlativa AEAT",
     "feature3": "RRHH, nóminas y SS calculadas con tasas reales 2025",
-    "feature4": "Automatizaciones que trabajan mientras tú descansas"
+    "feature4": "Automatizaciones que trabajan mientras tú descansas",
+    "invitation": {
+      "invalidLink": "Enlace inválido",
+      "validateError": "No se pudo validar la invitación",
+      "validating": "Validando invitación…",
+      "invalidTitle": "Invitación no válida",
+      "askAdmin": "Pide a tu administrador que te genere un nuevo enlace.",
+      "activateTitle": "Activa tu cuenta",
+      "acceptingFor": "Estás aceptando la invitación para",
+      "roleLabel": "Rol:",
+      "expiresOn": "Caduca el",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "password": "Contraseña",
+      "repeatPassword": "Repite la contraseña",
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "acceptError": "No se pudo aceptar la invitación",
+      "submit": "Activar cuenta y entrar",
+      "roles": {
+        "admin": "Administrador",
+        "user": "Usuario",
+        "viewer": "Solo lectura",
+        "employee": "Empleado (acceso a Mi portal)"
+      }
+    }
   },
   "nav": {
     "dashboard": "Panel principal",
@@ -1212,6 +1237,9 @@
         "proveedores": "Proveedores",
         "otros": "Otros"
       }
+    },
+    "agente": {
+      "createError": "Error al crear la tarea"
     }
   }
 }

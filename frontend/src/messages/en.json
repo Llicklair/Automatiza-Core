@@ -80,7 +80,32 @@
     "feature1": "AI agents that execute tasks in natural language",
     "feature2": "Automatic invoicing with AEAT-compliant numbering",
     "feature3": "HR, payroll & social security with real 2025 rates",
-    "feature4": "Automations that work while you rest"
+    "feature4": "Automations that work while you rest",
+    "invitation": {
+      "invalidLink": "Invalid link",
+      "validateError": "Could not validate the invitation",
+      "validating": "Validating invitation…",
+      "invalidTitle": "Invalid invitation",
+      "askAdmin": "Ask your administrator to generate a new link.",
+      "activateTitle": "Activate your account",
+      "acceptingFor": "You are accepting the invitation for",
+      "roleLabel": "Role:",
+      "expiresOn": "Expires on",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "password": "Password",
+      "repeatPassword": "Repeat password",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "acceptError": "Could not accept the invitation",
+      "submit": "Activate account and sign in",
+      "roles": {
+        "admin": "Administrator",
+        "user": "User",
+        "viewer": "Read only",
+        "employee": "Employee (access to My portal)"
+      }
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -698,7 +723,12 @@
         "settlement": "Termination date: [DD/MM/YYYY].\nReason for leaving: [dismissal / voluntary resignation / end of contract].\nOutstanding salary for the current month (days worked): [X €].\nUnused holidays: [X days = X €].\nOutstanding proportional extra payments: [X €].\nSeverance (if applicable): [X €].",
         "addendum": "Original contract date: [DD/MM/YYYY].\nClause(s) being amended: [describe what changes].\nNew condition: [text of the new clause].\nReason for the change: [mutual agreement / change of duties / promotion / etc.].\nEffective date: [DD/MM/YYYY].",
         "other": "Describe the document you need:\nParties involved: [names and roles].\nPurpose of the document: [what it regulates or certifies].\nMain conditions: [list them].\nDate: [DD/MM/YYYY]."
-      }
+      },
+      "sign": "Sign (AutoFirma)",
+      "signLaunched": "Opening AutoFirma… sign with your certificate and come back here.",
+      "signOk": "Document signed successfully",
+      "signFailed": "Signing was not completed (cancelled or failed)",
+      "signError": "Could not start signing"
     },
     "fichajes": {
       "loading": "Loading time records…",
@@ -1158,8 +1188,12 @@
         "autoMatchError": "Auto-reconciliation error",
         "reconcileError": "Error reconciling",
         "ignoreError": "Error ignoring",
-        "undoError": "Error undoing"
-      }
+        "undoError": "Error undoing",
+        "rejectError": "Error rejecting the suggestion"
+      },
+      "reject": "Reject",
+      "rejectTitle": "Dismiss this suggestion — it will not appear again",
+      "matchedBy": "Matched by:"
     },
     "resumen": {
       "demoBanner": "This account is new and has no historical data. You are seeing precalculated demo data for the summary cards.",
@@ -1203,6 +1237,9 @@
         "proveedores": "Suppliers",
         "otros": "Other"
       }
+    },
+    "agente": {
+      "createError": "Error creating the task"
     }
   }
 }

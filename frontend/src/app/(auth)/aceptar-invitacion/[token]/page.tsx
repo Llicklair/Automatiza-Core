@@ -2,18 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { Loader2, Check, AlertTriangle } from "lucide-react";
 
 import { api, type InvitationPublic } from "@/lib/api";
 import { setTokens } from "@/lib/api/client";
-
-const ROLE_LABEL: Record<string, string> = {
-    admin: "Administrador",
-    user: "Usuario",
-    viewer: "Solo lectura",
-    employee: "Empleado (acceso a Mi portal)",
-};
 
 type State =
     | { kind: "loading" }
@@ -24,6 +18,15 @@ export default function AceptarInvitacionPage() {
     const params = useParams<{ token: string }>();
     const router = useRouter();
     const token = params?.token ?? "";
+    const t = useTranslations("auth");
+
+    const roleLabel = (role: string) =>
+        (({
+            admin: t("invitation.roles.admin"),
+            user: t("invitation.roles.user"),
+            viewer: t("invitation.roles.viewer"),
+            employee: t("invitation.roles.employee"),
+        }) as Record<string, string>)[role] ?? role;
 
     const [state, setState] = useState<State>({ kind: "loading" });
     const [password, setPassword] = useState("");
@@ -35,7 +38,7 @@ export default function AceptarInvitacionPage() {
 
     useEffect(() => {
         if (!token) {
-            setState({ kind: "error", message: "Enlace inválido" });
+            setState({ kind: "error", message: t("invitation.invalidLink") });
             return;
         }
         let cancelled = false;
@@ -48,7 +51,7 @@ export default function AceptarInvitacionPage() {
                     setState({
                         kind: "error",
                         message:
-                            e instanceof Error ? e.message : "No se pudo validar la invitación",
+                            e instanceof Error ? e.message : t("invitation.validateError"),
                     });
                 }
             }
@@ -56,16 +59,16 @@ export default function AceptarInvitacionPage() {
         return () => {
             cancelled = true;
         };
-    }, [token]);
+    }, [token, t]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (password.length < 8) {
-            setSubmitError("La contraseña debe tener al menos 8 caracteres");
+            setSubmitError(t("invitation.passwordTooShort"));
             return;
         }
         if (password !== confirmPassword) {
-            setSubmitError("Las contraseñas no coinciden");
+            setSubmitError(t("invitation.passwordMismatch"));
             return;
         }
         setSubmitError(null);
@@ -80,7 +83,7 @@ export default function AceptarInvitacionPage() {
             const dest = res.user.role === "employee" ? "/portal" : "/";
             router.push(dest);
         } catch (e) {
-            setSubmitError(e instanceof Error ? e.message : "No se pudo aceptar la invitación");
+            setSubmitError(e instanceof Error ? e.message : t("invitation.acceptError"));
             setSubmitting(false);
         }
     }
@@ -90,7 +93,7 @@ export default function AceptarInvitacionPage() {
             <div className="min-h-screen flex items-center justify-center">
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Validando invitación…
+                    {t("invitation.validating")}
                 </div>
             </div>
         );
@@ -103,10 +106,10 @@ export default function AceptarInvitacionPage() {
                     <div className="w-12 h-12 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto">
                         <AlertTriangle className="w-6 h-6 text-destructive" />
                     </div>
-                    <h1 className="text-xl font-bold text-foreground">Invitación no válida</h1>
+                    <h1 className="text-xl font-bold text-foreground">{t("invitation.invalidTitle")}</h1>
                     <p className="text-sm text-muted-foreground">{state.message}</p>
                     <p className="text-xs text-muted-foreground">
-                        Pide a tu administrador que te genere un nuevo enlace.
+                        {t("invitation.askAdmin")}
                     </p>
                 </div>
             </div>
@@ -119,18 +122,19 @@ export default function AceptarInvitacionPage() {
         <div className="min-h-screen flex items-center justify-center p-6">
             <div className="bg-card border border-border rounded-2xl p-8 max-w-md w-full space-y-6">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-foreground">Activa tu cuenta</h1>
+                    <h1 className="text-2xl font-bold text-foreground">{t("invitation.activateTitle")}</h1>
                     <p className="text-sm text-muted-foreground">
-                        Estás aceptando la invitación para <strong className="text-foreground">{inv.email}</strong>.
+                        {t("invitation.acceptingFor")} <strong className="text-foreground">{inv.email}</strong>.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Rol: {ROLE_LABEL[inv.role] ?? inv.role} · Caduca el {new Date(inv.expires_at).toLocaleString()}
+                        {t("invitation.roleLabel")} {roleLabel(inv.role)} · {t("invitation.expiresOn")}{" "}
+                        {new Date(inv.expires_at).toLocaleString()}
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                        <Field label="Nombre">
+                        <Field label={t("invitation.firstName")}>
                             <input
                                 type="text"
                                 value={firstName}
@@ -138,7 +142,7 @@ export default function AceptarInvitacionPage() {
                                 className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
                             />
                         </Field>
-                        <Field label="Apellidos">
+                        <Field label={t("invitation.lastName")}>
                             <input
                                 type="text"
                                 value={lastName}
@@ -148,7 +152,7 @@ export default function AceptarInvitacionPage() {
                         </Field>
                     </div>
 
-                    <Field label="Contraseña" required>
+                    <Field label={t("invitation.password")} required>
                         <input
                             type="password"
                             required
@@ -159,7 +163,7 @@ export default function AceptarInvitacionPage() {
                         />
                     </Field>
 
-                    <Field label="Repite la contraseña" required>
+                    <Field label={t("invitation.repeatPassword")} required>
                         <input
                             type="password"
                             required
@@ -182,7 +186,7 @@ export default function AceptarInvitacionPage() {
                         className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50"
                     >
                         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        Activar cuenta y entrar
+                        {t("invitation.submit")}
                     </button>
                 </form>
             </div>
