@@ -3423,5 +3423,242 @@
       "analizando": "Analizando facturas del trimestre…",
       "sinRiesgos": "Sin riesgos detectados. El trimestre parece listo para presentar."
     }
+  },
+  "correos": {
+    "page": {
+      "title": "Correos",
+      "subtitle": "Envía correos o instruye al agente de email",
+      "connected": "Conectado",
+      "noCredentials": "Sin credenciales",
+      "configWarning": "No hay credenciales de email configuradas. Configura Gmail, Outlook o SMTP en <strong>Configuración › Integraciones</strong>. Los envíos funcionarán en modo demo."
+    },
+    "tabs": {
+      "inbox": "Bandeja",
+      "compose": "Componer",
+      "ai": "Instrucción IA"
+    },
+    "inbox": {
+      "gmailLabel": "Bandeja de Gmail",
+      "outlookLabel": "Bandeja de Outlook",
+      "noProviderShort": "Sin proveedor configurado",
+      "loading": "Cargando bandeja…",
+      "refresh": "Refrescar",
+      "noProviderTitle": "No hay proveedor de correo configurado",
+      "noProviderHint": "Conecta Gmail u Outlook en <strong>Configuración › Mensajería</strong> para ver tu bandeja aquí.",
+      "empty": "Bandeja vacía",
+      "unreadAria": "No leído",
+      "noSender": "(sin remitente)",
+      "noSubject": "(sin asunto)"
+    },
+    "categories": {
+      "urgente": "Urgente",
+      "factura": "Factura",
+      "consulta": "Consulta",
+      "proveedor": "Proveedor",
+      "rrhh": "RRHH",
+      "marketing": "Marketing",
+      "spam": "Spam",
+      "otro": "Otro"
+    },
+    "compose": {
+      "to": "Para",
+      "toPlaceholder": "destinatario@ejemplo.com",
+      "subject": "Asunto",
+      "subjectPlaceholder": "Asunto del correo",
+      "message": "Mensaje",
+      "messagePlaceholder": "Escribe el contenido del correo...",
+      "attachments": "Adjuntos",
+      "attachFile": "Adjuntar archivo",
+      "fromDrive": "Desde Drive",
+      "removeAttachment": "Quitar adjunto",
+      "send": "Enviar correo"
+    },
+    "instruct": {
+      "help": "Dile al agente qué hacer con el correo en lenguaje natural. Ejemplos: “Muéstrame los correos no leídos”, “Envía un resumen de facturas pendientes a contabilidad@empresa.com”.",
+      "placeholder": "Instrucción para el agente de email...",
+      "run": "Ejecutar instrucción"
+    },
+    "drive": {
+      "title": "Adjuntar desde Google Drive",
+      "close": "Cerrar",
+      "searchPlaceholder": "Buscar archivo… (Enter para buscar)",
+      "loading": "Cargando…",
+      "noFiles": "Sin archivos"
+    },
+    "detail": {
+      "loading": "Cargando…",
+      "noSubject": "(sin asunto)",
+      "from": "De:",
+      "to": "Para:",
+      "close": "Cerrar",
+      "draftHint": "Genera un borrador y revísalo antes de enviar.",
+      "drafting": "Redactando…",
+      "draftAi": "Borrador IA"
+    },
+    "errors": {
+      "draftFailed": "No se pudo redactar el borrador",
+      "inboxLoad": "Error al cargar la bandeja",
+      "messageLoad": "Error al cargar el mensaje",
+      "sendFailed": "Error al enviar",
+      "uploadFailed": "Error al subir el archivo",
+      "driveList": "Error al listar Drive",
+      "driveImport": "Error al importar de Drive",
+      "instructFailed": "Error al procesar instrucción"
+    }
+  },
+  "portal": {
+    "page": {
+      "title": "Mi portal",
+      "loading": "Cargando…",
+      "notLinkedTitle": "Tu cuenta no está vinculada a ningún empleado",
+      "notLinkedHint": "Pide al administrador que añada tu email ({email}) a tu ficha de empleado.",
+      "selectEmployeeTitle": "Selecciona un empleado para previsualizar",
+      "selectEmployeeHint": "Usa el selector de arriba para ver Mi portal de cualquier persona de tu plantilla.",
+      "tabFicha": "Mi ficha",
+      "tabNominas": "Mis nóminas",
+      "tabVacaciones": "Mis ausencias",
+      "tabGastos": "Mis gastos"
+    },
+    "header": {
+      "subtitleEmployee": "Autoservicio del empleado",
+      "intro": "Tu zona personal. Aquí consultas tu ficha, descargas tus nóminas, solicitas vacaciones y reportas gastos para reembolso. Todo lo que envías queda registrado y pasa por la aprobación de RRHH.",
+      "adminViewTitle": "Vista de admin",
+      "adminViewHint": "Como admin no tienes ficha aquí. Selecciona un empleado para previsualizar Mi portal en modo lectura.",
+      "ownPortalOption": "— Mi propio portal —",
+      "readOnlyNotice": "Estás viendo Mi portal de otro empleado en <strong>modo lectura</strong>. No puedes solicitar vacaciones ni gastos en su nombre.",
+      "workingSince": "Trabajando desde las {time}",
+      "noActiveClock": "No tienes ningún fichaje activo",
+      "remindClockOut": "Recuerda fichar la salida al terminar tu jornada.",
+      "clockInHint": "Pulsa para registrar tu entrada cuando empieces a trabajar.",
+      "clockOut": "Fichar salida",
+      "clockIn": "Fichar entrada",
+      "clockInError": "No se pudo fichar la entrada",
+      "clockOutError": "No se pudo fichar la salida"
+    },
+    "ficha": {
+      "intro": "Datos personales y laborales según tu ficha en RRHH. Si algo es incorrecto, avisa al administrador.",
+      "fullName": "Nombre completo",
+      "nif": "NIF",
+      "email": "Email",
+      "department": "Departamento",
+      "role": "Rol",
+      "baseSalary": "Salario base",
+      "joinDate": "Fecha de alta",
+      "irpf": "IRPF",
+      "status": "Estado",
+      "statusActive": "Activo",
+      "statusLeave": "De baja",
+      "statusInactive": "Inactivo",
+      "scheduleTitle": "Horario estipulado",
+      "scheduleHint": "Tu jornada semanal según la ficha que configuró RRHH.",
+      "downloadPdf": "Descargar PDF",
+      "colDay": "Día",
+      "colClockIn": "Entrada",
+      "colClockOut": "Salida",
+      "colStatus": "Estado",
+      "dayOff": "Día libre",
+      "slotActive": "Activo",
+      "slotInactive": "Inactivo",
+      "noSchedule": "Tu ficha aún no tiene horario configurado. Avisa a RRHH para que lo añada."
+    },
+    "nominas": {
+      "intro": "Histórico de nóminas emitidas a tu nombre. Pulsa el icono de descarga para guardar el PDF.",
+      "emptyTitle": "Aún no tienes nóminas generadas",
+      "emptyHint": "Tu nómina aparecerá aquí cuando RRHH la emita y apruebe el cálculo del mes.",
+      "issued": "Emitida: {date}",
+      "net": "neto",
+      "downloadPdf": "Descargar PDF"
+    },
+    "vacaciones": {
+      "intro": "Solicita vacaciones, bajas u otras ausencias. Cada petición pasa por aprobación y verás aquí su estado en cualquier momento.",
+      "newRequest": "Nueva solicitud",
+      "emptyTitle": "No tienes solicitudes de ausencia",
+      "emptyHint": "Pulsa <strong>Nueva solicitud</strong> arriba para pedir vacaciones, baja médica o excedencia.",
+      "colType": "Tipo",
+      "colFrom": "Desde",
+      "colTo": "Hasta",
+      "colDays": "Días",
+      "colStatus": "Estado",
+      "colNotes": "Notas",
+      "days": "{count}d"
+    },
+    "gastos": {
+      "intro": "Registra gastos profesionales para reembolso (viajes, dietas, material…). Adjunta el recibo y RRHH lo aprobará para incluirlo en tu próxima nómina.",
+      "newExpense": "Nuevo gasto",
+      "emptyTitle": "No tienes gastos registrados",
+      "emptyHint": "Pulsa <strong>Nuevo gasto</strong> arriba para reportar un gasto profesional y subir el recibo.",
+      "colCategory": "Categoría",
+      "colDescription": "Descripción",
+      "colDate": "Fecha",
+      "colAmount": "Importe",
+      "colStatus": "Estado",
+      "colReceipt": "Recibo",
+      "view": "Ver",
+      "attach": "Adjuntar"
+    },
+    "leaveModal": {
+      "title": "Solicitud de ausencia",
+      "type": "Tipo *",
+      "startDate": "Fecha inicio *",
+      "endDate": "Fecha fin *",
+      "notes": "Notas",
+      "notesPlaceholder": "Opcional…",
+      "submitting": "Enviando…",
+      "missingDates": "Rellena las fechas.",
+      "submitError": "Error al enviar."
+    },
+    "expenseModal": {
+      "title": "Nuevo gasto",
+      "amount": "Importe (€) *",
+      "amountPlaceholder": "0.00",
+      "date": "Fecha *",
+      "category": "Categoría *",
+      "description": "Descripción *",
+      "descriptionPlaceholder": "Ej: Desplazamiento a cliente",
+      "notes": "Notas",
+      "notesPlaceholder": "Opcional…",
+      "submitting": "Enviando…",
+      "missingFields": "Completa los campos obligatorios.",
+      "submitError": "Error al enviar el gasto."
+    },
+    "payrollStatus": {
+      "draft": "Borrador",
+      "approved": "Aprobada",
+      "paid": "Pagada"
+    },
+    "leaveStatus": {
+      "pending": "Pendiente",
+      "approved": "Aprobada",
+      "rejected": "Rechazada"
+    },
+    "leaveTypes": {
+      "vacaciones": "Vacaciones",
+      "baja_medica": "Baja médica",
+      "excedencia": "Excedencia",
+      "otros": "Otros"
+    },
+    "expenseCategories": {
+      "viaje": "Viaje / Transporte",
+      "dieta": "Dieta / Manutención",
+      "alojamiento": "Alojamiento",
+      "material": "Material de oficina",
+      "formacion": "Formación",
+      "otro": "Otro"
+    },
+    "expenseStatus": {
+      "pending": "Pendiente",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "reimbursed": "Reembolsado"
+    },
+    "days": {
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    }
   }
 }

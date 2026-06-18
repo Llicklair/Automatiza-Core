@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, X, FileText, HardDrive, Folder } from "lucide-react";
 import type { DriveFile } from "@/lib/api/messaging";
 import { formatBytes } from "../format";
@@ -26,6 +27,7 @@ export function DrivePickerModal({
     loadDrive,
     attachFromDrive,
 }: DrivePickerModalProps) {
+    const t = useTranslations("correos");
     return (
         <div
             className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
@@ -38,12 +40,12 @@ export function DrivePickerModal({
                 <div className="flex items-center justify-between p-4 border-b border-border">
                     <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
                         <HardDrive className="w-4 h-4 text-violet-400" />
-                        Adjuntar desde Google Drive
+                        {t("drive.title")}
                     </h3>
                     <button
                         onClick={() => setShowDrive(false)}
                         className="text-muted-foreground hover:text-foreground"
-                        aria-label="Cerrar"
+                        aria-label={t("drive.close")}
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -54,20 +56,20 @@ export function DrivePickerModal({
                         value={driveQuery}
                         onChange={(e) => setDriveQuery(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); loadDrive(driveQuery); } }}
-                        placeholder="Buscar archivo… (Enter para buscar)"
+                        placeholder={t("drive.searchPlaceholder")}
                         className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
                     />
                 </div>
                 <div className="overflow-auto flex-1">
                     {driveLoading && (
                         <div className="flex items-center justify-center h-40 text-muted-foreground gap-2 text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t("drive.loading")}
                         </div>
                     )}
                     {!driveLoading && driveFiles?.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground text-sm">
                             <HardDrive className="w-7 h-7 opacity-30" />
-                            Sin archivos
+                            {t("drive.noFiles")}
                         </div>
                     )}
                     {!driveLoading && driveFiles && driveFiles.length > 0 && (
