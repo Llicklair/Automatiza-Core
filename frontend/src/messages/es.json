@@ -359,7 +359,48 @@
     "serviceVatPercent": "% IVA",
     "serviceVatReduced": "10% (reducido)",
     "serviceVatSuperReduced": "4% (superreducido)",
-    "serviceVatExempt": "0% (exento)"
+    "serviceVatExempt": "0% (exento)",
+    "eInvoicing": {
+      "errorLoading": "Error al cargar facturas",
+      "errorXml": "Error al generar FacturaE XML",
+      "errorVerifactu": "Error al enviar a Verifactu",
+      "title": "Facturación electrónica",
+      "description": "Genera FacturaE 3.2.2 y envía facturas a Verifactu (AEAT)",
+      "kpiIssued": "Facturas emitidas",
+      "kpiSent": "Enviadas a Verifactu",
+      "kpiPending": "Pendientes de envío",
+      "kpiTotal": "Total facturado",
+      "loading": "Cargando facturas…",
+      "empty": "No hay facturas emitidas",
+      "colNumber": "Nº Factura",
+      "colClient": "Cliente",
+      "colDate": "Fecha",
+      "colAmount": "Importe",
+      "colErpStatus": "Estado ERP",
+      "colVerifactu": "Verifactu",
+      "colActions": "Acciones",
+      "noNumber": "S/N",
+      "statusPending": "Pendiente",
+      "downloadXmlTitle": "Descargar XML FacturaE 3.2.2",
+      "sendVerifactuTitle": "Enviar a Verifactu (AEAT)",
+      "footnote": "FacturaE 3.2.2 — formato estándar AEAT para B2G y B2B. Verifactu funciona en modo simulación hasta integrar certificado digital."
+    },
+    "home": {
+      "title": "Ventas",
+      "subtitle": "Facturación, presupuestos y gestión comercial del ciclo de venta completo.",
+      "open": "Abrir"
+    },
+    "regimenFiscal": "Régimen fiscal",
+    "ispLabel": "Inversión del sujeto pasivo (ISP)",
+    "lineDescPlaceholder": "Descripcion del servicio/producto",
+    "deleteLineAria": "Eliminar línea",
+    "deleteOrderAria": "Eliminar pedido",
+    "closeOrderForm": "Cerrar formulario de pedido",
+    "closeQuoteNotif": "Cerrar notificación",
+    "editRecurringAria": "Editar factura recurrente",
+    "deleteRecurringAria": "Eliminar factura recurrente",
+    "closeRecurringForm": "Cerrar formulario de factura recurrente",
+    "closeServiceForm": "Cerrar formulario de servicio"
   },
   "clientes": {
     "title": "Directorio de Clientes",
@@ -2110,6 +2151,502 @@
       "toastReasonRequired": "Se requiere un motivo para reabrir",
       "toastReopened": "Periodo {label} reabierto.",
       "toastReopenError": "Error al reabrir"
+    }
+  },
+  "crm": {
+    "index": {
+      "title": "CRM",
+      "description": "Gestión de relaciones con clientes — actividades, pipeline y agenda comercial.",
+      "open": "Abrir",
+      "sections": {
+        "actividades": {
+          "title": "Actividades",
+          "description": "Muro de interacciones: llamadas, emails y resúmenes generados por IA."
+        },
+        "calendario": {
+          "title": "Calendario",
+          "description": "Vista mensual de eventos, citas y tareas programadas con clientes."
+        },
+        "embudo": {
+          "title": "Embudo de Ventas",
+          "description": "Pipeline kanban para mover oportunidades por las fases de cierre."
+        },
+        "reuniones": {
+          "title": "Reuniones",
+          "description": "Agenda y actas de reuniones con clientes y prospectos."
+        },
+        "reservas": {
+          "title": "Reservas",
+          "description": "Gestiona citas y reservas de servicios con tus contactos."
+        }
+      }
+    },
+    "actividades": {
+      "title": "Registro de Actividades",
+      "description": "Muro de interacciones. Registra llamadas o revisa resúmenes automáticos extraídos por IA de tus correos y reuniones.",
+      "newInteraction": "Registrar Interacción",
+      "searchPlaceholder": "Buscar en el historial (ej. 'presupuesto', 'llamada')…",
+      "allClients": "Todos los clientes",
+      "emptyTitle": "Aún no hay interacciones",
+      "emptyDescription": "Cuando envíes un correo, llames a un cliente o la IA procese un buzón, aparecerá aquí como un hilo temporal.",
+      "firstInteraction": "Primera interacción",
+      "delete": "Eliminar",
+      "aiGenerated": "Generado automáticamente por IA",
+      "unassigned": "Sin asignar",
+      "unknownClient": "Cliente Desconocido",
+      "createError": "Error al registrar actividad",
+      "deleteError": "Error al eliminar la actividad",
+      "deleteConfirm": "¿Eliminar esta actividad del historial?",
+      "modal": {
+        "title": "Registrar Actividad",
+        "clientLabel": "Cliente (Opcional)",
+        "clientNone": "Ninguno / General",
+        "typeLabel": "Tipo de interacción",
+        "types": {
+          "note": "Nota",
+          "call": "Llamada",
+          "email": "Email",
+          "meeting_log": "Reunión"
+        },
+        "descriptionLabel": "Resumen o Descripción",
+        "descriptionPlaceholder": "¿De qué hablasteis? ¿Qué se acordó?...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Registrar"
+      }
+    },
+    "calendario": {
+      "title": "Calendario",
+      "description": "Visualiza tus reuniones, demostraciones y recordatorios.",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente",
+      "today": "Hoy",
+      "schedule": "Agendar Cita",
+      "weekdays": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mie",
+        "thu": "Jue",
+        "fri": "Vie",
+        "sat": "Sab",
+        "sun": "Dom"
+      },
+      "createError": "Error al crear el evento",
+      "deleteConfirm": "¿Eliminar este evento?",
+      "modal": {
+        "title": "Agendar Cita",
+        "close": "Cerrar formulario de cita",
+        "titleLabel": "Título *",
+        "titlePlaceholder": "Ej: Demo con Cliente XYZ",
+        "startLabel": "Inicio *",
+        "endLabel": "Fin *",
+        "typeLabel": "Tipo",
+        "clientLabel": "Cliente",
+        "clientNone": "Sin cliente",
+        "linkLabel": "Enlace / Ubicación",
+        "linkPlaceholder": "https://meet.google.com/... o dirección",
+        "descriptionLabel": "Descripción",
+        "descriptionPlaceholder": "Notas del evento...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Agendar",
+        "types": {
+          "meeting": "Reunión",
+          "reminder": "Recordatorio",
+          "task_deadline": "Vencimiento"
+        }
+      },
+      "detail": {
+        "close": "Cerrar detalle del evento",
+        "clientLabel": "Cliente:",
+        "deleting": "Eliminando...",
+        "delete": "Eliminar evento"
+      },
+      "deleteLabel": "Eliminar"
+    },
+    "embudo": {
+      "title": "Embudo de Ventas (CRM)",
+      "description": "Gestiona tus leads o deja que la IA los cualifique.",
+      "searchPlaceholder": "Buscar oportunidad...",
+      "newDeal": "Nuevo Trato",
+      "sending": "Enviando...",
+      "askAi": "Pedir a la IA",
+      "deleteOpportunity": "Eliminar oportunidad",
+      "unknownClient": "Cliente desconocido",
+      "emptyStage": "Arrastra un trato aquí",
+      "createError": "Error al crear la oportunidad",
+      "deleteConfirm": "¿Eliminar esta oportunidad?",
+      "deleteLabel": "Eliminar",
+      "aiTaskSent": "Tarea de análisis CRM enviada a la IA. Revisa /tareas para ver el resultado.",
+      "aiTaskError": "Error al enviar tarea a la IA",
+      "aiTaskPrompt": "Analiza todas mis oportunidades nuevas y cualifícalas según su valor y potencial. Dame un resumen de cuáles debo priorizar esta semana.",
+      "stages": {
+        "new": "Nuevos",
+        "qualified": "Cualificados",
+        "proposal": "Propuesta",
+        "won": "Ganados",
+        "lost": "Perdidos"
+      },
+      "modal": {
+        "title": "Nueva Oportunidad",
+        "close": "Cerrar formulario de oportunidad",
+        "dealTitleLabel": "Nombre del Trato",
+        "dealTitlePlaceholder": "Ej: Renovación Licencias Anuales",
+        "clientLabel": "Cliente Relacionado",
+        "clientPlaceholder": "Selecciona un cliente",
+        "noNif": "Sin NIF",
+        "valueLabel": "Valor Esperado (€)",
+        "valuePlaceholder": "0.00",
+        "cancel": "Cancelar",
+        "creating": "Creando...",
+        "submit": "Crear Trato"
+      }
+    },
+    "reuniones": {
+      "title": "Reuniones (Meet)",
+      "description": "Gestiona tus videollamadas con clientes.",
+      "schedule": "Programar Reunión",
+      "searchPlaceholder": "Buscar reuniones...",
+      "delete": "Eliminar reunión",
+      "noLocation": "Ubicación no especificada",
+      "join": "Unirse",
+      "emptyTitle": "Despejado",
+      "emptyDescription": "No tienes reuniones agendadas.",
+      "upcoming": "Próximas y Hoy ({count})",
+      "past": "Finalizadas ({count})",
+      "createError": "Error al programar la reunión",
+      "deleteConfirm": "¿Eliminar esta reunión?",
+      "modal": {
+        "title": "Programar Reunión",
+        "close": "Cerrar formulario de reunión",
+        "titleLabel": "Título *",
+        "titlePlaceholder": "Ej: Llamada de seguimiento con ACME",
+        "startLabel": "Inicio *",
+        "endLabel": "Fin *",
+        "linkLabel": "Enlace (Meet/Zoom/Teams)",
+        "linkPlaceholder": "https://meet.google.com/...",
+        "clientLabel": "Cliente",
+        "clientNone": "Sin cliente",
+        "descriptionLabel": "Descripción",
+        "descriptionPlaceholder": "Agenda de la reunión...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Programar"
+      },
+      "deleteLabel": "Eliminar"
+    },
+    "reservas": {
+      "title": "Reservas y Espacios",
+      "description": "Gestiona las reservas de tus clientes sobre tus servicios o instalaciones.",
+      "newReservation": "Bloquear Espacio / Reservar",
+      "searchPlaceholder": "Buscar por cliente o nota...",
+      "count": "{count} reservas",
+      "columns": {
+        "client": "Cliente",
+        "start": "Inicio",
+        "end": "Fin",
+        "notes": "Notas",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "empty": "No hay reservas",
+      "confirm": "Confirmar",
+      "finish": "Finalizar",
+      "cancel": "Cancelar",
+      "selectClientWarning": "Selecciona un cliente",
+      "createError": "Error al crear la reserva",
+      "status": {
+        "pending": "Pendiente",
+        "confirmed": "Confirmada",
+        "cancelled": "Cancelada",
+        "completed": "Finalizada"
+      },
+      "modal": {
+        "title": "Nueva Reserva",
+        "close": "Cerrar formulario de reserva",
+        "clientLabel": "Cliente *",
+        "clientPlaceholder": "Selecciona un cliente",
+        "startLabel": "Inicio *",
+        "endLabel": "Fin *",
+        "notesLabel": "Notas",
+        "notesPlaceholder": "Sala A, equipamiento necesario...",
+        "cancel": "Cancelar",
+        "saving": "Guardando...",
+        "submit": "Reservar"
+      }
+    }
+  },
+  "compras": {
+    "index": {
+      "title": "Compras",
+      "subtitle": "Facturas recibidas, pedidos a proveedores y directorio de suministradores.",
+      "open": "Abrir",
+      "sections": {
+        "facturas": {
+          "title": "Facturas Recibidas",
+          "description": "Registro y gestión de facturas de proveedores. Concilia con tus pagos bancarios."
+        },
+        "pedidos": {
+          "title": "Pedidos de Compra",
+          "description": "Órdenes de compra enviadas a proveedores y su estado de recepción."
+        },
+        "proveedores": {
+          "title": "Proveedores",
+          "description": "Directorio de proveedores con condiciones de pago, NIF e historial de compras."
+        }
+      }
+    },
+    "facturas": {
+      "title": "Facturas Recibidas",
+      "description": "Gestiona tus compras, gastos y proveedores.",
+      "scanTooltip": "Sube una factura PDF o foto. La IA extrae proveedor, líneas, IVA y vencimiento y la registra automáticamente.",
+      "scanning": "Leyendo factura…",
+      "scan": "Escanear factura",
+      "register": "Registrar Factura",
+      "stats": {
+        "pending": "Pendiente de Pago",
+        "paid30": "Pagado (últimos 30d)"
+      },
+      "columns": {
+        "supplier": "Proveedor",
+        "status": "Estado",
+        "date": "Fecha",
+        "dueDate": "Vencimiento",
+        "amount": "Monto",
+        "action": "Acción"
+      },
+      "unknownSupplier": "Desconocido",
+      "noNumber": "S/N",
+      "markPaid": "Marcar pagada",
+      "deleteInvoice": "Eliminar factura",
+      "statusOptions": {
+        "draft": "Borrador",
+        "pending": "Pendiente",
+        "paid": "Pagada",
+        "cancelled": "Cancelada"
+      },
+      "empty": {
+        "title": "No tienes facturas de compra registradas",
+        "description": "Registra tu primera factura para empezar a gestionar tus compras.",
+        "action": "Registrar primera factura"
+      },
+      "searchPlaceholder": "Buscar por proveedor o número...",
+      "noResults": "Sin resultados para tu búsqueda.",
+      "modal": {
+        "title": "Registrar Factura Recibida",
+        "description": "Completa los datos de la factura de compra.",
+        "submit": "Registrar",
+        "supplier": "Proveedor",
+        "existing": "Existente",
+        "new": "Nuevo",
+        "selectSupplier": "Seleccionar proveedor...",
+        "supplierNamePlaceholder": "Nombre del proveedor",
+        "invoiceNumber": "Nº Factura",
+        "optional": "Opcional",
+        "status": "Estado",
+        "statusOptions": {
+          "pending": "Pendiente",
+          "paid": "Pagada",
+          "draft": "Borrador"
+        },
+        "baseAmount": "Importe base (€)",
+        "vat": "% IVA",
+        "date": "Fecha",
+        "dueDate": "Vencimiento",
+        "fiscalRegime": "Régimen fiscal",
+        "fiscalRegimeOptions": {
+          "general": "General",
+          "intracomunitario": "Intracomunitario",
+          "isp": "Inversión sujeto pasivo"
+        },
+        "retention": "% Retención IRPF",
+        "retentionPlaceholder": "0 (sin retención)"
+      },
+      "toasts": {
+        "supplierNameRequired": "Indica el nombre del proveedor",
+        "defaultLineReceived": "Factura recibida",
+        "registerError": "Error registrando factura",
+        "supplierCreated": "Proveedor creado: {name}",
+        "defaultLineConcept": "Concepto",
+        "invoiceScanned": "Factura registrada: {name} · {amount} € (confianza {conf}%)",
+        "reviewBeforeConfirm": "Revisa los datos antes de confirmar",
+        "scanError": "No se pudo leer la factura",
+        "statusError": "Error cambiando estado",
+        "deleteTitle": "Eliminar factura",
+        "deleteConfirm": "¿Eliminar esta factura? Esta acción no se puede deshacer.",
+        "deleted": "Factura eliminada",
+        "deleteError": "Error al eliminar factura"
+      }
+    },
+    "pedidos": {
+      "title": "Pedidos de Compra",
+      "description": "Gestiona los pedidos a tus proveedores antes de recibir la factura.",
+      "newOrder": "Nuevo pedido",
+      "stats": {
+        "pendingReceive": "Pendientes de recibir",
+        "received": "Recibidos",
+        "committedTotal": "Total comprometido"
+      },
+      "searchPlaceholder": "Buscar por número o proveedor...",
+      "loading": "Cargando pedidos…",
+      "emptyTitle": "Sin pedidos de compra",
+      "noResultsTitle": "Sin resultados",
+      "emptyDescription": "Crea tu primer pedido de compra a un proveedor.",
+      "noResultsDescription": "Sin resultados para \"{search}\"",
+      "createOrder": "Crear pedido",
+      "noNumber": "Sin número",
+      "unknownSupplier": "Proveedor desconocido",
+      "receive": "Recibir",
+      "cancel": "Cancelar",
+      "deleteOrder": "Eliminar pedido",
+      "expectedDelivery": "Entrega prevista: {date}",
+      "status": {
+        "draft": "Borrador",
+        "sent": "Enviado",
+        "confirmed": "Confirmado",
+        "partially_received": "Recibido parcial",
+        "received": "Recibido",
+        "cancelled": "Cancelado"
+      },
+      "modal": {
+        "title": "Nuevo pedido de compra",
+        "close": "Cerrar formulario de pedido",
+        "supplier": "Proveedor *",
+        "selectSupplier": "Seleccionar proveedor…",
+        "noSuppliers": "Crea proveedores en Compras → Proveedores",
+        "expectedDelivery": "Entrega prevista",
+        "lines": "Líneas del pedido",
+        "addLine": "Añadir",
+        "productDescription": "Producto / Descripción",
+        "select": "Seleccionar…",
+        "descriptionPlaceholder": "Descripción",
+        "quantity": "Cant.",
+        "price": "Precio",
+        "vat": "IVA %",
+        "deleteLine": "Eliminar línea",
+        "lineTotal": "Total:",
+        "orderTotal": "Total pedido",
+        "notes": "Notas",
+        "notesPlaceholder": "Condiciones especiales, instrucciones de entrega...",
+        "cancel": "Cancelar",
+        "create": "Crear pedido"
+      },
+      "receiveModal": {
+        "title": "Recibir mercancía",
+        "subtitle": "Pedido {number} · {supplier}",
+        "warehouse": "Almacén de recepción",
+        "defaultSuffix": " (por defecto)",
+        "errorNoQuantity": "Indica al menos una cantidad a recibir.",
+        "errorGeneric": "No se pudo registrar la recepción",
+        "ordered": "pedidas {quantity} · pendientes {remaining}",
+        "receive": "Recibir",
+        "lotNumber": "Nº lote (opc.)",
+        "expiry": "Caducidad (opc.)",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar recepción"
+      },
+      "cancelConfirm": "¿Cancelar este pedido?",
+      "deleteConfirm": "¿Eliminar definitivamente?"
+    },
+    "proveedores": {
+      "title": "Proveedores",
+      "description": "Gestiona el directorio de proveedores y sus datos de contacto.",
+      "newSupplier": "Nuevo proveedor",
+      "stats": {
+        "total": "Total proveedores",
+        "withEmail": "Con email",
+        "withNif": "Con NIF/CIF"
+      },
+      "searchPlaceholder": "Buscar por nombre, NIF o email...",
+      "loading": "Cargando proveedores…",
+      "emptyTitle": "Sin proveedores",
+      "noResultsTitle": "Sin resultados",
+      "emptyDescription": "Añade tu primer proveedor para gestionar compras y pagos.",
+      "noResultsDescription": "No hay proveedores que coincidan con \"{search}\"",
+      "addSupplier": "Añadir proveedor",
+      "columns": {
+        "supplier": "Proveedor",
+        "nif": "NIF/CIF",
+        "email": "Email",
+        "city": "Ciudad",
+        "actions": "Acciones"
+      },
+      "editSupplier": "Editar proveedor",
+      "deleteSupplier": "Eliminar proveedor",
+      "modal": {
+        "editTitle": "Editar proveedor",
+        "newTitle": "Nuevo proveedor",
+        "close": "Cerrar formulario de proveedor",
+        "name": "Nombre / Razón social *",
+        "namePlaceholder": "Proveedor S.L.",
+        "nif": "NIF / CIF",
+        "nifPlaceholder": "B12345678",
+        "email": "Email",
+        "emailPlaceholder": "proveedor@empresa.com",
+        "address": "Dirección",
+        "addressPlaceholder": "Calle Mayor, 1",
+        "city": "Ciudad",
+        "cityPlaceholder": "Madrid",
+        "postalCode": "Código postal",
+        "postalCodePlaceholder": "28001",
+        "cancel": "Cancelar",
+        "save": "Guardar cambios",
+        "create": "Crear proveedor"
+      },
+      "deleteConfirm": "¿Eliminar este proveedor?"
+    }
+  },
+  "compliance": {
+    "page": {
+      "title": "Cumplimiento Legal y Fiscal",
+      "subtitle": "Calendario fiscal AEAT, novedades del BOE y consultas sobre obligaciones",
+      "tabCalendario": "Calendario fiscal",
+      "tabBoe": "Novedades BOE",
+      "tabConsulta": "Consultar"
+    },
+    "hook": {
+      "timeout": "La consulta está tardando demasiado (>{seconds}s). Puede que el agente esté sobrecargado. Vuelve a intentarlo en unos segundos.",
+      "taskError": "Error al ejecutar la tarea",
+      "progress": "Procesando información... ({elapsed}s)"
+    },
+    "boe": {
+      "seccionFiscal": "Fiscal",
+      "seccionLaboral": "Laboral",
+      "seccionMercantil": "Mercantil",
+      "boeNotResponding": "El BOE no respondió: {error}",
+      "unknownError": "Error desconocido al consultar el BOE",
+      "soloPyme": "Solo PYMEs ({count})",
+      "refresh": "Refrescar",
+      "loading": "Cargando novedades del BOE...",
+      "errorTitle": "Error al consultar el BOE",
+      "retry": "Volver a intentar",
+      "emptyPyme": "Sin novedades específicas para PYMEs en esta sección.",
+      "empty": "No hay novedades publicadas en esta sección.",
+      "relevantePyme": "Relevante PYME"
+    },
+    "calendario": {
+      "diasRestantes": "{count, plural, one {# día} other {# días}}",
+      "alerta": "Modelo {modelo} ({nombre}) vence en {count, plural, one {# día} other {# días}}.",
+      "loadError": "Error al cargar el calendario",
+      "loading": "Consultando calendario fiscal vigente...",
+      "loadErrorPrefix": "Error al cargar el calendario: {error}",
+      "avisosUrgentes": "Avisos urgentes",
+      "urgentes": "Urgentes (menos de 15 días)",
+      "proximos": "Próximos vencimientos",
+      "modelo": "Mod. {modelo}",
+      "empty": "No hay vencimientos programados para los próximos días.",
+      "disclaimer": "Fechas basadas en normativa vigente. Consulta siempre con tu asesor fiscal."
+    },
+    "consulta": {
+      "title": "Consulta sobre obligaciones fiscales",
+      "intro": "El agente responderá basándose en normativa española vigente. Para decisiones concretas, consulta siempre a tu asesor fiscal.",
+      "placeholder": "Ej: ¿Tengo que presentar el modelo 303 si soy autónomo en módulos?",
+      "submitting": "Calculando respuesta…",
+      "submit": "Enviar consulta",
+      "analyzing": "Analizando el contexto normativo...",
+      "errorTitle": "Error al procesar la consulta:",
+      "answerTitle": "Asesor IA dice:",
+      "answerNote": "Nota: Esta información es generada por IA y es de carácter orientativo."
     }
   }
 }

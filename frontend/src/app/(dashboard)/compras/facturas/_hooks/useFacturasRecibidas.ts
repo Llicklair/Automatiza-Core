@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Client, type Invoice } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -8,6 +9,8 @@ import { showConfirm } from "@/stores/confirm";
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function useFacturasRecibidas() {
+    const t = useTranslations("compras.facturas");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [clients, setClients]   = useState<Client[]>([]);
@@ -56,7 +59,7 @@ export function useFacturasRecibidas() {
         try {
             let clientId = supplierId;
             if (!useExisting || !supplierId) {
-                if (!supplierName.trim()) { toast.warning("Indica el nombre del proveedor"); setSubmitting(false); return; }
+                if (!supplierName.trim()) { toast.warning(t("toasts.supplierNameRequired")); setSubmitting(false); return; }
                 const newClient = await api.erp.clients.create({ name: supplierName, client_type: "supplier" });
                 clientId = newClient.id;
             }
@@ -71,13 +74,13 @@ export function useFacturasRecibidas() {
                 fiscal_regime: fiscalRegime || null,
                 retencion_irpf_rate: retRate > 0 ? retRate : null,
                 retencion_irpf_amount: retRate > 0 ? Math.round(baseAmount * retRate) / 100 : null,
-                lines: [{ description: "Factura recibida", quantity: 1, unit_price: baseAmount, discount_percentage: 0, tax_percentage: parseFloat(taxPct) }],
+                lines: [{ description: t("toasts.defaultLineReceived"), quantity: 1, unit_price: baseAmount, discount_percentage: 0, tax_percentage: parseFloat(taxPct) }],
             } as any);
             setInvoices(prev => [inv, ...prev]);
             setShowModal(false);
             resetModal();
         } catch (err: any) {
-            toast.error(err?.message || "Error registrando factura");
+            toast.error(err?.message || t("toasts.registerError"));
         } finally {
             setSubmitting(false);
         }
@@ -103,14 +106,14 @@ export function useFacturasRecibidas() {
                         client_type: "supplier",
                     } as any);
                     setClients(prev => [...prev, supplier!]);
-                    toast.info(`Proveedor creado: ${supplier.name}`);
+                    toast.info(t("toasts.supplierCreated", { name: supplier.name }));
                 } catch {
                     // si falla por duplicado u otro motivo, caemos al modal
                 }
             }
 
             const lines = (draft.lines || []).map(ln => ({
-                description: ln.description || "Concepto",
+                description: ln.description || t("toasts.defaultLineConcept"),
                 quantity: ln.quantity || 1,
                 unit_price: ln.unit_price || 0,
                 discount_percentage: 0,
@@ -129,7 +132,7 @@ export function useFacturasRecibidas() {
                 setInvoices(prev => [inv, ...prev]);
                 const conf = Math.round((draft.confidence ?? 0.5) * 100);
                 toast.success(
-                    `Factura registrada: ${draft.emisor.name} · ${draft.amount_total.toFixed(2)} € (confianza ${conf}%)`,
+                    t("toasts.invoiceScanned", { name: draft.emisor.name, amount: draft.amount_total.toFixed(2), conf }),
                 );
                 draft.warnings?.forEach(w => toast.warning(w));
             } else {
@@ -141,37 +144,37 @@ export function useFacturasRecibidas() {
                 setDate(draft.issue_date.slice(0, 10));
                 setDueDate(draft.due_date ? draft.due_date.slice(0, 10) : "");
                 setShowModal(true);
-                toast.info("Revisa los datos antes de confirmar");
+                toast.info(t("toasts.reviewBeforeConfirm"));
             }
         } catch (err: any) {
-            toast.error(err?.message || "No se pudo leer la factura");
+            toast.error(err?.message || t("toasts.scanError"));
         }
-    }, [clients, toast]);
+    }, [clients, toast, t]);
 
     const handleStatusChange = useCallback(async (invId: string, nextStatus: string) => {
         try {
             const updated = await api.erp.invoices.updateStatus(invId, nextStatus);
             setInvoices(prev => prev.map(i => i.id === invId ? updated : i));
         } catch (err: any) {
-            toast.error(err?.message || "Error cambiando estado");
+            toast.error(err?.message || t("toasts.statusError"));
         }
-    }, [toast]);
+    }, [toast, t]);
 
     const handleDeleteInvoice = useCallback(async (id: string) => {
         const confirmed = await showConfirm({
-            title: "Eliminar factura",
-            message: "¿Eliminar esta factura? Esta acción no se puede deshacer.",
-            confirmVariant: "danger", confirmLabel: "Eliminar",
+            title: t("toasts.deleteTitle"),
+            message: t("toasts.deleteConfirm"),
+            confirmVariant: "danger", confirmLabel: tc("delete"),
         });
         if (!confirmed) return;
         try {
             await api.erp.invoices.delete(id);
             setInvoices(prev => prev.filter(i => i.id !== id));
-            toast.success("Factura eliminada");
+            toast.success(t("toasts.deleted"));
         } catch (err: any) {
-            toast.error(err?.message || "Error al eliminar factura");
+            toast.error(err?.message || t("toasts.deleteError"));
         }
-    }, [toast]);
+    }, [toast, t, tc]);
 
     const totalPendiente = invoices.filter(i => i.status === "pending").reduce((a, b) => a + Number(b.amount_total), 0);
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { AlertTriangle, MessageSquare, Loader2, Send } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { executeTaskAndWait } from "../_hooks/useCompliance";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
 
 export function ConsultaTab() {
+    const t = useTranslations("compliance");
     const [question, setQuestion] = useState("");
     const [loading, setLoading] = useState(false);
     const [statusText, setStatusText] = useState("");
@@ -22,6 +24,7 @@ export function ConsultaTab() {
             const data = await executeTaskAndWait(
                 "compliance",
                 question,
+                t,
                 (msg) => setStatusText(msg)
             );
             setResults(data);
@@ -36,9 +39,9 @@ export function ConsultaTab() {
     return (
         <div className="max-w-2xl">
             <div className="rounded-xl border border-border bg-card p-6 mb-8">
-                <h2 className="font-medium text-foreground mb-1">Consulta sobre obligaciones fiscales</h2>
+                <h2 className="font-medium text-foreground mb-1">{t("consulta.title")}</h2>
                 <p className="text-xs text-muted-foreground mb-4">
-                    El agente responderá basándose en normativa española vigente. Para decisiones concretas, consulta siempre a tu asesor fiscal.
+                    {t("consulta.intro")}
                 </p>
 
                 <form onSubmit={submit} className="space-y-4">
@@ -47,7 +50,7 @@ export function ConsultaTab() {
                         required
                         value={question}
                         onChange={e => setQuestion(e.target.value)}
-                        placeholder="Ej: ¿Tengo que presentar el modelo 303 si soy autónomo en módulos?"
+                        placeholder={t("consulta.placeholder")}
                         className="w-full px-4 py-3 rounded-lg bg-card border border-border
                         text-foreground text-sm placeholder:text-muted-foreground resize-none
                         focus:outline-none focus:ring-2 focus:ring-primary transition"
@@ -59,14 +62,14 @@ export function ConsultaTab() {
                         hover:bg-primary disabled:opacity-50 text-foreground text-sm font-medium transition"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        {loading ? "Calculando respuesta…" : "Enviar consulta"}
+                        {loading ? t("consulta.submitting") : t("consulta.submit")}
                     </button>
                 </form>
 
                 {loading && (
                     <div className="mt-6 flex flex-col items-center justify-center p-4 gap-3 bg-card/50 rounded-lg border border-border">
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                        <p className="text-sm font-medium text-muted-foreground">{statusText || "Analizando el contexto normativo..."}</p>
+                        <p className="text-sm font-medium text-muted-foreground">{statusText || t("consulta.analyzing")}</p>
                     </div>
                 )}
 
@@ -74,7 +77,7 @@ export function ConsultaTab() {
                     <div className="mt-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                         <div>
-                            <p className="font-medium">Error al procesar la consulta:</p>
+                            <p className="font-medium">{t("consulta.errorTitle")}</p>
                             <p className="text-red-400/80 mt-1">{error}</p>
                         </div>
                     </div>
@@ -88,7 +91,7 @@ export function ConsultaTab() {
                             <MessageSquare className="w-4 h-4 text-primary" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-medium text-primary">Asesor IA dice:</h3>
+                            <h3 className="text-sm font-medium text-primary">{t("consulta.answerTitle")}</h3>
                         </div>
                     </div>
                     <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed space-y-4">
@@ -96,7 +99,7 @@ export function ConsultaTab() {
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-primary/20">
-                        <p className="text-xs text-primary/60 font-medium">Nota: Esta información es generada por IA y es de carácter orientativo.</p>
+                        <p className="text-xs text-primary/60 font-medium">{t("consulta.answerNote")}</p>
                     </div>
                 </div>
             )}

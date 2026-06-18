@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, Reservation, Client } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
@@ -9,6 +10,7 @@ import { Clock, CheckCircle2, XCircle, CalendarCheck } from "lucide-react";
 const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
 
 export function useReservas() {
+    const t = useTranslations("crm");
     const toast = useToastStore();
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
@@ -38,7 +40,7 @@ export function useReservas() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.client_id) { toast.warning("Selecciona un cliente"); return; }
+        if (!form.client_id) { toast.warning(t("reservas.selectClientWarning")); return; }
         setCreating(true);
         try {
             await api.crm.reservations.create({
@@ -47,7 +49,7 @@ export function useReservas() {
             setShowCreate(false);
             setForm({ client_id: "", notes: "", start_time: toLocalDatetime(new Date()), end_time: toLocalDatetime(new Date(Date.now() + 3600000)), status: "pending" });
             await loadData();
-        } catch { toast.error("Error al crear la reserva"); }
+        } catch { toast.error(t("reservas.createError")); }
         finally { setCreating(false); }
     };
 
@@ -65,10 +67,10 @@ export function useReservas() {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case "pending": return <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded text-xs font-medium"><Clock className="w-3.5 h-3.5" /> Pendiente</span>;
-            case "confirmed": return <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded text-xs font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Confirmada</span>;
-            case "cancelled": return <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded text-xs font-medium"><XCircle className="w-3.5 h-3.5" /> Cancelada</span>;
-            case "completed": return <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-xs font-medium"><CalendarCheck className="w-3.5 h-3.5" /> Finalizada</span>;
+            case "pending": return <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded text-xs font-medium"><Clock className="w-3.5 h-3.5" /> {t("reservas.status.pending")}</span>;
+            case "confirmed": return <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded text-xs font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> {t("reservas.status.confirmed")}</span>;
+            case "cancelled": return <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded text-xs font-medium"><XCircle className="w-3.5 h-3.5" /> {t("reservas.status.cancelled")}</span>;
+            case "completed": return <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-xs font-medium"><CalendarCheck className="w-3.5 h-3.5" /> {t("reservas.status.completed")}</span>;
             default: return null;
         }
     };

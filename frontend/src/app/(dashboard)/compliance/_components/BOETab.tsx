@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, Newspaper, Loader2, RefreshCw, ExternalLink } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
 
@@ -17,13 +18,14 @@ interface BoeItem {
 
 type Seccion = "fiscal" | "laboral" | "mercantil";
 
-const SECCION_LABELS: Record<Seccion, string> = {
-    fiscal: "Fiscal",
-    laboral: "Laboral",
-    mercantil: "Mercantil",
+const SECCION_LABEL_KEYS: Record<Seccion, string> = {
+    fiscal: "boe.seccionFiscal",
+    laboral: "boe.seccionLaboral",
+    mercantil: "boe.seccionMercantil",
 };
 
 export function BOETab() {
+    const t = useTranslations("compliance");
     const [seccion, setSeccion] = useState<Seccion>("fiscal");
     const [items, setItems] = useState<BoeItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,14 +39,14 @@ export function BOETab() {
             const data = (await api.advisory.boe(s, 15)) as BoeItem[];
             // El backend devuelve [{error, seccion}] si falla la descarga del RSS
             if (data.length === 1 && data[0].error) {
-                setError(`El BOE no respondió: ${data[0].error}`);
+                setError(t("boe.boeNotResponding", { error: data[0].error! }));
                 setItems([]);
             } else {
                 setItems(data);
             }
         } catch (err: unknown) {
             if (surfaceIfConnectivity(err)) { setItems([]); return; }
-            setError(err instanceof Error ? err.message : "Error desconocido al consultar el BOE");
+            setError(err instanceof Error ? err.message : t("boe.unknownError"));
             setItems([]);
         } finally {
             setLoading(false);
@@ -63,7 +65,7 @@ export function BOETab() {
             {/* Controles */}
             <div className="flex flex-wrap items-center gap-3">
                 <div className="flex gap-1 rounded-lg bg-muted border border-border p-1">
-                    {(Object.keys(SECCION_LABELS) as Seccion[]).map(s => (
+                    {(Object.keys(SECCION_LABEL_KEYS) as Seccion[]).map(s => (
                         <button
                             key={s}
                             onClick={() => setSeccion(s)}
@@ -73,7 +75,7 @@ export function BOETab() {
                                     : "text-muted-foreground hover:text-foreground"
                             }`}
                         >
-                            {SECCION_LABELS[s]}
+                            {t(SECCION_LABEL_KEYS[s])}
                         </button>
                     ))}
                 </div>
@@ -86,7 +88,7 @@ export function BOETab() {
                             onChange={e => setSoloPyme(e.target.checked)}
                             className="rounded border-border"
                         />
-                        Solo PYMEs ({totalRelevantes})
+                        {t("boe.soloPyme", { count: totalRelevantes })}
                     </label>
                 )}
 
@@ -94,10 +96,10 @@ export function BOETab() {
                     onClick={() => fetchBOE(seccion)}
                     disabled={loading}
                     className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition disabled:opacity-50"
-                    title="Refrescar"
+                    title={t("boe.refresh")}
                 >
                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-                    Refrescar
+                    {t("boe.refresh")}
                 </button>
             </div>
 
@@ -105,19 +107,19 @@ export function BOETab() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                     <Loader2 className="w-7 h-7 animate-spin text-primary" />
-                    <p className="text-sm">Cargando novedades del BOE...</p>
+                    <p className="text-sm">{t("boe.loading")}</p>
                 </div>
             ) : error ? (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 space-y-3">
                     <p className="text-red-400 text-sm font-medium flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" /> Error al consultar el BOE
+                        <AlertTriangle className="w-4 h-4" /> {t("boe.errorTitle")}
                     </p>
                     <p className="text-muted-foreground text-sm">{error}</p>
                     <button
                         onClick={() => fetchBOE(seccion)}
                         className="text-xs text-primary hover:underline"
                     >
-                        Volver a intentar
+                        {t("boe.retry")}
                     </button>
                 </div>
             ) : visibles.length === 0 ? (
@@ -125,8 +127,8 @@ export function BOETab() {
                     <Newspaper className="w-10 h-10 mb-3" />
                     <p className="text-sm">
                         {soloPyme
-                            ? "Sin novedades específicas para PYMEs en esta sección."
-                            : "No hay novedades publicadas en esta sección."}
+                            ? t("boe.emptyPyme")
+                            : t("boe.empty")}
                     </p>
                 </div>
             ) : (
@@ -154,7 +156,7 @@ export function BOETab() {
                                 </div>
                                 {item.relevante_pyme && (
                                     <span className="shrink-0 text-[10px] uppercase tracking-wide font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
-                                        Relevante PYME
+                                        {t("boe.relevantePyme")}
                                     </span>
                                 )}
                             </div>

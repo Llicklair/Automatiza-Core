@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, Opportunity, Client } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
 export function useEmbudoDeVentas() {
+    const t = useTranslations("crm");
     const toast = useToastStore();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
@@ -42,7 +44,7 @@ export function useEmbudoDeVentas() {
             setShowModal(false);
             setTitle(""); setExpectedValue("");
             await loadData();
-        } catch { toast.error("Error al crear la oportunidad"); }
+        } catch { toast.error(t("embudo.createError")); }
         finally { setIsSubmitting(false); }
     };
 
@@ -54,7 +56,7 @@ export function useEmbudoDeVentas() {
 
     const handleDelete = async (oppId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!await showConfirm({ message: "¿Eliminar esta oportunidad?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("embudo.deleteConfirm"), confirmLabel: t("embudo.deleteLabel"), confirmVariant: "danger" })) return;
         try { await api.crm.opportunities.delete(oppId); await loadData(); }
         catch (err) { logError("crm/embudo-de-ventas/page", err); }
     };
@@ -62,9 +64,9 @@ export function useEmbudoDeVentas() {
     const handleAiQualify = async () => {
         setTaskLoading(true);
         try {
-            await api.tasks.create("crm", "Analiza todas mis oportunidades nuevas y cualifícalas según su valor y potencial. Dame un resumen de cuáles debo priorizar esta semana.");
-            toast.info("Tarea de análisis CRM enviada a la IA. Revisa /tareas para ver el resultado.");
-        } catch (e) { logError("crm/embudo-de-ventas/page", e); toast.error("Error al enviar tarea a la IA"); }
+            await api.tasks.create("crm", t("embudo.aiTaskPrompt"));
+            toast.info(t("embudo.aiTaskSent"));
+        } catch (e) { logError("crm/embudo-de-ventas/page", e); toast.error(t("embudo.aiTaskError")); }
         finally { setTaskLoading(false); }
     };
 

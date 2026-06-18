@@ -56,7 +56,7 @@ export default function InvoiceLinesTable({
                                             type="text"
                                             value={line.description}
                                             onChange={e => onUpdateLine(line._key, "description", e.target.value)}
-                                            placeholder="Descripcion del servicio/producto"
+                                            placeholder={t("lineDescPlaceholder")}
                                             className="w-full bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground text-xs outline-none focus:border-primary/20"
                                         />
                                     </td>
@@ -85,7 +85,7 @@ export default function InvoiceLinesTable({
                                     </td>
                                     <td className="py-2">
                                         <button type="button" onClick={() => onRemoveLine(line._key)} disabled={lines.length === 1}
-                                            className="p-1 text-muted-foreground hover:text-red-400 disabled:opacity-30 transition-colors" aria-label="Eliminar línea">
+                                            className="p-1 text-muted-foreground hover:text-red-400 disabled:opacity-30 transition-colors" aria-label={t("deleteLineAria")}>
                                             <Trash2 className="w-4 h-4" aria-hidden="true" />
                                         </button>
                                     </td>

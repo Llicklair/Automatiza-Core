@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { api, type PurchaseOrder } from "@/lib/api";
 import { warehouses as whApi, type Warehouse } from "@/lib/api/warehouses";
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function RecibirModal({ order, onClose, onReceived }: Props) {
+    const t = useTranslations("compras.pedidos.receiveModal");
     const [whs, setWhs] = useState<Warehouse[]>([]);
     const [warehouseId, setWarehouseId] = useState("");
     const [rows, setRows] = useState<Record<string, RowState>>({});
@@ -55,14 +57,14 @@ export function RecibirModal({ order, onClose, onReceived }: Props) {
                 lot_number: rows[l.id!].lot_number.trim() || null,
                 expiry_date: rows[l.id!].expiry_date || null,
             }));
-        if (lines.length === 0) { setError("Indica al menos una cantidad a recibir."); return; }
+        if (lines.length === 0) { setError(t("errorNoQuantity")); return; }
         setSaving(true);
         try {
             await api.erp.purchaseOrders.receive(order.id, { warehouse_id: warehouseId || null, lines });
             onReceived();
             onClose();
         } catch (e: any) {
-            setError(e?.message || "No se pudo registrar la recepción");
+            setError(e?.message || t("errorGeneric"));
         }
         setSaving(false);
     };
@@ -71,17 +73,17 @@ export function RecibirModal({ order, onClose, onReceived }: Props) {
         <Dialog open={!!order} onOpenChange={o => { if (!o) onClose(); }}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Recibir mercancía</DialogTitle>
+                    <DialogTitle>{t("title")}</DialogTitle>
                     <DialogDescription>
-                        Pedido {order.order_number || order.id.slice(0, 8)} · {order.supplier?.name || ""}
+                        {t("subtitle", { number: order.order_number || order.id.slice(0, 8), supplier: order.supplier?.name || "" })}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-4">
                     <div>
-                        <Label className="text-xs">Almacén de recepción</Label>
+                        <Label className="text-xs">{t("warehouse")}</Label>
                         <select value={warehouseId} onChange={e => setWarehouseId(e.target.value)}
                             className="mt-1.5 w-full h-9 bg-background border border-border text-foreground text-sm rounded-md px-3">
-                            {whs.map(w => <option key={w.id} value={w.id}>{w.name}{w.is_default ? " (por defecto)" : ""}</option>)}
+                            {whs.map(w => <option key={w.id} value={w.id}>{w.name}{w.is_default ? t("defaultSuffix") : ""}</option>)}
                         </select>
                     </div>
 
@@ -97,23 +99,23 @@ export function RecibirModal({ order, onClose, onReceived }: Props) {
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-sm text-foreground">{line.description}</span>
                                         <span className="text-xs text-muted-foreground">
-                                            pedidas {Number(line.quantity)} · pendientes {remaining}
+                                            {t("ordered", { quantity: Number(line.quantity), remaining })}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-3 gap-2 mt-2">
                                         <div>
-                                            <Label className="text-xs">Recibir</Label>
+                                            <Label className="text-xs">{t("receive")}</Label>
                                             <Input className="mt-1 h-8" type="number" min={0} max={remaining}
                                                 value={row.quantity}
                                                 onChange={e => setRows(r => ({ ...r, [line.id!]: { ...row, quantity: Math.min(remaining, parseInt(e.target.value) || 0) } }))} />
                                         </div>
                                         <div>
-                                            <Label className="text-xs">Nº lote (opc.)</Label>
+                                            <Label className="text-xs">{t("lotNumber")}</Label>
                                             <Input className="mt-1 h-8" value={row.lot_number}
                                                 onChange={e => setRows(r => ({ ...r, [line.id!]: { ...row, lot_number: e.target.value } }))} />
                                         </div>
                                         <div>
-                                            <Label className="text-xs">Caducidad (opc.)</Label>
+                                            <Label className="text-xs">{t("expiry")}</Label>
                                             <Input className="mt-1 h-8" type="date" value={row.expiry_date}
                                                 onChange={e => setRows(r => ({ ...r, [line.id!]: { ...row, expiry_date: e.target.value } }))} />
                                         </div>
@@ -124,9 +126,9 @@ export function RecibirModal({ order, onClose, onReceived }: Props) {
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+                        <Button type="button" variant="outline" onClick={onClose}>{t("cancel")}</Button>
                         <Button type="submit" disabled={saving}>
-                            {saving && <Loader2 className="mr-2 w-4 h-4 animate-spin" />} Confirmar recepción
+                            {saving && <Loader2 className="mr-2 w-4 h-4 animate-spin" />} {t("confirm")}
                         </Button>
                     </DialogFooter>
                 </form>
