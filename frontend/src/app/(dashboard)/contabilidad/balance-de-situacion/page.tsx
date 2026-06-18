@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Wallet, TrendingUp, TrendingDown, ChevronDown, ChevronRight, Loader2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ export default function BalanceSituacionPage() {
         totalActivo, totalPasivo, totalPN, totalPasivoPN,
         resultadoEjercicio,
     } = useBalanceSituacion();
+    const t = useTranslations("contabilidad");
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -93,9 +95,9 @@ export default function BalanceSituacionPage() {
                         <div className="p-2 bg-blue-500/10 rounded-xl">
                             <Scale className="w-7 h-7 text-blue-400" />
                         </div>
-                        Balance de Situación
+                        {t("balanceSituacion.title")}
                     </h1>
-                    <p className="text-muted-foreground ml-14">Estado patrimonial según PGC español — Activo = Pasivo + Patrimonio Neto</p>
+                    <p className="text-muted-foreground ml-14">{t("balanceSituacion.subtitle")}</p>
                 </div>
 
                 {!loading && !isEmpty && (
@@ -106,7 +108,7 @@ export default function BalanceSituacionPage() {
                             : "bg-amber-500/10 border-amber-500/20 text-amber-400"
                     )}>
                         <Scale className="w-4 h-4" />
-                        {Math.abs(totalActivo - totalPasivoPN) < 1 ? "Balance equilibrado ✓" : `Diferencia: ${fmt(Math.abs(totalActivo - totalPasivoPN))}`}
+                        {Math.abs(totalActivo - totalPasivoPN) < 1 ? t("balanceSituacion.balanced") : t("balanceSituacion.difference", { amount: fmt(Math.abs(totalActivo - totalPasivoPN)) })}
                     </div>
                 )}
             </div>
@@ -118,27 +120,27 @@ export default function BalanceSituacionPage() {
             ) : isEmpty ? (
                 <div className="py-20 text-center bg-card border border-border rounded-2xl">
                     <Scale className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground font-medium">Sin apuntes contables</p>
-                    <p className="text-muted-foreground text-sm mt-1">El Balance de Situación se construye a partir del libro diario.</p>
+                    <p className="text-muted-foreground font-medium">{t("balanceSituacion.emptyTitle")}</p>
+                    <p className="text-muted-foreground text-sm mt-1">{t("balanceSituacion.emptyDescription")}</p>
                 </div>
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-card border border-blue-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><TrendingUp className="w-20 h-20 text-blue-400" /></div>
-                            <p className="text-xs font-semibold text-blue-400/70 uppercase tracking-wider mb-2">Total Activo</p>
+                            <p className="text-xs font-semibold text-blue-400/70 uppercase tracking-wider mb-2">{t("balanceSituacion.totalActivo")}</p>
                             <p className="text-3xl font-bold text-blue-400">{fmt(totalActivo)}</p>
                             <p className="text-xs text-muted-foreground mt-1">Bienes y derechos de la empresa</p>
                         </div>
                         <div className="bg-card border border-orange-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><TrendingDown className="w-20 h-20 text-orange-400" /></div>
-                            <p className="text-xs font-semibold text-orange-400/70 uppercase tracking-wider mb-2">Total Pasivo</p>
+                            <p className="text-xs font-semibold text-orange-400/70 uppercase tracking-wider mb-2">{t("balanceSituacion.totalPasivo")}</p>
                             <p className="text-3xl font-bold text-orange-400">{fmt(totalPasivo)}</p>
                             <p className="text-xs text-muted-foreground mt-1">Deudas y obligaciones</p>
                         </div>
                         <div className="bg-card border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-5"><Wallet className="w-20 h-20 text-emerald-400" /></div>
-                            <p className="text-xs font-semibold text-emerald-400/70 uppercase tracking-wider mb-2">Patrimonio Neto</p>
+                            <p className="text-xs font-semibold text-emerald-400/70 uppercase tracking-wider mb-2">{t("balance.sectionPatrimonioNeto")}</p>
                             <p className={cn("text-3xl font-bold", totalPN >= 0 ? "text-emerald-400" : "text-red-400")}>{fmt(totalPN)}</p>
                             <p className="text-xs text-muted-foreground mt-1">Incl. resultado {fmt(resultadoEjercicio)}</p>
                         </div>
@@ -146,7 +148,7 @@ export default function BalanceSituacionPage() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="space-y-4">
-                            <SectionBlock title="ACTIVO" items={activoItems} totalLabel="Total Activo" total={totalActivo} color="blue" />
+                            <SectionBlock title="ACTIVO" items={activoItems} totalLabel={t("balanceSituacion.totalActivo")} total={totalActivo} color="blue" />
                         </div>
                         <div className="space-y-4">
                             <SectionBlock
@@ -154,24 +156,24 @@ export default function BalanceSituacionPage() {
                                 items={[
                                     ...pnItems,
                                     {
-                                        subsection: "Resultado del ejercicio",
+                                        subsection: t("balance.subResultadoEjercicio"),
                                         accounts: [{
                                             code: "129",
-                                            name: "Resultado del ejercicio",
+                                            name: t("balance.subResultadoEjercicio"),
                                             saldo: resultadoEjercicio,
                                             side: "patrimonio",
                                             section: "Patrimonio Neto",
-                                            subsection: "Resultado del ejercicio",
+                                            subsection: t("balance.subResultadoEjercicio"),
                                         }],
                                     },
                                 ]}
-                                totalLabel="Total Patrimonio Neto"
+                                totalLabel={t("balanceSituacion.totalPatrimonioNeto")}
                                 total={totalPN}
                                 color="emerald"
                             />
-                            <SectionBlock title="PASIVO" items={pasivoItems} totalLabel="Total Pasivo" total={totalPasivo} color="orange" />
+                            <SectionBlock title="PASIVO" items={pasivoItems} totalLabel={t("balanceSituacion.totalPasivo")} total={totalPasivo} color="orange" />
                             <div className="flex items-center justify-between px-5 py-4 bg-card border border-border rounded-2xl">
-                                <span className="text-sm font-bold text-foreground uppercase tracking-wider">Total Pasivo + Patrimonio Neto</span>
+                                <span className="text-sm font-bold text-foreground uppercase tracking-wider">{t("balanceSituacion.totalPasivoPN")}</span>
                                 <span className="text-lg font-bold text-foreground">{fmt(totalPasivoPN)}</span>
                             </div>
                         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Newspaper, Search, ExternalLink } from "lucide-react";
 
 interface NewsFeedProps {
@@ -10,18 +11,19 @@ interface NewsFeedProps {
 }
 
 export function NewsFeed({ news, filteredNews, newsSearch, setNewsSearch }: NewsFeedProps) {
+    const t = useTranslations("contabilidad");
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Newspaper className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-semibold text-foreground">Novedades Normativas (BOE)</h2>
+                    <h2 className="text-xl font-semibold text-foreground">{t("newsFeed.title")}</h2>
                 </div>
                 <div className="relative hidden sm:block">
                     <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
-                        placeholder="Buscar decretos..."
+                        placeholder={t("newsFeed.searchPlaceholder")}
                         value={newsSearch}
                         onChange={e => setNewsSearch(e.target.value)}
                         className="bg-card border border-border rounded-lg py-1.5 pl-9 pr-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-64 transition-all"
@@ -33,8 +35,8 @@ export function NewsFeed({ news, filteredNews, newsSearch, setNewsSearch }: News
                 {filteredNews.length === 0 ? (
                     <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
                         {news.length === 0
-                            ? "No se encontraron novedades recientes del BOE para esta categoría. Consulta la guía normativa de arriba para conocer tus obligaciones vigentes."
-                            : `Sin resultados para "${newsSearch}"`}
+                            ? t("newsFeed.emptyNoNews")
+                            : t("newsFeed.noResults", { query: newsSearch })}
                     </div>
                 ) : (
                     filteredNews.map((item: any, i) => (
@@ -52,7 +54,7 @@ export function NewsFeed({ news, filteredNews, newsSearch, setNewsSearch }: News
                                     </span>
                                     {item.relevante_pyme && (
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md ring-1 ring-amber-400/20">
-                                            Relevante para tu negocio
+                                            {t("newsFeed.relevantBadge")}
                                         </span>
                                     )}
                                     {item.identificador && (
