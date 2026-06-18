@@ -124,7 +124,14 @@ Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅.
 - [ ] Extraer lógica de negocio de routes con muchos commits.
 - [ ] `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
 - [ ] Marketing: doble carga de `accounts()` entre `TabCuentas`/`TabCrear`.
-- [ ] Migración i18n real por módulos (proyecto grande, en curso por el usuario).
+- [ ] **i18n / app en inglés** (estado verificado 2026-06-18) — infra montada
+  (next-intl; `messages/{es,en,ca,eu,gl}.json`). `en.json` casi completo (parity
+  check: faltan **9 claves**: `rrhh.documentos.sign*` + `banca.conciliacion.*`).
+  Inglés DESACTIVADO en runtime por `i18n/request.ts:5` (`SUPPORTED_LOCALES=["es"]`).
+  Falta: (a) activar `en` ahí; (b) extraer **~750 cadenas aún hardcodeadas** (~50% de
+  la UI); (c) la **IA está fijada en español** (6 prompts "Responde siempre en
+  español" en `agents/email`, `dispatchers/chat`, `prompts/*.txt`) → pasar `locale` a
+  los agentes. Esfuerzo: MEDIO (días — la infra ya existe).
 
 ## Auto-update / Release (#5 — ops + decisión usuario)
 

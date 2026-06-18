@@ -1,56 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type JournalEntry } from "@/lib/api";
 import { logError } from "@/lib/logger";
 
-const ACCOUNT_NAMES: Record<string, string> = {
-    "600": "Compras de mercaderías",
-    "601": "Compras de materias primas",
-    "602": "Compras de otros aprovisionamientos",
-    "606": "Descuentos sobre compras",
-    "610": "Variación de existencias de mercaderías",
-    "620": "Gastos en investigación y desarrollo",
-    "621": "Arrendamientos y cánones",
-    "622": "Reparaciones y conservación",
-    "623": "Servicios de profesionales independientes",
-    "624": "Transportes",
-    "625": "Primas de seguros",
-    "626": "Servicios bancarios y similares",
-    "627": "Publicidad, propaganda y relaciones públicas",
-    "628": "Suministros (luz, agua, internet)",
-    "629": "Otros servicios",
-    "630": "Impuesto sobre beneficios",
-    "640": "Sueldos y salarios",
-    "641": "Indemnizaciones",
-    "642": "Seguridad Social a cargo de la empresa",
-    "649": "Otros gastos sociales",
-    "650": "Pérdidas de créditos comerciales incobrables",
-    "660": "Gastos financieros",
-    "681": "Amortización del inmovilizado material",
-    "682": "Amortización del inmovilizado intangible",
-    "700": "Ventas de mercaderías",
-    "701": "Ventas de productos terminados",
-    "702": "Ventas de productos semiterminados",
-    "703": "Ventas de subproductos y residuos",
-    "704": "Ventas de envases y embalajes",
-    "705": "Prestaciones de servicios",
-    "706": "Descuentos sobre ventas",
-    "708": "Devoluciones de ventas",
-    "709": "Rappels sobre ventas",
-    "740": "Subvenciones, donaciones y legados",
-    "746": "Subvenciones, donaciones y legados transferidos al resultado",
-    "751": "Resultados de operaciones en común",
-    "760": "Ingresos de participaciones en instrumentos de patrimonio",
-    "761": "Ingresos de valores representativos de deuda",
-    "762": "Ingresos de créditos",
-    "769": "Otros ingresos financieros",
-    "790": "Reversión del deterioro de activos",
-};
+type Translate = ReturnType<typeof useTranslations>;
 
-export { ACCOUNT_NAMES };
+const accountNames = (t: Translate): Record<string, string> => ({
+    "600": t("perdidasGanancias.account600"),
+    "601": t("perdidasGanancias.account601"),
+    "602": t("perdidasGanancias.account602"),
+    "606": t("perdidasGanancias.account606"),
+    "610": t("perdidasGanancias.account610"),
+    "620": t("perdidasGanancias.account620"),
+    "621": t("perdidasGanancias.account621"),
+    "622": t("perdidasGanancias.account622"),
+    "623": t("perdidasGanancias.account623"),
+    "624": t("perdidasGanancias.account624"),
+    "625": t("perdidasGanancias.account625"),
+    "626": t("perdidasGanancias.account626"),
+    "627": t("perdidasGanancias.account627"),
+    "628": t("perdidasGanancias.account628"),
+    "629": t("perdidasGanancias.account629"),
+    "630": t("perdidasGanancias.account630"),
+    "640": t("perdidasGanancias.account640"),
+    "641": t("perdidasGanancias.account641"),
+    "642": t("perdidasGanancias.account642"),
+    "649": t("perdidasGanancias.account649"),
+    "650": t("perdidasGanancias.account650"),
+    "660": t("perdidasGanancias.account660"),
+    "681": t("perdidasGanancias.account681"),
+    "682": t("perdidasGanancias.account682"),
+    "700": t("perdidasGanancias.account700"),
+    "701": t("perdidasGanancias.account701"),
+    "702": t("perdidasGanancias.account702"),
+    "703": t("perdidasGanancias.account703"),
+    "704": t("perdidasGanancias.account704"),
+    "705": t("perdidasGanancias.account705"),
+    "706": t("perdidasGanancias.account706"),
+    "708": t("perdidasGanancias.account708"),
+    "709": t("perdidasGanancias.account709"),
+    "740": t("perdidasGanancias.account740"),
+    "746": t("perdidasGanancias.account746"),
+    "751": t("perdidasGanancias.account751"),
+    "760": t("perdidasGanancias.account760"),
+    "761": t("perdidasGanancias.account761"),
+    "762": t("perdidasGanancias.account762"),
+    "769": t("perdidasGanancias.account769"),
+    "790": t("perdidasGanancias.account790"),
+});
+
+export { accountNames };
 
 export function usePyG() {
+    const t = useTranslations("contabilidad");
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -61,6 +65,7 @@ export function usePyG() {
             .finally(() => setLoading(false));
     }, []);
 
+    const ACCOUNT_NAMES = accountNames(t);
     const balances: Record<string, { name: string; debit: number; credit: number; group: string }> = {};
     entries.forEach(entry => {
         entry.lines.forEach(line => {
@@ -69,7 +74,7 @@ export function usePyG() {
             const code3 = line.account_code.substring(0, 3);
             if (!balances[code3]) {
                 balances[code3] = {
-                    name: ACCOUNT_NAMES[code3] || line.account_name || `Cuenta ${code3}`,
+                    name: ACCOUNT_NAMES[code3] || line.account_name || t("perdidasGanancias.accountFallback", { code: code3 }),
                     debit: 0, credit: 0, group: g,
                 };
             }
