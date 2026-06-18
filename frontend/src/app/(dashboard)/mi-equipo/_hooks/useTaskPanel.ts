@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Task } from "@/lib/api";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
 import type { AIEmployee } from "@/lib/api/ai_employees";
@@ -9,6 +10,8 @@ import { useAgentStream } from "@/hooks/useAgentStream";
 import { usePolling } from "@/lib/hooks/usePolling";
 
 export function useTaskPanel(isActive: boolean) {
+    const t = useTranslations("miEquipo");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,7 +53,7 @@ export function useTaskPanel(isActive: boolean) {
             .catch(() => { });
     };
 
-    const hasActive = tasks.some(t => !["done", "failed", "cancelled"].includes(t.status));
+    const hasActive = tasks.some(task => !["done", "failed", "cancelled"].includes(task.status));
 
     useEffect(() => {
         if (isActive) load();
@@ -93,15 +96,15 @@ export function useTaskPanel(isActive: boolean) {
                             }
                         }
                     }
-                    if (!answer) answer = updated.error_message ? `Error: ${updated.error_message}` : "No se obtuvo respuesta.";
+                    if (!answer) answer = updated.error_message ? t("taskPanel.errorWithMessage", { message: updated.error_message }) : t("taskPanel.noResponse");
                     break;
                 }
             }
-            if (!answer) answer = "La IA tardó demasiado. Inténtalo de nuevo.";
+            if (!answer) answer = t("taskPanel.aiTimeout");
             setChatMessages(prev => [...prev, { role: "assistant", content: answer }]);
         } catch (e: any) {
             if (surfaceIfConnectivity(e)) return;
-            setChatMessages(prev => [...prev, { role: "assistant", content: `Error: ${e.message || "No se pudo procesar"}` }]);
+            setChatMessages(prev => [...prev, { role: "assistant", content: t("taskPanel.errorWithMessage", { message: e.message || t("taskPanel.couldNotProcess") }) }]);
         } finally {
             setChatLoading(false);
             setChatTaskId(null);
@@ -113,7 +116,7 @@ export function useTaskPanel(isActive: boolean) {
         const idAtStop = chatTaskId;
         await stream.stop();
         setChatLoading(false);
-        setChatMessages(prev => [...prev, { role: "assistant", content: "Generación detenida por el usuario." }]);
+        setChatMessages(prev => [...prev, { role: "assistant", content: t("taskPanel.generationStopped") }]);
         setChatTaskId(null);
         // UI.COST — abre modal con tokens consumidos antes de detener.
         if (idAtStop) {
@@ -141,7 +144,7 @@ export function useTaskPanel(isActive: boolean) {
             }
         } catch (err: unknown) {
             if (surfaceIfConnectivity(err)) return;
-            setError(err instanceof Error ? err.message : "Error al crear la tarea");
+            setError(err instanceof Error ? err.message : t("taskPanel.errorCreating"));
         } finally {
             setCreating(false);
         }
@@ -155,32 +158,32 @@ export function useTaskPanel(isActive: boolean) {
     }
 
     async function cancelTask(id: string) {
-        if (!await showConfirm({ message: "¿Cancelar esta tarea?", confirmLabel: "Cancelar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("taskPanel.confirmCancel"), confirmLabel: tc("cancel"), confirmVariant: "danger" })) return;
         try {
             await api.tasks.cancel(id);
         } catch (err: any) {
-            if (!surfaceIfConnectivity(err)) toast.error(err.message || "Error al cancelar la tarea");
+            if (!surfaceIfConnectivity(err)) toast.error(err.message || t("taskPanel.errorCancelling"));
         }
         load();
     }
 
     async function cleanupTasks() {
         if (tasks.length === 0) return;
-        const active = tasks.filter(t => !["done", "failed", "cancelled"].includes(t.status));
+        const active = tasks.filter(task => !["done", "failed", "cancelled"].includes(task.status));
         const msg = active.length > 0
-            ? `¿Eliminar todas las tareas? ${active.length} tarea(s) activa(s) serán canceladas.`
-            : `¿Eliminar ${tasks.length} tarea(s) del historial?`;
-        if (!await showConfirm({ message: msg, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+            ? t("taskPanel.confirmCleanupActive", { count: active.length })
+            : t("taskPanel.confirmCleanupHistory", { count: tasks.length });
+        if (!await showConfirm({ message: msg, confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         try {
             await api.tasks.cleanup();
             load();
         } catch {
-            toast.error("Error al limpiar tareas");
+            toast.error(t("taskPanel.errorCleanup"));
         }
     }
 
-    const activeTasks = tasks.filter(t => t.domain !== "chat" && !["done", "failed", "cancelled"].includes(t.status));
-    const doneTasks = tasks.filter(t => t.domain !== "chat" && ["done", "failed", "cancelled"].includes(t.status));
+    const activeTasks = tasks.filter(task => task.domain !== "chat" && !["done", "failed", "cancelled"].includes(task.status));
+    const doneTasks = tasks.filter(task => task.domain !== "chat" && ["done", "failed", "cancelled"].includes(task.status));
 
     return {
         tasks, loading, showNew, setShowNew, domain, setDomain,

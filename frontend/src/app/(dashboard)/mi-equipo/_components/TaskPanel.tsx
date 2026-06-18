@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, RefreshCw, Trash2, Bot, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import InfoBanner from "@/components/InfoBanner";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { CostModal } from "@/components/ai/CostModal";
@@ -14,6 +15,7 @@ interface TaskPanelProps {
 }
 
 export function TaskPanel({ isActive }: TaskPanelProps) {
+    const t = useTranslations("miEquipo");
     const tp = useTaskPanel(isActive);
 
     return (
@@ -22,43 +24,43 @@ export function TaskPanel({ isActive }: TaskPanelProps) {
             {/* Header con acciones */}
             <div className="flex items-center justify-between mb-6">
                 <p className="text-sm text-muted-foreground">
-                    Asigna una instrucción a un agente — él se encargará del resto.
+                    {t("taskPanel.subtitle")}
                 </p>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={tp.load}
                         className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-border transition"
-                        title="Actualizar"
-                     aria-label="Actualizar">
+                        title={t("taskPanel.refresh")}
+                     aria-label={t("taskPanel.refresh")}>
                         <RefreshCw className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
                         onClick={tp.cleanupTasks}
                         disabled={tp.tasks.length === 0}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 text-xs font-medium transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-400/70"
-                        title="Eliminar todas las tareas — las activas se cancelan"
+                        title={t("taskPanel.cleanupTitle")}
                     >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Limpiar{(tp.activeTasks.length + tp.doneTasks.length) > 0 ? ` (${tp.activeTasks.length + tp.doneTasks.length})` : ""}
+                        {t("taskPanel.cleanup")}{(tp.activeTasks.length + tp.doneTasks.length) > 0 ? ` (${tp.activeTasks.length + tp.doneTasks.length})` : ""}
                     </button>
                     <button
                         onClick={() => tp.setShowNew(true)}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary text-foreground text-sm font-medium transition shadow-lg shadow-primary/20"
                     >
-                        <Plus className="w-4 h-4" /> Nueva tarea
+                        <Plus className="w-4 h-4" /> {t("taskPanel.newTask")}
                     </button>
                 </div>
             </div>
 
-            <InfoBanner id="tareas-intro" title="¿Qué es una tarea?">
+            <InfoBanner id="tareas-intro" title={t("taskPanel.infoTitle")}>
                 <p>
-                    Una tarea es una instrucción puntual que le das a un agente IA: &quot;hazme esto ahora&quot;.
-                    Elige el agente adecuado, describe lo que necesitas, y él se encarga.
-                    Ejemplo: <span className="text-primary">&quot;Genera la factura de enero para ACME S.L.&quot;</span>
+                    {t.rich("taskPanel.infoBody", {
+                        example: (chunks) => <span className="text-primary">{chunks}</span>,
+                    })}
                 </p>
                 <p className="mt-1">
                     <a href="/automatizaciones" className="text-primary hover:text-primary underline underline-offset-2 transition">
-                        ¿Buscas reglas automáticas? Ir a Automatizaciones →
+                        {t("taskPanel.infoLink")}
                     </a>
                 </p>
             </InfoBanner>
@@ -96,14 +98,14 @@ export function TaskPanel({ isActive }: TaskPanelProps) {
             {/* Lista de tareas activas */}
             {tp.activeTasks.length > 0 && (
                 <div className="mb-6">
-                    <h2 className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">En proceso ({tp.activeTasks.length})</h2>
+                    <h2 className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">{t("taskPanel.inProgress", { n: tp.activeTasks.length })}</h2>
                     <div className="rounded-xl border border-border bg-card overflow-hidden">
                         <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            <div className="col-span-5">Instrucción</div>
-                            <div className="col-span-2">Agente</div>
-                            <div className="col-span-2">Estado</div>
-                            <div className="col-span-2">Creada</div>
-                            <div className="col-span-1 text-right">Acción</div>
+                            <div className="col-span-5">{t("taskPanel.colInstruction")}</div>
+                            <div className="col-span-2">{t("taskPanel.colAgent")}</div>
+                            <div className="col-span-2">{t("taskPanel.colStatus")}</div>
+                            <div className="col-span-2">{t("taskPanel.colCreated")}</div>
+                            <div className="col-span-1 text-right">{t("taskPanel.colAction")}</div>
                         </div>
                         {tp.activeTasks.map(task => (
                             <TaskRow key={task.id} task={task} cancelTask={tp.cancelTask} onReply={tp.replyToTask} />
@@ -114,27 +116,27 @@ export function TaskPanel({ isActive }: TaskPanelProps) {
 
             {/* Historial */}
             <div>
-                <h2 className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">Historial</h2>
+                <h2 className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">{t("taskPanel.history")}</h2>
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
                     <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        <div className="col-span-5">Instrucción</div>
-                        <div className="col-span-2">Agente</div>
-                        <div className="col-span-2">Estado</div>
-                        <div className="col-span-2">Creada</div>
-                        <div className="col-span-1 text-right">Acción</div>
+                        <div className="col-span-5">{t("taskPanel.colInstruction")}</div>
+                        <div className="col-span-2">{t("taskPanel.colAgent")}</div>
+                        <div className="col-span-2">{t("taskPanel.colStatus")}</div>
+                        <div className="col-span-2">{t("taskPanel.colCreated")}</div>
+                        <div className="col-span-1 text-right">{t("taskPanel.colAction")}</div>
                     </div>
                     {tp.loading ? (
                         <div className="py-14 flex items-center justify-center gap-2 text-muted-foreground text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t("taskPanel.loading")}
                         </div>
                     ) : tp.doneTasks.length === 0 && tp.activeTasks.length === 0 ? (
                         <div className="py-14 text-center">
                             <Bot className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-muted-foreground text-sm">No hay tareas aún.</p>
-                            <p className="text-muted-foreground text-xs mt-1">Crea la primera con el botón de arriba.</p>
+                            <p className="text-muted-foreground text-sm">{t("taskPanel.emptyTitle")}</p>
+                            <p className="text-muted-foreground text-xs mt-1">{t("taskPanel.emptyHint")}</p>
                         </div>
                     ) : tp.doneTasks.length === 0 ? (
-                        <div className="py-8 text-center text-muted-foreground text-xs">Ninguna tarea completada aún.</div>
+                        <div className="py-8 text-center text-muted-foreground text-xs">{t("taskPanel.noneCompleted")}</div>
                     ) : (
                         tp.doneTasks.map(task => (
                             <TaskRow key={task.id} task={task} cancelTask={tp.cancelTask} onReply={tp.replyToTask} />

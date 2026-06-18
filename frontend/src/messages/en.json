@@ -16,7 +16,8 @@
     "no": "No",
     "error": "Error",
     "success": "Success",
-    "noResults": "No results"
+    "noResults": "No results",
+    "send": "Send"
   },
   "auth": {
     "login": "Log in",
@@ -1387,6 +1388,230 @@
       "viewInDocuments": "View in Documents",
       "errorTitle": "Error generating the batch",
       "unknownError": "Unknown error"
+    }
+  },
+  "miEquipo": {
+    "tabs": {
+      "tareas": "Tasks",
+      "equipo": "AI Team"
+    },
+    "toast": {
+      "instructionSent": "Instruction sent to {name}",
+      "employeeCreated": "AI employee created"
+    },
+    "header": {
+      "title": "Tasks",
+      "subtitle": "Assign tasks to your agents and manage your AI team",
+      "refreshTeam": "Refresh team",
+      "newAi": "New AI"
+    },
+    "empty": {
+      "title": "No employees yet",
+      "subtitle": "Create the initial team with Ana, Carlos and Sofía",
+      "creating": "Creating…",
+      "createInitialTeam": "Create initial team"
+    },
+    "team": {
+      "orgChart": "Org chart · {count} employees",
+      "activityHint": "Your agents' activity appears in the inbox",
+      "viewInbox": "View agent inbox →"
+    },
+    "chat": {
+      "assistantTitle": "AI Assistant",
+      "clearConversation": "Clear conversation",
+      "stopAria": "Stop agent generation",
+      "stop": "Stop",
+      "inputPlaceholder": "Ask anything... e.g. How many pending invoices do I have?",
+      "send": "Send"
+    },
+    "coordinatorBar": {
+      "sendError": "Failed to send instruction to the coordinator",
+      "inputPlaceholder": "Tell the coordinator what you need… E.g.: I need a marketing employee",
+      "sentBadge": "✓ Sent",
+      "sendAriaLabel": "Send instruction"
+    },
+    "card": {
+      "budgetHistoryTitle": "View usage history",
+      "budgetLabel": "Budget",
+      "statusIdle": "Available",
+      "statusWorking": "Working…",
+      "statusPaused": "Paused",
+      "statusBlocked": "Signature required",
+      "statusPendingSetup": "Setting up…",
+      "changeAppearance": "Change appearance",
+      "instruct": "Instruct",
+      "activate": "Activate",
+      "pause": "Pause"
+    },
+    "grid": {
+      "toastSeedCreated": "Starter team created",
+      "toastSeedError": "Failed to create starter team",
+      "toastStatusError": "Failed to change agent status",
+      "deleteConfirm": "Delete {name}? This action cannot be undone.",
+      "deleteFallbackName": "this employee",
+      "toastDeleteError": "Failed to delete the employee",
+      "toastInstructionSent": "Instruction sent to {name}",
+      "toastEmployeeCreated": "AI employee created",
+      "newAi": "New AI",
+      "emptyTitle": "No employees yet",
+      "emptyDescription": "Create the starter team with Ana, Carlos and Sofia",
+      "seedingButton": "Creating...",
+      "seedButton": "Create starter team",
+      "orgChartHeader": "Org chart · {count} employees",
+      "activityHint": "Your agents' activity appears in the inbox",
+      "viewInbox": "View agent inbox →"
+    },
+    "iconPicker": {
+      "colorViolet": "Violet",
+      "colorAmber": "Amber",
+      "colorBlue": "Blue",
+      "colorEmerald": "Green",
+      "colorRose": "Rose",
+      "colorOrange": "Orange",
+      "colorCyan": "Cyan",
+      "colorPink": "Light pink",
+      "colorLime": "Lime",
+      "colorIndigo": "Indigo",
+      "circleColor": "Circle color",
+      "icon": "Icon"
+    },
+    "instructModal": {
+      "sendError": "Failed to send instruction",
+      "title": "Instruction → {name}",
+      "description": "The instruction will go through the coordinator, which will decide how to execute it.",
+      "placeholder": "E.g. Generate January payroll for all active employees…"
+    },
+    "newEmployeeModal": {
+      "errorRoleRequired": "Describe the agent's role",
+      "defaultAgentName": "{role} agent",
+      "errorCreate": "Error creating employee",
+      "title": "New AI agent",
+      "firstNameLabel": "First name",
+      "firstNamePlaceholder": "e.g. Laura",
+      "lastNameLabel": "Last name",
+      "lastNamePlaceholder": "e.g. García",
+      "nameHint": "If you leave them empty, a name will be assigned automatically.",
+      "roleLabel": "Role",
+      "rolePlaceholder": "e.g. marketing, CTO, web designer, customer support…",
+      "coordinatorHint": "The coordinator will automatically assign the tools, skills and a documentation folder based on the role you describe.",
+      "creating": "Creating…",
+      "createButton": "Create agent"
+    },
+    "newTaskModal": {
+      "title": "New AI task",
+      "assignToLabel": "Who do you want to assign it to?",
+      "intentLabel": "What should it do?",
+      "placeholderCoordinator": "E.g.: Read the new emails, extract the accepted quotes, cross-reference them with the CRM customers and generate an Excel with the summary...",
+      "placeholderBilling": "E.g.: Create an invoice for customer ACME S.L. for €1500 of consulting",
+      "placeholderDocuments": "E.g.: Analyze the contract I uploaded this morning and extract the key clauses",
+      "placeholderHr": "E.g.: Generate this month's payroll for all active employees",
+      "placeholderCompliance": "E.g.: What are my tax obligations for next quarter?",
+      "placeholderDefault": "Describe what the agent should do...",
+      "submitting": "Sending…",
+      "submit": "Assign to agent"
+    },
+    "taskPanel": {
+      "subtitle": "Assign an instruction to an agent — it will take care of the rest.",
+      "refresh": "Refresh",
+      "cleanupTitle": "Delete all tasks — active ones are cancelled",
+      "cleanup": "Clear",
+      "newTask": "New task",
+      "infoTitle": "What is a task?",
+      "infoLink": "Looking for automated rules? Go to Automations →",
+      "inProgress": "In progress ({n})",
+      "colInstruction": "Instruction",
+      "colAgent": "Agent",
+      "colStatus": "Status",
+      "colCreated": "Created",
+      "colAction": "Action",
+      "history": "History",
+      "loading": "Loading…",
+      "emptyTitle": "No tasks yet.",
+      "emptyHint": "Create the first one with the button above.",
+      "noneCompleted": "No completed tasks yet.",
+      "errorWithMessage": "Error: {message}",
+      "noResponse": "No response was received.",
+      "aiTimeout": "The AI took too long. Please try again.",
+      "couldNotProcess": "Could not be processed",
+      "generationStopped": "Generation stopped by the user.",
+      "errorCreating": "Error creating the task",
+      "confirmCancel": "Cancel this task?",
+      "errorCancelling": "Error cancelling the task",
+      "confirmCleanupActive": "Delete all tasks? {count} active task(s) will be cancelled.",
+      "confirmCleanupHistory": "Delete {count} task(s) from the history?",
+      "errorCleanup": "Error clearing tasks"
+    },
+    "taskRow": {
+      "replyPlaceholder": "Reply to the agent so it can continue…",
+      "sending": "Sending…",
+      "reply": "Reply",
+      "userPrompt": "User prompt",
+      "copyPrompt": "Copy prompt",
+      "copied": "Copied!",
+      "copy": "Copy",
+      "executionError": "Error during execution",
+      "executionPlan": "Execution plan",
+      "agentLabel": "Agent:",
+      "agentResult": "Agent result",
+      "completed": "✅ Completed.",
+      "noResults": "No results yet."
+    },
+    "usageModal": {
+      "errorLoading": "Error loading usage",
+      "title": "Usage for {name}",
+      "budget": "Budget",
+      "statCalls": "Calls",
+      "statTokens": "Tokens",
+      "statTotalCost": "Total cost",
+      "emptyState": "No calls recorded for this employee yet.",
+      "colDate": "Date",
+      "colProvider": "Provider",
+      "colTokensIn": "Tokens in",
+      "colTokensOut": "Tokens out",
+      "colCost": "Cost"
+    },
+    "errors": {
+      "loadData": "Error loading data"
+    },
+    "toasts": {
+      "seedSuccess": "Initial team created",
+      "seedError": "Failed to create initial team",
+      "toggleStatusError": "Failed to change agent status",
+      "deleteError": "Failed to delete employee"
+    },
+    "delete": {
+      "confirm": "Delete {name}? This action cannot be undone.",
+      "defaultName": "this employee",
+      "confirmLabel": "Delete"
+    },
+    "taskConstants": {
+      "statusPending": "Pending",
+      "statusPlanning": "Planning",
+      "statusExecuting": "Executing",
+      "statusAwaitingApproval": "Awaiting approval",
+      "statusDone": "Completed",
+      "statusFailed": "Failed",
+      "statusCancelled": "Cancelled",
+      "chatLabel": "Chat",
+      "chatDesc": "Questions, doubts or status queries",
+      "coordinatorLabel": "General Coordinator",
+      "coordinatorDesc": "One-off complex task: coordinates several agents in sequence to give you a single result",
+      "domainBillingLabel": "Billing",
+      "domainBillingDesc": "Invoices, payments, quotes",
+      "domainDocumentsLabel": "Documents",
+      "domainDocumentsDesc": "OCR, analysis, document classification",
+      "domainHrLabel": "HR",
+      "domainHrDesc": "Payroll, employees, staff management",
+      "domainComplianceLabel": "Tax Advisor",
+      "domainComplianceDesc": "Tax obligations, BOE, alerts",
+      "domainBankingLabel": "Banking",
+      "domainBankingDesc": "Bank summary, transactions, reconciliation",
+      "domainCrmLabel": "CRM",
+      "domainCrmDesc": "Opportunities, customers, sales follow-up",
+      "domainExcelLabel": "Excel / Data",
+      "domainExcelDesc": "Cross-references tables and builds spreadsheets",
+      "domainEmailLabel": "Email",
+      "domainEmailDesc": "Inbox, replies and organizes"
     }
   }
 }

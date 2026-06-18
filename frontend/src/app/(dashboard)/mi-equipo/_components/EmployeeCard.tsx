@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { aiEmployees, type AIEmployee } from "@/lib/api/ai_employees";
 import { MessageSquare, Trash2, Pencil } from "lucide-react";
 import { AppearancePicker, getAvatarClasses } from "./IconPicker";
 import { UsageModal } from "./UsageModal";
 
 function BudgetBar({ employee, limit }: { employee: AIEmployee; limit: number }) {
+    const t = useTranslations("miEquipo");
     const [spent, setSpent] = useState<number | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
 
@@ -27,11 +29,11 @@ function BudgetBar({ employee, limit }: { employee: AIEmployee; limit: number })
         <>
             <button
                 onClick={() => setModalOpen(true)}
-                title="Ver historial de consumo"
+                title={t("card.budgetHistoryTitle")}
                 className="flex flex-col gap-1 pt-2 border-t border-border w-full text-left hover:opacity-80 transition-opacity"
             >
                 <div className={`flex items-center justify-between text-[10px] ${textColor}`}>
-                    <span>Presupuesto</span>
+                    <span>{t("card.budgetLabel")}</span>
                     <span className="font-medium">${spent.toFixed(2)} / ${limit.toFixed(2)}</span>
                 </div>
                 <div className="h-1 rounded-full bg-muted overflow-hidden">
@@ -43,13 +45,15 @@ function BudgetBar({ employee, limit }: { employee: AIEmployee; limit: number })
     );
 }
 
-export const STATUS_CONFIG = {
-    idle:          { label: "Disponible",      color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" },
-    working:       { label: "Trabajando…",     color: "bg-blue-500/10 text-blue-400 border-blue-500/20",          dot: "bg-blue-400 animate-pulse" },
-    paused:        { label: "Pausado",         color: "bg-accent text-muted-foreground border-border",              dot: "bg-accent" },
-    blocked:       { label: "Requiere firma",  color: "bg-amber-500/10 text-amber-400 border-amber-500/20",        dot: "bg-amber-400 animate-pulse" },
-    pending_setup: { label: "Configurando…",   color: "bg-violet-500/10 text-violet-400 border-violet-500/20",     dot: "bg-violet-400 animate-pulse" },
-} as const;
+type StatusConfig = { label: string; color: string; dot: string };
+
+export const statusConfig = (t: (key: string) => string): Record<string, StatusConfig> => ({
+    idle:          { label: t("card.statusIdle"),         color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" },
+    working:       { label: t("card.statusWorking"),      color: "bg-blue-500/10 text-blue-400 border-blue-500/20",          dot: "bg-blue-400 animate-pulse" },
+    paused:        { label: t("card.statusPaused"),       color: "bg-accent text-muted-foreground border-border",              dot: "bg-accent" },
+    blocked:       { label: t("card.statusBlocked"),      color: "bg-amber-500/10 text-amber-400 border-amber-500/20",        dot: "bg-amber-400 animate-pulse" },
+    pending_setup: { label: t("card.statusPendingSetup"), color: "bg-violet-500/10 text-violet-400 border-violet-500/20",     dot: "bg-violet-400 animate-pulse" },
+});
 
 export const DOMAIN_ICON: Record<string, string> = {
     billing: "💰", hr: "👥", email: "📧", crm: "🤝",
@@ -63,8 +67,10 @@ export function EmployeeCard({ employee, onToggle, onInstruct, onDelete, onAppea
     onDelete?: (id: string) => void;
     onAppearanceChange?: (id: string, icon?: string, color?: string) => void;
 }) {
+    const t = useTranslations("miEquipo");
     const [pickerOpen, setPickerOpen] = useState(false);
-    const s = STATUS_CONFIG[employee.status] ?? STATUS_CONFIG.idle;
+    const sc = statusConfig(t);
+    const s = sc[employee.status] ?? sc.idle;
     const icon = employee.icon || DOMAIN_ICON[employee.domain] || "🤖";
     const avatarClass = getAvatarClasses(employee.avatar_color ?? (employee.is_builtin ? "violet" : "amber"));
 
@@ -80,7 +86,7 @@ export function EmployeeCard({ employee, onToggle, onInstruct, onDelete, onAppea
                             <button
                                 onClick={() => setPickerOpen(v => !v)}
                                 className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                                title="Cambiar apariencia"
+                                title={t("card.changeAppearance")}
                             >
                                 <Pencil className="w-2 h-2 text-muted-foreground" />
                             </button>
@@ -112,7 +118,7 @@ export function EmployeeCard({ employee, onToggle, onInstruct, onDelete, onAppea
                 <div className="flex items-center gap-1">
                     <button onClick={() => onInstruct(employee)} disabled={employee.status === "paused"}
                         className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 disabled:opacity-40 transition-colors">
-                        <MessageSquare className="w-3 h-3" /> Instrucción
+                        <MessageSquare className="w-3 h-3" /> {t("card.instruct")}
                     </button>
                     <button onClick={() => onToggle(employee.id, employee.status)}
                         className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
@@ -120,7 +126,7 @@ export function EmployeeCard({ employee, onToggle, onInstruct, onDelete, onAppea
                                 ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                                 : "border-border text-muted-foreground hover:bg-muted"
                         }`}>
-                        {employee.status === "paused" ? "Activar" : "Pausar"}
+                        {employee.status === "paused" ? t("card.activate") : t("card.pause")}
                     </button>
                     {onDelete && (
                         <button onClick={() => onDelete(employee.id)}

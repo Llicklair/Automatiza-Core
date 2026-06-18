@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Task } from "@/lib/api";
 import { X, ChevronDown, Loader2, Copy, Check, MessageSquare } from "lucide-react";
-import { ALL_DOMAIN_OPTIONS, STATUS_COLOR, STATUS_LABEL, STATUS_ICON, getChatResponse } from "./task-constants";
+import { getAllDomainOptions, STATUS_COLOR, getStatusLabel, STATUS_ICON, getChatResponse } from "./task-constants";
 import { ChatBubble } from "./ChatBubble";
 
 export function TaskRow({ task, cancelTask, onReply }: {
@@ -11,13 +12,16 @@ export function TaskRow({ task, cancelTask, onReply }: {
     cancelTask: (id: string) => void;
     onReply: (parentTaskId: string, domain: string, reply: string) => Promise<void>;
 }) {
+    const t = useTranslations("miEquipo");
+    const tc = useTranslations("common");
     const chatResponse = getChatResponse(task);
     const [open, setOpen] = useState(!!chatResponse);
     const [copied, setCopied] = useState(false);
     const [replyText, setReplyText] = useState("");
     const [replying, setReplying] = useState(false);
     const hasDetail = chatResponse || task.plan || task.agent_results;
-    const domain = ALL_DOMAIN_OPTIONS.find(d => d.value === task.domain);
+    const STATUS_LABEL = getStatusLabel(t);
+    const domain = getAllDomainOptions(t).find(d => d.value === task.domain);
     // Mostrar input de respuesta cuando el agente lanzó una pregunta
     const canReply = task.domain !== "chat" && task.status === "done" && !!chatResponse;
 
@@ -75,7 +79,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                 cancelTask(task.id);
                             }}
                             className="text-muted-foreground hover:text-red-400 transition p-1 rounded"
-                            title="Cancelar"
+                            title={tc("cancel")}
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -103,7 +107,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                 value={replyText}
                                                 onChange={e => setReplyText(e.target.value)}
                                                 onKeyDown={e => e.key === "Enter" && handleReply()}
-                                                placeholder="Responde al agente para que continúe…"
+                                                placeholder={t("taskRow.replyPlaceholder")}
                                                 disabled={replying}
                                                 className="flex-1 bg-background border border-primary/30 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
                                             />
@@ -113,7 +117,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                 className="px-4 py-2.5 bg-primary rounded-xl text-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2 transition"
                                             >
                                                 {replying ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                                                {replying ? "Enviando…" : "Responder"}
+                                                {replying ? t("taskRow.sending") : t("taskRow.reply")}
                                             </button>
                                         </div>
                                     </div>
@@ -126,15 +130,15 @@ export function TaskRow({ task, cancelTask, onReply }: {
                             <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
                                 <div className="px-4 py-2.5 border-b border-primary/20 bg-primary/10 flex items-center justify-between">
                                     <h4 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-2">
-                                        <MessageSquare className="w-3 h-3" /> Prompt del usuario
+                                        <MessageSquare className="w-3 h-3" /> {t("taskRow.userPrompt")}
                                     </h4>
                                     <button
                                         onClick={copyPrompt}
                                         className="flex items-center gap-1.5 text-[11px] text-primary hover:text-foreground transition px-2 py-1 rounded-md hover:bg-primary/20"
-                                        title="Copiar prompt"
+                                        title={t("taskRow.copyPrompt")}
                                     >
                                         {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                                        {copied ? "¡Copiado!" : "Copiar"}
+                                        {copied ? t("taskRow.copied") : t("taskRow.copy")}
                                     </button>
                                 </div>
                                 <p className="px-4 py-3 text-sm text-primary-foreground/90 leading-relaxed whitespace-pre-wrap">
@@ -148,7 +152,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                         <X className="w-4 h-4 text-red-400 flex-shrink-0" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-red-400 mb-0.5">Error durante la ejecución</p>
+                                        <p className="font-semibold text-red-400 mb-0.5">{t("taskRow.executionError")}</p>
                                         <p className="text-red-300/80 leading-relaxed">{task.error_message}</p>
                                     </div>
                                 </div>
@@ -159,7 +163,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                     <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
                                         <div className="px-4 py-3 border-b border-border bg-muted">
                                             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Plan de Ejecución
+                                                <span className="w-2 h-2 rounded-full bg-blue-500"></span> {t("taskRow.executionPlan")}
                                             </h4>
                                         </div>
                                         <div className="p-4 overflow-x-auto text-xs font-mono text-muted-foreground flex-1">
@@ -175,7 +179,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                             </div>
                                                             <div className="pb-3">
                                                                 <p className="text-foreground font-medium mb-1 capitalize">{step.action?.replace(/_/g, ' ')}</p>
-                                                                <p className="text-muted-foreground text-[11px]">Agente: <span className="text-primary font-medium">{step.agent}</span></p>
+                                                                <p className="text-muted-foreground text-[11px]">{t("taskRow.agentLabel")} <span className="text-primary font-medium">{step.agent}</span></p>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -191,7 +195,7 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                     <div className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
                                         <div className="px-4 py-3 border-b border-border bg-muted">
                                             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-primary"></span> Resultado del Agente
+                                                <span className="w-2 h-2 rounded-full bg-primary"></span> {t("taskRow.agentResult")}
                                             </h4>
                                         </div>
                                         <div className="p-4 overflow-x-auto flex-1">
@@ -205,13 +209,13 @@ export function TaskRow({ task, cancelTask, onReply }: {
                                                                 </span>
                                                             </div>
                                                             <p className="text-sm text-foreground leading-relaxed">
-                                                                {res.summary || (res.error ? `❌ ${res.error}` : (typeof res.output === 'string' ? res.output : '✅ Completado.'))}
+                                                                {res.summary || (res.error ? `❌ ${res.error}` : (typeof res.output === 'string' ? res.output : t("taskRow.completed")))}
                                                             </p>
                                                         </div>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <p className="text-xs text-muted-foreground italic">No hay resultados aún.</p>
+                                                <p className="text-xs text-muted-foreground italic">{t("taskRow.noResults")}</p>
                                             )}
                                         </div>
                                     </div>
