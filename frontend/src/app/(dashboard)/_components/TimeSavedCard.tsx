@@ -2,33 +2,36 @@
 
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { metricsApi, type TimeSavedSummary } from "@/lib/api/metrics";
 import { ApiError } from "@/lib/api/errors";
 
-const ACTION_LABELS: Record<string, string> = {
-    create_invoice: "Facturas creadas",
-    invoice_created: "Facturas creadas",
-    create_journal_entry: "Asientos contables",
-    journal_entry_created: "Asientos contables",
-    reconcile_transaction: "Conciliaciones",
-    banking_auto_reconciled: "Conciliaciones automáticas",
-    n43_imported: "Extractos importados",
-    payroll_created: "Nóminas generadas",
-    payrolls_bulk_created: "Lotes de nóminas",
-    approve_payroll: "Nóminas aprobadas",
-    document_processed: "Documentos procesados",
-    send_email: "Emails enviados",
-    email_sent: "Emails enviados",
-    aeat_presentation_confirmed: "Presentaciones preparadas",
-    approval_decision: "Decisiones gestionadas",
-    ai_task: "Tareas IA completadas",
+type TFn = ReturnType<typeof useTranslations>;
+
+const ACTION_LABEL_KEY: Record<string, string> = {
+    create_invoice: "timeSaved.actionInvoicesCreated",
+    invoice_created: "timeSaved.actionInvoicesCreated",
+    create_journal_entry: "timeSaved.actionJournalEntries",
+    journal_entry_created: "timeSaved.actionJournalEntries",
+    reconcile_transaction: "timeSaved.actionReconciliations",
+    banking_auto_reconciled: "timeSaved.actionAutoReconciliations",
+    n43_imported: "timeSaved.actionStatementsImported",
+    payroll_created: "timeSaved.actionPayrollsGenerated",
+    payrolls_bulk_created: "timeSaved.actionPayrollBatches",
+    approve_payroll: "timeSaved.actionPayrollsApproved",
+    document_processed: "timeSaved.actionDocumentsProcessed",
+    send_email: "timeSaved.actionEmailsSent",
+    email_sent: "timeSaved.actionEmailsSent",
+    aeat_presentation_confirmed: "timeSaved.actionPresentationsPrepared",
+    approval_decision: "timeSaved.actionDecisionsManaged",
+    ai_task: "timeSaved.actionAiTasksCompleted",
 };
 
-function formatTime(totalMinutes: number): string {
-    if (totalMinutes < 60) return `${totalMinutes} min`;
+function formatTime(t: TFn, totalMinutes: number): string {
+    if (totalMinutes < 60) return t("timeSaved.unitMinutes", { value: totalMinutes });
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
-    return m ? `${h} h ${m} min` : `${h} h`;
+    return m ? t("timeSaved.unitHoursMinutes", { hours: h, minutes: m }) : t("timeSaved.unitHours", { value: h });
 }
 
 /**
@@ -37,6 +40,7 @@ function formatTime(totalMinutes: number): string {
  * trabajo manual equivalente por acción exitosa).
  */
 export function TimeSavedCard() {
+    const t = useTranslations("dashboard");
     const [summary, setSummary] = useState<TimeSavedSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -49,7 +53,7 @@ export function TimeSavedCard() {
                 if (active) setSummary(res);
             })
             .catch((e) => {
-                if (active) setError(e instanceof ApiError ? e.detail : "No se pudo cargar la métrica");
+                if (active) setError(e instanceof ApiError ? e.detail : t("timeSaved.loadError"));
             })
             .finally(() => {
                 if (active) setLoading(false);
@@ -57,6 +61,7 @@ export function TimeSavedCard() {
         return () => {
             active = false;
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const top = summary?.breakdown.slice(0, 3) ?? [];
@@ -65,9 +70,9 @@ export function TimeSavedCard() {
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary" /> Tiempo ahorrado por la IA
+                    <Clock className="w-4 h-4 text-primary" /> {t("timeSaved.title")}
                 </h2>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Últimos 30 días</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("timeSaved.last30Days")}</span>
             </div>
             <div className="p-5">
                 {loading ? (
@@ -76,14 +81,14 @@ export function TimeSavedCard() {
                     <p className="text-xs text-muted-foreground">{error}</p>
                 ) : !summary || summary.total_actions === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                        Aún no hay actividad de la IA este mes. Cuando los agentes trabajen, verás aquí el tiempo que te ahorran.
+                        {t("timeSaved.empty")}
                     </p>
                 ) : (
                     <>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-foreground">{formatTime(summary.total_minutes)}</span>
+                            <span className="text-3xl font-bold text-foreground">{formatTime(t, summary.total_minutes)}</span>
                             <span className="text-xs text-muted-foreground">
-                                en {summary.total_actions} {summary.total_actions === 1 ? "acción" : "acciones"}
+                                {t("timeSaved.inActions", { count: summary.total_actions })}
                             </span>
                         </div>
                         {top.length > 0 && (
@@ -91,9 +96,9 @@ export function TimeSavedCard() {
                                 {top.map((item) => (
                                     <li key={item.action_type} className="flex items-center justify-between text-xs">
                                         <span className="text-muted-foreground">
-                                            {ACTION_LABELS[item.action_type] ?? item.action_type} × {item.count}
+                                            {ACTION_LABEL_KEY[item.action_type] ? t(ACTION_LABEL_KEY[item.action_type]) : item.action_type} × {item.count}
                                         </span>
-                                        <span className="font-medium text-foreground">{formatTime(item.minutes)}</span>
+                                        <span className="font-medium text-foreground">{formatTime(t, item.minutes)}</span>
                                     </li>
                                 ))}
                             </ul>

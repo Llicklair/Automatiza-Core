@@ -4,17 +4,18 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Bot, Loader2, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { TaskProgressPipeline } from "./TaskProgressPipeline";
 
-const SUGGESTIONS = [
-    "¿Cuánto he facturado este mes?",
-    "Genera las nóminas del mes",
-    "¿Tengo facturas pendientes de cobro?",
-    "Revisa mis obligaciones fiscales",
-    "Crea una factura para cliente nuevo",
-];
-
 export function AiChatBar() {
+    const t = useTranslations("dashboard");
+    const SUGGESTIONS = [
+        t("aiChat.suggestion1"),
+        t("aiChat.suggestion2"),
+        t("aiChat.suggestion3"),
+        t("aiChat.suggestion4"),
+        t("aiChat.suggestion5"),
+    ];
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -39,33 +40,33 @@ export function AiChatBar() {
             let answer = "";
             for (let i = 0; i < 30; i++) {
                 await new Promise(r => setTimeout(r, 1000));
-                const t = await api.tasks.get(task.id);
-                if (t.status === "done" || t.status === "failed") {
-                    const results = t.agent_results as any[];
+                const tk = await api.tasks.get(task.id);
+                if (tk.status === "done" || tk.status === "failed") {
+                    const results = tk.agent_results as any[];
                     if (Array.isArray(results)) {
                         for (let j = results.length - 1; j >= 0; j--) {
                             if (results[j]?.output?.response) { answer = results[j].output.response; break; }
                         }
                     }
                     if (!answer) {
-                        if (t.error_message) {
+                        if (tk.error_message) {
                             // Una petición de aclaración no es un error: se muestra
                             // tal cual, sin el prefijo "Error:".
                             const isClarification = Boolean(
-                                (t.additional_metadata as Record<string, unknown> | null)?.clarification,
+                                (tk.additional_metadata as Record<string, unknown> | null)?.clarification,
                             );
-                            answer = isClarification ? t.error_message : `Error: ${t.error_message}`;
+                            answer = isClarification ? tk.error_message : `Error: ${tk.error_message}`;
                         } else {
-                            answer = "No se obtuvo respuesta.";
+                            answer = t("aiChat.noResponse");
                         }
                     }
                     break;
                 }
             }
-            if (!answer) answer = "La IA tardó demasiado. Inténtalo de nuevo.";
+            if (!answer) answer = t("aiChat.timeout");
             setMessages(prev => [...prev, { role: "assistant", content: answer }]);
         } catch {
-            setMessages(prev => [...prev, { role: "assistant", content: "Error al enviar la tarea. Inténtalo de nuevo." }]);
+            setMessages(prev => [...prev, { role: "assistant", content: t("aiChat.sendError") }]);
         } finally {
             setSending(false);
         }
@@ -76,16 +77,16 @@ export function AiChatBar() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-primary/20">
                 <div className="flex items-center gap-2 text-primary text-sm font-medium">
-                    <Bot className="w-4 h-4" /> Asistente IA
+                    <Bot className="w-4 h-4" /> {t("aiChat.title")}
                 </div>
                 <div className="flex items-center gap-3">
                     {messages.length > 0 && (
                         <button onClick={() => setMessages([])} className="text-xs text-muted-foreground hover:text-foreground transition">
-                            Limpiar
+                            {t("aiChat.clear")}
                         </button>
                     )}
                     <Link href="/mi-equipo?tab=tareas" className="text-xs text-muted-foreground hover:text-foreground transition">
-                        Ver tareas →
+                        {t("aiChat.viewTasks")}
                     </Link>
                 </div>
             </div>
@@ -146,13 +147,13 @@ export function AiChatBar() {
                     <input type="text" value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && send(input)}
-                        placeholder="Pregunta o pide algo a tu asistente IA..."
+                        placeholder={t("aiChat.placeholder")}
                         disabled={sending}
                         className="flex-1 bg-transparent border-none text-foreground text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-muted-foreground" />
                     <button onClick={() => send(input)} disabled={sending || !input.trim()}
                         className="px-5 bg-primary hover:bg-primary text-foreground font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
                         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                        {sending ? "…" : "Enviar"}
+                        {sending ? "…" : t("aiChat.send")}
                     </button>
                 </div>
             </div>
