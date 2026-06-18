@@ -1,6 +1,7 @@
 "use client";
 
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface KpiSectionProps {
     loading: boolean;
@@ -8,6 +9,7 @@ interface KpiSectionProps {
 }
 
 export function KpiSection({ loading, summary }: KpiSectionProps) {
+    const t = useTranslations("dashboard");
     const netoIsPositive = summary.neto >= 0;
 
     return (
@@ -19,7 +21,7 @@ export function KpiSection({ loading, summary }: KpiSectionProps) {
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <TrendingUp className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <h3 className="text-sm font-medium text-emerald-400/80">Ingresos (30d)</h3>
+                    <h3 className="text-sm font-medium text-emerald-400/80">{t("kpi.income30d")}</h3>
                 </div>
                 <div className="text-4xl font-bold text-foreground tracking-tight relative">
                     {loading ? "\u2014" : `${summary.ingresos.toLocaleString('es-ES', { minimumFractionDigits: 2 })}\u20AC`}
@@ -33,7 +35,7 @@ export function KpiSection({ loading, summary }: KpiSectionProps) {
                     <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                         <TrendingDown className="w-5 h-5 text-red-400" />
                     </div>
-                    <h3 className="text-sm font-medium text-red-400/80">Gastos (30d)</h3>
+                    <h3 className="text-sm font-medium text-red-400/80">{t("kpi.expenses30d")}</h3>
                 </div>
                 <div className="text-4xl font-bold text-foreground tracking-tight relative">
                     {loading ? "\u2014" : `${Math.abs(summary.gastos).toLocaleString('es-ES', { minimumFractionDigits: 2 })}\u20AC`}
@@ -48,11 +50,11 @@ export function KpiSection({ loading, summary }: KpiSectionProps) {
                         <div className={`w-10 h-10 rounded-xl ${netoIsPositive ? 'bg-primary/20 border-primary/20' : 'bg-amber-500/20 border-amber-500/30'} border flex items-center justify-center`}>
                             <Wallet className={`w-5 h-5 ${netoIsPositive ? 'text-primary' : 'text-amber-400'}`} />
                         </div>
-                        <h3 className={`text-sm font-medium ${netoIsPositive ? 'text-primary' : 'text-amber-300'}`}>Beneficio Neto</h3>
+                        <h3 className={`text-sm font-medium ${netoIsPositive ? 'text-primary' : 'text-amber-300'}`}>{t("kpi.netProfit")}</h3>
                     </div>
                     {!loading && (
                         <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${netoIsPositive ? 'bg-primary/10 text-primary border-primary/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-                            {summary.margen > 0 ? '+' : ''}{summary.margen}% Margen
+                            {summary.margen > 0 ? '+' : ''}{summary.margen}% {t("kpi.margin")}
                         </span>
                     )}
                 </div>
