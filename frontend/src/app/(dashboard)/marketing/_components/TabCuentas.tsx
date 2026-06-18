@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, CheckCircle2, AlertCircle, Plus, Trash2, KeyRound, Share2 } from "lucide-react";
 import { marketingApi, SocialAccount, ZernioConfig } from "@/lib/api/marketing";
 import { PLATFORM_ICONS } from "@/components/ui/social-icons";
@@ -20,6 +21,8 @@ function openExternal(url: string) {
 }
 
 export function TabCuentas() {
+    const t = useTranslations("marketing.cuentas");
+    const tc = useTranslations("marketing.common");
     const [configs, setConfigs] = useState<ZernioConfig[]>([]);
     const [accounts, setAccounts] = useState<SocialAccount[]>([]);
     const [selectedConfigId, setSelectedConfigId] = useState<string>("");
@@ -63,7 +66,7 @@ export function TabCuentas() {
     const addConfig = async () => {
         const key = newKey.trim();
         if (!key.startsWith("sk_")) {
-            setError("La API key de Zernio debe empezar por 'sk_'.");
+            setError(t("addConfigError"));
             return;
         }
         setAdding(true);
@@ -77,7 +80,7 @@ export function TabCuentas() {
             setSelectedConfigId((prev) => prev || cfg.id);
             setNewKey(""); setNewLabel(""); setShowAdd(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "No se pudo añadir la cuenta de Zernio");
+            setError(err instanceof Error ? err.message : t("addConfigFail"));
         } finally {
             setAdding(false);
         }
@@ -90,13 +93,13 @@ export function TabCuentas() {
             setSelectedConfigId((prev) => (prev === id ? "" : prev));
             load();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "No se pudo eliminar la cuenta");
+            setError(err instanceof Error ? err.message : t("deleteConfigFail"));
         }
     };
 
     const connect = async (platform: string) => {
         if (!selectedConfigId) {
-            setError("Añade y selecciona una cuenta de Zernio primero.");
+            setError(t("selectConfigFirst"));
             return;
         }
         setConnecting(platform);
@@ -128,7 +131,7 @@ export function TabCuentas() {
                 if (attempts >= 30) clearInterval(iv);
             }, 2000);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Error al conectar");
+            setError(err instanceof Error ? err.message : t("connectError"));
         } finally {
             setConnecting(null);
         }
@@ -140,14 +143,14 @@ export function TabCuentas() {
             setAccounts((prev) => prev.filter((a) => a.id !== id));
             load();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Error al desconectar la cuenta");
+            setError(err instanceof Error ? err.message : t("disconnectError"));
         }
     };
 
     if (loading) {
         return (
             <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" /> Cargando…
+                <Loader2 className="w-4 h-4 animate-spin mr-2" /> {tc("loading")}
             </div>
         );
     }
@@ -165,39 +168,39 @@ export function TabCuentas() {
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-muted-foreground" /> Cuentas de Zernio
+                        <KeyRound className="w-4 h-4 text-muted-foreground" /> {t("zernioAccounts")}
                     </h3>
                     {configs.length > 0 && (
                         <button
                             onClick={() => setShowAdd((v) => !v)}
                             className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1"
                         >
-                            <Plus className="w-3 h-3" /> Añadir otra
+                            <Plus className="w-3 h-3" /> {t("addAnother")}
                         </button>
                     )}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                    Tus redes se conectan a través de Zernio. El plan gratuito da{" "}
-                    <strong>2 redes por email</strong>; añade varias cuentas (emails) para conectar más gratis.{" "}
+                    {t("introBefore")}{" "}
+                    <strong>{t("introStrong")}</strong>{t("introAfter")}{" "}
                     <button
                         type="button"
                         onClick={() => openExternal("https://zernio.com/signup")}
                         className="text-indigo-400 hover:underline"
                     >
-                        Crear cuenta gratis ↗
+                        {t("createFreeAccount")}
                     </button>
                 </p>
 
                 {configs.map((c) => (
                     <div key={c.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm text-foreground truncate">{c.label || "Cuenta de Zernio"}</p>
-                            <p className="text-[11px] text-muted-foreground">{c.num_accounts}/2 redes usadas</p>
+                            <p className="text-sm text-foreground truncate">{c.label || t("defaultConfigLabel")}</p>
+                            <p className="text-[11px] text-muted-foreground">{t("networksUsed", { used: c.num_accounts })}</p>
                         </div>
                         <button
                             onClick={() => deleteConfig(c.id)}
                             className="text-muted-foreground hover:text-red-400 transition-colors"
-                            title="Eliminar esta cuenta de Zernio"
+                            title={t("deleteConfigTitle")}
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -209,13 +212,13 @@ export function TabCuentas() {
                         <input
                             value={newLabel}
                             onChange={(e) => setNewLabel(e.target.value)}
-                            placeholder="Etiqueta (p. ej. tu email de Zernio)"
+                            placeholder={t("labelPlaceholder")}
                             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground"
                         />
                         <input
                             value={newKey}
                             onChange={(e) => setNewKey(e.target.value)}
-                            placeholder="API key (sk_…)"
+                            placeholder={t("apiKeyPlaceholder")}
                             type="password"
                             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground font-mono"
                         />
@@ -226,25 +229,25 @@ export function TabCuentas() {
                                 className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-50"
                             >
                                 {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                                Añadir y validar
+                                {t("addAndValidate")}
                             </button>
                             {configs.length > 0 && (
                                 <button
                                     onClick={() => { setShowAdd(false); setNewKey(""); setNewLabel(""); }}
                                     className="text-[11px] text-muted-foreground hover:text-foreground"
                                 >
-                                    Cancelar
+                                    {tc("cancel")}
                                 </button>
                             )}
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            La key se valida contra Zernio y se guarda cifrada.{" "}
+                            {t("keyEncryptedNote")}{" "}
                             <button
                                 type="button"
                                 onClick={() => openExternal("https://zernio.com/dashboard/api-keys")}
                                 className="text-indigo-400 hover:underline"
                             >
-                                Conseguir API key ↗
+                                {t("getApiKey")}
                             </button>
                         </p>
                     </div>
@@ -255,7 +258,7 @@ export function TabCuentas() {
             {configs.length > 0 && (
                 <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-medium text-foreground">Conectar redes</h3>
+                        <h3 className="text-sm font-medium text-foreground">{t("connectNetworks")}</h3>
                         {configs.length > 1 && (
                             <select
                                 value={selectedConfigId}
@@ -264,7 +267,7 @@ export function TabCuentas() {
                             >
                                 {configs.map((c) => (
                                     <option key={c.id} value={c.id}>
-                                        {c.label || "Cuenta de Zernio"} ({c.num_accounts}/2)
+                                        {t("configOption", { label: c.label || t("defaultConfigLabel"), used: c.num_accounts })}
                                     </option>
                                 ))}
                             </select>
@@ -290,18 +293,18 @@ export function TabCuentas() {
                                                 </p>
                                                 <div className="flex items-center gap-1.5 mt-2">
                                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                                                    <span className="text-[11px] text-emerald-400">Conectado</span>
+                                                    <span className="text-[11px] text-emerald-400">{t("connected")}</span>
                                                     <button
                                                         onClick={() => disconnect(account.id)}
                                                         className="ml-auto text-[11px] text-muted-foreground hover:text-red-400 transition-colors"
                                                     >
-                                                        Desconectar
+                                                        {t("disconnect")}
                                                     </button>
                                                 </div>
                                             </>
                                         ) : (
                                             <>
-                                                <p className="text-xs text-muted-foreground mt-0.5">No conectado</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{t("notConnected")}</p>
                                                 <button
                                                     onClick={() => connect(p.id)}
                                                     disabled={isConnecting}
@@ -310,7 +313,7 @@ export function TabCuentas() {
                                                     {isConnecting
                                                         ? <Loader2 className="w-3 h-3 animate-spin" />
                                                         : <Plus className="w-3 h-3" />}
-                                                    Conectar
+                                                    {t("connect")}
                                                 </button>
                                             </>
                                         )}

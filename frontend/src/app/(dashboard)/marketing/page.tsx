@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Megaphone, Link2, PenSquare, CalendarClock, Sparkles, BarChart3 } from "lucide-react";
 import { TabCuentas } from "./_components/TabCuentas";
 import { TabCrear } from "./_components/TabCrear";
@@ -13,11 +14,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 
 const TABS = [
-    { key: "cuentas",     label: "Cuentas",     icon: Link2 },
-    { key: "crear",       label: "Crear post",  icon: PenSquare },
-    { key: "programados", label: "Programados",  icon: CalendarClock },
-    { key: "analitica",   label: "Analítica",   icon: BarChart3 },
-    { key: "plan-ia",     label: "Plan IA",     icon: Sparkles },
+    { key: "cuentas",     labelKey: "tabCuentas",     icon: Link2 },
+    { key: "crear",       labelKey: "tabCrear",       icon: PenSquare },
+    { key: "programados", labelKey: "tabProgramados", icon: CalendarClock },
+    { key: "analitica",   labelKey: "tabAnalitica",   icon: BarChart3 },
+    { key: "plan-ia",     labelKey: "tabPlanIa",      icon: Sparkles },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -25,6 +26,7 @@ type TabKey = typeof TABS[number]["key"];
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function MarketingPage() {
+    const t = useTranslations("marketing.page");
     const [tab, setTab] = useState<TabKey>("cuentas");
 
     return (
@@ -35,22 +37,22 @@ export default function MarketingPage() {
                     <Megaphone className="w-5 h-5 text-pink-400" />
                 </div>
                 <div>
-                    <h1 className="text-lg font-semibold text-foreground">Marketing &amp; Redes Sociales</h1>
-                    <p className="text-xs text-muted-foreground">Conecta tus redes, programa posts y genera contenido con IA</p>
+                    <h1 className="text-lg font-semibold text-foreground">{t("title")}</h1>
+                    <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
                 </div>
             </div>
 
             {/* Tabs */}
             <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
                 <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0">
-                    {TABS.map(({ key, label, icon: Icon }) => (
+                    {TABS.map(({ key, labelKey, icon: Icon }) => (
                         <TabsTrigger
                             key={key}
                             value={key}
                             className="-mb-px flex items-center gap-2 rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-pink-500 data-[state=active]:bg-transparent data-[state=active]:text-pink-400 data-[state=active]:shadow-none"
                         >
                             <Icon className="w-3.5 h-3.5" />
-                            {label}
+                            {t(labelKey)}
                         </TabsTrigger>
                     ))}
                 </TabsList>

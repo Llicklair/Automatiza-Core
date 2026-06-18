@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Clock, Trash2 } from "lucide-react";
 import { ScheduledPost } from "@/lib/api/marketing";
 import { PLATFORMS } from "./constants";
 
-const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const MONTHS = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
+const WEEKDAY_KEYS = ["weekMon", "weekTue", "weekWed", "weekThu", "weekFri", "weekSat", "weekSun"] as const;
+const MONTH_KEYS = [
+    "monthJan", "monthFeb", "monthMar", "monthApr", "monthMay", "monthJun",
+    "monthJul", "monthAug", "monthSep", "monthOct", "monthNov", "monthDec",
+] as const;
 
 function postDate(p: ScheduledPost): Date | null {
     const iso = p.scheduled_at ?? p.published_at;
@@ -30,6 +31,7 @@ export function PostsCalendar({
     posts: ScheduledPost[];
     onRemove: (id: string) => void;
 }) {
+    const t = useTranslations("marketing.calendar");
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth()); // 0-11
@@ -73,7 +75,7 @@ export function PostsCalendar({
                 <button onClick={goPrev} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
                     <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium text-foreground">{MONTHS[month]} {year}</span>
+                <span className="text-sm font-medium text-foreground">{t(MONTH_KEYS[month])} {year}</span>
                 <button onClick={goNext} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
                     <ChevronRight className="w-4 h-4" />
                 </button>
@@ -81,7 +83,7 @@ export function PostsCalendar({
 
             {/* Cabecera de días */}
             <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-muted-foreground">
-                {WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
+                {WEEKDAY_KEYS.map((w) => <div key={w}>{t(w)}</div>)}
             </div>
 
             {/* Cuadrícula */}
@@ -112,7 +114,7 @@ export function PostsCalendar({
                                     );
                                 })}
                                 {dayPosts.length > 2 && (
-                                    <div className="text-[9px] text-muted-foreground">+{dayPosts.length - 2} más</div>
+                                    <div className="text-[9px] text-muted-foreground">{t("morePosts", { count: dayPosts.length - 2 })}</div>
                                 )}
                             </div>
                         </button>
@@ -124,7 +126,7 @@ export function PostsCalendar({
             {selected && selectedPosts.length > 0 && (
                 <div className="space-y-2 border-t border-border pt-3">
                     <p className="text-xs text-muted-foreground">
-                        {selectedPosts.length} publicación(es)
+                        {t("postsCount", { count: selectedPosts.length })}
                     </p>
                     {selectedPosts.map((p) => {
                         const pc = plat(p.platform);

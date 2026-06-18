@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { X, Loader2, Save, ImageIcon, CalendarClock, Sparkles } from "lucide-react";
 import { marketingApi, ScheduledPost, UpdatePostInput } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
@@ -25,6 +26,8 @@ export function EditPostModal({
     onClose: () => void;
     onSaved: (updated: ScheduledPost) => void;
 }) {
+    const t = useTranslations("marketing.editPost");
+    const tc = useTranslations("marketing.common");
     const toast = useToastStore();
     const [content, setContent] = useState(post.content);
     const [imageUrl, setImageUrl] = useState(post.image_url ?? "");
@@ -37,20 +40,20 @@ export function EditPostModal({
 
     const generateImg = async () => {
         const prompt = content.trim();
-        if (!prompt) { toast.error("Escribe primero el texto del post para generar una imagen acorde."); return; }
+        if (!prompt) { toast.error(t("imagePromptFirst")); return; }
         setGenImg(true);
         try {
             const { url } = await marketingApi.agent.generateImage(prompt);
             setImageUrl(url);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "No se pudo generar la imagen.");
+            toast.error(err instanceof Error ? err.message : t("imageGenFail"));
         } finally {
             setGenImg(false);
         }
     };
 
     const save = async () => {
-        if (over) { toast.error(`El texto supera el límite de ${limit} caracteres para ${post.platform}.`); return; }
+        if (over) { toast.error(t("overLimit", { limit, platform: post.platform })); return; }
         setSaving(true);
         try {
             const data: UpdatePostInput = { content, image_url: imageUrl.trim() };
@@ -59,7 +62,7 @@ export function EditPostModal({
             onSaved(updated);
             onClose();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Error al guardar el post");
+            toast.error(err instanceof Error ? err.message : t("saveError"));
         } finally {
             setSaving(false);
         }
@@ -72,7 +75,7 @@ export function EditPostModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-foreground">Editar post · {post.platform}</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t("title", { platform: post.platform })}</h3>
                     <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
                         <X className="w-4 h-4" />
                     </button>
@@ -80,7 +83,7 @@ export function EditPostModal({
 
                 {/* Texto */}
                 <div>
-                    <label className="text-xs text-muted-foreground">Texto</label>
+                    <label className="text-xs text-muted-foreground">{t("textLabel")}</label>
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
@@ -95,31 +98,31 @@ export function EditPostModal({
                 {/* Imagen */}
                 <div>
                     <label className="text-xs text-muted-foreground flex items-center gap-1">
-                        <ImageIcon className="w-3.5 h-3.5" /> Imagen
+                        <ImageIcon className="w-3.5 h-3.5" /> {t("imageLabel")}
                     </label>
                     <div className="flex gap-2 mt-1">
                         <input
                             value={imageUrl}
                             onChange={(e) => setImageUrl(e.target.value)}
-                            placeholder="https://… o genera una con IA"
+                            placeholder={tc("imagePlaceholder")}
                             className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                         />
                         <button
                             type="button"
                             onClick={generateImg}
                             disabled={genImg || !content.trim()}
-                            title="Genera una imagen con IA a partir del texto del post"
+                            title={t("generateAiTitle")}
                             className="flex items-center gap-1.5 px-3 rounded-lg border border-purple-500/30 text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 disabled:opacity-50 text-xs whitespace-nowrap transition-colors"
                         >
                             {genImg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                            Generar IA
+                            {tc("generateAi")}
                         </button>
                     </div>
                     {imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                             src={imageUrl}
-                            alt="Vista previa"
+                            alt={tc("previewAlt")}
                             className="w-full h-32 object-cover rounded-lg mt-2"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                         />
@@ -129,7 +132,7 @@ export function EditPostModal({
                 {/* Fecha (calendario) */}
                 <div>
                     <label className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CalendarClock className="w-3.5 h-3.5" /> Fecha de publicación (asignar al calendario)
+                        <CalendarClock className="w-3.5 h-3.5" /> {t("dateLabel")}
                     </label>
                     <input
                         type="datetime-local"
@@ -137,25 +140,24 @@ export function EditPostModal({
                         onChange={(e) => setWhen(e.target.value)}
                         className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground mt-1 focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Al poner fecha, el post queda programado y se publica solo.</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{t("dateNote")}</p>
                     {when && (
                         <p className="text-[10px] text-amber-400/90 mt-0.5">
-                            ⚠️ La app debe seguir abierta a esa hora. Las imágenes IA caducan (~2h): para
-                            programar a futuro usa una URL de imagen fija.
+                            {t("dateWarning")}
                         </p>
                     )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">
                     <button onClick={onClose} className="text-sm px-3 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
-                        Cancelar
+                        {tc("cancel")}
                     </button>
                     <button
                         onClick={save}
                         disabled={saving || over}
                         className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-medium disabled:opacity-50 transition-colors"
                     >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {t("save")}
                     </button>
                 </div>
             </div>

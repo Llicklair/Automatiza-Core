@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useAnalitica } from "./_hooks/useAnalitica";
 import { ResumenSection } from "./_components/ResumenSection";
 import { VentasSection } from "./_components/VentasSection";
@@ -8,9 +9,7 @@ import { FinanzasSection } from "./_components/FinanzasSection";
 import { RrhhSection } from "./_components/RrhhSection";
 import { IaSection } from "./_components/IaSection";
 
-function monthOptions(): { value: string; label: string }[] {
-    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+function monthOptions(months: string[]): { value: string; label: string }[] {
     const opts: { value: string; label: string }[] = [];
     const now = new Date();
     let y = now.getFullYear();
@@ -25,6 +24,7 @@ function monthOptions(): { value: string; label: string }[] {
 }
 
 export default function AnaliticaPage() {
+    const t = useTranslations("analitica");
     const {
         loading, error, period, setPeriod, periodLabel,
         cashflow, isDemo,
@@ -40,19 +40,24 @@ export default function AnaliticaPage() {
         tasksDone, tasksFailed, tasksSuccessRate, tasksPending,
     } = useAnalitica();
 
-    const opts = monthOptions();
+    const months = [
+        t("months.january"), t("months.february"), t("months.march"), t("months.april"),
+        t("months.may"), t("months.june"), t("months.july"), t("months.august"),
+        t("months.september"), t("months.october"), t("months.november"), t("months.december"),
+    ];
+    const opts = monthOptions(months);
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Analítica</h1>
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("page.title")}</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Métricas financieras y operativas — {periodLabel || "cargando…"}
+                        {t("page.subtitle")} — {periodLabel || t("page.loading")}
                         {isDemo && !loading && (
                             <span className="ml-2 text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                                Sin datos en este periodo
+                                {t("page.noDataPeriod")}
                             </span>
                         )}
                     </p>
@@ -63,7 +68,7 @@ export default function AnaliticaPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <label className="text-xs text-muted-foreground font-medium">Periodo</label>
+                    <label className="text-xs text-muted-foreground font-medium">{t("page.period")}</label>
                     <select
                         value={period}
                         onChange={(e) => setPeriod(e.target.value)}
@@ -82,11 +87,10 @@ export default function AnaliticaPage() {
                 <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
                     <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                     <div className="flex-1 text-sm">
-                        <p className="font-medium text-amber-300">Hay movimientos bancarios DEMO en tu cuenta</p>
+                        <p className="font-medium text-amber-300">{t("demoBanner.title")}</p>
                         <p className="text-muted-foreground text-xs mt-1">
-                            Generados por el botón &quot;Sincronizar banco&quot; mientras no tengas PSD2 conectado.
-                            Las métricas de banca y reconciliación los excluyen automáticamente.
-                            Bórralos cuando quieras desde <code className="px-1 py-0.5 rounded bg-amber-500/10 text-amber-300">DELETE /api/v1/banking/transactions/demo</code>.
+                            {t("demoBanner.body")}{" "}
+                            {t("demoBanner.deleteFrom")} <code className="px-1 py-0.5 rounded bg-amber-500/10 text-amber-300">DELETE /api/v1/banking/transactions/demo</code>.
                         </p>
                     </div>
                 </div>

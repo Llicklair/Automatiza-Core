@@ -4,6 +4,7 @@ import {
     Zap, BrainCircuit, Clock, CheckCircle2, XCircle,
     Coins, Timer, Cpu, AlertCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { AnalyticsDashboard } from "@/lib/api";
 import { KpiCard } from "./KpiCard";
 import { SectionHeader } from "./SectionHeader";
@@ -23,32 +24,33 @@ export function IaSection({
     periodLabel, ia, iaDetalle,
     tasksDone, tasksFailed, tasksSuccessRate, tasksPending,
 }: IaSectionProps) {
+    const t = useTranslations("analitica");
     return (
         <section className="space-y-6">
-            <SectionHeader icon={BrainCircuit} title="IA / Agentes" subtitle="Ejecuciones, tokens, coste y errores" />
+            <SectionHeader icon={BrainCircuit} title={t("ia.title")} subtitle={t("ia.subtitle")} />
             {/* KPIs IA — fila 1: tasks */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <KpiCard
-                    label="Tasa de éxito"
+                    label={t("ia.kpiTasaExito")}
                     value={`${tasksSuccessRate}%`}
-                    sub="Fiabilidad global"
+                    sub={t("ia.kpiTasaExitoSub")}
                     icon={Zap}
                     color="indigo"
                 />
                 <KpiCard
-                    label="Completadas"
+                    label={t("ia.kpiCompletadas")}
                     value={`${tasksDone}`}
                     icon={CheckCircle2}
                     color="emerald"
                 />
                 <KpiCard
-                    label="En curso"
+                    label={t("ia.kpiEnCurso")}
                     value={`${tasksPending}`}
                     icon={Clock}
                     color="amber"
                 />
                 <KpiCard
-                    label="Fallidas"
+                    label={t("ia.kpiFallidas")}
                     value={`${tasksFailed}`}
                     icon={XCircle}
                     color="red"
@@ -58,23 +60,23 @@ export function IaSection({
             {/* KPIs IA — fila 2: cost & latency */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 <KpiCard
-                    label="Tokens consumidos"
+                    label={t("ia.kpiTokens")}
                     value={fmtInt(ia.tokens_total_periodo)}
-                    sub={`Periodo: ${periodLabel}`}
+                    sub={t("ia.kpiTokensSub", { period: periodLabel })}
                     icon={Cpu}
                     color="indigo"
                 />
                 <KpiCard
-                    label="Coste IA"
+                    label={t("ia.kpiCoste")}
                     value={`${fmt(ia.coste_total_periodo_eur)}€`}
-                    sub="Suma de llamadas LLM"
+                    sub={t("ia.kpiCosteSub")}
                     icon={Coins}
                     color="amber"
                 />
                 <KpiCard
-                    label="Latencia media"
+                    label={t("ia.kpiLatencia")}
                     value={`${ia.tiempo_medio_ms} ms`}
-                    sub="Por ejecución de agente"
+                    sub={t("ia.kpiLatenciaSub")}
                     icon={Timer}
                     color="emerald"
                 />
@@ -83,24 +85,24 @@ export function IaSection({
             {/* Desglose por agente */}
             <div className="bg-card border border-border rounded-2xl p-6">
                 <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                    <BrainCircuit className="w-4 h-4 text-primary" /> Rendimiento por agente
+                    <BrainCircuit className="w-4 h-4 text-primary" /> {t("ia.rendimientoTitle")}
                 </h2>
-                <p className="text-xs text-muted-foreground mb-5">Top 10 agentes más usados en {periodLabel}</p>
+                <p className="text-xs text-muted-foreground mb-5">{t("ia.rendimientoSubtitle", { period: periodLabel })}</p>
                 {iaDetalle.por_agente.length === 0 ? (
                     <div className="h-[140px] flex items-center justify-center text-sm text-muted-foreground">
-                        Sin ejecuciones de agentes en este periodo
+                        {t("ia.rendimientoEmpty")}
                     </div>
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-border">
                         <table className="w-full text-xs">
                             <thead className="bg-muted">
                                 <tr>
-                                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Agente</th>
-                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">Ejec.</th>
-                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">Éxito</th>
-                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">Tokens (in/out)</th>
-                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">Coste</th>
-                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">Latencia</th>
+                                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">{t("ia.colAgente")}</th>
+                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ia.colEjec")}</th>
+                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ia.colExito")}</th>
+                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ia.colTokens")}</th>
+                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ia.colCoste")}</th>
+                                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ia.colLatencia")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -127,12 +129,12 @@ export function IaSection({
             {/* Top errores */}
             <div className="bg-card border border-border rounded-2xl p-6">
                 <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-400" /> Errores más frecuentes
+                    <AlertCircle className="w-4 h-4 text-red-400" /> {t("ia.erroresTitle")}
                 </h2>
-                <p className="text-xs text-muted-foreground mb-5">Tipos de error en ejecuciones fallidas</p>
+                <p className="text-xs text-muted-foreground mb-5">{t("ia.erroresSubtitle")}</p>
                 {iaDetalle.top_errores.length === 0 ? (
                     <div className="h-[100px] flex items-center justify-center text-sm text-muted-foreground">
-                        Sin errores registrados
+                        {t("ia.erroresEmpty")}
                     </div>
                 ) : (
                     <div className="space-y-3">
