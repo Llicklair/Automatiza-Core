@@ -3423,5 +3423,242 @@
       "analizando": "Analyzing invoices for the quarter…",
       "sinRiesgos": "No risks detected. The quarter appears ready to file."
     }
+  },
+  "correos": {
+    "page": {
+      "title": "Email",
+      "subtitle": "Send emails or instruct the email agent",
+      "connected": "Connected",
+      "noCredentials": "No credentials",
+      "configWarning": "No email credentials configured. Set up Gmail, Outlook or SMTP in <strong>Settings › Integrations</strong>. Sending will run in demo mode."
+    },
+    "tabs": {
+      "inbox": "Inbox",
+      "compose": "Compose",
+      "ai": "AI Instruction"
+    },
+    "inbox": {
+      "gmailLabel": "Gmail inbox",
+      "outlookLabel": "Outlook inbox",
+      "noProviderShort": "No provider configured",
+      "loading": "Loading inbox…",
+      "refresh": "Refresh",
+      "noProviderTitle": "No email provider configured",
+      "noProviderHint": "Connect Gmail or Outlook in <strong>Settings › Messaging</strong> to see your inbox here.",
+      "empty": "Empty inbox",
+      "unreadAria": "Unread",
+      "noSender": "(no sender)",
+      "noSubject": "(no subject)"
+    },
+    "categories": {
+      "urgente": "Urgent",
+      "factura": "Invoice",
+      "consulta": "Inquiry",
+      "proveedor": "Supplier",
+      "rrhh": "HR",
+      "marketing": "Marketing",
+      "spam": "Spam",
+      "otro": "Other"
+    },
+    "compose": {
+      "to": "To",
+      "toPlaceholder": "recipient@example.com",
+      "subject": "Subject",
+      "subjectPlaceholder": "Email subject",
+      "message": "Message",
+      "messagePlaceholder": "Write the email content...",
+      "attachments": "Attachments",
+      "attachFile": "Attach file",
+      "fromDrive": "From Drive",
+      "removeAttachment": "Remove attachment",
+      "send": "Send email"
+    },
+    "instruct": {
+      "help": "Tell the agent what to do with email in natural language. Examples: “Show me unread emails”, “Send a summary of pending invoices to accounting@company.com”.",
+      "placeholder": "Instruction for the email agent...",
+      "run": "Run instruction"
+    },
+    "drive": {
+      "title": "Attach from Google Drive",
+      "close": "Close",
+      "searchPlaceholder": "Search file… (Enter to search)",
+      "loading": "Loading…",
+      "noFiles": "No files"
+    },
+    "detail": {
+      "loading": "Loading…",
+      "noSubject": "(no subject)",
+      "from": "From:",
+      "to": "To:",
+      "close": "Close",
+      "draftHint": "Generate a draft and review it before sending.",
+      "drafting": "Drafting…",
+      "draftAi": "AI Draft"
+    },
+    "errors": {
+      "draftFailed": "Could not draft the reply",
+      "inboxLoad": "Error loading the inbox",
+      "messageLoad": "Error loading the message",
+      "sendFailed": "Error sending",
+      "uploadFailed": "Error uploading the file",
+      "driveList": "Error listing Drive",
+      "driveImport": "Error importing from Drive",
+      "instructFailed": "Error processing the instruction"
+    }
+  },
+  "portal": {
+    "page": {
+      "title": "My portal",
+      "loading": "Loading…",
+      "notLinkedTitle": "Your account is not linked to any employee",
+      "notLinkedHint": "Ask your administrator to add your email ({email}) to your employee record.",
+      "selectEmployeeTitle": "Select an employee to preview",
+      "selectEmployeeHint": "Use the selector above to view My portal for anyone on your staff.",
+      "tabFicha": "My record",
+      "tabNominas": "My payslips",
+      "tabVacaciones": "My absences",
+      "tabGastos": "My expenses"
+    },
+    "header": {
+      "subtitleEmployee": "Employee self-service",
+      "intro": "Your personal area. Here you can check your record, download your payslips, request time off and report expenses for reimbursement. Everything you submit is logged and goes through HR approval.",
+      "adminViewTitle": "Admin view",
+      "adminViewHint": "As an admin you have no record here. Select an employee to preview My portal in read-only mode.",
+      "ownPortalOption": "— My own portal —",
+      "readOnlyNotice": "You are viewing another employee's My portal in <strong>read-only mode</strong>. You cannot request time off or expenses on their behalf.",
+      "workingSince": "Working since {time}",
+      "noActiveClock": "You have no active clock-in",
+      "remindClockOut": "Remember to clock out when you finish your shift.",
+      "clockInHint": "Click to record your clock-in when you start working.",
+      "clockOut": "Clock out",
+      "clockIn": "Clock in",
+      "clockInError": "Could not clock in",
+      "clockOutError": "Could not clock out"
+    },
+    "ficha": {
+      "intro": "Personal and work details from your record in HR. If anything is incorrect, let the administrator know.",
+      "fullName": "Full name",
+      "nif": "Tax ID",
+      "email": "Email",
+      "department": "Department",
+      "role": "Role",
+      "baseSalary": "Base salary",
+      "joinDate": "Join date",
+      "irpf": "Income tax",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusLeave": "On leave",
+      "statusInactive": "Inactive",
+      "scheduleTitle": "Set schedule",
+      "scheduleHint": "Your weekly schedule according to the record HR configured.",
+      "downloadPdf": "Download PDF",
+      "colDay": "Day",
+      "colClockIn": "Clock in",
+      "colClockOut": "Clock out",
+      "colStatus": "Status",
+      "dayOff": "Day off",
+      "slotActive": "Active",
+      "slotInactive": "Inactive",
+      "noSchedule": "Your record does not have a schedule configured yet. Let HR know so they can add it."
+    },
+    "nominas": {
+      "intro": "History of payslips issued in your name. Click the download icon to save the PDF.",
+      "emptyTitle": "You have no payslips generated yet",
+      "emptyHint": "Your payslip will appear here once HR issues it and approves the month's calculation.",
+      "issued": "Issued: {date}",
+      "net": "net",
+      "downloadPdf": "Download PDF"
+    },
+    "vacaciones": {
+      "intro": "Request time off, sick leave or other absences. Each request goes through approval and you can check its status here at any time.",
+      "newRequest": "New request",
+      "emptyTitle": "You have no absence requests",
+      "emptyHint": "Click <strong>New request</strong> above to request time off, sick leave or a leave of absence.",
+      "colType": "Type",
+      "colFrom": "From",
+      "colTo": "To",
+      "colDays": "Days",
+      "colStatus": "Status",
+      "colNotes": "Notes",
+      "days": "{count}d"
+    },
+    "gastos": {
+      "intro": "Record professional expenses for reimbursement (travel, meals, supplies…). Attach the receipt and HR will approve it to include it in your next payslip.",
+      "newExpense": "New expense",
+      "emptyTitle": "You have no expenses recorded",
+      "emptyHint": "Click <strong>New expense</strong> above to report a professional expense and upload the receipt.",
+      "colCategory": "Category",
+      "colDescription": "Description",
+      "colDate": "Date",
+      "colAmount": "Amount",
+      "colStatus": "Status",
+      "colReceipt": "Receipt",
+      "view": "View",
+      "attach": "Attach"
+    },
+    "leaveModal": {
+      "title": "Absence request",
+      "type": "Type *",
+      "startDate": "Start date *",
+      "endDate": "End date *",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional…",
+      "submitting": "Submitting…",
+      "missingDates": "Fill in the dates.",
+      "submitError": "Error submitting."
+    },
+    "expenseModal": {
+      "title": "New expense",
+      "amount": "Amount (€) *",
+      "amountPlaceholder": "0.00",
+      "date": "Date *",
+      "category": "Category *",
+      "description": "Description *",
+      "descriptionPlaceholder": "E.g. Trip to client",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional…",
+      "submitting": "Submitting…",
+      "missingFields": "Complete the required fields.",
+      "submitError": "Error submitting the expense."
+    },
+    "payrollStatus": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "paid": "Paid"
+    },
+    "leaveStatus": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "leaveTypes": {
+      "vacaciones": "Vacation",
+      "baja_medica": "Sick leave",
+      "excedencia": "Leave of absence",
+      "otros": "Other"
+    },
+    "expenseCategories": {
+      "viaje": "Travel / Transport",
+      "dieta": "Meals / Subsistence",
+      "alojamiento": "Lodging",
+      "material": "Office supplies",
+      "formacion": "Training",
+      "otro": "Other"
+    },
+    "expenseStatus": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "reimbursed": "Reimbursed"
+    },
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { PortalData, Expense, Employee } from "@/lib/api";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -21,6 +22,7 @@ export interface ExpenseFormState {
 }
 
 export function usePortal() {
+    const t = useTranslations("portal");
     const role = useUserRole();
     const isAdmin = role === "admin";
 
@@ -95,7 +97,7 @@ export function usePortal() {
             await api.portal.clockIn();
             await load();
         } catch (e) {
-            setClockError(e instanceof Error ? e.message : "No se pudo fichar la entrada");
+            setClockError(e instanceof Error ? e.message : t("header.clockInError"));
         } finally {
             setClockBusy(false);
         }
@@ -108,7 +110,7 @@ export function usePortal() {
             await api.portal.clockOut();
             await load();
         } catch (e) {
-            setClockError(e instanceof Error ? e.message : "No se pudo fichar la salida");
+            setClockError(e instanceof Error ? e.message : t("header.clockOutError"));
         } finally {
             setClockBusy(false);
         }
@@ -118,7 +120,7 @@ export function usePortal() {
 
     const handleSubmitExpense = async () => {
         if (!expenseForm.amount || !expenseForm.description || !expenseForm.date) {
-            setExpenseError("Completa los campos obligatorios."); return;
+            setExpenseError(t("expenseModal.missingFields")); return;
         }
         if (!emp) return;
         setExpenseSaving(true); setExpenseError(null);
@@ -134,7 +136,7 @@ export function usePortal() {
             setShowExpense(false);
             setExpenseForm({ amount: "", category: "viaje", description: "", date: new Date().toISOString().slice(0, 10), notes: "" });
             await load();
-        } catch { setExpenseError("Error al enviar el gasto."); }
+        } catch { setExpenseError(t("expenseModal.submitError")); }
         finally { setExpenseSaving(false); }
     };
 
@@ -148,14 +150,14 @@ export function usePortal() {
     };
 
     const handleSubmitLeave = async () => {
-        if (!leaveForm.start_date || !leaveForm.end_date) { setLeaveError("Rellena las fechas."); return; }
+        if (!leaveForm.start_date || !leaveForm.end_date) { setLeaveError(t("leaveModal.missingDates")); return; }
         setSaving(true); setLeaveError(null);
         try {
             await api.portal.submitLeave(leaveForm);
             setShowLeave(false);
             setLeaveForm({ leave_type: "vacaciones", start_date: "", end_date: "", notes: "" });
             await load();
-        } catch { setLeaveError("Error al enviar."); }
+        } catch { setLeaveError(t("leaveModal.submitError")); }
         finally { setSaving(false); }
     };
 

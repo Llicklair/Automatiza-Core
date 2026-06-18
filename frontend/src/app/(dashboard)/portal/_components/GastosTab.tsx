@@ -1,9 +1,10 @@
 "use client";
 import { Receipt, Plus, Download, Loader2, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Expense } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { EXPENSE_CATEGORIES, EXPENSE_STATUS_LABEL, EXPENSE_STATUS_STYLE, fmt } from "./constants";
+import { EXPENSE_STATUS_STYLE, fmt } from "./constants";
 
 interface GastosTabProps {
     myExpenses: Expense[];
@@ -14,23 +15,23 @@ interface GastosTabProps {
 }
 
 export function GastosTab({ myExpenses, readOnly, uploadingReceiptId, onNewExpense, onUploadReceipt }: GastosTabProps) {
+    const t = useTranslations("portal");
     return (
         <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
                 <p className="text-xs text-muted-foreground max-w-xl">
-                    Registra gastos profesionales para reembolso (viajes, dietas, material…).
-                    Adjunta el recibo y RRHH lo aprobará para incluirlo en tu próxima nómina.
+                    {t("gastos.intro")}
                 </p>
                 <Button size="sm" className="gap-2 shrink-0" disabled={readOnly} onClick={onNewExpense}>
-                    <Plus className="w-4 h-4" /> Nuevo gasto
+                    <Plus className="w-4 h-4" /> {t("gastos.newExpense")}
                 </Button>
             </div>
             {myExpenses.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
                     <Receipt className="w-8 h-8 opacity-30" />
-                    <p className="text-sm">No tienes gastos registrados</p>
+                    <p className="text-sm">{t("gastos.emptyTitle")}</p>
                     <p className="text-xs max-w-xs text-center">
-                        Pulsa <strong>Nuevo gasto</strong> arriba para reportar un gasto profesional y subir el recibo.
+                        {t.rich("gastos.emptyHint", { strong: (chunks) => <strong>{chunks}</strong> })}
                     </p>
                 </div>
             ) : (
@@ -38,19 +39,19 @@ export function GastosTab({ myExpenses, readOnly, uploadingReceiptId, onNewExpen
                     <table className="w-full text-sm">
                         <thead className="bg-muted/30 text-muted-foreground">
                             <tr>
-                                <th className="text-left px-4 py-3 font-medium">Categoría</th>
-                                <th className="text-left px-4 py-3 font-medium">Descripción</th>
-                                <th className="text-left px-4 py-3 font-medium">Fecha</th>
-                                <th className="text-right px-4 py-3 font-medium">Importe</th>
-                                <th className="text-left px-4 py-3 font-medium">Estado</th>
-                                <th className="text-left px-4 py-3 font-medium">Recibo</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("gastos.colCategory")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("gastos.colDescription")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("gastos.colDate")}</th>
+                                <th className="text-right px-4 py-3 font-medium">{t("gastos.colAmount")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("gastos.colStatus")}</th>
+                                <th className="text-left px-4 py-3 font-medium">{t("gastos.colReceipt")}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                             {myExpenses.map((exp) => (
                                 <tr key={exp.id} className="bg-card hover:bg-muted/20 transition-colors">
                                     <td className="px-4 py-3 text-muted-foreground capitalize">
-                                        {EXPENSE_CATEGORIES.find((c) => c.value === exp.category)?.label ?? exp.category}
+                                        {t.has(`expenseCategories.${exp.category}`) ? t(`expenseCategories.${exp.category}`) : exp.category}
                                     </td>
                                     <td className="px-4 py-3 text-foreground max-w-[180px] truncate" title={exp.description}>
                                         {exp.description}
@@ -61,7 +62,7 @@ export function GastosTab({ myExpenses, readOnly, uploadingReceiptId, onNewExpen
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${EXPENSE_STATUS_STYLE[exp.status] ?? ""}`}>
-                                            {EXPENSE_STATUS_LABEL[exp.status] ?? exp.status}
+                                            {t.has(`expenseStatus.${exp.status}`) ? t(`expenseStatus.${exp.status}`) : exp.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
@@ -70,14 +71,14 @@ export function GastosTab({ myExpenses, readOnly, uploadingReceiptId, onNewExpen
                                                 onClick={() => api.hr.expenses.downloadReceipt(exp.id, exp.receipt_filename!)}
                                                 className="flex items-center gap-1 text-xs text-primary hover:underline"
                                             >
-                                                <Download className="w-3 h-3" /> Ver
+                                                <Download className="w-3 h-3" /> {t("gastos.view")}
                                             </button>
                                         ) : exp.status === "pending" && !readOnly ? (
                                             <label className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
                                                 {uploadingReceiptId === exp.id
                                                     ? <Loader2 className="w-3 h-3 animate-spin" />
                                                     : <Upload className="w-3 h-3" />}
-                                                <span>Adjuntar</span>
+                                                <span>{t("gastos.attach")}</span>
                                                 <input
                                                     type="file"
                                                     className="hidden"
