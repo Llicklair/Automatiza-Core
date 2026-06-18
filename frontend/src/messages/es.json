@@ -1579,7 +1579,7 @@
     },
     "idioma": {
       "activeLanguage": "Idioma activo",
-      "bannerLanguages": "Catalán, euskera, gallego e inglés",
+      "bannerLanguages": "Catalán, euskera y gallego",
       "bannerRest": "estarán disponibles próximamente, cuando finalice la traducción profesional de la interfaz.",
       "description": "Elige el idioma con el que se muestran los menús, formularios y mensajes. La preferencia se guarda en este navegador.",
       "reloadNote": "Al cambiar el idioma la página se recarga para aplicar las traducciones SSR.",

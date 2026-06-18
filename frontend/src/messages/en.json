@@ -1579,7 +1579,7 @@
     },
     "idioma": {
       "activeLanguage": "Active language",
-      "bannerLanguages": "Catalan, Basque, Galician and English",
+      "bannerLanguages": "Catalan, Basque and Galician",
       "bannerRest": "will be available soon, once the professional translation of the interface is complete.",
       "description": "Choose the language used to display menus, forms and messages. The preference is saved in this browser.",
       "reloadNote": "When you change the language the page reloads to apply the SSR translations.",
