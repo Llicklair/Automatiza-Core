@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Megaphone, Sparkles, Loader2, Send, Clock, AlertCircle, Trash2 } from "lucide-react";
 import { marketingApi, ScheduledPost } from "@/lib/api/marketing";
 import { PLATFORM_ICONS } from "@/components/ui/social-icons";
@@ -11,6 +12,8 @@ import { PLATFORMS } from "./constants";
 // ── Tab: Plan IA ───────────────────────────────────────────────────────────────
 
 export function TabPlanIA() {
+    const t = useTranslations("marketing.planIa");
+    const tc = useTranslations("marketing.common");
     const toast = useToastStore();
     const [prompt, setPrompt] = useState("");
     const [generating, setGenerating] = useState(false);
@@ -36,7 +39,7 @@ export function TabPlanIA() {
                 setDrafts(all.filter((p) => resp.post_ids.includes(p.id)));
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Error al generar el plan");
+            setError(err instanceof Error ? err.message : t("generateError"));
         } finally {
             setGenerating(false);
         }
@@ -48,7 +51,7 @@ export function TabPlanIA() {
             const updated = await marketingApi.posts.publish(id);
             setDrafts((prev) => prev.map((p) => (p.id === id ? updated : p)));
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Error al publicar";
+            const msg = err instanceof Error ? err.message : t("publishError");
             setDrafts((prev) =>
                 prev.map((p) => (p.id === id ? { ...p, status: "failed" as const, error_message: msg } : p))
             );
@@ -72,7 +75,7 @@ export function TabPlanIA() {
             );
         } catch (err) {
             logError("marketing/publish-all", err);
-            toast.error(err instanceof Error ? err.message : "No se pudieron publicar los borradores.");
+            toast.error(err instanceof Error ? err.message : t("publishAllFail"));
         }
         setPublishingAll(false);
     };
@@ -83,7 +86,7 @@ export function TabPlanIA() {
             setDrafts((prev) => prev.filter((p) => p.id !== id));
         } catch (err) {
             logError("marketing/remove-post", err);
-            toast.error(err instanceof Error ? err.message : "No se pudo eliminar el borrador.");
+            toast.error(err instanceof Error ? err.message : t("removeFail"));
         }
     };
 
@@ -93,13 +96,13 @@ export function TabPlanIA() {
         <div className="space-y-4 max-w-3xl">
             {/* Input */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-                <label className="text-xs font-medium text-muted-foreground">Describe el plan de contenidos que necesitas</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("describePlan")}</label>
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Ej: Plan semanal para el lanzamiento del producto X con posts en Instagram y Facebook…"
+                        placeholder={t("promptPlaceholder")}
                         className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-pink-500/50"
                         onKeyDown={(e) => e.key === "Enter" && !generating && generate()}
                         disabled={generating}
@@ -110,12 +113,12 @@ export function TabPlanIA() {
                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white text-sm font-medium transition-colors whitespace-nowrap"
                     >
                         {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {generating ? "Generando…" : "Generar plan"}
+                        {generating ? t("generating") : t("generatePlan")}
                     </button>
                 </div>
                 {generating && (
                     <p className="text-xs text-muted-foreground animate-pulse">
-                        La IA analiza tu catálogo, busca imágenes y crea los borradores…
+                        {t("analyzing")}
                     </p>
                 )}
             </div>
@@ -138,7 +141,7 @@ export function TabPlanIA() {
                             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                         >
                             {publishingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Publicar todo ahora ({pendingCount})
+                            {t("publishAll", { count: pendingCount })}
                         </button>
                     )}
                 </div>
@@ -169,12 +172,12 @@ export function TabPlanIA() {
                                         <span className="text-xs font-medium text-foreground">{platCfg?.name ?? post.platform}</span>
                                         {isPublished && (
                                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                Publicado
+                                                {t("published")}
                                             </span>
                                         )}
                                         {isFailed && (
                                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                                                Error
+                                                {t("failed")}
                                             </span>
                                         )}
                                     </div>
@@ -203,7 +206,7 @@ export function TabPlanIA() {
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                         src={post.image_url}
-                                        alt="Vista previa"
+                                        alt={tc("previewAlt")}
                                         className="w-full h-36 object-cover rounded-lg"
                                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                                     />
@@ -226,12 +229,12 @@ export function TabPlanIA() {
                                         className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-pink-600/20 hover:bg-pink-600/40 text-pink-400 border border-pink-500/20 transition-colors disabled:opacity-50"
                                     >
                                         {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                                        Publicar ahora
+                                        {tc("publishNow")}
                                     </button>
                                 )}
 
                                 {isPublished && post.platform_post_id && (
-                                    <span className="text-[10px] text-emerald-400/60">ID: {post.platform_post_id}</span>
+                                    <span className="text-[10px] text-emerald-400/60">{t("idLabel", { id: post.platform_post_id })}</span>
                                 )}
                             </div>
                         );
@@ -245,9 +248,9 @@ export function TabPlanIA() {
                     <div className="p-4 rounded-2xl bg-pink-500/5 border border-pink-500/10 mb-4">
                         <Sparkles className="w-8 h-8 text-pink-500/40" />
                     </div>
-                    <p className="text-sm text-muted-foreground mb-1">Sin planes generados aún</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t("emptyTitle")}</p>
                     <p className="text-xs text-muted-foreground">
-                        La IA analiza tu catálogo, busca imágenes y crea borradores listos para publicar
+                        {t("emptySubtitle")}
                     </p>
                 </div>
             )}

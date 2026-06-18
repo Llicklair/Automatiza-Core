@@ -3,6 +3,7 @@
 import {
     TrendingDown, Clock, Activity, Wallet, Timer,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { AnalyticsDashboard } from "@/lib/api";
 import { KpiCard } from "./KpiCard";
 import { SectionHeader } from "./SectionHeader";
@@ -26,43 +27,44 @@ export function FinanzasSection({
     beneficioPeriodo, margenPeriodo, gastosPeriodo, recibidasCount,
     importePendienteCobro, importePendientePago,
 }: FinanzasSectionProps) {
+    const t = useTranslations("analitica");
     return (
         <section className="space-y-6">
-            <SectionHeader icon={Wallet} title="Finanzas" subtitle="Cobros, pagos, banca y rotación de caja" />
+            <SectionHeader icon={Wallet} title={t("finanzas.title")} subtitle={t("finanzas.subtitle")} />
             {/* KPIs finanzas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
                 <KpiCard
-                    label="Beneficio del periodo"
+                    label={t("finanzas.kpiBeneficio")}
                     value={`${fmt(beneficioPeriodo)}€`}
-                    sub={`Margen: ${margenPeriodo}%`}
+                    sub={t("finanzas.kpiBeneficioSub", { margin: margenPeriodo })}
                     icon={Activity}
                     color="indigo"
                 />
                 <KpiCard
-                    label={`Gastos · ${periodLabel}`}
+                    label={t("finanzas.kpiGastos", { period: periodLabel })}
                     value={`${fmt(gastosPeriodo)}€`}
-                    sub={`${recibidasCount} facturas recibidas`}
+                    sub={t("finanzas.kpiGastosSub", { count: recibidasCount })}
                     icon={TrendingDown}
                     color="red"
                 />
                 <KpiCard
-                    label="Saldo bancario"
+                    label={t("finanzas.kpiSaldo")}
                     value={`${fmt(banca.saldo_actual)}€`}
-                    sub={`${banca.transacciones_periodo} movimientos`}
+                    sub={t("finanzas.kpiSaldoSub", { count: banca.transacciones_periodo })}
                     icon={Wallet}
                     color="emerald"
                 />
                 <KpiCard
-                    label="DSO (días de cobro)"
+                    label={t("finanzas.kpiDso")}
                     value={`${cobrosPagos.dso_dias}`}
-                    sub={`${fmt(importePendienteCobro)}€ pendientes`}
+                    sub={t("finanzas.kpiDsoSub", { amount: fmt(importePendienteCobro) })}
                     icon={Clock}
                     color="amber"
                 />
                 <KpiCard
-                    label="DPO (días de pago)"
+                    label={t("finanzas.kpiDpo")}
                     value={`${cobrosPagos.dpo_dias}`}
-                    sub={`${fmt(importePendientePago)}€ por pagar`}
+                    sub={t("finanzas.kpiDpoSub", { amount: fmt(importePendientePago) })}
                     icon={Timer}
                     color="indigo"
                 />
@@ -71,14 +73,14 @@ export function FinanzasSection({
             {/* Aging cobros y pagos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <AgingTable
-                    title="Aging de cobros"
-                    subtitle="Facturas emitidas pendientes por antigüedad"
+                    title={t("finanzas.agingCobrosTitle")}
+                    subtitle={t("finanzas.agingCobrosSubtitle")}
                     buckets={cobrosPagos.aging_cobros}
                     color="emerald"
                 />
                 <AgingTable
-                    title="Aging de pagos"
-                    subtitle="Facturas recibidas pendientes por antigüedad"
+                    title={t("finanzas.agingPagosTitle")}
+                    subtitle={t("finanzas.agingPagosSubtitle")}
                     buckets={cobrosPagos.aging_pagos}
                     color="red"
                 />
@@ -87,35 +89,35 @@ export function FinanzasSection({
             {/* Banca */}
             <div className="bg-card border border-border rounded-2xl p-6">
                 <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-primary" /> Banca
+                    <Wallet className="w-4 h-4 text-primary" /> {t("finanzas.bancaTitle")}
                 </h2>
                 <p className="text-xs text-muted-foreground mb-5">
-                    Movimientos reales de {periodLabel} (excluye demo)
+                    {t("finanzas.bancaSubtitle", { period: periodLabel })}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Saldo actual</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("finanzas.bancaSaldo")}</p>
                         <p className="text-2xl font-bold text-foreground mt-1">{fmt(banca.saldo_actual)}€</p>
                     </div>
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Movimientos</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("finanzas.bancaMovimientos")}</p>
                         <p className="text-2xl font-bold text-foreground mt-1">{fmtInt(banca.transacciones_periodo)}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-emerald-400 uppercase tracking-wide">Entradas</p>
+                        <p className="text-xs text-emerald-400 uppercase tracking-wide">{t("finanzas.bancaEntradas")}</p>
                         <p className="text-2xl font-semibold text-emerald-400 mt-1">+{fmt(banca.entradas_periodo)}€</p>
                     </div>
                     <div>
-                        <p className="text-xs text-red-400 uppercase tracking-wide">Salidas</p>
+                        <p className="text-xs text-red-400 uppercase tracking-wide">{t("finanzas.bancaSalidas")}</p>
                         <p className="text-2xl font-semibold text-red-400 mt-1">−{fmt(banca.salidas_periodo)}€</p>
                     </div>
                 </div>
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-border text-xs">
-                    <span className="text-muted-foreground">Reconciliación</span>
+                    <span className="text-muted-foreground">{t("finanzas.bancaReconciliacion")}</span>
                     <span className="text-foreground font-medium">
-                        {banca.reconciliadas} / {banca.transacciones_periodo} conciliadas
+                        {t("finanzas.bancaConciliadas", { reconciled: banca.reconciliadas, total: banca.transacciones_periodo })}
                         {banca.pendientes_conciliar > 0 && (
-                            <span className="text-amber-400 ml-2">({banca.pendientes_conciliar} pendientes)</span>
+                            <span className="text-amber-400 ml-2">{t("finanzas.bancaPendientes", { count: banca.pendientes_conciliar })}</span>
                         )}
                     </span>
                 </div>

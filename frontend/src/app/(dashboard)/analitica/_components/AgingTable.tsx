@@ -1,15 +1,18 @@
 "use client";
 
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { fmt } from "./utils";
 
-const AGING_LABELS: { key: keyof import("@/lib/api").AnalyticsAgingBuckets; label: string; bad?: boolean }[] = [
-    { key: "vencido_90", label: "Vencido > 90 d", bad: true },
-    { key: "vencido_60_90", label: "Vencido 60-90 d", bad: true },
-    { key: "vencido_30_60", label: "Vencido 30-60 d", bad: true },
-    { key: "vencido_0_30", label: "Vencido 0-30 d", bad: true },
-    { key: "vence_0_30", label: "Vence en 0-30 d" },
-    { key: "vence_30plus", label: "Vence en > 30 d" },
+type AgingLabel = { key: keyof import("@/lib/api").AnalyticsAgingBuckets; label: string; bad?: boolean };
+
+const buildAgingLabels = (t: ReturnType<typeof useTranslations>): AgingLabel[] => [
+    { key: "vencido_90", label: t("aging.overdue90"), bad: true },
+    { key: "vencido_60_90", label: t("aging.overdue6090"), bad: true },
+    { key: "vencido_30_60", label: t("aging.overdue3060"), bad: true },
+    { key: "vencido_0_30", label: t("aging.overdue030"), bad: true },
+    { key: "vence_0_30", label: t("aging.due030") },
+    { key: "vence_30plus", label: t("aging.due30plus") },
 ];
 
 export function AgingTable({
@@ -19,6 +22,8 @@ export function AgingTable({
     buckets: import("@/lib/api").AnalyticsAgingBuckets;
     color: "emerald" | "red";
 }) {
+    const t = useTranslations("analitica");
+    const AGING_LABELS = buildAgingLabels(t);
     const total = AGING_LABELS.reduce((s, b) => s + buckets[b.key].importe, 0);
     const empty = total === 0;
     const Icon = color === "emerald" ? TrendingUp : TrendingDown;
@@ -30,7 +35,7 @@ export function AgingTable({
             <p className="text-xs text-muted-foreground mb-5">{subtitle}</p>
             {empty ? (
                 <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
-                    Sin importes pendientes
+                    {t("aging.emptyAmounts")}
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -53,7 +58,7 @@ export function AgingTable({
                         );
                     })}
                     <div className="pt-3 mt-3 border-t border-border flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Total pendiente</span>
+                        <span className="text-muted-foreground">{t("aging.totalPending")}</span>
                         <span className="text-foreground font-bold">{fmt(total)}€</span>
                     </div>
                 </div>
