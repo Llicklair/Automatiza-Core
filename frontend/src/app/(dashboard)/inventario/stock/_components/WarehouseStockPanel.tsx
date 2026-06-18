@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Warehouse as WarehouseIcon, ArrowLeftRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { warehouses as whApi, type Warehouse, type WarehouseStock } from "@/lib/api/warehouses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function WarehouseStockPanel({ productId, onChanged }: Props) {
+    const t = useTranslations("inventario");
     const [stock, setStock] = useState<WarehouseStock[]>([]);
     const [whs, setWhs] = useState<Warehouse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
             setWhs(w.filter(x => x.is_active));
             setError(null);
         } catch (e: any) {
-            setError(e?.message || "No se pudo cargar el stock por almacén");
+            setError(e?.message || t("warehouseStock.loadError"));
         }
         setLoading(false);
     };
@@ -44,7 +46,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
     const doTransfer = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!from || !to || from === to || qty <= 0) {
-            setError("Elige origen y destino distintos y una cantidad válida.");
+            setError(t("warehouseStock.transferValidation"));
             return;
         }
         setSaving(true);
@@ -54,7 +56,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
             await load();
             onChanged?.();
         } catch (e: any) {
-            setError(e?.message || "No se pudo transferir");
+            setError(e?.message || t("warehouseStock.transferError"));
         }
         setSaving(false);
     };
@@ -65,11 +67,11 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between">
                 <h4 className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <WarehouseIcon className="w-4 h-4 text-muted-foreground" /> Stock por almacén
+                    <WarehouseIcon className="w-4 h-4 text-muted-foreground" /> {t("warehouseStock.title")}
                 </h4>
                 {canTransfer && (
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowForm(s => !s)}>
-                        <ArrowLeftRight className="mr-1 w-3 h-3" /> Transferir
+                        <ArrowLeftRight className="mr-1 w-3 h-3" /> {t("warehouseStock.transfer")}
                     </Button>
                 )}
             </div>
@@ -79,7 +81,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
             {showForm && (
                 <form onSubmit={doTransfer} className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end rounded-md border border-border/60 p-3">
                     <div>
-                        <Label className="text-xs">Desde</Label>
+                        <Label className="text-xs">{t("warehouseStock.from")}</Label>
                         <select value={from} onChange={e => setFrom(e.target.value)}
                             className="mt-1 w-full h-8 bg-background border border-border text-foreground text-sm rounded-md px-2">
                             <option value="">—</option>
@@ -87,7 +89,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
                         </select>
                     </div>
                     <div>
-                        <Label className="text-xs">Hacia</Label>
+                        <Label className="text-xs">{t("warehouseStock.to")}</Label>
                         <select value={to} onChange={e => setTo(e.target.value)}
                             className="mt-1 w-full h-8 bg-background border border-border text-foreground text-sm rounded-md px-2">
                             <option value="">—</option>
@@ -95,13 +97,13 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
                         </select>
                     </div>
                     <div>
-                        <Label className="text-xs">Cantidad</Label>
+                        <Label className="text-xs">{t("warehouseStock.quantity")}</Label>
                         <Input className="mt-1 h-8" type="number" min={1} value={qty}
                             onChange={e => setQty(parseInt(e.target.value) || 0)} />
                     </div>
                     <div className="flex justify-end">
                         <Button type="submit" size="sm" disabled={saving} className="h-8">
-                            {saving && <Loader2 className="mr-2 w-3 h-3 animate-spin" />} Transferir
+                            {saving && <Loader2 className="mr-2 w-3 h-3 animate-spin" />} {t("warehouseStock.transfer")}
                         </Button>
                     </div>
                 </form>
@@ -109,15 +111,15 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
 
             {loading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando...
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("warehouseStock.loading")}
                 </div>
             ) : (
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-xs text-muted-foreground border-b border-border">
-                                <th className="text-left font-medium py-1.5">Almacén</th>
-                                <th className="text-right font-medium py-1.5">Cantidad</th>
+                                <th className="text-left font-medium py-1.5">{t("warehouseStock.colWarehouse")}</th>
+                                <th className="text-right font-medium py-1.5">{t("warehouseStock.colQuantity")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -125,7 +127,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
                                 <tr key={s.warehouse_id} className="border-b border-border/40">
                                     <td className="py-1.5 text-foreground">
                                         {s.warehouse_name}
-                                        {s.is_default && <span className="ml-2 text-[10px] text-muted-foreground">(por defecto)</span>}
+                                        {s.is_default && <span className="ml-2 text-[10px] text-muted-foreground">{t("warehouseStock.defaultTag")}</span>}
                                     </td>
                                     <td className="py-1.5 text-right font-mono text-foreground">{fmt(s.quantity)}</td>
                                 </tr>
@@ -134,7 +136,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
                     </table>
                     {!canTransfer && (
                         <p className="text-xs text-muted-foreground mt-2">
-                            Crea un segundo almacén en <span className="text-foreground">Inventario → Almacenes</span> para poder transferir.
+                            {t.rich("warehouseStock.transferHint", { path: (chunks) => <span className="text-foreground">{chunks}</span> })}
                         </p>
                     )}
                 </div>

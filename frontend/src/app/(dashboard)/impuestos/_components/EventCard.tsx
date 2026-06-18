@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { type FiscalEvent } from "../_hooks/useImpuestos";
 
@@ -14,10 +15,11 @@ const MODELO_COLORS: Record<string, string> = {
 };
 
 function ModeloBadge({ modelo }: { modelo: string }) {
+    const t = useTranslations("impuestos");
     const color = MODELO_COLORS[modelo] || "bg-accent text-muted-foreground border-border";
     return (
         <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg border ${color}`}>
-            Mod. {modelo}
+            {t("eventCard.badge", { modelo })}
         </span>
     );
 }
@@ -36,6 +38,7 @@ function UrgencyBar({ dias, urgente }: { dias: number; urgente: number }) {
 }
 
 export function EventCard({ ev }: { ev: FiscalEvent }) {
+    const t = useTranslations("impuestos");
     const isUrgent = ev.dias_restantes <= ev.urgente_dias;
     const isClose = ev.dias_restantes <= 30 && !isUrgent;
     const dateStr = new Date(ev.fecha_limite).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
@@ -62,13 +65,13 @@ export function EventCard({ ev }: { ev: FiscalEvent }) {
                         <p className="text-sm font-bold text-foreground">{dateStr}</p>
                         <p className={`text-xs font-medium mt-1 ${isUrgent ? "text-red-400" : isClose ? "text-amber-400" : "text-muted-foreground"}`}>
                             {isUrgent
-                                ? `⚠ ${ev.dias_restantes}d`
-                                : `${ev.dias_restantes} días`
+                                ? t("eventCard.diasUrgente", { dias: ev.dias_restantes })
+                                : t("eventCard.dias", { dias: ev.dias_restantes })
                             }
                         </p>
                         {isUrgent && (
                             <span className="inline-block text-[10px] uppercase font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full mt-1">
-                                Urgente
+                                {t("eventCard.urgente")}
                             </span>
                         )}
                     </div>

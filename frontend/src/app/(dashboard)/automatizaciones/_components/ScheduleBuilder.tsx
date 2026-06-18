@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, Clock } from "lucide-react";
 import { api } from "@/lib/api";
 import {
-    DAYS, MONTHS_DAYS, HOURS, MINUTES_OPTIONS,
+    buildDays, MONTHS_DAYS, HOURS, MINUTES_OPTIONS,
     parseCron, buildCron, cronToHuman,
     type FreqKey,
 } from "./constants";
@@ -15,6 +16,8 @@ interface ScheduleBuilderProps {
 }
 
 export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProps) {
+    const t = useTranslations("automatizaciones");
+    const DAYS = buildDays(t);
     const parsed = parseCron(value);
     const [freq, setFreq] = useState<FreqKey>(parsed.freq);
     const [minute, setMinute] = useState(parsed.minute);
@@ -48,21 +51,21 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 onChange(cron);
                 setNlText("");
             } else {
-                setNlError("No se pudo detectar una frecuencia. Prueba: 'cada lunes a las 9'");
+                setNlError(t("schedule.noFreqDetected"));
             }
         } catch {
-            setNlError("Error al procesar. Intenta de nuevo.");
+            setNlError(t("schedule.processError"));
         } finally {
             setNlParsing(false);
         }
     };
 
     const FREQS: { key: FreqKey; label: string }[] = [
-        { key: "minutes", label: "Cada N min" },
-        { key: "hourly",  label: "Cada hora" },
-        { key: "daily",   label: "Cada día" },
-        { key: "weekly",  label: "Cada semana" },
-        { key: "monthly", label: "Cada mes" },
+        { key: "minutes", label: t("schedule.freqMinutes") },
+        { key: "hourly",  label: t("schedule.freqHourly") },
+        { key: "daily",   label: t("schedule.freqDaily") },
+        { key: "weekly",  label: t("schedule.freqWeekly") },
+        { key: "monthly", label: t("schedule.freqMonthly") },
     ];
 
     const sel = "border-blue-500/50 bg-blue-500/10 text-blue-300";
@@ -77,18 +80,18 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                     value={nlText}
                     onChange={e => { setNlText(e.target.value); setNlError(""); }}
                     onKeyDown={e => e.key === "Enter" && handleNlParse()}
-                    placeholder="Ej: cada lunes a las 9, cada día a medianoche, cada 5 minutos…"
+                    placeholder={t("schedule.nlPlaceholder")}
                     className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-foreground text-xs focus:outline-none focus:border-blue-500 transition placeholder:text-muted-foreground/60"
                 />
                 <button type="button" onClick={handleNlParse} disabled={nlParsing || !nlText.trim()}
                     className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-foreground rounded-lg text-xs font-medium transition disabled:opacity-40 flex items-center gap-1">
                     {nlParsing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    {nlParsing ? "..." : "Aplicar"}
+                    {nlParsing ? t("schedule.applying") : t("schedule.apply")}
                 </button>
             </div>
             {nlError && <p className="text-[10px] text-red-400">{nlError}</p>}
 
-            <label className="block text-xs text-muted-foreground uppercase tracking-wider">O configura manualmente</label>
+            <label className="block text-xs text-muted-foreground uppercase tracking-wider">{t("schedule.configureManually")}</label>
             <div className="flex flex-wrap gap-2">
                 {FREQS.map(f => (
                     <button key={f.key} type="button" onClick={() => setF(f.key)}
@@ -101,16 +104,16 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
             <div className="flex flex-wrap gap-3 items-end">
                 {freq === "minutes" && (
                     <div>
-                        <label className="block text-[10px] text-muted-foreground mb-1">Cada</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">{t("schedule.every")}</label>
                         <select value={minute} onChange={e => setM(Number(e.target.value))}
                             className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
-                            {[1,2,5,10,15,20,30].map(v => <option key={v} value={v}>{v} minutos</option>)}
+                            {[1,2,5,10,15,20,30].map(v => <option key={v} value={v}>{t("schedule.minutesOption", { n: v })}</option>)}
                         </select>
                     </div>
                 )}
                 {freq === "hourly" && (
                     <div>
-                        <label className="block text-[10px] text-muted-foreground mb-1">Al minuto</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">{t("schedule.atMinute")}</label>
                         <select value={minute} onChange={e => setM(Number(e.target.value))}
                             className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                             {MINUTES_OPTIONS.map(v => <option key={v} value={v}>{String(v).padStart(2,"0")}</option>)}
@@ -120,14 +123,14 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 {(freq === "daily" || freq === "weekly" || freq === "monthly") && (
                     <>
                         <div>
-                            <label className="block text-[10px] text-muted-foreground mb-1">Hora</label>
+                            <label className="block text-[10px] text-muted-foreground mb-1">{t("schedule.hour")}</label>
                             <select value={hour} onChange={e => setH(Number(e.target.value))}
                                 className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                                 {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-[10px] text-muted-foreground mb-1">Minuto</label>
+                            <label className="block text-[10px] text-muted-foreground mb-1">{t("schedule.minute")}</label>
                             <select value={minute} onChange={e => setM(Number(e.target.value))}
                                 className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
                                 {MINUTES_OPTIONS.map(v => <option key={v} value={v}>{String(v).padStart(2,"0")}</option>)}
@@ -137,7 +140,7 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 )}
                 {freq === "weekly" && (
                     <div>
-                        <label className="block text-[10px] text-muted-foreground mb-1">Día</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">{t("schedule.day")}</label>
                         <div className="flex gap-1">
                             {DAYS.map((d, i) => (
                                 <button key={i} type="button" onClick={() => setWd(i)}
@@ -150,10 +153,10 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
                 )}
                 {freq === "monthly" && (
                     <div>
-                        <label className="block text-[10px] text-muted-foreground mb-1">Día del mes</label>
+                        <label className="block text-[10px] text-muted-foreground mb-1">{t("schedule.dayOfMonth")}</label>
                         <select value={day} onChange={e => setD(Number(e.target.value))}
                             className="bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-blue-500">
-                            {MONTHS_DAYS.map(d => <option key={d} value={d}>Día {d}</option>)}
+                            {MONTHS_DAYS.map(d => <option key={d} value={d}>{t("schedule.dayOption", { d })}</option>)}
                         </select>
                     </div>
                 )}
@@ -161,7 +164,7 @@ export default function ScheduleBuilder({ value, onChange }: ScheduleBuilderProp
 
             <p className="text-[11px] text-blue-400 flex items-center gap-1.5">
                 <Clock className="w-3 h-3" />
-                {cronToHuman(value)}
+                {cronToHuman(value, t)}
             </p>
         </div>
     );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, WorkflowExecution } from "@/lib/api";
 import { logError } from "@/lib/logger";
 import { usePolling } from "@/lib/hooks/usePolling";
@@ -8,6 +9,7 @@ import { usePolling } from "@/lib/hooks/usePolling";
 export function useAutomatizacionesExecution(
     showToast: (msg: string, type: "ok" | "err") => void,
 ) {
+    const t = useTranslations("automatizaciones");
     const [runningId, setRunningId] = useState<string | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [executions, setExecutions] = useState<Record<string, WorkflowExecution[]>>({});
@@ -71,9 +73,9 @@ export function useAutomatizacionesExecution(
         setRunningId(id);
         try {
             await api.workflows.run(id);
-            showToast("Automatización lanzada. El agente IA está procesando la instrucción.", "ok");
+            showToast(t("toast.launched"), "ok");
             if (expandedId === id) await loadExecutions(id);
-        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al ejecutar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : t("toast.runError"), "err"); }
         finally { setRunningId(null); }
     };
 
@@ -81,27 +83,27 @@ export function useAutomatizacionesExecution(
         setRunningId(wfId);
         try {
             await api.workflows.runWithContext(wfId, contextText);
-            showToast("Automatización lanzada con el contexto indicado.", "ok");
+            showToast(t("toast.launchedWithContext"), "ok");
             setContextInputId(null); setContextText("");
             if (expandedId === wfId) await loadExecutions(wfId);
-        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al ejecutar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : t("toast.runError"), "err"); }
         finally { setRunningId(null); }
     };
 
     const handleCancel = async (workflowId: string, executionId: string) => {
         try {
             await api.workflows.cancelExecution(workflowId, executionId);
-            showToast("Ejecución cancelada.", "ok");
+            showToast(t("toast.cancelled"), "ok");
             await loadExecutions(workflowId);
-        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al cancelar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : t("toast.cancelError"), "err"); }
     };
 
     const handleResume = async (workflowId: string, executionId: string) => {
         try {
             await api.workflows.resumeExecution(workflowId, executionId);
-            showToast("Ejecución reanudada. El motor de nodos continúa procesando.", "ok");
+            showToast(t("toast.resumed"), "ok");
             await loadExecutions(workflowId);
-        } catch (error: unknown) { showToast(error instanceof Error ? error.message : "Error al reanudar", "err"); }
+        } catch (error: unknown) { showToast(error instanceof Error ? error.message : t("toast.resumeError"), "err"); }
     };
 
     const refreshExecutions = async (e: React.MouseEvent, id: string) => {

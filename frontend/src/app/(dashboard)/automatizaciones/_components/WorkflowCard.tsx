@@ -6,8 +6,9 @@ import {
     BrainCircuit, Pause, Cpu, GitFork,
     RotateCw, Pencil, StopCircle, MessageSquare, Send,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Workflow, WorkflowExecution } from "@/lib/api";
-import { TRIGGER_CONFIG, EXEC_STATUS, hasFanOut } from "./constants";
+import { buildTriggerConfig, buildExecStatus, hasFanOut } from "./constants";
 import { useWorkflowExecution, formatElapsed } from "../_hooks/useWorkflowExecution";
 
 // Minutos transcurridos desde el inicio de una ejecución. Definido a nivel
@@ -46,6 +47,9 @@ export default function WorkflowCard({
     onRefreshExecutions, onCancel, onResume,
     onContextInputToggle, onContextTextChange, onRunWithContext,
 }: WorkflowCardProps) {
+    const t = useTranslations("automatizaciones");
+    const TRIGGER_CONFIG = buildTriggerConfig(t);
+    const EXEC_STATUS = buildExecStatus(t);
     const activeExec = wfExecs.find(e => e.status === "running" || e.status === "paused");
     // Runtime info por nodo (WS): timer en vivo, agente, instrucción.
     const rt = useWorkflowExecution(activeExec?.id || null);
@@ -71,13 +75,13 @@ export default function WorkflowCard({
             return layers;
         }
         const triggerDesc = wf.trigger_config?.events
-            ? `Evento: ${(wf.trigger_config.events as string[]).join(", ")}`
+            ? t("card.triggerEvent", { events: (wf.trigger_config.events as string[]).join(", ") })
             : wf.trigger_config?.cron
-                ? `Cron: ${wf.trigger_config.cron}`
-                : "Inicio de la automatización";
+                ? t("card.triggerCron", { cron: wf.trigger_config.cron })
+                : t("card.triggerStart");
         return [
             [{ id: "trigger", type: "trigger", data: { label: TRIGGER_CONFIG[wf.trigger_type]?.label ?? wf.trigger_type, description: triggerDesc } }],
-            [{ id: "agent", type: "skill", data: { label: "Agente IA", description: wf.action_config?.instruction || "Ejecutar automatización" } }],
+            [{ id: "agent", type: "skill", data: { label: t("card.agentLabel"), description: wf.action_config?.instruction || t("card.agentDefaultDesc") } }],
         ];
     })();
 
@@ -101,8 +105,8 @@ export default function WorkflowCard({
                     <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
                         {lastWasRecovered && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium text-sky-400 bg-sky-500/10 border-sky-500/20"
-                                title="Recuperó una ejecución programada que se perdió mientras la app estaba cerrada">
-                                Recuperada
+                                title={t("card.recoveredTitle")}>
+                                {t("card.recovered")}
                             </span>
                         )}
                         {lastExec && (
@@ -112,17 +116,17 @@ export default function WorkflowCard({
                         )}
                         <button onClick={() => onContextInputToggle(wf.id)} disabled={!wf.is_active}
                             className={`p-1.5 bg-muted rounded-lg transition-colors disabled:opacity-40 ${contextInputId === wf.id ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`}
-                            title="Ejecutar con contexto">
+                            title={t("card.runWithContext")}>
                             <MessageSquare className="w-4 h-4" />
                         </button>
                         <button onClick={() => onRun(wf.id)} disabled={runningId === wf.id || !wf.is_active}
-                            className="p-1.5 text-muted-foreground hover:text-emerald-400 bg-muted hover:bg-emerald-400/10 rounded-lg transition-colors disabled:opacity-40" title="Ejecutar ahora">
+                            className="p-1.5 text-muted-foreground hover:text-emerald-400 bg-muted hover:bg-emerald-400/10 rounded-lg transition-colors disabled:opacity-40" title={t("card.runNow")}>
                             {runningId === wf.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => onEdit(wf)} className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors" title="Editar">
+                        <button onClick={() => onEdit(wf)} className="p-1.5 text-muted-foreground hover:text-primary bg-muted hover:bg-primary/10 rounded-lg transition-colors" title={t("card.edit")}>
                             <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => onDelete(wf.id)} className="p-1.5 text-muted-foreground hover:text-red-400 bg-muted hover:bg-red-400/10 rounded-lg transition-colors" title="Eliminar">
+                        <button onClick={() => onDelete(wf.id)} className="p-1.5 text-muted-foreground hover:text-red-400 bg-muted hover:bg-red-400/10 rounded-lg transition-colors" title={t("card.delete")}>
                             <X className="w-4 h-4" />
                         </button>
                     </div>
@@ -130,11 +134,11 @@ export default function WorkflowCard({
                 <div className="flex items-center gap-2">
                     <button onClick={() => onToggleStatus(wf)}
                         className={`w-8 h-4 rounded-full transition-colors flex items-center px-0.5 flex-shrink-0 ${wf.is_active ? "bg-primary" : "bg-accent"}`}
-                        title={wf.is_active ? "Desactivar" : "Activar"}>
+                        title={wf.is_active ? t("card.deactivate") : t("card.activate")}>
                         <div className={`w-3 h-3 rounded-full bg-white transition-transform ${wf.is_active ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
                     <span className={`text-[11px] ${wf.is_active ? "text-primary" : "text-muted-foreground"}`}>
-                        {wf.is_active ? "Activa" : "Pausada"}
+                        {wf.is_active ? t("card.active") : t("card.paused")}
                     </span>
                     <span className="text-muted-foreground/60">·</span>
                     {(() => {
@@ -151,21 +155,21 @@ export default function WorkflowCard({
                     <span className="text-muted-foreground/60">·</span>
                     {wf.execution_mode === "deterministic" ? (
                         <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                            title="Los pasos están precompilados. Se ejecutan sin LLM, con coste cero y velocidad máxima.">
-                            <Cpu className="w-2.5 h-2.5" /> Determinista
+                            title={t("card.deterministicTitle")}>
+                            <Cpu className="w-2.5 h-2.5" /> {t("card.deterministic")}
                         </span>
                     ) : (
                         <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold text-blue-400 bg-blue-500/10 border-blue-500/20"
-                            title="El orquestador LLM interpreta la instrucción en tiempo real en cada ejecución.">
-                            <BrainCircuit className="w-2.5 h-2.5" /> Con IA
+                            title={t("card.withAiTitle")}>
+                            <BrainCircuit className="w-2.5 h-2.5" /> {t("card.withAi")}
                         </span>
                     )}
                     {hasFanOut(wf.ui_edges) && (
                         <>
                             <span className="text-muted-foreground/60">·</span>
                             <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold text-violet-400 bg-violet-500/10 border-violet-500/20"
-                                title="Este workflow ejecuta ramas en paralelo mediante asyncio.gather">
-                                <GitFork className="w-2.5 h-2.5" /> Paralelo
+                                title={t("card.parallelTitle")}>
+                                <GitFork className="w-2.5 h-2.5" /> {t("card.parallel")}
                             </span>
                         </>
                     )}
@@ -174,7 +178,7 @@ export default function WorkflowCard({
                             <span className="text-muted-foreground/60">·</span>
                             <span className="flex items-center gap-1 text-[11px] text-blue-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                {activeExec.status === "paused" ? "Pausada" : "Ejecutando"}
+                                {activeExec.status === "paused" ? t("card.paused") : t("card.running")}
                             </span>
                         </>
                     )}
@@ -185,18 +189,18 @@ export default function WorkflowCard({
             {contextInputId === wf.id && (
                 <div className="px-5 pb-3 pt-2 border-t border-primary/20 bg-primary/[0.03]">
                     <p className="text-[10px] text-primary mb-1.5 flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" /> Contexto adicional para esta ejecución
+                        <MessageSquare className="w-3 h-3" /> {t("card.contextLabel")}
                     </p>
                     <div className="flex gap-2">
                         <input type="text" value={contextText} onChange={e => onContextTextChange(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) onRunWithContext(wf.id); }}
-                            placeholder="Ej: Solo facturas del cliente Acme S.L."
+                            placeholder={t("card.contextPlaceholder")}
                             className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-foreground text-xs focus:outline-none focus:border-primary transition placeholder:text-muted-foreground/60"
                             autoFocus />
                         <button onClick={() => onRunWithContext(wf.id)} disabled={runningId === wf.id}
                             className="px-3 py-1.5 bg-primary hover:bg-primary text-foreground rounded-lg text-xs font-medium transition disabled:opacity-50 flex items-center gap-1">
                             {runningId === wf.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                            Lanzar
+                            {t("card.launch")}
                         </button>
                     </div>
                 </div>
@@ -251,7 +255,7 @@ export default function WorkflowCard({
 
                                     const TriggerIcon = TRIGGER_CONFIG[wf.trigger_type]?.icon ?? Zap;
                                     const Icon = isTrigger ? TriggerIcon : BrainCircuit;
-                                    const description = node.data?.description || node.data?.action || (isTrigger ? "Escuchando evento..." : "Procesando...");
+                                    const description = node.data?.description || node.data?.action || (isTrigger ? t("card.listeningEvent") : t("card.processing"));
 
                                     return (
                                         <div key={node.id} className={`flex-1 rounded-xl px-3 py-2.5 border ${cardBorder} ${cardBg} relative overflow-hidden transition-all`}>
@@ -267,7 +271,7 @@ export default function WorkflowCard({
                                                         </span>
                                                         {status && (
                                                             <span className={`text-[9px] font-semibold flex-shrink-0 ${isRunning ? "text-blue-400" : isDone ? "text-emerald-400" : isFailed ? "text-red-400" : isPausedNode ? "text-orange-400" : "text-muted-foreground"}`}>
-                                                                {isRunning ? "Ejecutando" : isDone ? "Completado" : isFailed ? "Error" : isPausedNode ? "Pausado" : status}
+                                                                {isRunning ? t("card.nodeRunning") : isDone ? t("card.nodeCompleted") : isFailed ? t("card.nodeError") : isPausedNode ? t("card.nodePaused") : status}
                                                             </span>
                                                         )}
                                                     </div>
@@ -296,7 +300,7 @@ export default function WorkflowCard({
                                                             {rt[node.id].status === "completed" && (
                                                                 <>
                                                                     <div className="flex items-center gap-2 text-xs text-emerald-300">
-                                                                        <span className="font-bold">✓ Completado</span>
+                                                                        <span className="font-bold">{t("card.rtCompleted")}</span>
                                                                         <span className="ml-auto px-1.5 py-0.5 rounded bg-emerald-500/15 font-semibold tabular-nums">
                                                                             {formatElapsed(rt[node.id].elapsedMs)}
                                                                         </span>
@@ -311,7 +315,7 @@ export default function WorkflowCard({
                                                             {rt[node.id].status === "failed" && (
                                                                 <>
                                                                     <div className="flex items-center gap-2 text-xs text-red-300">
-                                                                        <span className="font-bold">✗ Falló</span>
+                                                                        <span className="font-bold">{t("card.rtFailed")}</span>
                                                                         <span className="ml-auto px-1.5 py-0.5 rounded bg-red-500/15 font-semibold tabular-nums">
                                                                             {formatElapsed(rt[node.id].elapsedMs)}
                                                                         </span>
@@ -341,7 +345,7 @@ export default function WorkflowCard({
                         {activeExec.status === "paused" && (
                             <button onClick={() => onResume(wf.id, activeExec.id)}
                                 className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-full text-xs font-semibold transition-colors border border-orange-500/20">
-                                <Pause className="w-3 h-3" /> Reanudar ejecución
+                                <Pause className="w-3 h-3" /> {t("card.resumeExecution")}
                             </button>
                         )}
                         {(() => {
@@ -350,7 +354,7 @@ export default function WorkflowCard({
                                 return (
                                     <button onClick={() => onCancel(wf.id, activeExec.id)}
                                         className="flex items-center gap-1.5 px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-full text-xs font-semibold transition-colors border border-red-500/20">
-                                        <StopCircle className="w-3 h-3" /> Cancelar ejecución
+                                        <StopCircle className="w-3 h-3" /> {t("card.cancelExecution")}
                                     </button>
                                 );
                             }
@@ -364,7 +368,7 @@ export default function WorkflowCard({
             <button onClick={() => onToggleExpand(wf.id)}
                 className="w-full flex items-center justify-between px-5 py-2.5 border-t border-border hover:bg-accent/50 transition text-xs text-muted-foreground hover:text-foreground mt-auto">
                 <span className="flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5" /> Historial de ejecuciones
+                    <Activity className="w-3.5 h-3.5" /> {t("card.history")}
                     {wfExecs.length > 0 && (
                         <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] font-medium">{wfExecs.length}</span>
                     )}
@@ -379,16 +383,16 @@ export default function WorkflowCard({
             {isExpanded && (
                 <div className="border-t border-border bg-background max-h-64 overflow-y-auto">
                     <div className="px-5 py-3 border-b border-border bg-card flex justify-between items-center sticky top-0 z-10">
-                        <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Últimas Ejecuciones</h4>
+                        <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("card.lastExecutions")}</h4>
                         <button type="button" onClick={(e) => onRefreshExecutions(e, wf.id)} disabled={refreshingExec === wf.id}
                             className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition disabled:opacity-50">
                             {refreshingExec === wf.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
-                            Actualizar
+                            {t("card.refresh")}
                         </button>
                     </div>
                     {wfExecs.length === 0 ? (
                         <div className="py-8 text-center text-xs text-muted-foreground/60 flex flex-col items-center justify-center">
-                            <Activity className="w-6 h-6 mb-2 text-muted-foreground/40" /> Sin ejecuciones registradas.
+                            <Activity className="w-6 h-6 mb-2 text-muted-foreground/40" /> {t("card.noExecutions")}
                         </div>
                     ) : (
                         <div className="divide-y divide-zinc-800/50">
@@ -402,7 +406,7 @@ export default function WorkflowCard({
                                                 {ex.status === "paused" && (
                                                     <button onClick={() => onResume(wf.id, ex.id)}
                                                         className="text-[9px] text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 px-1.5 py-0.5 rounded font-semibold transition-colors">
-                                                        Reanudar
+                                                        {t("card.resume")}
                                                     </button>
                                                 )}
                                                 {ex.status === "running" && (() => {
@@ -411,8 +415,8 @@ export default function WorkflowCard({
                                                     return (
                                                         <button onClick={() => onCancel(wf.id, ex.id)}
                                                             className="text-[9px] text-red-400 bg-red-500/10 hover:bg-red-500/20 px-1.5 py-0.5 rounded font-semibold transition-colors flex items-center gap-0.5"
-                                                            title="Cancelar ejecución atascada">
-                                                            <StopCircle className="w-2.5 h-2.5" /> Cancelar
+                                                            title={t("card.cancelStuckTitle")}>
+                                                            <StopCircle className="w-2.5 h-2.5" /> {t("card.cancel")}
                                                         </button>
                                                     );
                                                 })()}
@@ -427,12 +431,12 @@ export default function WorkflowCard({
                                                     <p key={i} className="text-[10px] font-mono text-foreground leading-relaxed">{line}</p>
                                                 ))}
                                                 <p className="text-[10px] font-mono text-blue-400 animate-pulse flex items-center gap-1">
-                                                    <span className="w-1 h-1 rounded-full bg-blue-400 inline-block" /> procesando…
+                                                    <span className="w-1 h-1 rounded-full bg-blue-400 inline-block" /> {t("card.processingLog")}
                                                 </p>
                                             </div>
                                         ) : ex.status === "running" ? (
                                             <p className="text-[10px] text-blue-400 animate-pulse mt-1 font-mono flex items-center gap-1">
-                                                <Loader2 className="w-2.5 h-2.5 animate-spin" /> Iniciando agente…
+                                                <Loader2 className="w-2.5 h-2.5 animate-spin" /> {t("card.startingAgent")}
                                             </p>
                                         ) : ex.result_log ? (
                                             <p className="text-[11px] text-muted-foreground font-mono leading-relaxed mt-1 line-clamp-3">{ex.result_log}</p>

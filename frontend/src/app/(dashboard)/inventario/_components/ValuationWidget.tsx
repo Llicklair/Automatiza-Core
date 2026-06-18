@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, Coins, Loader2, Package, Tags } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api, type StockValuation } from "@/lib/api";
 import { KpiCard } from "@/components/shared/KpiCard";
 
@@ -10,6 +11,7 @@ const fmtEUR = (n: number) =>
 const fmtInt = (n: number) => n.toLocaleString("es-ES");
 
 export function ValuationWidget() {
+    const t = useTranslations("inventario");
     const [data, setData] = useState<StockValuation | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -17,15 +19,15 @@ export function ValuationWidget() {
     useEffect(() => {
         api.erp.stock.valuation()
             .then(setData)
-            .catch((e: any) => setError(e?.message || "Error cargando valoración"))
+            .catch((e: any) => setError(e?.message || t("valuation.loadError")))
             .finally(() => setLoading(false));
-    }, []);
+    }, [t]);
 
     if (loading) {
         return (
             <div className="bg-card border border-border rounded-2xl p-6 flex items-center justify-center text-muted-foreground gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Calculando valoración…</span>
+                <span className="text-sm">{t("valuation.calculating")}</span>
             </div>
         );
     }
@@ -33,7 +35,7 @@ export function ValuationWidget() {
     if (error || !data) {
         return (
             <div className="bg-card border border-destructive/30 rounded-2xl p-4 text-sm text-destructive">
-                {error || "No se pudo cargar la valoración"}
+                {error || t("valuation.loadFailed")}
             </div>
         );
     }
@@ -43,25 +45,25 @@ export function ValuationWidget() {
     return (
         <div className="space-y-4">
             <div className="flex items-baseline justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Valoración de inventario</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("valuation.title")}</h2>
                 <span className="text-xs text-muted-foreground">
-                    Solo productos activos · coste × stock
+                    {t("valuation.subtitle")}
                 </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <KpiCard
-                    title="Valor total"
+                    title={t("valuation.totalValue")}
                     value={fmtEUR(data.total_value)}
                     icon={Coins}
                 />
                 <KpiCard
-                    title="Unidades en stock"
+                    title={t("valuation.unitsInStock")}
                     value={fmtInt(data.total_units)}
                     icon={Package}
                 />
                 <KpiCard
-                    title="Productos activos"
+                    title={t("valuation.activeProducts")}
                     value={fmtInt(data.product_count)}
                     icon={Tags}
                 />
@@ -72,10 +74,10 @@ export function ValuationWidget() {
                     <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                     <div className="text-xs leading-relaxed">
                         <p className="text-foreground font-medium">
-                            {fmtInt(data.missing_cost_price_count)} producto(s) sin precio de coste
+                            {t("valuation.missingCostPrice", { count: data.missing_cost_price_count })}
                         </p>
                         <p className="text-muted-foreground">
-                            La valoración total es parcial. Añade <em>coste</em> a esos productos para incluirlos.
+                            {t.rich("valuation.missingCostHint", { em: (chunks) => <em>{chunks}</em> })}
                         </p>
                     </div>
                 </div>
@@ -85,23 +87,23 @@ export function ValuationWidget() {
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="px-4 py-2.5 border-b border-border bg-muted/40">
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Top categorías por valor
+                            {t("valuation.topCategories")}
                         </p>
                     </div>
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-xs text-muted-foreground border-b border-border">
-                                <th className="text-left font-medium px-4 py-2">Categoría</th>
-                                <th className="text-right font-medium px-4 py-2">Unidades</th>
-                                <th className="text-right font-medium px-4 py-2">Productos</th>
-                                <th className="text-right font-medium px-4 py-2">Valor</th>
+                                <th className="text-left font-medium px-4 py-2">{t("valuation.category")}</th>
+                                <th className="text-right font-medium px-4 py-2">{t("valuation.units")}</th>
+                                <th className="text-right font-medium px-4 py-2">{t("valuation.products")}</th>
+                                <th className="text-right font-medium px-4 py-2">{t("valuation.value")}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {topCategories.map((c) => (
                                 <tr key={c.category ?? "__none__"} className="border-b border-border last:border-0">
                                     <td className="px-4 py-2.5 text-foreground">
-                                        {c.category || <span className="italic text-muted-foreground">Sin categoría</span>}
+                                        {c.category || <span className="italic text-muted-foreground">{t("valuation.noCategory")}</span>}
                                     </td>
                                     <td className="px-4 py-2.5 text-right font-mono tabular-nums text-foreground">
                                         {fmtInt(c.units)}
@@ -119,7 +121,7 @@ export function ValuationWidget() {
                 </div>
             ) : (
                 <div className="bg-card border border-border rounded-2xl px-4 py-6 text-center text-sm text-muted-foreground">
-                    Sin productos activos para valorar.
+                    {t("valuation.empty")}
                 </div>
             )}
         </div>

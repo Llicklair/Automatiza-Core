@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Pencil, Check, X, Layers } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { lots as lotsApi, type ProductLot } from "@/lib/api/inventory_lots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,8 @@ function daysLeft(expiry: string | null): number | null {
 }
 
 function ExpiryBadge({ expiry }: { expiry: string | null }) {
-    if (!expiry) return <span className="text-xs text-muted-foreground italic">sin caducidad</span>;
+    const t = useTranslations("inventario");
+    if (!expiry) return <span className="text-xs text-muted-foreground italic">{t("lots.noExpiry")}</span>;
     const d = daysLeft(expiry);
     const cls =
         d === null ? "text-muted-foreground"
@@ -27,7 +29,7 @@ function ExpiryBadge({ expiry }: { expiry: string | null }) {
                 : d <= 7 ? "text-amber-400"
                     : "text-foreground";
     const label =
-        d === null ? "" : d < 0 ? ` (caducado hace ${Math.abs(d)}d)` : d === 0 ? " (caduca hoy)" : ` (${d}d)`;
+        d === null ? "" : d < 0 ? ` (${t("lots.expiredAgo", { days: Math.abs(d) })})` : d === 0 ? ` (${t("lots.expiresToday")})` : ` (${d}d)`;
     return (
         <span className={`text-sm font-mono ${cls}`}>
             {expiry}
@@ -45,6 +47,8 @@ interface LotsPanelProps {
 const emptyForm = { lot_number: "", quantity: 1, expiry_date: "", cost_price: "" };
 
 export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
+    const t = useTranslations("inventario");
+    const tc = useTranslations("common");
     const [lots, setLots] = useState<ProductLot[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -60,7 +64,7 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
             setLots(await lotsApi.listForProduct(productId));
             setError(null);
         } catch (e: any) {
-            setError(e?.message || "No se pudieron cargar los lotes");
+            setError(e?.message || t("lots.loadError"));
         }
         setLoading(false);
     };
@@ -83,7 +87,7 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
             await load();
             onStockChanged?.();
         } catch (e: any) {
-            setError(e?.message || "No se pudo crear el lote");
+            setError(e?.message || t("lots.createError"));
         }
         setSaving(false);
     };
@@ -108,7 +112,7 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
             setEditId(null);
             await load();
         } catch (e: any) {
-            setError(e?.message || "No se pudo actualizar el lote");
+            setError(e?.message || t("lots.updateError"));
         }
         setSaving(false);
     };
@@ -117,11 +121,11 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between">
                 <h4 className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Layers className="w-4 h-4 text-muted-foreground" /> Lotes y caducidad
-                    <span className="text-xs font-normal text-muted-foreground">· al vender se gasta antes lo que antes caduca</span>
+                    <Layers className="w-4 h-4 text-muted-foreground" /> {t("lots.title")}
+                    <span className="text-xs font-normal text-muted-foreground">{t("lots.fefoNote")}</span>
                 </h4>
                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowAdd(s => !s)}>
-                    <Plus className="mr-1 w-3 h-3" /> Añadir lote
+                    <Plus className="mr-1 w-3 h-3" /> {t("lots.addLot")}
                 </Button>
             </div>
 
@@ -130,29 +134,29 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
             {showAdd && (
                 <form onSubmit={handleAdd} className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end rounded-md border border-border/60 p-3">
                     <div>
-                        <Label className="text-xs">Nº de lote</Label>
+                        <Label className="text-xs">{t("lots.lotNumber")}</Label>
                         <Input className="mt-1 h-8" value={form.lot_number} required
                             onChange={e => setForm(f => ({ ...f, lot_number: e.target.value }))} placeholder="L-2026-001" />
                     </div>
                     <div>
-                        <Label className="text-xs">Cantidad</Label>
+                        <Label className="text-xs">{t("lots.quantity")}</Label>
                         <Input className="mt-1 h-8" type="number" min={1} value={form.quantity}
                             onChange={e => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))} />
                     </div>
                     <div>
-                        <Label className="text-xs">Caducidad</Label>
+                        <Label className="text-xs">{t("lots.expiry")}</Label>
                         <Input className="mt-1 h-8" type="date" value={form.expiry_date}
                             onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />
                     </div>
                     <div>
-                        <Label className="text-xs">Coste/ud (€)</Label>
+                        <Label className="text-xs">{t("lots.costPerUnit")}</Label>
                         <Input className="mt-1 h-8" type="number" step="0.01" min={0} value={form.cost_price}
-                            onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} placeholder="opcional" />
+                            onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} placeholder={t("lots.optional")} />
                     </div>
                     <div className="col-span-2 sm:col-span-4 flex justify-end gap-2">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => { setShowAdd(false); setForm(emptyForm); }}>Cancelar</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => { setShowAdd(false); setForm(emptyForm); }}>{tc("cancel")}</Button>
                         <Button type="submit" size="sm" disabled={saving}>
-                            {saving && <Loader2 className="mr-2 w-3 h-3 animate-spin" />} Guardar lote
+                            {saving && <Loader2 className="mr-2 w-3 h-3 animate-spin" />} {t("lots.saveLot")}
                         </Button>
                     </div>
                 </form>
@@ -160,21 +164,21 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
 
             {loading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando lotes...
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("lots.loadingLots")}
                 </div>
             ) : lots.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-2">
-                    Este producto no gestiona lotes. Añade uno para activar el control de caducidad y el descuento FEFO en las salidas.
+                    {t("lots.empty")}
                 </p>
             ) : (
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-xs text-muted-foreground border-b border-border">
-                                <th className="text-left font-medium py-1.5">Lote</th>
-                                <th className="text-left font-medium py-1.5">Caducidad</th>
-                                <th className="text-right font-medium py-1.5">Cantidad</th>
-                                <th className="text-right font-medium py-1.5">Coste/ud</th>
+                                <th className="text-left font-medium py-1.5">{t("lots.colLot")}</th>
+                                <th className="text-left font-medium py-1.5">{t("lots.colExpiry")}</th>
+                                <th className="text-right font-medium py-1.5">{t("lots.colQuantity")}</th>
+                                <th className="text-right font-medium py-1.5">{t("lots.colCostPerUnit")}</th>
                                 <th className="text-right font-medium py-1.5"></th>
                             </tr>
                         </thead>
@@ -197,10 +201,10 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
                                                     onChange={e => setEditForm(f => ({ ...f, cost_price: e.target.value }))} />
                                             </td>
                                             <td className="py-1.5 text-right whitespace-nowrap">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={saving} onClick={() => saveEdit(lot.id)} title="Guardar" aria-label="Guardar">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={saving} onClick={() => saveEdit(lot.id)} title={tc("save")} aria-label={tc("save")}>
                                                     <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditId(null)} title="Cancelar" aria-label="Cancelar">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditId(null)} title={tc("cancel")} aria-label={tc("cancel")}>
                                                     <X className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </Button>
                                             </td>
@@ -214,7 +218,7 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
                                                 {lot.cost_price === null ? "—" : `${lot.cost_price.toFixed(2)} €`}
                                             </td>
                                             <td className="py-1.5 text-right">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(lot)} title="Editar lote" aria-label="Editar lote">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(lot)} title={t("lots.editLot")} aria-label={t("lots.editLot")}>
                                                     <Pencil className="w-3 h-3" aria-hidden="true" />
                                                 </Button>
                                             </td>
