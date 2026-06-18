@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -13,6 +14,7 @@ const ALLOWED = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB — sincronizado con el backend
 
 export function LogoSection() {
+    const t = useTranslations("configuracion");
     const toast = useToastStore();
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -29,7 +31,7 @@ export function LogoSection() {
         try {
             setStatus(await api.tenant.logo.status());
         } catch {
-            toast.error("Error al cargar estado del logo");
+            toast.error(t("empresa.errorLoadLogo"));
         } finally {
             setIsLoading(false);
         }
@@ -56,12 +58,12 @@ export function LogoSection() {
             return;
         }
         if (!ALLOWED.includes(file.type)) {
-            toast.error("Formato no soportado. Usa PNG, JPG, GIF o WebP.");
+            toast.error(t("empresa.unsupportedFormat"));
             if (fileRef.current) fileRef.current.value = "";
             return;
         }
         if (file.size > MAX_BYTES) {
-            toast.error("El logo no puede superar 2 MB.");
+            toast.error(t("empresa.logoTooLarge"));
             if (fileRef.current) fileRef.current.value = "";
             return;
         }
@@ -78,7 +80,7 @@ export function LogoSection() {
             if (fileRef.current) fileRef.current.value = "";
             await load();
         } catch (e: any) {
-            toast.error(e?.message ?? "Error al subir el logo");
+            toast.error(e?.message ?? t("empresa.errorUploadLogo"));
         } finally {
             setIsUploading(false);
         }
@@ -86,17 +88,17 @@ export function LogoSection() {
 
     const handleDelete = async () => {
         if (!(await showConfirm({
-            message: "¿Eliminar el logo? Los próximos informes se generarán sin él.",
-            confirmLabel: "Eliminar",
+            message: t("empresa.confirmDeleteLogo"),
+            confirmLabel: t("empresa.deleteAction"),
             confirmVariant: "danger",
         }))) return;
         setIsDeleting(true);
         try {
             await api.tenant.logo.delete();
-            toast.success("Logo eliminado");
+            toast.success(t("empresa.logoDeleted"));
             await load();
         } catch {
-            toast.error("Error al eliminar el logo");
+            toast.error(t("empresa.errorDeleteLogo"));
         } finally {
             setIsDeleting(false);
         }
@@ -109,33 +111,32 @@ export function LogoSection() {
             <div>
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     <ImageIcon className="w-4 h-4 text-primary" />
-                    Logo de la empresa
+                    {t("empresa.logoTitle")}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                    Aparecerá en la portada y el pie de los informes PDF generados por los agentes IA.
-                    Recomendado: PNG con fondo transparente, ~500 px de ancho. Máximo 2 MB.
+                    {t("empresa.logoHint")}
                 </p>
             </div>
 
             {/* Estado actual */}
             {isLoading ? (
                 <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("empresa.loadingShort")}
                 </div>
             ) : !hasLogo && !selectedFile ? (
                 <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-                    No hay logo configurado.
+                    {t("empresa.noLogo")}
                 </div>
             ) : (
                 <div className="rounded-xl border border-border bg-muted/30 p-4 flex items-center gap-4">
                     <div className="w-32 h-20 bg-background border border-border rounded-lg flex items-center justify-center overflow-hidden">
                         {previewUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={previewUrl} alt="Vista previa del nuevo logo" className="max-w-full max-h-full object-contain" />
+                            <img src={previewUrl} alt={t("empresa.previewAlt")} className="max-w-full max-h-full object-contain" />
                         ) : (
                             <div className="text-emerald-400 flex flex-col items-center gap-1">
                                 <CheckCircle2 className="w-6 h-6" />
-                                <span className="text-[10px] uppercase tracking-wider">Configurado</span>
+                                <span className="text-[10px] uppercase tracking-wider">{t("empresa.configured")}</span>
                             </div>
                         )}
                     </div>
@@ -144,14 +145,14 @@ export function LogoSection() {
                             <>
                                 <p className="text-foreground font-medium break-all">{selectedFile.name}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    {(selectedFile.size / 1024).toFixed(1)} KB · sin guardar
+                                    {t("empresa.unsavedSize", { size: (selectedFile.size / 1024).toFixed(1) })}
                                 </p>
                             </>
                         ) : (
                             <>
-                                <p className="text-foreground font-medium">Logo activo</p>
+                                <p className="text-foreground font-medium">{t("empresa.activeLogo")}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    La vista previa se ve cuando un agente genera un informe.
+                                    {t("empresa.previewNote")}
                                 </p>
                             </>
                         )}
@@ -165,7 +166,7 @@ export function LogoSection() {
                             onClick={handleDelete}
                         >
                             {isDeleting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-2 h-3.5 w-3.5" />}
-                            Eliminar
+                            {t("empresa.deleteAction")}
                         </Button>
                     )}
                 </div>
@@ -174,7 +175,7 @@ export function LogoSection() {
             {/* Selector + upload */}
             <div className="space-y-3 pt-2 border-t border-border">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
-                    {hasLogo ? "Reemplazar logo" : "Subir logo"}
+                    {hasLogo ? t("empresa.replaceLogo") : t("empresa.uploadLogo")}
                 </label>
                 <input
                     ref={fileRef}
@@ -191,12 +192,12 @@ export function LogoSection() {
                         {isUploading ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Subiendo…
+                                {t("empresa.uploading")}
                             </>
                         ) : (
                             <>
                                 <Upload className="mr-2 h-4 w-4" />
-                                Guardar logo
+                                {t("empresa.saveLogo")}
                             </>
                         )}
                     </Button>

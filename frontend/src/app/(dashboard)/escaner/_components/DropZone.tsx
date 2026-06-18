@@ -1,5 +1,6 @@
 import { ScanLine } from "lucide-react";
 import { RefObject } from "react";
+import { useTranslations } from "next-intl";
 
 interface DropZoneProps {
     dragOver: boolean;
@@ -9,6 +10,7 @@ interface DropZoneProps {
 }
 
 export default function DropZone({ dragOver, setDragOver, onFiles, fileInputRef }: DropZoneProps) {
+    const t = useTranslations("escaner");
     return (
         <div
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -29,11 +31,10 @@ export default function DropZone({ dragOver, setDragOver, onFiles, fileInputRef 
                 </div>
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">
-                Arrastra archivos aqui o haz clic para seleccionar
+                {t("dropZone.title")}
             </h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                PDFs, imagenes, hojas de calculo, correos... cualquier formato.
-                La IA detectara el tipo y lo clasificara automaticamente.
+                {t("dropZone.subtitle")}
             </p>
             <input
                 ref={fileInputRef}

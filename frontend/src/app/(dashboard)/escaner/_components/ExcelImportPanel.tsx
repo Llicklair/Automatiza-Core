@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Upload, Loader2, AlertCircle, CheckCircle2, Download, Trash2, FileSpreadsheet, Database } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Document } from "@/lib/api/documents";
 import { ErpImportReview } from "./ErpImportReview";
 import { showConfirm } from "@/stores/confirm";
 
 export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {}) {
+    const t = useTranslations("escaner");
     const [documents, setDocuments] = useState<Document[]>([]);
     const [loadingList, setLoadingList] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -37,10 +39,10 @@ export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {
         try {
             const imported = await api.documents.importDB(sheets);
             const count = imported.length;
-            setResult({ ok: true, message: `${count} hoja${count !== 1 ? "s" : ""} importada${count !== 1 ? "s" : ""} correctamente` });
+            setResult({ ok: true, message: t("excel.importedSheets", { count }) });
             await loadDocuments();
         } catch (err: unknown) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al importar archivo" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("excel.importError") });
         } finally {
             setUploading(false);
             if (fileRef.current) fileRef.current.value = "";
@@ -59,24 +61,22 @@ export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {
 
     async function handleDelete(id: string, filename: string) {
         if (!(await showConfirm({
-            message: `¿Eliminar "${filename}"?`,
-            confirmLabel: "Eliminar",
+            message: t("excel.deleteConfirm", { filename }),
+            confirmLabel: t("excel.deleteConfirmLabel"),
             confirmVariant: "danger",
         }))) return;
         try {
             await api.documents.delete(id);
             setDocuments(prev => prev.filter(d => d.id !== id));
         } catch (err: unknown) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al eliminar" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("excel.deleteError") });
         }
     }
 
     return (
         <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
-                Importa hojas de cálculo (.xlsx, .xls, .csv). Quedan disponibles para que la IA
-                las analice y, con <strong>«Integrar en ERP»</strong>, puedes crear productos,
-                clientes/proveedores o empleados directamente desde sus filas (con revisión previa).
+                {t.rich("excel.description", { strong: (chunks) => <strong>{chunks}</strong> })}
             </p>
 
             {/* Upload area */}
@@ -89,7 +89,7 @@ export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {
                 }
                 <div className="text-center">
                     <p className="text-sm font-medium text-foreground">
-                        {uploading ? "Importando..." : "Arrastra un archivo o haz clic para subir"}
+                        {uploading ? t("excel.importing") : t("excel.uploadPrompt")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">.xlsx, .xls, .csv</p>
                 </div>
@@ -126,12 +126,12 @@ export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {
                     onClose={() => setIntegrating(null)}
                     onDone={(res) => {
                         setIntegrating(null);
-                        const extra = res.skipped ? ` · ${res.skipped} omitidos` : "";
+                        const extra = res.skipped ? ` · ${t("excel.skippedExtra", { count: res.skipped })}` : "";
                         setResult({
                             ok: res.created > 0,
                             message: res.created > 0
-                                ? `${res.created} ${res.target_label?.toLowerCase() || res.target} creados en el ERP${extra}`
-                                : `No se creó ningún registro${extra}`,
+                                ? `${t("excel.createdInErp", { count: res.created, target: res.target_label?.toLowerCase() || res.target })}${extra}`
+                                : `${t("excel.noRecordsCreated")}${extra}`,
                         });
                     }}
                 />
@@ -139,13 +139,13 @@ export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {
 
             {/* Document list */}
             <div className="space-y-2">
-                <h2 className="text-sm font-medium text-muted-foreground">Archivos importados</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">{t("excel.importedFiles")}</h2>
                 {loadingList ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Cargando...
+                        <Loader2 className="w-4 h-4 animate-spin" /> {t("excel.loading")}
                     </div>
                 ) : documents.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">No hay archivos Excel importados todavía.</p>
+                    <p className="text-sm text-muted-foreground py-4">{t("excel.empty")}</p>
                 ) : (
                     <div className="divide-y divide-border border border-border rounded-lg overflow-hidden">
                         {documents.map(doc => (
@@ -159,21 +159,21 @@ export function ExcelImportPanel({ initialFiles }: { initialFiles?: File[] } = {
                                     <button
                                         onClick={() => { setIntegrating(doc); setResult(null); }}
                                         className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors"
-                                        title="Crear registros en el ERP desde este archivo"
+                                        title={t("excel.integrateTooltip")}
                                     >
-                                        <Database className="w-3.5 h-3.5" /> Integrar en ERP
+                                        <Database className="w-3.5 h-3.5" /> {t("excel.integrate")}
                                     </button>
                                     <button
                                         onClick={() => api.documents.download(doc.id, doc.file_name)}
                                         className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                        title="Descargar"
+                                        title={t("excel.download")}
                                     >
                                         <Download className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(doc.id, doc.file_name)}
                                         className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
-                                        title="Eliminar"
+                                        title={t("excel.delete")}
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
     ScanLine, AlertTriangle, FileSpreadsheet, FileText, FolderUp, Sparkles, Receipt,
 } from "lucide-react";
@@ -18,14 +19,16 @@ type Mode = "auto" | "facturas" | "excel" | "documento";
 
 const isExcel = (f: File) => /\.(xlsx|xls|csv)$/i.test(f.name);
 
-const MODES: { key: Mode; label: string; icon: typeof Sparkles }[] = [
-    { key: "auto", label: "Automático", icon: Sparkles },
-    { key: "facturas", label: "Factura", icon: FileText },
-    { key: "excel", label: "Excel", icon: FileSpreadsheet },
-    { key: "documento", label: "Documento", icon: FolderUp },
+const buildModes = (t: ReturnType<typeof useTranslations>): { key: Mode; label: string; icon: typeof Sparkles }[] => [
+    { key: "auto", label: t("modes.auto"), icon: Sparkles },
+    { key: "facturas", label: t("modes.facturas"), icon: FileText },
+    { key: "excel", label: t("modes.excel"), icon: FileSpreadsheet },
+    { key: "documento", label: t("modes.documento"), icon: FolderUp },
 ];
 
 export default function EscanerPage() {
+    const t = useTranslations("escaner");
+    const MODES = buildModes(t);
     const esc = useEscaner();
 
     // Modo inicial: ?mode= (intake unificado) o ?tab= (retro-compat de enlaces antiguos).
@@ -74,11 +77,10 @@ export default function EscanerPage() {
             <div>
                 <div className="flex items-center gap-3 mb-1">
                     <ScanLine className="w-7 h-7 text-primary" />
-                    <h1 className="text-2xl font-bold text-foreground">Escáner e importación</h1>
+                    <h1 className="text-2xl font-bold text-foreground">{t("page.title")}</h1>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Arrastra cualquier archivo —factura, documento o excel— y lo detectamos por ti.
-                    También puedes elegir el modo a mano.
+                    {t("page.subtitle")}
                 </p>
             </div>
 
@@ -127,9 +129,9 @@ export default function EscanerPage() {
                             className="w-full flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground hover:bg-primary/10 transition-colors text-left">
                             <Receipt className="w-4 h-4 text-primary flex-shrink-0" />
                             <span>
-                                Detecté {invoiceHits.length} factura{invoiceHits.length !== 1 ? "s" : ""} de compra.{" "}
-                                <span className="font-medium text-primary">Procesarlas al ERP →</span>{" "}
-                                <span className="text-muted-foreground">(crea factura + asiento + stock)</span>
+                                {t("invoiceHits.detected", { count: invoiceHits.length })}{" "}
+                                <span className="font-medium text-primary">{t("invoiceHits.processToErp")}</span>{" "}
+                                <span className="text-muted-foreground">{t("invoiceHits.note")}</span>
                             </span>
                         </button>
                     )}

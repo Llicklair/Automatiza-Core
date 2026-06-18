@@ -9,6 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     AlertCircle,
     CheckCircle2,
@@ -32,6 +33,7 @@ const URL_REGAP_OTORGAR =
 type Branch = "tiene_clave" | "quiere_clave" | "quiere_cert_fnmt";
 
 export function ApoderamientoPanel() {
+    const t = useTranslations("configuracion");
     const [status, setStatus] = useState<RegapStatus | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
@@ -45,11 +47,11 @@ export function ApoderamientoPanel() {
             const res = await api.regap.get();
             setStatus(res);
         } catch (e: any) {
-            toast.show(`Error cargando estado REGAP: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorLoadingRegap")}: ${e.message}`, "error");
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     useEffect(() => {
         load();
@@ -68,7 +70,7 @@ export function ApoderamientoPanel() {
             const updated = await api.regap.start(method);
             setStatus(updated);
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorPrefix")}: ${e.message}`, "error");
         } finally {
             setBusy(false);
         }
@@ -80,7 +82,7 @@ export function ApoderamientoPanel() {
             const updated = await api.regap.grant();
             setStatus(updated);
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorPrefix")}: ${e.message}`, "error");
         } finally {
             setBusy(false);
         }
@@ -88,7 +90,7 @@ export function ApoderamientoPanel() {
 
     async function handleVerify() {
         if (!nifCliente.trim()) {
-            toast.show("Introduce el NIF del cliente apoderado", "warning");
+            toast.show(t("verifactu.enterClientNif"), "warning");
             return;
         }
         setBusy(true);
@@ -96,12 +98,12 @@ export function ApoderamientoPanel() {
             const updated = await api.regap.verify(nifCliente.trim().toUpperCase());
             setStatus(updated);
             if (updated.status === "verified") {
-                toast.show("Apoderamiento verificado ✓", "success");
+                toast.show(t("verifactu.poaVerifiedToast"), "success");
             } else if (updated.status === "rejected") {
-                toast.show("La consulta REGAP no encontró un apoderamiento vigente", "error");
+                toast.show(t("verifactu.poaNotFoundToast"), "error");
             }
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorPrefix")}: ${e.message}`, "error");
         } finally {
             setBusy(false);
         }
@@ -115,7 +117,7 @@ export function ApoderamientoPanel() {
             setBranch(null);
             setNifCliente("");
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorPrefix")}: ${e.message}`, "error");
         } finally {
             setBusy(false);
         }
@@ -124,7 +126,7 @@ export function ApoderamientoPanel() {
     if (loading) {
         return (
             <div className="p-8 flex items-center gap-3 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" /> Cargando estado REGAP…
+                <Loader2 className="w-4 h-4 animate-spin" /> {t("verifactu.loadingRegap")}
             </div>
         );
     }
@@ -136,12 +138,13 @@ export function ApoderamientoPanel() {
         <div className="space-y-6">
             <header>
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-                    Apoderamiento AEAT (REGAP)
+                    {t("verifactu.poaTitle")}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Para que <strong>{apoderado}</strong> pueda presentar tus declaraciones telemáticas
-                    en tu nombre, necesitas otorgarnos apoderamiento en la Sede Electrónica de la AEAT.
-                    Es gratuito y queda registrado en REGAP. El trámite se hace una sola vez.
+                    {t.rich("verifactu.poaIntro", {
+                        apoderado,
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                 </p>
             </header>
 
@@ -150,27 +153,27 @@ export function ApoderamientoPanel() {
             {phase === "not_started" && (
                 <section aria-labelledby="branch-heading" className="space-y-4">
                     <h2 id="branch-heading" className="text-lg font-medium text-foreground">
-                        ¿Cómo te identificas hoy en la Sede Electrónica de la AEAT?
+                        {t("verifactu.howIdentify")}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <BranchCard
                             icon={<KeyRound className="w-5 h-5 text-primary" />}
-                            title="Ya tengo Cl@ve"
-                            description="Tengo Cl@ve PIN o Cl@ve Permanente activos."
+                            title={t("verifactu.branchHaveClaveTitle")}
+                            description={t("verifactu.branchHaveClaveDesc")}
                             onClick={() => handleStartBranch("tiene_clave")}
                             disabled={busy}
                         />
                         <BranchCard
                             icon={<KeyRound className="w-5 h-5 text-primary" />}
-                            title="Quiero obtener Cl@ve"
-                            description="Aún no tengo. Es el método más rápido (10 min)."
+                            title={t("verifactu.branchWantClaveTitle")}
+                            description={t("verifactu.branchWantClaveDesc")}
                             onClick={() => handleStartBranch("quiere_clave")}
                             disabled={busy}
                         />
                         <BranchCard
                             icon={<ShieldCheck className="w-5 h-5 text-primary" />}
-                            title="Quiero certificado FNMT"
-                            description="Prefiero certificado digital. Tarda 5-10 días."
+                            title={t("verifactu.branchWantCertTitle")}
+                            description={t("verifactu.branchWantCertDesc")}
                             onClick={() => handleStartBranch("quiere_cert_fnmt")}
                             disabled={busy}
                         />
@@ -181,25 +184,25 @@ export function ApoderamientoPanel() {
             {(phase === "identifying" || phase === "cert_pending") && (
                 <section aria-labelledby="instruct-heading" className="space-y-4">
                     <h2 id="instruct-heading" className="text-lg font-medium text-foreground">
-                        Paso 2 · Otorga el apoderamiento en Sede AEAT
+                        {t("verifactu.step2Title")}
                     </h2>
 
                     {status?.auth_method === "cert_fnmt" && (
                         <Instructions
                             steps={[
                                 {
-                                    text: "Solicita tu certificado FNMT en persona-física (online). Tarda 5-10 días en estar listo.",
+                                    text: t("verifactu.certStep1Text"),
                                     href: URL_FNMT_PERSONA_FISICA,
-                                    cta: "Solicitar certificado FNMT",
+                                    cta: t("verifactu.ctaRequestFnmt"),
                                 },
                                 {
-                                    text: "Cuando tengas el certificado instalado en tu navegador, accede a Apoderamientos AEAT y otorga representación a:",
-                                    detail: `NIF apoderado: ${status.apoderado_nif} — ${apoderado}`,
+                                    text: t("verifactu.certStep2Text"),
+                                    detail: t("verifactu.poaDetail", { nif: status.apoderado_nif ?? "", apoderado }),
                                     href: URL_REGAP_OTORGAR,
-                                    cta: "Otorgar apoderamiento (REGAP)",
+                                    cta: t("verifactu.ctaGrantRegap"),
                                 },
                                 {
-                                    text: "Marca trámite: PRESENTACION_DECLARACIONES. Vigencia: 5 años renovable.",
+                                    text: t("verifactu.certStep3Text"),
                                 },
                             ]}
                         />
@@ -209,18 +212,18 @@ export function ApoderamientoPanel() {
                         <Instructions
                             steps={[
                                 {
-                                    text: "Regístrate en Cl@ve (en línea o presencialmente en oficinas autorizadas).",
+                                    text: t("verifactu.pinStep1Text"),
                                     href: URL_CLAVE_REGISTRO,
-                                    cta: "Registrarse en Cl@ve",
+                                    cta: t("verifactu.ctaRegisterClave"),
                                 },
                                 {
-                                    text: "Una vez registrado, accede a Apoderamientos AEAT con Cl@ve y otorga representación a:",
-                                    detail: `NIF apoderado: ${status.apoderado_nif} — ${apoderado}`,
+                                    text: t("verifactu.pinStep2Text"),
+                                    detail: t("verifactu.poaDetail", { nif: status.apoderado_nif ?? "", apoderado }),
                                     href: URL_REGAP_OTORGAR,
-                                    cta: "Otorgar apoderamiento (REGAP)",
+                                    cta: t("verifactu.ctaGrantRegap"),
                                 },
                                 {
-                                    text: "Marca trámite: PRESENTACION_DECLARACIONES.",
+                                    text: t("verifactu.markProcedure"),
                                 },
                             ]}
                         />
@@ -230,18 +233,18 @@ export function ApoderamientoPanel() {
                         <Instructions
                             steps={[
                                 {
-                                    text: "Accede directamente a la Sede AEAT con Cl@ve Permanente.",
+                                    text: t("verifactu.permStep1Text"),
                                     href: URL_CLAVE_AEAT,
-                                    cta: "Abrir Sede AEAT",
+                                    cta: t("verifactu.ctaOpenAeat"),
                                 },
                                 {
-                                    text: "Entra al menú Apoderamientos y otorga representación a:",
-                                    detail: `NIF apoderado: ${status?.apoderado_nif} — ${apoderado}`,
+                                    text: t("verifactu.permStep2Text"),
+                                    detail: t("verifactu.poaDetail", { nif: status?.apoderado_nif ?? "", apoderado }),
                                     href: URL_REGAP_OTORGAR,
-                                    cta: "Otorgar apoderamiento (REGAP)",
+                                    cta: t("verifactu.ctaGrantRegap"),
                                 },
                                 {
-                                    text: "Marca trámite: PRESENTACION_DECLARACIONES.",
+                                    text: t("verifactu.markProcedure"),
                                 },
                             ]}
                         />
@@ -255,7 +258,7 @@ export function ApoderamientoPanel() {
                             className="px-4 py-2 rounded-md bg-primary text-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
                         >
                             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                            He completado el apoderamiento en Sede AEAT
+                            {t("verifactu.poaCompleted")}
                         </button>
                         <button
                             type="button"
@@ -263,7 +266,7 @@ export function ApoderamientoPanel() {
                             disabled={busy}
                             className="px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5"
                         >
-                            <RefreshCw className="w-3.5 h-3.5" /> Cambiar método
+                            <RefreshCw className="w-3.5 h-3.5" /> {t("verifactu.changeMethod")}
                         </button>
                     </div>
                 </section>
@@ -272,15 +275,14 @@ export function ApoderamientoPanel() {
             {phase === "power_granted" && (
                 <section aria-labelledby="verify-heading" className="space-y-4">
                     <h2 id="verify-heading" className="text-lg font-medium text-foreground">
-                        Paso 3 · Verifica el apoderamiento contra REGAP
+                        {t("verifactu.step3Title")}
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                        Vamos a comprobar que el apoderamiento está vigente en el registro REGAP de la AEAT.
-                        Esta consulta es de solo lectura y no modifica ningún dato.
+                        {t("verifactu.step3Desc")}
                     </p>
                     <div>
                         <label htmlFor="nif-cliente" className="block text-sm font-medium text-foreground mb-1.5">
-                            NIF del cliente apoderado
+                            {t("verifactu.clientNifLabel")}
                         </label>
                         <input
                             id="nif-cliente"
@@ -299,7 +301,7 @@ export function ApoderamientoPanel() {
                             className="px-4 py-2 rounded-md bg-primary text-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
                         >
                             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                            Consultar REGAP
+                            {t("verifactu.queryRegap")}
                         </button>
                         <button
                             type="button"
@@ -307,7 +309,7 @@ export function ApoderamientoPanel() {
                             disabled={busy}
                             className="px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground"
                         >
-                            Reiniciar wizard
+                            {t("verifactu.restartWizard")}
                         </button>
                     </div>
                 </section>
@@ -322,15 +324,15 @@ export function ApoderamientoPanel() {
                         <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                         <div>
                             <h2 id="verified-heading" className="text-lg font-medium text-foreground">
-                                Apoderamiento verificado
+                                {t("verifactu.verifiedTitle")}
                             </h2>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                {apoderado} ya puede presentar declaraciones en tu nombre. El apoderamiento
-                                fue confirmado el{" "}
-                                {status?.verified_at
-                                    ? new Date(status.verified_at).toLocaleString("es-ES")
-                                    : "-"}
-                                .
+                                {t("verifactu.verifiedDesc", {
+                                    apoderado,
+                                    date: status?.verified_at
+                                        ? new Date(status.verified_at).toLocaleString("es-ES")
+                                        : "-",
+                                })}
                             </p>
                             <button
                                 type="button"
@@ -338,7 +340,7 @@ export function ApoderamientoPanel() {
                                 disabled={busy}
                                 className="mt-3 text-xs text-muted-foreground hover:text-foreground"
                             >
-                                Iniciar wizard de nuevo (cambio de método)
+                                {t("verifactu.restartWizardMethod")}
                             </button>
                         </div>
                     </div>
@@ -355,10 +357,10 @@ export function ApoderamientoPanel() {
                         <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                         <div>
                             <h2 id="rejected-heading" className="text-lg font-medium text-foreground">
-                                Apoderamiento no encontrado en REGAP
+                                {t("verifactu.rejectedTitle")}
                             </h2>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                {status?.rejected_reason ?? "Inténtalo de nuevo más tarde."}
+                                {status?.rejected_reason ?? t("verifactu.tryAgainLater")}
                             </p>
                             <button
                                 type="button"
@@ -366,7 +368,7 @@ export function ApoderamientoPanel() {
                                 disabled={busy}
                                 className="mt-3 px-3 py-1.5 rounded-md text-sm bg-background border border-border hover:border-primary"
                             >
-                                Reintentar wizard
+                                {t("verifactu.retryWizard")}
                             </button>
                         </div>
                     </div>
@@ -378,18 +380,19 @@ export function ApoderamientoPanel() {
 
 // ── Sub-componentes ─────────────────────────────────────────────────────────
 
-const PHASES: { key: RegapStatus["status"] | "_done"; label: string }[] = [
-    { key: "not_started", label: "Identificación" },
-    { key: "identifying", label: "Apoderar" },
-    { key: "power_granted", label: "Verificar" },
-    { key: "verified", label: "Listo" },
+const PHASES: { key: RegapStatus["status"] | "_done"; labelKey: string }[] = [
+    { key: "not_started", labelKey: "verifactu.phaseIdentify" },
+    { key: "identifying", labelKey: "verifactu.phaseGrant" },
+    { key: "power_granted", labelKey: "verifactu.phaseVerify" },
+    { key: "verified", labelKey: "verifactu.phaseDone" },
 ];
 
 function PhaseStepper({ current }: { current: string }) {
+    const t = useTranslations("configuracion");
     const order = ["not_started", "identifying", "cert_pending", "power_granted", "verified"];
     const currentIdx = order.indexOf(current);
     return (
-        <nav aria-label="Progreso del wizard">
+        <nav aria-label={t("verifactu.wizardProgress")}>
             <ol className="flex items-center gap-2 text-xs">
                 {PHASES.map((p, i) => {
                     const reached =
@@ -408,7 +411,7 @@ function PhaseStepper({ current }: { current: string }) {
                                 {i + 1}
                             </span>
                             <span className={reached ? "text-foreground" : "text-muted-foreground"}>
-                                {p.label}
+                                {t(p.labelKey)}
                             </span>
                             {i < PHASES.length - 1 && (
                                 <span aria-hidden="true" className="w-6 h-px bg-border" />

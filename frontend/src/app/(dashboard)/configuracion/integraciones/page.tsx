@@ -1,8 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useConfiguracionIntegraciones } from "./_hooks/useConfiguracionIntegraciones";
 
 export default function IntegracionesPage() {
+    const t = useTranslations("configuracion");
     const {
         tgStatus,
         tgLoading,
@@ -14,9 +16,9 @@ export default function IntegracionesPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-foreground">Integraciones</h1>
+                <h1 className="text-2xl font-bold text-foreground">{t("integraciones.title")}</h1>
                 <p className="text-muted-foreground mt-1">
-                    Conecta servicios externos para gestionar tu empresa desde cualquier canal.
+                    {t("integraciones.subtitle")}
                 </p>
             </div>
 
@@ -29,17 +31,17 @@ export default function IntegracionesPage() {
                     <div>
                         <h2 className="text-lg font-semibold text-foreground">Telegram</h2>
                         <p className="text-sm text-muted-foreground">
-                            Gestiona tu empresa por Telegram: crea facturas, consulta datos, habla con la IA.
+                            {t("integraciones.telegramDescription")}
                         </p>
                     </div>
                     <div className="ml-auto">
                         {tgStatus?.connected ? (
                             <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
-                                Conectado
+                                {t("integraciones.connected")}
                             </span>
                         ) : (
                             <span className="px-3 py-1 bg-accent text-muted-foreground rounded-full text-sm">
-                                Desconectado
+                                {t("integraciones.disconnected")}
                             </span>
                         )}
                     </div>
@@ -48,9 +50,9 @@ export default function IntegracionesPage() {
                 {tgStatus?.connected ? (
                     <div className="space-y-3">
                         <div className="flex gap-6 text-sm text-foreground">
-                            <span>Chat ID: <code className="text-muted-foreground">{tgStatus.chat_id}</code></span>
+                            <span>{t("integraciones.chatIdLabel")} <code className="text-muted-foreground">{tgStatus.chat_id}</code></span>
                             {tgStatus.username && (
-                                <span>Usuario: <code className="text-muted-foreground">@{tgStatus.username}</code></span>
+                                <span>{t("integraciones.usernameLabel")} <code className="text-muted-foreground">@{tgStatus.username}</code></span>
                             )}
                         </div>
                         <button
@@ -58,7 +60,7 @@ export default function IntegracionesPage() {
                             disabled={tgLoading}
                             className="px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition text-sm disabled:opacity-50"
                         >
-                            {tgLoading ? "Desconectando..." : "Desconectar Telegram"}
+                            {tgLoading ? t("integraciones.disconnecting") : t("integraciones.disconnectTelegram")}
                         </button>
                     </div>
                 ) : (
@@ -66,7 +68,7 @@ export default function IntegracionesPage() {
                         {linkUrl ? (
                             <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                                 <p className="text-sm text-blue-300 mb-2">
-                                    Abre este enlace en Telegram para completar la vinculación:
+                                    {t("integraciones.openLinkPrompt")}
                                 </p>
                                 <a
                                     href={linkUrl}
@@ -77,7 +79,7 @@ export default function IntegracionesPage() {
                                     {linkUrl}
                                 </a>
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    Esperando vinculación... La página se actualizará automáticamente.
+                                    {t("integraciones.waitingLink")}
                                 </p>
                             </div>
                         ) : (
@@ -86,11 +88,11 @@ export default function IntegracionesPage() {
                                 disabled={tgLoading}
                                 className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700 transition text-sm disabled:opacity-50"
                             >
-                                {tgLoading ? "Generando enlace..." : "Vincular Telegram"}
+                                {tgLoading ? t("integraciones.generatingLink") : t("integraciones.linkTelegram")}
                             </button>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            Necesitas tener un bot de Telegram configurado en el servidor (TELEGRAM_BOT_TOKEN en .env).
+                            {t("integraciones.botRequired")}
                         </p>
                     </div>
                 )}
@@ -104,10 +106,10 @@ export default function IntegracionesPage() {
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-foreground">WhatsApp Business</h2>
-                        <p className="text-sm text-muted-foreground">Próximamente — Atiende a clientes por WhatsApp con IA.</p>
+                        <p className="text-sm text-muted-foreground">{t("integraciones.whatsappDescription")}</p>
                     </div>
                     <span className="ml-auto px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm">
-                        Próximamente
+                        {t("integraciones.comingSoon")}
                     </span>
                 </div>
             </div>

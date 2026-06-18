@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+type T = ReturnType<typeof useTranslations>;
 import { Database, Download, RefreshCw, Trash2, Upload } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
 
@@ -28,10 +30,10 @@ import { PageContainer } from "@/components/shared/PageContainer";
 
 type ConfirmKind = null | "restore" | "delete";
 
-function formatAge(hours: number): string {
-    if (hours < 1) return `${Math.round(hours * 60)} min`;
-    if (hours < 24) return `${hours.toFixed(1)} h`;
-    return `${(hours / 24).toFixed(1)} días`;
+function formatAge(hours: number, t: T): string {
+    if (hours < 1) return t("backups.ageMin", { value: Math.round(hours * 60) });
+    if (hours < 24) return t("backups.ageHours", { value: hours.toFixed(1) });
+    return t("backups.ageDays", { value: (hours / 24).toFixed(1) });
 }
 
 function formatDate(iso: string): string {
@@ -46,6 +48,8 @@ function formatDate(iso: string): string {
 }
 
 export default function BackupsPage() {
+    const t = useTranslations("configuracion");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const [items, setItems] = useState<BackupItem[] | null>(null);
     const [creating, setCreating] = useState(false);
@@ -60,7 +64,7 @@ export default function BackupsPage() {
             setItems(await system.listBackups());
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            toast.error("No se pudieron cargar los backups: " + msg);
+            toast.error(t("backups.loadError", { message: msg }));
             setItems([]);
         }
     };
@@ -74,15 +78,15 @@ export default function BackupsPage() {
         try {
             const result = await system.runBackup();
             if (result.status === "ok") {
-                toast.success("Backup creado correctamente");
+                toast.success(t("backups.createOk"));
                 await reload();
             } else if (result.status === "disabled") {
-                toast.warning("Los backups están desactivados (BACKUP_ENABLED=false)");
+                toast.warning(t("backups.disabled"));
             } else {
-                toast.error("El backup falló — revisa los logs del servidor");
+                toast.error(t("backups.createFailed"));
             }
         } catch (e) {
-            toast.error("Error: " + (e instanceof Error ? e.message : String(e)));
+            toast.error(t("backups.error", { message: e instanceof Error ? e.message : String(e) }));
         } finally {
             setCreating(false);
         }
@@ -92,9 +96,9 @@ export default function BackupsPage() {
         setBusyFile(file);
         try {
             await system.downloadBackup(file);
-            toast.success("Descarga iniciada");
+            toast.success(t("backups.downloadStarted"));
         } catch (e) {
-            toast.error("Error al descargar: " + (e instanceof Error ? e.message : String(e)));
+            toast.error(t("backups.downloadError", { message: e instanceof Error ? e.message : String(e) }));
         } finally {
             setBusyFile(null);
         }
@@ -111,17 +115,17 @@ export default function BackupsPage() {
             if (kind === "restore") {
                 const result = await system.restoreBackup(file);
                 if (result.status === "ok") {
-                    toast.success("BD restaurada correctamente");
+                    toast.success(t("backups.restoreOk"));
                 } else {
-                    toast.error("La restauración falló: " + (result.error ?? "error desconocido"));
+                    toast.error(t("backups.restoreFailed", { error: result.error ?? t("backups.unknownError") }));
                 }
             } else {
                 await system.deleteBackup(file);
-                toast.success("Backup borrado");
+                toast.success(t("backups.deleteOk"));
                 await reload();
             }
         } catch (e) {
-            toast.error("Error: " + (e instanceof Error ? e.message : String(e)));
+            toast.error(t("backups.error", { message: e instanceof Error ? e.message : String(e) }));
         } finally {
             setBusyFile(null);
         }
@@ -134,10 +138,10 @@ export default function BackupsPage() {
                     <div>
                         <CardTitle className="flex items-center gap-2">
                             <Database className="h-5 w-5" />
-                            Copias de seguridad
+                            {t("backups.title")}
                         </CardTitle>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Backups automáticos diarios a las 04:00. Retención 7 días.
+                            {t("backups.subtitle")}
                         </p>
                     </div>
                     <Button onClick={onCreate} disabled={creating}>
@@ -146,7 +150,7 @@ export default function BackupsPage() {
                         ) : (
                             <Database className="mr-2 h-4 w-4" />
                         )}
-                        Crear backup ahora
+                        {t("backups.createNow")}
                     </Button>
                 </CardHeader>
                 <CardContent>
@@ -158,18 +162,17 @@ export default function BackupsPage() {
                         </div>
                     ) : items.length === 0 ? (
                         <p className="py-8 text-center text-sm text-muted-foreground">
-                            No hay backups todavía. Crea uno manualmente o espera al job
-                            automático de las 04:00.
+                            {t("backups.empty")}
                         </p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Archivo</TableHead>
-                                    <TableHead>Tamaño</TableHead>
-                                    <TableHead>Antigüedad</TableHead>
-                                    <TableHead>Creado</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
+                                    <TableHead>{t("backups.colFile")}</TableHead>
+                                    <TableHead>{t("backups.colSize")}</TableHead>
+                                    <TableHead>{t("backups.colAge")}</TableHead>
+                                    <TableHead>{t("backups.colCreated")}</TableHead>
+                                    <TableHead className="text-right">{t("backups.colActions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -179,7 +182,7 @@ export default function BackupsPage() {
                                             {b.filename}
                                         </TableCell>
                                         <TableCell>{b.size_mb} MB</TableCell>
-                                        <TableCell>{formatAge(b.age_hours)}</TableCell>
+                                        <TableCell>{formatAge(b.age_hours, t)}</TableCell>
                                         <TableCell className="text-sm">
                                             {formatDate(b.created_at)}
                                         </TableCell>
@@ -190,7 +193,7 @@ export default function BackupsPage() {
                                                     variant="outline"
                                                     disabled={busyFile === b.filename}
                                                     onClick={() => onDownload(b.filename)}
-                                                    title="Descargar a disco"
+                                                    title={t("backups.downloadTitle")}
                                                 >
                                                     <Download className="h-4 w-4" />
                                                 </Button>
@@ -201,7 +204,7 @@ export default function BackupsPage() {
                                                     onClick={() =>
                                                         setConfirm({ kind: "restore", file: b.filename })
                                                     }
-                                                    title="Restaurar (destructivo)"
+                                                    title={t("backups.restoreTitle")}
                                                 >
                                                     <Upload className="h-4 w-4" />
                                                 </Button>
@@ -212,7 +215,7 @@ export default function BackupsPage() {
                                                     onClick={() =>
                                                         setConfirm({ kind: "delete", file: b.filename })
                                                     }
-                                                    title="Borrar"
+                                                    title={t("backups.deleteTitle")}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -236,27 +239,28 @@ export default function BackupsPage() {
                     <DialogHeader>
                         <DialogTitle>
                             {confirm.kind === "restore"
-                                ? "Restaurar copia de seguridad"
-                                : "Borrar copia de seguridad"}
+                                ? t("backups.restoreDialogTitle")
+                                : t("backups.deleteDialogTitle")}
                         </DialogTitle>
                         <DialogDescription>
                             {confirm.kind === "restore" ? (
                                 <span className="block space-y-2">
                                     <span className="block text-destructive font-medium">
-                                        ATENCIÓN: operación destructiva.
+                                        {t("backups.restoreDialogWarning")}
                                     </span>
                                     <span className="block">
-                                        Vas a restaurar la BD desde{" "}
-                                        <span className="font-mono text-xs">{confirm.file}</span>.
-                                        Los datos actuales se sobrescribirán. Asegúrate de tener un
-                                        backup más reciente descargado antes de continuar.
+                                        {t.rich("backups.restoreDialogBody", {
+                                            file: confirm.file,
+                                            mono: (chunks) => <span className="font-mono text-xs">{chunks}</span>,
+                                        })}
                                     </span>
                                 </span>
                             ) : (
                                 <>
-                                    Vas a borrar el archivo{" "}
-                                    <span className="font-mono text-xs">{confirm.file}</span> del
-                                    disco. Esta acción no se puede deshacer.
+                                    {t.rich("backups.deleteDialogBody", {
+                                        file: confirm.file,
+                                        mono: (chunks) => <span className="font-mono text-xs">{chunks}</span>,
+                                    })}
                                 </>
                             )}
                         </DialogDescription>
@@ -266,10 +270,10 @@ export default function BackupsPage() {
                             variant="outline"
                             onClick={() => setConfirm({ kind: null, file: "" })}
                         >
-                            Cancelar
+                            {tc("cancel")}
                         </Button>
                         <Button variant="destructive" onClick={onConfirm}>
-                            {confirm.kind === "restore" ? "Restaurar" : "Borrar"}
+                            {confirm.kind === "restore" ? t("backups.restoreAction") : t("backups.deleteAction")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

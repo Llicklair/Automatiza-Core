@@ -1,4 +1,5 @@
 import { FileText, X, ScanLine, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { formatSize } from "../_hooks/useEscaner";
 
 interface SelectedFilesListProps {
@@ -9,12 +10,13 @@ interface SelectedFilesListProps {
 }
 
 export default function SelectedFilesList({ files, scanning, onRemove, onScan }: SelectedFilesListProps) {
+    const t = useTranslations("escaner");
     if (files.length === 0) return null;
 
     return (
         <div className="space-y-3">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Archivos seleccionados ({files.length})
+                {t("selectedFiles.heading", { count: files.length })}
             </h2>
             <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 {files.map((file, i) => (
@@ -42,12 +44,12 @@ export default function SelectedFilesList({ files, scanning, onRemove, onScan }:
                 {scanning ? (
                     <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Escaneando y clasificando...
+                        {t("selectedFiles.scanning")}
                     </>
                 ) : (
                     <>
                         <ScanLine className="w-5 h-5" />
-                        Escanear {files.length} archivo{files.length > 1 ? "s" : ""}
+                        {t("selectedFiles.scanButton", { count: files.length })}
                     </>
                 )}
             </button>

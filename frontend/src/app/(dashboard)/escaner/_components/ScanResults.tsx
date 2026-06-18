@@ -1,20 +1,23 @@
 import { Loader2, CheckCircle2, AlertTriangle, FileText, FileImage, Sheet, Mail, FolderOpen } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ScanResult } from "../_hooks/useEscaner";
 import { formatSize } from "../_hooks/useEscaner";
 
-const CATEGORY_INFO: Record<string, { label: string; icon: typeof FileText; color: string; bg: string }> = {
-    facturas: { label: "Facturas", icon: FileText, color: "text-primary", bg: "bg-primary/10" },
-    bancos: { label: "Bancos", icon: FileText, color: "text-blue-400", bg: "bg-blue-500/10" },
-    nominas: { label: "Nominas", icon: FileText, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    fiscal: { label: "Asesor Fiscal", icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
-    crm: { label: "CRM", icon: FileText, color: "text-rose-400", bg: "bg-rose-500/10" },
-    excels: { label: "Excels", icon: Sheet, color: "text-green-400", bg: "bg-green-500/10" },
-    informes: { label: "Informes", icon: Sheet, color: "text-purple-400", bg: "bg-purple-500/10" },
-    correos: { label: "Correos", icon: Mail, color: "text-sky-400", bg: "bg-sky-500/10" },
-    automatizaciones: { label: "Automatizacion", icon: Loader2, color: "text-orange-400", bg: "bg-orange-500/10" },
-    rrhh: { label: "RRHH", icon: FileText, color: "text-muted-foreground", bg: "bg-muted" },
-    otros: { label: "Otros", icon: FileImage, color: "text-muted-foreground", bg: "bg-muted" },
-};
+type Translator = ReturnType<typeof useTranslations>;
+
+const buildCategoryInfo = (t: Translator): Record<string, { label: string; icon: typeof FileText; color: string; bg: string }> => ({
+    facturas: { label: t("categories.facturas"), icon: FileText, color: "text-primary", bg: "bg-primary/10" },
+    bancos: { label: t("categories.bancos"), icon: FileText, color: "text-blue-400", bg: "bg-blue-500/10" },
+    nominas: { label: t("categories.nominas"), icon: FileText, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    fiscal: { label: t("categories.fiscal"), icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
+    crm: { label: t("categories.crm"), icon: FileText, color: "text-rose-400", bg: "bg-rose-500/10" },
+    excels: { label: t("categories.excels"), icon: Sheet, color: "text-green-400", bg: "bg-green-500/10" },
+    informes: { label: t("categories.informes"), icon: Sheet, color: "text-purple-400", bg: "bg-purple-500/10" },
+    correos: { label: t("categories.correos"), icon: Mail, color: "text-sky-400", bg: "bg-sky-500/10" },
+    automatizaciones: { label: t("categories.automatizaciones"), icon: Loader2, color: "text-orange-400", bg: "bg-orange-500/10" },
+    rrhh: { label: t("categories.rrhh"), icon: FileText, color: "text-muted-foreground", bg: "bg-muted" },
+    otros: { label: t("categories.otros"), icon: FileImage, color: "text-muted-foreground", bg: "bg-muted" },
+});
 
 interface ScanResultsProps {
     results: ScanResult[];
@@ -23,6 +26,8 @@ interface ScanResultsProps {
 }
 
 export default function ScanResults({ results, grouped, docStatuses }: ScanResultsProps) {
+    const t = useTranslations("escaner");
+    const CATEGORY_INFO = buildCategoryInfo(t);
     if (results.length === 0) return null;
 
     const done = results.filter(r => {
@@ -41,12 +46,12 @@ export default function ScanResults({ results, grouped, docStatuses }: ScanResul
                     <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                 )}
                 <h2 className="text-lg font-semibold text-foreground">
-                    {results.length} archivo{results.length > 1 ? "s" : ""}
+                    {t("results.fileCount", { count: results.length })}
                 </h2>
                 <div className="flex gap-2 text-xs">
-                    {done > 0 && <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{done} listos</span>}
-                    {pending > 0 && <span className="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{pending} procesando</span>}
-                    {failed > 0 && <span className="text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">{failed} errores</span>}
+                    {done > 0 && <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{t("results.ready", { count: done })}</span>}
+                    {pending > 0 && <span className="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{t("results.processing", { count: pending })}</span>}
+                    {failed > 0 && <span className="text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">{t("results.errors", { count: failed })}</span>}
                 </div>
             </div>
             {/* Progress bar */}
@@ -68,7 +73,7 @@ export default function ScanResults({ results, grouped, docStatuses }: ScanResul
                             </div>
                             <div>
                                 <h3 className={`text-sm font-semibold ${info.color}`}>{info.label}</h3>
-                                <p className="text-[10px] text-muted-foreground">{items.length} archivo{items.length > 1 ? "s" : ""}</p>
+                                <p className="text-[10px] text-muted-foreground">{t("results.fileCount", { count: items.length })}</p>
                             </div>
                         </div>
                         <div className="divide-y divide-border">
@@ -95,16 +100,16 @@ export default function ScanResults({ results, grouped, docStatuses }: ScanResul
                                         <div className="flex items-center gap-2">
                                             {isDone ? (
                                                 <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                    <CheckCircle2 className="w-3 h-3" /> Clasificado
+                                                    <CheckCircle2 className="w-3 h-3" /> {t("results.classified")}
                                                 </span>
                                             ) : isFailed ? (
                                                 <span className="text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                    <AlertTriangle className="w-3 h-3" /> Error
+                                                    <AlertTriangle className="w-3 h-3" /> {t("results.error")}
                                                 </span>
                                             ) : (
                                                 <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
                                                     <Loader2 className="w-3 h-3 inline-block mr-1 animate-spin" />
-                                                    IA analizando
+                                                    {t("results.analyzing")}
                                                 </span>
                                             )}
                                         </div>

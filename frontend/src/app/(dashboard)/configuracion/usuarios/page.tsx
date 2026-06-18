@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useTranslations } from "next-intl";
 import { Plus, Mail } from "lucide-react";
 
 import type { Invitation, InvitationCreated, User, UserCreate } from "@/lib/api";
@@ -18,6 +19,7 @@ import ShareInvitationModal from "./_components/ShareInvitationModal";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function UsuariosConfigPage() {
+    const t = useTranslations("configuracion");
     const {
         users, invitations, me, loading, error, busyId,
         create, update, remove, invite, revokeInvitation,
@@ -36,7 +38,7 @@ export default function UsuariosConfigPage() {
             await create(data);
             setShowCreate(false);
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "No se pudo crear el usuario");
+            setActionError(e instanceof Error ? e.message : t("usuarios.errorCreate"));
         }
     }
 
@@ -47,7 +49,7 @@ export default function UsuariosConfigPage() {
             setShowInvite(false);
             setShareInvitation(created);
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "No se pudo crear la invitación");
+            setActionError(e instanceof Error ? e.message : t("usuarios.errorInvite"));
         }
     }
 
@@ -56,7 +58,7 @@ export default function UsuariosConfigPage() {
         try {
             await update(u.id, { is_active: !u.is_active });
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "No se pudo actualizar el usuario");
+            setActionError(e instanceof Error ? e.message : t("usuarios.errorUpdate"));
         }
     }
 
@@ -65,35 +67,35 @@ export default function UsuariosConfigPage() {
         try {
             await update(u.id, { role });
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "No se pudo cambiar el rol");
+            setActionError(e instanceof Error ? e.message : t("usuarios.errorChangeRole"));
         }
     }
 
     async function handleDelete(u: User) {
         if (!(await showConfirm({
-            message: `¿Eliminar al usuario ${u.email}? Esta acción es irreversible.`,
-            confirmLabel: "Eliminar",
+            message: t("usuarios.confirmDelete", { email: u.email }),
+            confirmLabel: t("usuarios.deleteAction"),
             confirmVariant: "danger",
         }))) return;
         setActionError(null);
         try {
             await remove(u.id);
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "No se pudo eliminar");
+            setActionError(e instanceof Error ? e.message : t("usuarios.errorDelete"));
         }
     }
 
     async function handleRevoke(inv: Invitation) {
         if (!(await showConfirm({
-            message: `¿Revocar la invitación a ${inv.email}?`,
-            confirmLabel: "Revocar",
+            message: t("usuarios.confirmRevoke", { email: inv.email }),
+            confirmLabel: t("usuarios.revokeAction"),
             confirmVariant: "danger",
         }))) return;
         setActionError(null);
         try {
             await revokeInvitation(inv.id);
         } catch (e) {
-            setActionError(e instanceof Error ? e.message : "No se pudo revocar");
+            setActionError(e instanceof Error ? e.message : t("usuarios.errorRevoke"));
         }
     }
 
@@ -103,9 +105,9 @@ export default function UsuariosConfigPage() {
         <PageContainer width="5xl">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground mb-1">Usuarios del tenant</h1>
+                    <h1 className="text-3xl font-bold text-foreground mb-1">{t("usuarios.title")}</h1>
                     <p className="text-muted-foreground text-sm mt-2">
-                        Invita por email para que cada persona ponga su propia contraseña, o crea cuentas con contraseña directa. Los empleados con rol &quot;Empleado&quot; solo verán Mi portal.
+                        {t("usuarios.subtitle")}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -114,14 +116,14 @@ export default function UsuariosConfigPage() {
                         className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
                     >
                         <Mail className="w-4 h-4" />
-                        Invitar por email
+                        {t("usuarios.inviteByEmail")}
                     </button>
                     <button
                         onClick={() => setShowCreate(true)}
                         className="flex items-center gap-2 bg-muted border border-border text-foreground px-4 py-2 rounded-xl text-sm font-medium hover:bg-muted/70"
                     >
                         <Plus className="w-4 h-4" />
-                        Crear con contraseña
+                        {t("usuarios.createWithPassword")}
                     </button>
                 </div>
             </div>

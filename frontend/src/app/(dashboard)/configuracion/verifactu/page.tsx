@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { BadgeCheck, Stamp, ShieldCheck } from "lucide-react";
 import { ModoVerifactuPanel } from "./ModoVerifactuPanel";
 import { ApoderamientoPanel } from "./ApoderamientoPanel";
@@ -11,6 +12,7 @@ import { PageContainer } from "@/components/shared/PageContainer";
 type Tab = "verifactu" | "apoderamiento" | "firma";
 
 export default function ConfiguracionFiscalPage() {
+    const t = useTranslations("configuracion");
     const searchParams = useSearchParams();
     const initial = searchParams.get("tab");
     const [tab, setTab] = useState<Tab>(
@@ -18,17 +20,17 @@ export default function ConfiguracionFiscalPage() {
     );
 
     const tabs: { key: Tab; label: string; icon: typeof BadgeCheck }[] = [
-        { key: "verifactu", label: "Modo Verifactu", icon: BadgeCheck },
-        { key: "apoderamiento", label: "Apoderamiento AEAT", icon: Stamp },
-        { key: "firma", label: "Firma digital", icon: ShieldCheck },
+        { key: "verifactu", label: t("verifactu.tabVerifactu"), icon: BadgeCheck },
+        { key: "apoderamiento", label: t("verifactu.tabApoderamiento"), icon: Stamp },
+        { key: "firma", label: t("verifactu.tabFirma"), icon: ShieldCheck },
     ];
 
     return (
         <PageContainer width="3xl">
             <div>
-                <h1 className="text-xl font-bold text-foreground">Configuración fiscal (AEAT)</h1>
+                <h1 className="text-xl font-bold text-foreground">{t("verifactu.pageTitle")}</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Modo Verifactu, apoderamiento ante la AEAT y certificado de firma digital.
+                    {t("verifactu.pageSubtitle")}
                 </p>
             </div>
 
