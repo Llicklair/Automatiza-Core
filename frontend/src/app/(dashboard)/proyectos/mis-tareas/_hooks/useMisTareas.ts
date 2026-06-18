@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Project, type ProjectTask } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
+// Stage metadata is locale-independent (id/color/dot). The visible label is
+// resolved per-locale in the component via the `proyectos.misTareas.stage*` keys.
 export const STAGES = [
-    { id: 'todo', label: 'Por Hacer', color: 'border-border bg-muted', dot: 'bg-muted-foreground' },
-    { id: 'in_progress', label: 'En Curso', color: 'border-blue-500/30 bg-blue-500/5', dot: 'bg-blue-400' },
-    { id: 'done', label: 'Completado', color: 'border-emerald-500/30 bg-emerald-500/5', dot: 'bg-emerald-400' },
+    { id: 'todo', label: 'todo', color: 'border-border bg-muted', dot: 'bg-muted-foreground' },
+    { id: 'in_progress', label: 'in_progress', color: 'border-blue-500/30 bg-blue-500/5', dot: 'bg-blue-400' },
+    { id: 'done', label: 'done', color: 'border-emerald-500/30 bg-emerald-500/5', dot: 'bg-emerald-400' },
 ];
 
 export function useMisTareas() {
+    const t = useTranslations("proyectos");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const [tasks, setTasks] = useState<ProjectTask[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -53,16 +58,16 @@ export function useMisTareas() {
             setModalOpen(false);
             setNewTask(prev => ({ ...prev, title: '', description: '' }));
             loadData();
-        } catch { toast.error("Error al crear tarea"); }
+        } catch { toast.error(t("misTareas.createError")); }
     };
 
     const deleteTask = async (task: ProjectTask) => {
-        if (!await showConfirm({ message: `¿Eliminar la tarea "${task.title}"?`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("misTareas.deleteConfirm", { title: task.title }), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         try {
             await api.projects.tasks.delete(task.id);
-            setTasks(prev => prev.filter(t => t.id !== task.id));
+            setTasks(prev => prev.filter(tk => tk.id !== task.id));
         } catch {
-            toast.error("Error al eliminar la tarea");
+            toast.error(t("misTareas.deleteError"));
         }
     };
 
@@ -74,12 +79,12 @@ export function useMisTareas() {
         if (nIdx < 0 || nIdx >= STAGES.length) return;
 
         const newStatus = STAGES[nIdx].id as any;
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+        setTasks(prev => prev.map(tk => tk.id === task.id ? { ...tk, status: newStatus } : tk));
 
         try {
             await api.projects.tasks.update(task.id, { status: newStatus });
         } catch {
-            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t));
+            setTasks(prev => prev.map(tk => tk.id === task.id ? { ...tk, status: task.status } : tk));
         }
     };
 

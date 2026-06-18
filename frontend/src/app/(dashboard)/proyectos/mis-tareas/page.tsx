@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Plus, ArrowRight, FolderGit2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMisTareas, STAGES } from "./_hooks/useMisTareas";
 import { NewTaskModal } from "./_components/NewTaskModal";
 
 export default function ProjectTasksPage() {
+    const t = useTranslations("proyectos");
     const {
         tasks, projects, loading,
         isModalOpen, setModalOpen,
@@ -13,18 +15,24 @@ export default function ProjectTasksPage() {
         createTask, deleteTask, moveTask,
     } = useMisTareas();
 
+    const stageLabels: Record<string, string> = {
+        todo: t("misTareas.stageTodo"),
+        in_progress: t("misTareas.stageInProgress"),
+        done: t("misTareas.stageDone"),
+    };
+
     return (
         <div className="flex flex-col h-[calc(100vh-2rem)] p-8 max-w-[1600px] mx-auto overflow-hidden animate-in fade-in duration-500">
             <div className="flex items-center justify-between gap-4 shrink-0 mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground mb-2">Mis Tareas</h1>
-                    <p className="text-muted-foreground">Board Kanban para tus tareas operativas de proyectos.</p>
+                    <h1 className="text-3xl font-bold text-foreground mb-2">{t("misTareas.title")}</h1>
+                    <p className="text-muted-foreground">{t("misTareas.subtitle")}</p>
                 </div>
                 <button
                     onClick={() => setModalOpen(true)}
                     className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-foreground px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-primary/20 font-medium whitespace-nowrap"
                 >
-                    <Plus className="w-5 h-5" /> Nueva Tarea
+                    <Plus className="w-5 h-5" /> {t("misTareas.newTask")}
                 </button>
             </div>
 
@@ -43,7 +51,7 @@ export default function ProjectTasksPage() {
                                     <div className={cn("px-4 py-3 border-b border-border shadow-sm flex items-center justify-between", stage.color)}>
                                         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                                             <span className={`w-2 h-2 rounded-full ${stage.dot}`} />
-                                            {stage.label}
+                                            {stageLabels[stage.id] ?? stage.label}
                                         </h3>
                                         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-foreground">
                                             {columnTasks.length}
@@ -60,7 +68,7 @@ export default function ProjectTasksPage() {
                                                     <div className="flex items-center justify-between mt-3 text-xs">
                                                         <div className="flex items-center gap-1.5 text-muted-foreground bg-accent/50 px-2 py-1 rounded-md border border-border truncate max-w-[150px]">
                                                             <FolderGit2 className="w-3.5 h-3.5 shrink-0" />
-                                                            <span className="truncate">{proj?.name || 'Desconocido'}</span>
+                                                            <span className="truncate">{proj?.name || t("misTareas.unknownProject")}</span>
                                                         </div>
 
                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -81,7 +89,7 @@ export default function ProjectTasksPage() {
                                                             <button
                                                                 onClick={() => deleteTask(task)}
                                                                 className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
-                                                                title="Eliminar tarea"
+                                                                title={t("misTareas.deleteTaskTitle")}
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>
@@ -92,7 +100,7 @@ export default function ProjectTasksPage() {
                                         })}
                                         {columnTasks.length === 0 && (
                                             <div className="h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center text-xs text-muted-foreground font-medium">
-                                                Arrastra aquí
+                                                {t("misTareas.dropHere")}
                                             </div>
                                         )}
                                     </div>
