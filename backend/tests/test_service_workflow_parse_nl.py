@@ -7,7 +7,7 @@ deterministas y no requieran API keys.
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from app.services.workflow._nlp import parse_natural_language

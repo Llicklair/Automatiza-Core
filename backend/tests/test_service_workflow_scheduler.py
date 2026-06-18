@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from app.db.models.models import Task, Tenant, Workflow, WorkflowExecution
+from app.db.models.models import Tenant, Workflow, WorkflowExecution
 from app.services.workflow.scheduler import (
     create_execution,
     create_task_for_execution,

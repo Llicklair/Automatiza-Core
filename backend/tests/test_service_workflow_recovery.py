@@ -13,9 +13,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from app.db.base import AsyncSessionLocal
 from app.db.models.models import Task, Tenant, Workflow, WorkflowExecution
-from app.services.workflow import recovery as recovery_module
 from app.services.workflow.recovery import recover_stale_executions
 
 
@@ -52,7 +50,6 @@ def _utcnow():
 @pytest.fixture(autouse=True)
 def _patch_session(monkeypatch):
     """recover_stale_executions abre su propia AsyncSession; redirigirla a la del test."""
-    import contextlib
 
     from app.db.base import AsyncSessionLocal as _OrigAsyncSessionLocal  # noqa: F401
 

@@ -7,8 +7,6 @@ import pytest
 
 from app.db.models.billing import Invoice
 from app.db.models.crm import Client
-from app.db.models.hr import Employee, Payroll
-from app.db.models.models import BankTransaction
 from app.services.treasury.projection import project_cashflow
 from app.services.treasury.sepa import (
     DebtorParty,
