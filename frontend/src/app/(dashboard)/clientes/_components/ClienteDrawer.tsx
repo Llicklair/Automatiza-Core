@@ -104,7 +104,7 @@ export function ClienteDrawer({
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0" aria-label="Cerrar ficha de cliente">
+                                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0" aria-label={t("closeClientCard")}>
                                     <X className="h-5 w-5" aria-hidden="true" />
                                 </Button>
                             </div>
