@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 
 export function useWarehouseScanner() {
+    const t = useTranslations("inventario");
     const [token, setToken] = useState<{ token: string; expires_at: string; scope: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -17,7 +19,7 @@ export function useWarehouseScanner() {
             const data = await api.scanner.generateQR();
             setToken(data);
         } catch (e: any) {
-            useToastStore.getState().error(e?.message || "Error generando token");
+            useToastStore.getState().error(e?.message || t("scanner.tokenError"));
         }
         setLoading(false);
     };

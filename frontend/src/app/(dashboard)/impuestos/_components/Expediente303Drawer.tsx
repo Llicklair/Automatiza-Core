@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     X, Loader2, Download, FileText, CheckCircle2, Copy,
     AlertTriangle, ExternalLink, Sparkles, Circle,
@@ -21,6 +22,7 @@ const fmt = (n: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
 
 export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
+    const t = useTranslations("impuestos");
     const [data, setData] = useState<Modelo303Expediente | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
         setError(null);
         api.reports.modelo303Expediente(quarter, year)
             .then(setData)
-            .catch((e: Error) => setError(e.message || "Error al generar el expediente"))
+            .catch((e: Error) => setError(e.message || t("expediente303.generError")))
             .finally(() => setLoading(false));
     }, [open, quarter, year]);
 
@@ -55,7 +57,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
         try {
             await api.reports.modelo303Pdf(quarter, year);
         } catch {
-            toast.error("Error al descargar el PDF");
+            toast.error(t("expediente303.pdfError"));
         } finally {
             setPdfLoading(false);
         }
@@ -63,7 +65,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
 
     const handleCopyCasilla = (codigo: string, valor: number) => {
         navigator.clipboard.writeText(valor.toFixed(2));
-        toast.success(`Casilla ${codigo} copiada (${valor.toFixed(2)})`);
+        toast.success(t("expediente303.casillaCopiada", { codigo, valor: valor.toFixed(2) }));
     };
 
     const signoTone = data?.resumen.signo === "ingresar"
@@ -86,18 +88,18 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                     <div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                             <Sparkles className="w-3.5 h-3.5 text-primary" />
-                            Expediente listo para presentar
+                            {t("expediente303.badge")}
                         </div>
                         <h2 className="text-lg font-semibold text-foreground mt-1">
-                            Modelo 303 · {data?.periodo || `${quarter}T ${year}`}
+                            {t("expediente303.heading", { periodo: data?.periodo || `${quarter}T ${year}` })}
                         </h2>
                         {data?.tenant && (
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                {data.tenant.name} · NIF {data.tenant.nif}
+                                {t("expediente303.tenantNif", { name: data.tenant.name, nif: data.tenant.nif })}
                             </p>
                         )}
                     </div>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label={t("expediente303.closeAria")}>
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -107,7 +109,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                     {loading && (
                         <div className="flex items-center justify-center py-20 text-muted-foreground gap-3">
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            Calculando casillas desde tus facturas…
+                            {t("expediente303.calculando")}
                         </div>
                     )}
 
@@ -123,23 +125,23 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                             {/* Resumen */}
                             <div className={`rounded-2xl border p-5 ${signoTone}`}>
                                 <div className="text-xs uppercase tracking-wider font-semibold opacity-80">
-                                    Resultado del trimestre
+                                    {t("expediente303.resultadoTrimestre")}
                                 </div>
                                 <div className="text-3xl font-bold mt-1 tabular-nums">
                                     {fmt(Math.abs(data.resumen.resultado))}
                                     <span className="ml-2 text-sm font-medium align-middle">
-                                        {data.resumen.signo === "ingresar" && "a ingresar"}
-                                        {data.resumen.signo === "compensar" && "a compensar"}
-                                        {data.resumen.signo === "cero" && "sin actividad"}
+                                        {data.resumen.signo === "ingresar" && t("expediente303.aIngresar")}
+                                        {data.resumen.signo === "compensar" && t("expediente303.aCompensar")}
+                                        {data.resumen.signo === "cero" && t("expediente303.sinActividad")}
                                     </span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
                                     <div>
-                                        <p className="opacity-70 text-xs">IVA devengado (ventas)</p>
+                                        <p className="opacity-70 text-xs">{t("expediente303.ivaDevengado")}</p>
                                         <p className="font-semibold tabular-nums">{fmt(data.resumen.total_devengado)}</p>
                                     </div>
                                     <div>
-                                        <p className="opacity-70 text-xs">IVA deducible (compras)</p>
+                                        <p className="opacity-70 text-xs">{t("expediente303.ivaDeducible")}</p>
                                         <p className="font-semibold tabular-nums">{fmt(data.resumen.total_deducible)}</p>
                                     </div>
                                 </div>
@@ -153,30 +155,32 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                                     className="flex items-center justify-center gap-2 h-10 rounded-lg border border-border bg-card hover:bg-muted/50 transition text-sm font-medium disabled:opacity-50"
                                 >
                                     {pdfLoading
-                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Descargando…</>
-                                        : <><FileText className="w-4 h-4" /> Descargar PDF</>}
+                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("expediente303.descargando")}</>
+                                        : <><FileText className="w-4 h-4" /> {t("expediente303.descargarPdf")}</>}
                                 </button>
                                 <button
                                     onClick={handleDownloadXml}
                                     className="flex items-center justify-center gap-2 h-10 rounded-lg border border-border bg-card hover:bg-muted/50 transition text-sm font-medium"
                                 >
-                                    <Download className="w-4 h-4" /> Descargar XML auxiliar
+                                    <Download className="w-4 h-4" /> {t("expediente303.descargarXml")}
                                 </button>
                             </div>
 
                             {/* Casillas */}
                             <div>
-                                <h3 className="text-sm font-semibold text-foreground mb-2">Casillas oficiales</h3>
+                                <h3 className="text-sm font-semibold text-foreground mb-2">{t("expediente303.casillasTitle")}</h3>
                                 <p className="text-xs text-muted-foreground mb-3">
-                                    Las marcadas como <span className="text-amber-500">[editable]</span> pueden requerir ajuste manual (compensaciones, bienes de inversión, etc.).
+                                    {t.rich("expediente303.casillasNota", {
+                                        editable: (chunks) => <span className="text-amber-500">{chunks}</span>,
+                                    })}
                                 </p>
                                 <div className="rounded-lg border border-border overflow-hidden">
                                     <table className="w-full text-sm">
                                         <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
                                             <tr>
-                                                <th className="text-left px-3 py-2 w-16">Cod.</th>
-                                                <th className="text-left px-3 py-2">Descripción</th>
-                                                <th className="text-right px-3 py-2">Valor</th>
+                                                <th className="text-left px-3 py-2 w-16">{t("expediente303.thCod")}</th>
+                                                <th className="text-left px-3 py-2">{t("expediente303.thDescripcion")}</th>
+                                                <th className="text-right px-3 py-2">{t("expediente303.thValor")}</th>
                                                 <th className="w-10"></th>
                                             </tr>
                                         </thead>
@@ -196,7 +200,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                                                     <td className="px-2 py-2">
                                                         <button
                                                             onClick={() => handleCopyCasilla(c.codigo, c.valor)}
-                                                            title="Copiar valor"
+                                                            title={t("expediente303.copiarValor")}
                                                             className="text-muted-foreground hover:text-primary p-1"
                                                         >
                                                             <Copy className="w-3.5 h-3.5" />
@@ -211,7 +215,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
 
                             {/* Checklist */}
                             <div>
-                                <h3 className="text-sm font-semibold text-foreground mb-3">Pasos para presentar en SEDE AEAT</h3>
+                                <h3 className="text-sm font-semibold text-foreground mb-3">{t("expediente303.pasosTitle")}</h3>
                                 <ol className="space-y-2">
                                     {data.checklist.map((step) => (
                                         <li key={step.n} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
@@ -234,7 +238,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                                     rel="noopener noreferrer"
                                     className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                                 >
-                                    Abrir SEDE AEAT — Modelo 303
+                                    {t("expediente303.abrirSede")}
                                     <ExternalLink className="w-3 h-3" />
                                 </a>
                             </div>
@@ -242,7 +246,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
                             <PresentacionElectronicaPanel quarter={quarter} year={year} />
 
                             <div className="text-[11px] text-muted-foreground border-t border-border pt-3">
-                                El expediente (PDF + XML + casillas) sirve para presentar manualmente en la SEDE. El panel de presentación electrónica está en <b>beta</b> con dry-run por defecto.
+                                {t("expediente303.footnote")}
                             </div>
                         </>
                     )}

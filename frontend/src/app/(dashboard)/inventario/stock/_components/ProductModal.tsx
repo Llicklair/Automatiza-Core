@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api, type Product } from "@/lib/api";
 import { type Client } from "@/lib/api/erp";
 import { type ProductForm } from "../_hooks/useStock";
@@ -23,6 +24,8 @@ interface ProductModalProps {
 }
 
 export function ProductModal({ open, onOpenChange, editingProduct, productForm, setProductForm, onSubmit, saving }: ProductModalProps) {
+    const t = useTranslations("inventario");
+    const tc = useTranslations("common");
     const [suppliers, setSuppliers] = useState<Client[]>([]);
     useEffect(() => {
         if (!open) return;
@@ -34,24 +37,24 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>
-                        {editingProduct ? "Editar producto" : "Nuevo producto"}
+                        {editingProduct ? t("productModal.editTitle") : t("productModal.newTitle")}
                     </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={onSubmit} className="space-y-4">
                     <div>
-                        <Label className="text-xs">Nombre *</Label>
+                        <Label className="text-xs">{t("productModal.name")}</Label>
                         <Input
                             type="text"
                             required
                             value={productForm.name}
                             onChange={e => setProductForm(f => ({ ...f, name: e.target.value }))}
-                            placeholder="Nombre del producto"
+                            placeholder={t("productModal.namePlaceholder")}
                             className="mt-1.5"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-xs">SKU</Label>
+                            <Label className="text-xs">{t("productModal.sku")}</Label>
                             <Input
                                 type="text"
                                 value={productForm.sku}
@@ -61,7 +64,7 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                             />
                         </div>
                         <div>
-                            <Label className="text-xs">Código de barras</Label>
+                            <Label className="text-xs">{t("productModal.barcode")}</Label>
                             <Input
                                 type="text"
                                 value={productForm.barcode}
@@ -73,17 +76,17 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-xs">Categoría</Label>
+                            <Label className="text-xs">{t("productModal.category")}</Label>
                             <Input
                                 type="text"
                                 value={productForm.category}
                                 onChange={e => setProductForm(f => ({ ...f, category: e.target.value }))}
-                                placeholder="ferretería, oficina, ..."
+                                placeholder={t("productModal.categoryPlaceholder")}
                                 className="mt-1.5"
                             />
                         </div>
                         <div>
-                            <Label className="text-xs">Unidad</Label>
+                            <Label className="text-xs">{t("productModal.unit")}</Label>
                             <select
                                 value={productForm.unit}
                                 onChange={e => setProductForm(f => ({ ...f, unit: e.target.value }))}
@@ -101,18 +104,18 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                         </div>
                     </div>
                     <div>
-                        <Label className="text-xs">Ubicación en almacén</Label>
+                        <Label className="text-xs">{t("productModal.location")}</Label>
                         <Input
                             type="text"
                             value={productForm.location}
                             onChange={e => setProductForm(f => ({ ...f, location: e.target.value }))}
-                            placeholder="Ej. Pasillo 1, Sección A-3, Estantería 4"
+                            placeholder={t("productModal.locationPlaceholder")}
                             className="mt-1.5"
                         />
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                         <div>
-                            <Label className="text-xs">Precio venta</Label>
+                            <Label className="text-xs">{t("productModal.salePrice")}</Label>
                             <Input
                                 type="number"
                                 min={0}
@@ -123,7 +126,7 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                             />
                         </div>
                         <div>
-                            <Label className="text-xs">Precio coste</Label>
+                            <Label className="text-xs">{t("productModal.costPrice")}</Label>
                             <Input
                                 type="number"
                                 min={0}
@@ -135,7 +138,7 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                             />
                         </div>
                         <div>
-                            <Label className="text-xs">Alerta mín.</Label>
+                            <Label className="text-xs">{t("productModal.minAlert")}</Label>
                             <Input
                                 type="number"
                                 min={0}
@@ -147,36 +150,36 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label className="text-xs">Proveedor habitual</Label>
+                            <Label className="text-xs">{t("productModal.supplier")}</Label>
                             <select
                                 value={productForm.supplier_id ?? ""}
                                 onChange={e => setProductForm(f => ({ ...f, supplier_id: e.target.value || null }))}
                                 className="mt-1.5 w-full bg-background border border-border text-foreground text-sm rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring transition-colors h-9"
                             >
-                                <option value="">— Sin proveedor —</option>
+                                <option value="">{t("productModal.noSupplierOption")}</option>
                                 {suppliers.map(sup => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <Label className="text-xs">Cantidad de reposición</Label>
+                            <Label className="text-xs">{t("productModal.reorderQuantity")}</Label>
                             <Input
                                 type="number"
                                 min={0}
                                 value={productForm.reorder_quantity ?? ""}
                                 onChange={e => setProductForm(f => ({ ...f, reorder_quantity: e.target.value ? parseInt(e.target.value) : null }))}
-                                placeholder="auto"
+                                placeholder={t("productModal.reorderAuto")}
                                 className="mt-1.5"
                             />
                         </div>
                     </div>
                     <div>
-                        <Label className="text-xs">Descripción</Label>
+                        <Label className="text-xs">{t("productModal.descriptionLabel")}</Label>
                         <textarea
                             value={productForm.description}
                             rows={2}
                             onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))}
                             className="mt-1.5 w-full bg-background border border-border text-foreground text-sm rounded-md px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring transition-colors resize-none"
-                            placeholder="Descripción opcional"
+                            placeholder={t("productModal.descriptionPlaceholder")}
                         />
                     </div>
                     <div className="flex items-center gap-2">
@@ -188,16 +191,16 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                             className="h-4 w-4 rounded border-border accent-primary"
                         />
                         <Label htmlFor="stock-product-active" className="text-sm cursor-pointer">
-                            Activo <span className="text-xs text-muted-foreground">(desactivar lo oculta del inventario)</span>
+                            {t.rich("productModal.active", { hint: (chunks) => <span className="text-xs text-muted-foreground">{chunks}</span> })}
                         </Label>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancelar
+                            {tc("cancel")}
                         </Button>
                         <Button type="submit" disabled={saving}>
                             {saving && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
-                            {editingProduct ? "Guardar cambios" : "Crear producto"}
+                            {editingProduct ? t("productModal.saveChanges") : t("productModal.createProduct")}
                         </Button>
                     </DialogFooter>
                 </form>

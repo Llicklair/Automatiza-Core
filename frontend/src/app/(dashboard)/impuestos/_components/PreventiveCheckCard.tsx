@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import type {
@@ -16,32 +17,33 @@ interface Props {
 
 const SEVERITY_STYLES: Record<
     PreventiveSeverity,
-    { icon: typeof AlertTriangle; bg: string; border: string; text: string; label: string }
+    { icon: typeof AlertTriangle; bg: string; border: string; text: string; labelKey: string }
 > = {
     high: {
         icon: AlertTriangle,
         bg: "bg-red-50",
         border: "border-red-300",
         text: "text-red-900",
-        label: "Crítico",
+        labelKey: "preventive.severityHigh",
     },
     medium: {
         icon: Info,
         bg: "bg-amber-50",
         border: "border-amber-300",
         text: "text-amber-900",
-        label: "Atención",
+        labelKey: "preventive.severityMedium",
     },
     low: {
         icon: Info,
         bg: "bg-sky-50",
         border: "border-sky-300",
         text: "text-sky-900",
-        label: "Aviso",
+        labelKey: "preventive.severityLow",
     },
 };
 
 function FindingRow({ f }: { f: PreventiveFinding }) {
+    const t = useTranslations("impuestos");
     const s = SEVERITY_STYLES[f.severity];
     const Icon = s.icon;
     return (
@@ -49,7 +51,7 @@ function FindingRow({ f }: { f: PreventiveFinding }) {
             <Icon className="h-5 w-5 shrink-0 mt-0.5" />
             <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide opacity-75">
-                    <span>{s.label}</span>
+                    <span>{t(s.labelKey)}</span>
                     <span className="opacity-50">·</span>
                     <span className="font-mono">{f.code}</span>
                 </div>
@@ -57,7 +59,7 @@ function FindingRow({ f }: { f: PreventiveFinding }) {
                 <div className="text-sm opacity-90">→ {f.suggested_action}</div>
                 {f.source_invoice_ids.length > 0 && (
                     <div className="text-xs opacity-70 font-mono">
-                        {f.source_invoice_ids.length} factura(s) afectada(s)
+                        {t("preventive.facturasAfectadas", { count: f.source_invoice_ids.length })}
                     </div>
                 )}
             </div>
@@ -66,6 +68,7 @@ function FindingRow({ f }: { f: PreventiveFinding }) {
 }
 
 export function PreventiveCheckCard({ quarter, year }: Props) {
+    const t = useTranslations("impuestos");
     const [data, setData] = useState<PreventiveCheckResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export function PreventiveCheckCard({ quarter, year }: Props) {
         api.modelosAeat
             .preventiveCheck(quarter, year)
             .then(setData)
-            .catch((e: Error) => setError(e.message || "Error al chequear el trimestre"))
+            .catch((e: Error) => setError(e.message || t("preventive.checkError")))
             .finally(() => setLoading(false));
     }, [quarter, year]);
 
@@ -85,10 +88,10 @@ export function PreventiveCheckCard({ quarter, year }: Props) {
             <header className="flex items-center justify-between">
                 <div>
                     <h3 className="text-sm font-semibold text-slate-800">
-                        Asistente fiscal preventivo · {quarter}T {year}
+                        {t("preventive.title", { quarter, year })}
                     </h3>
                     <p className="text-xs text-slate-500">
-                        Hallazgos detectados antes de cerrar el 303.
+                        {t("preventive.subtitle")}
                     </p>
                 </div>
                 {data && (
@@ -102,7 +105,7 @@ export function PreventiveCheckCard({ quarter, year }: Props) {
                                     key={sev}
                                     className={`px-2 py-0.5 rounded-full border ${cls.border} ${cls.bg} ${cls.text} font-mono`}
                                 >
-                                    {n} {cls.label.toLowerCase()}
+                                    {t("preventive.countBadge", { n, label: t(cls.labelKey).toLowerCase() })}
                                 </span>
                             );
                         })}
@@ -112,7 +115,7 @@ export function PreventiveCheckCard({ quarter, year }: Props) {
 
             {loading && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Analizando facturas del trimestre…
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("preventive.analizando")}
                 </div>
             )}
 
@@ -125,7 +128,7 @@ export function PreventiveCheckCard({ quarter, year }: Props) {
             {!loading && !error && data && data.findings.length === 0 && (
                 <div className="flex items-center gap-2 rounded-md bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-900">
                     <CheckCircle2 className="h-5 w-5" />
-                    Sin riesgos detectados. El trimestre parece listo para presentar.
+                    {t("preventive.sinRiesgos")}
                 </div>
             )}
 

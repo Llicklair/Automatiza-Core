@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { FileText, Loader2, Download } from "lucide-react";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function LibroRegistroExport() {
+    const t = useTranslations("impuestos");
     const show = useToastStore((s) => s.show);
     const yearNow = new Date().getFullYear();
     const [year, setYear] = useState(yearNow);
@@ -18,9 +20,10 @@ export function LibroRegistroExport() {
         setBusy(type);
         try {
             await api.reports.libroRegistro(year, type);
-            show(`Libro ${type} ${year} descargado`, "success");
+            const typeLabel = type === "emitidas" ? t("libroRegistro.emitidas") : t("libroRegistro.recibidas");
+            show(t("libroRegistro.downloaded", { type: typeLabel, year }), "success");
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "No se pudo descargar el CSV";
+            const msg = e instanceof Error ? e.message : t("libroRegistro.downloadError");
             show(msg, "error");
         } finally {
             setBusy(null);
@@ -34,15 +37,15 @@ export function LibroRegistroExport() {
                     <div>
                         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                             <FileText className="w-4 h-4 text-emerald-400" />
-                            Libro registro de facturas (AEAT)
+                            {t("libroRegistro.title")}
                         </h2>
                         <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-                            Exporta CSV con facturas emitidas o recibidas del ejercicio para contabilidad o revisión.
+                            {t("libroRegistro.description")}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <label className="text-xs text-muted-foreground flex items-center gap-2">
-                            Año
+                            {t("libroRegistro.year")}
                             <Input
                                 type="number"
                                 min={2020}
@@ -60,7 +63,7 @@ export function LibroRegistroExport() {
                             className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/20"
                         >
                             {busy === "emitidas" ? <Loader2 className="mr-1.5 w-3.5 h-3.5 animate-spin" /> : <Download className="mr-1.5 w-3.5 h-3.5" />}
-                            Emitidas
+                            {t("libroRegistro.emitidas")}
                         </Button>
                         <Button
                             variant="outline"
@@ -70,7 +73,7 @@ export function LibroRegistroExport() {
                             className="text-primary border-primary/20 hover:bg-primary/20"
                         >
                             {busy === "recibidas" ? <Loader2 className="mr-1.5 w-3.5 h-3.5 animate-spin" /> : <Download className="mr-1.5 w-3.5 h-3.5" />}
-                            Recibidas
+                            {t("libroRegistro.recibidas")}
                         </Button>
                     </div>
                 </div>

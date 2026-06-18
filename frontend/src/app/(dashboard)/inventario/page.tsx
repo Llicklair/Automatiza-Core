@@ -1,30 +1,31 @@
 import Link from "next/link";
 import { Package, ScanLine, ArrowRight, Boxes } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { ValuationWidget } from "./_components/ValuationWidget";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-const SECTIONS = [
-    {
-        href: "/inventario/stock",
-        icon: Package,
-        color: "text-emerald-400",
-        bg: "bg-emerald-500/10 border-emerald-500/20",
-        glow: "group-hover:shadow-emerald-500/10",
-        title: "Stock",
-        description: "Niveles de inventario, movimientos de entrada/salida y alertas de stock mínimo.",
-    },
-    {
-        href: "/inventario/scanner",
-        icon: ScanLine,
-        color: "text-sky-400",
-        bg: "bg-sky-500/10 border-sky-500/20",
-        glow: "group-hover:shadow-sky-500/10",
-        title: "Escáner",
-        description: "Registra entradas y salidas de producto leyendo códigos de barras o QR.",
-    },
-] as const;
-
-export default function InventarioPage() {
+export default async function InventarioPage() {
+    const t = await getTranslations("inventario");
+    const SECTIONS = [
+        {
+            href: "/inventario/stock",
+            icon: Package,
+            color: "text-emerald-400",
+            bg: "bg-emerald-500/10 border-emerald-500/20",
+            glow: "group-hover:shadow-emerald-500/10",
+            title: t("home.stockTitle"),
+            description: t("home.stockDescription"),
+        },
+        {
+            href: "/inventario/scanner",
+            icon: ScanLine,
+            color: "text-sky-400",
+            bg: "bg-sky-500/10 border-sky-500/20",
+            glow: "group-hover:shadow-sky-500/10",
+            title: t("home.scannerTitle"),
+            description: t("home.scannerDescription"),
+        },
+    ] as const;
     return (
         <PageContainer width="5xl" className="space-y-8">
             <div>
@@ -32,10 +33,10 @@ export default function InventarioPage() {
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <Boxes className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-foreground tracking-tight">Inventario</h1>
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">{t("home.title")}</h1>
                 </div>
                 <p className="text-sm text-muted-foreground ml-[52px]">
-                    Control de stock y registro de movimientos por escáner de código.
+                    {t("home.subtitle")}
                 </p>
             </div>
 
@@ -53,7 +54,7 @@ export default function InventarioPage() {
                                 <p className="text-xs text-muted-foreground leading-relaxed">{s.description}</p>
                             </div>
                             <div className={`flex items-center gap-1 text-xs font-medium ${s.color} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                                Abrir <ArrowRight className="w-3 h-3" />
+                                {t("home.open")} <ArrowRight className="w-3 h-3" />
                             </div>
                         </div>
                     </Link>
