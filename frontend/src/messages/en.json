@@ -1241,5 +1241,152 @@
     "agente": {
       "createError": "Error creating the task"
     }
+  },
+  "tesoreria": {
+    "sections": {
+      "cashflowTitle": "Cashflow",
+      "cashflowDescription": "Projection of cash inflows and outflows. Spot future liquidity pressures.",
+      "paymentsTitle": "Payments and Collections",
+      "paymentsDescription": "Manage pending due dates: receivables and payables.",
+      "remittancesTitle": "Remittances",
+      "remittancesDescription": "SEPA files for bank direct debits and bulk supplier payments."
+    },
+    "index": {
+      "title": "Treasury",
+      "subtitle": "Liquidity control, due dates, and bank payment files.",
+      "open": "Open"
+    },
+    "cashflow": {
+      "pageTitle": "Cash Flow Forecast",
+      "pageDescription": "Analyze your future receipts and payments based on sales invoices, purchase invoices and payroll.",
+      "expectedInflows": "Expected Inflows",
+      "expectedOutflows": "Expected Outflows",
+      "netCashFlow": "Net Cash Flow",
+      "movementsHistory": "Movements History",
+      "filterAll": "All",
+      "filterInflows": "Inflows",
+      "filterOutflows": "Outflows",
+      "analyzingFlows": "Analyzing flows...",
+      "emptyState": "No forecast financial movements.",
+      "invoiceDescription": "Invoice {name}",
+      "defaultClient": "Client",
+      "payrollDescription": "Payroll {name}",
+      "defaultEmployee": "Employee"
+    },
+    "pagosYCobros": {
+      "tabCobros": "Pending collections ({n})",
+      "tabPagos": "Pending payments ({n})",
+      "tabMovimientos": "Bank transactions ({n})",
+      "title": "Payments and Collections",
+      "description": "Liquidity control and cash due dates.",
+      "syncBank": "Sync bank",
+      "footerNote": "Collection and payment amounts come from issued and received invoices that are unpaid. Bank transactions are imported via PSD2 sync.",
+      "syncError": "The bank could not be synced."
+    },
+    "dueBadge": {
+      "noDueDate": "No due date",
+      "overdueDays": "Overdue by {n}d",
+      "today": "Today",
+      "daysLeft": "{n}d"
+    },
+    "invoiceTable": {
+      "emptyCobrosTitle": "No pending receivables",
+      "emptyPagosTitle": "No pending payments",
+      "emptyCobrosDesc": "All issued invoices are paid.",
+      "emptyPagosDesc": "All received invoices are paid.",
+      "clientLabel": "Customer",
+      "supplierLabel": "Supplier",
+      "colInvoiceNumber": "Invoice No.",
+      "colAmount": "Amount",
+      "colDueDate": "Due date",
+      "colStatus": "Status",
+      "total": "Total"
+    },
+    "kpiCards": {
+      "cajaActual": "Current Cash",
+      "ultimoMov": "Last mov. {fecha}",
+      "sinMovimientos": "No bank transactions",
+      "porCobrar": "Receivable",
+      "facturasEmitidas": "{count, plural, one {# invoice issued} other {# invoices issued}}",
+      "porPagar": "Payable",
+      "facturasRecibidas": "{count, plural, one {# invoice received} other {# invoices received}}",
+      "vencidas": "Overdue",
+      "netoPeriodo": "Net for period",
+      "facturasVencidas": "{count, plural, one {# invoice} other {# invoices}}",
+      "atencionInmediata": "Require immediate attention",
+      "ingresosGastos": "Income - accumulated expenses"
+    },
+    "transactionsTable": {
+      "emptyTitle": "No bank transactions",
+      "emptyDescription": "Click “Sync bank” to import transactions.",
+      "syncNow": "Sync now",
+      "colDate": "Date",
+      "colConcept": "Description",
+      "colAmount": "Amount",
+      "colBalance": "Balance",
+      "colStatus": "Status",
+      "statusReconciled": "Reconciled",
+      "statusPending": "Pending"
+    },
+    "remesas": {
+      "title": "SEPA Bank Remittances",
+      "description": "Group invoices and payroll to generate SEPA XML files ready for your bank.",
+      "generateRemesa": "Generate remittance ({total})",
+      "selectConcepts": "Select items",
+      "sepaConfigTitle": "SEPA Configuration",
+      "creditorId": "Creditor Identifier",
+      "defaultBank": "Default Bank",
+      "scheme": "Scheme",
+      "jointSignature": "Joint Signature",
+      "jointSignatureEnabled": "Enabled",
+      "automationTitle": "SEPA Automation",
+      "automationDescription": "The system automatically groups validated payments into SEPA files on the 5th and 20th of each month and sends them to your accountant.",
+      "errorCreatingTask": "Error creating the task",
+      "invoiceLabel": "Invoice {number}",
+      "invoiceSublabel": "Inv. {number}",
+      "supplierFallback": "Supplier",
+      "employeeFallback": "Employee",
+      "payrollSublabel": "Payroll {period}"
+    },
+    "remesaItemList": {
+      "selectedCount": "{selected} of {total} selected",
+      "selectAll": "Select all",
+      "selectNone": "None",
+      "emptyCobros": "No issued invoices pending collection",
+      "emptyPagos": "No received invoices pending payment",
+      "emptyNominas": "No issued payroll pending transfer"
+    },
+    "remesaSummary": {
+      "title": "Batch summary",
+      "empty": "Select items to include in the batch.",
+      "total": "Total",
+      "includedCount": "{count, plural, one {# item included} other {# items included}}"
+    },
+    "historial": {
+      "statusGenerated": "Generated",
+      "actionMarkSent": "Mark as sent",
+      "statusSent": "Sent",
+      "actionMarkExecuted": "Mark as executed",
+      "statusExecuted": "Executed",
+      "actionReconcile": "Reconcile",
+      "statusReconciled": "Reconciled",
+      "typeTransfers": "Transfers",
+      "typeDirectDebits": "Direct debits",
+      "title": "Remittance history",
+      "loading": "Loading…",
+      "empty": "No remittances generated yet. The SEPA remittances you generate will be archived here.",
+      "ordersCount": "{n, plural, one {# order} other {# orders}}",
+      "downloadXml": "Download XML"
+    },
+    "remesaModal": {
+      "title": "Generating SEPA Batch",
+      "processing": "The agent is processing the batch",
+      "grouping": "Grouping {count, plural, one {# item} other {# items}} for {total}...",
+      "successTitle": "Batch generated successfully",
+      "successDescription": "The SEPA XML file has been created and registered in Documents.",
+      "viewInDocuments": "View in Documents",
+      "errorTitle": "Error generating the batch",
+      "unknownError": "Unknown error"
+    }
   }
 }

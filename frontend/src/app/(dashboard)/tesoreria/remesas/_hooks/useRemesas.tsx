@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Invoice, type Payroll, type Task } from "@/lib/api";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -28,6 +29,7 @@ export const TYPE_CONFIG = {
 } as const;
 
 function useAgentTask() {
+    const t = useTranslations("tesoreria");
     const [status, setStatus] = useState<"idle" | "creating" | "polling" | "done" | "failed">("idle");
     const [error, setError] = useState<string | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -53,15 +55,16 @@ function useAgentTask() {
             }, 2000);
         } catch (e) {
             setStatus("failed");
-            setError(e instanceof Error ? e.message : "Error al crear la tarea");
+            setError(e instanceof Error ? e.message : t("remesas.errorCreatingTask"));
         }
-    }, [stop]);
+    }, [stop, t]);
 
     useEffect(() => () => stop(), [stop]);
     return { launch, status, error, reset: () => { stop(); setStatus("idle"); setError(null); } };
 }
 
 export function useRemesas() {
+    const t = useTranslations("tesoreria");
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<RemesaItem[]>([]);
     const [activeType, setActiveType] = useState<RemesaType>("pagos");
@@ -87,8 +90,8 @@ export function useRemesas() {
             inv.filter(i => (i.invoice_type === "issued" || i.invoice_type === "emitida" || i.invoice_type === "venta") && i.status === "pending")
                 .forEach(i => newItems.push({
                     id: i.id, type: "cobros",
-                    label: i.client?.name || `Factura ${i.invoice_number || i.id.slice(0, 6)}`,
-                    sublabel: `Fac. ${i.invoice_number || i.id.slice(0, 8)}`,
+                    label: i.client?.name || t("remesas.invoiceLabel", { number: i.invoice_number || i.id.slice(0, 6) }),
+                    sublabel: t("remesas.invoiceSublabel", { number: i.invoice_number || i.id.slice(0, 8) }),
                     amount: Number(i.amount_total),
                     date: i.due_date || i.date,
                     selected: false,
@@ -97,8 +100,8 @@ export function useRemesas() {
             inv.filter(i => (i.invoice_type === "received" || i.invoice_type === "recibida" || i.invoice_type === "compra") && i.status !== "paid" && i.status !== "cancelled")
                 .forEach(i => newItems.push({
                     id: i.id, type: "pagos",
-                    label: i.client?.name || `Proveedor`,
-                    sublabel: `Fac. ${i.invoice_number || i.id.slice(0, 8)}`,
+                    label: i.client?.name || t("remesas.supplierFallback"),
+                    sublabel: t("remesas.invoiceSublabel", { number: i.invoice_number || i.id.slice(0, 8) }),
                     amount: Number(i.amount_total),
                     date: i.due_date || i.date,
                     selected: false,
@@ -107,8 +110,8 @@ export function useRemesas() {
             pay.filter(p => p.status === "sent")
                 .forEach(p => newItems.push({
                     id: p.id, type: "nominas",
-                    label: p.employee?.name || "Empleado",
-                    sublabel: `Nomina ${format(new Date(p.period_start), "MMM yyyy", { locale: es })}`,
+                    label: p.employee?.name || t("remesas.employeeFallback"),
+                    sublabel: t("remesas.payrollSublabel", { period: format(new Date(p.period_start), "MMM yyyy", { locale: es }) }),
                     amount: Number(p.net_salary),
                     date: p.period_end,
                     selected: false,
