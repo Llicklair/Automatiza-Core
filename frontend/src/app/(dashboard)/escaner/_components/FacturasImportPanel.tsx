@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
     Upload, Loader2, AlertCircle, CheckCircle2, FileText, Trash2, AlertTriangle, Package,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { InvoiceDraft } from "@/lib/api/erp";
 
@@ -16,6 +17,7 @@ type Row = { draft: InvoiceDraft; filename: string };
  * con tu catálogo. Todo tras tu revisión.
  */
 export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } = {}) {
+    const t = useTranslations("escaner");
     const [rows, setRows] = useState<Row[]>([]);
     const [scanning, setScanning] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -34,12 +36,12 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
             const errs: string[] = [];
             res.results.forEach(r => {
                 if (r.extracted) ok.push({ draft: { ...r.extracted, apply_stock: false }, filename: r.filename });
-                else errs.push(`${r.filename}: ${r.error || "no se pudo extraer"}`);
+                else errs.push(`${r.filename}: ${r.error || t("facturas.extractFailed")}`);
             });
             setRows(prev => [...prev, ...ok]);
             setScanErrors(errs);
         } catch (err: unknown) {
-            setScanErrors([err instanceof Error ? err.message : "Error al escanear"]);
+            setScanErrors([err instanceof Error ? err.message : t("facturas.scanError")]);
         } finally {
             setScanning(false);
             if (fileRef.current) fileRef.current.value = "";
@@ -77,15 +79,15 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
             const unmatched = res.results.reduce((n, r) => n + (r.stock_unmatched?.length || 0), 0);
             const created = res.results.reduce((n, r) => n + (r.stock_created?.length || 0), 0);
             const failed = res.total - res.created;
-            let msg = `${res.created} factura${res.created !== 1 ? "s" : ""} de compra creada${res.created !== 1 ? "s" : ""}`;
-            if (movedLines) msg += ` · ${movedLines} línea${movedLines !== 1 ? "s" : ""} movieron stock`;
-            if (created) msg += ` · ${created} producto${created !== 1 ? "s" : ""} creado${created !== 1 ? "s" : ""}`;
-            if (unmatched) msg += ` · ${unmatched} sin casar (no afectan stock)`;
-            if (failed) msg += ` · ${failed} con error`;
+            let msg = t("facturas.summaryCreated", { count: res.created });
+            if (movedLines) msg += ` · ${t("facturas.summaryMovedStock", { count: movedLines })}`;
+            if (created) msg += ` · ${t("facturas.summaryProductsCreated", { count: created })}`;
+            if (unmatched) msg += ` · ${t("facturas.summaryUnmatched", { count: unmatched })}`;
+            if (failed) msg += ` · ${t("facturas.summaryFailed", { count: failed })}`;
             setSummary(msg);
             if (failed === 0) setRows([]);
         } catch (err: unknown) {
-            setSummary(err instanceof Error ? err.message : "Error al importar");
+            setSummary(err instanceof Error ? err.message : t("facturas.importError"));
         } finally {
             setImporting(false);
         }
@@ -94,9 +96,7 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
     return (
         <div className="space-y-6">
             <p className="text-sm text-muted-foreground">
-                Sube facturas de proveedor (PDF o foto). La IA extrae los datos; tú revisas y
-                creas la <strong>factura de compra + asiento contable</strong>. Marca
-                «actualizar stock» para sumar inventario de las líneas que casen con tu catálogo.
+                {t.rich("facturas.description", { strong: (chunks) => <strong>{chunks}</strong> })}
             </p>
 
             {/* Upload */}
@@ -106,9 +106,9 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
                 {scanning ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> : <Upload className="w-8 h-8 text-muted-foreground" />}
                 <div className="text-center">
                     <p className="text-sm font-medium text-foreground">
-                        {scanning ? "Escaneando facturas…" : "Arrastra una o varias facturas o haz clic"}
+                        {scanning ? t("facturas.scanning") : t("facturas.uploadPrompt")}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG · hasta 20 por lote</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("facturas.uploadHint")}</p>
                 </div>
                 <input ref={fileRef} type="file" multiple accept=".pdf,image/*" className="hidden"
                     disabled={scanning} onChange={handleFiles} />
@@ -137,10 +137,10 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
                                     lowConf ? "bg-amber-500/15 text-amber-400" : "bg-green-500/15 text-green-400"
                                 }`}>
-                                    {Math.round((d.confidence ?? 0) * 100)}% confianza
+                                    {t("facturas.confidence", { percent: Math.round((d.confidence ?? 0) * 100) })}
                                 </span>
                             </div>
-                            <button onClick={() => remove(i)} title="Descartar"
+                            <button onClick={() => remove(i)} title={t("facturas.discard")}
                                 className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
                                 <Trash2 className="w-4 h-4" />
                             </button>
@@ -153,18 +153,18 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
                         )}
 
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            <Field label="Proveedor" value={d.emisor?.name || ""} onChange={v => patchEmisor(i, "name", v)} />
-                            <Field label="NIF" value={d.emisor?.nif || ""} onChange={v => patchEmisor(i, "nif", v)} />
-                            <Field label="Nº factura" value={d.invoice_number || ""} onChange={v => patch(i, "invoice_number", v)} />
-                            <Field label="Fecha" value={d.issue_date || ""} onChange={v => patch(i, "issue_date", v)} />
-                            <Field label="Base" type="number" value={String(d.amount_base ?? "")} onChange={v => patch(i, "amount_base", Number(v))} />
-                            <Field label="IVA" type="number" value={String(d.tax_amount ?? "")} onChange={v => patch(i, "tax_amount", Number(v))} />
-                            <Field label="Total" type="number" value={String(d.amount_total ?? "")} onChange={v => patch(i, "amount_total", Number(v))} />
+                            <Field label={t("facturas.fields.provider")} value={d.emisor?.name || ""} onChange={v => patchEmisor(i, "name", v)} />
+                            <Field label={t("facturas.fields.nif")} value={d.emisor?.nif || ""} onChange={v => patchEmisor(i, "nif", v)} />
+                            <Field label={t("facturas.fields.invoiceNumber")} value={d.invoice_number || ""} onChange={v => patch(i, "invoice_number", v)} />
+                            <Field label={t("facturas.fields.date")} value={d.issue_date || ""} onChange={v => patch(i, "issue_date", v)} />
+                            <Field label={t("facturas.fields.base")} type="number" value={String(d.amount_base ?? "")} onChange={v => patch(i, "amount_base", Number(v))} />
+                            <Field label={t("facturas.fields.tax")} type="number" value={String(d.tax_amount ?? "")} onChange={v => patch(i, "tax_amount", Number(v))} />
+                            <Field label={t("facturas.fields.total")} type="number" value={String(d.amount_total ?? "")} onChange={v => patch(i, "amount_total", Number(v))} />
                         </div>
 
                         {d.lines?.length > 0 && (
                             <div className="text-xs text-muted-foreground">
-                                <div className="font-medium mb-1">{d.lines.length} línea{d.lines.length !== 1 ? "s" : ""}:</div>
+                                <div className="font-medium mb-1">{t("facturas.linesCount", { count: d.lines.length })}</div>
                                 <ul className="space-y-0.5 max-h-32 overflow-auto">
                                     {d.lines.map((l, k) => (
                                         <li key={k} className="flex justify-between gap-2">
@@ -181,14 +181,14 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
                                 onChange={e => patch(i, "apply_stock", e.target.checked)}
                                 className="rounded border-border" />
                             <Package className="w-4 h-4 text-muted-foreground" />
-                            Actualizar stock (casa por código de barras, SKU o nombre)
+                            {t("facturas.applyStock")}
                         </label>
                         {d.apply_stock && (
                             <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer ml-6">
                                 <input type="checkbox" checked={!!d.create_missing}
                                     onChange={e => patch(i, "create_missing", e.target.checked)}
                                     className="rounded border-border" />
-                                Crear automáticamente los productos que falten
+                                {t("facturas.createMissing")}
                             </label>
                         )}
                     </div>
@@ -199,7 +199,7 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
                 <button onClick={handleImport} disabled={importing}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-foreground font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors">
                     {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                    Crear {rows.length} factura{rows.length !== 1 ? "s" : ""} de compra
+                    {t("facturas.createButton", { count: rows.length })}
                 </button>
             )}
 

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { TelegramStatus } from "@/lib/api/messaging";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 
 export function useConfiguracionIntegraciones() {
+    const t = useTranslations("configuracion");
     const show = useToastStore((s) => s.show);
 
     const [tgStatus, setTgStatus] = useState<TelegramStatus | null>(null);
@@ -31,7 +33,7 @@ export function useConfiguracionIntegraciones() {
         try {
             const res = await api.messaging.telegram.connect();
             setLinkUrl(res.link_url);
-            show("Token generado. Abre el enlace en Telegram para vincular.", "success");
+            show(t("integraciones.tokenGenerated"), "success");
             let attempts = 0;
             const poll = setInterval(async () => {
                 attempts++;
@@ -40,12 +42,12 @@ export function useConfiguracionIntegraciones() {
                     clearInterval(poll);
                     setTgStatus(st);
                     setLinkUrl(null);
-                    show("Telegram vinculado correctamente", "success");
+                    show(t("integraciones.telegramLinked"), "success");
                 }
                 if (attempts > 20) clearInterval(poll);
             }, 3000);
         } catch (e: any) {
-            show(e.message || "Error conectando Telegram", "error");
+            show(e.message || t("integraciones.connectError"), "error");
         } finally {
             setTgLoading(false);
         }
@@ -53,17 +55,17 @@ export function useConfiguracionIntegraciones() {
 
     const handleTelegramDisconnect = async () => {
         if (!(await showConfirm({
-            message: "¿Desconectar Telegram? El chat dejará de recibir respuestas.",
-            confirmLabel: "Desconectar",
+            message: t("integraciones.disconnectConfirm"),
+            confirmLabel: t("integraciones.disconnect"),
             confirmVariant: "danger",
         }))) return;
         setTgLoading(true);
         try {
             await api.messaging.telegram.disconnect();
             setTgStatus({ connected: false, chat_id: null, username: null });
-            show("Telegram desconectado", "success");
+            show(t("integraciones.telegramDisconnected"), "success");
         } catch (e: any) {
-            show(e.message || "Error desconectando", "error");
+            show(e.message || t("integraciones.disconnectError"), "error");
         } finally {
             setTgLoading(false);
         }

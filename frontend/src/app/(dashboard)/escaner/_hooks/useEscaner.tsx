@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { usePolling } from "@/lib/hooks/usePolling";
 
@@ -31,6 +32,7 @@ export function getElectronAPI() {
 }
 
 export function useEscaner() {
+    const t = useTranslations("escaner");
     const [scanning, setScanning] = useState(false);
     const [results, setResults] = useState<ScanResult[]>([]);
     const [error, setError] = useState("");
@@ -103,7 +105,7 @@ export function useEscaner() {
             setResults(res);
             setSelectedFiles([]);
         } catch (e: any) {
-            setError(e.message || "Error al escanear archivos");
+            setError(e.message || t("errors.scanFailed"));
         } finally {
             setScanning(false);
         }
