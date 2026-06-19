@@ -4569,6 +4569,7 @@
     },
     "crear": {
       "createFail": "Could not create the post.",
+      "publishFail": "Could not publish the post.",
       "imagePromptFirst": "Write the post content first to generate a matching image.",
       "imageGenFail": "Could not generate the image.",
       "accountLabel": "Account",
