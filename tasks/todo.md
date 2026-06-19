@@ -208,10 +208,21 @@ Auditado contra `backend/tests` (2026-06-19). Fixtures listas en `conftest.py`
   de cashflow → remesa de adeudos SEPA (pain.008) + transferencias (pain.001) → registro,
   descarga del XML y avance de estado (generated → sent). Aserta namespace SEPA y suma de
   control (no hay validación XSD en el repo).
-- [ ] **CRM** (cliente → oportunidad → actividad).
-- [ ] **Inventario** (producto → stock/lotes → reorder).
-- [ ] **Onboarding** (wizard → simulación 303 → REGAP mock).
+- [x] **CRM** ✅ (2026-06-19) — `tests/test_e2e_crm.py`: cliente → oportunidad → avance de
+  etapa (new→qualified→won) → actividad ligada; aserta embudo y filtrado de actividad por oportunidad.
+- [x] **Inventario** ✅ (2026-06-19) — `tests/test_e2e_inventory.py`: producto con mínimo →
+  entrada por lote (caducidad/FEFO) → salida bajo mínimo → aparece en reposición. **Destapó
+  y arregló un 2º bug real**: alta de lote (`lot_service.create_lot`) y movimiento por escáner
+  (`documents/scanner.py`) creaban un `StockMovement` **sin `tenant_id`** (NOT NULL) → reventaban
+  con IntegrityError. Fix: pasar `tenant_id` en ambos sitios.
+- [x] **Onboarding** ✅ (2026-06-19) — `tests/test_e2e_onboarding.py`: completar wizard (5 pasos)
+  → simulación Modelo 303 (resultado = devengado − deducible) → REGAP mock (start→grant→verify).
 - [ ] **Marketing** happy-path (hoy `test_e2e_marketing_publish.py` solo cubre el error).
+
+> **Estado (2026-06-19):** los 6 módulos sin E2E quedan cubiertos. Sumados a los 3 previos
+> (Facturación, VeriFactu, RRHH-nóminas), los **9 módulos core tienen E2E**. Pendiente menor:
+> el happy-path de Marketing. El proceso destapó 2 bugs reales de producción (conciliación por
+> fecha; `StockMovement` sin `tenant_id` en alta de lote y escáner), ya arreglados.
 
 ---
 
