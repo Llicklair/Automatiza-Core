@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import logging
 
-from app.db.base import async_session
+from app.core.tenant_context import rls_bypass
+from app.db.base import AsyncSessionLocal
 from app.services.billing.backfill_verifactu import list_tenants_pending_backfill
 
 logger = logging.getLogger("backfill_alerts")
@@ -30,8 +31,11 @@ async def check_pending_verifactu_backfills() -> dict[str, int]:
     factura no encadenada que disparó la detección — no contamos todas
     para no ejecutar un query pesado a diario).
     """
-    async with async_session() as db:
-        tenants = await list_tenants_pending_backfill(db)
+    async with AsyncSessionLocal() as db:
+        # SEC.RLS: escaneo cross-tenant pre-tenant (job global, sin contexto);
+        # fail-closed obliga a bypass. El loop posterior solo loggea/trackea.
+        with rls_bypass():
+            tenants = await list_tenants_pending_backfill(db)
 
     pending_count = len(tenants)
     if pending_count == 0:

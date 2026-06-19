@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user
+from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
 from app.db.models.models import User
@@ -306,6 +307,10 @@ async def zernio_callback(
         tenant_id, config_id = _zernio_unstate(state)
     except Exception:
         return _popup_html(False, message="Estado de conexión inválido o expirado")
+    # SEC.RLS: callback público sin JWT, pero el tenant viene firmado en el
+    # `state` → lo fijamos para que el SELECT/upsert de SocialAccount quede
+    # correctamente scoped (opción tighter que bypass; corrige bug latente).
+    set_current_tenant(str(tenant_id))
     if not accountId:
         return _popup_html(False, message="Zernio no devolvió la cuenta conectada. Reinténtalo.")
 

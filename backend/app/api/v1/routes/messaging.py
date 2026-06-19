@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.messaging import TelegramConnectResponse
 from app.core.dependencies import get_current_user
+from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import get_db
 from app.db.models.models import User
 from app.integrations.telegram_client import TelegramClient
@@ -47,7 +48,10 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     # ── Comando /start con token de vinculación ──
     if text.startswith("/start "):
         link_token = text.split(" ", 1)[1].strip()
-        await svc.handle_link_command(db, chat_id, update.username, update.first_name, link_token)
+        # SEC.RLS: resolución del token de vinculación → tenant es pre-tenant
+        # (el webhook no tiene JWT ni tenant en contexto todavía).
+        with rls_bypass():
+            await svc.handle_link_command(db, chat_id, update.username, update.first_name, link_token)
         return {"ok": True}
 
     if text == "/start":
@@ -62,7 +66,10 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         return {"ok": True}
 
     # ── Buscar tenant vinculado a este chat_id ──
-    integration = await svc.find_integration_by_chat(db, chat_id)
+    # SEC.RLS: la resolución chat_id → tenant es pre-tenant (webhook sin JWT);
+    # debe ir en bypass. Una vez conocido, fijamos el tenant para el resto.
+    with rls_bypass():
+        integration = await svc.find_integration_by_chat(db, chat_id)
     if not integration:
         await svc.send_reply(
             chat_id,
@@ -75,6 +82,8 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
     # ── Enviar typing + invocar orquestador ──
     tenant_id = str(integration.tenant_id)
+    # SEC.RLS: tenant ya resuelto → scope correcto para el resto del handler.
+    set_current_tenant(tenant_id)
     await svc.send_typing_indicator(chat_id)
 
     asyncio.create_task(svc.process_and_reply(tenant_id, chat_id, text, update.message_id))

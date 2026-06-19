@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.security import decode_token
-from app.core.tenant_context import set_current_tenant
+from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import get_db
 from app.db.models.crm import Client
 from app.db.models.models import Tenant, User
@@ -59,10 +59,14 @@ async def get_current_user(
     # Eager-load tenant: get_current_tenant() accede a user.tenant; sin esto la
     # relación lazy dispara un segundo SELECT (o MissingGreenlet en async) en
     # cada request autenticado.
-    result = await db.execute(
-        select(User).where(User.id == UUID(user_id)).options(joinedload(User.tenant))
-    )
-    user = result.scalar_one_or_none()
+    # El lookup del User es PRE-tenant (aún no sabemos el tenant) → bypass RLS:
+    # bajo fail-closed, sin bypass esta SELECT devolvería 0 filas y rompería el
+    # login de todos. `users` lleva tenant_id, así que está sujeta a la policy.
+    with rls_bypass():
+        result = await db.execute(
+            select(User).where(User.id == UUID(user_id)).options(joinedload(User.tenant))
+        )
+        user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception
 
@@ -113,13 +117,15 @@ async def get_current_client_portal(
     tenant_id: str | None = payload.get("tenant_id")
     if not client_id or not tenant_id:
         raise exc
+    # El token del portal YA trae el tenant: lo fijamos ANTES del lookup para que
+    # la RLS (fail-closed) ancle la propia SELECT del Client a ese tenant. Así un
+    # client_id de otro tenant simplemente no aparece (defensa en profundidad),
+    # en vez de depender solo del check explícito de abajo.
+    set_current_tenant(tenant_id)
     result = await db.execute(select(Client).where(Client.id == UUID(client_id)))
     client = result.scalar_one_or_none()
     if client is None or str(client.tenant_id) != tenant_id:
         raise exc
-    # Fija el tenant del portal en el ContextVar para que la RLS ancle las
-    # consultas posteriores del request a este tenant (igual que get_current_user).
-    set_current_tenant(tenant_id)
     return client
 
 

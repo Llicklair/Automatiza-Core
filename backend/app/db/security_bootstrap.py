@@ -9,15 +9,18 @@ de Postgres se aplique de verdad:
    `pyme_user` (el bootstrap superuser) dejaba la RLS completamente inerte.
 
 2. **Policies RLS** por tabla con columna `tenant_id`, con `USING` y `WITH CHECK`
-   SIMÉTRICOS y permisivos cuando no hay tenant en contexto:
-       (tenant_id = app.current_tenant) OR app.current_tenant IS NULL OR = ''
+   SIMÉTRICOS y **fail-closed** (SEC.RLS Fase C):
+       (tenant_id = app.current_tenant) OR app.rls_bypass = 'on'
    → Con tenant fijado (agente/tool/HTTP/worker): lecturas y escrituras quedan
      ancladas a ese tenant; un intento cross-tenant se bloquea (el threat model
      real: "agente con bug o prompt-injection pasa el tenant_id equivocado").
-   → Sin tenant fijado (login, portal de cliente, webhooks, lecturas globales del
-     scheduler): fail-open, para no romper esos flujos de infraestructura.
-     Endurecerlo a fail-closed es una decisión posterior (requiere bypass
-     explícito para las lecturas globales del scheduler).
+   → Sin tenant fijado y sin bypass: **CERO filas** (fail-closed). Un path que
+     llegue a Postgres sin fijar tenant ya NO filtra datos de otros tenants;
+     falla cerrado (se rompe de forma visible) en vez de abrir.
+   → Los cuatro flujos legítimos sin tenant (auth pre-tenant, portal de cliente,
+     webhooks externos, SELECT inicial cross-tenant del scheduler) activan
+     `app.rls_bypass = 'on'` vía el context manager `rls_bypass()`
+     (`app.core.tenant_context`), que el listener de `app.db.rls` espeja al GUC.
 
 Idempotente y Postgres-only. Recibe una `Connection` síncrona de SQLAlchemy y se
 ejecuta SIEMPRE como rol administrador (`pyme_user`). Lo invocan:
@@ -112,13 +115,11 @@ def ensure_rls_policies(connection: Connection) -> None:
                 CREATE POLICY {POLICY_NAME} ON "{table}"
                     USING (
                         tenant_id::text = current_setting('app.current_tenant', true)
-                        OR current_setting('app.current_tenant', true) IS NULL
-                        OR current_setting('app.current_tenant', true) = ''
+                        OR current_setting('app.rls_bypass', true) = 'on'
                     )
                     WITH CHECK (
                         tenant_id::text = current_setting('app.current_tenant', true)
-                        OR current_setting('app.current_tenant', true) IS NULL
-                        OR current_setting('app.current_tenant', true) = ''
+                        OR current_setting('app.rls_bypass', true) = 'on'
                     );
                 """
             )
