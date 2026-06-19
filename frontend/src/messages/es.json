@@ -593,7 +593,29 @@
     "home": {
       "title": "Ventas",
       "subtitle": "Facturación, presupuestos y gestión comercial del ciclo de venta completo.",
-      "open": "Abrir"
+      "open": "Abrir",
+      "sections": {
+        "facturas": {
+          "title": "Facturas",
+          "description": "Emisión y seguimiento de facturas de venta, cobros y vencimientos."
+        },
+        "pedidos": {
+          "title": "Pedidos",
+          "description": "Pedidos de venta de clientes y su conversión a factura."
+        },
+        "presupuestos": {
+          "title": "Presupuestos",
+          "description": "Presupuestos y ofertas comerciales antes de confirmar la venta."
+        },
+        "recurrentes": {
+          "title": "Recurrentes",
+          "description": "Facturación periódica automática para suscripciones y cuotas."
+        },
+        "servicios": {
+          "title": "Servicios",
+          "description": "Catálogo de servicios facturables y sus tarifas."
+        }
+      }
     },
     "regimenFiscal": "Régimen fiscal",
     "ispLabel": "Inversión del sujeto pasivo (ISP)",

@@ -1,9 +1,11 @@
+"use client";
+
 import {
     Wallet, ArrowUpRight, ArrowDownRight, AlertTriangle, TrendingUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { BankTransaction } from "@/lib/api";
 
@@ -22,11 +24,11 @@ interface KpiCardsProps {
     saldoNeto: number;
 }
 
-export default async function KpiCards({
+export default function KpiCards({
     loading, saldoCaja, ultimaTx, totalCobros, cobrosCount,
     totalPagos, pagosCount, overdueCount, saldoNeto,
 }: KpiCardsProps) {
-    const t = await getTranslations("tesoreria");
+    const t = useTranslations("tesoreria");
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Saldo caja */}
