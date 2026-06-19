@@ -124,14 +124,19 @@ Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅.
 - [ ] Extraer lógica de negocio de routes con muchos commits.
 - [ ] `run_recurring` numera `REC-<timestamp>` fuera de la serie correlativa.
 - [ ] Marketing: doble carga de `accounts()` entre `TabCuentas`/`TabCrear`.
-- [ ] **i18n / app en inglés** (estado verificado 2026-06-18) — infra montada
-  (next-intl; `messages/{es,en,ca,eu,gl}.json`). `en.json` casi completo (parity
-  check: faltan **9 claves**: `rrhh.documentos.sign*` + `banca.conciliacion.*`).
-  Inglés DESACTIVADO en runtime por `i18n/request.ts:5` (`SUPPORTED_LOCALES=["es"]`).
-  Falta: (a) activar `en` ahí; (b) extraer **~750 cadenas aún hardcodeadas** (~50% de
-  la UI); (c) la **IA está fijada en español** (6 prompts "Responde siempre en
-  español" en `agents/email`, `dispatchers/chat`, `prompts/*.txt`) → pasar `locale` a
-  los agentes. Esfuerzo: MEDIO (días — la infra ya existe).
+- [x] **i18n / app en inglés — barrido de UI + activación** ✅ (2026-06-19) — toda
+  la UI del dashboard migrada a next-intl con parity es/en al 100% (4806=4806
+  claves, 0 residual salvo 2 etiquetas de color en mi-equipo dejadas a propósito).
+  **Inglés ACTIVADO** en runtime (`i18n/request.ts` `SUPPORTED_LOCALES=["es","en"]`
+  + selector en `/configuracion/idioma`). Commits `f207154`..`09180f2`.
+- [ ] **i18n — IA en inglés** (pendiente) — la **IA sigue fijada en español**
+  (prompts "Responde siempre en español" en `agents/email`, `dispatchers/chat`,
+  `prompts/*.txt`). Para respuestas de la IA en el idioma de la UI: pasar `locale`
+  a los agentes y parametrizar esos prompts. Cambio de **backend**.
+- [ ] **i18n — repaso humano del `en`** (recomendado antes de exponer a clientes) —
+  la traducción inglesa la generaron agentes (verificada como fiel al es, pero sin
+  revisión humana); conviene una pasada sobre todo en términos fiscales (AEAT,
+  modelos, casillas). Reactivar **ca/eu/gl** sigue pendiente (son stubs incompletos).
 
 ## Auto-update / Release (#5 — ops + decisión usuario)
 
