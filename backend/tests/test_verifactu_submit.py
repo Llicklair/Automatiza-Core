@@ -1,17 +1,19 @@
 """Tests de la costura de envío VeriFactu (services/billing/verifactu_submit).
 
-Sin certificado, sin red y sin BD: se mockean la generación del XML y el modo del tenant.
-Cubren: parseo del acuse (RespuestaSuministro.xsd) en sus variantes, el no-op de no_remission,
-el gate de `confirmed` (no hay POST por defecto), el camino "sin transporte real" (NotImplemented)
-y la factory por modo. El envío real (cert-gated) NO se ejercita aquí a propósito.
+Sin certificado, sin red y sin BD: se mockean la generación del XML, la carga del certificado
+y la firma. Cubren el acuse (RespuestaSuministro.xsd), el no-op de no_remission, el gate de
+`confirmed` (sin POST por defecto), el camino confirmado (cert→firma→envío→acuse) y sus
+abortos seguros (sin cert, firma stub, XML inválido) — nunca se finge un envío.
+El handshake mTLS real (`HttpxVerifactuTransport`) NO se ejercita aquí (requiere cert + AEAT).
 """
 import uuid
+from types import SimpleNamespace
 
 import pytest
 
+from app.services.aeat.certificate_storage import CertificateError
+from app.services.aeat.xades_signer import SignResult
 from app.services.billing import verifactu_submit as vs
-
-# ── Acuses de ejemplo (parseados por local-name → tolerantes a prefijos/SOAP) ──
 
 _NS = 'xmlns="https://www2.agenciatributaria.gob.es/static_files/common/internet/dep/aplicaciones/es/aeat/tike/cont/ws/RespuestaSuministro.xsd"'
 
@@ -61,7 +63,6 @@ _ACUSE_DUPLICADO = f"""<RespuestaRegFactuSistemaFacturacion {_NS}>
   </RespuestaLinea>
 </RespuestaRegFactuSistemaFacturacion>"""
 
-# Mismo acuse Correcto pero envuelto en SOAP y con prefijos explícitos distintos.
 _ACUSE_SOAP = """<env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
   <env:Body>
     <sfR:RespuestaRegFactuSistemaFacturacion
@@ -129,71 +130,100 @@ class TestParseAcuse:
 
 
 class _FakeTransport:
-    """Transporte de test: cuenta llamadas y devuelve un acuse fijo."""
-
     def __init__(self, response: str = _ACUSE_CORRECTO, *, fail_if_called: bool = False):
         self.response = response
         self.calls = 0
         self._fail_if_called = fail_if_called
 
-    async def post(self, *, xml: str, environment: str, confirmed: bool) -> str:
+    async def send(self, *, signed_xml: str, pfx: bytes, password: str, environment: str) -> str:
         self.calls += 1
         if self._fail_if_called:
-            raise AssertionError("transport.post NO debía llamarse")
+            raise AssertionError("transport.send NO debía llamarse")
         return self.response
 
 
-def _patch_xml(monkeypatch, *, valid: bool = True):
-    """Mockea generate_alta_xml/validate_verifactu_xml (evita BD/cert)."""
+def _patch(monkeypatch, *, xml_valid=True, cert_error=False, signed=True):
+    """Mockea generación de XML, carga de cert y firma (evita BD/cert/red)."""
     async def _gen(db, *, record, sistema=None):
         return "<RegFactuSistemaFacturacion/>"
 
-    monkeypatch.setattr(
-        "app.services.billing.registro_facturacion.generate_alta_xml", _gen
-    )
+    async def _load(db, tenant_id):
+        if cert_error:
+            raise CertificateError("No hay certificado activo para este tenant.")
+        return (b"PFXBYTES", "pwd")
+
+    def _sign(xml, pfx, password):
+        return SignResult(
+            signed_xml="<RegFactuSistemaFacturacion firmado='1'/>" if signed else "<UnsignedDraft/>",
+            signed=signed,
+            method="xades-bes" if signed else "stub",
+            warnings=[] if signed else ["stub: falta libxmlsec1"],
+        )
+
+    monkeypatch.setattr("app.services.billing.registro_facturacion.generate_alta_xml", _gen)
     monkeypatch.setattr(
         "app.services.billing.registro_facturacion.validate_verifactu_xml",
-        lambda xml: [] if valid else ["error XSD simulado"],
+        lambda xml: [] if xml_valid else ["error XSD simulado"],
     )
+    monkeypatch.setattr("app.services.aeat.certificate_storage.load_decrypted", _load)
+    monkeypatch.setattr("app.services.aeat.xades_signer.sign_xades_bes", _sign)
+
+
+_REC = SimpleNamespace(tenant_id=uuid.uuid4())
 
 
 @pytest.mark.asyncio
 class TestSubmitters:
     async def test_no_remission_es_noop(self):
-        ack = await vs.NoRemissionSubmitter().submit(None, record=object())
+        ack = await vs.NoRemissionSubmitter().submit(None, record=_REC)
         assert ack.remitted is False and ack.dry_run is False
         assert "no_remission" in ack.detail
 
-    async def test_dry_run_no_llama_al_transporte(self, monkeypatch):
-        _patch_xml(monkeypatch, valid=True)
+    async def test_dry_run_no_carga_cert_ni_envia(self, monkeypatch):
+        _patch(monkeypatch, xml_valid=True)
         transport = _FakeTransport(fail_if_called=True)
-        sub = vs.PreproduccionSubmitter(transport=transport)
-        ack = await sub.submit(None, record=object(), confirmed=False)
+        ack = await vs.PreproduccionSubmitter(transport=transport).submit(
+            None, record=_REC, confirmed=False
+        )
         assert ack.dry_run is True and ack.remitted is False
         assert transport.calls == 0  # garantía: sin confirmed NO hay POST
 
-    async def test_confirmed_envia_y_parsea_acuse(self, monkeypatch):
-        _patch_xml(monkeypatch, valid=True)
+    async def test_confirmed_firma_y_envia(self, monkeypatch):
+        _patch(monkeypatch, signed=True)
         transport = _FakeTransport(_ACUSE_CORRECTO)
-        sub = vs.PreproduccionSubmitter(transport=transport)
-        ack = await sub.submit(None, record=object(), confirmed=True)
+        ack = await vs.PreproduccionSubmitter(transport=transport).submit(
+            None, record=_REC, confirmed=True
+        )
         assert transport.calls == 1
         assert ack.remitted is True and ack.estado_envio == "Correcto"
         assert ack.csv == "ABCDEF1234567890"
 
-    async def test_confirmed_sin_transporte_no_finge(self, monkeypatch):
-        _patch_xml(monkeypatch, valid=True)
-        sub = vs.PreproduccionSubmitter(transport=None)
-        with pytest.raises(NotImplementedError):
-            await sub.submit(None, record=object(), confirmed=True)
+    async def test_confirmed_sin_certificado_aborta(self, monkeypatch):
+        _patch(monkeypatch, cert_error=True)
+        transport = _FakeTransport(fail_if_called=True)
+        with pytest.raises(CertificateError):
+            await vs.PreproduccionSubmitter(transport=transport).submit(
+                None, record=_REC, confirmed=True
+            )
+        assert transport.calls == 0
+
+    async def test_confirmed_firma_stub_no_envia(self, monkeypatch):
+        _patch(monkeypatch, signed=False)
+        transport = _FakeTransport(fail_if_called=True)
+        with pytest.raises(vs.VerifactuSubmitError):
+            await vs.PreproduccionSubmitter(transport=transport).submit(
+                None, record=_REC, confirmed=True
+            )
+        assert transport.calls == 0  # firma stub → NO se envía, no se finge
 
     async def test_xml_invalido_aborta(self, monkeypatch):
-        _patch_xml(monkeypatch, valid=False)
+        _patch(monkeypatch, xml_valid=False)
         transport = _FakeTransport(fail_if_called=True)
-        sub = vs.PreproduccionSubmitter(transport=transport)
         with pytest.raises(vs.VerifactuSubmitError):
-            await sub.submit(None, record=object(), confirmed=True)
-        assert transport.calls == 0  # no se envía un XML que no valida
+            await vs.PreproduccionSubmitter(transport=transport).submit(
+                None, record=_REC, confirmed=True
+            )
+        assert transport.calls == 0
 
 
 @pytest.mark.asyncio

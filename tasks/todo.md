@@ -173,12 +173,15 @@ Wiring de código OK + `desktop/package.json` `publish` corregido. Para distribu
   - [ ] **AEAT FNMT** — solo AutoFirma (firma docs) hecho; la **presentación telemática
     real a AEAT con cert FNMT** sigue pendiente (REGAP mockeado en `onboarding/regap.py`,
     Verifactu simulado en `billing/facturae.py`). **Bloqueada por certificado** (= F2.8).
-  - [~] **Costura del envío VeriFactu preparada** ✅ (2026-06-19) — `services/billing/verifactu_submit.py`
-    (submitter + `parse_acuse` del acuse oficial + factory por modo, 13 tests sin cert/red/BD) +
-    spec en `tasks/verifactu_envio_spec.md`. Cero cambios en el flujo vivo; el envío real
-    (firma XAdES + POST SOAP mTLS) queda `NotImplementedError` y el endpoint POR CONFIRMAR.
-    **Falta solo:** certificado FNMT (denegado el 2026-06-19 — reintentar/DNIe) → conectar el
-    hook en `commands.py:131` y probar contra preproducción. XML ya valida contra XSD oficial.
+  - [~] **Envío VeriFactu code-complete** ✅ (2026-06-19) — `services/billing/verifactu_submit.py`:
+    `voluntary`+`confirmed` → carga cert del tenant (`certificate_storage`, modelo BYO) → firma
+    (`xades_signer`) → POST mTLS (`HttpxVerifactuTransport`) → `parse_acuse` del acuse oficial.
+    Gated y seguro: sin `confirmed` no hay POST; sin cert o firma stub **aborta sin fingir** (nunca
+    CSV ficticio). 14 tests (sin cert/red/BD) + spec en `tasks/verifactu_envio_spec.md`. Cero
+    cambios en el flujo vivo (nada lo llama aún). **Falta:** (a) verificar contra **preproducción
+    con un cert real** (endpoint/sobre SOAP/perfil XAdES POR CONFIRMAR), (b) decidir régimen con
+    gestor, (c) conectar el hook en `commands.py:131`. La elección de régimen ya está en la UI
+    (`ModoVerifactuPanel`); el XML ya valida contra XSD oficial.
 
 ## Marketing
 

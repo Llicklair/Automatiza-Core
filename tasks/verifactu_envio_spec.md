@@ -14,8 +14,9 @@
 | Huella encadenada (SHA-256) + QR | ✅ hecho (`verifactu_chain`) |
 | Parseo del acuse `RespuestaRegFactuSistemaFacturacion` | ✅ hecho (`verifactu_submit.parse_acuse`, testeado) |
 | Interfaz/costura del envío (submitter, factory, gate) | ✅ hecho (`verifactu_submit`, testeado sin cert) |
-| Firma XAdES del envío | ⏳ pendiente (cert) |
-| POST SOAP con mTLS a preproducción | ⏳ pendiente (cert + endpoint por confirmar) |
+| Firma XAdES del envío | ✅ implementado — reutiliza `xades_signer.sign_xades_bes` (BYO). Requiere `libxmlsec1` en runtime; firma *stub* → NO se envía |
+| Carga del certificado del tenant (BYO) | ✅ reutiliza `certificate_storage.load_decrypted` |
+| POST SOAP con mTLS | ✅ implementado (`HttpxVerifactuTransport`), gated — **NO verificado contra AEAT** (sin cert/preproducción) |
 | Enganche en la emisión de factura (`create_invoice`) | ⏳ pendiente (NO conectado a propósito) |
 
 **Nada de esto se invoca todavía desde el flujo vivo.** El modo por defecto (`no_remission`)
@@ -26,10 +27,14 @@ es un no-op idéntico al comportamiento actual.
 - `VerifactuSubmitter` (Protocol): `submit(db, *, record, confirmed=False) -> VerifactuAck`.
 - `NoRemissionSubmitter`: no-op (modo `no_remission`, default). Devuelve `remitted=False`.
 - `PreproduccionSubmitter`: genera el XML (`generate_alta_xml`) → valida contra XSD
-  (`validate_verifactu_xml`) → **si `confirmed=False` → dry-run, NO hay POST** → con
-  `confirmed=True` exige transporte real (hoy `NotImplementedError`).
-- `VerifactuTransport` (Protocol): `post(*, xml, environment, confirmed) -> str` (acuse crudo).
-  - `_RealVerifactuTransport`: **`NotImplementedError`** (firma + SOAP mTLS pendientes).
+  (`validate_verifactu_xml`) → **si `confirmed=False` → dry-run, NO hay POST**. Con
+  `confirmed=True`: carga el cert del tenant (`certificate_storage.load_decrypted`) → firma
+  (`xades_signer.sign_xades_bes`; si la firma es *stub*, **aborta sin enviar**) → POST mTLS →
+  `parse_acuse`. Sin cert activo → `CertificateError`, no se finge envío.
+- `VerifactuTransport` (Protocol): `send(*, signed_xml, pfx, password, environment) -> str`.
+  - `HttpxVerifactuTransport`: POST SOAP con mTLS (SSLContext desde el .pfx del tenant).
+    **Code-complete pero NO verificado** contra AEAT — endpoint/sobre SOAP/perfil XAdES por
+    confirmar (sección 5).
 - `get_submitter(db, *, tenant_id, transport=None)`: elige impl por `verifactu_mode.get_mode`.
 - `parse_acuse(response_xml) -> VerifactuAck`: parser **puro** (sin red/BD), por *local-name*
   (tolera prefijos y el sobre SOAP).
