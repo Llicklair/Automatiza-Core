@@ -57,7 +57,7 @@ export function useTaskPanel(isActive: boolean) {
 
     useEffect(() => {
         if (isActive) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, [refreshKey, isActive]);
 
     // NOTA: anteriormente había un navigationGuard aquí que impedía cambiar

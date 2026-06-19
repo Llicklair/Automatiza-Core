@@ -40,7 +40,7 @@ export function usePayrolls() {
         finally { setIsLoading(false); }
     };
 
-    useEffect(() => { loadData(); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, [refreshKey]);  
 
     const showToast = (msg: string, type: "ok" | "err") => {
         setToast({ msg, type });

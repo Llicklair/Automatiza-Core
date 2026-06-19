@@ -32,7 +32,7 @@ import uuid
 from typing import Any
 from uuid import UUID
 
-import yaml
+import yaml  # type: ignore[import-untyped]  # PyYAML no trae stubs
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.workflows import Workflow
