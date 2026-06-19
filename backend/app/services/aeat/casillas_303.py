@@ -12,7 +12,7 @@ Referencia oficial: BOE Orden HFP/1124/2022 y posteriores.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 # Casillas del Modelo 303 — régimen general
 # Listado simplificado de las casillas más comunes que se rellenan
@@ -84,7 +84,9 @@ class Casilla303:
 
 
 def _round2(x: float | Decimal) -> Decimal:
-    return Decimal(str(x)).quantize(Decimal("0.01"))
+    # ROUND_HALF_UP: criterio fiscal AEAT, coherente con reports/fiscal.py
+    # y facturación (evita el HALF_EVEN por defecto de Python en x.xx5).
+    return Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def build_casillas_303(data: dict) -> list[Casilla303]:
@@ -107,10 +109,26 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
 
     casillas: list[Casilla303] = []
 
-    # Régimen general — tres tipos básicos
+    # Régimen general — el 303 oficial solo tiene fila para 4/10/21%. NO se
+    # inventan casillas para otros tipos (5%, 0%/exento, tipos atípicos): la
+    # cuota de esos tipos NO se descarta —se incluye en el total devengado
+    # (casilla 27, cuota legal) y se avisa por nota para revisión manual.
+    _STD_RATES = {4.0, 10.0, 21.0}
     tipo_4 = collected_by_rate.get(4.0, {"base": 0, "quota": 0})
     tipo_10 = collected_by_rate.get(10.0, {"base": 0, "quota": 0})
     tipo_21 = collected_by_rate.get(21.0, {"base": 0, "quota": 0})
+
+    # Tipos fuera de 4/10/21 con importe no nulo: su cuota debe entrar en la 27.
+    otros_rates = sorted(
+        rate
+        for rate, r in collected_by_rate.items()
+        if rate not in _STD_RATES
+        and (_round2(r.get("quota", 0)) != 0 or _round2(r.get("base", 0)) != 0)
+    )
+    cuota_otros = sum(
+        (Decimal(str(collected_by_rate[rate].get("quota", 0))) for rate in otros_rates),
+        Decimal("0"),
+    )
 
     casillas += [
         Casilla303("01", CASILLAS_303["01"], _round2(tipo_4["base"])),
@@ -161,7 +179,19 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
         ),
         Decimal("0"),
     )
-    casillas.append(Casilla303("27", CASILLAS_303["27"], _round2(total_devengado)))
+    # Incluir la cuota de tipos fuera de 4/10/21 para no infradeclarar la 27.
+    total_devengado += cuota_otros
+    nota_27 = None
+    if otros_rates:
+        tipos_str = ", ".join(f"{rate:g}%" for rate in otros_rates)
+        nota_27 = (
+            f"ATENCIÓN: hay operaciones a tipos no estándar ({tipos_str}) cuya "
+            "cuota se ha sumado aquí pero el 303 oficial no tiene casilla propia "
+            "para ellos. Revisa manualmente el desglose antes de presentar."
+        )
+    casillas.append(
+        Casilla303("27", CASILLAS_303["27"], _round2(total_devengado), nota=nota_27)
+    )
 
     # Deducible — agregamos todas las cuotas soportadas en operaciones corrientes (no bienes inversión)
     base_28 = sum((Decimal(str(r["base"])) for r in deducted_by_rate.values()), Decimal("0"))

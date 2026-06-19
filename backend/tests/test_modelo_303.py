@@ -108,3 +108,46 @@ async def test_expediente_303_bundle():
     assert exp["casillas"]            # no vacío
     assert "<" in exp["xml"]          # XML generado
     assert len(exp["checklist"]) >= 1
+
+
+def test_303_tipo_no_estandar_no_se_pierde_en_la_27():
+    """Regresión C2: la cuota de un tipo fuera de 4/10/21 (p.ej. IVA reducido
+    temporal al 5%) NO debe desaparecer del total devengado (casilla 27).
+
+    El 303 oficial no tiene fila para el 5%, así que NO se inventa casilla: la
+    cuota se suma a la 27 y se avisa por nota para revisión manual.
+    """
+    data = {
+        "tenant": {},
+        "quarter": 2,
+        "year": 2026,
+        "vat_collected": [
+            {"rate": 21.0, "base": 1000.0, "quota": 210.0},
+            {"rate": 5.0, "base": 1000.0, "quota": 50.0},  # tipo reducido temporal
+        ],
+        "vat_deducted": [],
+    }
+    casillas = build_casillas_303(data)
+    cas = {c.codigo: c for c in casillas}
+
+    # La cuota del 21% sigue en su casilla; el 5% no inventa casilla nueva.
+    assert float(cas["09"].valor) == 210.0
+    assert not any(c.codigo in {"03", "06"} and float(c.valor) == 50.0 for c in casillas)
+
+    # Pero la 27 incluye AMBAS cuotas (210 + 50) y lleva nota de aviso.
+    assert float(cas["27"].valor) == 260.0
+    assert cas["27"].nota is not None and "5%" in cas["27"].nota
+
+
+def test_303_tipos_estandar_sin_nota_en_la_27():
+    """Sin tipos atípicos, la 27 no debe arrastrar ninguna nota de aviso."""
+    data = {
+        "tenant": {},
+        "quarter": 2,
+        "year": 2026,
+        "vat_collected": [{"rate": 21.0, "base": 1000.0, "quota": 210.0}],
+        "vat_deducted": [],
+    }
+    cas = {c.codigo: c for c in build_casillas_303(data)}
+    assert float(cas["27"].valor) == 210.0
+    assert cas["27"].nota is None

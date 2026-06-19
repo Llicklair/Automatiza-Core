@@ -17,7 +17,7 @@ contra la guía oficial casilla por casilla (AEAT / Verifácturamos / Infoautón
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 # Descripciones oficiales de las casillas del Modelo 130.
 CASILLAS_130 = {
@@ -60,7 +60,8 @@ class Casilla130:
 
 
 def _round2(x) -> Decimal:
-    return Decimal(str(x or 0)).quantize(Decimal("0.01"))
+    # ROUND_HALF_UP: criterio fiscal AEAT, coherente con reports/fiscal.py.
+    return Decimal(str(x or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def build_casillas_130(data: dict) -> list[Casilla130]:
