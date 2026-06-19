@@ -43,9 +43,9 @@ describe("useLocale helpers", () => {
         }
     });
 
-    it("SUPPORTED_LOCALES solo ofrece español hasta tener traducciones reales", () => {
+    it("SUPPORTED_LOCALES ofrece es+en; ca/eu/gl quedan fuera hasta tener traducciones reales", () => {
         const codes = SUPPORTED_LOCALES.map((l) => l.code);
-        expect(codes).toEqual(["es"]);
+        expect(codes).toEqual(["es", "en"]);
     });
 
     it("cada locale tiene nombre nativo no vacío", () => {
