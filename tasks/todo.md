@@ -1,10 +1,16 @@
 # Tareas activas — AutomatizaCore
 
-Última actualización: 2026-06-12
+Última actualización: 2026-06-19 (reconciliado contra el código)
 
 > Solo trabajo **PENDIENTE**. Lo completado se ha retirado (queda en el historial
 > git). Vista global priorizada y verificada contra el código:
 > [roadmap_global_2026-06-11.md](./roadmap_global_2026-06-11.md).
+>
+> **Reconciliación 2026-06-19** (auditoría de 4 clusters contra el código): se
+> confirmó como **obsoleto** el bug "IG impressions → 400" (el marketing migró a
+> Zernio, ya no llama a la Graph API de Meta) y se detectó que la **cobertura E2E**
+> no estaba reflejada aquí (ver sección al final). El resto de "Deuda técnica
+> diferida" (A1-A7) se verificó vivo en código.
 
 ---
 
@@ -57,6 +63,9 @@
   - [x] Migrar el **303** al módulo compartido ✅ — eliminados los helpers duplicados
     de `_fiscal_modelo303.py`; ahora usa `_aeat_layout` con `pct_codes=_PCT_CASILLAS`
     en cada `_casillas_table`. Batería de tests del 303 verde sin cambios.
+- [ ] **Modelos no cubiertos (futuro, P2)** — **131** (IRPF módulos / estimación
+  objetiva) y **TicketBAI** (País Vasco/Navarra): cero código hoy. Diferidos a
+  demanda real de cliente.
 
 ## Gestoría / Firma
 
@@ -165,6 +174,45 @@ Wiring de código OK + `desktop/package.json` `publish` corregido. Para distribu
     real a AEAT con cert FNMT** sigue pendiente (REGAP mockeado en `onboarding/regap.py`,
     Verifactu simulado en `billing/facturae.py`). **Bloqueada por certificado** (= F2.8).
 
+## Marketing
+
+- [x] **"Publicar ahora" publicaba en falso** ✅ (2026-06-19) — `TabCrear.submit()`
+  solo llamaba a `posts.create()` (deja el post en `draft`) y mostraba "¡Publicado!".
+  Ahora, si `publishNow`, llama a `posts.publish(post.id)` y solo da éxito si vuelve
+  `status: published` (el backend ya devolvía 502 con `error_message` al fallar).
+  +clave i18n `marketing.crear.publishFail` (es/en). `tsc` limpio.
+- [ ] **Fallback de host Render hardcodeado** — `image_generation.py:44` e
+  `image_search.py:41` usan `settings.OAUTH_PROXY_URL or "https://…onrender.com"`;
+  si Render cae y no hay key local → 503. Mover el default a config/env (sin host fijo).
+- ~~IG `impressions` deprecado → 400~~ **OBSOLETO** (2026-06-19) — el marketing migró a
+  Zernio, que abstrae la Graph API de Meta; `get_analytics` solo pasa `platform`+fechas,
+  no pide `impressions`. No hay nada que arreglar.
+
+## Tests E2E (cobertura) — riesgo nº1 de la evaluación
+
+Auditado contra `backend/tests` (2026-06-19). Fixtures listas en `conftest.py`
+(`auth_client`, `db`, `seed_tenant_and_user`) → añadir un E2E es trivial.
+
+- [x] **Con E2E:** Facturación (`test_e2e_happy_path.py`), VeriFactu (emitir→huella→
+  `/verify`, `test_e2e_verifactu.py`, activo), RRHH-nóminas (`test_e2e_happy_path.py`).
+- [x] **Contabilidad** ✅ (2026-06-19) — `tests/test_e2e_accounting.py` (2 tests): flujo
+  asiento → libro diario → cuentas anuales (Balance+P&G PDF); aserta Σdebe==Σhaber por
+  asiento y global, y que un asiento descuadrado se **rechaza (400)** y no se registra.
+- [x] **Banca** ✅ (2026-06-19) — `tests/test_e2e_banking.py`: importar N43 → listar
+  movimientos + resumen → conciliar abono ↔ factura emitida (movimiento `reconciled` +
+  factura `paid`). **Destapó y arregló un bug real**: `_explain_match` (sugerencias de
+  conciliación, F2.6) reventaba con `TypeError` al restar `tx.date` (`date`, del N43) e
+  `inv.date` (`datetime`, de factura) — fix `_as_date()` en `services/banking/service.py`.
+  Los tests previos no lo pillaban (usaban fechas del mismo tipo).
+- [x] **Tesorería + SEPA** ✅ (2026-06-19) — `tests/test_e2e_treasury_sepa.py`: proyección
+  de cashflow → remesa de adeudos SEPA (pain.008) + transferencias (pain.001) → registro,
+  descarga del XML y avance de estado (generated → sent). Aserta namespace SEPA y suma de
+  control (no hay validación XSD en el repo).
+- [ ] **CRM** (cliente → oportunidad → actividad).
+- [ ] **Inventario** (producto → stock/lotes → reorder).
+- [ ] **Onboarding** (wizard → simulación 303 → REGAP mock).
+- [ ] **Marketing** happy-path (hoy `test_e2e_marketing_publish.py` solo cubre el error).
+
 ---
 
 ## Notas / gotchas (referencia)
@@ -185,3 +233,178 @@ Wiring de código OK + `desktop/package.json` `publish` corregido. Para distribu
   componentes inline (p.ej. `<LogoSvg />`) para assets críticos.
 - **Smoke standalone no usa email/encryption real**: la `TENANT_ENCRYPTION_KEY`
   viene de Electron safeStorage, no del `.env` (decrypt FAIL → email DEMO; es esperado).
+
+
+---
+
+> **Nota:** lo que sigue es un plan tecnico independiente (port a Linux self-hosted, sin Docker), NO parte del roadmap de producto de arriba. Estado: planificado, sin iniciar.
+
+# Port a Linux self-hosted (sin Docker) — Plan de trabajo
+
+## 1. Objetivo
+
+Permitir que una empresa despliegue Automatiza-pyme en **su propio servidor Linux**, autocontenido y **sin Docker**, replicando la filosofia del `.exe` de Windows: descargar en el primer arranque runtimes portables (PostgreSQL, Python, JRE) bajo un directorio de datos propio y orquestarlos de forma headless. El backend (uvicorn :8080) y el frontend (Next.js :3000) corren como un servicio gestionado por systemd, sin GUI Electron.
+
+## 2. Estrategia: bootstrapper headless
+
+La capa GUI de Electron se **descarta por completo**. El nucleo reutilizable es `service-manager.js` (~80-90% logica pura de orquestacion sobre `http`/`child_process`/`fs`, con acoplamiento Electron solo en `try/catch` con fallback). El plan:
+
+- Crear un nuevo `desktop/bootstrap.js` (entrypoint plano de node) que haga `require('./service-manager')` y llame `startAll(onProgress=console.log)`, con manejo de senales (`SIGTERM`/`SIGINT` -> `stopAll()` -> `process.exit`). **Hoy no existe ni self-start ni signal handling** en service-manager (no hay `require.main === module`): systemd mataria el proceso node sin llamar a `stopAll()`, dejando Postgres/uvicorn/next huerfanos. Esto es la adicion mas importante.
+
+**Reutilizado (con cambios):**
+- `desktop/service-manager.js` — orquestador, nucleo del bootstrapper.
+- `desktop/postgres-manager.js`, `desktop/python-manager.js`, `desktop/jre-manager.js` — managers de runtime (portar download/extract/paths a Linux).
+- `desktop/network-utils.js` — sin Windows-isms (`os.networkInterfaces()`), se usa tal cual.
+
+**Descartado en el path servidor:**
+- `desktop/main.js` — boot atado al ciclo GUI de Electron (splash, BrowserWindow, tray, safeStorage, IPC, auto-updater).
+- `desktop/launch.js` — lanzador de Electron (`spawn(electron, ['.'])`). Se sustituye por `node bootstrap.js` / unidad systemd.
+- `desktop/sync.js` — hot-copy dev hacia un arbol `.exe` instalado en Windows (LOCALAPPDATA\Programs). Irrelevante en servidor.
+- `package.json` build block (`build.win.target: nsis`) — solo Windows; no se usa electron-builder en servidor.
+
+## 3. Tabla de runtimes portables Linux
+
+| Runtime | Fuente recomendada | Naming del artefacto (x86_64) | Version | Relocalizable | Caveat principal |
+|---------|--------------------|-------------------------------|---------|:-------------:|------------------|
+| **PostgreSQL** | zonky.io embedded-postgres-binaries (Maven Central `io.zonky.test.postgres`); alt: theseus-rs/postgresql-binaries (tarball directo) | JAR `embedded-postgres-binaries-linux-amd64-<ver>.jar` -> dentro `postgres-linux-x86_64.txz` (tar+xz). theseus: `postgresql-<ver>-x86_64-unknown-linux-gnu.tar.gz` | 15.x (mirror del EDB 15 de Windows) | **Si** (preservar layout bin/lib/share) | Build glibc; en Alpine/musl usar `-alpine`. NO viene data dir preinicializado: hay que `initdb -D` en primer arranque. No correr como root. |
+| **Python** | astral-sh/python-build-standalone (flavor `install_only`) | `cpython-3.11.x+YYYYMMDD-x86_64-unknown-linux-gnu-install_only.tar.gz` (o `install_only_stripped`) | 3.11.14 (igualar patch del embeddable Windows) | **Si** | **NO existe embeddable Linux oficial** (ver 4). gnu necesita glibc>=2.17. musl no carga wheels C-extension. pip/venv ya vienen incluidos (sin `._pth`). |
+| **JRE** (opcional) | Eclipse Temurin (Adoptium) v3 redirect | `OpenJDK21U-jre_x64_linux_hotspot_21.0.x_y.tar.gz` (~50 MB) + `.sha256.txt` | 21 LTS (mirror Windows) | **Si** | tar.gz no zip. Extrae a `jdk-21.0.x+y-jre/`, launcher `bin/java` (sin .exe). `chmod +x bin/java`. Solo lo usa OpenDataLoader (PDF); **opcional**, hay fallback a pypdf. En Alpine usar `os=alpine-linux`. |
+
+URLs de descarga sugeridas:
+- Postgres (zonky): `https://repo1.maven.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-linux-amd64/<ver>/embedded-postgres-binaries-linux-amd64-<ver>.jar`
+- Python: release dateado de python-build-standalone (metadata en `https://raw.githubusercontent.com/astral-sh/python-build-standalone/latest-release/latest-release.json`)
+- JRE: `https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jre/hotspot/normal/eclipse?project=jdk`
+
+## 4. Cambios por fichero
+
+> **DECISION DE DISENO #1 (la mas importante):** el `python-3.11.9-embed-amd64.zip` (Windows embeddable) **NO tiene equivalente Linux**. python.org publica embeddable SOLO para Windows. La estrategia "descomprimir un interprete autocontenido" NO se porta 1:1. En Linux se usa **python-build-standalone (install_only)** que ya trae stdlib + pip + venv: desaparece el hack de `._pth` y el truco de `pip --target`. Esto reordena buena parte de `python-manager.js`.
+
+### Capa transversal (a anadir antes de tocar los managers)
+- Helper de sufijo de ejecutable: `const EXE = process.platform === 'win32' ? '.exe' : '';`
+- Helper de base de datos de la app (XDG): `process.platform === 'win32' ? (process.env.APPDATA || ~/AppData/Roaming) : (process.env.XDG_DATA_HOME || ~/.local/share)`, con override `APP_DATA_DIR`/`DATA_DIR` (default servidor `/var/lib/automatizapyme`).
+- Centralizar separador `PYTHONPATH` via `path.delimiter`.
+
+### `desktop/postgres-manager.js`
+- **[block]** lineas 47, 104, 148, 172, 252 — todos los binarios con `.exe` hardcodeado (`pg_ctl.exe`, `initdb.exe`, `psql.exe`). `isPostgresInstalled()` (47) siempre false y todo spawn da ENOENT. Fix: `path.join(PG_BIN, 'pg_ctl'+EXE)`, etc.
+- **[block]** lineas 64-65 — `zipUrl` = ZIP Windows x64 EDB (PE executables, no corren en Linux). Fix: descargar JAR zonky linux-amd64 -> extraer `postgres-linux-x86_64.txz`, o tarball theseus-rs. Ramificar URL+extractor por `process.platform`.
+- **[block]** linea 76 — extraccion via `C:\Windows\System32\tar.exe`. Fix: `const tarCmd = process.platform==='win32' ? winTar : 'tar';` con `tar -xJf` (.txz/xz) o `tar -xzf` (.tar.gz) segun formato.
+- **[block]** lineas 108, 119-126 — `--auth=trust` + regex de `pg_hba.conf`. En servidor es riesgo de seguridad y la regex `host all all 127.0.0.1/32 md5` probablemente **no matchea** los defaults Linux (scram-sha-256, peer/local, `::1`) -> el rewrite se vuelve no-op silencioso. Fix: password real para `pyme_user` (`initdb --pwfile` o `ALTER ROLE`), `scram-sha-256`, escribir `pg_hba.conf` explicito, `bind 127.0.0.1`. Anadir `--locale=C.UTF-8` (o `--no-locale`) para evitar fallo por locale ausente en imagenes minimas.
+- **[easy]** lineas 9-12, 24-27 — `%APPDATA%` y fallback `AppData\Roaming`. Fix: base XDG (capa transversal).
+- **[easy]** lineas 81, 109, 156 — `windowsHide:true` no-op en Linux (sin cambio).
+- **[easy]** linea 174 — `stopPostgres` execSync solo depende del path `pgCtl` (resuelto por el fix `.exe`); flags/quoting ya cross-platform.
+- **[easy]** linea 28 / 297-307 — `PG_PORT=5433`, URLs `localhost`/`asyncpg` ya cross-platform; opcional hacer puerto configurable por env.
+
+> **Recomendacion alternativa servidor:** la via mas limpia puede ser NO portar el download-and-bundle de Postgres: instalar via apt/dnf (`postgresql-15`) o apuntar el backend a un Postgres del sistema via `DATABASE_URL`, reduciendo postgres-manager a un modulo guard/no-op en Linux. El plan abajo asume portar el manager para mantener la filosofia del .exe; evaluar el trade-off en fase 2.
+
+### `desktop/python-manager.js`
+- **[block]** linea 18 — `PYTHON_EXE = .../python.exe`. Fix: `process.platform==='win32' ? PYTHON_DIR/python.exe : VENV_DIR/bin/python3`.
+- **[block]** linea 19 — `SITE_PACKAGES = PYTHON_DIR/Lib/site-packages`. Linux venv usa `lib/python3.11/site-packages`. Mejor: instalar en el venv normal (sin `--target`) y NO computar el path.
+- **[block]** lineas 85-88 — `powershell -NoProfile Expand-Archive`. No existe en Linux y el embeddable no tiene contraparte. Fix: descargar python-build-standalone `install_only.tar.gz`, extraer con `tar -xzf`, y crear venv con `python3 -m venv`.
+- **[block]** lineas 90-101 — edicion de `._pth` (`Lib\\site-packages`). Hack exclusivo del embeddable Windows. Fix: **eliminar el bloque** en Linux (el venv ya tiene site configurado).
+- **[block]** lineas 169-172 — `pip install --target SITE_PACKAGES` + PYTHONPATH. Fix: en venv, `python3 -m pip install -r requirements.txt` sin `--target`. Asegurar `build-essential`/`libpq-dev` en el host si algun sdist (asyncpg, pydantic-core, numpy) debe compilar.
+- **[easy]** linea 138 — `Scripts\pip.exe`. Fix: invocar pip como modulo: `spawn(PYTHON_EXE, ['-m','pip','install',...])`.
+- **[easy]** lineas 239, 354 — `PYTHONPATH` usa `;` (separador Windows). En Linux colapsa ambas rutas. Fix: `[BACKEND_DIR, SITE_PACKAGES].join(path.delimiter)`.
+- **[easy]** lineas 337-341 — `stopBackend`: `taskkill` YA guardado por `process.platform==='win32'`, else `SIGTERM` (correcto).
+- **[easy]** lineas 259-264 + 253 — inyeccion `sys.path` por "embedded ignora PYTHONPATH": innecesaria en venv pero inofensiva.
+- **[easy]** lineas 263, 256, 312 — puerto 8080 y host `0.0.0.0` hardcodeados. Fix: leer `PORT`/`HOST` de env.
+- **[easy]** lineas 320-323 — `process.execPath + ELECTRON_RUN_AS_NODE`: bajo node plano es no-op y funciona.
+- **[easy]** linea 10 — `PYTHON_LOG_FILE` en `~/Desktop`. Fix: `APP_DATA_DIR/backend.log` o stdout (journald).
+
+### `desktop/jre-manager.js` (opcional — solo OpenDataLoader; hay fallback a pypdf)
+- **[block]** linea 29 — `JAVA_EXE = JRE_DIR/bin/java.exe`. Fix: `path.join(JRE_DIR,'bin', process.platform==='win32' ? 'java.exe' : 'java')`.
+- **[block]** lineas 67-68 — URL `windows/x64`. Fix: construir os/arch desde `process.platform`/`process.arch` (`linux`, `aarch64`).
+- **[block]** lineas 78, 85 — `C:\Windows\System32\tar.exe -xf` sobre un .zip. Fix: `spawn('tar', ['-xzf', tarball, '-C', tempExtract])`.
+- **[block]** `backend/app/services/pdf/parser.py:48` — consumidor hardcodea `java.exe`. Fix: `'java.exe' if os.name=='nt' else 'java'`; o preferir `JAVA_HOME` (ya se chequea primero en parser.py:43) / temurin-21-jre-headless del sistema.
+- **[easy]** lineas 12-15 — APPDATA (XDG, capa transversal).
+- **[easy]** linea 69/97 — nombrar `jre.tar.gz` en Linux; la deteccion de carpeta `jdk-*-jre` (99-108) es portable.
+- **[easy]** linea 86 — `windowsHide` no-op.
+- **[easy]** `service-manager.js:268-270` — probe de `java.exe` para `JAVA_HOME`. Fix: reusar `getJavaPath()` de jre-manager (ya importado, linea 53).
+- Recomendacion servidor: **no auto-descargar**; instalar `temurin-21-jre-headless` y exportar `JAVA_HOME`, o aceptar el fallback pypdf. Anadir verificacion SHA256 (TODO en `desktop/docs/dependency_security.md:76`).
+
+### `desktop/service-manager.js`
+- **[block]** lineas 121-144 `killOrphanProcesses` — `netstat -ano | findstr | taskkill` (Windows-only, sin rama posix). Se llama en cada boot (525) y shutdown (620). Fix: rastrear PIDs de hijos propios y `child.kill()`; o rama posix con `ss -lptn 'sport = :PORT'` / `lsof -ti tcp:PORT` + `kill -TERM`/`-KILL`.
+- **[block]** lineas 278-303 `runSpawn` + 290 — timeout-kill via `taskkill` sin guard. Fix: rama `win32` taskkill / posix `SIGTERM` luego `SIGKILL`; preferir `spawn` con array de args.
+- **[block]** lineas 268-270 `getBackendEnv` JAVA_HOME — probe `java.exe`. Fix: `javaBin = win32?'java.exe':'java'` o reusar `getJavaPath()`.
+- **[block]** lineas 59-67, 162-169, 199-219 — Electron `app.isPackaged`/`safeStorage`. En headless cae a secrets.json **plaintext** (regresion de seguridad). Fix: leer `SECRET_KEY`/`TENANT_ENCRYPTION_KEY` de env (systemd `EnvironmentFile=`) o fichero 0600; `mode:0o600` al escribir. Opcional `PROJECT_ROOT`/`APP_ROOT` por env.
+- **[easy]** linea 12 — APPDATA (XDG, default `/var/lib/automatizapyme`).
+- **[easy]** linea 16 — `BOOT_LOG` en `~/Desktop`. Fix: stdout (journald) o `APP_DATA_DIR/boot.log`.
+- **[easy]** lineas 311-312 — `npmCmd` ya correcto (`win32?'npm.cmd':'npm'`); asegurar `npm`/`node` en PATH del servicio.
+- **[easy]** lineas 424-433 — frontend `spawn('node', [nextBin,'start','-H','0.0.0.0','-p','3000'])` funciona; opcional `detached:true` o `KillMode=control-group`.
+- **[easy]** lineas 457-467 `stopFrontend` — ya tiene rama posix `SIGTERM`.
+- **[easy]** lineas 472-514 `waitForHTTP` — `127.0.0.1` portable; opcional pegar a `/health`.
+- **[easy]** `startAll` exige `onProgress`: pasar logger de consola / hacerlo no-op.
+
+### `desktop/main.js`, `launch.js`, `sync.js`, `package.json`
+- **[block]** Descartar `main.js` (GUI lifecycle), `launch.js` (lanzador Electron), `sync.js` (hot-copy a .exe Windows) y el bloque `build.win` de `package.json` en el path servidor. Sustituir por `bootstrap.js` + unidad systemd. El codigo fuente (backend/frontend) se despliega via git/CI/rsync, no como extraResources de electron-builder. La red ya es 0.0.0.0-friendly (`next start -H 0.0.0.0`; `_BACKEND_HOST` configurable).
+
+## 5. Plan de implementacion ordenado
+
+1. **Capa abstracta de path/plataforma** (sin deps). Helpers `EXE`, base XDG/`APP_DATA_DIR`, join de `PYTHONPATH`. *Bloquea a todo lo demas.*
+2. **Port postgres-manager.js** (dep: fase 1). `.exe`-suffix, URL zonky/theseus + extractor `tar`, `initdb --locale`, password scram + `pg_hba` explicito. **Verificar: initdb + start + createDatabase en una VM/host Linux real.**
+3. **Port python-manager.js** (dep: fase 1; independiente de fase 2). Sustituir embeddable por python-build-standalone + venv, borrar `._pth`, quitar `--target`, separador `PYTHONPATH`, log dir. **Verificar: venv + pip install + uvicorn + migraciones Alembic.**
+4. **Port jre-manager.js + parser.py** (dep: fase 1; opcional, baja prioridad). O saltar y usar JAVA_HOME del sistema / fallback pypdf.
+5. **Port service-manager.js** (dep: fases 2-3). `killOrphanProcesses` posix, `runSpawn` timeout, JAVA_HOME, secrets por env, logs a stdout, `startAll` con logger.
+6. **Extraer bootstrapper headless** `desktop/bootstrap.js` (dep: fase 5). `require.main===module`, `startAll`, signal handlers -> `stopAll`.
+7. **Unidad systemd + .env** (dep: fase 6). Ver seccion 6.
+8. **First-run init + backups** (dep: fases 6-7). Idempotencia (no re-descargar si ya instalado), `pg_dump` programado, persistencia de PGDATA entre updates.
+9. **Test end-to-end** (dep: todo). Primer arranque limpio en host glibc, reinicio, shutdown limpio (sin huerfanos), restore de backup.
+
+## 6. systemd / arranque
+
+Enfoque recomendado: **una unica unidad `Type=simple`** que ejecuta `bootstrap.js`, dejando que systemd reape el arbol de hijos (Postgres/uvicorn/next) via `KillMode=control-group`. Esto reduce la dependencia del hack de orphan-cleanup.
+
+```ini
+# /etc/systemd/system/automatizapyme.service
+[Unit]
+Description=Automatiza-pyme (headless self-hosted)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=automatizapyme
+Group=automatizapyme
+Environment=APP_DATA_DIR=/var/lib/automatizapyme
+Environment=PORT=8080
+Environment=HOST=127.0.0.1
+EnvironmentFile=/etc/automatizapyme/secrets.env   # SECRET_KEY, TENANT_ENCRYPTION_KEY, DB password
+WorkingDirectory=/opt/automatizapyme/desktop
+ExecStart=/usr/bin/node /opt/automatizapyme/desktop/bootstrap.js
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=on-failure
+# Postgres/initdb NO corren como root: User no-root es obligatorio
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- **Directorio de datos**: `APP_DATA_DIR` (default servidor `/var/lib/automatizapyme`, fallback usuario `$XDG_DATA_HOME`/`~/.local/share/AutomatizaPyme`). Contiene `pgsql/`, `pgdata/`, `python/`/`venv/`, `jre/`, `backend.log`. Debe ser propiedad del usuario del servicio y persistir entre updates.
+- **Secretos**: `EnvironmentFile` 0600 (no `safeStorage`).
+- Alternativa (una unidad por proceso: postgres / backend / frontend con dependencias `After=`) si se quiere reinicio granular; mas complejo, no recomendado para v1.
+
+## 7. Riesgos y datos
+
+- **Persistencia de PGDATA entre updates**: `pgdata/` vive en `APP_DATA_DIR`, separado del codigo en `/opt`. Un `git pull`/redeploy NO debe tocarlo. Riesgo: borrar APP_DATA_DIR reinicializa la DB. Marcar el dir como volumen de estado y documentarlo.
+- **Compatibilidad glibc**: builds gnu (Postgres zonky, Python PBS) requieren glibc>=2.17. En Alpine/musl fallan -> usar variantes `-alpine`/`-musl` (Python musl no carga wheels C-extension). Validar `ldd --version` en first-run y abortar con mensaje claro.
+- **Backups (pg_dump)**: programar `pg_dump`/`pg_dumpall` (cron o timer systemd) hacia `APP_DATA_DIR/backups`, usando el `pg_dump` del arbol portable. Probar restore. Sin esto, una corrupcion de PGDATA = perdida total.
+- **Puertos/firewall**: backend 8080 y frontend 3000; `bind 127.0.0.1` para Postgres (5433). Para acceso externo, reverse proxy (nginx/Caddy) delante de :3000, no exponer uvicorn/Postgres directos. Abrir solo el puerto del proxy en el firewall.
+- **Verificacion de integridad**: hoy NO hay verificacion de hash/firma de descargas (TODO en `desktop/docs/dependency_security.md:76`), ni en Windows. Anadir SHA256 (JRE trae `.sha256.txt`; Postgres/Python publican checksums) antes de produccion.
+- **No correr como root**: initdb y el server Postgres se niegan a arrancar como root; la unidad debe usar `User=` no-root.
+- **Tree-kill / huerfanos**: sin `KillMode=control-group` y sin signal handling en bootstrap, un stop dejaria Postgres/uvicorn/next vivos.
+
+## 8. Estimacion de esfuerzo
+
+| Fase | Esfuerzo |
+|------|----------|
+| 1. Capa path/plataforma | 0.5 dia |
+| 2. postgres-manager (download zonky/theseus, initdb, pg_hba scram) | 2-3 dias (el mas arriesgado) |
+| 3. python-manager (PBS + venv, borrar embeddable hacks) | 1.5-2 dias |
+| 4. jre-manager + parser.py (opcional) | 0.5-1 dia (o 0 si se usa JRE del sistema) |
+| 5. service-manager (posix kill, secrets, logs) | 1.5 dias |
+| 6. bootstrap.js + signal handling | 0.5 dia |
+| 7. systemd + .env | 0.5 dia |
+| 8. first-run init + backups | 1 dia |
+| 9. test e2e en host Linux real | 1-1.5 dias |
+| **Total** | **~9-12 dias** (1 ingeniero), ~2 semanas con margen |
