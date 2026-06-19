@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.schemas.integrations import EmailConnectRequest, Psd2ConnectRequest
 from app.core.config import settings
 from app.core.dependencies import get_current_user, require_role
+from app.core.tenant_context import rls_bypass
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
@@ -136,7 +137,11 @@ async def google_callback(
     state: str,
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = await svc.handle_oauth_callback(code, state, "google", db)
+    # SEC.RLS: OAuth callback público sin JWT; el tenant se decodifica del
+    # `state` (in-memory) DENTRO de handle_oauth_callback, que además hace
+    # upsert de la integración. No disponible antes → bypass pre-tenant.
+    with rls_bypass():
+        tenant_id = await svc.handle_oauth_callback(code, state, "google", db)
     if not tenant_id:
         return HTMLResponse(
             "<html><body><h2>Error: estado OAuth inválido o tokens fallidos</h2></body></html>",
