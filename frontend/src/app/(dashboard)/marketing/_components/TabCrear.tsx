@@ -40,13 +40,20 @@ export function TabCrear() {
         if (!selectedAccount || !content.trim()) return;
         setLoading(true);
         try {
-            await marketingApi.posts.create({
+            const post = await marketingApi.posts.create({
                 social_account_id: selectedAccount,
                 platform: accounts.find((a) => a.id === selectedAccount)?.platform ?? "",
                 content: content.trim(),
                 image_url: imageUrl.trim() || undefined,
                 scheduled_at: publishNow ? undefined : scheduleAt || undefined,
             });
+            // create() solo deja el post en draft; "Publicar ahora" debe publicarlo de verdad.
+            if (publishNow) {
+                const published = await marketingApi.posts.publish(post.id);
+                if (published.status !== "published") {
+                    throw new Error(published.error_message || t("publishFail"));
+                }
+            }
             setSuccess(true);
             setContent("");
             setImageUrl("");
