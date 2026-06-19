@@ -9,7 +9,6 @@ from uuid import uuid4
 import pytest
 
 from app.services.ai.employee_crud import (
-    EmployeeContractError,
     create_employee,
     delete_employee,
     list_employees,
@@ -51,21 +50,25 @@ class TestEmployeeCrud:
         assert len(listed) == 1
         assert listed[0]["id"] == emp_id
 
-    async def test_create_contrato_insuficiente_raise(self, db, seed_tenant_and_user):
+    async def test_create_sin_capacidades_ok(self, db, seed_tenant_and_user):
         tenant, _u, _t = seed_tenant_and_user
-        # 0 capacidades → no cumple el contrato mínimo (≥2 de 4)
-        with pytest.raises(EmployeeContractError):
-            await create_employee(
-                name="Vacío",
-                role_description="sin capacidades",
-                budget_limit_usd=5.0,
-                tenant_id=tenant.id,
-                db=db,
-                scope=None,
-                memory_enabled=False,
-                knowledge_enabled=False,
-                workflows=None,
-            )
+        # 0 capacidades → un custom "fino" (solo persona) es válido: el alta NO
+        # se bloquea (el contrato ≥2 capacidades se retiró el 2026-06-18).
+        out, emp_id = await create_employee(
+            name="Vacío",
+            role_description="sin capacidades",
+            budget_limit_usd=5.0,
+            tenant_id=tenant.id,
+            db=db,
+            scope=None,
+            memory_enabled=False,
+            knowledge_enabled=False,
+            workflows=None,
+        )
+        assert emp_id
+        assert out["domain"] == "custom"
+        assert out["memory_enabled"] is False
+        assert out["knowledge_enabled"] is False
 
     async def test_update_icon(self, db, seed_tenant_and_user):
         tenant, _u, _t = seed_tenant_and_user

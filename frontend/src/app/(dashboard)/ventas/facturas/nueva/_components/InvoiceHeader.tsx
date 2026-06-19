@@ -51,7 +51,7 @@ export default function InvoiceHeader({
                 />
             </div>
             <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Régimen fiscal</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("regimenFiscal")}</label>
                 <select
                     value={fiscalRegime}
                     onChange={e => setFiscalRegime(e.target.value)}
@@ -59,7 +59,7 @@ export default function InvoiceHeader({
                 >
                     <option value="">General</option>
                     <option value="intracomunitario">Intracomunitario</option>
-                    <option value="isp">Inversión del sujeto pasivo (ISP)</option>
+                    <option value="isp">{t("ispLabel")}</option>
                     <option value="recargo_equivalencia">Recargo de equivalencia</option>
                 </select>
             </div>

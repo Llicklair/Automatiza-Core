@@ -1,20 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type JournalEntry } from "@/lib/api";
 import { logError } from "@/lib/logger";
 
-const GROUP_NAMES: Record<string, string> = {
-    "1": "Financiación básica",
-    "2": "Activo no corriente",
-    "3": "Existencias",
-    "4": "Acreedores y deudores por operaciones comerciales",
-    "5": "Cuentas financieras",
-    "6": "Compras y gastos",
-    "7": "Ventas e ingresos",
-    "8": "Gastos imputados al patrimonio neto",
-    "9": "Ingresos imputados al patrimonio neto",
-};
+const groupNames = (t: ReturnType<typeof useTranslations>): Record<string, string> => ({
+    "1": t("cuadroCuentas.grupo1"),
+    "2": t("cuadroCuentas.grupo2"),
+    "3": t("cuadroCuentas.grupo3"),
+    "4": t("cuadroCuentas.grupo4"),
+    "5": t("cuadroCuentas.grupo5"),
+    "6": t("cuadroCuentas.grupo6"),
+    "7": t("cuadroCuentas.grupo7"),
+    "8": t("cuadroCuentas.grupo8"),
+    "9": t("cuadroCuentas.grupo9"),
+});
 
 export interface AccountNode {
     code: string;
@@ -30,10 +31,13 @@ export interface GroupNode {
 }
 
 export function useCuadroCuentas() {
+    const t = useTranslations("contabilidad");
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [expanded, setExpanded] = useState<Set<string>>(new Set(["4", "5", "6", "7"]));
+
+    const GROUP_NAMES = groupNames(t);
 
     useEffect(() => {
         api.accounting.journal.list()
@@ -47,7 +51,7 @@ export function useCuadroCuentas() {
         entry.lines.forEach(line => {
             const code3 = line.account_code.substring(0, 3);
             if (!accountMap[code3]) {
-                accountMap[code3] = { code: code3, name: line.account_name || `Cuenta ${code3}`, debit: 0, credit: 0 };
+                accountMap[code3] = { code: code3, name: line.account_name || t("cuadroCuentas.cuentaFallback", { code: code3 }), debit: 0, credit: 0 };
             }
             accountMap[code3].debit += Number(line.debit);
             accountMap[code3].credit += Number(line.credit);
@@ -58,7 +62,7 @@ export function useCuadroCuentas() {
     Object.values(accountMap).forEach(acct => {
         const g = acct.code.substring(0, 1);
         if (!groupMap[g]) {
-            groupMap[g] = { group: g, name: GROUP_NAMES[g] || `Grupo ${g}`, accounts: [] };
+            groupMap[g] = { group: g, name: GROUP_NAMES[g] || t("cuadroCuentas.grupoFallback", { group: g }), accounts: [] };
         }
         groupMap[g].accounts.push(acct);
     });

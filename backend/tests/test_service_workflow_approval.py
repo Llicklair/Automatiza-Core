@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-from app.db.models.models import PendingApproval, Task, Tenant, WorkflowExecution
+from app.db.models.models import PendingApproval, Task, Tenant
 from app.services.workflow import approval as svc
 
 

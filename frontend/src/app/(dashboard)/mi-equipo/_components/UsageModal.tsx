@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { aiEmployees, type AIEmployee, type EmployeeUsage } from "@/lib/api/ai_employees";
 import { X, Loader2, Activity } from "lucide-react";
 
@@ -16,6 +17,8 @@ function fmtDate(iso: string) {
 }
 
 export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClose: () => void }) {
+    const t = useTranslations("miEquipo");
+    const tc = useTranslations("common");
     const [data, setData] = useState<EmployeeUsage | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -23,9 +26,9 @@ export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClos
         let cancelled = false;
         aiEmployees.usage(employee.id, { limit: 100 })
             .then(r => { if (!cancelled) setData(r); })
-            .catch(e => { if (!cancelled) setError(e?.message ?? "Error cargando consumo"); });
+            .catch(e => { if (!cancelled) setError(e?.message ?? t("usageModal.errorLoading")); });
         return () => { cancelled = true; };
-    }, [employee.id]);
+    }, [employee.id, t]);
 
     const limit = employee.budget_limit_usd ?? 0;
     const spent = data?.total_cost_usd ?? 0;
@@ -38,9 +41,9 @@ export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClos
                 <div className="flex items-center justify-between p-5 border-b border-border">
                     <div className="flex items-center gap-2">
                         <Activity className="w-4 h-4 text-violet-400" />
-                        <h2 className="font-semibold text-foreground text-sm">Consumo de {employee.name}</h2>
+                        <h2 className="font-semibold text-foreground text-sm">{t("usageModal.title", { name: employee.name })}</h2>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label="Cerrar">
+                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label={tc("close")}>
                         <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     </button>
                 </div>
@@ -56,7 +59,7 @@ export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClos
                         {limit > 0 && (
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground">Presupuesto</span>
+                                    <span className="text-muted-foreground">{t("usageModal.budget")}</span>
                                     <span className="font-medium">${spent.toFixed(4)} / ${limit.toFixed(2)} ({pct.toFixed(0)}%)</span>
                                 </div>
                                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -67,11 +70,11 @@ export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClos
 
                         <div className="grid grid-cols-3 gap-2">
                             {[
-                                { label: "Llamadas", value: String(data.total_calls) },
-                                { label: "Tokens", value: fmtTokens(data.total_tokens_in + data.total_tokens_out) },
-                                { label: "Coste total", value: `$${data.total_cost_usd.toFixed(4)}` },
-                            ].map(({ label, value }) => (
-                                <div key={label} className="bg-muted/40 rounded-lg p-3 text-center">
+                                { id: "calls", label: t("usageModal.statCalls"), value: String(data.total_calls) },
+                                { id: "tokens", label: t("usageModal.statTokens"), value: fmtTokens(data.total_tokens_in + data.total_tokens_out) },
+                                { id: "totalCost", label: t("usageModal.statTotalCost"), value: `$${data.total_cost_usd.toFixed(4)}` },
+                            ].map(({ id, label, value }) => (
+                                <div key={id} className="bg-muted/40 rounded-lg p-3 text-center">
                                     <p className="text-base font-semibold">{value}</p>
                                     <p className="text-[10px] text-muted-foreground">{label}</p>
                                 </div>
@@ -80,18 +83,18 @@ export function UsageModal({ employee, onClose }: { employee: AIEmployee; onClos
 
                         {data.entries.length === 0 ? (
                             <p className="text-center text-xs text-muted-foreground py-6">
-                                Aún no hay llamadas registradas para este empleado.
+                                {t("usageModal.emptyState")}
                             </p>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                     <thead className="text-muted-foreground border-b border-border">
                                         <tr>
-                                            <th className="text-left py-1.5 pr-3 font-normal">Fecha</th>
-                                            <th className="text-left py-1.5 pr-3 font-normal">Provider</th>
-                                            <th className="text-right py-1.5 pr-3 font-normal">Tokens in</th>
-                                            <th className="text-right py-1.5 pr-3 font-normal">Tokens out</th>
-                                            <th className="text-right py-1.5 font-normal">Coste</th>
+                                            <th className="text-left py-1.5 pr-3 font-normal">{t("usageModal.colDate")}</th>
+                                            <th className="text-left py-1.5 pr-3 font-normal">{t("usageModal.colProvider")}</th>
+                                            <th className="text-right py-1.5 pr-3 font-normal">{t("usageModal.colTokensIn")}</th>
+                                            <th className="text-right py-1.5 pr-3 font-normal">{t("usageModal.colTokensOut")}</th>
+                                            <th className="text-right py-1.5 font-normal">{t("usageModal.colCost")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>

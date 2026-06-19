@@ -11,12 +11,11 @@ Cubre los 7 puntos del flujo:
   - has_valid_fiscal_approval: hit + miss (incl. ventana "aprobar→modificar")
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 from app.db.models.models import PendingApproval, Task, Tenant
-from app.db.models.tasks import RISK_LEVEL_MANDATORY_HUMAN_FISCAL, FiscalApprovalLog
+from app.db.models.tasks import RISK_LEVEL_MANDATORY_HUMAN_FISCAL
 from app.services.workflow import fiscal_approval as svc
 
 

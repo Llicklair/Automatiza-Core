@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { EmailStatus, InboxMessage, EmailDetail, DriveFile, EmailClassification } from "@/lib/api/messaging";
 import type { Document } from "@/lib/api/documents";
 import type { TabKey } from "../constants";
 
 export function useCorreos() {
+    const t = useTranslations("correos");
     const [activeTab, setActiveTab] = useState<TabKey>("bandeja");
     const [status, setStatus] = useState<EmailStatus | null>(null);
 
@@ -76,7 +78,7 @@ export function useCorreos() {
             setSelectedMsg(null);
             setActiveTab("componer");
         } catch (e) {
-            setDraftError(e instanceof Error ? e.message : "No se pudo redactar el borrador");
+            setDraftError(e instanceof Error ? e.message : t("errors.draftFailed"));
         } finally {
             setDraftLoading(false);
         }
@@ -91,7 +93,7 @@ export function useCorreos() {
             // Lanzar clasificación IA en segundo plano (no bloquea la UI)
             classifyInbox(res.messages);
         } catch (err) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al cargar la bandeja" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.inboxLoad") });
             setInboxMessages([]);
         } finally {
             setInboxLoading(false);
@@ -112,7 +114,7 @@ export function useCorreos() {
             const detail = await api.messaging.email.getMessage(id);
             setSelectedMsg(detail);
         } catch (err) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al cargar el mensaje" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.messageLoad") });
         } finally {
             setBodyLoading(false);
         }
@@ -128,7 +130,7 @@ export function useCorreos() {
             setResult({ ok: true, message: res.result });
             setTo(""); setSubject(""); setBody(""); setAttachments([]);
         } catch (err: unknown) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al enviar" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.sendFailed") });
         } finally {
             setLoading(false);
         }
@@ -144,7 +146,7 @@ export function useCorreos() {
             );
             setAttachments((prev) => [...prev, ...uploaded]);
         } catch (err: unknown) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al subir el archivo" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.uploadFailed") });
         } finally {
             setUploading(false);
             if (fileRef.current) fileRef.current.value = "";
@@ -168,7 +170,7 @@ export function useCorreos() {
             const res = await api.messaging.drive.list("root", q);
             setDriveFiles(res.files);
         } catch (err) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al listar Drive" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.driveList") });
             setDriveFiles([]);
         } finally {
             setDriveLoading(false);
@@ -183,7 +185,7 @@ export function useCorreos() {
             setAttachments((prev) => [...prev, doc]);
             setShowDrive(false);
         } catch (err) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al importar de Drive" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.driveImport") });
         } finally {
             setImportingId(null);
         }
@@ -198,7 +200,7 @@ export function useCorreos() {
             setResult({ ok: res.success, message: res.action });
             if (res.success) setInstruction("");
         } catch (err: unknown) {
-            setResult({ ok: false, message: err instanceof Error ? err.message : "Error al procesar instrucción" });
+            setResult({ ok: false, message: err instanceof Error ? err.message : t("errors.instructFailed") });
         } finally {
             setLoading(false);
         }

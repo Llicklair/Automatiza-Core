@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BarChart3, Loader2, Package, TrendingUp, Skull, Coins } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { inventoryAnalytics as invApi, type InventoryAnalytics } from "@/lib/api/inventory_analytics";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { KpiCard } from "@/components/shared/KpiCard";
@@ -11,6 +12,7 @@ const num = (n: number) => n.toLocaleString("es-ES");
 const DEAD_RANGES = [30, 60, 90, 180];
 
 export default function InventarioAnaliticaPage() {
+    const t = useTranslations("inventario");
     const [data, setData] = useState<InventoryAnalytics | null>(null);
     const [loading, setLoading] = useState(true);
     const [deadDays, setDeadDays] = useState(90);
@@ -28,21 +30,21 @@ export default function InventarioAnaliticaPage() {
     return (
         <div className="p-6 space-y-6">
             <PageHeader
-                title="Analítica de inventario"
-                description="Valoración del stock, productos que no rotan (stock muerto) y los más vendidos."
+                title={t("analytics.title")}
+                description={t("analytics.description")}
                 icon={BarChart3}
             />
 
             {loading || !data ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> {t("analytics.loading")}</div>
             ) : (
                 <>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <KpiCard title="Valoración a coste" value={eur(data.valuation.value_cost)} icon={Coins} />
-                        <KpiCard title="Valoración a PVP" value={eur(data.valuation.value_retail)} icon={Package} />
-                        <KpiCard title="Margen potencial" value={eur(data.valuation.potential_margin)} icon={TrendingUp} />
+                        <KpiCard title={t("analytics.valuationCost")} value={eur(data.valuation.value_cost)} icon={Coins} />
+                        <KpiCard title={t("analytics.valuationRetail")} value={eur(data.valuation.value_retail)} icon={Package} />
+                        <KpiCard title={t("analytics.potentialMargin")} value={eur(data.valuation.potential_margin)} icon={TrendingUp} />
                         <KpiCard
-                            title="Stock muerto"
+                            title={t("analytics.deadStock")}
                             value={`${data.dead_count} · ${eur(data.dead_value_cost)}`}
                             icon={Skull}
                             className={data.dead_count > 0 ? "border-rose-500/20" : ""}
@@ -53,15 +55,15 @@ export default function InventarioAnaliticaPage() {
                         {/* Más vendidos */}
                         <div className="rounded-lg border border-border bg-card p-4">
                             <h3 className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
-                                <TrendingUp className="w-4 h-4 text-emerald-400" /> Más vendidos (últimos {data.top_days} días)
+                                <TrendingUp className="w-4 h-4 text-emerald-400" /> {t("analytics.topMovers", { days: data.top_days })}
                             </h3>
                             {data.top_movers.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">Sin ventas en el periodo.</p>
+                                <p className="text-xs text-muted-foreground">{t("analytics.noSales")}</p>
                             ) : (
                                 <table className="w-full text-sm">
                                     <thead><tr className="text-xs text-muted-foreground border-b border-border">
-                                        <th className="text-left font-medium py-1.5">Producto</th>
-                                        <th className="text-right font-medium py-1.5">Uds vendidas</th>
+                                        <th className="text-left font-medium py-1.5">{t("analytics.product")}</th>
+                                        <th className="text-right font-medium py-1.5">{t("analytics.unitsSold")}</th>
                                     </tr></thead>
                                     <tbody>
                                         {data.top_movers.map(t => (
@@ -79,7 +81,7 @@ export default function InventarioAnaliticaPage() {
                         <div className="rounded-lg border border-border bg-card p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
-                                    <Skull className="w-4 h-4 text-rose-400" /> Stock muerto
+                                    <Skull className="w-4 h-4 text-rose-400" /> {t("analytics.deadStock")}
                                 </h3>
                                 <div className="flex items-center gap-1">
                                     {DEAD_RANGES.map(r => (
@@ -91,14 +93,14 @@ export default function InventarioAnaliticaPage() {
                                 </div>
                             </div>
                             {data.dead_stock.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">Nada parado sin vender en {deadDays} días. 👍</p>
+                                <p className="text-xs text-muted-foreground">{t("analytics.noDeadStock", { days: deadDays })} 👍</p>
                             ) : (
                                 <table className="w-full text-sm">
                                     <thead><tr className="text-xs text-muted-foreground border-b border-border">
-                                        <th className="text-left font-medium py-1.5">Producto</th>
-                                        <th className="text-right font-medium py-1.5">Stock</th>
-                                        <th className="text-right font-medium py-1.5">Sin vender</th>
-                                        <th className="text-right font-medium py-1.5">Valor</th>
+                                        <th className="text-left font-medium py-1.5">{t("analytics.product")}</th>
+                                        <th className="text-right font-medium py-1.5">{t("analytics.stock")}</th>
+                                        <th className="text-right font-medium py-1.5">{t("analytics.notSold")}</th>
+                                        <th className="text-right font-medium py-1.5">{t("analytics.value")}</th>
                                     </tr></thead>
                                     <tbody>
                                         {data.dead_stock.map(d => (
@@ -106,7 +108,7 @@ export default function InventarioAnaliticaPage() {
                                                 <td className="py-1.5 text-foreground">{d.name}</td>
                                                 <td className="py-1.5 text-right font-mono text-foreground">{num(d.stock)}</td>
                                                 <td className="py-1.5 text-right text-muted-foreground">
-                                                    {d.days_since_sale === null ? "nunca" : `${d.days_since_sale}d`}
+                                                    {d.days_since_sale === null ? t("analytics.never") : `${d.days_since_sale}d`}
                                                 </td>
                                                 <td className="py-1.5 text-right font-mono text-foreground">{eur(d.value_cost)}</td>
                                             </tr>

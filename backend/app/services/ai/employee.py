@@ -11,7 +11,6 @@ from app.services.ai.employee_contract import (
 )
 from app.services.ai.employee_crud import (
     AVAILABLE_SKILLS,
-    EmployeeContractError,
     create_activity,
     create_employee,
     delete_employee,
@@ -36,7 +35,6 @@ from app.services.ai.employee_provisioning import (
 
 __all__ = [
     "AVAILABLE_SKILLS",
-    "EmployeeContractError",
     "count_capabilities",
     "create_activity",
     "create_employee",

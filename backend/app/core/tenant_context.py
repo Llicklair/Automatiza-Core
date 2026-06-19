@@ -30,6 +30,14 @@ _current_task_ctx: ContextVar[str | None] = ContextVar(
     "current_task", default=None
 )
 
+# Bypass explícito de la RLS (SEC.RLS fail-closed). Cuando es True, el listener
+# de `app.db.rls` setea `app.rls_bypass = 'on'` y la policy de Postgres deja
+# pasar TODAS las filas. Reservado para los flujos legítimos sin tenant en
+# contexto: autenticación (lookup de usuario PRE-tenant), portal de cliente
+# (lookup por token), webhooks externos (sin JWT) y la lectura cross-tenant
+# inicial del scheduler. NUNCA debe envolver lógica de negocio de un tenant.
+_rls_bypass_ctx: ContextVar[bool] = ContextVar("rls_bypass", default=False)
+
 
 def set_current_tenant(tenant_id: str | None) -> None:
     """Setea el tenant activo para el resto del contexto async actual."""
@@ -65,6 +73,40 @@ def require_current_tenant() -> str:
             "or did the worker/agent entry point call set_current_tenant()?"
         )
     return tid
+
+
+def is_rls_bypass() -> bool:
+    """True si hay un bypass de RLS activo en el contexto async actual."""
+    return _rls_bypass_ctx.get()
+
+
+@contextmanager
+def rls_bypass() -> Iterator[None]:
+    """Desactiva la RLS para los flujos legítimos sin tenant (fail-closed).
+
+    Bajo RLS fail-closed, una sesión sin tenant en contexto NO ve ninguna fila
+    de las tablas con `tenant_id`. Esto es lo correcto por defecto, pero rompe
+    cuatro flujos de infraestructura que consultan ANTES de conocer el tenant o
+    de forma deliberadamente global:
+
+      - **Auth**: el lookup del `User` por email/id ocurre antes de fijar tenant.
+      - **Portal de cliente**: el lookup del `Client`/token es pre-tenant.
+      - **Webhooks externos** (telegram, autofirma, OAuth): sin JWT.
+      - **Scheduler**: la SELECT inicial cross-tenant que enumera qué tenants
+        procesar (el trabajo por-tenant SÍ va dentro de `tenant_context(t)`).
+
+    Uso::
+
+        with rls_bypass():
+            user = await db.scalar(select(User).where(User.email == email))
+
+    Es un context manager re-entrante seguro (restaura el valor previo al salir).
+    """
+    token = _rls_bypass_ctx.set(True)
+    try:
+        yield
+    finally:
+        _rls_bypass_ctx.reset(token)
 
 
 @contextmanager

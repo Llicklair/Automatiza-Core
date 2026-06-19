@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, Globe, Info } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
 import {
@@ -20,6 +21,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function IdiomaPage() {
+    const t = useTranslations("configuracion");
     const router = useRouter();
     const toast = useToastStore();
     const [active, setActive] = useState<AppLocale>("es");
@@ -31,7 +33,7 @@ export default function IdiomaPage() {
     function choose(locale: AppLocale) {
         setStoredLocale(locale);
         setActive(locale);
-        toast.show("Idioma actualizado. Recargando…", "success");
+        toast.show(t("idioma.updated"), "success");
         // Refresh para que `i18n/request.ts` server-side lea el nuevo cookie.
         setTimeout(() => router.refresh(), 250);
     }
@@ -39,22 +41,21 @@ export default function IdiomaPage() {
     return (
         <PageContainer width="3xl">
             <PageHeader
-                title="Idioma de la interfaz"
-                description="Elige el idioma con el que se muestran los menús, formularios y mensajes. La preferencia se guarda en este navegador."
+                title={t("idioma.title")}
+                description={t("idioma.description")}
             />
 
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2">
                 <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">Catalán, euskera, gallego e inglés</strong>{" "}
-                    estarán disponibles próximamente, cuando finalice la traducción profesional de
-                    la interfaz.
+                    <strong className="text-foreground">{t("idioma.bannerLanguages")}</strong>{" "}
+                    {t("idioma.bannerRest")}
                 </p>
             </div>
 
             <div
                 role="radiogroup"
-                aria-label="Idioma de la interfaz"
+                aria-label={t("idioma.title")}
                 className="space-y-2"
             >
                 {SUPPORTED_LOCALES.map((opt) => {
@@ -88,7 +89,7 @@ export default function IdiomaPage() {
                             {isActive && (
                                 <CheckCircle2
                                     className="w-4 h-4 text-primary flex-shrink-0"
-                                    aria-label="Idioma activo"
+                                    aria-label={t("idioma.activeLanguage")}
                                 />
                             )}
                         </button>
@@ -97,7 +98,7 @@ export default function IdiomaPage() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-                Al cambiar el idioma la página se recarga para aplicar las traducciones SSR.
+                {t("idioma.reloadNote")}
             </p>
         </PageContainer>
     );

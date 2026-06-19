@@ -12,7 +12,7 @@ def _social_account(tenant_id, platform="twitter"):
 
     return SocialAccount(
         id=uuid4(), tenant_id=tenant_id, platform=platform,
-        account_id="acc-1", account_name="@test", access_token="tok",
+        account_id="acc-1", account_name="@test",
     )
 
 
@@ -121,8 +121,3 @@ class TestMarketingMetrics:
         assert body["num_posts"] == 1
         assert body["totals"]["impressions"] == 42
         assert len(body["posts"]) == 1
-
-    async def test_fetch_unsupported_platform_returns_none(self):
-        from app.services.marketing.metrics import fetch_post_metrics
-
-        assert await fetch_post_metrics("linkedin", "tok", "id-1") is None

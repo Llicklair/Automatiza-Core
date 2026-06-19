@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
     FileDown, Lock, Unlock, AlertTriangle, BookOpen, Library, BookText, Loader2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { AccountingPeriod, AccountingPeriodKind } from "@/lib/api/accounting";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ function currentQuarter(): { quarter: number; year: number } {
 }
 
 export function CierreLibrosCard() {
+    const t = useTranslations("contabilidad");
     const toast = useToastStore();
     const init = currentQuarter();
     const [quarter, setQuarter] = useState(init.quarter);
@@ -36,6 +38,7 @@ export function CierreLibrosCard() {
     const [reopenReason, setReopenReason] = useState("");
 
     const range = quarterRange(year, quarter);
+    const periodLabel = t("cierre.periodLabel", { quarter, year });
 
     const loadPeriods = async () => {
         try {
@@ -59,9 +62,9 @@ export function CierreLibrosCard() {
             if (kind === "diario") await api.accounting.libroDiarioPdf(range.start, range.end);
             else if (kind === "mayor") await api.accounting.libroMayorPdf(range.start, range.end);
             else await api.accounting.cuentasAnualesPdf(range.start, range.end);
-            toast.success("PDF descargado");
+            toast.success(t("cierre.toastPdfDownloaded"));
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Error descargando PDF");
+            toast.error(e instanceof Error ? e.message : t("cierre.toastPdfError"));
         } finally {
             setBusy(null);
         }
@@ -74,12 +77,12 @@ export function CierreLibrosCard() {
                 year, kind: "quarter" as AccountingPeriodKind, period_index: quarter,
                 notes: closeNotes || undefined,
             });
-            toast.success(`Periodo ${quarter}T ${year} cerrado. Los asientos del trimestre quedan bloqueados.`);
+            toast.success(t("cierre.toastClosed", { period: periodLabel }));
             setShowCloseModal(false);
             setCloseNotes("");
             loadPeriods();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Error al cerrar periodo");
+            toast.error(e instanceof Error ? e.message : t("cierre.toastCloseError"));
         } finally {
             setBusy(null);
         }
@@ -88,18 +91,18 @@ export function CierreLibrosCard() {
     const handleReopen = async () => {
         if (!reopenModal) return;
         if (!reopenReason.trim()) {
-            toast.error("Se requiere un motivo para reabrir");
+            toast.error(t("cierre.toastReasonRequired"));
             return;
         }
         setBusy("reopen");
         try {
             await api.accounting.periods.reopen(reopenModal.id, reopenReason.trim());
-            toast.success(`Periodo ${reopenModal.label} reabierto.`);
+            toast.success(t("cierre.toastReopened", { label: reopenModal.label }));
             setReopenModal(null);
             setReopenReason("");
             loadPeriods();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Error al reabrir");
+            toast.error(e instanceof Error ? e.message : t("cierre.toastReopenError"));
         } finally {
             setBusy(null);
         }
@@ -113,15 +116,15 @@ export function CierreLibrosCard() {
                         <Library className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-foreground">Libros oficiales y cierre de periodo</h3>
+                        <h3 className="text-sm font-semibold text-foreground">{t("cierre.title")}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Genera el Libro Diario, Libro Mayor y Cuentas Anuales del trimestre. Cierra el periodo para congelar asientos.
+                            {t("cierre.description")}
                         </p>
                     </div>
                 </div>
                 {isClosed && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-500 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full">
-                        <Lock className="w-3.5 h-3.5" /> {quarter}T {year} cerrado
+                        <Lock className="w-3.5 h-3.5" /> {t("cierre.badgeClosed", { period: periodLabel })}
                     </span>
                 )}
             </div>
@@ -132,7 +135,7 @@ export function CierreLibrosCard() {
                     onChange={(e) => setQuarter(Number(e.target.value))}
                     className="h-9 px-2 rounded-md border border-border bg-card text-sm"
                 >
-                    {[1, 2, 3, 4].map((q) => <option key={q} value={q}>{q}T</option>)}
+                    {[1, 2, 3, 4].map((q) => <option key={q} value={q}>{t("cierre.quarterOption", { q })}</option>)}
                 </select>
                 <select
                     value={year}
@@ -142,7 +145,7 @@ export function CierreLibrosCard() {
                     {[year - 1, year, year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
                 <span className="text-xs text-muted-foreground">
-                    Rango: <span className="font-mono">{range.start}</span> → <span className="font-mono">{range.end}</span>
+                    {t("cierre.rangeLabel")} <span className="font-mono">{range.start}</span> → <span className="font-mono">{range.end}</span>
                 </span>
             </div>
 
@@ -154,7 +157,7 @@ export function CierreLibrosCard() {
                     className="justify-start"
                 >
                     {busy === "diario" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BookOpen className="w-4 h-4 mr-2" />}
-                    Libro Diario PDF
+                    {t("cierre.btnDiarioPdf")}
                 </Button>
                 <Button
                     variant="outline"
@@ -163,7 +166,7 @@ export function CierreLibrosCard() {
                     className="justify-start"
                 >
                     {busy === "mayor" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BookText className="w-4 h-4 mr-2" />}
-                    Libro Mayor PDF
+                    {t("cierre.btnMayorPdf")}
                 </Button>
                 <Button
                     variant="outline"
@@ -172,7 +175,7 @@ export function CierreLibrosCard() {
                     className="justify-start"
                 >
                     {busy === "anuales" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
-                    Cuentas Anuales PDF
+                    {t("cierre.btnAnualesPdf")}
                 </Button>
             </div>
 
@@ -181,28 +184,28 @@ export function CierreLibrosCard() {
                     <>
                         <p className="text-xs text-muted-foreground">
                             <Lock className="w-3 h-3 inline mr-1" />
-                            Cerrado el {currentPeriod?.closed_at ? new Date(currentPeriod.closed_at).toLocaleDateString("es-ES") : "—"}
+                            {t("cierre.closedOn")} {currentPeriod?.closed_at ? new Date(currentPeriod.closed_at).toLocaleDateString("es-ES") : "—"}
                         </p>
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setReopenModal({ id: currentPeriod!.id, label: `${quarter}T ${year}` })}
+                            onClick={() => setReopenModal({ id: currentPeriod!.id, label: periodLabel })}
                             className="text-amber-500 hover:text-amber-400"
                         >
-                            <Unlock className="w-3.5 h-3.5 mr-1" /> Reabrir
+                            <Unlock className="w-3.5 h-3.5 mr-1" /> {t("cierre.reopen")}
                         </Button>
                     </>
                 ) : (
                     <>
                         <p className="text-xs text-muted-foreground">
-                            Tras cerrar, los asientos del trimestre quedan bloqueados.
+                            {t("cierre.closeHint")}
                         </p>
                         <Button
                             onClick={() => setShowCloseModal(true)}
                             disabled={busy !== null}
                             size="sm"
                         >
-                            <Lock className="w-3.5 h-3.5 mr-1" /> Cerrar {quarter}T {year}
+                            <Lock className="w-3.5 h-3.5 mr-1" /> {t("cierre.closeButton", { period: periodLabel })}
                         </Button>
                     </>
                 )}
@@ -219,25 +222,25 @@ export function CierreLibrosCard() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                            <Lock className="w-4 h-4 text-amber-500" /> Cerrar {quarter}T {year}
+                            <Lock className="w-4 h-4 text-amber-500" /> {t("cierre.closeButton", { period: periodLabel })}
                         </h3>
                         <p className="text-sm text-muted-foreground mt-2">
-                            Después del cierre no se podrán crear ni borrar asientos del rango {range.start} → {range.end}. Solo se podrá reabrir con motivo justificado.
+                            {t("cierre.closeModalDesc", { start: range.start, end: range.end })}
                         </p>
-                        <label className="block text-xs font-medium text-muted-foreground mt-4 mb-1">Notas (opcional)</label>
+                        <label className="block text-xs font-medium text-muted-foreground mt-4 mb-1">{t("cierre.notesLabel")}</label>
                         <textarea
                             value={closeNotes}
                             onChange={(e) => setCloseNotes(e.target.value)}
-                            placeholder="Ej: Cierre tras presentar Modelo 303 — saldo a ingresar 1.550€"
+                            placeholder={t("cierre.notesPlaceholder")}
                             className="w-full h-20 rounded-md border border-border bg-card text-sm p-2"
                         />
                         <div className="flex justify-end gap-2 mt-4">
                             <Button variant="outline" onClick={() => setShowCloseModal(false)} disabled={busy === "close"}>
-                                Cancelar
+                                {t("cierre.cancel")}
                             </Button>
                             <Button onClick={handleClosePeriod} disabled={busy === "close"}>
                                 {busy === "close" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
-                                Cerrar periodo
+                                {t("cierre.confirmClose")}
                             </Button>
                         </div>
                     </div>
@@ -255,25 +258,25 @@ export function CierreLibrosCard() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-amber-500" /> Reabrir {reopenModal.label}
+                            <AlertTriangle className="w-4 h-4 text-amber-500" /> {t("cierre.reopenTitle", { label: reopenModal.label })}
                         </h3>
                         <p className="text-sm text-muted-foreground mt-2">
-                            Reabrir un periodo cerrado queda registrado. Indica el motivo (asiento olvidado, corrección, etc.).
+                            {t("cierre.reopenModalDesc")}
                         </p>
-                        <label className="block text-xs font-medium text-muted-foreground mt-4 mb-1">Motivo (obligatorio)</label>
+                        <label className="block text-xs font-medium text-muted-foreground mt-4 mb-1">{t("cierre.reasonLabel")}</label>
                         <input
                             value={reopenReason}
                             onChange={(e) => setReopenReason(e.target.value)}
-                            placeholder="Ej: Factura omitida del proveedor X recibida tarde"
+                            placeholder={t("cierre.reasonPlaceholder")}
                             className="w-full h-9 rounded-md border border-border bg-card text-sm px-3"
                         />
                         <div className="flex justify-end gap-2 mt-4">
                             <Button variant="outline" onClick={() => setReopenModal(null)} disabled={busy === "reopen"}>
-                                Cancelar
+                                {t("cierre.cancel")}
                             </Button>
                             <Button onClick={handleReopen} disabled={busy === "reopen" || !reopenReason.trim()}>
                                 {busy === "reopen" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
-                                Reabrir
+                                {t("cierre.reopen")}
                             </Button>
                         </div>
                     </div>

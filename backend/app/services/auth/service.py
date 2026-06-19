@@ -17,6 +17,7 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
+from app.core.tenant_context import rls_bypass
 from app.db.models.models import PasswordResetToken, Tenant, User
 from app.services.audit import log_action
 from app.services.auth._schemas import UserCreate
@@ -60,31 +61,42 @@ def get_me(user: User) -> dict:
 
 async def register(payload: UserCreate, db: AsyncSession) -> User:
     """Registra un nuevo tenant + usuario admin. Raises ValueError on duplicates."""
-    # Comprobar email duplicado
-    existing = await db.execute(select(User).where(User.email == payload.email))
-    if existing.scalar_one_or_none():
-        raise ValueError("El email ya está registrado")
+    # Flujo PRE-tenant: aún no existe el tenant, así que la RLS fail-closed
+    # bloquearía las comprobaciones de unicidad y la propia INSERT del User
+    # (WITH CHECK). El alta de un tenant es por definición global → bypass.
+    with rls_bypass():
+        # Comprobar email duplicado
+        existing = await db.execute(select(User).where(User.email == payload.email))
+        if existing.scalar_one_or_none():
+            raise ValueError("El email ya está registrado")
 
-    # Comprobar NIF de tenant duplicado
-    existing_tenant = await db.execute(select(Tenant).where(Tenant.nif == payload.tenant.nif))
-    if existing_tenant.scalar_one_or_none():
-        raise ValueError("El NIF ya está registrado")
+        # Comprobar NIF de tenant duplicado
+        existing_tenant = await db.execute(select(Tenant).where(Tenant.nif == payload.tenant.nif))
+        if existing_tenant.scalar_one_or_none():
+            raise ValueError("El NIF ya está registrado")
 
-    # Crear tenant
-    tenant = Tenant(name=payload.tenant.name, nif=payload.tenant.nif)
-    db.add(tenant)
-    await db.flush()
+        # Crear tenant
+        tenant = Tenant(name=payload.tenant.name, nif=payload.tenant.nif)
+        db.add(tenant)
+        await db.flush()
 
-    # Crear usuario admin del tenant
-    user = User(
-        tenant_id=tenant.id,
-        email=payload.email,
-        hashed_password=get_password_hash(payload.password),
-        full_name=payload.full_name,
-        role="admin",
-    )
-    db.add(user)
-    await db.flush()
+        # Crear usuario admin del tenant
+        user = User(
+            tenant_id=tenant.id,
+            email=payload.email,
+            hashed_password=get_password_hash(payload.password),
+            full_name=payload.full_name,
+            role="admin",
+        )
+        db.add(user)
+        await db.flush()
+
+    # Ya existe el tenant: fijamos el contexto para que las escrituras restantes
+    # (audit, rutinas de oficio) queden ancladas a él bajo RLS, en vez de seguir
+    # con el bypass global.
+    from app.core.tenant_context import set_current_tenant
+
+    set_current_tenant(str(tenant.id))
 
     await log_action(
         db,
@@ -110,17 +122,21 @@ async def register(payload: UserCreate, db: AsyncSession) -> User:
 
 async def login(email: str, password: str, db: AsyncSession) -> dict:
     """Autentica un usuario y devuelve tokens. Raises LookupError / PermissionError."""
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
+    # Lookup PRE-tenant (identificamos al usuario por email antes de conocer su
+    # tenant) → bypass RLS, si no fail-closed devolvería 0 filas y nadie podría
+    # iniciar sesión.
+    with rls_bypass():
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
 
-    if not user or not verify_password(password, user.hashed_password):
-        raise LookupError("Email o contraseña incorrectos")
-    if not user.is_active:
-        raise PermissionError("Cuenta desactivada")
+        if not user or not verify_password(password, user.hashed_password):
+            raise LookupError("Email o contraseña incorrectos")
+        if not user.is_active:
+            raise PermissionError("Cuenta desactivada")
 
-    # Actualizar último login
-    user.last_login_at = datetime.now(UTC)
-    await db.commit()
+        # Actualizar último login
+        user.last_login_at = datetime.now(UTC)
+        await db.commit()
 
     return _make_token_pair(_build_token_data(user))
 
@@ -143,29 +159,34 @@ def refresh(refresh_token: str) -> dict:
 
 async def forgot_password(email: str, db: AsyncSession) -> dict:
     """Solicita un enlace de recuperación. Siempre devuelve el mismo mensaje."""
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
+    # Lookup por email PRE-tenant + escritura del token de reset (PasswordResetToken
+    # lleva tenant_id) → bypass RLS.
+    with rls_bypass():
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
 
-    if user and user.is_active:
-        # Generar token seguro
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-        expires_at = datetime.now(UTC) + timedelta(hours=1)
+        if user and user.is_active:
+            # Generar token seguro
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+            expires_at = datetime.now(UTC) + timedelta(hours=1)
 
-        # Invalidar tokens anteriores del mismo usuario
-        old = await db.execute(
-            select(PasswordResetToken).where(
-                PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
+            # Invalidar tokens anteriores del mismo usuario
+            old = await db.execute(
+                select(PasswordResetToken).where(
+                    PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
+                )
             )
-        )
-        for old_token in old.scalars().all():
-            old_token.used_at = datetime.now(UTC)
+            for old_token in old.scalars().all():
+                old_token.used_at = datetime.now(UTC)
 
-        db.add(PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at))
-        await db.commit()
+            db.add(
+                PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+            )
+            await db.commit()
 
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
-        send_password_reset_email(email, reset_url, user.full_name or "")
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+            send_password_reset_email(email, reset_url, user.full_name or "")
 
     return {"message": "Si el email existe, recibirás un enlace en breve."}
 
@@ -176,26 +197,29 @@ async def reset_password(token: str, new_password: str, db: AsyncSession) -> dic
         raise ValueError("La contraseña debe tener al menos 8 caracteres.")
 
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    result = await db.execute(
-        select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
-    )
-    reset_token = result.scalar_one_or_none()
+    # El reset se identifica solo por el hash del token (PRE-tenant) → bypass RLS
+    # para localizar el token y el usuario y reescribir la contraseña.
+    with rls_bypass():
+        result = await db.execute(
+            select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+        )
+        reset_token = result.scalar_one_or_none()
 
-    if not reset_token:
-        raise ValueError("Enlace inválido o expirado.")
-    if reset_token.used_at is not None:
-        raise ValueError("Este enlace ya fue utilizado.")
-    if as_aware(reset_token.expires_at) < datetime.now(UTC):
-        raise ValueError("El enlace ha expirado. Solicita uno nuevo.")
+        if not reset_token:
+            raise ValueError("Enlace inválido o expirado.")
+        if reset_token.used_at is not None:
+            raise ValueError("Este enlace ya fue utilizado.")
+        if as_aware(reset_token.expires_at) < datetime.now(UTC):
+            raise ValueError("El enlace ha expirado. Solicita uno nuevo.")
 
-    # Actualizar contraseña
-    user_result = await db.execute(select(User).where(User.id == reset_token.user_id))
-    user = user_result.scalar_one_or_none()
-    if not user:
-        raise ValueError("Usuario no encontrado.")
+        # Actualizar contraseña
+        user_result = await db.execute(select(User).where(User.id == reset_token.user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise ValueError("Usuario no encontrado.")
 
-    user.hashed_password = get_password_hash(new_password)
-    reset_token.used_at = datetime.now(UTC)
-    await db.commit()
+        user.hashed_password = get_password_hash(new_password)
+        reset_token.used_at = datetime.now(UTC)
+        await db.commit()
 
     return {"message": "Contraseña actualizada correctamente."}

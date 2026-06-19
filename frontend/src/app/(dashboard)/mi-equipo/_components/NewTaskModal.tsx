@@ -1,8 +1,9 @@
 "use client";
 
 import type { AIEmployee } from "@/lib/api/ai_employees";
+import { useTranslations } from "next-intl";
 import { X, Bot, AlertCircle, Loader2 } from "lucide-react";
-import { COORDINATOR_OPTION } from "./task-constants";
+import { getCoordinatorOption } from "./task-constants";
 import { DOMAIN_ICON } from "./EmployeeCard";
 
 interface NewTaskModalProps {
@@ -23,6 +24,9 @@ export function NewTaskModal({
     domain, setDomain, selectedEmployeeId, setSelectedEmployeeId,
     employees, intent, setIntent, creating, error, onClose, onSubmit,
 }: NewTaskModalProps) {
+    const t = useTranslations("miEquipo");
+    const tc = useTranslations("common");
+    const COORDINATOR_OPTION = getCoordinatorOption(t);
     const handleClose = () => {
         onClose();
         setSelectedEmployeeId(null);
@@ -34,15 +38,15 @@ export function NewTaskModal({
             <div className="w-full max-w-lg rounded-2xl border border-border bg-card overflow-hidden"
                 onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                    <h2 className="font-semibold text-foreground text-base">Nueva tarea para la IA</h2>
-                    <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition" aria-label="Cerrar">
+                    <h2 className="font-semibold text-foreground text-base">{t("newTaskModal.title")}</h2>
+                    <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition" aria-label={tc("close")}>
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="text-sm text-foreground block mb-2 font-medium">¿A quién se lo asignas?</label>
+                        <label className="text-sm text-foreground block mb-2 font-medium">{t("newTaskModal.assignToLabel")}</label>
                         <div className="max-h-64 overflow-y-auto pr-0.5 space-y-2">
                             {/* Coordinator option */}
                             <button
@@ -84,7 +88,7 @@ export function NewTaskModal({
 
                     <div>
                         <label className="text-sm text-foreground block mb-1.5 font-medium">
-                            ¿Qué debe hacer?
+                            {t("newTaskModal.intentLabel")}
                         </label>
                         <textarea
                             rows={4}
@@ -92,12 +96,12 @@ export function NewTaskModal({
                             value={intent}
                             onChange={e => setIntent(e.target.value)}
                             placeholder={
-                                domain === "coordinator" ? "Ej: Lee los correos nuevos, extrae los presupuestos aceptados, crúzalos con los clientes del CRM y genera un Excel con el resumen..." :
-                                    domain === "billing" ? "Ej: Crea una factura para cliente ACME S.L. por 1500€ de consultoría" :
-                                        domain === "documents" ? "Ej: Analiza el contrato que subí esta mañana y extrae las cláusulas importantes" :
-                                            domain === "hr" ? "Ej: Genera las nóminas de este mes para todos los empleados activos" :
-                                                domain === "compliance" ? "Ej: ¿Cuáles son mis obligaciones fiscales del próximo trimestre?" :
-                                                    "Describe qué debe hacer el agente..."
+                                domain === "coordinator" ? t("newTaskModal.placeholderCoordinator") :
+                                    domain === "billing" ? t("newTaskModal.placeholderBilling") :
+                                        domain === "documents" ? t("newTaskModal.placeholderDocuments") :
+                                            domain === "hr" ? t("newTaskModal.placeholderHr") :
+                                                domain === "compliance" ? t("newTaskModal.placeholderCompliance") :
+                                                    t("newTaskModal.placeholderDefault")
                             }
                             className="w-full px-3 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary transition"
                         />
@@ -116,7 +120,7 @@ export function NewTaskModal({
                             onClick={handleClose}
                             className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground hover:text-foreground text-sm transition"
                         >
-                            Cancelar
+                            {tc("cancel")}
                         </button>
                         <button
                             type="submit"
@@ -124,7 +128,7 @@ export function NewTaskModal({
                             className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary disabled:opacity-50 text-foreground text-sm font-medium transition flex items-center justify-center gap-2"
                         >
                             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-                            {creating ? "Enviando…" : "Asignar al agente"}
+                            {creating ? t("newTaskModal.submitting") : t("newTaskModal.submit")}
                         </button>
                     </div>
                 </form>

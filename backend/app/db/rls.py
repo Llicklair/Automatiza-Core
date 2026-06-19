@@ -31,9 +31,10 @@ from uuid import UUID
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.tenant_context import get_current_tenant
+from app.core.tenant_context import get_current_tenant, is_rls_bypass
 
 _GUC = "app.current_tenant"
+_GUC_BYPASS = "app.rls_bypass"
 _CACHE_KEY = "_rls_tenant"
 
 
@@ -46,6 +47,11 @@ def _desired_tenant() -> str:
         return str(UUID(tid))
     except (ValueError, TypeError):
         return ""
+
+
+def _desired_bypass() -> str:
+    """Valor a poner en `app.rls_bypass`: 'on' si hay bypass activo, '' si no."""
+    return "on" if is_rls_bypass() else ""
 
 
 def install_rls_listener(engine) -> None:
@@ -70,10 +76,15 @@ def install_rls_listener(engine) -> None:
     def _rls_set_tenant(conn, cursor, statement, parameters, context, executemany):
         if conn.dialect.name != "postgresql":
             return
-        desired = _desired_tenant()
+        desired = (_desired_tenant(), _desired_bypass())
         if conn.info.get(_CACHE_KEY) == desired:
             return
-        cursor.execute(f"SELECT set_config('{_GUC}', '{desired}', true)")
+        tenant, bypass = desired
+        # Ambos GUC en un único round-trip; `true` = SET LOCAL (scope de tx).
+        cursor.execute(
+            f"SELECT set_config('{_GUC}', '{tenant}', true), "
+            f"set_config('{_GUC_BYPASS}', '{bypass}', true)"
+        )
         conn.info[_CACHE_KEY] = desired
 
 

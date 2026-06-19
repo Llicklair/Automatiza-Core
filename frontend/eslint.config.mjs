@@ -26,6 +26,38 @@ const eslintConfig = [
         },
     },
     {
+        // Invariante de arquitectura (ARCHITECTURE.md §9): los componentes nunca
+        // hacen `fetch()` directo — toda llamada HTTP pasa por `lib/api/*` (cuya
+        // base única es `client.ts`: maneja JWT, refresh 401 y errores). La
+        // auditoría confirmó 0 violaciones; este gate lo blinda. Arranca en `warn`
+        // (cultura de rampa del repo); subir a `error` cuando esté asentado.
+        files: ["src/**/*.{ts,tsx}"],
+        rules: {
+            "no-restricted-syntax": [
+                "warn",
+                {
+                    selector: "CallExpression[callee.name='fetch']",
+                    message:
+                        "No uses fetch() directo: usa lib/api/* (client.ts). Ver ARCHITECTURE.md §9.",
+                },
+                {
+                    selector: "CallExpression[callee.property.name='fetch']",
+                    message:
+                        "No uses window/globalThis.fetch directo: usa lib/api/* (client.ts). Ver ARCHITECTURE.md §9.",
+                },
+            ],
+        },
+    },
+    {
+        // La capa lib/api SÍ puede usar fetch crudo: es la frontera HTTP real
+        // (client.ts, SSE de taskStream, client_portal/scanner con JWT propio).
+        // error-reporter.ts vive en src/lib/ (no en lib/api) pero es otra frontera
+        // legítima: reporta errores y no puede pasar por el api-client sin
+        // circularidad. Aquí viven las excepciones justificadas.
+        files: ["src/lib/api/**", "src/lib/error-reporter.ts"],
+        rules: { "no-restricted-syntax": "off" },
+    },
+    {
         // Equivalente al antiguo .eslintignore: los tests no pasan el lint de
         // producción (Vitest + TypeScript ya validan sintaxis y tipos).
         ignores: [

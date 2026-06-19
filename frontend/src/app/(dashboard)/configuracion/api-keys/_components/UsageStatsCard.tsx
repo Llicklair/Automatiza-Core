@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { BarChart3, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { llmUsage, LlmMonthStats } from "@/lib/api/llm_usage";
 
@@ -17,6 +18,7 @@ function monthLabel(ym: string) {
 }
 
 export function UsageStatsCard() {
+  const t = useTranslations("configuracion");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<LlmMonthStats[]>([]);
   const [expanded, setExpanded] = useState(false);
@@ -46,9 +48,9 @@ export function UsageStatsCard() {
       >
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-primary" />
-          <span className="font-medium text-sm">Uso de IA este periodo</span>
+          <span className="font-medium text-sm">{t("apiKeys.usageTitle")}</span>
           <span className="text-xs text-muted-foreground ml-1">
-            ~${data.reduce((s, m) => s + m.estimated_cost_usd, 0).toFixed(2)} USD est.
+            {t("apiKeys.usdEstimate", { amount: data.reduce((s, m) => s + m.estimated_cost_usd, 0).toFixed(2) })}
           </span>
         </div>
         {expanded ? (
@@ -80,13 +82,13 @@ export function UsageStatsCard() {
           {/* Resumen del mes */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Llamadas", value: String(current.total_calls) },
+              { label: t("apiKeys.calls"), value: String(current.total_calls) },
               {
-                label: "Tokens",
+                label: t("apiKeys.tokens"),
                 value: fmt(current.total_tokens_in + current.total_tokens_out),
               },
               {
-                label: "Coste est.",
+                label: t("apiKeys.estCost"),
                 value: `$${current.estimated_cost_usd.toFixed(3)}`,
               },
             ].map(({ label, value }) => (
@@ -103,11 +105,11 @@ export function UsageStatsCard() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left py-1.5 pr-4">Agente</th>
-                    <th className="text-right py-1.5 pr-4">Llamadas</th>
-                    <th className="text-right py-1.5 pr-4">Tokens entrada</th>
-                    <th className="text-right py-1.5 pr-4">Tokens salida</th>
-                    <th className="text-right py-1.5">Coste est.</th>
+                    <th className="text-left py-1.5 pr-4">{t("apiKeys.agent")}</th>
+                    <th className="text-right py-1.5 pr-4">{t("apiKeys.calls")}</th>
+                    <th className="text-right py-1.5 pr-4">{t("apiKeys.tokensIn")}</th>
+                    <th className="text-right py-1.5 pr-4">{t("apiKeys.tokensOut")}</th>
+                    <th className="text-right py-1.5">{t("apiKeys.estCost")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -129,7 +131,7 @@ export function UsageStatsCard() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            * Costes estimados basados en tarifas de proveedores. Se resetean al reiniciar el servidor.
+            {t("apiKeys.usageFootnote")}
           </p>
         </div>
       )}

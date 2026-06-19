@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useDashboard } from "./_hooks/useDashboard";
@@ -21,13 +22,14 @@ import { UsageWidget } from "./_components/UsageWidget";
 import { LlmNotConfiguredBanner } from "@/components/shared/LlmNotConfiguredBanner";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-function getGreeting(name: string) {
+function getGreeting(t: ReturnType<typeof useTranslations>, name: string) {
     const h = new Date().getHours();
-    const saludo = h < 14 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
-    return name ? `${saludo}, ${name}` : saludo;
+    const saludo = h < 14 ? t("home.greetingMorning") : h < 21 ? t("home.greetingAfternoon") : t("home.greetingEvening");
+    return name ? t("home.greetingWithName", { greeting: saludo, name }) : saludo;
 }
 
 export default function DashboardPage() {
+    const t = useTranslations("dashboard");
     const role = useUserRole();
     const router = useRouter();
     const { tasks, approvals, invoices, summary, analytics, loading, userName, integrations, employees, workingNow } = useDashboard();
@@ -40,7 +42,7 @@ export default function DashboardPage() {
     if (role === "employee") return null;
 
     return (
-        <ErrorBoundary section="inicio">
+        <ErrorBoundary section={t("home.sectionName")}>
         <PageContainer className="space-y-8 relative z-0">
             {/* Ambient glow */}
             <div className="pointer-events-none fixed top-0 left-64 w-[600px] h-[400px] opacity-30" style={{ zIndex: -1 }}>
@@ -50,9 +52,9 @@ export default function DashboardPage() {
 
             {/* Header */}
             <div className="relative z-10">
-                <h1 className="text-3xl font-bold text-foreground tracking-tight">{getGreeting(userName)}</h1>
+                <h1 className="text-3xl font-bold text-foreground tracking-tight">{getGreeting(t, userName)}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Aquí tienes el resumen financiero y operativo de tu negocio.
+                    {t("home.subtitle")}
                 </p>
             </div>
 

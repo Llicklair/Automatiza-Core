@@ -13,40 +13,43 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Download, ExternalLink, FileText, Info, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ModeloAsistido } from "@/lib/api/presentacion";
 import { useToastStore } from "@/stores/toast";
 import { PageHeader } from "@/components/shared/PageHeader";
 
-const MODELOS: {
+type ModeloAsistidoMeta = {
     key: ModeloAsistido;
     titulo: string;
     subtitulo: string;
     descripcion: string;
     requiereTrimestre: boolean;
-}[] = [
-        {
-            key: "131",
-            titulo: "Modelo 131",
-            subtitulo: "IRPF · Estimación objetiva (módulos)",
-            descripcion:
-                "Declaración trimestral del pago fraccionado de IRPF para autónomos en módulos. La cuota la calcula el sistema de Hacienda a partir de los módulos declarados.",
-            requiereTrimestre: true,
-        },
-        {
-            key: "200",
-            titulo: "Modelo 200",
-            subtitulo: "Impuesto sobre Sociedades",
-            descripcion:
-                "Declaración anual del Impuesto de Sociedades. La base imponible se obtiene del resultado contable más los ajustes fiscales (que requieren asesoramiento profesional).",
-            requiereTrimestre: false,
-        },
-    ];
+};
+
+const buildModelos = (t: ReturnType<typeof useTranslations>): ModeloAsistidoMeta[] => [
+    {
+        key: "131",
+        titulo: t("asistida.modelo131Titulo"),
+        subtitulo: t("asistida.modelo131Subtitulo"),
+        descripcion: t("asistida.modelo131Descripcion"),
+        requiereTrimestre: true,
+    },
+    {
+        key: "200",
+        titulo: t("asistida.modelo200Titulo"),
+        subtitulo: t("asistida.modelo200Subtitulo"),
+        descripcion: t("asistida.modelo200Descripcion"),
+        requiereTrimestre: false,
+    },
+];
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 export function AsistidaPanel() {
+    const t = useTranslations("impuestos");
+    const MODELOS = buildModelos(t);
     const toast = useToastStore();
     const [ejercicio, setEjercicio] = useState(CURRENT_YEAR);
     const [trimestre, setTrimestre] = useState(1);
@@ -61,7 +64,7 @@ export function AsistidaPanel() {
             });
             const info = await api.presentacion.info(modelo);
             toast.show(
-                "XML descargado. Abre Sede AEAT y selecciona 'Importar predeclaración'.",
+                t("asistida.xmlDownloaded"),
                 "success",
             );
             // Pequeño delay para que el download inicie antes de abrir tab.
@@ -69,7 +72,7 @@ export function AsistidaPanel() {
                 window.open(info.sede_url, "_blank", "noopener,noreferrer");
             }, 400);
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(t("asistida.downloadError", { message: e.message }), "error");
         } finally {
             setBusy(null);
         }
@@ -78,20 +81,19 @@ export function AsistidaPanel() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Presentación asistida"
-                description="Modelos 131 y 200 — descargamos un XML pre-rellenado que importas en Sede AEAT para completar y presentar."
+                title={t("asistida.title")}
+                description={t("asistida.description")}
             />
 
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
                 <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="text-xs text-muted-foreground leading-relaxed">
                     <p>
-                        <strong className="text-foreground">Modalidad asistida</strong>, no automatizada. Estos
-                        modelos requieren asesoramiento profesional para completarlos correctamente:
+                        <strong className="text-foreground">{t("asistida.modalidadStrong")}</strong>{t("asistida.modalidadRest")}
                     </p>
                     <ul className="mt-2 list-disc list-inside space-y-1">
-                        <li>El 131 depende de los módulos vigentes para tu actividad económica.</li>
-                        <li>El 200 incluye ajustes fiscales (amortizaciones, deducciones, BINs) específicos por sociedad.</li>
+                        <li>{t("asistida.nota131")}</li>
+                        <li>{t("asistida.nota200")}</li>
                     </ul>
                 </div>
             </div>
@@ -102,11 +104,11 @@ export function AsistidaPanel() {
                 className="rounded-lg border border-border bg-card p-4 space-y-3"
             >
                 <h2 id="periodo-heading" className="text-sm font-medium text-foreground">
-                    Período fiscal
+                    {t("asistida.periodoFiscal")}
                 </h2>
                 <div className="flex flex-wrap items-center gap-3">
                     <label className="text-xs text-muted-foreground flex items-center gap-2">
-                        Ejercicio
+                        {t("asistida.ejercicio")}
                         <input
                             type="number"
                             min={2020}
@@ -117,7 +119,7 @@ export function AsistidaPanel() {
                         />
                     </label>
                     <label className="text-xs text-muted-foreground flex items-center gap-2">
-                        Trimestre (solo 131)
+                        {t("asistida.trimestreSolo131")}
                         <select
                             value={trimestre}
                             onChange={(e) => setTrimestre(Number(e.target.value))}
@@ -162,7 +164,7 @@ export function AsistidaPanel() {
                                 ) : (
                                     <Download className="w-4 h-4" aria-hidden="true" />
                                 )}
-                                Descargar XML y abrir Sede AEAT
+                                {t("asistida.descargarXmlSede")}
                                 <ExternalLink className="w-3 h-3 opacity-70" aria-hidden="true" />
                             </button>
                         </article>
@@ -172,13 +174,13 @@ export function AsistidaPanel() {
 
             <aside className="text-xs text-muted-foreground space-y-1">
                 <p>
-                    <strong className="text-foreground">Cómo se usa:</strong>
+                    <strong className="text-foreground">{t("asistida.comoSeUsa")}</strong>
                 </p>
                 <ol className="list-decimal list-inside space-y-1">
-                    <li>Pulsa &laquo;Descargar XML&raquo; en el modelo que vas a presentar.</li>
-                    <li>Se abre la Sede Electrónica AEAT en otra pestaña.</li>
-                    <li>En Sede, elige &laquo;Predeclaración&raquo; → &laquo;Importar archivo&raquo; → selecciona el XML que acabas de descargar.</li>
-                    <li>Sede mostrará el modelo con los datos básicos rellenados. Completa el resto y presenta.</li>
+                    <li>{t("asistida.paso1")}</li>
+                    <li>{t("asistida.paso2")}</li>
+                    <li>{t("asistida.paso3")}</li>
+                    <li>{t("asistida.paso4")}</li>
                 </ol>
             </aside>
         </div>

@@ -6,7 +6,10 @@ import {
     Sparkles, ArrowRight, Mail, Receipt, Calendar as CalendarIcon,
     TrendingUp, Clock, CheckCircle2, AlertCircle, Loader2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api, type Task, type Invoice } from "@/lib/api";
+
+type TFn = ReturnType<typeof useTranslations>;
 
 interface BriefMetric {
     icon: typeof Mail;
@@ -46,7 +49,7 @@ function accentClasses(accent?: BriefMetric["accent"]) {
     }
 }
 
-function computeBrief(invoices: Invoice[], tasks: Task[], vencimientos: any[]): BriefData {
+function computeBrief(t: TFn, invoices: Invoice[], tasks: Task[], vencimientos: any[]): BriefData {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
 
@@ -78,30 +81,30 @@ function computeBrief(invoices: Invoice[], tasks: Task[], vencimientos: any[]): 
     const actions: BriefAction[] = [];
     if (overdue.length > 0) {
         actions.push({
-            text: `Tienes ${overdue.length} factura${overdue.length === 1 ? "" : "s"} vencida${overdue.length === 1 ? "" : "s"} sin cobrar (${Math.round(overdueAmount).toLocaleString("es-ES")} €).`,
+            text: t("morningBrief.actionOverdue", { count: overdue.length, amount: Math.round(overdueAmount).toLocaleString("es-ES") }),
             href: "/ventas/facturas?status=overdue",
-            cta: "Enviar recordatorios",
+            cta: t("morningBrief.ctaSendReminders"),
         });
     }
     if (next && next.dias_restantes <= 15) {
         actions.push({
-            text: `El modelo ${next.modelo} (${next.nombre}) vence en ${next.dias_restantes} día${next.dias_restantes === 1 ? "" : "s"}.`,
+            text: t("morningBrief.actionDeadline", { modelo: next.modelo, nombre: next.nombre, days: next.dias_restantes }),
             href: "/compliance",
-            cta: "Preparar",
+            cta: t("morningBrief.ctaPrepare"),
         });
     }
     if (issuedToday.length === 0 && new Date().getHours() >= 11) {
         actions.push({
-            text: "Aún no has emitido ninguna factura hoy. ¿Hay algún albarán pendiente de facturar?",
+            text: t("morningBrief.actionNoInvoices"),
             href: "/albaranes",
-            cta: "Revisar albaranes",
+            cta: t("morningBrief.ctaReviewDeliveryNotes"),
         });
     }
     if (actions.length === 0) {
         actions.push({
-            text: "Todo al día. Puedes pedirme cualquier cosa: «emite la factura del cliente X», «cuándo vence el próximo modelo», «resume el mes».",
+            text: t("morningBrief.actionAllClear"),
             href: "/mi-equipo",
-            cta: "Hablar con tu equipo",
+            cta: t("morningBrief.ctaTalkToTeam"),
         });
     }
 
@@ -117,14 +120,15 @@ function computeBrief(invoices: Invoice[], tasks: Task[], vencimientos: any[]): 
     };
 }
 
-function formatMinutes(m: number): string {
-    if (m < 60) return `${m} min`;
+function formatMinutes(t: TFn, m: number): string {
+    if (m < 60) return t("morningBrief.unitMinutes", { value: m });
     const h = Math.floor(m / 60);
     const rest = m % 60;
-    return rest === 0 ? `${h} h` : `${h} h ${rest} min`;
+    return rest === 0 ? t("morningBrief.unitHours", { value: h }) : t("morningBrief.unitHoursMinutes", { hours: h, minutes: rest });
 }
 
 export function MorningBrief() {
+    const t = useTranslations("dashboard");
     const [data, setData] = useState<BriefData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -136,10 +140,11 @@ export function MorningBrief() {
             api.advisory.calendar(90).catch(() => []),
         ])
             .then(([invoices, tasks, vencimientos]) => {
-                setData(computeBrief(invoices as Invoice[], tasks as Task[], vencimientos as any[]));
+                setData(computeBrief(t, invoices as Invoice[], tasks as Task[], vencimientos as any[]));
             })
             .catch(() => setError(true))
             .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     if (loading) {
@@ -147,7 +152,7 @@ export function MorningBrief() {
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-6 shadow-sm">
                 <div className="flex items-center gap-3 text-muted-foreground text-sm">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Preparando tu resumen del día...
+                    {t("morningBrief.loading")}
                 </div>
             </div>
         );
@@ -160,7 +165,7 @@ export function MorningBrief() {
     const metrics: BriefMetric[] = [
         {
             icon: TrendingUp,
-            label: "Facturado hoy",
+            label: t("morningBrief.metricBilledToday"),
             value: data.invoicesIssuedToday > 0
                 ? `${Math.round(data.invoicesIssuedToday_amount).toLocaleString("es-ES")} €`
                 : "—",
@@ -169,25 +174,25 @@ export function MorningBrief() {
         },
         {
             icon: Receipt,
-            label: "Por cobrar",
+            label: t("morningBrief.metricReceivable"),
             value: data.overdueCount > 0
                 ? `${Math.round(data.overdueAmount).toLocaleString("es-ES")} €`
-                : "Al día",
+                : t("morningBrief.upToDate"),
             href: "/ventas/facturas?status=overdue",
             accent: data.overdueCount > 0 ? "amber" : "emerald",
         },
         {
             icon: CalendarIcon,
-            label: "Próximo vencimiento",
+            label: t("morningBrief.metricNextDeadline"),
             value: data.nextDeadline
-                ? `Mod. ${data.nextDeadline.modelo} · ${data.nextDeadline.dias}d`
+                ? t("morningBrief.deadlineValue", { modelo: data.nextDeadline.modelo, days: data.nextDeadline.dias })
                 : "—",
             href: "/compliance",
             accent: data.nextDeadline && data.nextDeadline.dias <= 15 ? "rose" : "primary",
         },
         {
             icon: CheckCircle2,
-            label: "Tareas IA cerradas",
+            label: t("morningBrief.metricTasksClosed"),
             value: `${data.tasksDone}`,
             href: "/tareas",
             accent: "primary",
@@ -204,17 +209,20 @@ export function MorningBrief() {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                         <Clock className="w-3 h-3" />
-                        Resumen del día · Tu equipo IA
+                        {t("morningBrief.eyebrow")}
                     </div>
                     <h2 className="mt-1 text-lg font-semibold text-foreground">
                         {data.minutesSaved > 0
-                            ? <>Te he ahorrado <span className="text-primary">{formatMinutes(data.minutesSaved)}</span> hoy.</>
-                            : "Listo para empezar el día contigo."}
+                            ? t.rich("morningBrief.timeSavedHeadline", {
+                                time: formatMinutes(t, data.minutesSaved),
+                                highlight: (chunks) => <span className="text-primary">{chunks}</span>,
+                            })
+                            : t("morningBrief.readyHeadline")}
                     </h2>
                     <p className="mt-0.5 text-sm text-muted-foreground">
                         {data.tasksDone > 0
-                            ? `He cerrado ${data.tasksDone} tarea${data.tasksDone === 1 ? "" : "s"} y emitido ${data.invoicesIssuedToday} factura${data.invoicesIssuedToday === 1 ? "" : "s"}. Esto es lo más importante:`
-                            : "Aquí tienes el panorama. Dime en qué te ayudo."}
+                            ? t("morningBrief.summaryDone", { tasks: data.tasksDone, invoices: data.invoicesIssuedToday })
+                            : t("morningBrief.summaryIdle")}
                     </p>
                 </div>
             </div>

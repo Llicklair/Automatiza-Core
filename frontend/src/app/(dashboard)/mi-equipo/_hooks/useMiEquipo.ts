@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
 import type { AIEmployee } from "@/lib/api/ai_employees";
@@ -10,18 +11,22 @@ import { showConfirm } from "@/stores/confirm";
 import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
 import { usePolling } from "@/lib/hooks/usePolling";
 
-const TABS = [
-    { key: "tareas", label: "Tareas" },
-    { key: "equipo", label: "Equipo IA" },
+const TAB_KEYS = ["tareas", "equipo"] as const;
+
+const buildTabs = (t: ReturnType<typeof useTranslations>) => [
+    { key: "tareas", label: t("tabs.tareas") },
+    { key: "equipo", label: t("tabs.equipo") },
 ] as const;
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = (typeof TAB_KEYS)[number];
 
 const BUILTIN_COUNT = 8;
 
 export function useMiEquipo() {
+    const t = useTranslations("miEquipo");
+    const TABS = buildTabs(t);
     const searchParams = useSearchParams();
-    const initialTab = TABS.some(t => t.key === searchParams.get("tab"))
+    const initialTab = TAB_KEYS.some(k => k === searchParams.get("tab"))
         ? searchParams.get("tab") as TabKey
         : "tareas";
 
@@ -47,7 +52,7 @@ export function useMiEquipo() {
             setError(null);
         } catch (e: any) {
             if (surfaceIfConnectivity(e)) return;
-            setError(e?.message ?? "Error cargando datos");
+            setError(e?.message ?? t("errors.loadData"));
         } finally {
             setLoading(false);
         }
@@ -75,9 +80,9 @@ export function useMiEquipo() {
         try {
             await api.aiEmployees.seed();
             await loadData();
-            toast.success("Equipo inicial creado");
+            toast.success(t("toasts.seedSuccess"));
         } catch (err) {
-            if (!surfaceIfConnectivity(err)) toast.error("Error al crear equipo inicial");
+            if (!surfaceIfConnectivity(err)) toast.error(t("toasts.seedError"));
         } finally {
             setSeeding(false);
         }
@@ -90,7 +95,7 @@ export function useMiEquipo() {
             await api.aiEmployees.updateStatus(id, next);
         } catch (err) {
             setEmployees(prev => prev.map(e => e.id === id ? { ...e, status: current } : e));
-            if (!surfaceIfConnectivity(err)) toast.error("Error al cambiar estado del agente");
+            if (!surfaceIfConnectivity(err)) toast.error(t("toasts.toggleStatusError"));
         }
     };
 
@@ -110,8 +115,8 @@ export function useMiEquipo() {
     const handleDelete = async (id: string) => {
         const emp = employees.find(e => e.id === id);
         const confirmed = await showConfirm({
-            message: `¿Eliminar a ${emp?.name ?? "este empleado"}? Esta acción no se puede deshacer.`,
-            confirmLabel: "Eliminar",
+            message: t("delete.confirm", { name: emp?.name ?? t("delete.defaultName") }),
+            confirmLabel: t("delete.confirmLabel"),
             confirmVariant: "danger",
         });
         if (!confirmed) return;
@@ -119,7 +124,7 @@ export function useMiEquipo() {
         try {
             await api.aiEmployees.delete(id);
         } catch (err) {
-            if (!surfaceIfConnectivity(err)) toast.error("Error al eliminar el empleado");
+            if (!surfaceIfConnectivity(err)) toast.error(t("toasts.deleteError"));
             loadData();
         }
     };

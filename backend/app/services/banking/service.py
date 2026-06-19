@@ -2,7 +2,7 @@
 
 import random
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import desc, extract, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -245,6 +245,16 @@ def _normalize_client_name(name: str) -> str:
     return s
 
 
+def _as_date(value):
+    """Normaliza date|datetime a `date`.
+
+    Las fechas de los movimientos bancarios (parseadas del N43) son `date`, mientras
+    que las de factura se guardan como `datetime`; restarlas directamente lanza
+    TypeError. Coerciona ambas a `date` antes de comparar.
+    """
+    return value.date() if isinstance(value, datetime) else value
+
+
 def _explain_match(tx, inv, tx_amount: float) -> tuple[int, list[dict]]:
     """Puntúa un candidato (0-100) y devuelve las razones legibles.
 
@@ -264,7 +274,7 @@ def _explain_match(tx, inv, tx_amount: float) -> tuple[int, list[dict]]:
     desc = (tx.description or "").lower()
 
     if inv.date and tx.date:
-        days = abs((tx.date - inv.date).days)
+        days = abs((_as_date(tx.date) - _as_date(inv.date)).days)
         if days <= 15:
             score += 30
             reasons.append(

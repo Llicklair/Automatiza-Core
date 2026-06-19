@@ -6,6 +6,7 @@ import {
     Pencil, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import type { TaskStatus } from "../_hooks/useTasksKanban";
 
 interface KanbanColumnProps {
@@ -26,6 +27,8 @@ export function KanbanColumn({
     colTitle, status, tasks: columnTasks, openMenuId, setOpenMenuId,
     onDragStart, onDragEnd, onDragOver, onDrop, onEditOpen, onDelete,
 }: KanbanColumnProps) {
+    const t = useTranslations("proyectos");
+    const tc = useTranslations("common");
     let headerColor = "bg-muted text-foreground";
     if (status === 'in_progress') headerColor = "bg-blue-500/10 text-blue-400 border-blue-500/20";
     if (status === 'done') headerColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
@@ -72,13 +75,13 @@ export function KanbanColumn({
                                             onClick={() => onEditOpen(task)}
                                             className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-accent/50 transition-colors"
                                         >
-                                            <Pencil className="w-3 h-3 text-muted-foreground" /> Editar
+                                            <Pencil className="w-3 h-3 text-muted-foreground" /> {tc("edit")}
                                         </button>
                                         <button
                                             onClick={() => onDelete(task)}
                                             className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
                                         >
-                                            <Trash2 className="w-3 h-3" /> Eliminar
+                                            <Trash2 className="w-3 h-3" /> {tc("delete")}
                                         </button>
                                     </div>
                                 )}
@@ -95,11 +98,11 @@ export function KanbanColumn({
 
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                             <div className="flex -space-x-1.5">
-                                <div className="w-6 h-6 rounded-full bg-primary/20 border border-border flex items-center justify-center text-[10px] text-primary font-bold" title="IA">
+                                <div className="w-6 h-6 rounded-full bg-primary/20 border border-border flex items-center justify-center text-[10px] text-primary font-bold" title={t("kanbanColumn.aiAssigneeTitle")}>
                                     IA
                                 </div>
                                 {task.assignee_id && (
-                                    <div className="w-6 h-6 rounded-full bg-accent border border-border flex items-center justify-center text-[10px] text-foreground font-bold" title="Humano">
+                                    <div className="w-6 h-6 rounded-full bg-accent border border-border flex items-center justify-center text-[10px] text-foreground font-bold" title={t("kanbanColumn.humanAssigneeTitle")}>
                                         HM
                                     </div>
                                 )}
@@ -115,7 +118,7 @@ export function KanbanColumn({
                 ))}
                 {columnTasks.length === 0 && (
                     <div className="h-full w-full border-2 border-dashed border-border rounded-xl flex items-center justify-center text-muted-foreground text-xs font-medium">
-                        Arrastra tareas aqui
+                        {t("kanbanColumn.dropHint")}
                     </div>
                 )}
             </div>

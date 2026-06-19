@@ -1,5 +1,6 @@
 "use client";
 import { User, Clock, Loader2, Eye, Play, StopCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { PortalData, Employee } from "@/lib/api";
 import { formatClockTime } from "./constants";
 
@@ -21,6 +22,7 @@ export function PortalHeader({
     emp, data, isAdmin, readOnly, employeesList, selectedEmployeeId,
     clockBusy, clockError, onSelectEmployee, onClockIn, onClockOut,
 }: PortalHeaderProps) {
+    const t = useTranslations("portal");
     return (
         <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -28,25 +30,23 @@ export function PortalHeader({
                     <User className="w-6 h-6 text-indigo-400" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">{emp?.name ?? "Mi portal"}</h1>
+                    <h1 className="text-2xl font-bold text-foreground">{emp?.name ?? t("page.title")}</h1>
                     <p className="text-xs text-muted-foreground">
-                        {emp ? [emp.role, emp.department].filter(Boolean).join(" · ") : "Autoservicio del empleado"}
+                        {emp ? [emp.role, emp.department].filter(Boolean).join(" · ") : t("header.subtitleEmployee")}
                     </p>
                 </div>
             </div>
             <p className="text-sm text-muted-foreground max-w-2xl">
-                Tu zona personal. Aquí consultas tu ficha, descargas tus nóminas,
-                solicitas vacaciones y reportas gastos para reembolso. Todo lo que envías
-                queda registrado y pasa por la aprobación de RRHH.
+                {t("header.intro")}
             </p>
 
             {isAdmin && (
                 <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl">
                     <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
                     <div className="flex-1">
-                        <p className="text-xs font-medium text-foreground mb-1">Vista de admin</p>
+                        <p className="text-xs font-medium text-foreground mb-1">{t("header.adminViewTitle")}</p>
                         <p className="text-xs text-muted-foreground">
-                            Como admin no tienes ficha aquí. Selecciona un empleado para previsualizar Mi portal en modo lectura.
+                            {t("header.adminViewHint")}
                         </p>
                     </div>
                     <select
@@ -54,7 +54,7 @@ export function PortalHeader({
                         onChange={(e) => onSelectEmployee(e.target.value)}
                         className="bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-primary/20 outline-none min-w-[220px]"
                     >
-                        <option value="">— Mi propio portal —</option>
+                        <option value="">{t("header.ownPortalOption")}</option>
                         {employeesList.map((e) => (
                             <option key={e.id} value={e.id}>
                                 {e.name}{e.email ? ` · ${e.email}` : ""}
@@ -67,7 +67,7 @@ export function PortalHeader({
             {readOnly && (
                 <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
                     <Eye className="w-4 h-4 shrink-0" />
-                    <span>Estás viendo Mi portal de otro empleado en <strong>modo lectura</strong>. No puedes solicitar vacaciones ni gastos en su nombre.</span>
+                    <span>{t.rich("header.readOnlyNotice", { strong: (chunks) => <strong>{chunks}</strong> })}</span>
                 </div>
             )}
 
@@ -77,13 +77,13 @@ export function PortalHeader({
                     <div className="flex-1">
                         <p className="text-xs font-medium text-foreground">
                             {data?.active_attendance
-                                ? `Trabajando desde las ${formatClockTime(data.active_attendance.clock_in)}`
-                                : "No tienes ningún fichaje activo"}
+                                ? t("header.workingSince", { time: formatClockTime(data.active_attendance.clock_in) })
+                                : t("header.noActiveClock")}
                         </p>
                         <p className="text-xs text-muted-foreground">
                             {data?.active_attendance
-                                ? "Recuerda fichar la salida al terminar tu jornada."
-                                : "Pulsa para registrar tu entrada cuando empieces a trabajar."}
+                                ? t("header.remindClockOut")
+                                : t("header.clockInHint")}
                         </p>
                     </div>
                     {data?.active_attendance ? (
@@ -93,7 +93,7 @@ export function PortalHeader({
                             className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
                         >
                             {clockBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <StopCircle className="w-4 h-4" />}
-                            Fichar salida
+                            {t("header.clockOut")}
                         </button>
                     ) : (
                         <button
@@ -102,7 +102,7 @@ export function PortalHeader({
                             className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
                         >
                             {clockBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                            Fichar entrada
+                            {t("header.clockIn")}
                         </button>
                     )}
                 </div>

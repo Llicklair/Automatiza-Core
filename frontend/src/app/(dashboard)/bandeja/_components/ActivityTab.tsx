@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { AIEmployee, ActivityEntry } from "@/lib/api/ai_employees";
 import { RefreshCw, ChevronDown, Bot } from "lucide-react";
-import { InboxMessage, CATEGORY_CONFIG } from "./InboxMessage";
+import { InboxMessage, buildCategoryConfig } from "./InboxMessage";
 import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
 import { usePolling } from "@/lib/hooks/usePolling";
 
@@ -13,6 +14,8 @@ interface ActivityTabProps {
 }
 
 export function ActivityTab({ isActive = true }: ActivityTabProps) {
+    const t = useTranslations("bandeja");
+    const categoryConfig = buildCategoryConfig(t);
     const [entries, setEntries]           = useState<ActivityEntry[]>([]);
     const [employees, setEmployees]       = useState<AIEmployee[]>([]);
     const [loading, setLoading]           = useState(true);
@@ -67,25 +70,25 @@ export function ActivityTab({ isActive = true }: ActivityTabProps) {
             <div className="flex items-center gap-2 flex-wrap">
                 <select value={filterEmp} onChange={e => setFilterEmp(e.target.value)}
                     className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50">
-                    <option value="">Todos los agentes</option>
+                    <option value="">{t("activity.allAgents")}</option>
                     {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
                 <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
                     className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50">
-                    <option value="">Todas las categorías</option>
-                    {Object.entries(CATEGORY_CONFIG).map(([v, c]) => (
+                    <option value="">{t("activity.allCategories")}</option>
+                    {Object.entries(categoryConfig).map(([v, c]) => (
                         <option key={v} value={v}>{c.icon} {c.label}</option>
                     ))}
                 </select>
                 {(filterEmp || filterCat) && (
                     <button onClick={() => { setFilterEmp(""); setFilterCat(""); }}
                         className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 border border-border rounded-lg hover:bg-muted">
-                        Limpiar
+                        {t("activity.clear")}
                     </button>
                 )}
                 <div className="flex-1" />
                 <button onClick={() => { setRefreshing(true); fetchEntries(true).finally(() => setRefreshing(false)); }}
-                    className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors" aria-label="Actualizar actividad">
+                    className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors" aria-label={t("activity.refresh")}>
                     <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
                 </button>
             </div>
@@ -98,9 +101,9 @@ export function ActivityTab({ isActive = true }: ActivityTabProps) {
             ) : entries.length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed border-border rounded-xl">
                     <Bot className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
-                    <p className="text-muted-foreground font-medium text-sm">Bandeja vacía</p>
+                    <p className="text-muted-foreground font-medium text-sm">{t("activity.emptyTitle")}</p>
                     <p className="text-xs text-muted-foreground/60 mt-1">
-                        Cuando tus agentes completen tareas o necesiten tu atención, aparecerán aquí
+                        {t("activity.emptyDescription")}
                     </p>
                 </div>
             ) : (
@@ -116,7 +119,7 @@ export function ActivityTab({ isActive = true }: ActivityTabProps) {
                                 {loadingMore
                                     ? <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin" />
                                     : <ChevronDown className="w-4 h-4" />}
-                                Cargar más
+                                {t("activity.loadMore")}
                             </button>
                         </div>
                     )}

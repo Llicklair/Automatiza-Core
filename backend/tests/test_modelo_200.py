@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.db.models.billing import Invoice, InvoiceLine
+from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 from app.services.reports.modelos_aeat import (
     TIPO_IS_GENERAL,

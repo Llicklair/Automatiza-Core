@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, EventItem, Client } from "@/lib/api";
 import { addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
 import { useToastStore } from "@/stores/toast";
@@ -10,6 +11,7 @@ import { logError } from "@/lib/logger";
 const toLocalDatetime = (d: Date) => d.toISOString().slice(0, 16);
 
 export function useCalendario() {
+    const t = useTranslations("crm");
     const toast = useToastStore();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [events, setEvents] = useState<EventItem[]>([]);
@@ -50,12 +52,12 @@ export function useCalendario() {
             setShowCreate(false);
             setForm({ title: "", description: "", type: "meeting", location_or_link: "", client_id: "", start_time: toLocalDatetime(new Date()), end_time: toLocalDatetime(new Date(Date.now() + 3600000)) });
             await loadData();
-        } catch { toast.error("Error al crear el evento"); }
+        } catch { toast.error(t("calendario.createError")); }
         finally { setCreating(false); }
     };
 
     const handleDelete = async (id: string) => {
-        if (!await showConfirm({ message: "¿Eliminar este evento?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("calendario.deleteConfirm"), confirmLabel: t("calendario.deleteLabel"), confirmVariant: "danger" })) return;
         setDeleting(true);
         try { await api.crm.events.delete(id); setSelected(null); await loadData(); }
         catch (e) { logError("crm/calendario/page", e); }

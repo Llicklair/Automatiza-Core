@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ScanLine, AlertTriangle, FileSpreadsheet, FileText } from "lucide-react";
+import { useTranslations } from "next-intl";
+import {
+    ScanLine, AlertTriangle, FileSpreadsheet, FileText, FolderUp, Sparkles, Receipt,
+} from "lucide-react";
 import { useEscaner, getElectronAPI } from "./_hooks/useEscaner";
 import LanToggle from "./_components/LanToggle";
 import DropZone from "./_components/DropZone";
@@ -12,27 +15,61 @@ import { ExcelImportPanel } from "./_components/ExcelImportPanel";
 import { FacturasImportPanel } from "./_components/FacturasImportPanel";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-type Tab = "escaner" | "facturas" | "excel";
+type Mode = "auto" | "facturas" | "excel" | "documento";
+
+const isExcel = (f: File) => /\.(xlsx|xls|csv)$/i.test(f.name);
+
+const buildModes = (t: ReturnType<typeof useTranslations>): { key: Mode; label: string; icon: typeof Sparkles }[] => [
+    { key: "auto", label: t("modes.auto"), icon: Sparkles },
+    { key: "facturas", label: t("modes.facturas"), icon: FileText },
+    { key: "excel", label: t("modes.excel"), icon: FileSpreadsheet },
+    { key: "documento", label: t("modes.documento"), icon: FolderUp },
+];
 
 export default function EscanerPage() {
-    const {
-        scanning, results, error, dragOver, setDragOver,
-        selectedFiles, docStatuses, fileInputRef,
-        netStatus, netToggling, handleLanToggle,
-        handleFiles, removeFile, handleScan, grouped,
-    } = useEscaner();
+    const t = useTranslations("escaner");
+    const MODES = buildModes(t);
+    const esc = useEscaner();
 
+    // Modo inicial: ?mode= (intake unificado) o ?tab= (retro-compat de enlaces antiguos).
     const searchParams = useSearchParams();
-    const initialTab = searchParams.get("tab");
-    const [tab, setTab] = useState<Tab>(
-        initialTab === "excel" ? "excel" : initialTab === "facturas" ? "facturas" : "escaner"
+    const q = searchParams.get("mode") ?? searchParams.get("tab");
+    const [mode, setMode] = useState<Mode>(
+        q === "facturas" || q === "excel" || q === "documento" ? (q as Mode) : "auto"
     );
 
-    const tabs: { key: Tab; label: string; icon: typeof ScanLine }[] = [
-        { key: "escaner", label: "Escáner", icon: ScanLine },
-        { key: "facturas", label: "Facturas → ERP", icon: FileText },
-        { key: "excel", label: "Importar Excel", icon: FileSpreadsheet },
-    ];
+    // Archivos enrutados a un panel especializado (carry desde el auto-detect, sin re-subir).
+    const [routedFiles, setRoutedFiles] = useState<File[]>([]);
+    // Archivos no-excel soltados (para poder pasarlos a Facturas si la IA detecta facturas).
+    const [docFiles, setDocFiles] = useState<File[]>([]);
+
+    // Auto-detección: decide a dónde van los archivos según el modo.
+    function route(files: FileList | null) {
+        if (!files || !files.length) return;
+        const arr = Array.from(files);
+
+        if (mode === "excel") { setRoutedFiles(arr.filter(isExcel)); return; }
+        if (mode === "facturas") { setRoutedFiles(arr); return; }
+        if (mode === "documento") { setDocFiles((p) => [...p, ...arr]); esc.handleFiles(files); return; }
+
+        // mode === "auto"
+        const excel = arr.filter(isExcel);
+        const other = arr.filter((f) => !isExcel(f));
+        if (excel.length && !other.length) {
+            setMode("excel");
+            setRoutedFiles(excel);
+            return;
+        }
+        // PDFs / imágenes / otros → escaneo + clasificación con IA
+        setDocFiles((p) => [...p, ...other]);
+        esc.handleFiles(files);
+    }
+
+    const switchMode = (m: Mode) => { setMode(m); setRoutedFiles([]); };
+
+    const showScan = mode === "auto" || mode === "documento";
+    // Tras clasificar, ¿la IA detectó facturas de compra? → sugerir procesarlas al ERP.
+    const invoiceHits = esc.results.filter((r) => /factura|compra|invoice/i.test(r.auto_category));
 
     return (
         <PageContainer width="4xl">
@@ -40,58 +77,71 @@ export default function EscanerPage() {
             <div>
                 <div className="flex items-center gap-3 mb-1">
                     <ScanLine className="w-7 h-7 text-primary" />
-                    <h1 className="text-2xl font-bold text-foreground">Escáner e importación</h1>
+                    <h1 className="text-2xl font-bold text-foreground">{t("page.title")}</h1>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Sube cualquier archivo y la IA lo clasifica, o importa hojas de cálculo como datos.
+                    {t("page.subtitle")}
                 </p>
             </div>
 
-            {/* Pestañas */}
-            <div className="flex items-center gap-1 border-b border-border">
-                {tabs.map(t => {
-                    const Icon = t.icon;
-                    const active = tab === t.key;
+            {/* Selector de modo: una entrada, varias opciones */}
+            <div className="flex flex-wrap items-center gap-1.5">
+                {MODES.map((m) => {
+                    const Icon = m.icon;
+                    const active = mode === m.key;
                     return (
                         <button
-                            key={t.key}
-                            onClick={() => setTab(t.key)}
-                            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                            key={m.key}
+                            onClick={() => switchMode(m.key)}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border transition-colors ${
                                 active
-                                    ? "border-primary text-foreground"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                    ? "border-primary bg-primary/10 text-foreground"
+                                    : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
                             }`}>
-                            <Icon className="w-4 h-4" /> {t.label}
+                            <Icon className="w-4 h-4" /> {m.label}
                         </button>
                     );
                 })}
             </div>
 
-            {tab === "escaner" ? (
-                <div className="space-y-8">
-                    {getElectronAPI()?.getNetworkStatus && netStatus && (
-                        <LanToggle netStatus={netStatus} netToggling={netToggling} onToggle={handleLanToggle} />
+            {showScan ? (
+                <div className="space-y-6">
+                    {getElectronAPI()?.getNetworkStatus && esc.netStatus && (
+                        <LanToggle netStatus={esc.netStatus} netToggling={esc.netToggling} onToggle={esc.handleLanToggle} />
                     )}
 
-                    <DropZone dragOver={dragOver} setDragOver={setDragOver}
-                        onFiles={handleFiles} fileInputRef={fileInputRef} />
+                    <DropZone dragOver={esc.dragOver} setDragOver={esc.setDragOver}
+                        onFiles={route} fileInputRef={esc.fileInputRef} />
 
-                    <SelectedFilesList files={selectedFiles} scanning={scanning}
-                        onRemove={removeFile} onScan={handleScan} />
+                    <SelectedFilesList files={esc.selectedFiles} scanning={esc.scanning}
+                        onRemove={esc.removeFile} onScan={esc.handleScan} />
 
-                    {error && (
+                    {esc.error && (
                         <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 flex items-center gap-2">
                             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                            {error}
+                            {esc.error}
                         </div>
                     )}
 
-                    <ScanResults results={results} grouped={grouped} docStatuses={docStatuses} />
+                    {invoiceHits.length > 0 && (
+                        <button
+                            onClick={() => { setRoutedFiles(docFiles); setMode("facturas"); }}
+                            className="w-full flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground hover:bg-primary/10 transition-colors text-left">
+                            <Receipt className="w-4 h-4 text-primary flex-shrink-0" />
+                            <span>
+                                {t("invoiceHits.detected", { count: invoiceHits.length })}{" "}
+                                <span className="font-medium text-primary">{t("invoiceHits.processToErp")}</span>{" "}
+                                <span className="text-muted-foreground">{t("invoiceHits.note")}</span>
+                            </span>
+                        </button>
+                    )}
+
+                    <ScanResults results={esc.results} grouped={esc.grouped} docStatuses={esc.docStatuses} />
                 </div>
-            ) : tab === "facturas" ? (
-                <FacturasImportPanel />
+            ) : mode === "facturas" ? (
+                <FacturasImportPanel initialFiles={routedFiles} />
             ) : (
-                <ExcelImportPanel />
+                <ExcelImportPanel initialFiles={routedFiles} />
             )}
         </PageContainer>
     );

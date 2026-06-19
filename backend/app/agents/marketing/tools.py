@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.agents.agent_tools.reports import create_pdf_report, create_pdf_text_report
 from app.db.base import AsyncSessionLocal
 from app.db.models.inventory import Product
-from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
+from app.db.models.marketing import Campaign, MarketingProviderConfig, ScheduledPost, SocialAccount
 from app.services.autonomy_gate import gated_tool
 from app.services.marketing.image_generation import generate_image as _generate_image
 from app.services.marketing.image_search import search_image as _search_image
@@ -93,17 +93,25 @@ async def list_social_accounts(tenant_id: str) -> str:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(SocialAccount).where(
+                select(SocialAccount, MarketingProviderConfig.label)
+                .outerjoin(
+                    MarketingProviderConfig,
+                    SocialAccount.provider_config_id == MarketingProviderConfig.id,
+                )
+                .where(
                     SocialAccount.tenant_id == UUID(tenant_id),
                     SocialAccount.is_active.is_(True),
                 )
             )
-            accounts = result.scalars().all()
+            rows = result.all()
 
-        if not accounts:
+        if not rows:
             return "No hay cuentas sociales conectadas. El usuario debe conectar sus redes en la pestaña Cuentas."
 
-        lines = [f"- {a.platform} | ID={a.id} | @{a.account_name or a.account_id}" for a in accounts]
+        lines = []
+        for acc, zernio_label in rows:
+            zernio = f" | Zernio: {zernio_label}" if zernio_label else ""
+            lines.append(f"- {acc.platform} | ID={acc.id} | @{acc.account_name or acc.account_id}{zernio}")
         return "\n".join(lines)
 
     except Exception as e:

@@ -28,7 +28,9 @@ logger = logging.getLogger(__name__)
 LICENSE_SERVER    = "https://automatizapyme-license-server.onrender.com"
 CACHE_TTL_HOURS   = 24
 OFFLINE_GRACE_DAYS = 7
-REQUEST_TIMEOUT   = 8
+# Cubre el cold start del free tier de Render (el dyno hiberna y tarda ~30-60s en
+# despertar). Con un timeout corto, una clave válida se marcaba inválida por timeout.
+REQUEST_TIMEOUT   = 60
 
 # Ed25519 public key — hardcoded to prevent fake-server attacks
 _PUBLIC_KEY_B64 = "0Pop065Ihkr11kYsaA3mwv5vUPH+Vx7C9vIvCtDRgQA="
@@ -134,10 +136,38 @@ def save_license(key: str, plan: str) -> None:
 # ── Validación ────────────────────────────────────────────────────────────────
 
 class LicenseResult:
-    def __init__(self, valid: bool, plan: str = "", reason: str = ""):
+    def __init__(self, valid: bool, plan: str = "", reason: str = "", retriable: bool = False):
         self.valid = valid
         self.plan  = plan
         self.reason = reason
+        # retriable = fallo transitorio (servidor iniciándose), NO una clave inválida.
+        self.retriable = retriable
+
+
+def cached_license_state() -> LicenseResult:
+    """Estado de licencia SOLO desde la caché local (sin red).
+
+    Para el arranque instantáneo: la app no se cuelga esperando al servidor (que en
+    cold start tarda ~30-60s). Concede validez si la última validación exitosa está
+    dentro de la gracia offline (OFFLINE_GRACE_DAYS); la validación real contra el
+    servidor corre después en background y refresca el estado.
+    """
+    machine_id = get_machine_id()
+    cache = _read_cache()
+    key = cache.get("key")
+    if not key:
+        return LicenseResult(valid=False, reason="sin licencia")
+    if not _verify_cache(cache, machine_id):
+        return LicenseResult(valid=False, reason="caché inválida o manipulada")
+    last_str = cache.get("last_validated", "")
+    if last_str:
+        try:
+            last = datetime.fromisoformat(last_str)
+            if datetime.now(timezone.utc) - last <= timedelta(days=OFFLINE_GRACE_DAYS):
+                return LicenseResult(valid=True, plan=cache.get("plan", "pro"), reason="cache")
+        except Exception:
+            logger.debug("Fecha de caché ilegible", exc_info=True)
+    return LicenseResult(valid=False, reason="caché caducada")
 
 
 async def validate_license() -> LicenseResult:
@@ -222,7 +252,26 @@ async def activate_license(key: str) -> LicenseResult:
         detail = resp.json().get("detail", resp.text[:200])
         return LicenseResult(valid=False, reason=detail)
     except Exception as e:
-        return LicenseResult(valid=False, reason=f"No se pudo conectar al servidor: {e}")
+        logger.warning("[LICENSE] Activación: servidor inalcanzable (posible cold start): %s", e)
+        return LicenseResult(
+            valid=False,
+            reason="El servidor de licencias se está iniciando. Espera unos segundos y reinténtalo.",
+            retriable=True,
+        )
+
+
+async def warm_up_server() -> None:
+    """Despierta el servidor de licencias (Render free hiberna ~30-60s).
+
+    Fire-and-forget: se llama al ABRIR el modal de activación para que el dyno esté
+    despierto cuando el usuario pulse Activar (wake-up bajo demanda, no un ping
+    sintético 24/7). Ignora el resultado.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            await client.get(LICENSE_SERVER + "/", follow_redirects=True)
+    except Exception:
+        logger.debug("[LICENSE] warm-up del servidor falló (irrelevante)", exc_info=True)
 
 
 async def refresh_app_license_state(app) -> None:

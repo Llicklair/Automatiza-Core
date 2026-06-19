@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 
 export interface HealthCheck {
@@ -21,6 +22,7 @@ export type UpdateStatus = "idle" | "checking" | "available" | "downloading" | "
 const eAPI = typeof window !== "undefined" ? (window as any).electronAPI : null;
 
 export function useActualizaciones() {
+    const t = useTranslations("configuracion");
     const [health, setHealth] = useState<HealthData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -36,7 +38,7 @@ export function useActualizaciones() {
             const data = await api.system.health();
             setHealth(data);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "No se pudo conectar al servidor");
+            setError(e instanceof Error ? e.message : t("actualizaciones.connectError"));
         } finally {
             setLoading(false);
         }

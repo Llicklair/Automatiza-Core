@@ -23,12 +23,15 @@ class SocialAccount(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    # Cuenta de Zernio (email/API key) por la que se conectó esta red. BYO multi-cuenta.
+    provider_config_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("marketing_provider_config.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     platform = Column(String(50), nullable=False)          # instagram | facebook | linkedin | twitter
     account_id = Column(String(255), nullable=False)        # ID devuelto por la plataforma
     account_name = Column(String(255), nullable=True)       # nombre legible (@handle o nombre de página)
-    access_token = Column(Text, nullable=False)             # cifrado con TENANT_ENCRYPTION_KEY
-    refresh_token = Column(Text, nullable=True)
-    token_expires_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -119,3 +122,26 @@ class ScheduledPostMetrics(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     post = relationship("ScheduledPost", back_populates="metrics")
+
+
+class MarketingProviderConfig(Base):
+    """Cuenta del proveedor de marketing social vinculada a un tenant (BYO).
+
+    Hoy solo Zernio. Cada fila = una cuenta de Zernio (un email / una API key): el
+    free tier da 2 cuentas sociales por email, así que un tenant puede añadir VARIAS
+    (varias filas) para conectar más redes gratis. `label` identifica el email/alias.
+    La key se guarda cifrada con TENANT_ENCRYPTION_KEY.
+    """
+
+    __tablename__ = "marketing_provider_config"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    provider = Column(String(50), nullable=False, default="zernio")
+    label = Column(String(255), nullable=True)  # email/alias de la cuenta de Zernio
+    api_key = Column(Text, nullable=True)  # cifrada con TENANT_ENCRYPTION_KEY
+    default_profile_id = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    tenant = relationship("Tenant")

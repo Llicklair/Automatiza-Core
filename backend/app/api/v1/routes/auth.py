@@ -13,6 +13,7 @@ from app.api.v1.schemas.auth import (
     UserOut,
 )
 from app.core.dependencies import get_current_user
+from app.core.net import is_local_request
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
@@ -30,6 +31,12 @@ async def get_me(current_user: User = Depends(get_current_user)):
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/hour")
 async def register(request: Request, payload: UserCreate, db: AsyncSession = Depends(get_db)):
+    # SEC.REMOTE — /register crea un tenant+admin nuevo: es una operación de setup
+    # que solo tiene sentido en el equipo local. Con el backend expuesto a internet
+    # (acceso remoto), bloqueamos el registro desde la LAN o el túnel para que nadie
+    # pueda crear tenants en la BD del cliente. 404 para no anunciar el endpoint.
+    if not is_local_request(request):
+        raise HTTPException(status_code=404, detail="Not found")
     try:
         return await svc.register(payload, db)
     except ValueError as e:

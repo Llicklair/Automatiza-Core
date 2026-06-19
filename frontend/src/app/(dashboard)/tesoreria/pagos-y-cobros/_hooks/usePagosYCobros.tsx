@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Invoice, type BankTransaction } from "@/lib/api";
 import { isPast } from "date-fns";
 import { logError } from "@/lib/logger";
@@ -24,6 +25,7 @@ export function usePagosYCobros() {
     const [syncing, setSyncing] = useState(false);
     const [tab, setTab] = useState<TabId>("cobros");
     const toast = useToastStore();
+    const t = useTranslations("tesoreria");
 
     const loadData = async () => {
         setLoading(true);
@@ -52,7 +54,7 @@ export function usePagosYCobros() {
             await loadData();
         } catch (e) {
             logError("tesoreria/pagos-y-cobros/sync", e);
-            toast.error(e instanceof Error ? e.message : "No se pudo sincronizar el banco.");
+            toast.error(e instanceof Error ? e.message : t("pagosYCobros.syncError"));
         }
         finally { setSyncing(false); }
     };

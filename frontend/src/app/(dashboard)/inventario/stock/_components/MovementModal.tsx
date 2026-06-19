@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type Product } from "@/lib/api";
 import { type MovementForm } from "../_hooks/useStock";
 import { Button } from "@/components/ui/button";
@@ -23,21 +24,23 @@ interface MovementModalProps {
 }
 
 export function MovementModal({ open, onOpenChange, selectedProduct, movForm, setMovForm, onSubmit, saving }: MovementModalProps) {
+    const t = useTranslations("inventario");
+    const tc = useTranslations("common");
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Registrar movimiento</DialogTitle>
+                    <DialogTitle>{t("movementModal.title")}</DialogTitle>
                     {selectedProduct && (
                         <DialogDescription>
-                            {selectedProduct.name} &middot; Stock actual: <span className="text-foreground font-mono">{fmt(selectedProduct.stock_quantity)}</span>
+                            {selectedProduct.name} &middot; {t("movementModal.currentStock")}: <span className="text-foreground font-mono">{fmt(selectedProduct.stock_quantity)}</span>
                         </DialogDescription>
                     )}
                 </DialogHeader>
                 {selectedProduct && (
                     <form onSubmit={onSubmit} className="space-y-4">
                         <div>
-                            <Label className="text-xs mb-1.5">Tipo de movimiento</Label>
+                            <Label className="text-xs mb-1.5">{t("movementModal.movementType")}</Label>
                             <div className="grid grid-cols-3 gap-2 mt-1.5">
                                 {(["entrada", "salida", "ajuste"] as const).map(type => (
                                     <Button
@@ -52,14 +55,14 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                                             : ""
                                             }`}
                                     >
-                                        {type}
+                                        {t(`movementModal.type_${type}`)}
                                     </Button>
                                 ))}
                             </div>
                         </div>
                         <div>
                             <Label className="text-xs">
-                                {movForm.movement_type === "ajuste" ? "Nuevo stock total" : "Cantidad"}
+                                {movForm.movement_type === "ajuste" ? t("movementModal.newTotalStock") : t("movementModal.quantity")}
                             </Label>
                             <Input
                                 type="number" required min={1} value={movForm.quantity}
@@ -68,7 +71,7 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                             />
                             {movForm.movement_type !== "ajuste" && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Nuevo stock: <span className="text-foreground font-mono">
+                                    {t("movementModal.newStock")}: <span className="text-foreground font-mono">
                                         {movForm.movement_type === "entrada"
                                             ? fmt(selectedProduct.stock_quantity + (movForm.quantity || 0))
                                             : fmt(Math.max(0, selectedProduct.stock_quantity - (movForm.quantity || 0)))}
@@ -77,7 +80,7 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                             )}
                         </div>
                         <div>
-                            <Label className="text-xs">Referencia (nº albarán, factura...)</Label>
+                            <Label className="text-xs">{t("movementModal.reference")}</Label>
                             <Input
                                 type="text" value={movForm.reference}
                                 onChange={e => setMovForm(f => ({ ...f, reference: e.target.value }))}
@@ -86,21 +89,21 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                             />
                         </div>
                         <div>
-                            <Label className="text-xs">Notas</Label>
+                            <Label className="text-xs">{t("movementModal.notes")}</Label>
                             <textarea
                                 value={movForm.notes} rows={2}
                                 onChange={e => setMovForm(f => ({ ...f, notes: e.target.value }))}
                                 className="mt-1.5 w-full bg-background border border-border text-foreground text-sm rounded-md px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring transition-colors resize-none"
-                                placeholder="Motivo del ajuste, devolución, etc."
+                                placeholder={t("movementModal.notesPlaceholder")}
                             />
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                                Cancelar
+                                {tc("cancel")}
                             </Button>
                             <Button type="submit" disabled={saving}>
                                 {saving && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
-                                Registrar
+                                {t("movementModal.register")}
                             </Button>
                         </DialogFooter>
                     </form>

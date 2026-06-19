@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { KeyRound, ExternalLink } from "lucide-react";
 import { licenseApi } from "@/lib/api/license";
 import { useLicenseStore } from "@/stores/license";
@@ -11,6 +11,12 @@ export default function LicenseModal() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+
+    // Calienta el servidor de licencias al abrir el modal (Render free hiberna):
+    // el usuario está a punto de activar → Render despierta mientras teclea su clave.
+    useEffect(() => {
+        if (open) licenseApi.warmup().catch(() => {});
+    }, [open]);
 
     if (!open) return null;
 
@@ -24,11 +30,13 @@ export default function LicenseModal() {
             if (res.ok) {
                 setSuccess(true);
                 setTimeout(() => window.location.reload(), 1500);
+            } else if (res.retriable) {
+                setError("El servidor se está iniciando. Espera unos segundos y vuelve a pulsar Activar.");
             } else {
                 setError(res.reason ?? "Clave no válida.");
             }
         } catch {
-            setError("No se pudo conectar con el servidor de licencias.");
+            setError("El servidor se está iniciando. Espera unos segundos y vuelve a pulsar Activar.");
         } finally {
             setLoading(false);
         }
@@ -77,6 +85,11 @@ export default function LicenseModal() {
                                 <p className="text-xs text-red-400">{error}</p>
                             )}
 
+                            <p className="text-[11px] text-muted-foreground">
+                                La primera activación puede tardar hasta ~1 min: el servidor se está
+                                iniciando. No cierres la ventana.
+                            </p>
+
                             <a
                                 href="https://llicklair.github.io/Automatiza-core_landing/#precios"
                                 target="_blank"
@@ -98,7 +111,7 @@ export default function LicenseModal() {
                             disabled={loading || !key.trim()}
                             className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                         >
-                            {loading ? "Activando…" : "Activar"}
+                            {loading ? "Validando… (puede tardar)" : "Activar"}
                         </button>
                     </div>
                 )}

@@ -5,6 +5,7 @@ import {
     Activity, Loader2, Calculator, Users, Mail, Briefcase, Wallet,
     Scale, FolderOpen, BarChart3, Megaphone, UserPlus, User,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useLiveTeam } from "../_hooks/useLiveTeam";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 
@@ -33,6 +34,7 @@ function EmployeeNode({
     emp: AIEmployee; x: number; y: number; isWorking: boolean;
     isHovered: boolean; onHover: (id: string | null) => void;
 }) {
+    const t = useTranslations("dashboard");
     const style = DOMAIN[emp.domain] ?? FALLBACK;
     return (
         <div
@@ -75,7 +77,7 @@ function EmployeeNode({
                     <div className="font-semibold text-foreground">{emp.name}</div>
                     <div className="text-muted-foreground text-[10px]">{emp.role}</div>
                     <div className={`text-[10px] mt-0.5 ${isWorking ? "text-emerald-400" : "text-muted-foreground"}`}>
-                        {isWorking ? "● trabajando" : `○ ${emp.status}`}
+                        {isWorking ? t("liveTeam.working") : `○ ${emp.status}`}
                     </div>
                 </div>
             )}
@@ -85,6 +87,7 @@ function EmployeeNode({
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export function LiveTeamSection() {
+    const t = useTranslations("dashboard");
     const { employees, recentActivity, recentResults, activeDomains, loading } = useLiveTeam();
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     void recentActivity;
@@ -121,12 +124,12 @@ export function LiveTeamSection() {
             <div className="flex items-center justify-between mb-2 relative z-20">
                 <div>
                     <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                        <Activity className={`w-5 h-5 ${workingCount > 0 ? "text-emerald-400 animate-pulse" : "text-primary"}`} /> Equipo IA en vivo
+                        <Activity className={`w-5 h-5 ${workingCount > 0 ? "text-emerald-400 animate-pulse" : "text-primary"}`} /> {t("liveTeam.title")}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-1">
                         {workingCount > 0
-                            ? `${workingCount} de ${totalCount} agentes trabajando — actividad en tiempo real`
-                            : `${totalCount} agentes en standby — listos para recibir tareas`}
+                            ? t("liveTeam.statusWorking", { working: workingCount, total: totalCount })
+                            : t("liveTeam.statusStandby", { total: totalCount })}
                     </p>
                 </div>
             </div>
@@ -233,10 +236,10 @@ export function LiveTeamSection() {
                                         {workingCount}
                                     </div>
                                     <div className="text-[11px] text-muted-foreground uppercase tracking-widest mt-1">
-                                        {workingCount === 1 ? "agente activo" : "agentes activos"}
+                                        {t("liveTeam.activeAgents", { count: workingCount })}
                                     </div>
                                     <div className="text-[10px] text-muted-foreground/70 mt-2">
-                                        de {totalCount} disponibles
+                                        {t("liveTeam.ofAvailable", { total: totalCount })}
                                     </div>
                                 </div>
                             </div>
@@ -261,7 +264,7 @@ export function LiveTeamSection() {
             {/* Feed compacto de últimas actividades */}
             {!loading && recentResults.length > 0 && (
                 <div className="mt-2 pt-3 border-t border-border/50">
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Últimas acciones</div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">{t("liveTeam.latestActions")}</div>
                     <div className="space-y-1 max-h-24 overflow-hidden">
                         {recentResults.slice(0, 4).map((r, i) => {
                             const style = DOMAIN[r.domain] ?? FALLBACK;

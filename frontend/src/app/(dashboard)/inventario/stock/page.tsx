@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon, ShoppingCart, Tags, BarChart3 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { type Product } from "@/lib/api";
 import { DataTable, DataTableColumnHeader } from "@/components/data-table";
@@ -25,6 +26,8 @@ import Link from "next/link";
 const fmt = (n: number) => n.toLocaleString("es-ES");
 
 export default function StockPage() {
+    const t = useTranslations("inventario");
+    const tc = useTranslations("common");
     const {
         products, loading, expandedId, movements, movementsLoading,
         showModal, setShowModal, selectedProduct,
@@ -60,7 +63,7 @@ export default function StockPage() {
     const columns: ColumnDef<Product, any>[] = [
         {
             accessorKey: "name",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Producto" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("stock.colProduct")} />,
             cell: ({ row }) => {
                 const product = row.original;
                 return (
@@ -78,7 +81,7 @@ export default function StockPage() {
         },
         {
             accessorKey: "location",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Ubicación" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("stock.colLocation")} />,
             cell: ({ row }) => (
                 row.original.location
                     ? <span className="text-sm text-foreground">{row.original.location}</span>
@@ -87,7 +90,7 @@ export default function StockPage() {
         },
         {
             accessorKey: "stock_quantity",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Stock actual" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("stock.colCurrentStock")} />,
             cell: ({ row }) => {
                 const product = row.original;
                 const isOut = product.stock_quantity === 0;
@@ -101,7 +104,7 @@ export default function StockPage() {
         },
         {
             accessorKey: "stock_min_alert",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Alerta mínima" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("stock.colMinAlert")} />,
             cell: ({ row }) => {
                 const product = row.original;
                 if (editingAlertId === product.id) {
@@ -133,8 +136,8 @@ export default function StockPage() {
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => startEditAlert(product)}
-                            title="Editar alerta mínima"
-                         aria-label="Editar alerta mínima">
+                            title={t("stock.editMinAlert")}
+                         aria-label={t("stock.editMinAlert")}>
                             <Pencil className="w-3 h-3" aria-hidden="true" />
                         </Button>
                     </div>
@@ -143,7 +146,7 @@ export default function StockPage() {
         },
         {
             id: "status",
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Estado" />,
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t("stock.colStatus")} />,
             accessorFn: (row) => {
                 if (row.stock_quantity === 0) return "out_of_stock";
                 if (row.stock_min_alert > 0 && row.stock_quantity <= row.stock_min_alert) return "low_stock";
@@ -165,23 +168,23 @@ export default function StockPage() {
                             onClick={() => openMovement(product)}
                             className="h-7 text-xs"
                         >
-                            <Plus className="mr-1 w-3 h-3" /> Movimiento
+                            <Plus className="mr-1 w-3 h-3" /> {t("stock.movement")}
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Abrir menú de acciones">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t("stock.openActionsMenu")}>
                                     <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => openEditProduct(product)}>
-                                    <Pencil className="mr-2 w-3.5 h-3.5" /> Editar
+                                    <Pencil className="mr-2 w-3.5 h-3.5" /> {tc("edit")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => handleDelete(product)}
                                     className="text-destructive focus:text-destructive"
                                 >
-                                    <Trash2 className="mr-2 w-3.5 h-3.5" /> Eliminar
+                                    <Trash2 className="mr-2 w-3.5 h-3.5" /> {tc("delete")}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -190,8 +193,8 @@ export default function StockPage() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => toggleExpand(product.id)}
-                            title="Ver lotes, caducidad, stock por almacén y movimientos"
-                         aria-label="Ver lotes, caducidad, stock por almacén y movimientos">
+                            title={t("stock.expandDetails")}
+                         aria-label={t("stock.expandDetails")}>
                             {isExpanded ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
                         </Button>
                     </div>
@@ -201,14 +204,14 @@ export default function StockPage() {
     ];
 
     const statusFilterOptions = [
-        { label: "OK", value: "ok" },
-        { label: "Stock bajo", value: "low_stock" },
-        { label: "Sin stock", value: "out_of_stock" },
+        { label: t("stock.statusOk"), value: "ok" },
+        { label: t("stock.statusLow"), value: "low_stock" },
+        { label: t("stock.statusOut"), value: "out_of_stock" },
     ];
 
     const newProductButton = (
         <Button onClick={openCreateProduct}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo producto
+            <Plus className="mr-2 h-4 w-4" /> {t("stock.newProduct")}
         </Button>
     );
 
@@ -216,22 +219,22 @@ export default function StockPage() {
         <div className="flex items-center gap-2">
             <Link href="/inventario/analitica">
                 <Button variant="outline">
-                    <BarChart3 className="mr-2 h-4 w-4" /> Analítica
+                    <BarChart3 className="mr-2 h-4 w-4" /> {t("stock.navAnalytics")}
                 </Button>
             </Link>
             <Link href="/inventario/etiquetas">
                 <Button variant="outline">
-                    <Tags className="mr-2 h-4 w-4" /> Etiquetas
+                    <Tags className="mr-2 h-4 w-4" /> {t("stock.navLabels")}
                 </Button>
             </Link>
             <Link href="/inventario/reposicion">
                 <Button variant="outline">
-                    <ShoppingCart className="mr-2 h-4 w-4" /> Reposición
+                    <ShoppingCart className="mr-2 h-4 w-4" /> {t("stock.navReorder")}
                 </Button>
             </Link>
             <Link href="/inventario/almacenes">
                 <Button variant="outline">
-                    <WarehouseIcon className="mr-2 h-4 w-4" /> Almacenes
+                    <WarehouseIcon className="mr-2 h-4 w-4" /> {t("stock.navWarehouses")}
                 </Button>
             </Link>
             {newProductButton}
@@ -242,16 +245,16 @@ export default function StockPage() {
         return (
             <div className="p-6 space-y-6">
                 <PageHeader
-                    title="Control de Stock"
-                    description="Gestiona el inventario físico de tus productos con entradas, salidas y ajustes."
+                    title={t("stock.title")}
+                    description={t("stock.description")}
                     icon={Package}
                     actions={headerActions}
                 />
                 <EmptyState
                     icon={Package}
-                    title="Sin productos físicos"
-                    description="Añade productos en el catálogo para gestionar su stock aquí."
-                    action={{ label: "Nuevo producto", onClick: openCreateProduct }}
+                    title={t("stock.emptyTitle")}
+                    description={t("stock.emptyDescription")}
+                    action={{ label: t("stock.newProduct"), onClick: openCreateProduct }}
                 />
                 <ProductModal
                     open={showProductModal}
@@ -269,23 +272,23 @@ export default function StockPage() {
     return (
         <div className="p-6 space-y-6">
             <PageHeader
-                title="Control de Stock"
-                description="Gestiona el inventario físico de tus productos con entradas, salidas y ajustes."
+                title={t("stock.title")}
+                description={t("stock.description")}
                 icon={Package}
                 actions={headerActions}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard title="Unidades en stock" value={fmt(totalStock)} icon={Package} />
+                <KpiCard title={t("stock.kpiUnitsInStock")} value={fmt(totalStock)} icon={Package} />
                 <KpiCard
-                    title="Stock bajo"
-                    value={`${lowStock} productos`}
+                    title={t("stock.kpiLowStock")}
+                    value={t("stock.productsCount", { count: lowStock })}
                     icon={AlertTriangle}
                     className={lowStock > 0 ? "border-amber-500/20" : ""}
                 />
                 <KpiCard
-                    title="Sin stock"
-                    value={`${outOfStock} productos`}
+                    title={t("stock.kpiOutOfStock")}
+                    value={t("stock.productsCount", { count: outOfStock })}
                     icon={AlertTriangle}
                     className={outOfStock > 0 ? "border-rose-500/20" : ""}
                 />
@@ -300,7 +303,7 @@ export default function StockPage() {
                         type="text"
                         value={query}
                         onChange={e => setQuery(e.target.value)}
-                        placeholder="Buscar por nombre, SKU o código de barras..."
+                        placeholder={t("stock.searchPlaceholder")}
                         className="pl-9 pr-9"
                     />
                     {query && (
@@ -308,7 +311,7 @@ export default function StockPage() {
                             type="button"
                             onClick={() => setQuery("")}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                            aria-label="Limpiar búsqueda"
+                            aria-label={t("stock.clearSearch")}
                         >
                             <X className="w-3.5 h-3.5" />
                         </button>
@@ -318,9 +321,9 @@ export default function StockPage() {
                     value={categoryFilter}
                     onChange={e => setCategoryFilter(e.target.value)}
                     className="bg-background border border-border text-foreground text-sm rounded-md px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-ring transition-colors min-w-[180px]"
-                    aria-label="Filtrar por categoría"
+                    aria-label={t("stock.filterByCategory")}
                 >
-                    <option value="">Todas las categorías</option>
+                    <option value="">{t("stock.allCategories")}</option>
                     {categoryList.map(c => (
                         <option key={c} value={c}>{c}</option>
                     ))}
@@ -333,7 +336,7 @@ export default function StockPage() {
                         onClick={() => { setQuery(""); setCategoryFilter(""); }}
                         className="text-xs"
                     >
-                        Limpiar filtros
+                        {t("stock.clearFilters")}
                     </Button>
                 )}
             </div>
@@ -342,8 +345,8 @@ export default function StockPage() {
                 columns={columns}
                 data={products}
                 isLoading={loading}
-                facetedFilters={[{ column: "status", title: "Estado", options: statusFilterOptions }]}
-                emptyMessage="Sin productos encontrados."
+                facetedFilters={[{ column: "status", title: t("stock.colStatus"), options: statusFilterOptions }]}
+                emptyMessage={t("stock.noProductsFound")}
                 pageSize={20}
             />
 

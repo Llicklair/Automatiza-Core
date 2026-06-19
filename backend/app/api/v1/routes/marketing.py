@@ -1,50 +1,37 @@
 """Marketing: social accounts, campaigns, scheduled posts, OAuth callbacks."""
 
 import asyncio
+import base64
 import datetime
-import traceback
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user
-from app.core.paths import app_data_dir
+from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
 from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
 from app.db.models.models import User
-from app.services.encryption import encrypt_str
+from app.services.encryption import decrypt_str, encrypt_str
 from app.services.marketing.image_generation import generate_image as _generate_image
-from app.services.marketing.oauth import (
-    _decode_state,
-    _encode_state,
-    _exchange_token,
-    _fetch_profile,
-    _oauth_url,
-    _resolve_facebook_page,
-    _resolve_instagram_account,
+from app.services.marketing.provider_config import (
+    add_provider_config,
+    client_for_account,
+    client_for_config,
+    delete_provider_config,
+    get_config,
+    list_provider_configs,
+    set_default_profile_id,
 )
+from app.services.marketing.zernio_client import ZernioClient, ZernioError
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
-
-
-def _log_oauth_error(stage: str, exc: Exception) -> None:
-    """Vuelca el traceback completo del fallo OAuth a oauth_debug.log (diagnóstico)."""
-    try:
-        p = app_data_dir("oauth_debug.log")
-        p.parent.mkdir(parents=True, exist_ok=True)
-        ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        with p.open("a", encoding="utf-8") as f:
-            f.write(f"\n===== {ts} · {stage} =====\n")
-            f.write(f"{type(exc).__name__}: {exc!r}\n")
-            f.write(traceback.format_exc())
-    except Exception:
-        pass
 
 
 def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLResponse:
@@ -93,6 +80,20 @@ def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLRes
     return HTMLResponse(html)
 
 
+def _zernio_state(tenant_id, config_id) -> str:
+    """State tamper-proof y URL-safe (cifrado) para el path del redirect de Zernio.
+    Lleva el tenant y la cuenta de Zernio (config) por la que se conecta."""
+    token = encrypt_str(f"{tenant_id}|{config_id}")
+    return base64.urlsafe_b64encode(token.encode()).decode().rstrip("=")
+
+
+def _zernio_unstate(state: str) -> tuple[UUID, UUID]:
+    pad = "=" * (-len(state) % 4)
+    raw = decrypt_str(base64.urlsafe_b64decode(state + pad).decode())
+    tenant_str, config_str = raw.split("|", 1)
+    return UUID(tenant_str), UUID(config_str)
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 
@@ -102,7 +103,6 @@ class SocialAccountOut(BaseModel):
     account_id: str
     account_name: Optional[str] = None
     is_active: bool
-    token_expires_at: Optional[datetime.datetime] = None
     created_at: datetime.datetime
 
     model_config = {"from_attributes": True}
@@ -167,30 +167,6 @@ async def list_accounts(
     return result.scalars().all()
 
 
-@router.get("/config-status")
-async def config_status(current_user: User = Depends(get_current_user)):
-    """Indica qué está listo para usar, sin exponer secretos.
-
-    Si hay proxy OAuth, el intercambio code→token ocurre en el servidor (que guarda
-    los client_secret), así que las plataformas son conectables aunque el .env local
-    esté vacío. Sin proxy, se comprueba la credencial local de cada plataforma.
-    """
-    proxy = bool(settings.OAUTH_PROXY_URL)
-    creds = {
-        "facebook": bool(settings.FACEBOOK_CLIENT_ID and settings.FACEBOOK_CLIENT_SECRET),
-        "instagram": bool(settings.INSTAGRAM_CLIENT_ID and settings.INSTAGRAM_CLIENT_SECRET),
-        "twitter": bool(settings.TWITTER_CLIENT_ID and settings.TWITTER_CLIENT_SECRET),
-        "linkedin": bool(settings.LINKEDIN_CLIENT_ID and settings.LINKEDIN_CLIENT_SECRET),
-    }
-    platforms = {p: (proxy or ok) for p, ok in creds.items()}
-    return {
-        "proxy": proxy,
-        "platforms": platforms,
-        "image_ai": bool(settings.OPENAI_API_KEY),
-        "stock_images": bool(settings.UNSPLASH_ACCESS_KEY) or proxy,
-    }
-
-
 class GenerateImageRequest(BaseModel):
     prompt: str
 
@@ -216,17 +192,69 @@ async def generate_image_endpoint(
     return {"url": url}
 
 
+_ZERNIO_PLATFORMS = {
+    "instagram", "facebook", "linkedin", "twitter", "tiktok", "youtube",
+    "threads", "pinterest", "bluesky", "reddit", "snapchat", "googlebusiness",
+}
+
+
+async def _pick_config(db: AsyncSession, tenant_id, config_id):
+    """Cuenta de Zernio a usar: la indicada, o la primera del tenant."""
+    if config_id is not None:
+        cfg = await get_config(db, config_id, tenant_id)
+        if cfg is None:
+            raise HTTPException(status_code=404, detail="Cuenta de Zernio no encontrada")
+        return cfg
+    configs = await list_provider_configs(db, tenant_id)
+    if not configs:
+        raise HTTPException(
+            status_code=400,
+            detail="Añade primero tu API key de Zernio en Configuración → Marketing.",
+        )
+    return configs[0]
+
+
+async def _resolve_profile_id(db: AsyncSession, cfg, client) -> str:
+    """Devuelve el profileId de Zernio de esta cuenta (lo cachea como default)."""
+    if cfg.default_profile_id:
+        return cfg.default_profile_id
+    profiles = await client.list_profiles()
+    if not profiles:
+        raise HTTPException(
+            status_code=502,
+            detail="Tu cuenta de Zernio no tiene ningún profile. Crea uno en zernio.com y reinténtalo.",
+        )
+    pid = str(profiles[0].get("_id") or profiles[0].get("id") or "")
+    await set_default_profile_id(db, cfg, pid)
+    await db.commit()
+    return pid
+
+
 @router.post("/accounts/connect/{platform}", status_code=status.HTTP_200_OK)
 async def connect_account(
     platform: str,
+    provider_config_id: Optional[UUID] = Query(None),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    supported = {"instagram", "facebook", "linkedin", "twitter"}
-    if platform not in supported:
+    if platform not in _ZERNIO_PLATFORMS:
         raise HTTPException(status_code=400, detail=f"Plataforma no soportada: {platform}")
+    cfg = await _pick_config(db, current_user.tenant_id, provider_config_id)
+    try:
+        client = client_for_config(cfg)
+    except ZernioError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    state = _encode_state(platform, str(current_user.tenant_id))
-    auth_url = _oauth_url(platform, state)
+    profile_id = await _resolve_profile_id(db, cfg, client)
+    base = settings.OAUTH_REDIRECT_URI.split("/api/v1")[0]
+    state = _zernio_state(current_user.tenant_id, cfg.id)
+    redirect_url = f"{base}/api/v1/marketing/zernio/callback/{state}"
+    try:
+        auth_url = await client.connect_url(platform, profile_id, redirect_url)
+    except ZernioError as e:
+        raise HTTPException(status_code=502, detail=f"Zernio: {e}")
+    if not auth_url:
+        raise HTTPException(status_code=502, detail="Zernio no devolvió URL de conexión.")
     return {"auth_url": auth_url}
 
 
@@ -245,118 +273,151 @@ async def disconnect_account(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    # Libera el hueco en Zernio (plan gratis: 2 redes/email) para poder conectar otra.
+    try:
+        client = await client_for_account(db, account)
+    except ZernioError:
+        client = None
+    if client is not None:
+        try:
+            await client.disconnect_account(account.account_id)
+        except ZernioError as e:
+            if e.status != 404:  # 404 = ya no existe en Zernio; continuamos
+                raise HTTPException(status_code=502, detail=f"No se pudo desconectar en Zernio: {e}")
     account.is_active = False
     await db.commit()
 
 
-# ── OAuth Callback ─────────────────────────────────────────────────────────────
-
-
-@router.get("/oauth/callback")
-async def oauth_callback(
-    code: Optional[str] = Query(None),
-    state: Optional[str] = Query(None),
-    error: Optional[str] = Query(None),
+@router.get("/zernio/callback/{state}")
+async def zernio_callback(
+    state: str,
+    connected: Optional[str] = Query(None),
+    accountId: Optional[str] = Query(None),
+    username: Optional[str] = Query(None),
+    profileId: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Callback OAuth — recibe el code del proveedor, intercambia por token y guarda la cuenta."""
+    """Callback de la conexión vía Zernio: upsert de la cuenta con su accountId.
 
-    if error:
-        return _popup_html(False, message=f"El usuario denegó el acceso: {error}")
-
-    if not code or not state:
-        detail = f"code={'sí' if code else 'NO'} · state={'sí' if state else 'NO'} · error={error!r}"
-        _log_oauth_error("callback-incompleto", Exception(detail))
-        return _popup_html(False, message=f"Parámetros de callback incompletos ({detail})")
-
+    Zernio redirige aquí (state en el path para robustez) añadiendo en la query
+    `connected`, `accountId`, `username`. No hay tokens de cuenta: en BYO la
+    publicación usa la API key del tenant, no credenciales OAuth de la cuenta.
+    """
     try:
-        platform, tenant_id_str = _decode_state(state)
-        tenant_id = UUID(tenant_id_str)
+        tenant_id, config_id = _zernio_unstate(state)
     except Exception:
-        return _popup_html(False, message="Estado OAuth inválido o expirado")
+        return _popup_html(False, message="Estado de conexión inválido o expirado")
+    # SEC.RLS: callback público sin JWT, pero el tenant viene firmado en el
+    # `state` → lo fijamos para que el SELECT/upsert de SocialAccount quede
+    # correctamente scoped (opción tighter que bypass; corrige bug latente).
+    set_current_tenant(str(tenant_id))
+    if not accountId:
+        return _popup_html(False, message="Zernio no devolvió la cuenta conectada. Reinténtalo.")
 
-    try:
-        token_data = await _exchange_token(platform, code, state)
-    except HTTPException as e:
-        _log_oauth_error(f"exchange:{platform}", e)
-        return _popup_html(False, message=str(e.detail))
-    except Exception as e:
-        _log_oauth_error(f"exchange:{platform}", e)
-        return _popup_html(False, message=f"Error al obtener token: {e!r}")
-
-    access_token = token_data.get("access_token", "")
-    refresh_token = token_data.get("refresh_token")
-    expires_in = token_data.get("expires_in")
-    token_expires_at = None
-    if expires_in:
-        token_expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=int(expires_in))
-
-    if platform in ("facebook", "instagram"):
-        # Facebook: Page token (no se publica en perfiles personales).
-        # Instagram: cuenta Business vinculada a una página; se publica con el
-        # Page token y el IG user id. En ambos el token es de larga duración.
-        resolver = _resolve_facebook_page if platform == "facebook" else _resolve_instagram_account
-        try:
-            target = await resolver(access_token)
-        except HTTPException as e:
-            _log_oauth_error(f"resolve:{platform}", e)
-            return _popup_html(False, message=str(e.detail))
-        except Exception as e:
-            _log_oauth_error(f"resolve:{platform}", e)
-            return _popup_html(False, message=f"Error al resolver la cuenta de {platform}: {e!r}")
-        access_token = target["access_token"]
-        account_id_str, account_name = target["id"], target["name"]
-        token_expires_at = None
-        refresh_token = None
-    else:
-        try:
-            account_id_str, account_name = await _fetch_profile(platform, access_token)
-        except Exception as e:
-            # No persistir una cuenta 'unknown' fantasma (ni duplicarla al reconectar):
-            # abortar con popup de error si no podemos identificar la cuenta.
-            _log_oauth_error(f"profile:{platform}", e)
-            return _popup_html(
-                False, message=f"No se pudo obtener el perfil de {platform}: {e!r}"
-            )
-        if not account_id_str:
-            return _popup_html(
-                False,
-                message=f"No se pudo identificar la cuenta de {platform}; reinténtalo.",
-            )
-
-    # Upsert: si ya existe una cuenta para esta plataforma+account_id, actualiza el token
+    platform = connected or "social"
     existing = await db.execute(
         select(SocialAccount).where(
             SocialAccount.tenant_id == tenant_id,
-            SocialAccount.platform == platform,
-            SocialAccount.account_id == account_id_str,
+            SocialAccount.account_id == accountId,
         )
     )
     account = existing.scalar_one_or_none()
-
-    enc_access = encrypt_str(access_token)
-    enc_refresh = encrypt_str(refresh_token) if refresh_token else None
-
     if account:
-        account.access_token = enc_access
-        account.refresh_token = enc_refresh
-        account.token_expires_at = token_expires_at
-        account.account_name = account_name
+        account.platform = platform
+        account.account_name = username or account.account_name
+        account.provider_config_id = config_id
         account.is_active = True
     else:
         account = SocialAccount(
             tenant_id=tenant_id,
             platform=platform,
-            account_id=account_id_str or "unknown",
-            account_name=account_name,
-            access_token=enc_access,
-            refresh_token=enc_refresh,
-            token_expires_at=token_expires_at,
+            account_id=accountId,
+            account_name=username,
+            provider_config_id=config_id,
+            is_active=True,
         )
         db.add(account)
-
     await db.commit()
     return _popup_html(True, platform=platform)
+
+
+# ── Configuración Zernio (BYO API keys) ─────────────────────────────────────────
+
+
+class ZernioConfigCreate(BaseModel):
+    api_key: str
+    label: Optional[str] = None
+
+
+class ZernioConfigOut(BaseModel):
+    id: UUID
+    label: Optional[str] = None
+    default_profile_id: Optional[str] = None
+    num_accounts: int = 0
+
+
+@router.get("/zernio-config", response_model=list[ZernioConfigOut])
+async def list_zernio_configs(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista las cuentas de Zernio del tenant (sin exponer la API key)."""
+    configs = await list_provider_configs(db, current_user.tenant_id)
+    out: list[ZernioConfigOut] = []
+    for c in configs:
+        n = await db.scalar(
+            select(func.count())
+            .select_from(SocialAccount)
+            .where(
+                SocialAccount.provider_config_id == c.id,
+                SocialAccount.is_active.is_(True),
+            )
+        )
+        out.append(ZernioConfigOut(
+            id=c.id, label=c.label, default_profile_id=c.default_profile_id, num_accounts=n or 0,
+        ))
+    return out
+
+
+@router.post("/zernio-config", response_model=ZernioConfigOut, status_code=status.HTTP_201_CREATED)
+async def add_zernio_config(
+    body: ZernioConfigCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Añade una cuenta de Zernio (un email/API key) validándola contra la API.
+
+    El free tier de Zernio da 2 cuentas sociales por email, así que se pueden añadir
+    varias cuentas para conectar más redes gratis.
+    """
+    key = (body.api_key or "").strip()
+    if not key.startswith("sk_"):
+        raise HTTPException(status_code=400, detail="La API key de Zernio debe empezar por 'sk_'.")
+    client = ZernioClient(key)
+    try:
+        profiles = await client.list_profiles()
+    except ZernioError as e:
+        raise HTTPException(status_code=400, detail=f"La API key no es válida: {e}")
+    default_pid = str(profiles[0].get("_id") or profiles[0].get("id")) if profiles else None
+    cfg = await add_provider_config(
+        db, current_user.tenant_id, key, label=body.label, default_profile_id=default_pid,
+    )
+    await db.commit()
+    return ZernioConfigOut(
+        id=cfg.id, label=cfg.label, default_profile_id=cfg.default_profile_id, num_accounts=0,
+    )
+
+
+@router.delete("/zernio-config/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_zernio_config(
+    config_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ok = await delete_provider_config(db, config_id, current_user.tenant_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Cuenta de Zernio no encontrada")
+    await db.commit()
 
 
 # ── Campaigns ──────────────────────────────────────────────────────────────────
@@ -717,7 +778,7 @@ async def publish_post_now(
     current_user: User = Depends(get_current_user),
 ):
     """Publica un post borrador o programado inmediatamente."""
-    from app.services.marketing.publisher import publish_post
+    from app.services.marketing.publishing import get_publisher
 
     result = await db.execute(
         select(ScheduledPost).where(
@@ -731,7 +792,7 @@ async def publish_post_now(
     if post.status == "published":
         raise HTTPException(status_code=409, detail="El post ya está publicado")
 
-    publish_result = await publish_post(post, db)
+    publish_result = await get_publisher().publish_post(post, db)
     await db.commit()
     await db.refresh(post)
     if not publish_result.ok:
@@ -751,8 +812,9 @@ async def publish_batch(
     current_user: User = Depends(get_current_user),
 ):
     """Publica varios posts inmediatamente. Devuelve resumen con ok/failed."""
-    from app.services.marketing.publisher import publish_post
+    from app.services.marketing.publishing import get_publisher
 
+    publisher = get_publisher()
     ok_ids, failed_ids = [], []
     for pid in body.post_ids:
         result = await db.execute(
@@ -766,7 +828,7 @@ async def publish_batch(
         if not post:
             failed_ids.append(str(pid))
             continue
-        success = await publish_post(post, db)
+        success = await publisher.publish_post(post, db)
         (ok_ids if success.ok else failed_ids).append(str(pid))
 
     await db.commit()

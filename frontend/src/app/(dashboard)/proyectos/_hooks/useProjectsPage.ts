@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, Project } from "@/lib/api";
 import { addDays, differenceInDays, isAfter, isBefore } from "date-fns";
 import { logError } from "@/lib/logger";
 import { PlayCircle, CheckCircle2, Clock } from "lucide-react";
 
 export function useProjectsPage() {
+    const t = useTranslations("proyectos");
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -57,7 +59,7 @@ export function useProjectsPage() {
             setShowModal(false);
             await loadData();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Error al crear proyecto");
+            setError(err instanceof Error ? err.message : t("page.createError"));
         } finally {
             setSaving(false);
         }
@@ -65,9 +67,9 @@ export function useProjectsPage() {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'active': return { icon: PlayCircle, className: "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20", label: "En curso" };
-            case 'completed': return { icon: CheckCircle2, className: "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20", label: "Completado" };
-            case 'on_hold': return { icon: Clock, className: "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20", label: "Pausado" };
+            case 'active': return { icon: PlayCircle, className: "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20", label: t("status.active") };
+            case 'completed': return { icon: CheckCircle2, className: "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20", label: t("status.completed") };
+            case 'on_hold': return { icon: Clock, className: "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20", label: t("status.onHold") };
             default: return null;
         }
     };

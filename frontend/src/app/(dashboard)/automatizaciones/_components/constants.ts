@@ -1,77 +1,101 @@
 import {
     Zap, Clock, RefreshCw, CreditCard, Users, FileText,
 } from "lucide-react";
+import type { useTranslations } from "next-intl";
 
-export const TRIGGER_CONFIG: Record<string, { label: string; icon: React.ElementType; cls: string; title: string }> = {
-    event_based: {
-        label: "Eventual",
-        icon: Zap,
-        cls: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-        title: "Se dispara cuando ocurre un evento en el ERP (factura creada, empleado modificado, etc.)",
-    },
-    schedule_based: {
-        label: "De tiempo",
-        icon: Clock,
-        cls: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-        title: "Se ejecuta en una programación de tiempo definida (cron).",
-    },
-    manual: {
-        label: "Constante",
-        icon: RefreshCw,
-        cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-        title: "Disponible en todo momento. Se lanza a demanda desde la UI o la API.",
-    },
-};
+type Translator = ReturnType<typeof useTranslations>;
 
-export const EXEC_STATUS: Record<string, { label: string; cls: string }> = {
-    running: { label: "Ejecutando", cls: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-    completed: { label: "Completada", cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-    success: { label: "Completada", cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-    failed: { label: "Error", cls: "text-red-400 bg-red-500/10 border-red-500/20" },
-    paused: { label: "Pausada", cls: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
-    pending: { label: "Pendiente", cls: "text-zinc-400 bg-zinc-800 border-zinc-700" },
-};
+export function buildTriggerConfig(t: Translator): Record<string, { label: string; icon: React.ElementType; cls: string; title: string }> {
+    return {
+        event_based: {
+            label: t("trigger.eventBasedLabel"),
+            icon: Zap,
+            cls: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+            title: t("trigger.eventBasedTitle"),
+        },
+        schedule_based: {
+            label: t("trigger.scheduleBasedLabel"),
+            icon: Clock,
+            cls: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+            title: t("trigger.scheduleBasedTitle"),
+        },
+        manual: {
+            label: t("trigger.manualLabel"),
+            icon: RefreshCw,
+            cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+            title: t("trigger.manualTitle"),
+        },
+    };
+}
 
-export const TEMPLATES = [
-    {
-        icon: CreditCard,
-        color: "text-amber-400",
-        bg: "bg-amber-500/10",
-        border: "border-amber-500/20",
-        name: "Alerta facturas vencidas",
-        description: "Detecta facturas sin pagar y avisa por email",
-        trigger_type: "schedule_based",
-        trigger_config: { cron: "0 9 * * 1" },
-        action_type: "ai_task",
-        action_config: { instruction: "Revisa todas las facturas con más de 30 días sin pagar y envía un recordatorio por email a cada cliente con el importe pendiente y fecha de vencimiento." },
-    },
-    {
-        icon: Users,
-        color: "text-blue-400",
-        bg: "bg-blue-500/10",
-        border: "border-blue-500/20",
-        name: "Nóminas mensuales automáticas",
-        description: "Genera y envía las nóminas el día 1 de cada mes",
-        trigger_type: "schedule_based",
-        trigger_config: { cron: "0 8 1 * *" },
-        action_type: "ai_task",
-        action_config: { instruction: "El día 1 de cada mes, genera las nóminas de todos los empleados activos y envíales el documento por email." },
-    },
-    {
-        icon: FileText,
-        color: "text-emerald-400",
-        bg: "bg-emerald-500/10",
-        border: "border-emerald-500/20",
-        name: "Informe semanal de ventas",
-        description: "Resumen ejecutivo cada lunes por la mañana",
-        trigger_type: "schedule_based",
-        trigger_config: { cron: "0 8 * * 1" },
-        action_type: "ai_task",
-        action_config: { instruction: "Cada lunes, genera un resumen de las ventas de la semana anterior: facturas emitidas, cobradas, pendientes y comparativa con la semana anterior." },
-    },
-];
+export function buildExecStatus(t: Translator): Record<string, { label: string; cls: string }> {
+    return {
+        running: { label: t("execStatus.running"), cls: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
+        completed: { label: t("execStatus.completed"), cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+        success: { label: t("execStatus.completed"), cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+        failed: { label: t("execStatus.failed"), cls: "text-red-400 bg-red-500/10 border-red-500/20" },
+        paused: { label: t("execStatus.paused"), cls: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
+        pending: { label: t("execStatus.pending"), cls: "text-zinc-400 bg-zinc-800 border-zinc-700" },
+    };
+}
 
-export const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+export interface Template {
+    icon: React.ElementType;
+    color: string;
+    bg: string;
+    border: string;
+    name: string;
+    description: string;
+    trigger_type: string;
+    trigger_config: { cron: string };
+    action_type: string;
+    action_config: { instruction: string };
+}
+
+export function buildTemplates(t: Translator): Template[] {
+    return [
+        {
+            icon: CreditCard,
+            color: "text-amber-400",
+            bg: "bg-amber-500/10",
+            border: "border-amber-500/20",
+            name: t("templates.invoiceAlert.name"),
+            description: t("templates.invoiceAlert.description"),
+            trigger_type: "schedule_based",
+            trigger_config: { cron: "0 9 * * 1" },
+            action_type: "ai_task",
+            action_config: { instruction: t("templates.invoiceAlert.instruction") },
+        },
+        {
+            icon: Users,
+            color: "text-blue-400",
+            bg: "bg-blue-500/10",
+            border: "border-blue-500/20",
+            name: t("templates.monthlyPayroll.name"),
+            description: t("templates.monthlyPayroll.description"),
+            trigger_type: "schedule_based",
+            trigger_config: { cron: "0 8 1 * *" },
+            action_type: "ai_task",
+            action_config: { instruction: t("templates.monthlyPayroll.instruction") },
+        },
+        {
+            icon: FileText,
+            color: "text-emerald-400",
+            bg: "bg-emerald-500/10",
+            border: "border-emerald-500/20",
+            name: t("templates.weeklySales.name"),
+            description: t("templates.weeklySales.description"),
+            trigger_type: "schedule_based",
+            trigger_config: { cron: "0 8 * * 1" },
+            action_type: "ai_task",
+            action_config: { instruction: t("templates.weeklySales.instruction") },
+        },
+    ];
+}
+
+export function buildDays(t: Translator): string[] {
+    return [t("days.sun"), t("days.mon"), t("days.tue"), t("days.wed"), t("days.thu"), t("days.fri"), t("days.sat")];
+}
 export const MONTHS_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 export const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export const MINUTES_OPTIONS = [0, 5, 10, 15, 20, 30, 45];
@@ -97,14 +121,15 @@ export function buildCron(freq: FreqKey, minute: number, hour: number, day: numb
     return `${minute} ${hour} ${day} * *`;
 }
 
-export function cronToHuman(cron: string): string {
+export function cronToHuman(cron: string, t: Translator): string {
     const { freq, minute, hour, day, weekday } = parseCron(cron);
     const hhmm = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-    if (freq === "minutes") return `Cada ${minute} minutos`;
-    if (freq === "hourly")  return `Cada hora, al minuto ${minute}`;
-    if (freq === "daily")   return `Cada día a las ${hhmm}`;
-    if (freq === "weekly")  return `Cada ${DAYS[weekday]} a las ${hhmm}`;
-    return `El día ${day} de cada mes a las ${hhmm}`;
+    const days = buildDays(t);
+    if (freq === "minutes") return t("schedule.humanMinutes", { minute });
+    if (freq === "hourly")  return t("schedule.humanHourly", { minute });
+    if (freq === "daily")   return t("schedule.humanDaily", { time: hhmm });
+    if (freq === "weekly")  return t("schedule.humanWeekly", { day: days[weekday], time: hhmm });
+    return t("schedule.humanMonthly", { day, time: hhmm });
 }
 
 export function hasFanOut(edges: any[] | null | undefined): boolean {

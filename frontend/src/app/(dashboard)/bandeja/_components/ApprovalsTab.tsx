@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Approval } from "@/lib/api";
 import { XCircle, ShieldCheck, Trash2, X } from "lucide-react";
 import { useToastStore } from "@/stores/toast";
@@ -14,6 +15,7 @@ interface ApprovalsTabProps {
 }
 
 export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
+    const t = useTranslations("bandeja");
     const toast = useToastStore();
     const [approvals, setApprovals] = useState<Approval[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
             await api.approvals.decide(id, true);
             load();
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : "Error al procesar la decisión");
+            toast.error(err instanceof Error ? err.message : t("toasts.decisionError"));
         } finally {
             setDeciding(null);
         }
@@ -78,20 +80,20 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
             await api.approvals.decide(id, false, reason);
             load();
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : "Error al procesar el rechazo");
+            toast.error(err instanceof Error ? err.message : t("toasts.rejectError"));
         } finally {
             setDeciding(null);
         }
     }
 
     async function handleCleanup() {
-        if (!await showConfirm({ message: "¿Eliminar todas las aprobaciones expiradas y ya resueltas?", confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("cleanup.confirmMessage"), confirmLabel: t("cleanup.confirmLabel"), confirmVariant: "danger" })) return;
         setCleaning(true);
         try {
             await api.approvals.cleanup();
             load();
         } catch {
-            toast.error("Error al limpiar aprobaciones");
+            toast.error(t("toasts.cleanupError"));
         } finally {
             setCleaning(false);
         }
@@ -105,20 +107,20 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
                     onClick={handleCleanup}
                     disabled={cleaning || loading}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 text-xs font-medium transition disabled:opacity-40"
-                    title="Eliminar aprobaciones expiradas y resueltas"
+                    title={t("cleanup.buttonTitle")}
                 >
                     {cleaning ? <XCircle className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    Limpiar historial
+                    {t("cleanup.button")}
                 </button>
             </div>
 
             {loading ? (
-                <div className="text-center py-20 text-muted-foreground text-sm">Cargando…</div>
+                <div className="text-center py-20 text-muted-foreground text-sm">{t("approvals.loading")}</div>
             ) : approvals.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center bg-card border border-border rounded-xl">
                     <ShieldCheck className="w-12 h-12 text-emerald-500/40 mb-3" />
-                    <p className="text-foreground font-medium">Sin aprobaciones pendientes</p>
-                    <p className="text-sm text-muted-foreground mt-1">Los agentes no requieren tu atención ahora mismo</p>
+                    <p className="text-foreground font-medium">{t("approvals.emptyTitle")}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{t("approvals.emptyDescription")}</p>
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -151,28 +153,28 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                                 <XCircle className="w-5 h-5 text-red-500" />
-                                Rechazar Acción
+                                {t("rejectModal.title")}
                             </h3>
                             <button
                                 onClick={() => setRejectingId(null)}
                                 className="text-muted-foreground hover:text-foreground transition-colors"
-                             aria-label="Cancelar rechazo">
+                             aria-label={t("rejectModal.closeAria")}>
                                 <X className="w-5 h-5" aria-hidden="true" />
                             </button>
                         </div>
 
                         <p className="text-sm text-muted-foreground mb-4">
-                            Estás a punto de rechazar esta acción. Puedes indicar un motivo opcional para que el agente lo tenga en cuenta en futuros intentos.
+                            {t("rejectModal.description")}
                         </p>
 
                         <div className="mb-6">
                             <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                                Motivo del rechazo (opcional)
+                                {t("rejectModal.reasonLabel")}
                             </label>
                             <textarea
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}
-                                placeholder="Ej: Faltan datos en el documento..."
+                                placeholder={t("rejectModal.reasonPlaceholder")}
                                 className="w-full bg-muted border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all resize-none h-24"
                                 autoFocus
                             />
@@ -183,13 +185,13 @@ export function ApprovalsTab({ onPendingCount }: ApprovalsTabProps) {
                                 onClick={() => setRejectingId(null)}
                                 className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
                             >
-                                Cancelar
+                                {t("rejectModal.cancel")}
                             </button>
                             <button
                                 onClick={handleConfirmReject}
                                 className="px-5 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-500 text-foreground transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_20px_rgba(220,38,38,0.3)]"
                             >
-                                Confirmar Rechazo
+                                {t("rejectModal.confirm")}
                             </button>
                         </div>
                     </div>

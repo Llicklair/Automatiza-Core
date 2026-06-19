@@ -40,7 +40,7 @@ export default function OrderModal({
             <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-bold text-foreground">{t("newOrderTitle")}</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Cerrar formulario de pedido">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={t("closeOrderForm")}>
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
@@ -120,7 +120,7 @@ export default function OrderModal({
                                         </select>
                                     </div>
                                     <div className="col-span-1 flex items-end justify-end">
-                                        <button type="button" onClick={() => removeLine(i)} disabled={form.lines.length === 1} className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30" aria-label="Eliminar línea">
+                                        <button type="button" onClick={() => removeLine(i)} disabled={form.lines.length === 1} className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30" aria-label={t("deleteLineAria")}>
                                             <X className="w-3.5 h-3.5" aria-hidden="true" />
                                         </button>
                                     </div>

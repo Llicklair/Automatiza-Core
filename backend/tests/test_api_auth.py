@@ -85,6 +85,42 @@ class TestRegister:
         assert resp.status_code == 422
 
 
+class TestRegisterRemoteBlocked:
+    """SEC.REMOTE — /register solo desde el equipo local; nunca desde el túnel/LAN."""
+
+    @pytest.mark.asyncio
+    async def test_register_blocked_through_proxy(self, client: AsyncClient):
+        payload = {
+            "email": "remoto@empresa.com",
+            "password": "Password123!",
+            "full_name": "Atacante Remoto",
+            "tenant": {"name": "Empresa Falsa", "nif": "B55667788"},
+        }
+        # Simula una petición que llega por Cloudflare Tunnel (peer loopback pero
+        # con cabecera de proxy) → debe rechazarse con 404, sin crear el tenant.
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json=payload,
+            headers={"CF-Connecting-IP": "203.0.113.7"},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_register_blocked_with_forwarded_for(self, client: AsyncClient):
+        payload = {
+            "email": "remoto2@empresa.com",
+            "password": "Password123!",
+            "full_name": "Atacante Remoto 2",
+            "tenant": {"name": "Empresa Falsa 2", "nif": "B66778899"},
+        }
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json=payload,
+            headers={"X-Forwarded-For": "203.0.113.9"},
+        )
+        assert resp.status_code == 404
+
+
 class TestLogin:
     @pytest.mark.asyncio
     async def test_login_success(self, client: AsyncClient):

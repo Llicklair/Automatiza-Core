@@ -50,6 +50,9 @@ desktop/*.txt
 # Artefactos de auditoría arquitectónica (volcados de grafo en el árbol)
 tasks/reports/_audit/
 
+# Reports E2E generados por tasks/test_funcional_completo.py (salida de runtime)
+tasks/reports/e2e_report_*.json
+
 # Windows shell artifact: cuando un comando con `>/dev/null` se ejecuta en
 # PowerShell (en vez de bash/MSYS), Windows lo interpreta como un fichero
 # llamado `nul`. No es tracking-worthy, no usarlo nunca como nombre real.
@@ -97,3 +100,6 @@ backups/
 backend/scripts/_runs/
 
 data-gym-cache/
+
+# Binario de cloudflared descargado para pruebas de acceso remoto (no versionar)
+tools/cloudflared.exe

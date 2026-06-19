@@ -9,34 +9,34 @@ export const LLM_PROVIDERS = [
         defaultModel: "claude-sonnet-4-6",
         models: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
         consoleUrl: "https://console.anthropic.com/settings/keys",
-        hint: "Recomendado. Modelos Claude de alta calidad.",
+        hintKey: "apiKeys.hintAnthropic",
     },
     {
         key: "groq", label: "Groq", placeholder: "gsk_...",
         defaultModel: "llama-3.3-70b-versatile",
         models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"],
         consoleUrl: "https://console.groq.com/keys",
-        hint: "Inferencia ultra-rápida. Modelos open source gratuitos.",
+        hintKey: "apiKeys.hintGroq",
     },
     {
         key: "openai", label: "OpenAI", placeholder: "sk-proj-...",
         defaultModel: "gpt-4o-mini",
         models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "o1-mini"],
         consoleUrl: "https://platform.openai.com/api-keys",
-        hint: "GPT-4o y familia. De pago.",
+        hintKey: "apiKeys.hintOpenai",
     },
     {
         key: "openrouter", label: "OpenRouter", placeholder: "sk-or-...",
         defaultModel: "anthropic/claude-sonnet-4-6",
         models: ["anthropic/claude-sonnet-4-6", "google/gemma-3-27b-it:free", "mistralai/mistral-small-3.1-24b-instruct:free", "qwen/qwen3-235b-a22b-thinking-2507"],
         consoleUrl: "https://openrouter.ai/keys",
-        hint: "Acceso a múltiples modelos con una sola key.",
+        hintKey: "apiKeys.hintOpenrouter",
     },
 ];
 
 export const EMBEDDINGS_OPTIONS = [
-    { key: "local",   label: "Local (BAAI/bge-m3)",        desc: "Sin coste, offline, ~570 MB" },
-    { key: "openai",  label: "OpenAI text-embedding-3-small", desc: "Requiere OpenAI API Key" },
+    { key: "local",   labelKey: "apiKeys.embeddingsLocalLabel",  descKey: "apiKeys.embeddingsLocalDesc" },
+    { key: "openai",  labelKey: "apiKeys.embeddingsOpenaiLabel", descKey: "apiKeys.embeddingsOpenaiDesc" },
 ];
 
 export type ProviderState = {
@@ -57,7 +57,7 @@ export type ClaudeSetupState = {
 export function useApiKeys() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [msg, setMsg] = useState("");
+    const [saveStatus, setSaveStatus] = useState<"" | "ok" | "error">("");
     const [activeLlm, setActiveLlm] = useState("claude_code");
     const [activeEmbeddings, setActiveEmbeddings] = useState("local");
     const [providers, setProviders] = useState<Record<string, ProviderState>>({});
@@ -105,7 +105,7 @@ export function useApiKeys() {
 
     async function save() {
         setSaving(true);
-        setMsg("");
+        setSaveStatus("");
         const providersPayload: Record<string, LlmProviderConfigUpdate> = {};
         for (const p of LLM_PROVIDERS) {
             const s = providers[p.key];
@@ -122,7 +122,7 @@ export function useApiKeys() {
                 active_embeddings_provider: activeEmbeddings,
                 providers: providersPayload,
             });
-            setMsg("Configuración guardada");
+            setSaveStatus("ok");
             setProviders(prev => {
                 const next = { ...prev };
                 for (const p of LLM_PROVIDERS) {
@@ -133,14 +133,14 @@ export function useApiKeys() {
                 return next;
             });
         } catch {
-            setMsg("Error al guardar");
+            setSaveStatus("error");
         } finally {
             setSaving(false);
         }
     }
 
     return {
-        loading, saving, msg, save,
+        loading, saving, saveStatus, save,
         activeLlm, setActiveLlm,
         activeEmbeddings, setActiveEmbeddings,
         providers, updateProvider,

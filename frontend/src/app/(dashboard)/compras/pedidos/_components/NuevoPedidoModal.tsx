@@ -79,7 +79,7 @@ export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, prod
                                             className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary" />
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-xs text-muted-foreground mb-1">Precio</label>
+                                        <label className="block text-xs text-muted-foreground mb-1">{t("price")}</label>
                                         <input type="number" min={0} step={0.01} value={line.unit_price} onChange={e => setLine(i, "unit_price", parseFloat(e.target.value) || 0)}
                                             className="w-full bg-card border border-border text-foreground text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary" />
                                     </div>
@@ -93,7 +93,7 @@ export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, prod
                                     <div className="col-span-1 flex items-end justify-end">
                                         <button type="button" onClick={() => setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))}
                                             disabled={form.lines.length === 1}
-                                            className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30" aria-label="Eliminar línea">
+                                            className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30" aria-label={t("deleteLine")}>
                                             <X className="w-3.5 h-3.5" aria-hidden="true" />
                                         </button>
                                     </div>
@@ -106,25 +106,25 @@ export function NuevoPedidoModal({ open, onClose, form, setForm, suppliers, prod
                     </div>
 
                     <div className="bg-muted rounded-xl p-4 flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Total pedido</span>
+                        <span className="text-sm text-muted-foreground">{t("orderTotal")}</span>
                         <span className="text-xl font-bold text-foreground">{fmt(orderTotal)}</span>
                     </div>
 
                     <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Notas</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5 font-medium">{t("notes")}</label>
                         <textarea value={form.notes} rows={2} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                             className="w-full bg-card border border-border text-foreground text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-primary transition-colors resize-none"
-                            placeholder="Condiciones especiales, instrucciones de entrega..." />
+                            placeholder={t("notesPlaceholder")} />
                     </div>
 
                     <div className="flex gap-3">
                         <button type="button" onClick={onClose}
                             className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground text-sm hover:bg-accent/50 transition-colors">
-                            Cancelar
+                            {t("cancel")}
                         </button>
                         <button type="submit" disabled={saving}
                             className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary text-foreground text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                            {saving && <Loader2 className="w-4 h-4 animate-spin" />} Crear pedido
+                            {saving && <Loader2 className="w-4 h-4 animate-spin" />} {t("create")}
                         </button>
                     </div>
                 </form>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, Product } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -20,6 +21,7 @@ const emptyForm = (): FormState => ({
 });
 
 export function useCatalogPage() {
+    const t = useTranslations("catalogo");
     const toast = useToastStore();
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +88,7 @@ export function useCatalogPage() {
             }
             setShowModal(false);
         } catch (err: any) {
-            toast.error(err?.message || "Error guardando");
+            toast.error(err?.message || t("toasts.saveError"));
         } finally {
             setIsSubmitting(false);
         }
@@ -94,10 +96,10 @@ export function useCatalogPage() {
 
     const handleDelete = async (id: string, name: string) => {
         const confirmed = await showConfirm({
-            title: "Eliminar artículo",
-            message: `¿Eliminar "${name}"? Esta acción no se puede deshacer.`,
-            confirmLabel: "Eliminar",
-            cancelLabel: "Cancelar",
+            title: t("delete.title"),
+            message: t("delete.message", { name }),
+            confirmLabel: t("delete.confirm"),
+            cancelLabel: t("delete.cancel"),
             confirmVariant: "danger",
         });
         if (!confirmed) return;
@@ -105,9 +107,9 @@ export function useCatalogPage() {
         try {
             await api.erp.products.delete(id);
             setProducts(prev => prev.filter(p => p.id !== id));
-            toast.success("Artículo eliminado");
+            toast.success(t("toasts.deleted"));
         } catch (err: any) {
-            toast.error(err?.message || "Error eliminando");
+            toast.error(err?.message || t("toasts.deleteError"));
         } finally {
             setDeletingId(null);
         }

@@ -1,6 +1,7 @@
 "use client";
 
 import { FileDown, Plus, BookOpen, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useLibroDiario } from "./_hooks/useLibroDiario";
 import { AsientoModal } from "./_components/AsientoModal";
 import { CierreLibrosCard } from "./_components/CierreLibrosCard";
@@ -8,6 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 
 export default function LibroDiarioPage() {
+    const t = useTranslations("contabilidad");
     const {
         entries, loading, isModalOpen, setModalOpen,
         newEntry, setNewEntry,
@@ -19,16 +21,16 @@ export default function LibroDiarioPage() {
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
             <PageHeader
-                title="Libro Diario"
-                description="Registro cronológico de todos los asientos y movimientos contables."
+                title={t("libroDiario.title")}
+                description={t("libroDiario.description")}
                 icon={BookOpen}
                 actions={
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={exportCSV} disabled={entries.length === 0}>
-                            <FileDown className="w-4 h-4 mr-2" /> Exportar CSV
+                            <FileDown className="w-4 h-4 mr-2" /> {t("libroDiario.exportCsv")}
                         </Button>
                         <Button onClick={() => setModalOpen(true)}>
-                            <Plus className="w-4 h-4 mr-2" /> Nuevo Asiento
+                            <Plus className="w-4 h-4 mr-2" /> {t("libroDiario.newEntry")}
                         </Button>
                     </div>
                 }
@@ -38,24 +40,24 @@ export default function LibroDiarioPage() {
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
                 {loading ? (
-                    <div className="p-12 text-center text-muted-foreground bg-accent/50 animate-pulse">Cargando apuntes contables...</div>
+                    <div className="p-12 text-center text-muted-foreground bg-accent/50 animate-pulse">{t("libroDiario.loading")}</div>
                 ) : entries.length === 0 ? (
                     <div className="p-16 text-center">
                         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-1">Libro Vacío</h3>
-                        <p className="text-muted-foreground">No se han registrado asientos contables aún.</p>
+                        <h3 className="text-lg font-medium text-foreground mb-1">{t("libroDiario.emptyTitle")}</h3>
+                        <p className="text-muted-foreground">{t("libroDiario.emptyDescription")}</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-card text-muted-foreground border-b border-border">
                                 <tr>
-                                    <th className="px-6 py-4 font-medium w-40">Fecha</th>
-                                    <th className="px-6 py-4 font-medium">Concepto</th>
-                                    <th className="px-6 py-4 font-medium w-48">Cuenta</th>
-                                    <th className="px-6 py-4 font-medium w-64">Nombre</th>
-                                    <th className="px-6 py-4 font-medium text-right w-32">Debe</th>
-                                    <th className="px-6 py-4 font-medium text-right w-32">Haber</th>
+                                    <th className="px-6 py-4 font-medium w-40">{t("libroDiario.thDate")}</th>
+                                    <th className="px-6 py-4 font-medium">{t("libroDiario.thConcept")}</th>
+                                    <th className="px-6 py-4 font-medium w-48">{t("libroDiario.thAccount")}</th>
+                                    <th className="px-6 py-4 font-medium w-64">{t("libroDiario.thName")}</th>
+                                    <th className="px-6 py-4 font-medium text-right w-32">{t("libroDiario.thDebit")}</th>
+                                    <th className="px-6 py-4 font-medium text-right w-32">{t("libroDiario.thCredit")}</th>
                                     <th className="px-6 py-4 font-medium w-12"></th>
                                 </tr>
                             </thead>
@@ -93,8 +95,8 @@ export default function LibroDiarioPage() {
                                                 size="icon"
                                                 className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                                                 onClick={() => deleteEntry(entry.id)}
-                                                title="Eliminar asiento"
-                                             aria-label="Eliminar asiento">
+                                                title={t("libroDiario.deleteEntry")}
+                                             aria-label={t("libroDiario.deleteEntry")}>
                                                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                             </Button>
                                         </td>

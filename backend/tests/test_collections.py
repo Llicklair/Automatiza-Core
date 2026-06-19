@@ -1,5 +1,5 @@
 """Tests de inteligencia de cobros (F3.9)."""
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest

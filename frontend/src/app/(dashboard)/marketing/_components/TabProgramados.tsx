@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { CalendarClock, Loader2, Clock, AlertCircle, Trash2, CalendarDays, List, Send, Pencil } from "lucide-react";
 import { marketingApi, ScheduledPost } from "@/lib/api/marketing";
 import { useToastStore } from "@/stores/toast";
@@ -9,16 +10,19 @@ import { PLATFORMS } from "./constants";
 import { PostsCalendar } from "./PostsCalendar";
 import { EditPostModal } from "./EditPostModal";
 
-const STATUS_CONFIG = {
-    draft:     { label: "Borrador",    color: "text-muted-foreground bg-muted/50 border-border" },
-    scheduled: { label: "Programado",  color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-    published: { label: "Publicado",   color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-    failed:    { label: "Error",       color: "text-red-400 bg-red-500/10 border-red-500/20" },
-};
+const STATUS_COLOR = {
+    draft:     "text-muted-foreground bg-muted/50 border-border",
+    scheduled: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    published: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    failed:    "text-red-400 bg-red-500/10 border-red-500/20",
+} as const;
 
 // ── Tab: Programados ───────────────────────────────────────────────────────────
 
 export function TabProgramados() {
+    const t = useTranslations("marketing.programados");
+    const ts = useTranslations("marketing.status");
+    const tc = useTranslations("marketing.common");
     const toast = useToastStore();
     const [posts, setPosts] = useState<ScheduledPost[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,7 +49,7 @@ export function TabProgramados() {
             await marketingApi.posts.delete(id);
             setPosts((prev) => prev.filter((p) => p.id !== id));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Error al eliminar la publicación");
+            toast.error(err instanceof Error ? err.message : t("deleteFail"));
         }
     };
 
@@ -55,7 +59,7 @@ export function TabProgramados() {
             const updated = await marketingApi.posts.publish(id);
             setPosts((prev) => prev.map((p) => (p.id === id ? updated : p)));
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Error al publicar";
+            const msg = err instanceof Error ? err.message : t("publishError");
             setPosts((prev) =>
                 prev.map((p) => (p.id === id ? { ...p, status: "failed" as const, error_message: msg } : p))
             );
@@ -83,7 +87,7 @@ export function TabProgramados() {
                                 : "border-border text-muted-foreground hover:text-foreground"
                         }`}
                     >
-                        {s === "all" ? "Todos" : STATUS_CONFIG[s as keyof typeof STATUS_CONFIG]?.label ?? s}
+                        {s === "all" ? t("filterAll") : ts(s)}
                     </button>
                 ))}
             </div>
@@ -91,7 +95,7 @@ export function TabProgramados() {
             {/* Toggle Lista / Calendario */}
             <div className="flex justify-end">
                 <div className="inline-flex bg-card border border-border rounded-lg p-0.5">
-                    {([["list", "Lista"], ["calendar", "Calendario"]] as const).map(([v, label]) => (
+                    {([["list", t("viewList")], ["calendar", t("viewCalendar")]] as const).map(([v, label]) => (
                         <button
                             key={v}
                             onClick={() => setView(v)}
@@ -114,7 +118,7 @@ export function TabProgramados() {
             {!loading && posts.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                     <CalendarClock className="w-8 h-8 text-muted-foreground/30 mb-3" />
-                    <p className="text-sm text-muted-foreground">No hay posts en este estado</p>
+                    <p className="text-sm text-muted-foreground">{t("emptyState")}</p>
                 </div>
             )}
 
@@ -123,7 +127,7 @@ export function TabProgramados() {
             {view === "list" && (
             <div className="space-y-3">
                 {posts.map((post) => {
-                    const cfg = STATUS_CONFIG[post.status];
+                    const statusColor = STATUS_COLOR[post.status];
                     const platCfg = PLATFORMS.find((p) => p.id === post.platform);
                     return (
                         <div key={post.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
@@ -132,8 +136,8 @@ export function TabProgramados() {
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${platCfg?.colorClass ?? "text-muted-foreground border-border"}`}>
                                         {platCfg?.name ?? post.platform}
                                     </span>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cfg?.color}`}>
-                                        {cfg?.label}
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${statusColor}`}>
+                                        {ts(post.status)}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -145,7 +149,7 @@ export function TabProgramados() {
                                         <button
                                             onClick={() => setEditing(post)}
                                             className="text-muted-foreground hover:text-pink-400 transition-colors"
-                                            title="Editar texto, imagen y fecha"
+                                            title={t("editTitle")}
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
                                         </button>
@@ -159,7 +163,7 @@ export function TabProgramados() {
                                             {publishing.has(post.id)
                                                 ? <Loader2 className="w-3 h-3 animate-spin" />
                                                 : <Send className="w-3 h-3" />}
-                                            Publicar ahora
+                                            {tc("publishNow")}
                                         </button>
                                     )}
                                     {post.status !== "published" && (

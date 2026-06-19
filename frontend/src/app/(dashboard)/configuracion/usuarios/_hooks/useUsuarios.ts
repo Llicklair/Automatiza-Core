@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import {
     api,
     type Invitation,
@@ -11,6 +13,7 @@ import {
 } from "@/lib/api";
 
 export function useUsuarios() {
+    const t = useTranslations("configuracion");
     const [users, setUsers] = useState<User[]>([]);
     const [invitations, setInvitations] = useState<Invitation[]>([]);
     const [me, setMe] = useState<User | null>(null);
@@ -31,11 +34,11 @@ export function useUsuarios() {
             setMe(current);
             setInvitations(invs);
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Error cargando usuarios");
+            setError(e instanceof Error ? e.message : t("usuarios.errorLoad"));
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         void load();

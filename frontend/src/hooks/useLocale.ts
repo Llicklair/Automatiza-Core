@@ -1,10 +1,10 @@
 /**
  * I18N.SEL — preferencia de idioma persistida en cookie.
  *
- * Solo se ofrece "es" hasta que existan traducciones reales (I18N.TR):
- * ca/eu/gl son stubs con prefijo [XX] y en está incompleto, así que la UI
- * no los lista (auditoría UIX #1: no ofrecer lo que no funciona). Al
- * reactivar un idioma: añadirlo aquí, a AppLocale y a `i18n/request.ts`.
+ * Se ofrecen "es" y "en" (traducción completa, parity es/en al 100%).
+ * ca/eu/gl siguen siendo stubs incompletos → la UI no los lista hasta
+ * tener traducción real. Al reactivar un idioma: añadirlo aquí, a
+ * AppLocale y a `i18n/request.ts`.
  *
  * El cookie se lee server-side en `i18n/request.ts` para SSR consistente.
  * Cambiar el idioma requiere refresh — Next.js no permite cambiar el
@@ -12,15 +12,15 @@
  */
 "use client";
 
-export type AppLocale = "es";
+export type AppLocale = "es" | "en";
 
 export const SUPPORTED_LOCALES: { code: AppLocale; label: string; native: string }[] = [
     { code: "es", label: "Español", native: "Español" },
+    { code: "en", label: "Inglés", native: "English" },
     // Pendientes de traducción real (I18N.TR) — no ofrecer hasta entonces:
     // { code: "ca", label: "Catalán", native: "Català" },
     // { code: "eu", label: "Euskera", native: "Euskara" },
     // { code: "gl", label: "Gallego", native: "Galego" },
-    // { code: "en", label: "Inglés", native: "English" },
 ];
 
 const COOKIE = "locale";

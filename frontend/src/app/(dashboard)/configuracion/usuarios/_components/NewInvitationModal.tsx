@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
-import { INVITE_ROLES, ROLE_LABEL } from "../roles";
+import { useTranslations } from "next-intl";
+
+import { INVITE_ROLES, roleLabels } from "../roles";
 import { Modal, ModalActions, Field } from "./Modal";
 
 export default function NewInvitationModal({
@@ -12,6 +14,8 @@ export default function NewInvitationModal({
     onCancel: () => void;
     onSubmit: (email: string, role: string, ttl_days: number) => Promise<void>;
 }) {
+    const t = useTranslations("configuracion");
+    const roleLabel = roleLabels(t);
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<string>("employee");
     const [ttlDays, setTtlDays] = useState<number>(7);
@@ -28,12 +32,12 @@ export default function NewInvitationModal({
     }
 
     return (
-        <Modal title="Invitar por email" onClose={onCancel}>
+        <Modal title={t("usuarios.inviteByEmail")} onClose={onCancel}>
             <p className="text-xs text-muted-foreground -mt-1">
-                Genera un enlace de invitación. Tras crearlo te lo mostraremos para que lo copies y lo envíes a la persona como prefieras.
+                {t("usuarios.inviteHelp")}
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Email del invitado" required>
+                <Field label={t("usuarios.inviteeEmail")} required>
                     <input
                         type="email"
                         required
@@ -44,33 +48,33 @@ export default function NewInvitationModal({
                     />
                 </Field>
 
-                <Field label="Rol al aceptar">
+                <Field label={t("usuarios.roleOnAccept")}>
                     <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
                     >
                         {INVITE_ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>
+                            <option key={r} value={r}>{roleLabel[r] ?? r}</option>
                         ))}
                     </select>
                 </Field>
 
-                <Field label="Caducidad">
+                <Field label={t("usuarios.expiry")}>
                     <select
                         value={ttlDays}
                         onChange={(e) => setTtlDays(Number(e.target.value))}
                         className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
                     >
-                        <option value={1}>1 día</option>
-                        <option value={3}>3 días</option>
-                        <option value={7}>7 días (recomendado)</option>
-                        <option value={14}>14 días</option>
-                        <option value={30}>30 días</option>
+                        <option value={1}>{t("usuarios.ttl1")}</option>
+                        <option value={3}>{t("usuarios.ttl3")}</option>
+                        <option value={7}>{t("usuarios.ttl7")}</option>
+                        <option value={14}>{t("usuarios.ttl14")}</option>
+                        <option value={30}>{t("usuarios.ttl30")}</option>
                     </select>
                 </Field>
 
-                <ModalActions onCancel={onCancel} submitting={submitting} submitLabel="Generar enlace" />
+                <ModalActions onCancel={onCancel} submitting={submitting} submitLabel={t("usuarios.generateLink")} />
             </form>
         </Modal>
     );

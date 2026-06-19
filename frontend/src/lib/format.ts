@@ -14,6 +14,7 @@ import type { AppLocale } from "@/hooks/useLocale";
 
 const INTL_LOCALE: Record<AppLocale, string> = {
     es: "es-ES",
+    en: "en-GB",
 };
 
 function intlLocale(locale: AppLocale): string {

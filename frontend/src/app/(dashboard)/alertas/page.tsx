@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     AlertTriangle, Bell, CheckCircle2, Info, Loader2, PackageX,
     RefreshCw, ReceiptText, Sparkles, Wallet,
@@ -13,12 +14,13 @@ import { KpiCard } from "@/components/shared/KpiCard";
 import { useToastStore } from "@/stores/toast";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-const TYPE_META: Record<string, { label: string; icon: React.ElementType; href: string }> = {
-    overdue_invoice:  { label: "Factura vencida",           icon: ReceiptText, href: "/ventas/facturas" },
-    due_soon_invoice: { label: "Factura próxima a vencer",  icon: ReceiptText, href: "/ventas/facturas" },
-    low_stock:        { label: "Stock bajo",                icon: PackageX,    href: "/inventario/stock" },
-    pending_payroll:  { label: "Nómina pendiente de pago",  icon: Wallet,      href: "/rrhh/nominas" },
-};
+type TypeMeta = { label: string; icon: React.ElementType; href: string };
+const buildTypeMeta = (t: ReturnType<typeof useTranslations>): Record<string, TypeMeta> => ({
+    overdue_invoice:  { label: t("types.overdueInvoice"),  icon: ReceiptText, href: "/ventas/facturas" },
+    due_soon_invoice: { label: t("types.dueSoonInvoice"),  icon: ReceiptText, href: "/ventas/facturas" },
+    low_stock:        { label: t("types.lowStock"),        icon: PackageX,    href: "/inventario/stock" },
+    pending_payroll:  { label: t("types.pendingPayroll"),  icon: Wallet,      href: "/rrhh/nominas" },
+});
 
 const SEVERITY_CLS: Record<string, string> = {
     error:   "border-red-500/30 bg-red-500/5",
@@ -44,6 +46,8 @@ const fmtDate = (d: string) =>
     });
 
 export default function AlertasPage() {
+    const t = useTranslations("alertas");
+    const TYPE_META = buildTypeMeta(t);
     const toast = useToastStore();
     const [alerts, setAlerts] = useState<AlertEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +59,7 @@ export default function AlertasPage() {
         try {
             setAlerts(await api.alerts.list(hours));
         } catch {
-            toast.error("Error al cargar alertas");
+            toast.error(t("toasts.loadError"));
         } finally {
             setIsLoading(false);
         }
@@ -70,7 +74,7 @@ export default function AlertasPage() {
             toast.success(res.message);
             await load();
         } catch {
-            toast.error("Error al ejecutar comprobación");
+            toast.error(t("toasts.checkError"));
         } finally {
             setIsChecking(false);
         }
@@ -83,8 +87,8 @@ export default function AlertasPage() {
     return (
         <PageContainer width="full">
             <PageHeader
-                title="Alertas automáticas"
-                description="Condiciones de negocio detectadas por el sistema (facturas, stock, nóminas)"
+                title={t("header.title")}
+                description={t("header.description")}
                 icon={Bell}
                 actions={
                     <div className="flex items-center gap-2">
@@ -93,17 +97,17 @@ export default function AlertasPage() {
                             onChange={(e) => setHours(Number(e.target.value))}
                             className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none"
                         >
-                            <option value={24}>Últimas 24h</option>
-                            <option value={48}>Últimas 48h</option>
-                            <option value={168}>Última semana</option>
+                            <option value={24}>{t("range.last24h")}</option>
+                            <option value={48}>{t("range.last48h")}</option>
+                            <option value={168}>{t("range.lastWeek")}</option>
                         </select>
-                        <Button size="sm" variant="outline" onClick={load} disabled={isLoading} aria-label="Recargar alertas">
+                        <Button size="sm" variant="outline" onClick={load} disabled={isLoading} aria-label={t("actions.reloadAria")}>
                             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                         <Button size="sm" onClick={handleCheck} disabled={isChecking}>
                             {isChecking
-                                ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Comprobando…</>
-                                : <><Sparkles className="mr-2 h-3.5 w-3.5" />Comprobar ahora</>}
+                                ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />{t("actions.checking")}</>
+                                : <><Sparkles className="mr-2 h-3.5 w-3.5" />{t("actions.checkNow")}</>}
                         </Button>
                     </div>
                 }
@@ -111,21 +115,21 @@ export default function AlertasPage() {
 
             {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <KpiCard title="Total alertas" value={alerts.length} icon={Bell} />
-                <KpiCard title="Críticas" value={errors} icon={AlertTriangle} />
-                <KpiCard title="Avisos" value={warnings} icon={AlertTriangle} />
-                <KpiCard title="Informativas" value={infos} icon={Info} />
+                <KpiCard title={t("kpis.total")} value={alerts.length} icon={Bell} />
+                <KpiCard title={t("kpis.critical")} value={errors} icon={AlertTriangle} />
+                <KpiCard title={t("kpis.warnings")} value={warnings} icon={AlertTriangle} />
+                <KpiCard title={t("kpis.info")} value={infos} icon={Info} />
             </div>
 
             {/* Alert list */}
             {isLoading ? (
                 <div className="flex items-center justify-center h-48 text-muted-foreground text-sm gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando alertas…
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("list.loading")}
                 </div>
             ) : alerts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground rounded-xl border border-border bg-card">
                     <CheckCircle2 className="w-7 h-7 text-emerald-400 opacity-60" />
-                    <p className="text-sm">Sin alertas en el periodo seleccionado</p>
+                    <p className="text-sm">{t("list.empty")}</p>
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -154,7 +158,7 @@ export default function AlertasPage() {
                                         href={meta.href}
                                         className="text-xs text-primary hover:underline shrink-0 mt-0.5"
                                     >
-                                        Ver →
+                                        {t("list.view")}
                                     </a>
                                 )}
                             </div>
@@ -164,7 +168,7 @@ export default function AlertasPage() {
             )}
 
             <p className="text-xs text-muted-foreground">
-                Las alertas se comprueban automáticamente cada día a las 08:30. Las mismas alertas no se repiten antes de 24h.
+                {t("footer.note")}
             </p>
         </PageContainer>
     );

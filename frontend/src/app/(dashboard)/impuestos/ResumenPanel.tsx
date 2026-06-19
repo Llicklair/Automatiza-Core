@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     CalendarClock, AlertTriangle, CheckCircle2,
     Loader2, ChevronRight, Clock, ReceiptText, MessageSquare, Sparkles,
@@ -25,6 +26,7 @@ function currentQuarterYear(): { quarter: number; year: number } {
 }
 
 export function ResumenPanel() {
+    const t = useTranslations("impuestos");
     const { events, loading, error, urgentes, proximos } = useImpuestos();
     const [exp303Open, setExp303Open] = useState(false);
     const [exp303Q, setExp303Q] = useState(currentQuarterYear());
@@ -32,8 +34,8 @@ export function ResumenPanel() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Impuestos & Fiscal"
-                description="Calendario AEAT, vencimientos fiscales y consultas a tu asesor IA"
+                title={t("resumen.title")}
+                description={t("resumen.description")}
                 icon={CalendarClock}
             />
 
@@ -41,20 +43,20 @@ export function ResumenPanel() {
                 <TabsList>
                     <TabsTrigger value="calendario" className="gap-2">
                         <CalendarClock className="w-4 h-4" />
-                        Calendario AEAT
+                        {t("resumen.tabCalendario")}
                     </TabsTrigger>
                     <TabsTrigger value="consulta" className="gap-2">
                         <MessageSquare className="w-4 h-4" />
-                        Consultar Asesor IA
+                        {t("resumen.tabConsulta")}
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="consulta">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-sm">Consulta Fiscal</CardTitle>
+                            <CardTitle className="text-sm">{t("resumen.consultaTitle")}</CardTitle>
                             <CardDescription>
-                                El agente responde sobre normativa española vigente basándose en el Modelo de IA configurado
+                                {t("resumen.consultaDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -76,10 +78,10 @@ export function ResumenPanel() {
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold text-foreground">
-                                        Expediente Modelo 303 — listo para presentar
+                                        {t("resumen.expediente303Title")}
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-0.5 max-w-prose">
-                                        Casillas oficiales rellenadas desde tus facturas, XML auxiliar, PDF y checklist paso a paso para presentar tú mismo en la SEDE AEAT.
+                                        {t("resumen.expediente303Description")}
                                     </p>
                                 </div>
                             </div>
@@ -94,12 +96,12 @@ export function ResumenPanel() {
                                 >
                                     {[1, 2, 3, 4].map((q) => (
                                         <option key={`${q}-${exp303Q.year}`} value={`${q}-${exp303Q.year}`}>
-                                            {q}T {exp303Q.year}
+                                            {t("resumen.quarterYear", { quarter: q, year: exp303Q.year })}
                                         </option>
                                     ))}
                                 </select>
                                 <Button onClick={() => setExp303Open(true)} className="h-9">
-                                    Generar expediente
+                                    {t("resumen.generarExpediente")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -110,18 +112,18 @@ export function ResumenPanel() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <KpiCard
-                            title="Vencimientos urgentes"
+                            title={t("resumen.kpiUrgentes")}
                             value={loading ? "—" : urgentes.length}
                             icon={AlertTriangle}
                             className={urgentes.length > 0 ? "border-red-500/20" : ""}
                         />
                         <KpiCard
-                            title="Próximos 90 días"
+                            title={t("resumen.kpiProximos")}
                             value={loading ? "—" : proximos.length}
                             icon={Clock}
                         />
                         <KpiCard
-                            title="Modelos en calendario"
+                            title={t("resumen.kpiModelos")}
                             value={loading ? "—" : events.length}
                             icon={ReceiptText}
                         />
@@ -130,14 +132,14 @@ export function ResumenPanel() {
                     {loading ? (
                         <div className="flex items-center justify-center py-20 text-muted-foreground gap-3">
                             <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                            <span className="text-sm">Cargando calendario fiscal AEAT...</span>
+                            <span className="text-sm">{t("resumen.loadingCalendar")}</span>
                         </div>
                     ) : error ? (
                         <Card className="border-red-500/20 bg-red-500/5">
                             <CardContent className="p-6 text-red-400 text-sm flex gap-3">
                                 <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">Error al cargar el calendario fiscal</p>
+                                    <p className="font-medium">{t("resumen.errorCalendarTitle")}</p>
                                     <p className="text-red-400/70 text-xs mt-1">{error}</p>
                                 </div>
                             </CardContent>
@@ -150,9 +152,9 @@ export function ResumenPanel() {
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
                                         <AlertTriangle className="w-4 h-4 text-red-400" />
-                                        <h2 className="text-sm font-semibold text-red-400">Vencimientos Urgentes</h2>
+                                        <h2 className="text-sm font-semibold text-red-400">{t("resumen.vencimientosUrgentes")}</h2>
                                         <span className="ml-auto text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full font-bold">
-                                            {urgentes.length} pendiente{urgentes.length !== 1 ? "s" : ""}
+                                            {t("resumen.pendientes", { count: urgentes.length })}
                                         </span>
                                     </div>
                                     <div className="space-y-3">
@@ -165,7 +167,7 @@ export function ResumenPanel() {
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
                                         <CalendarClock className="w-4 h-4 text-muted-foreground" />
-                                        <h2 className="text-sm font-semibold text-muted-foreground">Próximos Vencimientos</h2>
+                                        <h2 className="text-sm font-semibold text-muted-foreground">{t("resumen.proximosVencimientos")}</h2>
                                         <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
                                     </div>
                                     <div className="space-y-3">
@@ -177,13 +179,13 @@ export function ResumenPanel() {
                             {events.length === 0 && (
                                 <EmptyState
                                     icon={CheckCircle2}
-                                    title="Sin vencimientos próximos"
-                                    description="No hay obligaciones fiscales en los próximos 90 días."
+                                    title={t("resumen.emptyTitle")}
+                                    description={t("resumen.emptyDescription")}
                                 />
                             )}
 
                             <p className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                                Calendario basado en normativa AEAT vigente · Datos orientativos
+                                {t("resumen.footnote")}
                             </p>
                         </div>
                     )}

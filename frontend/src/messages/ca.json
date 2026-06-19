@@ -333,7 +333,34 @@
     "serviceVatPercent": "[CA] % IVA",
     "serviceVatReduced": "[CA] 10% (reducido)",
     "serviceVatSuperReduced": "[CA] 4% (superreducido)",
-    "serviceVatExempt": "[CA] 0% (exento)"
+    "serviceVatExempt": "[CA] 0% (exento)",
+    "home": {
+      "title": "Vendes",
+      "subtitle": "Facturació, pressupostos i gestió comercial de tot el cicle de venda.",
+      "open": "Obrir",
+      "sections": {
+        "facturas": {
+          "title": "Factures",
+          "description": "Emissió i seguiment de factures de venda, cobraments i venciments."
+        },
+        "pedidos": {
+          "title": "Comandes",
+          "description": "Comandes de venda de clients i la seva conversió a factura."
+        },
+        "presupuestos": {
+          "title": "Pressupostos",
+          "description": "Pressupostos i ofertes comercials abans de confirmar la venda."
+        },
+        "recurrentes": {
+          "title": "Recurrents",
+          "description": "Facturació periòdica automàtica per a subscripcions i quotes."
+        },
+        "servicios": {
+          "title": "Serveis",
+          "description": "Catàleg de serveis facturables i les seves tarifes."
+        }
+      }
+    }
   },
   "clientes": {
     "title": "[CA] Directorio de Clientes",

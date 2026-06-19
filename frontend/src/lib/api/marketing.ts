@@ -6,7 +6,6 @@ export interface SocialAccount {
     account_id: string;
     account_name: string | null;
     is_active: boolean;
-    token_expires_at: string | null;
     created_at: string;
 }
 
@@ -86,19 +85,21 @@ export interface PublishBatchResponse {
     failed: string[];
 }
 
-export interface MarketingConfigStatus {
-    proxy: boolean;
-    platforms: Record<string, boolean>;
-    image_ai: boolean;
-    stock_images: boolean;
+export interface ZernioConfig {
+    id: string;
+    label: string | null;
+    default_profile_id: string | null;
+    num_accounts: number;
 }
 
 export const marketingApi = {
-    configStatus: () => request<MarketingConfigStatus>("/api/v1/marketing/config-status"),
     accounts: {
         list: () => request<SocialAccount[]>("/api/v1/marketing/accounts"),
-        connect: (platform: string) =>
-            request<{ auth_url: string }>(`/api/v1/marketing/accounts/connect/${platform}`, { method: "POST" }),
+        connect: (platform: string, providerConfigId?: string) =>
+            request<{ auth_url: string }>(
+                `/api/v1/marketing/accounts/connect/${platform}${providerConfigId ? `?provider_config_id=${providerConfigId}` : ""}`,
+                { method: "POST" }
+            ),
         disconnect: (id: string) =>
             request<void>(`/api/v1/marketing/accounts/${id}`, { method: "DELETE" }),
     },
@@ -148,5 +149,15 @@ export const marketingApi = {
                 method: "POST",
                 body: JSON.stringify({ prompt }),
             }),
+    },
+    zernioConfig: {
+        list: () => request<ZernioConfig[]>("/api/v1/marketing/zernio-config"),
+        add: (data: { api_key: string; label?: string }) =>
+            request<ZernioConfig>("/api/v1/marketing/zernio-config", {
+                method: "POST",
+                body: JSON.stringify(data),
+            }),
+        delete: (id: string) =>
+            request<void>(`/api/v1/marketing/zernio-config/${id}`, { method: "DELETE" }),
     },
 };

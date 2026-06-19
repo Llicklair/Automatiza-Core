@@ -210,7 +210,7 @@ export type { IntegrationStatus, GmailMessage, DriveFile, OutlookMessage, OneDri
 export type { DeliveryNote, DeliveryNoteLine, DeliveryNoteCreate } from "./albaranes";
 export type { AIEmployee, ActivityEntry } from "./ai_employees";
 export type { RecruitmentPosition, Candidate } from "./recruitment";
-export type { ScannerToken, ScannedProduct, StockMovementResult } from "./scanner";
+export type { ScannerToken, ScannedProduct } from "./scanner";
 export type { TelegramConnectResponse, TelegramStatus } from "./messaging";
 export type { HRDocument, HRDocumentGeneratePayload } from "./hr_documents";
 export type { GenerativeInterface } from "./generative_ui";

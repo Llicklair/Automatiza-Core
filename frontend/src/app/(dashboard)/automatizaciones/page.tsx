@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
     Zap, Plus, RotateCw, Loader2,
     BrainCircuit, Sparkles, Send, CheckCircle2, AlertCircle, X,
@@ -7,12 +8,14 @@ import {
 } from "lucide-react";
 import InfoBanner from "@/components/InfoBanner";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { TEMPLATES } from "./_components/constants";
+import { buildTemplates } from "./_components/constants";
 import WorkflowCard from "./_components/WorkflowCard";
 import WorkflowFormModal from "./_components/WorkflowFormModal";
 import { useAutomatizaciones } from "./_hooks/useAutomatizaciones";
 
 export default function WorkflowsPage() {
+    const t = useTranslations("automatizaciones");
+    const TEMPLATES = buildTemplates(t);
     const {
         workflows, isLoading, isSubmitting, showModal, setShowModal,
         editingWorkflow, runningId, toast, setToast,
@@ -45,27 +48,26 @@ export default function WorkflowsPage() {
                             <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl" />
                             <Zap className="w-8 h-8 text-primary relative z-10" />
                         </div>
-                        Motor de Automatizaciones
+                        {t("header.title")}
                     </h1>
                     <p className="text-muted-foreground mt-2 ml-14 text-sm max-w-2xl">
-                        Define reglas y triggers para que tus Agentes de IA operen la empresa de forma autónoma.
+                        {t("header.subtitle")}
                     </p>
                 </div>
                 <button onClick={() => setShowModal(true)}
                     className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground px-5 py-2.5 rounded-full font-medium transition-all shadow-lg shadow-primary/20">
-                    <Plus className="w-4 h-4" /> Nueva Regla
+                    <Plus className="w-4 h-4" /> {t("header.newRule")}
                 </button>
             </div>
 
-            <InfoBanner id="automatizaciones-intro" title="¿Qué es una automatización?">
+            <InfoBanner id="automatizaciones-intro" title={t("intro.title")}>
                 <p>
-                    Una automatización es una regla persistente: &quot;cada vez que pase X, haz Y&quot;.
-                    Se ejecuta sola, sin que intervengas.
-                    Ejemplo: <span className="text-primary">&quot;Cada día 1 del mes, genera las nóminas de todos los empleados.&quot;</span>
+                    {t("intro.body")}{" "}
+                    <span className="text-primary">{t("intro.example")}</span>
                 </p>
                 <p className="mt-1">
                     <a href="/mi-equipo?tab=tareas" className="text-primary hover:text-primary underline underline-offset-2 transition">
-                        ¿Solo necesitas algo puntual? Ir a Tareas →
+                        {t("intro.punctualLink")}
                     </a>
                 </p>
             </InfoBanner>
@@ -80,18 +82,18 @@ export default function WorkflowsPage() {
                         <Sparkles className="w-6 h-6" />
                     </div>
                     <div className="flex-1 w-full">
-                        <h3 className="text-sm font-semibold text-foreground mb-2">Habla con la IA</h3>
-                        <p className="text-xs text-muted-foreground mb-2">Pregunta lo que quieras o describe una regla para crearla.</p>
+                        <h3 className="text-sm font-semibold text-foreground mb-2">{t("ai.title")}</h3>
+                        <p className="text-xs text-muted-foreground mb-2">{t("ai.subtitle")}</p>
                         <div className="flex bg-background border border-border rounded-xl overflow-hidden focus-within:border-primary transition-colors">
                             <input type="text" value={nlQuery}
                                 onChange={(e) => { setNlQuery(e.target.value); if (chatResponse) setChatResponse(null); }}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSmartInput()}
-                                placeholder="Ej: ¿Se ejecutó la de nóminas? / Cada lunes envía un resumen de ventas"
+                                placeholder={t("ai.placeholder")}
                                 className="flex-1 bg-transparent border-none text-foreground text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-muted-foreground/60" />
                             <button onClick={handleSmartInput} disabled={(isParsing || chatLoading) || !nlQuery.trim()}
                                 className="px-5 bg-primary hover:bg-primary text-foreground font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
                                 {(isParsing || chatLoading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                {(isParsing || chatLoading) ? "Pensando..." : "Enviar"}
+                                {(isParsing || chatLoading) ? t("ai.thinking") : t("ai.send")}
                             </button>
                         </div>
                     </div>
@@ -121,17 +123,17 @@ export default function WorkflowsPage() {
                         <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-primary/20 shadow-lg shadow-primary/10">
                             <Zap className="w-10 h-10 text-primary" />
                         </div>
-                        <h3 className="text-xl font-bold text-foreground mb-2">Sin automatizaciones todavía</h3>
+                        <h3 className="text-xl font-bold text-foreground mb-2">{t("empty.title")}</h3>
                         <p className="text-muted-foreground max-w-md mb-8 text-sm">
-                            Crea reglas para que la IA opere tu empresa de forma autónoma. Puedes empezar con una plantilla o describir lo que necesitas.
+                            {t("empty.body")}
                         </p>
                         <button onClick={() => { resetForm(); setShowModal(true); }}
                             className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-foreground px-6 py-3 rounded-xl transition-all shadow-lg font-medium">
-                            <Plus className="w-5 h-5" /> Crear desde cero
+                            <Plus className="w-5 h-5" /> {t("empty.createFromScratch")}
                         </button>
                     </div>
                     <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4 text-center">O empieza con una plantilla</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4 text-center">{t("empty.orStartTemplate")}</p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {TEMPLATES.map((tpl, i) => {
                                 const Icon = tpl.icon;
@@ -144,7 +146,7 @@ export default function WorkflowsPage() {
                                         <h4 className="text-sm font-semibold text-foreground mb-1">{tpl.name}</h4>
                                         <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
                                         <p className={`text-xs font-medium mt-3 ${tpl.color} flex items-center gap-1`}>
-                                            <Sparkles className="w-3 h-3" /> Usar plantilla
+                                            <Sparkles className="w-3 h-3" /> {t("templates.use")}
                                         </p>
                                     </button>
                                 );
@@ -155,7 +157,7 @@ export default function WorkflowsPage() {
             ) : (
                 <div>
                     <div className="mb-6 flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground/60">Plantillas:</span>
+                        <span className="text-xs text-muted-foreground/60">{t("templates.label")}</span>
                         {TEMPLATES.map((tpl, i) => {
                             const Icon = tpl.icon;
                             return (

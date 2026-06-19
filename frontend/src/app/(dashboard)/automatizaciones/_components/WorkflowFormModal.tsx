@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Zap, X, Loader2, BrainCircuit, Cpu, Info, GitFork } from "lucide-react";
 import { Workflow } from "@/lib/api";
 import WorkflowGraph from "@/components/Workflows/WorkflowGraph";
@@ -47,48 +48,49 @@ export default function WorkflowFormModal({
     defaultEditorNodes, defaultEditorEdges, graphKey,
     onClose, onSubmit, onAddParallelBranch,
 }: WorkflowFormModalProps) {
+    const t = useTranslations("automatizaciones");
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-card border border-border rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-border flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                         <Zap className="w-5 h-5 text-primary" />
-                        {editingWorkflow ? "Editar Automatización" : "Nueva Regla de Automatización"}
+                        {editingWorkflow ? t("modal.editTitle") : t("modal.newTitle")}
                     </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition" aria-label="Cerrar">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition" aria-label={t("modal.close")}>
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
                 <form onSubmit={onSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">Nombre de la regla *</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">{t("modal.ruleName")}</label>
                         <input required type="text" value={name} onChange={e => setName(e.target.value)}
-                            placeholder="Ej: Alerta facturas vencidas"
+                            placeholder={t("modal.ruleNamePlaceholder")}
                             className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary transition" />
                     </div>
                     <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">Descripción</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">{t("modal.description")}</label>
                         <textarea value={description} onChange={e => setDescription(e.target.value)}
-                            placeholder="¿Qué hace esta regla?"
+                            placeholder={t("modal.descriptionPlaceholder")}
                             className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary transition resize-none h-16" />
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
                         <div>
-                            <label className="block text-xs font-semibold text-primary mb-1.5 uppercase tracking-wider">Trigger (Cuándo)</label>
+                            <label className="block text-xs font-semibold text-primary mb-1.5 uppercase tracking-wider">{t("modal.triggerWhen")}</label>
                             <select value={triggerType} onChange={e => setTriggerType(e.target.value)}
                                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary">
-                                <option value="event_based">⚡ Eventual — Al ocurrir un Evento ERP</option>
-                                <option value="schedule_based">🕐 De tiempo — Programación (Cron)</option>
-                                <option value="manual">🔄 Constante — A Demanda</option>
+                                <option value="event_based">{t("modal.triggerEventOption")}</option>
+                                <option value="schedule_based">{t("modal.triggerScheduleOption")}</option>
+                                <option value="manual">{t("modal.triggerManualOption")}</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Acción (Qué)</label>
+                            <label className="block text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">{t("modal.actionWhat")}</label>
                             <select value={actionType} onChange={e => setActionType(e.target.value)}
                                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-emerald-500">
-                                <option value="ai_task">Lanzar Agente IA</option>
-                                <option value="notify">Notificación</option>
-                                <option value="webhook">Llamar Webhook</option>
+                                <option value="ai_task">{t("modal.actionAiTask")}</option>
+                                <option value="notify">{t("modal.actionNotify")}</option>
+                                <option value="webhook">{t("modal.actionWebhook")}</option>
                             </select>
                         </div>
                     </div>
@@ -98,14 +100,14 @@ export default function WorkflowFormModal({
                     )}
                     {triggerType === "event_based" && (
                         <div>
-                            <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">Evento que dispara la automatización</label>
+                            <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">{t("modal.eventTrigger")}</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
-                                    { value: "invoice_created", label: "Factura creada" },
-                                    { value: "invoice_paid", label: "Factura cobrada" },
-                                    { value: "client_created", label: "Cliente nuevo" },
-                                    { value: "document_uploaded", label: "Documento subido" },
-                                    { value: "any", label: "Cualquier evento" },
+                                    { value: "invoice_created", label: t("events.invoiceCreated") },
+                                    { value: "invoice_paid", label: t("events.invoicePaid") },
+                                    { value: "client_created", label: t("events.clientCreated") },
+                                    { value: "document_uploaded", label: t("events.documentUploaded") },
+                                    { value: "any", label: t("events.any") },
                                 ].map(ev => {
                                     const selected = (triggerConfig.events || []).includes(ev.value);
                                     return (
@@ -128,22 +130,22 @@ export default function WorkflowFormModal({
 
                     <div>
                         <label className="block text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">
-                            Instrucción para el Agente IA *
-                            <span className="text-muted-foreground/60 ml-1 normal-case">(en lenguaje natural)</span>
+                            {t("modal.instructionLabel")}
+                            <span className="text-muted-foreground/60 ml-1 normal-case">{t("modal.instructionHint")}</span>
                         </label>
                         <textarea required rows={3} value={actionIntent} onChange={e => setActionIntent(e.target.value)}
-                            placeholder="Ej: Revisa todas las facturas con más de 30 días sin pagar y genera un recordatorio para cada cliente con el importe pendiente"
+                            placeholder={t("modal.instructionPlaceholder")}
                             className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-emerald-500 transition resize-none" />
                     </div>
 
                     {/* Execution mode selector */}
                     <div className="pt-3 border-t border-border">
-                        <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">Modo de ejecución</label>
+                        <label className="block text-xs text-muted-foreground mb-2 uppercase tracking-wider">{t("modal.executionMode")}</label>
                         {canBeDeterministic === true && (
                             <div className="mb-3 flex items-start gap-2 bg-emerald-500/8 border border-emerald-500/25 rounded-lg px-3 py-2">
                                 <Info className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-[11px] text-emerald-300/90 leading-relaxed">
-                                    La IA ha detectado que esta automatización puede ejecutarse <strong>sin IA en cada disparo</strong>. Se ha preseleccionado el modo determinista, que compila los pasos una vez y los ejecuta directamente. Puedes cambiarlo si prefieres flexibilidad.
+                                    {t.rich("modal.deterministicHint", { strong: (chunks) => <strong>{chunks}</strong> })}
                                 </p>
                             </div>
                         )}
@@ -151,7 +153,7 @@ export default function WorkflowFormModal({
                             <div className="mb-3 flex items-start gap-2 bg-blue-500/8 border border-blue-500/25 rounded-lg px-3 py-2">
                                 <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-[11px] text-blue-300/90 leading-relaxed">
-                                    La IA ha detectado que esta acción <strong>requiere razonamiento en cada ejecución</strong> (análisis, decisiones o contexto variable). Se ha preseleccionado el modo Con IA. Puedes cambiarlo, pero el resultado podría no adaptarse bien.
+                                    {t.rich("modal.reasoningHint", { strong: (chunks) => <strong>{chunks}</strong> })}
                                 </p>
                             </div>
                         )}
@@ -167,13 +169,13 @@ export default function WorkflowFormModal({
                                         ? <Cpu className="w-4 h-4" />
                                         : <BrainCircuit className="w-4 h-4" />}
                                     <span className="text-xs font-semibold">
-                                        {executionMode === "deterministic" ? "Determinista" : "Con IA"} · Decidido por la IA
+                                        {executionMode === "deterministic" ? t("modal.deterministic") : t("modal.withAi")} · {t("modal.decidedByAi")}
                                     </span>
                                 </div>
                                 <p className="text-[10px] leading-snug opacity-70">
                                     {executionMode === "deterministic"
-                                        ? "Los pasos se compilan una vez al crear la regla. Ejecución directa sin LLM: coste cero y máxima velocidad."
-                                        : "El LLM interpreta la instrucción en tiempo real. Flexible y adaptable, pero consume tokens en cada ejecución."}
+                                        ? t("modal.deterministicDesc")
+                                        : t("modal.withAiDesc")}
                                 </p>
                             </div>
                         ) : (
@@ -185,10 +187,10 @@ export default function WorkflowFormModal({
                                         : "border-border bg-background text-muted-foreground hover:border-border"}`}>
                                     <div className="flex items-center gap-2">
                                         <BrainCircuit className="w-4 h-4" />
-                                        <span className="text-xs font-semibold">Con IA</span>
+                                        <span className="text-xs font-semibold">{t("modal.withAi")}</span>
                                     </div>
                                     <p className="text-[10px] leading-snug opacity-70">
-                                        El LLM interpreta la instrucción en tiempo real. Flexible y adaptable, pero consume tokens en cada ejecución.
+                                        {t("modal.withAiDesc")}
                                     </p>
                                 </button>
                                 <button type="button" onClick={() => setExecutionMode("deterministic")}
@@ -197,10 +199,10 @@ export default function WorkflowFormModal({
                                         : "border-border bg-background text-muted-foreground hover:border-border"}`}>
                                     <div className="flex items-center gap-2">
                                         <Cpu className="w-4 h-4" />
-                                        <span className="text-xs font-semibold">Determinista</span>
+                                        <span className="text-xs font-semibold">{t("modal.deterministic")}</span>
                                     </div>
                                     <p className="text-[10px] leading-snug opacity-70">
-                                        Los pasos se compilan una vez al crear la regla. Ejecución directa sin LLM: coste cero y máxima velocidad.
+                                        {t("modal.deterministicDesc")}
                                     </p>
                                 </button>
                             </div>
@@ -209,7 +211,7 @@ export default function WorkflowFormModal({
                             <div className="mt-2 flex items-start gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-2">
                                 <Info className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-[10px] text-emerald-300/80 leading-relaxed">
-                                    Al guardar, se realizará una llamada extra al LLM para precompilar los pasos exactos. A partir de entonces, cada ejecución es instantánea y sin coste de IA.
+                                    {t("modal.deterministicNotice")}
                                 </p>
                             </div>
                         )}
@@ -217,7 +219,7 @@ export default function WorkflowFormModal({
                             <div className="mt-2 flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
                                 <Info className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-[10px] text-amber-300/90 leading-relaxed">
-                                    <strong>Atención:</strong> La IA ha detectado que esta acción requiere análisis o decisión en cada ejecución. En modo determinista los pasos se fijan al crear la regla, por lo que puede no adaptarse bien a situaciones cambiantes. Se recomienda usar el modo <strong>Con IA</strong> para esta automatización.
+                                    {t.rich("modal.deterministicWarning", { strong: (chunks) => <strong>{chunks}</strong> })}
                                 </p>
                             </div>
                         )}
@@ -227,23 +229,23 @@ export default function WorkflowFormModal({
                     <div className="pt-3 border-t border-border">
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                                <BrainCircuit className="w-3 h-3 text-primary" /> Editor visual de agentes
+                                <BrainCircuit className="w-3 h-3 text-primary" /> {t("modal.visualEditor")}
                             </p>
                             <div className="flex items-center gap-2">
                                 {hasFanOut(parsedUiEdges) && (
                                     <span className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full border font-semibold text-violet-400 bg-violet-500/10 border-violet-500/20">
                                         <GitFork className="w-2.5 h-2.5" />
-                                        Ejecución paralela
+                                        {t("modal.parallelExecution")}
                                     </span>
                                 )}
                                 <button
                                     type="button"
                                     onClick={onAddParallelBranch}
                                     className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full border font-semibold text-violet-300 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20 transition-colors"
-                                    title="Añade una rama paralela al último nodo del grafo"
+                                    title={t("modal.addParallelBranchTitle")}
                                 >
                                     <GitFork className="w-2.5 h-2.5" />
-                                    Añadir rama paralela
+                                    {t("modal.addParallelBranch")}
                                 </button>
                             </div>
                         </div>
@@ -259,11 +261,11 @@ export default function WorkflowFormModal({
                         </div>
                     </div>
                     <div className="pt-4 flex justify-end gap-3 border-t border-border">
-                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-muted-foreground hover:text-foreground transition text-sm">Cancelar</button>
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-muted-foreground hover:text-foreground transition text-sm">{t("modal.cancel")}</button>
                         <button type="submit" disabled={isSubmitting}
                             className="bg-primary hover:bg-primary text-foreground px-6 py-2.5 rounded-lg font-medium text-sm transition disabled:opacity-50 flex items-center gap-2">
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {isSubmitting ? "Guardando..." : editingWorkflow ? "Guardar cambios" : "Crear Regla"}
+                            {isSubmitting ? t("modal.saving") : editingWorkflow ? t("modal.saveChanges") : t("modal.createRule")}
                         </button>
                     </div>
                 </form>

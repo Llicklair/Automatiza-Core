@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type AnalyticsAgingBuckets, type AnalyticsDashboard } from "@/lib/api";
 
 export type { AnalyticsCashflowEntry as CashflowEntry } from "@/lib/api";
@@ -54,6 +55,7 @@ const EMPTY_DASHBOARD: AnalyticsDashboard = {
 };
 
 export function useAnalitica() {
+    const t = useTranslations("analitica");
     // Vacío = no enviar periodo → el backend abre en el último mes con datos
     // (evita el dashboard "vacío" a principio de mes). Se sincroniza con la
     // respuesta en la primera carga; luego el selector manda.
@@ -73,11 +75,11 @@ export function useAnalitica() {
                 setPeriod((prev) => prev || d.period);
             })
             .catch((e: Error) => {
-                setError(e.message || "Error cargando analítica");
+                setError(e.message || t("page.loadError"));
                 setData(EMPTY_DASHBOARD);
             })
             .finally(() => setLoading(false));
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         fetchDashboard(period);

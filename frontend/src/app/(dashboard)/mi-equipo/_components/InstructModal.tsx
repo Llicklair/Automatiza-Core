@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { api } from "@/lib/api";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
@@ -9,6 +10,8 @@ import { X, Loader2 } from "lucide-react";
 export function InstructModal({ employee, onClose, onSent }: {
     employee: AIEmployee; onClose: () => void; onSent: () => void;
 }) {
+    const t = useTranslations("miEquipo");
+    const tc = useTranslations("common");
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -21,7 +24,7 @@ export function InstructModal({ employee, onClose, onSent }: {
             onSent(); onClose();
         } catch (e: any) {
             if (surfaceIfConnectivity(e)) return;
-            setError(e?.message ?? "Error al enviar instrucción");
+            setError(e?.message ?? t("instructModal.sendError"));
         }
         finally { setLoading(false); }
     };
@@ -30,23 +33,23 @@ export function InstructModal({ employee, onClose, onSent }: {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
             <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                    <h2 className="font-semibold text-foreground text-sm">Instrucción → {employee.name}</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label="Cerrar"><X className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></button>
+                    <h2 className="font-semibold text-foreground text-sm">{t("instructModal.title", { name: employee.name })}</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg" aria-label={tc("close")}><X className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></button>
                 </div>
-                <p className="text-xs text-muted-foreground">La instrucción pasará por el coordinador, que decidirá cómo ejecutarla.</p>
+                <p className="text-xs text-muted-foreground">{t("instructModal.description")}</p>
                 <textarea
                     autoFocus value={message} onChange={e => setMessage(e.target.value)}
-                    placeholder="Ej: Genera la nómina de enero para todos los empleados activos…"
+                    placeholder={t("instructModal.placeholder")}
                     rows={4}
                     className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/50 resize-none"
                 />
                 {error && <p className="text-xs text-red-400">{error}</p>}
                 <div className="flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">Cancelar</button>
+                    <button onClick={onClose} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">{tc("cancel")}</button>
                     <button onClick={handleSend} disabled={!message.trim() || loading}
                         className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-foreground rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
                         {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                        Enviar
+                        {tc("send")}
                     </button>
                 </div>
             </div>

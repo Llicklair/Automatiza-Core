@@ -12,7 +12,7 @@ Referencias normativas:
 
 from calendar import monthrange
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
@@ -99,7 +99,9 @@ async def build_modelo_130_data(
     gastos = sum((Decimal(inv.amount_base or 0) for inv in received), Decimal("0"))
     beneficio = ingresos - gastos
 
-    pago_fraccionado_bruto = (beneficio * Decimal("0.20")).quantize(Decimal("0.01"))
+    pago_fraccionado_bruto = (beneficio * Decimal("0.20")).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
     if pago_fraccionado_bruto < 0:
         pago_fraccionado_bruto = Decimal("0.00")
 
@@ -662,7 +664,9 @@ async def build_modelo_115_data(
             continue
 
         base = Decimal(str(inv.amount_base or 0))
-        retencion = (base * TIPO_RETENCION_115 / Decimal("100")).quantize(Decimal("0.01"))
+        retencion = (base * TIPO_RETENCION_115 / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
         prov = proveedores_by_id.get(inv.client_id)
         arrendadores.append({
             "invoice_id": str(inv.id),
@@ -849,7 +853,7 @@ def _irpf_cuota(base: Decimal) -> Decimal:
             prev = top
         if limite is None or base <= limite:
             break
-    return cuota.quantize(Decimal("0.01"))
+    return cuota.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def build_modelo_100_data(

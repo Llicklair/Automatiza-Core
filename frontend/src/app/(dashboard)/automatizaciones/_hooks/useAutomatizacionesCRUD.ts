@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, Workflow } from "@/lib/api";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { logError } from "@/lib/logger";
-import { TEMPLATES } from "../_components/constants";
+import { type Template } from "../_components/constants";
 import type { TriggerConfig, FlowNode, FlowEdge, ParsedWorkflow } from "./useAutomatizaciones";
+
+type Translator = ReturnType<typeof useTranslations>;
 
 interface AgentResult {
     output?: { response?: string };
@@ -16,27 +19,27 @@ interface AgentResult {
 // Espejo reducido del _KEYWORD_MAP del backend (classifier.py): si una palabra
 // clave aparece en el intent, asignamos ese dominio y etiqueta visible al nodo
 // skill por defecto. Sin match → fallback genérico.
-const DOMAIN_HINTS: ReadonlyArray<{ domain: string; label: string; keys: string[] }> = [
-    { domain: "compliance",  label: "Compliance",   keys: ["modelo 303", "modelo 130", "modelo 111", "modelo 200", "modelo 390", "aeat", "hacienda", "impuesto", "fiscal"] },
-    { domain: "hr",          label: "RRHH",         keys: ["nómina", "nóminas", "empleado", "vacaciones", "salario", "sueldo", "baja médica", "contrato laboral"] },
-    { domain: "banking",     label: "Banca",        keys: ["saldo", "banco", "transacción", "transferencia", "iban", "extracto bancario", "psd2", "concilia"] },
-    { domain: "marketing",   label: "Marketing",    keys: ["redes sociales", "instagram", "facebook", "linkedin", "post", "hashtag", "campaña", "contenido", "social media"] },
-    { domain: "recruitment", label: "Reclutamiento",keys: ["candidato", "currículum", "curriculum", "vacante", "shortlist", "selección de personal", "entrevista"] },
-    { domain: "rag",         label: "Base de conocimiento", keys: ["qué dice", "qué tenemos sobre", "según el documento", "según los documentos", "según la política", "consultar la documentación"] },
-    { domain: "documents",   label: "Documentos",   keys: ["documento", "pdf", "contrato", "subir", "clasificar", "escanear", "analizar"] },
-    { domain: "excel",       label: "Excel",        keys: ["excel", "csv", "hoja de cálculo", "cruzar", "exportar listado"] },
-    { domain: "email",       label: "Correo",       keys: ["correo electrónico", "bandeja de entrada", "buzón", "inbox", "envía un email", "envía un correo", "responde el correo"] },
-    { domain: "report",      label: "Informe",      keys: ["informe mensual", "snapshot", "resumen mensual", "cierre mensual", "informe de gestión"] },
-    { domain: "crm",         label: "CRM",          keys: ["lead", "oportunidad", "cliente potencial", "embudo", "trato", "venta", "alta de cliente"] },
-    { domain: "billing",     label: "Facturación",  keys: ["factura", "facturas", "facturar", "cobro", "presupuesto", "albarán", "iva"] },
+const DOMAIN_HINTS: ReadonlyArray<{ domain: string; labelKey: string; keys: string[] }> = [
+    { domain: "compliance",  labelKey: "domains.compliance",   keys: ["modelo 303", "modelo 130", "modelo 111", "modelo 200", "modelo 390", "aeat", "hacienda", "impuesto", "fiscal"] },
+    { domain: "hr",          labelKey: "domains.hr",           keys: ["nómina", "nóminas", "empleado", "vacaciones", "salario", "sueldo", "baja médica", "contrato laboral"] },
+    { domain: "banking",     labelKey: "domains.banking",      keys: ["saldo", "banco", "transacción", "transferencia", "iban", "extracto bancario", "psd2", "concilia"] },
+    { domain: "marketing",   labelKey: "domains.marketing",    keys: ["redes sociales", "instagram", "facebook", "linkedin", "post", "hashtag", "campaña", "contenido", "social media"] },
+    { domain: "recruitment", labelKey: "domains.recruitment",  keys: ["candidato", "currículum", "curriculum", "vacante", "shortlist", "selección de personal", "entrevista"] },
+    { domain: "rag",         labelKey: "domains.rag",          keys: ["qué dice", "qué tenemos sobre", "según el documento", "según los documentos", "según la política", "consultar la documentación"] },
+    { domain: "documents",   labelKey: "domains.documents",    keys: ["documento", "pdf", "contrato", "subir", "clasificar", "escanear", "analizar"] },
+    { domain: "excel",       labelKey: "domains.excel",        keys: ["excel", "csv", "hoja de cálculo", "cruzar", "exportar listado"] },
+    { domain: "email",       labelKey: "domains.email",        keys: ["correo electrónico", "bandeja de entrada", "buzón", "inbox", "envía un email", "envía un correo", "responde el correo"] },
+    { domain: "report",      labelKey: "domains.report",       keys: ["informe mensual", "snapshot", "resumen mensual", "cierre mensual", "informe de gestión"] },
+    { domain: "crm",         labelKey: "domains.crm",          keys: ["lead", "oportunidad", "cliente potencial", "embudo", "trato", "venta", "alta de cliente"] },
+    { domain: "billing",     labelKey: "domains.billing",      keys: ["factura", "facturas", "facturar", "cobro", "presupuesto", "albarán", "iva"] },
 ];
 
-function detectDomainFromIntent(intent: string): { domain: string; label: string } {
-    const t = (intent || "").toLowerCase();
+function detectDomainFromIntent(intent: string, t: Translator): { domain: string; label: string } {
+    const text = (intent || "").toLowerCase();
     for (const h of DOMAIN_HINTS) {
-        if (h.keys.some((k) => t.includes(k))) return { domain: h.domain, label: h.label };
+        if (h.keys.some((k) => text.includes(k))) return { domain: h.domain, label: t(h.labelKey) };
     }
-    return { domain: "billing", label: "Agente IA" };
+    return { domain: "billing", label: t("domains.agentFallback") };
 }
 
 // Para un dominio dado, elige el mejor empleado disponible: prefiere custom
@@ -62,13 +65,13 @@ function pickEmployeeForDomain(
     return { domain, label: fallbackLabel };
 }
 
-const TRIGGER_LABELS: Record<string, string> = {
-    event_based: "Evento",
-    schedule_based: "Programación",
-    manual: "Disparo manual",
-};
-
 export function useAutomatizacionesCRUD() {
+    const t = useTranslations("automatizaciones");
+    const TRIGGER_LABELS: Record<string, string> = {
+        event_based: t("triggerLabels.eventBased"),
+        schedule_based: t("triggerLabels.scheduleBased"),
+        manual: t("triggerLabels.manual"),
+    };
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,13 +114,13 @@ export function useAutomatizacionesCRUD() {
     }, []);
 
     const detectAssignment = useCallback((intent: string) => {
-        const hint = detectDomainFromIntent(intent);
+        const hint = detectDomainFromIntent(intent, t);
         return pickEmployeeForDomain(hint.domain, hint.label, employees);
-    }, [employees]);
+    }, [employees, t]);
 
     const defaultEditorNodes = useMemo(() => {
         const { domain, label, employeeId } = detectAssignment(actionIntent);
-        const triggerLabel = TRIGGER_LABELS[triggerType] || "Trigger";
+        const triggerLabel = TRIGGER_LABELS[triggerType] || t("triggerLabels.fallback");
         const skillData: Record<string, unknown> = { label, domain, description: actionIntent };
         if (employeeId) skillData.employee_id = employeeId;
         return [
@@ -165,9 +168,9 @@ export function useAutomatizacionesCRUD() {
                 ui_edges: parsedUiEdges || defaultEditorEdges,
             });
             setShowModal(false); resetForm(); await loadWorkflows();
-            showToast("Automatización creada correctamente", "ok");
+            showToast(t("toast.created"), "ok");
         } catch (error: unknown) {
-            showToast(error instanceof Error ? error.message : "Error creando la regla", "err");
+            showToast(error instanceof Error ? error.message : t("toast.createError"), "err");
         } finally { setIsSubmitting(false); }
     };
 
@@ -185,9 +188,9 @@ export function useAutomatizacionesCRUD() {
             });
             setWorkflows(workflows.map(w => w.id === updated.id ? updated : w));
             setShowModal(false); resetForm();
-            showToast("Automatización actualizada correctamente", "ok");
+            showToast(t("toast.updated"), "ok");
         } catch (error: unknown) {
-            showToast(error instanceof Error ? error.message : "Error al actualizar", "err");
+            showToast(error instanceof Error ? error.message : t("toast.updateError"), "err");
         } finally { setIsSubmitting(false); }
     };
 
@@ -196,8 +199,8 @@ export function useAutomatizacionesCRUD() {
             await api.workflows.delete(id);
             setWorkflows(workflows.filter(w => w.id !== id));
             if (expandedId === id) { setExpandedId(null); }
-            showToast("Automatización eliminada correctamente", "ok");
-        } catch (e: unknown) { showToast(e instanceof Error ? e.message : "Error al eliminar la automatización", "err"); }
+            showToast(t("toast.deleted"), "ok");
+        } catch (e: unknown) { showToast(e instanceof Error ? e.message : t("toast.deleteError"), "err"); }
     };
 
     const toggleStatus = async (workflow: Workflow) => {
@@ -270,12 +273,12 @@ export function useAutomatizacionesCRUD() {
                                 }
                             }
                         }
-                        if (!found) setChatResponse(updated.error_message || "No se obtuvo respuesta.");
+                        if (!found) setChatResponse(updated.error_message || t("chat.noResponse"));
                         break;
                     }
                 }
             } catch (e: unknown) {
-                setChatResponse(`Error: ${e instanceof Error ? e.message : "No se pudo procesar la pregunta"}`);
+                setChatResponse(t("chat.error", { detail: e instanceof Error ? e.message : t("chat.processError") }));
             } finally { setChatLoading(false); }
         } else {
             setIsParsing(true);
@@ -284,7 +287,7 @@ export function useAutomatizacionesCRUD() {
                 setNlQuery("");
                 _openModalWithParsed(parsed);
             } catch (e: unknown) {
-                showToast("Error al procesar con IA: " + (e instanceof Error ? e.message : "Fallo"), "err");
+                showToast(t("toast.parseError", { detail: e instanceof Error ? e.message : t("toast.parseFailure") }), "err");
             } finally { setIsParsing(false); }
         }
     };
@@ -300,7 +303,7 @@ export function useAutomatizacionesCRUD() {
         setShowModal(true);
     };
 
-    const applyTemplate = (tpl: typeof TEMPLATES[0]) => {
+    const applyTemplate = (tpl: Template) => {
         setEditingWorkflow(null); setName(tpl.name); setDescription(tpl.description);
         setTriggerType(tpl.trigger_type); setTriggerConfig(tpl.trigger_config);
         setActionType(tpl.action_type); setActionIntent(tpl.action_config.instruction);
@@ -324,7 +327,7 @@ export function useAutomatizacionesCRUD() {
 
         const branchId = `skill_branch_${Date.now()}`;
         const { domain: brDomain, label: brLabel, employeeId: brEmpId } = detectAssignment(actionIntent);
-        const branchLabel = `${brLabel} (rama ${String.fromCharCode(65 + siblings.length)})`;
+        const branchLabel = t("branch.label", { label: brLabel, letter: String.fromCharCode(65 + siblings.length) });
 
         const rebuiltNodes = allNodes.map(n => {
             const idx = siblings.findIndex(s => s.id === n.id);

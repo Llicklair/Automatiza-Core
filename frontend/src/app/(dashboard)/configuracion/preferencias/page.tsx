@@ -4,38 +4,40 @@
 "use client";
 
 import { CheckCircle2, Layout, LayoutList } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useDensity, type Density } from "@/hooks/useDensity";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-const OPTIONS: { value: Density; label: string; description: string; icon: typeof Layout }[] = [
+type DensityOption = { value: Density; label: string; description: string; icon: typeof Layout };
+
+const buildOptions = (t: (k: string) => string): DensityOption[] => [
     {
         value: "comfortable",
-        label: "Cómodo",
-        description:
-            "Mayor espaciado y tipografías más amplias. Apto para PYMEs con uso ocasional.",
+        label: t("preferencias.comfortable.label"),
+        description: t("preferencias.comfortable.description"),
         icon: Layout,
     },
     {
         value: "compact",
-        label: "Compacto",
-        description:
-            "Más filas en pantalla, padding reducido. Pensado para gestorías que consultan muchos registros.",
+        label: t("preferencias.compact.label"),
+        description: t("preferencias.compact.description"),
         icon: LayoutList,
     },
 ];
 
 export default function PreferenciasPage() {
+    const t = useTranslations("configuracion");
     const { density, setDensity } = useDensity();
+    const OPTIONS = buildOptions(t);
 
     return (
         <PageContainer width="3xl">
             <header>
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-                    Preferencias de visualización
+                    {t("preferencias.title")}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Ajusta la densidad de la interfaz a tu flujo de trabajo. El cambio se
-                    aplica al instante y se guarda en este equipo.
+                    {t("preferencias.subtitle")}
                 </p>
             </header>
 
@@ -44,7 +46,7 @@ export default function PreferenciasPage() {
                     id="density-heading"
                     className="text-sm font-medium text-foreground mb-3"
                 >
-                    Densidad de la interfaz
+                    {t("preferencias.densityHeading")}
                 </h2>
                 <div
                     role="radiogroup"
@@ -76,7 +78,7 @@ export default function PreferenciasPage() {
                                     {active && (
                                         <CheckCircle2
                                             className="w-4 h-4 text-primary"
-                                            aria-label="Activo"
+                                            aria-label={t("preferencias.active")}
                                         />
                                     )}
                                 </div>
@@ -90,8 +92,7 @@ export default function PreferenciasPage() {
             </section>
 
             <aside className="text-xs text-muted-foreground">
-                La preferencia se guarda solo en este navegador. Si entras desde otro
-                equipo, deberás volver a elegirla.
+                {t("preferencias.footnote")}
             </aside>
         </PageContainer>
     );

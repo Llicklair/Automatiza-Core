@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 
 export function useConfiguracionEmpresa() {
+    const t = useTranslations("configuracion");
     const [name, setName] = useState("");
     const [nif, setNif] = useState("");
     const [address, setAddress] = useState("");
@@ -27,13 +29,13 @@ export function useConfiguracionEmpresa() {
             })
             .catch((e: any) => {
                 if (!mounted) return;
-                setError(e?.message || "Error cargando datos de la empresa");
+                setError(e?.message || t("empresa.errorLoad"));
             })
             .finally(() => {
                 if (mounted) setLoading(false);
             });
         return () => { mounted = false; };
-    }, []);
+    }, [t]);
 
     async function handleSave(e: React.FormEvent) {
         e.preventDefault();
@@ -53,9 +55,9 @@ export function useConfiguracionEmpresa() {
             setAddress(updated.address || "");
             setPhone(updated.phone || "");
             setContactEmail(updated.contact_email || "");
-            setSuccess("Datos de empresa guardados correctamente.");
+            setSuccess(t("empresa.saveSuccess"));
         } catch (e: any) {
-            setError(e?.message || "No se pudo guardar la empresa");
+            setError(e?.message || t("empresa.errorSave"));
         } finally {
             setSaving(false);
         }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Truck, Plus, Search, Pencil, Trash2, Loader2, Building2, Mail, MapPin } from "lucide-react";
 import { useProveedores } from "./_hooks/useProveedores";
 import { ProveedorModal } from "./_components/ProveedorModal";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function ProveedoresPage() {
+    const t = useTranslations("compras.proveedores");
     const {
         suppliers, loading, search, setSearch,
         showModal, setShowModal,
@@ -21,21 +23,21 @@ export default function ProveedoresPage() {
     return (
         <PageContainer>
             <PageHeader
-                title="Proveedores"
-                description="Gestiona el directorio de proveedores y sus datos de contacto."
+                title={t("title")}
+                description={t("description")}
                 icon={Truck}
                 actions={
                     <Button onClick={openNew}>
-                        <Plus className="w-4 h-4 mr-2" /> Nuevo proveedor
+                        <Plus className="w-4 h-4 mr-2" /> {t("newSupplier")}
                     </Button>
                 }
             />
 
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: "Total proveedores", value: suppliers.length, color: "text-foreground" },
-                    { label: "Con email", value: suppliers.filter(s => s.email).length, color: "text-primary" },
-                    { label: "Con NIF/CIF", value: suppliers.filter(s => s.nif).length, color: "text-emerald-400" },
+                    { label: t("stats.total"), value: suppliers.length, color: "text-foreground" },
+                    { label: t("stats.withEmail"), value: suppliers.filter(s => s.email).length, color: "text-primary" },
+                    { label: t("stats.withNif"), value: suppliers.filter(s => s.nif).length, color: "text-emerald-400" },
                 ].map(stat => (
                     <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</p>
@@ -47,7 +49,7 @@ export default function ProveedoresPage() {
             <div className="relative">
                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
-                    placeholder="Buscar por nombre, NIF o email..."
+                    placeholder={t("searchPlaceholder")}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="pl-9"
@@ -56,31 +58,31 @@ export default function ProveedoresPage() {
 
             {loading ? (
                 <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> Cargando proveedores…
+                    <Loader2 className="w-5 h-5 animate-spin" /> {t("loading")}
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center text-center">
                     <Truck className="w-12 h-12 text-muted-foreground mb-4" />
                     <h2 className="text-lg font-bold text-foreground mb-2">
-                        {suppliers.length === 0 ? "Sin proveedores" : "Sin resultados"}
+                        {suppliers.length === 0 ? t("emptyTitle") : t("noResultsTitle")}
                     </h2>
                     <p className="text-sm text-muted-foreground max-w-md">
                         {suppliers.length === 0
-                            ? "Añade tu primer proveedor para gestionar compras y pagos."
-                            : `No hay proveedores que coincidan con "${search}"`}
+                            ? t("emptyDescription")
+                            : t("noResultsDescription", { search })}
                     </p>
                     {suppliers.length === 0 && (
-                        <Button onClick={openNew} className="mt-6">Añadir proveedor</Button>
+                        <Button onClick={openNew} className="mt-6">{t("addSupplier")}</Button>
                     )}
                 </div>
             ) : (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted">
-                        <div className="col-span-4">Proveedor</div>
-                        <div className="col-span-2">NIF/CIF</div>
-                        <div className="col-span-3">Email</div>
-                        <div className="col-span-2">Ciudad</div>
-                        <div className="col-span-1 text-right">Acciones</div>
+                        <div className="col-span-4">{t("columns.supplier")}</div>
+                        <div className="col-span-2">{t("columns.nif")}</div>
+                        <div className="col-span-3">{t("columns.email")}</div>
+                        <div className="col-span-2">{t("columns.city")}</div>
+                        <div className="col-span-1 text-right">{t("columns.actions")}</div>
                     </div>
                     {filtered.map(s => (
                         <div key={s.id} className="grid grid-cols-12 gap-4 px-6 py-3.5 border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors items-center">
@@ -108,10 +110,10 @@ export default function ProveedoresPage() {
                                 ) : <span className="text-muted-foreground italic text-sm">—</span>}
                             </div>
                             <div className="col-span-1 flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(s)} aria-label="Editar proveedor">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(s)} aria-label={t("editSupplier")}>
                                     <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id} aria-label="Eliminar proveedor">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id} aria-label={t("deleteSupplier")}>
                                     {deletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                                 </Button>
                             </div>
