@@ -8,12 +8,16 @@ los nuevos usan este `Casilla` compartido.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 
 def round2(x) -> Decimal:
-    """Redondea a 2 decimales de forma tolerante (None/'' → 0)."""
-    return Decimal(str(x or 0)).quantize(Decimal("0.01"))
+    """Redondea a 2 decimales de forma tolerante (None/'' → 0).
+
+    ROUND_HALF_UP: criterio fiscal AEAT, coherente con reports/fiscal.py y
+    facturación (el default HALF_EVEN de Python divergiría en x.xx5).
+    """
+    return Decimal(str(x or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 @dataclass
