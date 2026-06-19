@@ -4,6 +4,25 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-19 — No ordenar por UUID aleatorio para aserciones de orden
+
+**Contexto:** `test_e2e_verifactu::test_cadena_enlaza_dos_facturas` fallaba ~50% en CI
+(flaky) y bloqueaba 3 PRs de Dependabot. El helper `_records` ordenaba por
+`VerifactuRecord.id`, un UUID aleatorio (`default=uuid.uuid4`), así que los eslabones
+volvían en orden arbitrario y el assert `recs[-1].huella_anterior == recs[-2].huella`
+salía bien o mal según el sorteo. Diagnóstico clave: un bump de TypeScript (devDep del
+frontend) "rompía" un test Python → imposible → no era el bump, era flakiness.
+
+**Patrón antipatrón:** `ORDER BY id` con PK UUID cuando el test asume orden de creación.
+El UUID no es monótono → orden no determinista → test flaky e intermitente.
+
+**Regla de prevención:** para aserciones que dependen del orden de inserción, ordenar por
+una columna monótona (`created_at`, o un `serial`/secuencia), nunca por una PK UUID. Ante
+sospecha de flakiness, reprodúcela en bucle (correr el test N veces) ANTES de dar el fix
+por bueno, y vuelve a correrlo en bucle para confirmarlo.
+
+---
+
 ## 2026-06-19 — Tests sobre BD: assert por SQLSTATE, no por el texto del mensaje
 
 **Contexto:** en `test_rls_postgres.py` el assert de la violación de RLS comprobaba
