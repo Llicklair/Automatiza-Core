@@ -68,7 +68,7 @@ export function useEmpleadosCRUD(
         }
     };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     useEffect(() => { loadData(); }, [refreshKey]);
 
     const openModal = () => {

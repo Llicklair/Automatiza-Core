@@ -105,7 +105,7 @@ export function TransaccionesTab() {
         }
     };
 
-    useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { loadData(); }, []);  
 
     const handleSync = async () => {
         setIsSyncing(true);

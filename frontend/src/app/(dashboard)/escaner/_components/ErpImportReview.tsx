@@ -38,7 +38,7 @@ export function ErpImportReview({
         }
     }
 
-    useEffect(() => { loadPreview(); /* eslint-disable-next-line */ }, [documentId]);
+    useEffect(() => { loadPreview();   }, [documentId]);
 
     async function handleImport() {
         if (!preview) return;

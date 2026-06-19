@@ -41,7 +41,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
         setLoading(false);
     };
 
-    useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [productId]);
+    useEffect(() => { load();   }, [productId]);
 
     const doTransfer = async (e: React.FormEvent) => {
         e.preventDefault();

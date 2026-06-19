@@ -69,7 +69,7 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
         setLoading(false);
     };
 
-    useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [productId]);
+    useEffect(() => { load();   }, [productId]);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
