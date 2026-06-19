@@ -4,6 +4,24 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-19 — Tests sobre BD: assert por SQLSTATE, no por el texto del mensaje
+
+**Contexto:** en `test_rls_postgres.py` el assert de la violación de RLS comprobaba
+`"row-level security" in str(exc)`. Falló porque el Postgres local emite los mensajes en
+**español** ("viola la política de seguridad de registros"). La RLS funcionaba; el test
+estaba mal escrito.
+
+**Patrón antipatrón:** afirmar el resultado de un error de BD por el texto del mensaje. Los
+mensajes de Postgres se localizan según `lc_messages` del servidor → el test es frágil y
+no portable (pasa en un equipo, falla en otro).
+
+**Regla de prevención:** verificar errores de Postgres por **SQLSTATE** (p. ej. `42501` =
+insufficient_privilege para una violación de `WITH CHECK` de RLS) recorriendo la cadena
+`.orig`/`__cause__` (SQLAlchemy envuelve el error de asyncpg). Nunca por `str(exc)`. Idem
+para tipos de error portables. Ver helper `_pg_sqlstate` en ese test.
+
+---
+
 ## 2026-06-19 — No afirmar hechos externos ni estado del código sin verificar primero
 
 **Contexto:** en la sesión de AEAT/VeriFactu cometí dos errores que el usuario detectó:
