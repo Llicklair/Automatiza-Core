@@ -593,7 +593,29 @@
     "home": {
       "title": "Sales",
       "subtitle": "Invoicing, quotes and commercial management across the full sales cycle.",
-      "open": "Open"
+      "open": "Open",
+      "sections": {
+        "facturas": {
+          "title": "Invoices",
+          "description": "Issue and track sales invoices, collections and due dates."
+        },
+        "pedidos": {
+          "title": "Orders",
+          "description": "Customer sales orders and their conversion into invoices."
+        },
+        "presupuestos": {
+          "title": "Quotes",
+          "description": "Quotes and commercial offers before confirming the sale."
+        },
+        "recurrentes": {
+          "title": "Recurring",
+          "description": "Automatic periodic billing for subscriptions and fees."
+        },
+        "servicios": {
+          "title": "Services",
+          "description": "Catalog of billable services and their rates."
+        }
+      }
     },
     "regimenFiscal": "Tax regime",
     "ispLabel": "Reverse charge (ISP)",

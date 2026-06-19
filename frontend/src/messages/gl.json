@@ -333,7 +333,34 @@
     "serviceVatPercent": "[GL] % IVA",
     "serviceVatReduced": "[GL] 10% (reducido)",
     "serviceVatSuperReduced": "[GL] 4% (superreducido)",
-    "serviceVatExempt": "[GL] 0% (exento)"
+    "serviceVatExempt": "[GL] 0% (exento)",
+    "home": {
+      "title": "Vendas",
+      "subtitle": "Facturación, orzamentos e xestión comercial de todo o ciclo de venda.",
+      "open": "Abrir",
+      "sections": {
+        "facturas": {
+          "title": "Facturas",
+          "description": "Emisión e seguimento de facturas de venda, cobros e vencementos."
+        },
+        "pedidos": {
+          "title": "Pedidos",
+          "description": "Pedidos de venda de clientes e a súa conversión a factura."
+        },
+        "presupuestos": {
+          "title": "Orzamentos",
+          "description": "Orzamentos e ofertas comerciais antes de confirmar a venda."
+        },
+        "recurrentes": {
+          "title": "Recorrentes",
+          "description": "Facturación periódica automática para subscricións e cotas."
+        },
+        "servicios": {
+          "title": "Servizos",
+          "description": "Catálogo de servizos facturables e as súas tarifas."
+        }
+      }
+    }
   },
   "clientes": {
     "title": "[GL] Directorio de Clientes",
