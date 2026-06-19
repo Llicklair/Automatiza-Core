@@ -1,5 +1,5 @@
 """Tests de remesas SEPA persistidas: pain.008 + ciclo de estados."""
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from xml.etree.ElementTree import fromstring
 
@@ -93,8 +93,10 @@ def test_pain008_rechaza_sin_mandato():
 
 
 def test_pain008_rechaza_fecha_pasada():
+    # Referencia UTC, no date.today() local (la validación usa UTC): evita el
+    # fallo entre medianoche local y UTC. Ver test_pain001_rechaza_fecha_pasada.
     with pytest.raises(Pain008Error):
-        build_pain008(_creditor(), date.today() - timedelta(days=1), [_dd_order()])
+        build_pain008(_creditor(), datetime.now(UTC).date() - timedelta(days=1), [_dd_order()])
 
 
 def test_pain008_rechaza_remesa_vacia():
