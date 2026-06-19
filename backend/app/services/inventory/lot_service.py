@@ -286,6 +286,7 @@ async def create_lot(
     if expiry_date:
         nota += f" (cad. {expiry_date.isoformat()})"
     movement = StockMovement(
+        tenant_id=tenant_id,
         product_id=product.id,
         movement_type="entrada",
         quantity=qty,
