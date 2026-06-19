@@ -217,12 +217,14 @@ Auditado contra `backend/tests` (2026-06-19). Fixtures listas en `conftest.py`
   con IntegrityError. Fix: pasar `tenant_id` en ambos sitios.
 - [x] **Onboarding** ✅ (2026-06-19) — `tests/test_e2e_onboarding.py`: completar wizard (5 pasos)
   → simulación Modelo 303 (resultado = devengado − deducible) → REGAP mock (start→grant→verify).
-- [ ] **Marketing** happy-path (hoy `test_e2e_marketing_publish.py` solo cubre el error).
+- [x] **Marketing** happy-path ✅ (2026-06-19) — `tests/test_e2e_marketing_happy.py`: crear post
+  → publicar OK → queda `published` con `platform_post_id` (publisher stubeado, sin red Zernio).
+  Complementa `test_e2e_marketing_publish.py` (ruta de error).
 
-> **Estado (2026-06-19):** los 6 módulos sin E2E quedan cubiertos. Sumados a los 3 previos
-> (Facturación, VeriFactu, RRHH-nóminas), los **9 módulos core tienen E2E**. Pendiente menor:
-> el happy-path de Marketing. El proceso destapó 2 bugs reales de producción (conciliación por
-> fecha; `StockMovement` sin `tenant_id` en alta de lote y escáner), ya arreglados.
+> **Estado (2026-06-19):** los 6 módulos sin E2E quedan cubiertos, **incluido el happy-path de
+> Marketing**. Sumados a los 3 previos (Facturación, VeriFactu, RRHH-nóminas), los **9 módulos
+> core tienen E2E**. El proceso destapó 2 bugs reales de producción (conciliación por fecha;
+> `StockMovement` sin `tenant_id` en alta de lote y escáner), ya arreglados.
 
 ---
 
