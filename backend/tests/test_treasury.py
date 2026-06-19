@@ -171,8 +171,11 @@ def test_pain001_rechaza_importe_no_positivo():
 
 
 def test_pain001_rechaza_fecha_pasada():
+    # Referencia UTC (no date.today() local): la validación usa
+    # datetime.now(timezone.utc).date(); con fecha local este test fallaba entre
+    # la medianoche local y la UTC (la "fecha pasada" local aún era "hoy" en UTC).
     with pytest.raises(Pain001Error):
-        build_pain001(_basic_debtor(), date.today() - timedelta(days=1), _basic_orders(1))
+        build_pain001(_basic_debtor(), datetime.now(UTC).date() - timedelta(days=1), _basic_orders(1))
 
 
 def test_pain001_rechaza_remesa_vacia():
