@@ -5,13 +5,12 @@ Cubre los gaps de test_service_workflow_parse_nl.py:
   - fire_event (matching de eventos, conditions, dispatch deterministic vs reasoning)
 """
 
-from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 from app.db.models.ai_employees import AIEmployee
-from app.db.models.models import Tenant, Workflow, WorkflowExecution
+from app.db.models.models import Tenant, Workflow
 from app.services.workflow._nlp import _load_tenant_employees, fire_event
 
 

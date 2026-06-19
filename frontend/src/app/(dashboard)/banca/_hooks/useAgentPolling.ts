@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Task } from "@/lib/api";
 
 export function useAgentPolling() {
+    const t = useTranslations("banca");
     const [status, setStatus] = useState<string>("idle");
     const [result, setResult] = useState<unknown>(null);
     const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export function useAgentPolling() {
             }, 2000);
         } catch (e) {
             setStatus("failed");
-            setError(e instanceof Error ? e.message : "Error al crear la tarea");
+            setError(e instanceof Error ? e.message : t("agente.createError"));
         }
     }, [stop]);
 

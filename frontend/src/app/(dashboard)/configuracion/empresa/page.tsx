@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Loader2, Save } from "lucide-react";
 import { LogoSection } from "./_components/LogoSection";
 import { useConfiguracionEmpresa } from "./_hooks/useConfiguracionEmpresa";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function EmpresaConfigPage() {
+    const t = useTranslations("configuracion");
     const {
         name, setName,
         nif, setNif,
@@ -19,12 +21,15 @@ export default function EmpresaConfigPage() {
     return (
         <PageContainer width="3xl">
             <div>
-                <h1 className="text-3xl font-bold text-foreground mb-1">Datos de mi empresa</h1>
+                <h1 className="text-3xl font-bold text-foreground mb-1">{t("empresa.title")}</h1>
                 <p className="text-muted-foreground text-sm mt-2">
-                    Esta información se usa como emisor en las facturas y PDFs generados.
+                    {t("empresa.subtitle")}
                 </p>
                 <div className="mt-3 p-4 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary">
-                    <strong>Nota importante:</strong> El <i>Nombre / Razón social</i> que configures aquí será exactamente el que verán tus clientes en los encabezados de presupuestos, albaranes, facturas y correos electrónicos automatizados. Asegúrate de escribirlo tal cual deseas presentarte comercial y legalmente.
+                    {t.rich("empresa.importantNote", {
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                        i: (chunks) => <i>{chunks}</i>,
+                    })}
                 </div>
             </div>
 
@@ -32,13 +37,13 @@ export default function EmpresaConfigPage() {
                 {loading ? (
                     <div className="flex items-center justify-center gap-2 text-muted-foreground py-10">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Cargando datos de empresa…
+                        {t("empresa.loading")}
                     </div>
                 ) : (
                     <form onSubmit={handleSave} className="space-y-5">
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Nombre / Razón social
+                                {t("empresa.nameLabel")}
                             </label>
                             <input
                                 type="text"
@@ -46,13 +51,13 @@ export default function EmpresaConfigPage() {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                                placeholder="Mi Empresa S.L."
+                                placeholder={t("empresa.namePlaceholder")}
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                NIF / CIF
+                                {t("empresa.nifLabel")}
                             </label>
                             <input
                                 type="text"
@@ -66,20 +71,20 @@ export default function EmpresaConfigPage() {
 
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Dirección Fiscal
+                                {t("empresa.addressLabel")}
                             </label>
                             <input
                                 type="text"
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
                                 className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
-                                placeholder="Calle Mayor 1, 28001 Madrid"
+                                placeholder={t("empresa.addressPlaceholder")}
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Teléfono de contacto
+                                {t("empresa.phoneLabel")}
                             </label>
                             <input
                                 type="tel"
@@ -92,7 +97,7 @@ export default function EmpresaConfigPage() {
 
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Correo Oficial (Facturación)
+                                {t("empresa.contactEmailLabel")}
                             </label>
                             <input
                                 type="email"
@@ -123,12 +128,12 @@ export default function EmpresaConfigPage() {
                                 {saving ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        Guardando…
+                                        {t("empresa.saving")}
                                     </>
                                 ) : (
                                     <>
                                         <Save className="w-4 h-4" />
-                                        Guardar cambios
+                                        {t("empresa.saveChanges")}
                                     </>
                                 )}
                             </button>

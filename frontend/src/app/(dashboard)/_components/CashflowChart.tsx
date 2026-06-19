@@ -2,18 +2,20 @@
 
 import { Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
+import { useTranslations } from "next-intl";
 
 interface CashflowChartProps {
     cashflow: any[];
 }
 
 export function CashflowChart({ cashflow }: CashflowChartProps) {
+    const t = useTranslations("dashboard");
     if (cashflow.length === 0) return null;
 
     return (
         <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
             <h2 className="text-sm font-semibold text-foreground mb-6 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-muted-foreground" /> Cashflow — Evolución semestral
+                <Activity className="w-4 h-4 text-muted-foreground" /> {t("cashflow.title")}
             </h2>
             <div className="h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -35,8 +37,8 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
                             itemStyle={{ color: '#e4e4e7' }}
                             formatter={((value: unknown) => [`${Number(value)?.toLocaleString() ?? 0}€`]) as never}
                         />
-                        <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
-                        <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />
+                        <Area type="monotone" dataKey="ingresos" name={t("cashflow.income")} stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIn)" />
+                        <Area type="monotone" dataKey="gastos" name={t("cashflow.expenses")} stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorOut)" />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>

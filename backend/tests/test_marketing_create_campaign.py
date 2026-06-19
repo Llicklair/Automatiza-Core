@@ -32,7 +32,6 @@ async def _seed_account(db, tenant_id) -> SocialAccount:
         platform="twitter",
         account_id="123",
         account_name="@pyme",
-        access_token="enc",
         is_active=True,
     )
     db.add(acc)

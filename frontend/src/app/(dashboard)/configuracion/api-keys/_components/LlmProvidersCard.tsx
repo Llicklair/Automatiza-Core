@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp, Cpu, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { LLM_PROVIDERS, type ProviderState } from "../_hooks/useApiKeys";
 
@@ -9,14 +10,16 @@ interface LlmProvidersCardProps {
 }
 
 export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updateProvider }: LlmProvidersCardProps) {
+    const t = useTranslations("configuracion");
     return (
         <div className="bg-card border border-border rounded-2xl p-6 mb-4">
             <h1 className="text-xl font-bold text-foreground flex items-center gap-2 mb-1">
-                <Cpu className="w-5 h-5 text-primary" /> Modelos de lenguaje (LLM)
+                <Cpu className="w-5 h-5 text-primary" /> {t("apiKeys.llmTitle")}
             </h1>
             <p className="text-xs text-muted-foreground mb-5">
-                Activa los proveedores que quieras usar. El <span className="text-primary">proveedor activo</span> es el que usan los agentes.
-                Las claves se cifran en base de datos.
+                {t.rich("apiKeys.llmDesc", {
+                    active: (chunks) => <span className="text-primary">{chunks}</span>,
+                })}
             </p>
 
             <div className="space-y-3">
@@ -50,7 +53,7 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                                 <span className={`text-sm font-medium flex-1 ${isActive ? "text-primary" : s.enabled ? "text-foreground" : "text-muted-foreground"}`}>
                                     {p.label}
                                     {s.has_key && !s.api_key && (
-                                        <span className="ml-2 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">clave guardada</span>
+                                        <span className="ml-2 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">{t("apiKeys.keySaved")}</span>
                                     )}
                                 </span>
 
@@ -59,12 +62,12 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                                         onClick={() => setActiveLlm(p.key)}
                                         className="text-[11px] px-2.5 py-1 rounded-lg border border-primary/20 text-primary hover:bg-primary/10 transition"
                                     >
-                                        Usar como activo
+                                        {t("apiKeys.useAsActive")}
                                     </button>
                                 )}
                                 {isActive && (
                                     <span className="text-[10px] font-bold uppercase tracking-wider bg-primary text-foreground px-2 py-0.5 rounded-full">
-                                        Activo
+                                        {t("apiKeys.activeLabel")}
                                     </span>
                                 )}
 
@@ -79,10 +82,10 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                             {/* Expanded: api key + model */}
                             {s.expanded && (
                                 <div className="px-3 pb-3 space-y-2 border-t border-border pt-3">
-                                            {p.hint && <p className="text-[11px] text-muted-foreground mb-1">{p.hint}</p>}
+                                            {p.hintKey && <p className="text-[11px] text-muted-foreground mb-1">{t(p.hintKey)}</p>}
                                             <div>
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <label className="text-[11px] text-muted-foreground">API Key</label>
+                                                    <label className="text-[11px] text-muted-foreground">{t("apiKeys.apiKeyLabel")}</label>
                                                     {p.consoleUrl && (
                                                         <a
                                                             href={p.consoleUrl}
@@ -90,7 +93,7 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                                                             rel="noopener noreferrer"
                                                             className="text-[11px] text-primary hover:text-primary flex items-center gap-1 transition"
                                                         >
-                                                            Obtener API Key <ExternalLink className="w-3 h-3" />
+                                                            {t("apiKeys.getApiKey")} <ExternalLink className="w-3 h-3" />
                                                         </a>
                                                     )}
                                                 </div>
@@ -99,7 +102,7 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                                                         type={s.showKey ? "text" : "password"}
                                                         value={s.api_key}
                                                         onChange={e => updateProvider(p.key, { api_key: e.target.value })}
-                                                        placeholder={s.has_key ? "••••••••  (dejar vacío para no cambiar)" : p.placeholder}
+                                                        placeholder={s.has_key ? t("apiKeys.keyPlaceholderSaved") : p.placeholder}
                                                         className="w-full pr-9 px-3 py-2 rounded-lg bg-muted border border-border text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/20 transition"
                                                     />
                                                     <button
@@ -112,7 +115,7 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-[11px] text-muted-foreground mb-1 block">Modelo</label>
+                                                <label className="text-[11px] text-muted-foreground mb-1 block">{t("apiKeys.modelLabel")}</label>
                                                 <select
                                                     value={p.models.includes(s.model) ? s.model : "__custom__"}
                                                     onChange={e => {
@@ -124,7 +127,7 @@ export function LlmProvidersCard({ providers, activeLlm, setActiveLlm, updatePro
                                                         <option key={m} value={m} className="bg-card">{m}</option>
                                                     ))}
                                                     {!p.models.includes(s.model) && (
-                                                        <option value="__custom__" className="bg-card">{s.model} (personalizado)</option>
+                                                        <option value="__custom__" className="bg-card">{t("apiKeys.customModel", { model: s.model })}</option>
                                                     )}
                                                 </select>
                                             </div>

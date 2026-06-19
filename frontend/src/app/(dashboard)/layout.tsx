@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -26,6 +27,7 @@ function decodeJwtName(token: string): string {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const t = useTranslations("dashboard");
     const router = useRouter();
     const pathname = usePathname();
     const showToast = useToastStore((s) => s.show);
@@ -81,14 +83,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const { step, total_steps, agent, summary, success } = data as any;
             const agentLabel = agent ? `[${agent}]` : "";
             const progressLabel = total_steps > 1 ? ` (${step}/${total_steps})` : "";
-            const msg = summary ? `${agentLabel}${progressLabel} ${summary}` : `${agentLabel}${progressLabel} Paso completado.`;
+            const msg = summary ? `${agentLabel}${progressLabel} ${summary}` : `${agentLabel}${progressLabel} ${t("layout.stepCompleted")}`;
             const toastType = success ? "info" : "warning";
             showToast(msg, toastType as any);
             pushNotification(msg, toastType as any);
             if (step === total_steps) triggerRefresh();
         },
         hr_notification: (data) => {
-            const msg = (data.message as string) || "Notificación RRHH";
+            const msg = (data.message as string) || t("layout.hrNotification");
             const nType = (data.notif_type as string) || "info";
             showToast(msg, nType as any);
             pushNotification(msg, nType as any);
@@ -98,31 +100,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             if (!data.event) return;
             const ctx = (data.context as Record<string, any>) || {};
             const eventMessages: Record<string, string> = {
-                invoice_created: `Factura ${ctx.invoice_number || "generada"} creada`,
-                employee_created: `Empleado ${ctx.employee_name || "nuevo"} registrado`,
-                document_uploaded: "Documento subido. Procesando...",
-                document_processed: `Documento ${ctx.original_name || ""} procesado.`,
-                task_completed: "Tarea IA finalizada con éxito.",
-                approval_approved: `Aprobación procesada.${data.workflow_count ? ` ${data.workflow_count} automatizaciones disparadas.` : ""}`,
+                invoice_created: t("layout.eventInvoiceCreated", { number: ctx.invoice_number || t("layout.eventInvoiceFallback") }),
+                employee_created: t("layout.eventEmployeeCreated", { name: ctx.employee_name || t("layout.eventEmployeeFallback") }),
+                document_uploaded: t("layout.eventDocumentUploaded"),
+                document_processed: t("layout.eventDocumentProcessed", { name: ctx.original_name || "" }),
+                task_completed: t("layout.eventTaskCompleted"),
+                approval_approved: `${t("layout.eventApprovalApproved")}${data.workflow_count ? ` ${t("layout.eventWorkflowsTriggered", { count: data.workflow_count as number })}` : ""}`,
             };
             const ev = data.event as string;
-            const msg = eventMessages[ev] || `Nuevo evento: ${ev.replace(/_/g, " ")}`;
+            const msg = eventMessages[ev] || t("layout.eventGeneric", { event: ev.replace(/_/g, " ") });
             showToast(msg, "info");
             pushNotification(msg, "info");
             triggerRefresh();
         },
         // Aviso blando al 80% del presupuesto mensual de un empleado IA.
         budget_warning: (data) => {
-            const name = (data.employee_name as string) || "Un empleado IA";
+            const name = (data.employee_name as string) || t("layout.anAiEmployee");
             const pct = Math.round(((data.ratio as number) || 0) * 100);
-            const msg = `${name} ha consumido el ${pct}% de su presupuesto mensual de IA.`;
+            const msg = t("layout.budgetWarning", { name, pct });
             showToast(msg, "warning");
             pushNotification(msg, "warning");
         },
         // Hard-stop: presupuesto agotado, el empleado se ha pausado.
         budget_exhausted: (data) => {
-            const name = (data.employee_name as string) || "Un empleado IA";
-            const msg = `${name} agotó su presupuesto mensual de IA y se ha pausado. Sube su límite en Mi Equipo para reactivarlo.`;
+            const name = (data.employee_name as string) || t("layout.anAiEmployee");
+            const msg = t("layout.budgetExhausted", { name });
             showToast(msg, "error");
             pushNotification(msg, "error");
             triggerRefresh();
@@ -137,7 +139,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const items = await api.workflows.recentCompletions(since);
             for (const item of items) {
                 const ok = item.status === "completed" || item.status === "success";
-                const msg = `Automatización "${item.workflow_name}" ${ok ? "completada" : "falló"}`;
+                const msg = ok
+                    ? t("layout.workflowCompleted", { name: item.workflow_name })
+                    : t("layout.workflowFailed", { name: item.workflow_name });
                 const type = ok ? "success" : "error";
                 showToast(msg, type);
                 pushNotification(msg, type);
@@ -149,12 +153,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="flex h-screen bg-background overflow-hidden">
-            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground">Saltar al contenido</a>
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground">{t("layout.skipToContent")}</a>
             <Sidebar />
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 <Header />
                 <main id="main-content" className="flex-1 overflow-y-auto relative" style={{ zIndex: 1 }}>
-                    <ErrorBoundary section="aplicación">
+                    <ErrorBoundary section={t("layout.sectionApp")}>
                         {children}
                     </ErrorBoundary>
                 </main>

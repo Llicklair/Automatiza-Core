@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import {
     ShoppingCart, Search, Camera, Plus, Minus, X, Loader2, Power, AlertTriangle,
 } from "lucide-react";
@@ -16,6 +17,7 @@ const fmt = (n: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
 
 export default function TpvPage() {
+    const t = useTranslations("tpv");
     const {
         session, loading, busy, checkoutOpen, setCheckoutOpen,
         subtotal, taxAmount, totalWithTax,
@@ -38,10 +40,10 @@ export default function TpvPage() {
     const handleCancel = async () => {
         if (!session) return;
         const ok = await showConfirm({
-            title: "Cancelar sesión",
-            message: "Se descartarán todas las líneas del carrito. Esta acción no se puede deshacer.",
-            confirmLabel: "Cancelar sesión",
-            cancelLabel: "Volver",
+            title: t("cancelConfirm.title"),
+            message: t("cancelConfirm.message"),
+            confirmLabel: t("cancelConfirm.confirmLabel"),
+            cancelLabel: t("cancelConfirm.cancelLabel"),
             confirmVariant: "danger",
         });
         if (ok) await cancelSession();
@@ -52,8 +54,8 @@ export default function TpvPage() {
         return (
             <div className="p-6 space-y-6 max-w-3xl mx-auto">
                 <PageHeader
-                    title="TPV"
-                    description="Punto de venta — escanea productos, ajusta cantidades y cobra."
+                    title={t("title")}
+                    description={t("header.description")}
                     icon={ShoppingCart}
                 />
                 <div className="bg-card border border-border rounded-2xl p-10 text-center space-y-4">
@@ -61,14 +63,14 @@ export default function TpvPage() {
                         <ShoppingCart className="w-6 h-6 text-cyan-400" />
                     </div>
                     <div>
-                        <h2 className="text-base font-semibold text-foreground">Sin sesión abierta</h2>
+                        <h2 className="text-base font-semibold text-foreground">{t("empty.title")}</h2>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Inicia una nueva sesión para empezar a vender.
+                            {t("empty.description")}
                         </p>
                     </div>
                     <Button onClick={openSession} disabled={busy}>
                         {busy ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : <Power className="mr-2 w-4 h-4" />}
-                        Abrir sesión TPV
+                        {t("empty.openButton")}
                     </Button>
                 </div>
             </div>
@@ -86,12 +88,15 @@ export default function TpvPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-3rem)] p-6 gap-4">
             <PageHeader
-                title="TPV"
-                description={`Sesión #${session.id.slice(0, 8)} · abierta ${new Date(session.opened_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+                title={t("title")}
+                description={t("header.sessionInfo", {
+                    id: session.id.slice(0, 8),
+                    time: new Date(session.opened_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+                })}
                 icon={ShoppingCart}
                 actions={
                     <Button variant="outline" size="sm" onClick={handleCancel} disabled={busy}>
-                        <X className="mr-1 w-3.5 h-3.5" /> Cancelar sesión
+                        <X className="mr-1 w-3.5 h-3.5" /> {t("cancelSession")}
                     </Button>
                 }
             />
@@ -107,12 +112,12 @@ export default function TpvPage() {
                                 type="text"
                                 value={code}
                                 onChange={(e) => setCode(e.target.value)}
-                                placeholder="Escanea con lector o escribe código de barras / SKU..."
+                                placeholder={t("scan.placeholder")}
                                 className="pl-9"
                                 autoFocus
                             />
                         </div>
-                        <Button type="submit" disabled={busy || !code.trim()} aria-label="Añadir producto">
+                        <Button type="submit" disabled={busy || !code.trim()} aria-label={t("scan.addProduct")}>
                             <Plus className="w-4 h-4" aria-hidden="true" />
                         </Button>
                         <Button
@@ -120,16 +125,16 @@ export default function TpvPage() {
                             variant="outline"
                             onClick={() => setScannerOpen(true)}
                             disabled={busy}
-                            title="Escanear con cámara"
+                            title={t("scan.scanWithCamera")}
                         >
                             <Camera className="w-4 h-4" />
                         </Button>
                     </form>
 
                     <div className="text-xs text-muted-foreground space-y-1">
-                        <p>· Usa un lector USB/Bluetooth: dispara automáticamente al escanear.</p>
-                        <p>· O pulsa la cámara para leer con el móvil.</p>
-                        <p>· Si añades un producto que ya está en el carrito, suma 1 a la cantidad.</p>
+                        <p>{t("scan.hintReader")}</p>
+                        <p>{t("scan.hintCamera")}</p>
+                        <p>{t("scan.hintExisting")}</p>
                     </div>
                 </div>
 
@@ -139,9 +144,9 @@ export default function TpvPage() {
                         <div className="flex items-center gap-2">
                             <ShoppingCart className="w-4 h-4 text-muted-foreground" />
                             <h3 className="text-sm font-medium text-foreground">
-                                Carrito
+                                {t("cart.title")}
                                 <span className="ml-2 text-xs text-muted-foreground">
-                                    ({session.lines.length} {session.lines.length === 1 ? "línea" : "líneas"})
+                                    ({t("cart.lineCount", { count: session.lines.length })})
                                 </span>
                             </h3>
                         </div>
@@ -151,7 +156,7 @@ export default function TpvPage() {
                         {session.lines.length === 0 ? (
                             <div className="p-8 text-center text-sm text-muted-foreground">
                                 <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                Carrito vacío. Escanea o introduce un código para empezar.
+                                {t("cart.empty")}
                             </div>
                         ) : (
                             <ul className="divide-y divide-border">
@@ -163,7 +168,7 @@ export default function TpvPage() {
                                                     {line.description}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground tabular-nums">
-                                                    {fmt(Number(line.unit_price))} · IVA {Number(line.tax_percentage)}%
+                                                    {t("cart.linePrice", { price: fmt(Number(line.unit_price)), tax: Number(line.tax_percentage) })}
                                                 </p>
                                             </div>
                                             <p className="text-sm font-semibold text-foreground tabular-nums whitespace-nowrap">
@@ -210,15 +215,15 @@ export default function TpvPage() {
 
                     <div className="border-t border-border p-4 space-y-2 bg-muted/30">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Subtotal</span>
+                            <span>{t("totals.subtotal")}</span>
                             <span className="tabular-nums">{fmt(subtotal)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>IVA</span>
+                            <span>{t("totals.tax")}</span>
                             <span className="tabular-nums">{fmt(taxAmount)}</span>
                         </div>
                         <div className="flex justify-between text-base font-bold text-foreground pt-1 border-t border-border">
-                            <span>Total</span>
+                            <span>{t("totals.total")}</span>
                             <span className="tabular-nums">{fmt(totalWithTax)}</span>
                         </div>
                         <Button
@@ -230,7 +235,7 @@ export default function TpvPage() {
                             {busy ? (
                                 <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                             ) : null}
-                            Cobrar {fmt(totalWithTax)}
+                            {t("totals.charge", { amount: fmt(totalWithTax) })}
                         </Button>
                     </div>
                 </div>

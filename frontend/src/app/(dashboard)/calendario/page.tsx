@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     CalendarDays, ChevronLeft, ChevronRight, Loader2, ReceiptText,
     Users, Wallet, CalendarCheck, Plus,
@@ -49,13 +50,6 @@ const COLOR_BG: Record<string, string> = {
     green:  "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
 };
 
-const SOURCE_LABEL: Record<string, string> = {
-    event:        "Reunión / evento",
-    reservation:  "Reserva",
-    invoice_due:  "Vencimiento factura",
-    payroll:      "Nómina",
-};
-
 const SOURCE_ICON: Record<string, React.ElementType> = {
     event:        CalendarCheck,
     reservation:  Users,
@@ -63,15 +57,27 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
     payroll:      Wallet,
 };
 
-const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"];
-const MONTHS_ES = [
-    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
-];
+const buildSourceLabel = (t: ReturnType<typeof useTranslations>): Record<string, string> => ({
+    event:        t("sources.event"),
+    reservation:  t("sources.reservation"),
+    invoice_due:  t("sources.invoiceDue"),
+    payroll:      t("sources.payroll"),
+});
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CalendarioPage() {
+    const t = useTranslations("calendario");
+    const SOURCE_LABEL = buildSourceLabel(t);
+    const WEEKDAYS = [
+        t("weekdays.mon"), t("weekdays.tue"), t("weekdays.wed"),
+        t("weekdays.thu"), t("weekdays.fri"), t("weekdays.sat"), t("weekdays.sun"),
+    ];
+    const MONTHS = [
+        t("months.jan"), t("months.feb"), t("months.mar"), t("months.apr"),
+        t("months.may"), t("months.jun"), t("months.jul"), t("months.aug"),
+        t("months.sep"), t("months.oct"), t("months.nov"), t("months.dec"),
+    ];
     const toast = useToastStore();
     const today = new Date();
 
@@ -118,7 +124,7 @@ export default function CalendarioPage() {
             const end = padDate(new Date(y, m + 1, 0));
             setEvents(await api.calendarUnified.list(start, end));
         } catch {
-            toast.error("Error al cargar el calendario");
+            toast.error(t("toasts.loadError"));
         } finally {
             setIsLoading(false);
         }
@@ -136,13 +142,13 @@ export default function CalendarioPage() {
     async function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         if (!newForm.title.trim()) {
-            toast.error("Falta el título");
+            toast.error(t("toasts.missingTitle"));
             return;
         }
         const startISO = new Date(`${newForm.start_date}T${newForm.start_time}:00`).toISOString();
         const endISO = new Date(`${newForm.end_date}T${newForm.end_time}:00`).toISOString();
         if (new Date(endISO) <= new Date(startISO)) {
-            toast.error("La hora de fin debe ser posterior al inicio");
+            toast.error(t("toasts.endBeforeStart"));
             return;
         }
         setCreating(true);
@@ -155,11 +161,11 @@ export default function CalendarioPage() {
                 start_time: startISO,
                 end_time: endISO,
             });
-            toast.success("Evento creado");
+            toast.success(t("toasts.created"));
             setShowNew(false);
             await load(year, month);
         } catch {
-            toast.error("Error al crear el evento");
+            toast.error(t("toasts.createError"));
         } finally {
             setCreating(false);
         }
@@ -192,8 +198,8 @@ export default function CalendarioPage() {
     return (
         <div className="p-6 space-y-5">
             <PageHeader
-                title="Calendario unificado"
-                description="Reuniones, vencimientos, reservas y nóminas en una sola vista"
+                title={t("header.title")}
+                description={t("header.description")}
                 icon={CalendarDays}
             />
 
@@ -204,7 +210,7 @@ export default function CalendarioPage() {
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <h2 className="text-base font-semibold text-foreground w-44 text-center">
-                        {MONTHS_ES[month]} {year}
+                        {MONTHS[month]} {year}
                     </h2>
                     <Button variant="outline" size="sm" onClick={() => goMonth(1)}>
                         <ChevronRight className="h-4 w-4" />
@@ -214,11 +220,11 @@ export default function CalendarioPage() {
                         className="text-xs text-muted-foreground"
                         onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelectedDay(todayKey); }}
                     >
-                        Hoy
+                        {t("nav.today")}
                     </Button>
                     <Button size="sm" onClick={() => openNewEvent()}>
                         <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Nuevo evento
+                        {t("nav.newEvent")}
                     </Button>
                 </div>
 
@@ -240,7 +246,7 @@ export default function CalendarioPage() {
                 <div className="flex-1 min-w-0">
                     {isLoading ? (
                         <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t("grid.loading")}
                         </div>
                     ) : (
                         <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -295,7 +301,7 @@ export default function CalendarioPage() {
                                                 ))}
                                                 {overflow > 0 && (
                                                     <div className="text-[10px] text-muted-foreground px-1">
-                                                        +{overflow} más
+                                                        {t("grid.more", { count: overflow })}
                                                     </div>
                                                 )}
                                             </div>
@@ -317,7 +323,7 @@ export default function CalendarioPage() {
                                         weekday: "long", day: "numeric", month: "long",
                                     })}
                                 </h3>
-                                <button onClick={() => setSelectedDay(null)} className="text-xs text-muted-foreground hover:text-foreground" aria-label="Cerrar">✕</button>
+                                <button onClick={() => setSelectedDay(null)} className="text-xs text-muted-foreground hover:text-foreground" aria-label={t("detail.closeAria")}>✕</button>
                             </div>
 
                             <Button
@@ -327,11 +333,11 @@ export default function CalendarioPage() {
                                 onClick={() => openNewEvent(selectedDay)}
                             >
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
-                                Crear evento este día
+                                {t("detail.createThisDay")}
                             </Button>
 
                             {selectedEvents.length === 0 ? (
-                                <p className="text-xs text-muted-foreground italic">Sin eventos este día</p>
+                                <p className="text-xs text-muted-foreground italic">{t("detail.empty")}</p>
                             ) : (
                                 <div className="space-y-2">
                                     {selectedEvents.map((ev) => {
@@ -368,22 +374,22 @@ export default function CalendarioPage() {
             <Dialog open={showNew} onOpenChange={setShowNew}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Nuevo evento</DialogTitle>
+                        <DialogTitle>{t("modal.title")}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label htmlFor="ev-title">Título *</Label>
+                            <Label htmlFor="ev-title">{t("modal.fieldTitle")}</Label>
                             <Input
                                 id="ev-title"
                                 required
                                 value={newForm.title}
                                 onChange={(e) => setNewForm((f) => ({ ...f, title: e.target.value }))}
-                                placeholder="Reunión con cliente, demo, llamada..."
+                                placeholder={t("modal.titlePlaceholder")}
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label>Tipo</Label>
+                            <Label>{t("modal.type")}</Label>
                             <Select
                                 value={newForm.type}
                                 onValueChange={(v) => setNewForm((f) => ({ ...f, type: v }))}
@@ -392,17 +398,17 @@ export default function CalendarioPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="meeting">Reunión</SelectItem>
-                                    <SelectItem value="call">Llamada</SelectItem>
-                                    <SelectItem value="task">Tarea</SelectItem>
-                                    <SelectItem value="other">Otro</SelectItem>
+                                    <SelectItem value="meeting">{t("eventTypes.meeting")}</SelectItem>
+                                    <SelectItem value="call">{t("eventTypes.call")}</SelectItem>
+                                    <SelectItem value="task">{t("eventTypes.task")}</SelectItem>
+                                    <SelectItem value="other">{t("eventTypes.other")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label htmlFor="ev-start-date">Inicio</Label>
+                                <Label htmlFor="ev-start-date">{t("modal.start")}</Label>
                                 <Input
                                     id="ev-start-date"
                                     type="date"
@@ -429,7 +435,7 @@ export default function CalendarioPage() {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label htmlFor="ev-end-date">Fin</Label>
+                                <Label htmlFor="ev-end-date">{t("modal.end")}</Label>
                                 <Input
                                     id="ev-end-date"
                                     type="date"
@@ -452,34 +458,34 @@ export default function CalendarioPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="ev-loc">Ubicación o enlace</Label>
+                            <Label htmlFor="ev-loc">{t("modal.location")}</Label>
                             <Input
                                 id="ev-loc"
                                 value={newForm.location_or_link}
                                 onChange={(e) => setNewForm((f) => ({ ...f, location_or_link: e.target.value }))}
-                                placeholder="Sala 1, Meet, Zoom URL..."
+                                placeholder={t("modal.locationPlaceholder")}
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="ev-desc">Notas</Label>
+                            <Label htmlFor="ev-desc">{t("modal.notes")}</Label>
                             <textarea
                                 id="ev-desc"
                                 rows={3}
                                 value={newForm.description}
                                 onChange={(e) => setNewForm((f) => ({ ...f, description: e.target.value }))}
-                                placeholder="Detalles adicionales..."
+                                placeholder={t("modal.notesPlaceholder")}
                                 className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         </div>
 
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setShowNew(false)} disabled={creating}>
-                                Cancelar
+                                {t("modal.cancel")}
                             </Button>
                             <Button type="submit" disabled={creating}>
                                 {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
-                                Crear evento
+                                {t("modal.create")}
                             </Button>
                         </DialogFooter>
                     </form>

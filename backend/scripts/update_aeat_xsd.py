@@ -48,10 +48,10 @@ def _download(client: httpx.Client, url: str, dest: Path) -> bool:
         r = client.get(url)
         r.raise_for_status()
     except httpx.HTTPError as e:
-        print(f"  ✗ {dest.name}: {e}")
+        print(f"  [x] {dest.name}: {e}")
         return False
     dest.write_bytes(r.content)
-    print(f"  ✓ {dest.name} ({len(r.content):,} bytes)")
+    print(f"  [ok] {dest.name} ({len(r.content):,} bytes)")
     return True
 
 

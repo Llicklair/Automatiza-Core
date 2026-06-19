@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     BookCheck,
     Building2,
@@ -34,40 +35,40 @@ interface ModeloMeta {
     periodicidad: "trimestral" | "anual";
 }
 
-const MODELOS: ModeloMeta[] = [
+const buildModelos = (t: ReturnType<typeof useTranslations>): ModeloMeta[] => [
     {
         key: "130",
-        titulo: "Modelo 130",
-        subtitulo: "IRPF · Estimación directa",
-        descripcion: "Pago fraccionado trimestral. 20% del beneficio acumulado.",
+        titulo: t("modelos.modelo130Titulo"),
+        subtitulo: t("modelos.modelo130Subtitulo"),
+        descripcion: t("modelos.modelo130Descripcion"),
         periodicidad: "trimestral",
     },
     {
         key: "111",
-        titulo: "Modelo 111",
-        subtitulo: "Retenciones trabajadores",
-        descripcion: "Retenciones IRPF de empleados, trimestral.",
+        titulo: t("modelos.modelo111Titulo"),
+        subtitulo: t("modelos.modelo111Subtitulo"),
+        descripcion: t("modelos.modelo111Descripcion"),
         periodicidad: "trimestral",
     },
     {
         key: "190",
-        titulo: "Modelo 190",
-        subtitulo: "Resumen anual retenciones",
-        descripcion: "Consolidación de 12 meses de nóminas (4×111).",
+        titulo: t("modelos.modelo190Titulo"),
+        subtitulo: t("modelos.modelo190Subtitulo"),
+        descripcion: t("modelos.modelo190Descripcion"),
         periodicidad: "anual",
     },
     {
         key: "347",
-        titulo: "Modelo 347",
-        subtitulo: "Operaciones con terceros",
-        descripcion: "Contrapartes con operaciones >3.005,06€/año.",
+        titulo: t("modelos.modelo347Titulo"),
+        subtitulo: t("modelos.modelo347Subtitulo"),
+        descripcion: t("modelos.modelo347Descripcion"),
         periodicidad: "anual",
     },
     {
         key: "390",
-        titulo: "Modelo 390",
-        subtitulo: "Resumen anual IVA",
-        descripcion: "Consolidación de los 4 modelos 303.",
+        titulo: t("modelos.modelo390Titulo"),
+        subtitulo: t("modelos.modelo390Subtitulo"),
+        descripcion: t("modelos.modelo390Descripcion"),
         periodicidad: "anual",
     },
 ];
@@ -88,6 +89,8 @@ function fmtPct(n: number): string {
 }
 
 export function ModelosPanel() {
+    const t = useTranslations("impuestos");
+    const MODELOS = buildModelos(t);
     const toast = useToastStore();
     const [ejercicio, setEjercicio] = useState(CURRENT_YEAR);
     const [trimestre, setTrimestre] = useState(1);
@@ -109,9 +112,9 @@ export function ModelosPanel() {
                 case "347": await api.modelosAeat.pdf.m347(ejercicio); break;
                 case "390": await api.modelosAeat.pdf.m390(ejercicio); break;
             }
-            toast.show(`PDF del modelo ${modelo} descargado.`, "success");
+            toast.show(t("modelos.pdfDownloaded", { modelo }), "success");
         } catch (e: any) {
-            toast.show(`Error al descargar el PDF: ${e.message}`, "error");
+            toast.show(t("modelos.pdfDownloadError", { message: e.message }), "error");
         } finally {
             setDownloading(null);
         }
@@ -129,9 +132,9 @@ export function ModelosPanel() {
                 case "390": data = await api.modelosAeat.m390(ejercicio); break;
             }
             setResults((r) => ({ ...r, [modelo]: data }));
-            toast.show(`Modelo ${modelo} calculado.`, "success");
+            toast.show(t("modelos.modeloCalculated", { modelo }), "success");
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(t("modelos.calcError", { message: e.message }), "error");
         } finally {
             setBusy(null);
         }
@@ -140,15 +143,15 @@ export function ModelosPanel() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Modelos AEAT — preview"
-                description="Liquidaciones calculadas con tus datos del periodo seleccionado. La presentación telemática real requiere alta como colaborador social en AEAT."
+                title={t("modelos.title")}
+                description={t("modelos.description")}
             />
 
             <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-                <h2 className="text-sm font-medium text-foreground">Periodo fiscal</h2>
+                <h2 className="text-sm font-medium text-foreground">{t("modelos.periodoFiscal")}</h2>
                 <div className="flex flex-wrap items-center gap-3">
                     <label className="text-xs text-muted-foreground flex items-center gap-2">
-                        Ejercicio
+                        {t("modelos.ejercicio")}
                         <input
                             type="number"
                             min={2020}
@@ -159,7 +162,7 @@ export function ModelosPanel() {
                         />
                     </label>
                     <label className="text-xs text-muted-foreground flex items-center gap-2">
-                        Trimestre (130, 111)
+                        {t("modelos.trimestre")}
                         <select
                             value={trimestre}
                             onChange={(e) => setTrimestre(Number(e.target.value))}
@@ -173,7 +176,7 @@ export function ModelosPanel() {
                     </label>
                     <div className="ml-auto flex flex-wrap items-center gap-2">
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                            Descargar (trimestral):
+                            {t("modelos.descargarTrimestral")}
                         </span>
                         {(["303", "115", "349"] as const).map((mk) => (
                             <button
@@ -181,7 +184,7 @@ export function ModelosPanel() {
                                 type="button"
                                 onClick={() => downloadPdf(mk)}
                                 disabled={downloading === mk}
-                                title={`Descargar el Modelo ${mk} en PDF para imprimir`}
+                                title={t("modelos.pdfTitle", { modelo: mk })}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50"
                             >
                                 {downloading === mk ? (
@@ -189,7 +192,7 @@ export function ModelosPanel() {
                                 ) : (
                                     <Download className="w-3 h-3" aria-hidden="true" />
                                 )}
-                                {mk} (PDF)
+                                {t("modelos.pdfButton", { modelo: mk })}
                             </button>
                         ))}
                     </div>
@@ -215,7 +218,7 @@ export function ModelosPanel() {
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                        {m.periodicidad}
+                                        {m.periodicidad === "trimestral" ? t("modelos.periodicidadTrimestral") : t("modelos.periodicidadAnual")}
                                     </span>
                                     <button
                                         type="button"
@@ -228,13 +231,13 @@ export function ModelosPanel() {
                                         ) : data ? (
                                             <RefreshCw className="w-3 h-3" aria-hidden="true" />
                                         ) : null}
-                                        {data ? "Recalcular" : "Calcular"}
+                                        {data ? t("modelos.recalcular") : t("modelos.calcular")}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => downloadPdf(m.key)}
                                         disabled={downloading === m.key}
-                                        title="Descargar PDF borrador para imprimir"
+                                        title={t("modelos.pdfBorradorTitle")}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-foreground text-xs font-medium hover:bg-muted disabled:opacity-50"
                                     >
                                         {downloading === m.key ? (
@@ -242,7 +245,7 @@ export function ModelosPanel() {
                                         ) : (
                                             <Download className="w-3 h-3" aria-hidden="true" />
                                         )}
-                                        PDF
+                                        {t("modelos.pdf")}
                                     </button>
                                 </div>
                             </header>
@@ -258,10 +261,7 @@ export function ModelosPanel() {
             </div>
 
             <p className="text-xs text-muted-foreground italic">
-                La presentación telemática real (PRES.303 / PRES.MOD1 / PRES.MOD2)
-                requiere alta como colaborador social en AEAT y certificado de
-                representación FNMT. Mientras tanto puedes presentar manualmente con
-                estas cifras desde la Sede Electrónica.
+                {t("modelos.footnote")}
             </p>
         </div>
     );
@@ -270,11 +270,12 @@ export function ModelosPanel() {
 // ── Vistas por modelo ────────────────────────────────────────────────────
 
 function TenantHeader({ tenant, periodo }: { tenant: any; periodo?: string }) {
+    const t = useTranslations("impuestos");
     return (
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3 pb-3 border-b border-border">
             <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="text-foreground font-medium">{tenant?.name ?? "—"}</span>
-            <span>· NIF {tenant?.nif ?? "—"}</span>
+            <span>· {t("modelos.nif", { nif: tenant?.nif ?? "—" })}</span>
             {periodo && <span className="ml-auto text-[10px] uppercase tracking-wider">{periodo}</span>}
         </div>
     );
@@ -295,47 +296,49 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 }
 
 function Modelo130View({ data }: { data: any }) {
+    const t = useTranslations("impuestos");
     const resultado = Number(data.resultado_a_ingresar ?? 0);
     return (
         <>
             <TenantHeader tenant={data.tenant} periodo={`${data.periodo} ${data.ejercicio}`} />
             <div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center mb-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Resultado a ingresar
+                    {t("modelos.resultadoAIngresar")}
                 </p>
                 <p className={`mt-1 text-3xl font-bold tabular-nums ${resultado > 0 ? "text-amber-500" : resultado < 0 ? "text-emerald-500" : "text-foreground"}`}>
                     {fmtEUR(resultado)}
                 </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <Stat label="Ingresos acumulados" value={fmtEUR(data.ingresos_acumulados)} accent="success" />
-                <Stat label="Gastos acumulados" value={fmtEUR(data.gastos_acumulados)} />
-                <Stat label="Beneficio acumulado" value={fmtEUR(data.beneficio_acumulado)} accent="primary" />
-                <Stat label="Pago fraccionado bruto (20%)" value={fmtEUR(data.pago_fraccionado_bruto)} />
-                <Stat label="Retenciones soportadas" value={fmtEUR(data.retenciones_soportadas)} />
-                <Stat label="Facturas (emit / recib)" value={`${data.num_facturas_emitidas} / ${data.num_facturas_recibidas}`} />
+                <Stat label={t("modelos.stat130Ingresos")} value={fmtEUR(data.ingresos_acumulados)} accent="success" />
+                <Stat label={t("modelos.stat130Gastos")} value={fmtEUR(data.gastos_acumulados)} />
+                <Stat label={t("modelos.stat130Beneficio")} value={fmtEUR(data.beneficio_acumulado)} accent="primary" />
+                <Stat label={t("modelos.stat130PagoFraccionado")} value={fmtEUR(data.pago_fraccionado_bruto)} />
+                <Stat label={t("modelos.stat130Retenciones")} value={fmtEUR(data.retenciones_soportadas)} />
+                <Stat label={t("modelos.stat130Facturas")} value={`${data.num_facturas_emitidas} / ${data.num_facturas_recibidas}`} />
             </div>
         </>
     );
 }
 
 function Modelo111View({ data }: { data: any }) {
+    const t = useTranslations("impuestos");
     const perceptores: Array<any> = data.perceptores_trabajo_personal ?? [];
     return (
         <>
             <TenantHeader tenant={data.tenant} periodo={`${data.periodo} ${data.ejercicio}`} />
             <div className="grid grid-cols-3 gap-2 mb-3">
-                <Stat label="Perceptores" value={String(data.num_perceptores)} />
-                <Stat label="Base retenciones" value={fmtEUR(data.total_base_retenciones)} />
-                <Stat label="Retención total" value={fmtEUR(data.total_retencion_practicada)} accent="primary" />
+                <Stat label={t("modelos.perceptores")} value={String(data.num_perceptores)} />
+                <Stat label={t("modelos.baseRetenciones")} value={fmtEUR(data.total_base_retenciones)} />
+                <Stat label={t("modelos.retencionTotal")} value={fmtEUR(data.total_retencion_practicada)} accent="primary" />
             </div>
             {perceptores.length > 0 ? (
                 <table className="w-full text-xs">
                     <thead>
                         <tr className="text-muted-foreground border-b border-border">
-                            <th className="text-left font-medium pb-1.5">Perceptor</th>
-                            <th className="text-right font-medium pb-1.5">Base</th>
-                            <th className="text-right font-medium pb-1.5">Retención</th>
+                            <th className="text-left font-medium pb-1.5">{t("modelos.thPerceptor")}</th>
+                            <th className="text-right font-medium pb-1.5">{t("modelos.thBase")}</th>
+                            <th className="text-right font-medium pb-1.5">{t("modelos.thRetencion")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -353,7 +356,7 @@ function Modelo111View({ data }: { data: any }) {
                 </table>
             ) : (
                 <p className="text-xs text-muted-foreground italic py-3 text-center">
-                    Sin perceptores con retención en el periodo.
+                    {t("modelos.sinPerceptoresRetencion")}
                 </p>
             )}
         </>
@@ -361,23 +364,24 @@ function Modelo111View({ data }: { data: any }) {
 }
 
 function Modelo190View({ data }: { data: any }) {
+    const t = useTranslations("impuestos");
     const perceptores: Array<any> = data.perceptores ?? [];
     return (
         <>
-            <TenantHeader tenant={data.tenant} periodo={`Anual ${data.ejercicio}`} />
+            <TenantHeader tenant={data.tenant} periodo={`${t("modelos.periodicidadAnual")} ${data.ejercicio}`} />
             <div className="grid grid-cols-3 gap-2 mb-3">
-                <Stat label="Perceptores" value={String(data.num_perceptores)} />
-                <Stat label="Percepción íntegra" value={fmtEUR(data.total_percepcion_integra)} />
-                <Stat label="Retención total" value={fmtEUR(data.total_retencion_practicada)} accent="primary" />
+                <Stat label={t("modelos.perceptores")} value={String(data.num_perceptores)} />
+                <Stat label={t("modelos.percepcionIntegra")} value={fmtEUR(data.total_percepcion_integra)} />
+                <Stat label={t("modelos.retencionTotal")} value={fmtEUR(data.total_retencion_practicada)} accent="primary" />
             </div>
             {perceptores.length > 0 ? (
                 <table className="w-full text-xs">
                     <thead>
                         <tr className="text-muted-foreground border-b border-border">
-                            <th className="text-left font-medium pb-1.5">Perceptor</th>
-                            <th className="text-center font-medium pb-1.5">Clave</th>
-                            <th className="text-right font-medium pb-1.5">Percepción</th>
-                            <th className="text-right font-medium pb-1.5">Retención</th>
+                            <th className="text-left font-medium pb-1.5">{t("modelos.thPerceptor")}</th>
+                            <th className="text-center font-medium pb-1.5">{t("modelos.thClave")}</th>
+                            <th className="text-right font-medium pb-1.5">{t("modelos.thPercepcion")}</th>
+                            <th className="text-right font-medium pb-1.5">{t("modelos.thRetencion")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -398,12 +402,12 @@ function Modelo190View({ data }: { data: any }) {
                 </table>
             ) : (
                 <p className="text-xs text-muted-foreground italic py-3 text-center">
-                    Sin perceptores anuales.
+                    {t("modelos.sinPerceptoresAnuales")}
                 </p>
             )}
             {data._pending_v1_1 && (
                 <p className="mt-3 text-[10px] text-muted-foreground italic">
-                    Pendiente v1.1: {data._pending_v1_1}
+                    {t("modelos.pendienteV11", { detail: data._pending_v1_1 })}
                 </p>
             )}
         </>
@@ -411,27 +415,28 @@ function Modelo190View({ data }: { data: any }) {
 }
 
 function Modelo347View({ data }: { data: any }) {
+    const t = useTranslations("impuestos");
     const declarables: Array<any> = data.declarables ?? [];
     return (
         <>
-            <TenantHeader tenant={data.tenant} periodo={`Anual ${data.ejercicio}`} />
+            <TenantHeader tenant={data.tenant} periodo={`${t("modelos.periodicidadAnual")} ${data.ejercicio}`} />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
-                <Stat label="Contrapartes analizadas" value={String(data.total_contrapartes_analizadas ?? 0)} />
+                <Stat label={t("modelos.contrapartesAnalizadas")} value={String(data.total_contrapartes_analizadas ?? 0)} />
                 <Stat
-                    label="Declarables (>= umbral)"
+                    label={t("modelos.declarables")}
                     value={String(data.num_declarables ?? 0)}
                     accent={data.num_declarables > 0 ? "warning" : undefined}
                 />
-                <Stat label="Umbral legal" value={fmtEUR(data.umbral_legal ?? 3005.06)} />
+                <Stat label={t("modelos.umbralLegal")} value={fmtEUR(data.umbral_legal ?? 3005.06)} />
             </div>
             {declarables.length > 0 ? (
                 <table className="w-full text-xs">
                     <thead>
                         <tr className="text-muted-foreground border-b border-border">
-                            <th className="text-left font-medium pb-1.5">NIF</th>
-                            <th className="text-left font-medium pb-1.5">Nombre</th>
-                            <th className="text-right font-medium pb-1.5">Emitidas</th>
-                            <th className="text-right font-medium pb-1.5">Recibidas</th>
+                            <th className="text-left font-medium pb-1.5">{t("modelos.thNif")}</th>
+                            <th className="text-left font-medium pb-1.5">{t("modelos.thNombre")}</th>
+                            <th className="text-right font-medium pb-1.5">{t("modelos.thEmitidas")}</th>
+                            <th className="text-right font-medium pb-1.5">{t("modelos.thRecibidas")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -447,7 +452,7 @@ function Modelo347View({ data }: { data: any }) {
                 </table>
             ) : (
                 <p className="text-xs text-muted-foreground italic py-3 text-center">
-                    Ningún cliente o proveedor ha superado el umbral de {fmtEUR(data.umbral_legal ?? 3005.06)} este ejercicio.
+                    {t("modelos.ningunUmbral", { umbral: fmtEUR(data.umbral_legal ?? 3005.06) })}
                 </p>
             )}
         </>
@@ -455,52 +460,54 @@ function Modelo347View({ data }: { data: any }) {
 }
 
 function Modelo390View({ data }: { data: any }) {
+    const t = useTranslations("impuestos");
     const devengado: Array<any> = data.iva_devengado ?? [];
     const deducible: Array<any> = data.iva_deducible ?? [];
     const resultado = Number(data.resultado_anual ?? 0);
 
     return (
         <>
-            <TenantHeader tenant={data.tenant} periodo={`Anual ${data.ejercicio}`} />
+            <TenantHeader tenant={data.tenant} periodo={`${t("modelos.periodicidadAnual")} ${data.ejercicio}`} />
             <div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center mb-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Resultado anual IVA
+                    {t("modelos.resultadoAnualIva")}
                 </p>
                 <p className={`mt-1 text-3xl font-bold tabular-nums ${resultado > 0 ? "text-amber-500" : resultado < 0 ? "text-emerald-500" : "text-foreground"}`}>
                     {fmtEUR(resultado)}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                    {resultado > 0 ? "A ingresar" : resultado < 0 ? "A devolver" : "A cero"}
+                    {resultado > 0 ? t("modelos.aIngresar") : resultado < 0 ? t("modelos.aDevolver") : t("modelos.aCero")}
                 </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                    <h4 className="text-xs font-semibold text-foreground mb-2">IVA devengado (ventas)</h4>
+                    <h4 className="text-xs font-semibold text-foreground mb-2">{t("modelos.ivaDevengado")}</h4>
                     <IvaTable rows={devengado} totalQuota={data.total_devengado ?? 0} />
                 </div>
                 <div>
-                    <h4 className="text-xs font-semibold text-foreground mb-2">IVA deducible (compras)</h4>
+                    <h4 className="text-xs font-semibold text-foreground mb-2">{t("modelos.ivaDeducible")}</h4>
                     <IvaTable rows={deducible} totalQuota={data.total_deducible ?? 0} />
                 </div>
             </div>
             <p className="mt-3 text-[10px] text-muted-foreground">
-                Facturas emitidas: {data.num_facturas_emitidas} · recibidas: {data.num_facturas_recibidas}
+                {t("modelos.facturasEmitidasRecibidas", { emitidas: data.num_facturas_emitidas, recibidas: data.num_facturas_recibidas })}
             </p>
         </>
     );
 }
 
 function IvaTable({ rows, totalQuota }: { rows: any[]; totalQuota: number }) {
+    const t = useTranslations("impuestos");
     if (!rows || rows.length === 0) {
-        return <p className="text-xs text-muted-foreground italic py-3">Sin operaciones.</p>;
+        return <p className="text-xs text-muted-foreground italic py-3">{t("modelos.sinOperaciones")}</p>;
     }
     return (
         <table className="w-full text-xs">
             <thead>
                 <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left font-medium pb-1.5">Tipo</th>
-                    <th className="text-right font-medium pb-1.5">Base</th>
-                    <th className="text-right font-medium pb-1.5">Cuota</th>
+                    <th className="text-left font-medium pb-1.5">{t("modelos.thTipo")}</th>
+                    <th className="text-right font-medium pb-1.5">{t("modelos.thBase")}</th>
+                    <th className="text-right font-medium pb-1.5">{t("modelos.thCuota")}</th>
                 </tr>
             </thead>
             <tbody>
@@ -512,7 +519,7 @@ function IvaTable({ rows, totalQuota }: { rows: any[]; totalQuota: number }) {
                     </tr>
                 ))}
                 <tr>
-                    <td className="pt-2 font-semibold text-foreground">Total cuota</td>
+                    <td className="pt-2 font-semibold text-foreground">{t("modelos.totalCuota")}</td>
                     <td colSpan={2} className="pt-2 text-right font-semibold text-foreground tabular-nums">
                         {fmtEUR(totalQuota)}
                     </td>

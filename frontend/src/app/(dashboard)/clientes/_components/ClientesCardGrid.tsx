@@ -108,7 +108,7 @@ export function ClientesCardGrid({
                                         </div>
                                     ) : null}
                                     {!client.email && !client.phone && (
-                                        <p className="text-xs text-red-400/70 italic">Sin datos de contacto</p>
+                                        <p className="text-xs text-red-400/70 italic">{t("noContactData")}</p>
                                     )}
                                 </div>
 
@@ -135,7 +135,7 @@ export function ClientesCardGrid({
                                         size="icon"
                                         className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                         onClick={() => openEditClient(client)}
-                                     aria-label="Editar cliente">
+                                     aria-label={t("editClientAria")}>
                                         <Pencil className="h-3 w-3" aria-hidden="true" />
                                     </Button>
                                     <Button
@@ -144,7 +144,7 @@ export function ClientesCardGrid({
                                         className="h-7 w-7 text-red-400/60 hover:text-red-400 hover:bg-red-500/10"
                                         onClick={() => handleDeleteClient(client)}
                                         disabled={deleting}
-                                     aria-label="Eliminar cliente">
+                                     aria-label={t("deleteClientAria")}>
                                         <Trash2 className="h-3 w-3" aria-hidden="true" />
                                     </Button>
                                 </div>

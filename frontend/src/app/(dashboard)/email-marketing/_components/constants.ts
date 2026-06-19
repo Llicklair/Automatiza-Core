@@ -3,7 +3,3 @@ export const errMsg = (err: unknown, fallback: string) =>
 
 export const fmt = (iso: string | null) =>
     iso ? new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
-
-// ── TEMPLATE_VARS hint ─────────────────────────────────────────────────────────
-
-export const VARS_HINT = "Variables disponibles: {{nombre}}, {{email}}";

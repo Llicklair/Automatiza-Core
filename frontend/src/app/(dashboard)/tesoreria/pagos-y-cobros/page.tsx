@@ -1,6 +1,7 @@
 "use client";
 
 import { RefreshCw, Loader2, TrendingDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import TransactionsTable from "./_components/TransactionsTable";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PagosYCobrosPage() {
+    const t = useTranslations("tesoreria");
     const {
         loading, syncing, tab, setTab, transactions,
         cobros, pagos, totalCobros, totalPagos,
@@ -19,21 +21,21 @@ export default function PagosYCobrosPage() {
     } = usePagosYCobros();
 
     const tabs = [
-        { id: "cobros", label: `Cobros pendientes (${cobros.length})`, color: "text-emerald-400", active: "border-emerald-500" },
-        { id: "pagos", label: `Pagos pendientes (${pagos.length})`, color: "text-red-400", active: "border-red-500" },
-        { id: "movimientos", label: `Movimientos bancarios (${transactions.length})`, color: "text-blue-400", active: "border-blue-500" },
+        { id: "cobros", label: t("pagosYCobros.tabCobros", { n: cobros.length }), color: "text-emerald-400", active: "border-emerald-500" },
+        { id: "pagos", label: t("pagosYCobros.tabPagos", { n: pagos.length }), color: "text-red-400", active: "border-red-500" },
+        { id: "movimientos", label: t("pagosYCobros.tabMovimientos", { n: transactions.length }), color: "text-blue-400", active: "border-blue-500" },
     ] as const;
 
     return (
         <PageContainer className="animate-in fade-in duration-500">
             <PageHeader
-                title="Pagos y Cobros"
-                description="Control de liquidez y vencimientos de caja."
+                title={t("pagosYCobros.title")}
+                description={t("pagosYCobros.description")}
                 icon={TrendingDown}
                 actions={
                     <Button variant="outline" onClick={handleSync} disabled={syncing}>
                         {syncing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                        Sincronizar banco
+                        {t("pagosYCobros.syncBank")}
                     </Button>
                 }
             />
@@ -70,8 +72,7 @@ export default function PagosYCobrosPage() {
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <TrendingDown className="w-3.5 h-3.5" />
-                Los importes de cobros y pagos provienen de facturas emitidas y recibidas no cobradas/pagadas.
-                Los movimientos bancarios son importados via sincronizacion PSD2.
+                {t("pagosYCobros.footerNote")}
             </div>
         </PageContainer>
     );

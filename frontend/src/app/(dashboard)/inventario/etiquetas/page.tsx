@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Tags, Search, Plus, Trash2, Loader2, Printer } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api, type Product } from "@/lib/api";
 import { labels as labelsApi } from "@/lib/api/labels";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -12,6 +13,8 @@ import { Label } from "@/components/ui/label";
 interface Selected { product: Product; copies: number; }
 
 export default function EtiquetasPage() {
+    const t = useTranslations("inventario");
+    const tc = useTranslations("common");
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<Product[]>([]);
     const [selected, setSelected] = useState<Record<string, Selected>>({});
@@ -49,7 +52,7 @@ export default function EtiquetasPage() {
             window.open(url, "_blank");
             setTimeout(() => URL.revokeObjectURL(url), 60_000);
         } catch (e: any) {
-            setError(e?.message || "No se pudieron generar las etiquetas");
+            setError(e?.message || t("labels.generateError"));
         }
         setGenerating(false);
     };
@@ -57,13 +60,13 @@ export default function EtiquetasPage() {
     return (
         <div className="p-6 space-y-6">
             <PageHeader
-                title="Etiquetas"
-                description="Genera etiquetas con código de barras para imprimir. El PDF se abre listo para imprimir (impresora normal o de etiquetas)."
+                title={t("labels.title")}
+                description={t("labels.description")}
                 icon={Tags}
                 actions={
                     <Button onClick={generate} disabled={generating || totalLabels === 0}>
                         {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
-                        Generar {totalLabels > 0 ? `(${totalLabels})` : ""}
+                        {t("labels.generate")} {totalLabels > 0 ? `(${totalLabels})` : ""}
                     </Button>
                 }
             />
@@ -72,7 +75,7 @@ export default function EtiquetasPage() {
 
             <div className="flex items-center gap-2">
                 <input id="lbl-price" type="checkbox" checked={showPrice} onChange={e => setShowPrice(e.target.checked)} className="h-4 w-4 accent-primary" />
-                <Label htmlFor="lbl-price" className="text-sm cursor-pointer">Incluir precio en la etiqueta</Label>
+                <Label htmlFor="lbl-price" className="text-sm cursor-pointer">{t("labels.includePrice")}</Label>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -80,21 +83,21 @@ export default function EtiquetasPage() {
                 <div className="rounded-lg border border-border bg-card p-4 space-y-3">
                     <div className="relative">
                         <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                        <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar producto por nombre, SKU o código…" className="pl-9" />
+                        <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("labels.searchPlaceholder")} className="pl-9" />
                     </div>
                     <div className="max-h-[55vh] overflow-y-auto divide-y divide-border/40">
                         {searching ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground py-3"><Loader2 className="w-4 h-4 animate-spin" /> Buscando…</div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground py-3"><Loader2 className="w-4 h-4 animate-spin" /> {t("labels.searching")}</div>
                         ) : results.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-3">Sin resultados.</p>
+                            <p className="text-xs text-muted-foreground py-3">{tc("noResults")}</p>
                         ) : results.map(p => (
                             <div key={p.id} className="flex items-center justify-between gap-2 py-2">
                                 <div className="min-w-0">
                                     <p className="text-sm text-foreground truncate">{p.name}</p>
-                                    <p className="text-xs text-muted-foreground font-mono">{p.barcode || p.sku || "sin código"}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">{p.barcode || p.sku || t("labels.noCode")}</p>
                                 </div>
                                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => add(p)}>
-                                    <Plus className="w-3 h-3 mr-1" /> Añadir
+                                    <Plus className="w-3 h-3 mr-1" /> {t("labels.add")}
                                 </Button>
                             </div>
                         ))}
@@ -103,9 +106,9 @@ export default function EtiquetasPage() {
 
                 {/* Selección a imprimir */}
                 <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                    <h3 className="text-sm font-medium text-foreground">A imprimir ({totalLabels} etiquetas)</h3>
+                    <h3 className="text-sm font-medium text-foreground">{t("labels.toPrint", { count: totalLabels })}</h3>
                     {list.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-3">Añade productos desde la izquierda. Indica cuántas copias por producto.</p>
+                        <p className="text-xs text-muted-foreground py-3">{t("labels.emptySelection")}</p>
                     ) : (
                         <div className="space-y-2 max-h-[55vh] overflow-y-auto">
                             {list.map(({ product, copies }) => (
@@ -114,7 +117,7 @@ export default function EtiquetasPage() {
                                     <Input type="number" min={1} value={copies}
                                         onChange={e => setCopies(product.id, parseInt(e.target.value) || 1)}
                                         className="h-8 w-20" />
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(product.id)} aria-label="Quitar producto">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(product.id)} aria-label={t("labels.removeProduct")}>
                                         <Trash2 className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
                                     </Button>
                                 </div>

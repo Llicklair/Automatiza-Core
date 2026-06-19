@@ -166,18 +166,6 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
-    # Diario a las 23:00 (Europe/Madrid): snapshot de métricas de posts de
-    # marketing publicados (impresiones, alcance, engagement por red).
-    from app.services.marketing.metrics import sync_all_post_metrics
-
-    scheduler.add_job(
-        sync_all_post_metrics,
-        CronTrigger(hour=23, minute=0),
-        id="sync_marketing_metrics",
-        replace_existing=True,
-        max_instances=1,
-    )
-
     logger.info("Scheduler: %d tareas periódicas registradas", len(scheduler.get_jobs()))
 
 

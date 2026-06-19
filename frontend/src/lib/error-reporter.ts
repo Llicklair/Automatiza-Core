@@ -2,14 +2,9 @@
  * Frontend error reporter — sends errors to the backend for centralized logging.
  * Uses direct fetch (not the API client) to avoid circular dependencies.
  */
+import { resolveApiBase } from "./api/base";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8080`
-    : "http://127.0.0.1:8080");
-
-const ENDPOINT = `${API_BASE}/api/v1/system/frontend-errors`;
+const ENDPOINT = `${resolveApiBase()}/api/v1/system/frontend-errors`;
 
 /** Debounce: avoid flooding the backend with duplicate errors */
 const _reported = new Set<string>();

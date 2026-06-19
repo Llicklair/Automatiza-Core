@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { BarChart3, FileText, Download, Receipt, Trash2 } from "lucide-react";
 import { useInformes } from "./_hooks/useInformes";
 import { Section, TabBtn } from "./_components/InformesHelpers";
@@ -7,6 +8,7 @@ import { GestionTab } from "./_components/GestionTab";
 import { FiscalTab } from "./_components/FiscalTab";
 
 export default function InformesPage() {
+    const t = useTranslations("informes");
     const {
         tab, setTab,
         month, setMonth, snap, loading, generating, error, genOk, isCurrentOrPast,
@@ -26,13 +28,13 @@ export default function InformesPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                         <BarChart3 className="w-6 h-6 text-primary" />
-                        Informes IA
+                        {t("page.title")}
                     </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5">Informes generados automáticamente por IA</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{t("page.subtitle")}</p>
                 </div>
                 <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-                    <TabBtn active={tab === "gestion"} label="Gestión" icon={BarChart3} onClick={() => setTab("gestion")} />
-                    <TabBtn active={tab === "fiscal"} label="Fiscal" icon={Receipt} onClick={() => setTab("fiscal")} />
+                    <TabBtn active={tab === "gestion"} label={t("page.tabGestion")} icon={BarChart3} onClick={() => setTab("gestion")} />
+                    <TabBtn active={tab === "fiscal"} label={t("page.tabFiscal")} icon={Receipt} onClick={() => setTab("fiscal")} />
                 </div>
             </div>
 
@@ -60,7 +62,7 @@ export default function InformesPage() {
 
             {/* Informes PDF generados (shared) */}
             {reports.length > 0 && (
-                <Section title="Informes PDF generados" icon={FileText}>
+                <Section title={t("page.reportsTitle")} icon={FileText}>
                     <div className="space-y-2">
                         {reports.map(r => (
                             <div key={r.id} className="flex items-center justify-between py-2 border-b border-border last:border-0 gap-3">
@@ -76,7 +78,7 @@ export default function InformesPage() {
                                         onClick={() => handleDownload(r.id, r.file_name)}
                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-foreground hover:bg-accent/50 transition-colors"
                                     >
-                                        <Download className="w-3.5 h-3.5" /> Descargar
+                                        <Download className="w-3.5 h-3.5" /> {t("page.download")}
                                     </button>
                                     <button
                                         onClick={() => handleDeleteReport(r.id)}

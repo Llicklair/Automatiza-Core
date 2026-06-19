@@ -2,6 +2,7 @@ import type { Invoice } from "@/lib/api";
 import { CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 import DueBadge from "./DueBadge";
 
 const fmt = (v: number) =>
@@ -14,13 +15,14 @@ interface InvoiceTableProps {
 }
 
 export default function InvoiceTable({ items, total, variant }: InvoiceTableProps) {
+    const t = useTranslations("tesoreria");
     const isCobros = variant === "cobros";
     const emptyIcon = <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-3" />;
-    const emptyTitle = isCobros ? "Sin cobros pendientes" : "Sin pagos pendientes";
+    const emptyTitle = isCobros ? t("invoiceTable.emptyCobrosTitle") : t("invoiceTable.emptyPagosTitle");
     const emptyDesc = isCobros
-        ? "Todas las facturas emitidas estan pagadas."
-        : "Todas las facturas recibidas estan pagadas.";
-    const entityLabel = isCobros ? "Cliente" : "Proveedor";
+        ? t("invoiceTable.emptyCobrosDesc")
+        : t("invoiceTable.emptyPagosDesc");
+    const entityLabel = isCobros ? t("invoiceTable.clientLabel") : t("invoiceTable.supplierLabel");
     const amountColor = isCobros ? "text-emerald-400" : "text-red-400";
     const hoverBg = isCobros ? "hover:bg-emerald-500/[0.02]" : "hover:bg-red-500/[0.02]";
 
@@ -38,11 +40,11 @@ export default function InvoiceTable({ items, total, variant }: InvoiceTableProp
         <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                 <tr>
-                    <th className="px-6 py-3 font-medium">N Factura</th>
+                    <th className="px-6 py-3 font-medium">{t("invoiceTable.colInvoiceNumber")}</th>
                     <th className="px-6 py-3 font-medium">{entityLabel}</th>
-                    <th className="px-6 py-3 font-medium text-right">Importe</th>
-                    <th className="px-6 py-3 font-medium">Vencimiento</th>
-                    <th className="px-6 py-3 font-medium">Estado</th>
+                    <th className="px-6 py-3 font-medium text-right">{t("invoiceTable.colAmount")}</th>
+                    <th className="px-6 py-3 font-medium">{t("invoiceTable.colDueDate")}</th>
+                    <th className="px-6 py-3 font-medium">{t("invoiceTable.colStatus")}</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -62,7 +64,7 @@ export default function InvoiceTable({ items, total, variant }: InvoiceTableProp
             </tbody>
             <tfoot className="border-t border-border bg-muted/30">
                 <tr>
-                    <td colSpan={2} className="px-6 py-3 text-sm font-semibold text-foreground">Total</td>
+                    <td colSpan={2} className="px-6 py-3 text-sm font-semibold text-foreground">{t("invoiceTable.total")}</td>
                     <td className={`px-6 py-3 text-right font-bold ${amountColor}`}>{fmt(total)}</td>
                     <td colSpan={2} />
                 </tr>

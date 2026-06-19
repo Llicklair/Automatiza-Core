@@ -10,6 +10,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     AlertCircle,
     CheckCircle2,
@@ -23,6 +24,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function MantenimientoPage() {
+    const t = useTranslations("configuracion");
     const toast = useToastStore();
     const [bundleBusy, setBundleBusy] = useState(false);
     const [backfillBusy, setBackfillBusy] = useState(false);
@@ -33,9 +35,9 @@ export default function MantenimientoPage() {
         setBundleBusy(true);
         try {
             await system.downloadDiagnosticBundle();
-            toast.show("Bundle descargado. Envíalo al soporte.", "success");
+            toast.show(t("mantenimiento.bundleDownloaded"), "success");
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(t("mantenimiento.error", { message: e.message }), "error");
         } finally {
             setBundleBusy(false);
         }
@@ -43,16 +45,16 @@ export default function MantenimientoPage() {
 
     async function runBackfill() {
         if (!backfillNif.trim()) {
-            toast.show("Indica el NIF emisor antes de iniciar.", "warning");
+            toast.show(t("mantenimiento.nifRequired"), "warning");
             return;
         }
         setBackfillBusy(true);
         try {
             const data = await system.runVerifactuBackfill(backfillNif);
             setBackfillResult(data);
-            toast.show("Backfill ejecutado.", "success");
+            toast.show(t("mantenimiento.backfillDone"), "success");
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(t("mantenimiento.error", { message: e.message }), "error");
         } finally {
             setBackfillBusy(false);
         }
@@ -61,8 +63,8 @@ export default function MantenimientoPage() {
     return (
         <PageContainer width="3xl">
             <PageHeader
-                title="Mantenimiento"
-                description="Herramientas de operación puntual. Solo admin. Pensadas para diagnosticar problemas o repoblar datos tras una migración."
+                title={t("mantenimiento.title")}
+                description={t("mantenimiento.description")}
             />
 
             {/* Bundle de diagnóstico */}
@@ -73,13 +75,11 @@ export default function MantenimientoPage() {
                 <header className="flex items-center gap-2">
                     <Download className="w-4 h-4 text-primary" aria-hidden="true" />
                     <h2 id="bundle-heading" className="text-sm font-semibold text-foreground">
-                        Bundle de diagnóstico
+                        {t("mantenimiento.bundleTitle")}
                     </h2>
                 </header>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                    Empaqueta un ZIP con los logs locales (PII redactada), versión, hash de schema y
-                    precondiciones. Útil cuando soporte te pida información para investigar un fallo —
-                    no incluye credenciales ni datos de clientes.
+                    {t("mantenimiento.bundleDescription")}
                 </p>
                 <button
                     type="button"
@@ -92,7 +92,7 @@ export default function MantenimientoPage() {
                     ) : (
                         <Download className="w-4 h-4" aria-hidden="true" />
                     )}
-                    Descargar bundle (.zip)
+                    {t("mantenimiento.downloadBundle")}
                 </button>
             </section>
 
@@ -104,17 +104,17 @@ export default function MantenimientoPage() {
                 <header className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-primary" aria-hidden="true" />
                     <h2 id="backfill-heading" className="text-sm font-semibold text-foreground">
-                        Backfill Verifactu
+                        {t("mantenimiento.backfillTitle")}
                     </h2>
                 </header>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                    Reconstruye la cadena hash Verifactu de las facturas históricas (migradas desde
-                    Holded/A3/CSV antes de la activación). Cada factura recibe su huella en orden
-                    cronológico, marcada con
-                    <code className="mx-1 px-1 py-0.5 bg-background border border-border rounded">
-                        is_backfilled=true
-                    </code>
-                    para distinguirla del firmado en tiempo real (auditable ante AEAT).
+                    {t.rich("mantenimiento.backfillDescription", {
+                        code: () => (
+                            <code className="mx-1 px-1 py-0.5 bg-background border border-border rounded">
+                                is_backfilled=true
+                            </code>
+                        ),
+                    })}
                 </p>
                 <div className="flex items-start gap-2 px-3 py-2 rounded bg-amber-500/5 border border-amber-500/30">
                     <AlertCircle
@@ -122,14 +122,12 @@ export default function MantenimientoPage() {
                         aria-hidden="true"
                     />
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                        Un NIF emisor incorrecto invalida toda la cadena. Verifica el NIF de tu empresa
-                        antes de ejecutar. La operación es idempotente — si ya hay facturas con cadena,
-                        las salta.
+                        {t("mantenimiento.backfillWarning")}
                     </p>
                 </div>
                 <div className="flex items-end gap-2">
                     <label className="flex-1">
-                        <span className="text-xs text-muted-foreground">NIF emisor</span>
+                        <span className="text-xs text-muted-foreground">{t("mantenimiento.nifLabel")}</span>
                         <input
                             type="text"
                             value={backfillNif}
@@ -149,7 +147,7 @@ export default function MantenimientoPage() {
                         ) : (
                             <Wrench className="w-4 h-4" aria-hidden="true" />
                         )}
-                        Ejecutar backfill
+                        {t("mantenimiento.runBackfill")}
                     </button>
                 </div>
                 {backfillResult ? (

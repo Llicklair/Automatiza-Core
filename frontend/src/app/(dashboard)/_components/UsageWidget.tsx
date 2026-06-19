@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { llmUsage, type LlmMonthStats } from "@/lib/api/llm_usage";
 import { ApiError } from "@/lib/api/errors";
 
@@ -21,6 +22,7 @@ const WARNING_THRESHOLD = 450;
  * "interacciones IA" del mes.
  */
 export function UsageWidget() {
+    const t = useTranslations("dashboard");
     const [month, setMonth] = useState<LlmMonthStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function UsageWidget() {
                 if (active) setMonth(res.months[0] ?? null);
             })
             .catch((e) => {
-                if (active) setError(e instanceof ApiError ? e.detail : "No se pudo cargar el consumo");
+                if (active) setError(e instanceof ApiError ? e.detail : t("usage.loadError"));
             })
             .finally(() => {
                 if (active) setLoading(false);
@@ -41,6 +43,7 @@ export function UsageWidget() {
         return () => {
             active = false;
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const calls = month?.total_calls ?? 0;
@@ -54,9 +57,9 @@ export function UsageWidget() {
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border bg-card flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary" /> Consumo de IA
+                    <Activity className="w-4 h-4 text-primary" /> {t("usage.title")}
                 </h2>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Este mes</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("usage.thisMonth")}</span>
             </div>
 
             <div className="p-5">
@@ -72,7 +75,7 @@ export function UsageWidget() {
                                     {calls.toLocaleString("es-ES")}
                                     <span className="text-sm font-normal text-muted-foreground"> / {SOFT_CAP_PRO}</span>
                                 </p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">interacciones IA</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{t("usage.aiInteractions")}</p>
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 ≈ ${cost.toFixed(2)}
@@ -87,8 +90,8 @@ export function UsageWidget() {
                             <p className={`mt-2 text-[11px] flex items-center gap-1 ${overage ? "text-red-400" : "text-yellow-400"}`}>
                                 <AlertTriangle className="w-3 h-3" />
                                 {overage
-                                    ? "Has superado las 500 interacciones: 0,05€ + IVA por extra."
-                                    : `Has usado ${calls} de ${SOFT_CAP_PRO} interacciones este mes.`}
+                                    ? t("usage.overage", { cap: SOFT_CAP_PRO })
+                                    : t("usage.warning", { calls, cap: SOFT_CAP_PRO })}
                             </p>
                         )}
                     </>
@@ -100,7 +103,7 @@ export function UsageWidget() {
                     href="/configuracion/api-keys"
                     className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
-                    Ver detalle de consumo
+                    {t("usage.viewDetail")}
                 </Link>
             </div>
         </div>

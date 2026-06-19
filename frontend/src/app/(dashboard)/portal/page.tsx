@@ -1,5 +1,6 @@
 "use client";
 import { User, Briefcase, FileText, Umbrella, Receipt } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getToken } from "@/lib/api/client";
 import { usePortal } from "./_hooks/usePortal";
 import { PortalHeader } from "./_components/PortalHeader";
@@ -12,6 +13,7 @@ import { ExpenseModal } from "./_components/ExpenseModal";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PortalPage() {
+    const t = useTranslations("portal");
     const {
         isAdmin,
         tab, setTab,
@@ -44,17 +46,15 @@ export default function PortalPage() {
             />
 
             {loading && (
-                <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">Cargando…</div>
+                <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">{t("page.loading")}</div>
             )}
 
             {!loading && !emp && !isAdmin && (
                 <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
                     <Briefcase className="w-8 h-8 mx-auto text-muted-foreground opacity-40" />
-                    <p className="text-sm text-foreground font-medium">Tu cuenta no está vinculada a ningún empleado</p>
+                    <p className="text-sm text-foreground font-medium">{t("page.notLinkedTitle")}</p>
                     <p className="text-xs text-muted-foreground">
-                        Pide al administrador que añada tu email ({" "}
-                        <span className="font-mono text-xs">{(() => { try { const t = getToken(); if (!t) return ""; return JSON.parse(atob(t.split(".")[1])).email; } catch { return ""; } })()}</span>
-                        {" "}) a tu ficha de empleado.
+                        {t("page.notLinkedHint", { email: (() => { try { const tok = getToken(); if (!tok) return ""; return JSON.parse(atob(tok.split(".")[1])).email; } catch { return ""; } })() })}
                     </p>
                 </div>
             )}
@@ -62,9 +62,9 @@ export default function PortalPage() {
             {!loading && !emp && isAdmin && !selectedEmployeeId && (
                 <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
                     <Briefcase className="w-8 h-8 mx-auto text-muted-foreground opacity-40" />
-                    <p className="text-sm text-foreground font-medium">Selecciona un empleado para previsualizar</p>
+                    <p className="text-sm text-foreground font-medium">{t("page.selectEmployeeTitle")}</p>
                     <p className="text-xs text-muted-foreground">
-                        Usa el selector de arriba para ver Mi portal de cualquier persona de tu plantilla.
+                        {t("page.selectEmployeeHint")}
                     </p>
                 </div>
             )}
@@ -74,10 +74,10 @@ export default function PortalPage() {
                     {/* Tabs */}
                     <div className="flex gap-1 border-b border-border">
                         {([
-                            { id: "ficha", label: "Mi ficha", icon: User },
-                            { id: "nominas", label: "Mis nóminas", icon: FileText },
-                            { id: "vacaciones", label: "Mis ausencias", icon: Umbrella },
-                            { id: "gastos", label: "Mis gastos", icon: Receipt },
+                            { id: "ficha", label: t("page.tabFicha"), icon: User },
+                            { id: "nominas", label: t("page.tabNominas"), icon: FileText },
+                            { id: "vacaciones", label: t("page.tabVacaciones"), icon: Umbrella },
+                            { id: "gastos", label: t("page.tabGastos"), icon: Receipt },
                         ] as const).map(({ id, label, icon: Icon }) => (
                             <button
                                 key={id}

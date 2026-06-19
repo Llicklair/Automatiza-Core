@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     AlertTriangle, CheckCircle2, FileKey2, Loader2, ShieldCheck, Trash2, Upload,
 } from "lucide-react";
@@ -24,6 +25,7 @@ function isExpiringSoon(d: string) {
 }
 
 export function FirmaDigitalPanel() {
+    const t = useTranslations("configuracion");
     const toast = useToastStore();
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -40,7 +42,7 @@ export function FirmaDigitalPanel() {
         try {
             setStatus(await api.tenant.certificate.status());
         } catch {
-            toast.error("Error al cargar estado del certificado");
+            toast.error(t("verifactu.errorLoadCert"));
         } finally {
             setIsLoading(false);
         }
@@ -59,7 +61,7 @@ export function FirmaDigitalPanel() {
             if (fileRef.current) fileRef.current.value = "";
             await load();
         } catch (e: any) {
-            toast.error(e?.message ?? "Error al subir certificado");
+            toast.error(e?.message ?? t("verifactu.errorUploadCert"));
         } finally {
             setIsUploading(false);
         }
@@ -67,17 +69,17 @@ export function FirmaDigitalPanel() {
 
     const handleDelete = async () => {
         if (!(await showConfirm({
-            message: "¿Eliminar el certificado? Las facturas se generarán sin firma.",
-            confirmLabel: "Eliminar",
+            message: t("verifactu.confirmDeleteCert"),
+            confirmLabel: t("verifactu.deleteAction"),
             confirmVariant: "danger",
         }))) return;
         setIsDeleting(true);
         try {
             await api.tenant.certificate.delete();
-            toast.success("Certificado eliminado");
+            toast.success(t("verifactu.certDeleted"));
             await load();
         } catch {
-            toast.error("Error al eliminar certificado");
+            toast.error(t("verifactu.errorDeleteCert"));
         } finally {
             setIsDeleting(false);
         }
@@ -86,23 +88,23 @@ export function FirmaDigitalPanel() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Firma digital"
-                description="Certificado PKCS#12 para firmar facturas FacturaE con XAdES-BES"
+                title={t("verifactu.firmaTitle")}
+                description={t("verifactu.firmaDesc")}
                 icon={FileKey2}
             />
 
             {/* Current cert status */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h2 className="text-sm font-semibold text-foreground">Certificado activo</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("verifactu.activeCert")}</h2>
 
                 {isLoading ? (
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                        <Loader2 className="w-4 h-4 animate-spin" /> {t("verifactu.loading")}
                     </div>
                 ) : !status?.has_certificate ? (
                     <div className="flex items-center gap-3 text-muted-foreground text-sm">
                         <ShieldCheck className="w-5 h-5 opacity-40" />
-                        <span>No hay certificado configurado. Las facturas se exportarán sin firma.</span>
+                        <span>{t("verifactu.noCert")}</span>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -123,9 +125,9 @@ export function FirmaDigitalPanel() {
                                         {isExpired(status.cert_expires_at) && (
                                             <AlertTriangle className="w-3 h-3" />
                                         )}
-                                        Caduca el {fmtDate(status.cert_expires_at)}
-                                        {isExpired(status.cert_expires_at) && " — CADUCADO"}
-                                        {isExpiringSoon(status.cert_expires_at) && " — caduca pronto"}
+                                        {t("verifactu.expiresOn", { date: fmtDate(status.cert_expires_at) })}
+                                        {isExpired(status.cert_expires_at) && ` — ${t("verifactu.expired")}`}
+                                        {isExpiringSoon(status.cert_expires_at) && ` — ${t("verifactu.expiringSoon")}`}
                                     </p>
                                 )}
                             </div>
@@ -140,7 +142,7 @@ export function FirmaDigitalPanel() {
                             {isDeleting
                                 ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                                 : <Trash2 className="mr-2 h-3.5 w-3.5" />}
-                            Eliminar certificado
+                            {t("verifactu.deleteCert")}
                         </Button>
                     </div>
                 )}
@@ -149,16 +151,17 @@ export function FirmaDigitalPanel() {
             {/* Upload new cert */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
                 <h2 className="text-sm font-semibold text-foreground">
-                    {status?.has_certificate ? "Reemplazar certificado" : "Cargar certificado"}
+                    {status?.has_certificate ? t("verifactu.replaceCert") : t("verifactu.loadCert")}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                    Sube tu certificado de firma electrónica en formato <strong>.p12</strong> o <strong>.pfx</strong>.
-                    Puede ser un certificado de persona física/jurídica emitido por la FNMT, Camerfirma, etc.
+                    {t.rich("verifactu.uploadHint", {
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                 </p>
 
                 <div className="space-y-3">
                     <div>
-                        <label className="text-xs text-muted-foreground block mb-1.5">Archivo (.p12 / .pfx)</label>
+                        <label className="text-xs text-muted-foreground block mb-1.5">{t("verifactu.fileLabel")}</label>
                         <input
                             ref={fileRef}
                             type="file"
@@ -172,12 +175,12 @@ export function FirmaDigitalPanel() {
                     </div>
 
                     <div>
-                        <label className="text-xs text-muted-foreground block mb-1.5">Contraseña del certificado</label>
+                        <label className="text-xs text-muted-foreground block mb-1.5">{t("verifactu.certPasswordLabel")}</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Dejar vacío si no tiene contraseña"
+                            placeholder={t("verifactu.certPasswordPlaceholder")}
                             className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm
                                 text-foreground placeholder:text-muted-foreground/50
                                 focus:outline-none focus:border-primary/50"
@@ -189,19 +192,18 @@ export function FirmaDigitalPanel() {
                         disabled={!selectedFile || isUploading}
                     >
                         {isUploading
-                            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Validando y guardando…</>
-                            : <><Upload className="mr-2 h-4 w-4" />Cargar certificado</>}
+                            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("verifactu.validatingSaving")}</>
+                            : <><Upload className="mr-2 h-4 w-4" />{t("verifactu.loadCert")}</>}
                     </Button>
                 </div>
             </div>
 
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-400 space-y-1">
                 <p className="font-medium flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Nota de seguridad
+                    <AlertTriangle className="w-3.5 h-3.5" /> {t("verifactu.securityNote")}
                 </p>
                 <p>
-                    La contraseña del certificado se almacena en la base de datos.
-                    Para entornos de producción con alta seguridad, considera usar un HSM o un vault externo.
+                    {t("verifactu.securityNoteDesc")}
                 </p>
             </div>
         </div>

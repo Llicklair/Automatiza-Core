@@ -1,7 +1,6 @@
 """Tests del Modelo 100 (IRPF Renta, preview) — datos + escala + PDF."""
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from app.db.models.billing import Invoice

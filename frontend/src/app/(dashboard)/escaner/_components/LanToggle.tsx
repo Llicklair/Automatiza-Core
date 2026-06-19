@@ -1,4 +1,5 @@
 import { Wifi, WifiOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ElectronNetworkStatus } from "../_hooks/useEscaner";
 
 interface LanToggleProps {
@@ -8,6 +9,7 @@ interface LanToggleProps {
 }
 
 export default function LanToggle({ netStatus, netToggling, onToggle }: LanToggleProps) {
+    const t = useTranslations("escaner");
     return (
         <div className="rounded-xl border border-border bg-card px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -17,17 +19,17 @@ export default function LanToggle({ netStatus, netToggling, onToggle }: LanToggl
                     <WifiOff className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                 )}
                 <div>
-                    <p className="text-sm font-medium text-foreground">Red local (escaner movil)</p>
+                    <p className="text-sm font-medium text-foreground">{t("lanToggle.title")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                         {netStatus.localNetworkEnabled
-                            ? `Otros dispositivos en tu Wi-Fi pueden usar la API en ${netStatus.lanIP || "\u2014"}:8080. Desactivalo si solo usas este PC.`
-                            : "El backend solo escucha en este equipo (127.0.0.1). Los moviles en la red no podran conectar."}
+                            ? t("lanToggle.enabledHint", { lanIP: netStatus.lanIP || "\u2014" })
+                            : t("lanToggle.disabledHint")}
                     </p>
                 </div>
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none self-end sm:self-center">
                 <span className="text-xs text-muted-foreground">
-                    {netToggling ? "Reiniciando..." : netStatus.localNetworkEnabled ? "LAN activa" : "Solo local"}
+                    {netToggling ? t("lanToggle.restarting") : netStatus.localNetworkEnabled ? t("lanToggle.lanActive") : t("lanToggle.localOnly")}
                 </span>
                 <button
                     type="button"

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Users, Timer, BedDouble, ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Employee, AttendanceRecord } from "@/lib/api";
@@ -12,13 +13,14 @@ interface RrhhWidgetProps {
     loading: boolean;
 }
 
-const LEAVE_LABEL: Record<string, string> = {
-    baja_medica: "Baja médica",
-    vacaciones: "Vacaciones",
-    excedencia: "Excedencia",
+const LEAVE_LABEL_KEY: Record<string, string> = {
+    baja_medica: "rrhh.leaveMedical",
+    vacaciones: "rrhh.leaveVacation",
+    excedencia: "rrhh.leaveSabbatical",
 };
 
 export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
+    const t = useTranslations("dashboard");
     if (loading) return null;
 
     const active = employees.filter((e) => e.status === "active");
@@ -30,10 +32,10 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <Users className="w-4 h-4 text-muted-foreground" />
-                        Plantilla
+                        {t("rrhh.title")}
                     </CardTitle>
                     <Link href="/rrhh" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
-                        Ver RRHH <ArrowRight className="w-3 h-3" />
+                        {t("rrhh.viewHr")} <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
             </CardHeader>
@@ -42,15 +44,15 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
                 <div className="grid grid-cols-3 gap-3 text-center">
                     <div className="bg-muted/50 rounded-lg p-3">
                         <p className="text-xl font-bold text-foreground">{active.length}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Activos</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("rrhh.active")}</p>
                     </div>
                     <div className="bg-emerald-500/10 rounded-lg p-3">
                         <p className="text-xl font-bold text-emerald-400">{working.length}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Trabajando</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("rrhh.working")}</p>
                     </div>
                     <div className="bg-amber-500/10 rounded-lg p-3">
                         <p className="text-xl font-bold text-amber-400">{onLeave.length}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">De baja</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("rrhh.onLeave")}</p>
                     </div>
                 </div>
 
@@ -62,7 +64,7 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                             </span>
-                            Ahora mismo
+                            {t("rrhh.rightNow")}
                         </p>
                         <div className="space-y-1.5">
                             {working.slice(0, 4).map((r) => {
@@ -80,7 +82,7 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
                                 );
                             })}
                             {working.length > 4 && (
-                                <p className="text-xs text-muted-foreground pl-8">+{working.length - 4} más</p>
+                                <p className="text-xs text-muted-foreground pl-8">{t("rrhh.more", { count: working.length - 4 })}</p>
                             )}
                         </div>
                     </div>
@@ -90,7 +92,7 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
                 {onLeave.length > 0 && (
                     <div>
                         <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                            <BedDouble className="w-3 h-3" /> De baja
+                            <BedDouble className="w-3 h-3" /> {t("rrhh.onLeave")}
                         </p>
                         <div className="space-y-1.5">
                             {onLeave.slice(0, 3).map((emp) => (
@@ -100,7 +102,7 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
                                     </div>
                                     <span className="text-xs text-foreground truncate flex-1">{emp.name}</span>
                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-400 border-amber-500/20">
-                                        {LEAVE_LABEL[emp.leave_type ?? ""] ?? "Baja"}
+                                        {LEAVE_LABEL_KEY[emp.leave_type ?? ""] ? t(LEAVE_LABEL_KEY[emp.leave_type ?? ""]) : t("rrhh.leaveGeneric")}
                                     </Badge>
                                 </div>
                             ))}
@@ -110,7 +112,7 @@ export function RrhhWidget({ employees, working, loading }: RrhhWidgetProps) {
 
                 {working.length === 0 && onLeave.length === 0 && (
                     <Link href="/rrhh/fichajes" className="flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-2">
-                        <Timer className="w-3.5 h-3.5" /> Registrar fichaje
+                        <Timer className="w-3.5 h-3.5" /> {t("rrhh.clockIn")}
                     </Link>
                 )}
             </CardContent>

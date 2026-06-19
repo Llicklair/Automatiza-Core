@@ -363,8 +363,26 @@ async function startFrontend(onProgress = () => {}) {
     } catch {}
   }
 
-  // Solo rebuild si .next no existe (API URL se resuelve en runtime vía window.location)
-  const needsBuild = !fs.existsSync(nextDir);
+  // Solo rebuild si .next no existe O está incompleto (build previo abortado).
+  // Un .next parcial (p.ej. sin prerender-manifest.json, que se escribe al
+  // finalizar el build) hace que `next start` muera con ENOENT antes de
+  // responder en el puerto 3000. API URL se resuelve en runtime vía window.location.
+  const nextComplete =
+    fs.existsSync(nextDir) &&
+    fs.existsSync(path.join(nextDir, "BUILD_ID")) &&
+    fs.existsSync(path.join(nextDir, "prerender-manifest.json"));
+  const needsBuild = !nextComplete;
+
+  // Un .next a medias envenena tanto el start como un rebuild incremental:
+  // bórralo para que la compilación empiece desde cero.
+  if (needsBuild && fs.existsSync(nextDir)) {
+    logBoot("Frontend: .next incompleto detectado — eliminando para rebuild limpio.");
+    try {
+      fs.rmSync(nextDir, { recursive: true, force: true });
+    } catch (e) {
+      logBoot(`Frontend: no se pudo eliminar .next incompleto: ${e.message}`);
+    }
+  }
 
   logBoot(`Frontend: needsBuild=${needsBuild}`);
 

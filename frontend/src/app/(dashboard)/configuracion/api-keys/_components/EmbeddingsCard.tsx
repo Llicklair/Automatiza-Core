@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 import { EMBEDDINGS_OPTIONS } from "../_hooks/useApiKeys";
 
@@ -7,13 +8,14 @@ interface EmbeddingsCardProps {
 }
 
 export function EmbeddingsCard({ activeEmbeddings, setActiveEmbeddings }: EmbeddingsCardProps) {
+    const t = useTranslations("configuracion");
     return (
         <div className="bg-card border border-border rounded-2xl p-6 mb-4">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2 mb-1">
-                <Layers className="w-4 h-4 text-purple-400" /> Embeddings (RAG / búsqueda semántica)
+                <Layers className="w-4 h-4 text-purple-400" /> {t("apiKeys.embeddingsTitle")}
             </h2>
             <p className="text-xs text-muted-foreground mb-4">
-                Modelo vectorial para buscar en documentos. La opción local no requiere API key.
+                {t("apiKeys.embeddingsDesc")}
             </p>
             <div className="space-y-2">
                 {EMBEDDINGS_OPTIONS.map(opt => (
@@ -31,9 +33,9 @@ export function EmbeddingsCard({ activeEmbeddings, setActiveEmbeddings }: Embedd
                         }`} />
                         <div>
                             <div className={`text-sm font-medium ${activeEmbeddings === opt.key ? "text-purple-300" : "text-foreground"}`}>
-                                {opt.label}
+                                {t(opt.labelKey)}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">{opt.desc}</div>
+                            <div className="text-[11px] text-muted-foreground">{t(opt.descKey)}</div>
                         </div>
                     </button>
                 ))}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getToken, BASE } from "@/lib/api/client";
+import { getToken } from "@/lib/api/client";
+import { resolveWsBase } from "@/lib/api/base";
 
 type MessageHandler = (msg: Record<string, unknown>) => void;
 
@@ -32,8 +33,7 @@ export function useNotificationSocket(
             const token = getToken();
             if (!token || destroyed) return;
 
-            const wsBase = BASE.replace(/^http/, "ws");
-            ws = new WebSocket(`${wsBase}/ws/notifications?token=${token}`);
+            ws = new WebSocket(`${resolveWsBase()}/ws/notifications?token=${token}`);
 
             ws.onmessage = (event) => {
                 try {

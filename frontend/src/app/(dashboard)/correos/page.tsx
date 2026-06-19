@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Mail, AlertCircle, CheckCircle2 } from "lucide-react";
 import { TABS } from "./constants";
 import { useCorreos } from "./_hooks/useCorreos";
@@ -9,6 +10,7 @@ import { InstructTab } from "./_components/InstructTab";
 import { DrivePickerModal } from "./_components/DrivePickerModal";
 
 export default function CorreosPage() {
+    const t = useTranslations("correos");
     const c = useCorreos();
 
     return (
@@ -17,9 +19,9 @@ export default function CorreosPage() {
             <div className="flex items-start justify-between">
                 <div>
                     <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                        <Mail className="w-6 h-6 text-violet-400" /> Correos
+                        <Mail className="w-6 h-6 text-violet-400" /> {t("page.title")}
                     </h1>
-                    <p className="text-xs text-muted-foreground mt-1">Envía correos o instruye al agente de email</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("page.subtitle")}</p>
                 </div>
                 {c.status && (
                     <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${
@@ -28,8 +30,8 @@ export default function CorreosPage() {
                             : "bg-amber-500/10 text-amber-400 border-amber-500/30"
                     }`}>
                         {c.status.configured
-                            ? <><CheckCircle2 className="w-3.5 h-3.5" /> Conectado</>
-                            : <><AlertCircle className="w-3.5 h-3.5" /> Sin credenciales</>
+                            ? <><CheckCircle2 className="w-3.5 h-3.5" /> {t("page.connected")}</>
+                            : <><AlertCircle className="w-3.5 h-3.5" /> {t("page.noCredentials")}</>
                         }
                     </div>
                 )}
@@ -39,7 +41,7 @@ export default function CorreosPage() {
             {c.status && !c.status.configured && (
                 <div className="flex gap-2 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3">
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                    <span>No hay credenciales de email configuradas. Configura Gmail, Outlook o SMTP en <strong>Configuración &rsaquo; Integraciones</strong>. Los envíos funcionarán en modo demo.</span>
+                    <span>{t.rich("page.configWarning", { strong: (chunks) => <strong>{chunks}</strong> })}</span>
                 </div>
             )}
 
@@ -59,7 +61,7 @@ export default function CorreosPage() {
                             }`}
                         >
                             <Icon className="w-4 h-4" />
-                            {tab.label}
+                            {t(`tabs.${tab.labelKey}`)}
                         </button>
                     );
                 })}

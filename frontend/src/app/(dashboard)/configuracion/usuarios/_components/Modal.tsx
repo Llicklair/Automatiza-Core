@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Loader2, X } from "lucide-react";
 
 export function Modal({
@@ -11,12 +12,13 @@ export function Modal({
     children: React.ReactNode;
     onClose: () => void;
 }) {
+    const tc = useTranslations("common");
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 space-y-5">
                 <div className="flex items-start justify-between">
                     <h2 className="text-xl font-bold text-foreground">{title}</h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label={tc("close")}>
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
@@ -35,6 +37,7 @@ export function ModalActions({
     submitting: boolean;
     submitLabel: string;
 }) {
+    const tc = useTranslations("common");
     return (
         <div className="flex items-center justify-end gap-2 pt-2">
             <button
@@ -42,7 +45,7 @@ export function ModalActions({
                 onClick={onCancel}
                 className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground"
             >
-                Cancelar
+                {tc("cancel")}
             </button>
             <button
                 type="submit"

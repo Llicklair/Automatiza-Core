@@ -115,6 +115,7 @@ async def record_movement(
     product.stock_quantity = new_stock
 
     movement = StockMovement(
+        tenant_id=tenant_id,
         product_id=product.id,
         movement_type=movement_type,
         # `quantity` se guarda como magnitud POSITIVA en todo el sistema; la

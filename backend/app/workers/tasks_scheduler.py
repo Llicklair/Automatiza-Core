@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 from croniter import croniter
 from sqlalchemy import select
 
-from app.core.tenant_context import set_current_tenant
+from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
 from app.services.idempotency import IdempotencyGuard
@@ -200,12 +200,14 @@ async def _check_scheduled_workflows():
 
     async with AsyncSessionLocal() as db:
         # Fase 3 (RLS): esta lectura inicial es CROSS-TENANT por diseño
-        # (APScheduler es global, no atado a un tenant). El listener RLS
-        # se desactiva temporalmente con set_current_tenant(None) y cada
-        # workflow re-establece su tenant_id antes de cualquier operación
-        # que toque datos del tenant.
+        # (APScheduler es global, no atado a un tenant). Bajo fail-closed,
+        # set_current_tenant(None) NO basta (devolvería 0 filas): la
+        # enumeración global va dentro de rls_bypass(). Cada workflow
+        # re-establece su tenant_id antes de tocar datos del tenant.
         set_current_tenant(None)
-        for wf in await get_active_scheduled_workflows(db):
+        with rls_bypass():  # SEC.RLS: enumeración cross-tenant pre-tenant
+            scheduled_workflows = await get_active_scheduled_workflows(db)
+        for wf in scheduled_workflows:
             due_run = _next_due_run(wf.trigger_config or {}, now_local)
             if due_run is None:
                 continue
@@ -264,10 +266,13 @@ async def _catchup_missed_workflows():
 
     async with AsyncSessionLocal() as db:
         # Fase 3 (RLS): lectura inicial cross-tenant intencionada (catchup
-        # es global). Cada iteración fija set_current_tenant antes de
-        # operar sobre datos del tenant correspondiente.
+        # es global). Bajo fail-closed la enumeración global va en rls_bypass();
+        # cada iteración fija set_current_tenant antes de operar sobre datos
+        # del tenant correspondiente.
         set_current_tenant(None)
-        for wf in await get_active_scheduled_workflows(db):
+        with rls_bypass():  # SEC.RLS: enumeración cross-tenant pre-tenant
+            scheduled_workflows = await get_active_scheduled_workflows(db)
+        for wf in scheduled_workflows:
             cron_expr = (wf.trigger_config or {}).get("cron")
             if not cron_expr:
                 continue
@@ -325,17 +330,19 @@ async def _process_recurring_invoices():
     async with AsyncSessionLocal() as db:
         # Fase 3 (RLS): lectura inicial cross-tenant intencionada (este job
         # diario abarca todas las plantillas recurrentes de todos los tenants).
-        # Antes de generar cada Invoice se fija set_current_tenant(rec.tenant_id)
-        # dentro del loop.
+        # Bajo fail-closed la enumeración global va en rls_bypass(); antes de
+        # generar cada Invoice se fija set_current_tenant(rec.tenant_id) en el loop.
         set_current_tenant(None)
-        result = await db.execute(
-            select(RecurringInvoice).where(
-                RecurringInvoice.is_active.is_(True),
-                RecurringInvoice.next_run_date <= today,
+        with rls_bypass():  # SEC.RLS: enumeración cross-tenant pre-tenant
+            result = await db.execute(
+                select(RecurringInvoice).where(
+                    RecurringInvoice.is_active.is_(True),
+                    RecurringInvoice.next_run_date <= today,
+                )
             )
-        )
+            recurring = result.scalars().all()
         generated = 0
-        for rec in result.scalars().all():
+        for rec in recurring:
             try:
                 set_current_tenant(str(rec.tenant_id))
                 line_totals = [_calc_line_totals(ln) for ln in (rec.lines_json or [])]
@@ -395,12 +402,16 @@ async def _cleanup_stuck_executions():
     cutoff = datetime.now(UTC) - timedelta(minutes=15)
 
     async with AsyncSessionLocal() as db:
-        stuck = await get_stuck_executions(db, cutoff)
-        if not stuck:
-            return {"cleaned": 0}
+        # SEC.RLS: barrido de mantenimiento cross-tenant (sin tenant en
+        # contexto); fail-closed obliga a bypass para leer/escribir las
+        # ejecuciones atascadas de todos los tenants.
+        with rls_bypass():
+            stuck = await get_stuck_executions(db, cutoff)
+            if not stuck:
+                return {"cleaned": 0}
 
-        await mark_executions_failed(db, stuck, "[Auto-cancelado: timeout 15 min]")
-        await db.commit()
+            await mark_executions_failed(db, stuck, "[Auto-cancelado: timeout 15 min]")
+            await db.commit()
         logger.info("[CLEANUP] %d ejecucion(es) atascada(s) marcadas como failed.", len(stuck))
         return {"cleaned": len(stuck)}
 
@@ -442,24 +453,28 @@ async def publish_scheduled_posts():
 
 async def _publish_scheduled_posts():
     from app.db.models.marketing import ScheduledPost
-    from app.services.marketing.publisher import publish_post
+    from app.services.marketing.publishing import get_publisher
 
+    publisher = get_publisher()
     now = datetime.now(UTC)
     async with AsyncSessionLocal() as db:
+        # SEC.RLS: enumeración cross-tenant pre-tenant; fail-closed obliga a
+        # bypass para ver posts de todos los tenants. El loop fija el tenant.
         set_current_tenant(None)
-        result = await db.execute(
-            select(ScheduledPost)
-            .where(
-                ScheduledPost.status == "scheduled",
-                ScheduledPost.scheduled_at <= now,
+        with rls_bypass():
+            result = await db.execute(
+                select(ScheduledPost)
+                .where(
+                    ScheduledPost.status == "scheduled",
+                    ScheduledPost.scheduled_at <= now,
+                )
+                .limit(20)
             )
-            .limit(20)
-        )
-        posts = result.scalars().all()
+            posts = result.scalars().all()
         published = retried = 0
         for post in posts:
             set_current_tenant(str(post.tenant_id))
-            outcome = _handle_publish_result(post, await publish_post(post, db), now)
+            outcome = _handle_publish_result(post, await publisher.publish_post(post, db), now)
             if outcome == "published":
                 published += 1
             elif outcome == "retried":
@@ -496,21 +511,26 @@ async def _check_failed_workflow_executions():
 
     cutoff = datetime.now(UTC) - timedelta(hours=24)
     async with AsyncSessionLocal() as db:
-        # Lectura cross-tenant intencionada (el scheduler es global). Cada
-        # notificación lleva su tenant_id explícito.
+        # SEC.RLS: lectura cross-tenant intencionada (el scheduler es global);
+        # fail-closed obliga a bypass para ver las ejecuciones fallidas de
+        # todos los tenants. El loop fija set_current_tenant por ejecución.
         set_current_tenant(None)
-        res = await db.execute(
-            select(WorkflowExecution)
-            .options(selectinload(WorkflowExecution.workflow))
-            .where(
-                WorkflowExecution.status == "failed",
-                WorkflowExecution.notified.is_(False),
-                WorkflowExecution.started_at >= cutoff,
+        with rls_bypass():
+            res = await db.execute(
+                select(WorkflowExecution)
+                .options(selectinload(WorkflowExecution.workflow))
+                .where(
+                    WorkflowExecution.status == "failed",
+                    WorkflowExecution.notified.is_(False),
+                    WorkflowExecution.started_at >= cutoff,
+                )
             )
-        )
-        execs = res.scalars().all()
+            execs = res.scalars().all()
         notified = 0
         for ex in execs:
+            # SEC.RLS: scope al tenant de la ejecución antes de leer/escribir
+            # (create_notification y ex.notified tocan tablas con tenant_id).
+            set_current_tenant(str(ex.tenant_id))
             payload = ex.trigger_payload or {}
             # Desatendida = disparada por el sistema (scheduler/catchup/evento),
             # no por el usuario desde la UI (manual → trigger_payload sin source).
@@ -565,10 +585,13 @@ async def _emit_month_end_events():
     guard = IdempotencyGuard()
 
     async with AsyncSessionLocal() as db:
-        # Lectura cross-tenant intencionada (el scheduler es global).
+        # SEC.RLS: enumeración global de tenants (Tenant es tabla no-tenant,
+        # pero bajo fail-closed la SELECT sin contexto va en bypass). El loop
+        # posterior fija set_current_tenant(tid) por tenant.
         set_current_tenant(None)
-        res = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
-        tenant_ids = [row[0] for row in res.all()]
+        with rls_bypass():
+            res = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
+            tenant_ids = [row[0] for row in res.all()]
 
     emitted = 0
     for tid in tenant_ids:
@@ -607,16 +630,19 @@ async def _send_scheduled_email_campaigns():
 
     now = datetime.now(UTC)
     async with AsyncSessionLocal() as db:
-        # Lectura cross-tenant intencionada (el scheduler es global).
+        # SEC.RLS: enumeración cross-tenant de campañas vencidas; fail-closed
+        # obliga a bypass para verlas sin tenant en contexto. El loop fija
+        # set_current_tenant(tenant_id) por campaña.
         set_current_tenant(None)
-        res = await db.execute(
-            select(EmailCampaign.id, EmailCampaign.tenant_id).where(
-                EmailCampaign.status == "scheduled",
-                EmailCampaign.scheduled_at.isnot(None),
-                EmailCampaign.scheduled_at <= now,
+        with rls_bypass():
+            res = await db.execute(
+                select(EmailCampaign.id, EmailCampaign.tenant_id).where(
+                    EmailCampaign.status == "scheduled",
+                    EmailCampaign.scheduled_at.isnot(None),
+                    EmailCampaign.scheduled_at <= now,
+                )
             )
-        )
-        due = res.all()
+            due = res.all()
 
     sent = 0
     for campaign_id, tenant_id in due:

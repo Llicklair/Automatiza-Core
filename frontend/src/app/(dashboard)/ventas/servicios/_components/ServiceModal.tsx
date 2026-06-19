@@ -25,7 +25,7 @@ export function ServiceModal({ editingId, form, setForm, isSubmitting, onClose, 
                         <HeartHandshake className="w-4 h-4 text-purple-400" />
                         {editingId ? t("editService") : t("newService")}
                     </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar formulario de servicio">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label={t("closeServiceForm")}>
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>

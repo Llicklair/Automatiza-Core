@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api, ProjectTask } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -8,6 +9,8 @@ import { logError } from "@/lib/logger";
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export function useTasksKanban() {
+    const t = useTranslations("proyectos");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const searchParams = useSearchParams();
     const projectId = searchParams.get("project_id");
@@ -72,7 +75,7 @@ export function useTasksKanban() {
             await loadData();
         } catch (error) {
             logError("proyectos/tareas/page", error);
-            toast.error("Error al crear tarea");
+            toast.error(t("tasksKanban.createError"));
         } finally {
             setSaving(false);
         }
@@ -99,7 +102,7 @@ export function useTasksKanban() {
             setEditTask(null);
             await loadData();
         } catch {
-            toast.error("Error al guardar tarea");
+            toast.error(t("tasksKanban.saveError"));
         } finally {
             setEditSaving(false);
         }
@@ -107,12 +110,12 @@ export function useTasksKanban() {
 
     const handleDelete = async (task: ProjectTask) => {
         setOpenMenuId(null);
-        if (!await showConfirm({ message: `¿Eliminar la tarea "${task.title}"?`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("tasksKanban.deleteConfirm", { title: task.title }), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         try {
             await api.projects.tasks.delete(task.id);
             setTasks(prev => prev.filter(t => t.id !== task.id));
         } catch {
-            toast.error("Error al eliminar tarea");
+            toast.error(t("tasksKanban.deleteError"));
         }
     };
 

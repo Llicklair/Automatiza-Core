@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { X, Loader2, ShieldCheck, AlertTriangle, KeyRound, Upload } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
@@ -12,32 +13,34 @@ interface Props {
 }
 
 export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
+    const t = useTranslations("impuestos");
+    const tc = useTranslations("common");
     const toast = useToastStore();
     const [file, setFile] = useState<File | null>(null);
     const [password, setPassword] = useState("");
-    const [label, setLabel] = useState("Certificado representante");
+    const [label, setLabel] = useState(t("certificado.labelDefault"));
     const [notes, setNotes] = useState("");
     const [busy, setBusy] = useState(false);
 
     if (!open) return null;
 
     const reset = () => {
-        setFile(null); setPassword(""); setLabel("Certificado representante"); setNotes("");
+        setFile(null); setPassword(""); setLabel(t("certificado.labelDefault")); setNotes("");
     };
     const handleClose = () => { reset(); onClose(); };
 
     const handleSubmit = async () => {
-        if (!file) { toast.error("Selecciona el fichero .pfx o .p12"); return; }
-        if (!password) { toast.error("La contraseña es obligatoria"); return; }
+        if (!file) { toast.error(t("certificado.selectFileError")); return; }
+        if (!password) { toast.error(t("certificado.passwordRequired")); return; }
         setBusy(true);
         try {
             await api.aeat.certificate.upload(file, password, label, notes || undefined);
-            toast.success("Certificado guardado cifrado en el servidor");
+            toast.success(t("certificado.saved"));
             reset();
             onUploaded();
             onClose();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Error al subir el certificado");
+            toast.error(e instanceof Error ? e.message : t("certificado.uploadError"));
         } finally {
             setBusy(false);
         }
@@ -55,23 +58,23 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
                             <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-base font-semibold text-foreground">Subir certificado AEAT</h3>
+                            <h3 className="text-base font-semibold text-foreground">{t("certificado.title")}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                .pfx o .p12 del representante. Se guarda <b>cifrado</b> con la clave del servidor; nunca se devuelve por la API.
+                                {t("certificado.subtitle")}
                             </p>
                         </div>
                     </div>
-                    <button onClick={handleClose} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar">
+                    <button onClick={handleClose} className="text-muted-foreground hover:text-foreground" aria-label={t("certificado.closeAria")}>
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
                 <div className="mt-5 space-y-3">
                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Fichero (.pfx / .p12)</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">{t("certificado.ficheroLabel")}</label>
                         <label className="flex items-center gap-2 h-10 px-3 rounded-md border border-dashed border-border bg-card hover:bg-muted/30 cursor-pointer transition-colors">
                             <Upload className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm text-foreground truncate">{file ? file.name : "Seleccionar fichero…"}</span>
+                            <span className="text-sm text-foreground truncate">{file ? file.name : t("certificado.selectFile")}</span>
                             <input
                                 type="file"
                                 accept=".pfx,.p12,application/x-pkcs12"
@@ -82,7 +85,7 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Contraseña del certificado</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">{t("certificado.passwordLabel")}</label>
                         <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-border bg-card">
                             <KeyRound className="w-4 h-4 text-muted-foreground" />
                             <input
@@ -96,7 +99,7 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Etiqueta</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">{t("certificado.etiquetaLabel")}</label>
                         <input
                             value={label}
                             onChange={(e) => setLabel(e.target.value)}
@@ -105,7 +108,7 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Notas (opcional)</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">{t("certificado.notasLabel")}</label>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
@@ -116,7 +119,7 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
 
                     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-500/90 flex items-start gap-2">
                         <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        Por motivos legales y operativos, recomendamos usar un certificado de <b>representante</b> o de <b>colaborador social</b>. Nunca subas el certificado personal del titular.
+                        {t("certificado.avisoLegal")}
                     </div>
                 </div>
 
@@ -126,7 +129,7 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
                         disabled={busy}
                         className="h-9 px-3 rounded-md border border-border text-sm hover:bg-muted/50"
                     >
-                        Cancelar
+                        {tc("cancel")}
                     </button>
                     <button
                         onClick={handleSubmit}
@@ -134,7 +137,7 @@ export function CertificateUploadModal({ open, onClose, onUploaded }: Props) {
                         className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:brightness-110 transition disabled:opacity-50 flex items-center gap-2"
                     >
                         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                        Guardar cifrado
+                        {t("certificado.guardarCifrado")}
                     </button>
                 </div>
             </div>

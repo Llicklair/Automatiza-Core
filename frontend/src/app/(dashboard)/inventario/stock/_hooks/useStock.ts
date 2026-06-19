@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Product, type StockMovement } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { useConfirmStore } from "@/stores/confirm";
@@ -36,6 +37,7 @@ const emptyProductForm: ProductForm = {
 };
 
 export function useStock() {
+    const t = useTranslations("inventario");
     const toast = useToastStore();
     const confirm = useConfirmStore();
     const [products, setProducts] = useState<Product[]>([]);
@@ -123,7 +125,7 @@ export function useStock() {
                 setMovements(prev => ({ ...prev, [selectedProduct.id]: movs }));
             }
         } catch (err: any) {
-            toast.error(err?.message || "Error al registrar movimiento");
+            toast.error(err?.message || t("stock.movementError"));
         } finally {
             setSaving(false);
         }
@@ -139,9 +141,9 @@ export function useStock() {
         try {
             await api.erp.products.update(productId, { stock_min_alert: alertValue });
             load();
-            toast.success("Alerta mínima actualizada");
+            toast.success(t("stock.alertUpdated"));
         } catch (err: any) {
-            toast.error(err?.message || "Error al actualizar alerta");
+            toast.error(err?.message || t("stock.alertUpdateError"));
         }
     };
 
@@ -186,15 +188,15 @@ export function useStock() {
         try {
             if (editingProduct) {
                 await api.erp.products.update(editingProduct.id, payload);
-                toast.success("Producto actualizado");
+                toast.success(t("stock.productUpdated"));
             } else {
                 await api.erp.products.create({ ...payload, item_type: "product" });
-                toast.success("Producto creado");
+                toast.success(t("stock.productCreated"));
             }
             setShowProductModal(false);
             load();
         } catch (err: any) {
-            toast.error(err?.message || "Error al guardar producto");
+            toast.error(err?.message || t("stock.productSaveError"));
         } finally {
             setSavingProduct(false);
         }
@@ -202,18 +204,18 @@ export function useStock() {
 
     const handleDelete = async (product: Product) => {
         const ok = await confirm.show({
-            title: "Eliminar producto",
-            message: `Se eliminará "${product.name}" permanentemente. Esta acción no se puede deshacer.`,
-            confirmLabel: "Eliminar",
+            title: t("stock.deleteTitle"),
+            message: t("stock.deleteMessage", { name: product.name }),
+            confirmLabel: t("stock.deleteConfirm"),
             confirmVariant: "danger",
         });
         if (!ok) return;
         try {
             await api.erp.products.delete(product.id);
-            toast.success("Producto eliminado");
+            toast.success(t("stock.productDeleted"));
             load();
         } catch (err: any) {
-            toast.error(err?.message || "Error al eliminar producto");
+            toast.error(err?.message || t("stock.productDeleteError"));
         }
     };
 

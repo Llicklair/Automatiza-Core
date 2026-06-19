@@ -1,6 +1,7 @@
 "use client";
 
 import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Gavel, Lightbulb } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface GuidesSectionProps {
     guides: any[];
@@ -10,12 +11,19 @@ interface GuidesSectionProps {
 }
 
 export function GuidesSection({ guides, filter, expandedGuide, setExpandedGuide }: GuidesSectionProps) {
+    const t = useTranslations("contabilidad");
+    const filterLabel =
+        filter === "fiscal"
+            ? t("guidesSection.filterFiscal")
+            : filter === "laboral"
+                ? t("guidesSection.filterLaboral")
+                : t("guidesSection.filterMercantil");
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-xl font-semibold text-foreground">
-                    Guía Normativa — {filter === "fiscal" ? "Fiscal / AEAT" : filter === "laboral" ? "Laboral" : "Mercantil"}
+                    {t("guidesSection.title", { filter: filterLabel })}
                 </h2>
             </div>
 
@@ -55,7 +63,7 @@ export function GuidesSection({ guides, filter, expandedGuide, setExpandedGuide 
                                     <div className="flex items-start gap-3 bg-card rounded-xl p-4 border border-border">
                                         <Lightbulb className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">Consejo para tu PYME</p>
+                                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">{t("guidesSection.pymeTip")}</p>
                                             <p className="text-foreground text-sm leading-relaxed">{guide.consejo_pyme}</p>
                                         </div>
                                     </div>
@@ -72,7 +80,7 @@ export function GuidesSection({ guides, filter, expandedGuide, setExpandedGuide 
                                                 className="flex items-center gap-1.5 text-primary hover:text-primary transition-colors"
                                             >
                                                 <ExternalLink className="w-3.5 h-3.5" />
-                                                Ver en el BOE
+                                                {t("guidesSection.viewInBoe")}
                                             </a>
                                         )}
                                     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Copy, Link2, ShieldOff, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Client } from "@/lib/api/erp";
@@ -22,17 +23,19 @@ const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 function PortalStatusBadge({ status }: { status: PortalTokenStatus | undefined | null }) {
+    const t = useTranslations("clientes");
     if (status === undefined)
         return <span className="text-xs text-muted-foreground">…</span>;
     if (!status?.has_token)
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted/40 text-muted-foreground">Sin acceso</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted/40 text-muted-foreground">{t("portal.statusNoAccess")}</span>;
     const isExpired = status.expires_at && new Date(status.expires_at) < new Date();
     if (isExpired)
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-500/10 text-red-400">Expirado</span>;
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-400">Activo</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-500/10 text-red-400">{t("portal.statusExpired")}</span>;
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-400">{t("portal.statusActive")}</span>;
 }
 
 export default function PortalClientesPage() {
+    const t = useTranslations("clientes");
     const toast = useToastStore();
     const [clients, setClients] = useState<Client[]>([]);
     const [statuses, setStatuses] = useState<Record<string, PortalTokenStatus | null>>({});
@@ -87,11 +90,9 @@ export default function PortalClientesPage() {
             current?.has_token && current.expires_at && new Date(current.expires_at) > new Date();
         if (hasActive) {
             const ok = await showConfirm({
-                title: "Regenerar enlace",
-                message:
-                    "Al regenerar el enlace, el anterior dejará de funcionar inmediatamente. " +
-                    "Si ya se lo habías enviado al cliente, tendrás que mandarle el nuevo. ¿Continuar?",
-                confirmLabel: "Regenerar",
+                title: t("portal.regenerateTitle"),
+                message: t("portal.regenerateMessage"),
+                confirmLabel: t("portal.regenerate"),
                 confirmVariant: "warning",
             });
             if (!ok) return;
@@ -111,7 +112,7 @@ export default function PortalClientesPage() {
             const updated = await clientPortalAdmin.getTokenStatus(client.id);
             setStatuses((prev) => ({ ...prev, [client.id]: updated }));
         } catch {
-            toast.error("Error al generar el enlace");
+            toast.error(t("portal.errorGenerate"));
         } finally {
             setGenerating(null);
         }
@@ -119,8 +120,8 @@ export default function PortalClientesPage() {
 
     const handleRevoke = async (clientId: string) => {
         if (!(await showConfirm({
-            message: "¿Revocar acceso? El cliente no podrá acceder al portal.",
-            confirmLabel: "Revocar",
+            message: t("portal.revokeMessage"),
+            confirmLabel: t("portal.revoke"),
             confirmVariant: "danger",
         }))) return;
         setRevoking(clientId);
@@ -131,7 +132,7 @@ export default function PortalClientesPage() {
                 [clientId]: { has_token: false, expires_at: null, created_at: null, last_used_at: null },
             }));
         } catch {
-            toast.error("Error al revocar el acceso");
+            toast.error(t("portal.errorRevoke"));
         } finally {
             setRevoking(null);
         }
@@ -152,12 +153,12 @@ export default function PortalClientesPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Portal de clientes"
-                description="Gestiona el acceso externo de tus clientes a sus facturas y presupuestos"
+                title={t("portal.title")}
+                description={t("portal.description")}
             />
 
             <Input
-                placeholder="Buscar cliente…"
+                placeholder={t("portal.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-xs"
@@ -166,26 +167,26 @@ export default function PortalClientesPage() {
             {loading ? (
                 <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Cargando…</span>
+                    <span className="text-sm">{t("portal.loading")}</span>
                 </div>
             ) : (
                 <div className="rounded-xl border bg-card overflow-hidden">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b text-muted-foreground text-xs uppercase tracking-wide">
-                                <th className="px-4 py-3 text-left">Cliente</th>
-                                <th className="px-4 py-3 text-left">Email</th>
-                                <th className="px-4 py-3 text-center">Estado</th>
-                                <th className="px-4 py-3 text-left">Vence</th>
-                                <th className="px-4 py-3 text-left">Último acceso</th>
-                                <th className="px-4 py-3 text-right">Acciones</th>
+                                <th className="px-4 py-3 text-left">{t("typeClient")}</th>
+                                <th className="px-4 py-3 text-left">{t("emailColumn")}</th>
+                                <th className="px-4 py-3 text-center">{t("portal.statusColumn")}</th>
+                                <th className="px-4 py-3 text-left">{t("portal.expiresColumn")}</th>
+                                <th className="px-4 py-3 text-left">{t("portal.lastAccessColumn")}</th>
+                                <th className="px-4 py-3 text-right">{t("portal.actionsColumn")}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {filtered.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                                        No hay clientes
+                                        {t("portal.empty")}
                                     </td>
                                 </tr>
                             )}
@@ -204,7 +205,7 @@ export default function PortalClientesPage() {
                                             {st?.has_token ? fmtDate(st.expires_at) : "—"}
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
-                                            {st?.last_used_at ? fmtDate(st.last_used_at) : "Nunca"}
+                                            {st?.last_used_at ? fmtDate(st.last_used_at) : t("portal.never")}
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -218,7 +219,7 @@ export default function PortalClientesPage() {
                                                     {generating === client.id
                                                         ? <Loader2 className="w-3 h-3 animate-spin" />
                                                         : <Link2 className="w-3 h-3" />}
-                                                    {hasActive ? "Regenerar" : "Generar enlace"}
+                                                    {hasActive ? t("portal.regenerate") : t("portal.generateLink")}
                                                 </Button>
                                                 {hasActive && (
                                                     <Button
@@ -231,7 +232,7 @@ export default function PortalClientesPage() {
                                                         {revoking === client.id
                                                             ? <Loader2 className="w-3 h-3 animate-spin" />
                                                             : <ShieldOff className="w-3 h-3" />}
-                                                        Revocar
+                                                        {t("portal.revoke")}
                                                     </Button>
                                                 )}
                                             </div>
@@ -247,21 +248,21 @@ export default function PortalClientesPage() {
             <Dialog open={!!generatedUrl} onOpenChange={() => { setGeneratedUrl(null); setCopied(false); setGeneratedUrlIsLocal(false); }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Enlace generado</DialogTitle>
+                        <DialogTitle>{t("portal.linkGeneratedTitle")}</DialogTitle>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
-                        Comparte este enlace con el cliente. Es válido 90 días y da acceso a sus facturas y presupuestos.
+                        {t("portal.shareLink")}
                     </p>
                     {generatedUrlIsLocal && (
                         <div className="flex gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs text-amber-200">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
                             <div className="space-y-1">
-                                <p className="font-medium">Este enlace solo funciona en esta máquina o red local.</p>
+                                <p className="font-medium">{t("portal.localOnlyWarning")}</p>
                                 <p className="text-amber-200/80">
-                                    Tu cliente no podrá abrirlo desde su casa. Configura{" "}
+                                    {t("portal.configureBefore")}{" "}
                                     <code className="px-1 rounded bg-amber-500/20">PORTAL_PUBLIC_URL</code>{" "}
-                                    en el archivo <code className="px-1 rounded bg-amber-500/20">.env</code>{" "}
-                                    con la URL pública del portal (Cloudflare Tunnel, dominio propio o IP fija).
+                                    {t("portal.configureMiddle")} <code className="px-1 rounded bg-amber-500/20">.env</code>{" "}
+                                    {t("portal.configureAfter")}
                                 </p>
                             </div>
                         </div>
@@ -276,7 +277,7 @@ export default function PortalClientesPage() {
                             onClick={() => window.open(generatedUrl!, "_blank")}
                             className="gap-1.5"
                         >
-                            <ExternalLink className="w-3.5 h-3.5" /> Abrir
+                            <ExternalLink className="w-3.5 h-3.5" /> {t("portal.open")}
                         </Button>
                         <Button
                             size="sm"
@@ -284,7 +285,7 @@ export default function PortalClientesPage() {
                             className="gap-1.5"
                         >
                             <Copy className="w-3.5 h-3.5" />
-                            {copied ? "¡Copiado!" : "Copiar enlace"}
+                            {copied ? t("portal.copied") : t("portal.copyLink")}
                         </Button>
                     </div>
                 </DialogContent>

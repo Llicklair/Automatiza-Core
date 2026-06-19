@@ -1,69 +1,72 @@
 import { FileText, Users, BarChart3, Table2, FileCode2 } from "lucide-react";
+import type { useTranslations } from "next-intl";
 import type { DocumentTemplate } from "@/lib/api/templates";
 
-export const CONTRACT_VARIABLES = [
-    { key: "{{nombre_cliente}}", desc: "Nombre completo del cliente" },
-    { key: "{{nif_cliente}}", desc: "NIF/CIF del cliente" },
-    { key: "{{direccion_cliente}}", desc: "Dirección del cliente" },
-    { key: "{{nombre_empresa}}", desc: "Nombre de tu empresa" },
-    { key: "{{nif_empresa}}", desc: "NIF/CIF de tu empresa" },
-    { key: "{{fecha}}", desc: "Fecha actual (dd/mm/aaaa)" },
-    { key: "{{fecha_inicio}}", desc: "Fecha de inicio del contrato" },
-    { key: "{{fecha_fin}}", desc: "Fecha de fin del contrato" },
-    { key: "{{importe}}", desc: "Importe total" },
-    { key: "{{numero_contrato}}", desc: "Número de contrato" },
+type T = ReturnType<typeof useTranslations>;
+
+export const buildContractVariables = (t: T) => [
+    { key: "{{nombre_cliente}}", desc: t("variables.nombreCliente") },
+    { key: "{{nif_cliente}}", desc: t("variables.nifCliente") },
+    { key: "{{direccion_cliente}}", desc: t("variables.direccionCliente") },
+    { key: "{{nombre_empresa}}", desc: t("variables.nombreEmpresa") },
+    { key: "{{nif_empresa}}", desc: t("variables.nifEmpresa") },
+    { key: "{{fecha}}", desc: t("variables.fecha") },
+    { key: "{{fecha_inicio}}", desc: t("variables.fechaInicio") },
+    { key: "{{fecha_fin}}", desc: t("variables.fechaFin") },
+    { key: "{{importe}}", desc: t("variables.importe") },
+    { key: "{{numero_contrato}}", desc: t("variables.numeroContrato") },
 ];
 
-export const TEMPLATE_TYPES = [
-    { value: "invoice",  label: "Facturas",              icon: FileText  },
-    { value: "payroll",  label: "Nóminas",               icon: Users     },
-    { value: "excel",    label: "Excel / Exportaciones", icon: BarChart3 },
-    { value: "albaran",  label: "Albaranes",             icon: Table2    },
-    { value: "contract", label: "Contratos Word",        icon: FileCode2 },
+export const buildTemplateTypes = (t: T) => [
+    { value: "invoice",  label: t("types.invoice"),  icon: FileText  },
+    { value: "payroll",  label: t("types.payroll"),  icon: Users     },
+    { value: "excel",    label: t("types.excel"),    icon: BarChart3 },
+    { value: "albaran",  label: t("types.albaran"),  icon: Table2    },
+    { value: "contract", label: t("types.contract"), icon: FileCode2 },
 ] as const;
 
-export const LAYOUT_PRESETS = [
-    { value: "modern",  label: "Modern",  desc: "Banda de color, logo izquierda, tabla con rayas",  preview: "bg-primary"          },
-    { value: "classic", label: "Classic", desc: "Sin banda, logo centrado, Times, tabla con bordes", preview: "bg-gray-700"         },
-    { value: "minimal", label: "Minimal", desc: "Línea fina, logo derecha, tabla limpia",            preview: "bg-muted-foreground" },
-    { value: "bold",    label: "Bold",    desc: "Cabecera oscura, tabla con acento, máximo impacto", preview: "bg-slate-800"        },
+export const buildLayoutPresets = (t: T) => [
+    { value: "modern",  label: t("layout.modern.label"),  desc: t("layout.modern.desc"),  preview: "bg-primary"          },
+    { value: "classic", label: t("layout.classic.label"), desc: t("layout.classic.desc"), preview: "bg-gray-700"         },
+    { value: "minimal", label: t("layout.minimal.label"), desc: t("layout.minimal.desc"), preview: "bg-muted-foreground" },
+    { value: "bold",    label: t("layout.bold.label"),    desc: t("layout.bold.desc"),    preview: "bg-slate-800"        },
 ] as const;
 
-export const ACCENT_COLORS = [
-    { value: "#6366f1", label: "Índigo"    },
-    { value: "#3b82f6", label: "Azul"      },
-    { value: "#10b981", label: "Esmeralda" },
-    { value: "#f59e0b", label: "Ámbar"     },
-    { value: "#ef4444", label: "Rojo"      },
-    { value: "#8b5cf6", label: "Violeta"   },
-    { value: "#06b6d4", label: "Cyan"      },
-    { value: "#1e293b", label: "Slate"     },
+export const buildAccentColors = (t: T) => [
+    { value: "#6366f1", label: t("colors.indigo")    },
+    { value: "#3b82f6", label: t("colors.blue")      },
+    { value: "#10b981", label: t("colors.emerald")   },
+    { value: "#f59e0b", label: t("colors.amber")     },
+    { value: "#ef4444", label: t("colors.red")       },
+    { value: "#8b5cf6", label: t("colors.violet")    },
+    { value: "#06b6d4", label: t("colors.cyan")      },
+    { value: "#1e293b", label: t("colors.slate")     },
 ];
 
-export const FONTS = [
-    { value: "helvetica", label: "Helvetica",  desc: "Moderna y limpia" },
-    { value: "times",     label: "Times Roman", desc: "Clásica y formal" },
-    { value: "courier",   label: "Courier",     desc: "Monoespaciada"   },
+export const buildFonts = (t: T) => [
+    { value: "helvetica", label: "Helvetica",   desc: t("fonts.helvetica") },
+    { value: "times",     label: "Times Roman", desc: t("fonts.times")     },
+    { value: "courier",   label: "Courier",     desc: t("fonts.courier")   },
 ];
 
-export const HEADER_STYLES = [
-    { value: "color_band", label: "Banda color",  desc: "Cabecera rellena con color de acento" },
-    { value: "dark_band",  label: "Banda oscura", desc: "Cabecera negra con acento en texto"   },
-    { value: "line_only",  label: "Línea",        desc: "Solo una línea separadora"            },
-    { value: "none",       label: "Sin cabecera", desc: "Solo tipografía"                      },
+export const buildHeaderStyles = (t: T) => [
+    { value: "color_band", label: t("headers.colorBand.label"), desc: t("headers.colorBand.desc") },
+    { value: "dark_band",  label: t("headers.darkBand.label"),  desc: t("headers.darkBand.desc")  },
+    { value: "line_only",  label: t("headers.lineOnly.label"),  desc: t("headers.lineOnly.desc")  },
+    { value: "none",       label: t("headers.none.label"),      desc: t("headers.none.desc")      },
 ];
 
-export const TABLE_STYLES = [
-    { value: "striped",       label: "Rayas alternas", desc: "Filas intercaladas gris"  },
-    { value: "bordered",      label: "Con bordes",     desc: "Cuadrícula completa"      },
-    { value: "clean",         label: "Limpia",         desc: "Solo líneas horizontales" },
-    { value: "accent_header", label: "Cabecera color", desc: "Header con color acento"  },
+export const buildTableStyles = (t: T) => [
+    { value: "striped",       label: t("tables.striped.label"),      desc: t("tables.striped.desc")      },
+    { value: "bordered",      label: t("tables.bordered.label"),     desc: t("tables.bordered.desc")     },
+    { value: "clean",         label: t("tables.clean.label"),        desc: t("tables.clean.desc")        },
+    { value: "accent_header", label: t("tables.accentHeader.label"), desc: t("tables.accentHeader.desc") },
 ];
 
-export const LOGO_POSITIONS = [
-    { value: "left",   label: "Izquierda" },
-    { value: "center", label: "Centro"    },
-    { value: "right",  label: "Derecha"   },
+export const buildLogoPositions = (t: T) => [
+    { value: "left",   label: t("logoPositions.left")   },
+    { value: "center", label: t("logoPositions.center") },
+    { value: "right",  label: t("logoPositions.right")  },
 ];
 
 export const EMPTY_FORM: Omit<DocumentTemplate, "id"> = {

@@ -7,6 +7,7 @@ import {
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer
 } from "recharts";
+import { useTranslations } from "next-intl";
 import type { AnalyticsDashboard } from "@/lib/api";
 import { KpiCard } from "./KpiCard";
 import { SectionHeader } from "./SectionHeader";
@@ -32,36 +33,37 @@ export function VentasSection({
     ingresosPeriodo, emitidasCount, ticketMedio,
     importePendienteCobro, factPagadas, factPendientes, factBorrador,
 }: VentasSectionProps) {
+    const t = useTranslations("analitica");
     return (
         <section className="space-y-6">
-            <SectionHeader icon={TrendingUp} title="Ventas" subtitle="Facturación emitida, productos, IVA y patrones temporales" />
+            <SectionHeader icon={TrendingUp} title={t("ventas.title")} subtitle={t("ventas.subtitle")} />
             {/* KPIs ventas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <KpiCard
-                    label={`Ingresos · ${periodLabel}`}
+                    label={t("ventas.kpiIngresos", { period: periodLabel })}
                     value={`${fmt(ingresosPeriodo)}€`}
-                    sub={`${emitidasCount} facturas emitidas`}
+                    sub={t("ventas.kpiIngresosSub", { count: emitidasCount })}
                     icon={TrendingUp}
                     color="emerald"
                 />
                 <KpiCard
-                    label="Ticket medio"
+                    label={t("ventas.kpiTicketMedio")}
                     value={`${fmt(ticketMedio)}€`}
-                    sub="Por factura del periodo"
+                    sub={t("ventas.kpiTicketMedioSub")}
                     icon={Coins}
                     color="indigo"
                 />
                 <KpiCard
-                    label="Pendiente de cobro"
+                    label={t("ventas.kpiPendiente")}
                     value={`${fmt(importePendienteCobro)}€`}
-                    sub={`${factPendientes} sin cobrar`}
+                    sub={t("ventas.kpiPendienteSub", { count: factPendientes })}
                     icon={Clock}
                     color="amber"
                 />
                 <KpiCard
-                    label="Facturas cobradas"
+                    label={t("ventas.kpiCobradas")}
                     value={`${factPagadas}`}
-                    sub={`${factBorrador} borradores`}
+                    sub={t("ventas.kpiCobradasSub", { count: factBorrador })}
                     icon={FileText}
                     color="indigo"
                 />
@@ -71,12 +73,12 @@ export function VentasSection({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" /> Top Clientes
+                        <Users className="w-4 h-4 text-primary" /> {t("ventas.topClientesTitle")}
                     </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Por volumen en {periodLabel}</p>
+                    <p className="text-xs text-muted-foreground mb-5">{t("ventas.topClientesSubtitle", { period: periodLabel })}</p>
                     {topClientes.length === 0 ? (
                         <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
-                            Sin clientes facturados este periodo
+                            {t("ventas.topClientesEmpty")}
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -107,20 +109,20 @@ export function VentasSection({
 
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-primary" /> Facturación por Mes
+                        <FileText className="w-4 h-4 text-primary" /> {t("ventas.facturacionMesTitle")}
                     </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Ingresos vs Gastos</p>
+                    <p className="text-xs text-muted-foreground mb-5">{t("ventas.facturacionMesSubtitle")}</p>
                     <div className="h-[220px]">
                         {cashflow.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Sin datos mensuales</div>
+                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">{t("ventas.facturacionMesEmpty")}</div>
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={cashflow} margin={{ top: 5, right: 5, left: -25, bottom: 0 }} barGap={4}>
                                     <XAxis dataKey="month" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
                                     <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                                     <RTooltip content={<CustomTooltip />} />
-                                    <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="gastos" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="ingresos" name={t("series.ingresos")} fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="gastos" name={t("series.gastos")} fill="#ef4444" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
@@ -132,12 +134,12 @@ export function VentasSection({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Package className="w-4 h-4 text-primary" /> Top productos
+                        <Package className="w-4 h-4 text-primary" /> {t("ventas.topProductosTitle")}
                     </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Por importe facturado en {periodLabel}</p>
+                    <p className="text-xs text-muted-foreground mb-5">{t("ventas.topProductosSubtitle", { period: periodLabel })}</p>
                     {ventasDetalle.top_productos.length === 0 ? (
                         <div className="h-[140px] flex items-center justify-center text-sm text-muted-foreground">
-                            Sin líneas con producto asignado en este periodo
+                            {t("ventas.topProductosEmpty")}
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -170,22 +172,22 @@ export function VentasSection({
 
                 <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Percent className="w-4 h-4 text-primary" /> Desglose por IVA
+                        <Percent className="w-4 h-4 text-primary" /> {t("ventas.ivaTitle")}
                     </h2>
-                    <p className="text-xs text-muted-foreground mb-5">Base imponible e IVA repercutido por tipo</p>
+                    <p className="text-xs text-muted-foreground mb-5">{t("ventas.ivaSubtitle")}</p>
                     {ventasDetalle.iva_breakdown.length === 0 ? (
                         <div className="h-[140px] flex items-center justify-center text-sm text-muted-foreground">
-                            Sin facturas con líneas en este periodo
+                            {t("ventas.ivaEmpty")}
                         </div>
                     ) : (
                         <div className="overflow-hidden rounded-xl border border-border">
                             <table className="w-full text-xs">
                                 <thead className="bg-muted">
                                     <tr>
-                                        <th className="text-left py-2 px-3 text-muted-foreground font-medium">Tipo</th>
-                                        <th className="text-right py-2 px-3 text-muted-foreground font-medium">Base</th>
-                                        <th className="text-right py-2 px-3 text-muted-foreground font-medium">IVA</th>
-                                        <th className="text-right py-2 px-3 text-muted-foreground font-medium">Total</th>
+                                        <th className="text-left py-2 px-3 text-muted-foreground font-medium">{t("ventas.ivaColType")}</th>
+                                        <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ventas.ivaColBase")}</th>
+                                        <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ventas.ivaColIva")}</th>
+                                        <th className="text-right py-2 px-3 text-muted-foreground font-medium">{t("ventas.ivaColTotal")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -207,13 +209,13 @@ export function VentasSection({
             {/* Facturación por día de la semana */}
             <div className="bg-card border border-border rounded-2xl p-6">
                 <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-primary" /> Facturación por día de la semana
+                    <CalendarDays className="w-4 h-4 text-primary" /> {t("ventas.porDiaTitle")}
                 </h2>
-                <p className="text-xs text-muted-foreground mb-5">Volumen de ingresos por día — {periodLabel}</p>
+                <p className="text-xs text-muted-foreground mb-5">{t("ventas.porDiaSubtitle", { period: periodLabel })}</p>
                 <div className="h-[220px]">
                     {ventasDetalle.por_dia_semana.every(d => d.ingresos === 0) ? (
                         <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                            Sin facturas emitidas en este periodo
+                            {t("ventas.porDiaEmpty")}
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
@@ -221,7 +223,7 @@ export function VentasSection({
                                 <XAxis dataKey="dia" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                                 <RTooltip content={<CustomTooltip />} />
-                                <Bar dataKey="ingresos" name="Ingresos" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="ingresos" name={t("series.ingresos")} fill="#6366f1" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     )}

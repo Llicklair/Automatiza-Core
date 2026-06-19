@@ -17,7 +17,6 @@ import asyncio
 from unittest.mock import patch
 from uuid import uuid4
 
-import pytest
 
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Task, Tenant

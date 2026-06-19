@@ -1,6 +1,7 @@
 "use client";
 
 import { Scale, Briefcase, Users, Building, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAsesorias } from "./_hooks/useAsesorias";
@@ -9,14 +10,16 @@ import { CalendarSection } from "./_components/CalendarSection";
 import { GuidesSection } from "./_components/GuidesSection";
 import { NewsFeed } from "./_components/NewsFeed";
 
-const TABS = [
-    { id: "fiscal", label: "Fiscal / AEAT", icon: Briefcase },
-    { id: "laboral", label: "Laboral", icon: Users },
-    { id: "mercantil", label: "Mercantil", icon: Building },
+const TABS = (t: ReturnType<typeof useTranslations>) => [
+    { id: "fiscal", label: t("asesorias.tabFiscal"), icon: Briefcase },
+    { id: "laboral", label: t("asesorias.tabLaboral"), icon: Users },
+    { id: "mercantil", label: t("asesorias.tabMercantil"), icon: Building },
 ];
 
 export default function AsesoriasPage() {
+    const t = useTranslations("contabilidad");
     const a = useAsesorias();
+    const tabs = TABS(t);
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -25,15 +28,15 @@ export default function AsesoriasPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
                         <Scale className="w-8 h-8 text-primary" />
-                        Asesoría Jurídica y Fiscal
+                        {t("asesorias.title")}
                     </h1>
                     <p className="text-muted-foreground mt-2">
-                        Mantente al día de tus obligaciones con la AEAT y las últimas normativas del BOE para tu negocio.
+                        {t("asesorias.description")}
                     </p>
                 </div>
 
                 <div className="flex bg-card p-1 rounded-xl border border-border">
-                    {TABS.map((tab) => {
+                    {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = a.filter === tab.id;
                         return (

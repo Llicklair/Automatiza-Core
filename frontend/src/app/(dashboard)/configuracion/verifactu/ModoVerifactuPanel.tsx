@@ -11,12 +11,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, Info, Loader2, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import type { VerifactuConfig, VerifactuMode } from "@/lib/api/verifactuConfig";
 import { useToastStore } from "@/stores/toast";
 
 export function ModoVerifactuPanel() {
+    const t = useTranslations("configuracion");
     const [data, setData] = useState<VerifactuConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
@@ -28,11 +30,11 @@ export function ModoVerifactuPanel() {
             const res = await api.verifactuConfig.get();
             setData(res);
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorPrefix")}: ${e.message}`, "error");
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     useEffect(() => {
         load();
@@ -45,12 +47,12 @@ export function ModoVerifactuPanel() {
             setData(res);
             toast.show(
                 mode === "voluntary"
-                    ? "Modo VERI*FACTU activado"
-                    : "Modo sin remisión activado",
+                    ? t("verifactu.modeVerifactuActivated")
+                    : t("verifactu.modeNoRemissionActivated"),
                 "success",
             );
         } catch (e: any) {
-            toast.show(`Error: ${e.message}`, "error");
+            toast.show(`${t("verifactu.errorPrefix")}: ${e.message}`, "error");
         } finally {
             setBusy(false);
         }
@@ -59,7 +61,7 @@ export function ModoVerifactuPanel() {
     if (loading || !data) {
         return (
             <div className="p-8 flex items-center gap-3 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
+                <Loader2 className="w-4 h-4 animate-spin" /> {t("verifactu.loading")}
             </div>
         );
     }
@@ -68,11 +70,10 @@ export function ModoVerifactuPanel() {
         <div className="space-y-6">
             <header>
                 <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-                    Modo Verifactu
+                    {t("verifactu.modeTitle")}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Según el RD 1007/2023, el sistema puede operar en dos modos. Elige el
-                    que aplica a tu negocio. Puedes cambiarlo cuando quieras.
+                    {t("verifactu.modeIntro")}
                 </p>
             </header>
 
@@ -82,34 +83,33 @@ export function ModoVerifactuPanel() {
                     aria-hidden="true"
                 />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                    El modo <strong>VERI*FACTU</strong> requiere el alta como colaborador social
-                    en AEAT y el certificado de representación. Hasta tenerlos, la activación
-                    se queda en preparación local — las facturas se firman con hash pero la
-                    remisión efectiva está pendiente del setup administrativo.
+                    {t.rich("verifactu.modeWarning", {
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                 </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ModeCard
                     selected={data.mode === "no_remission"}
-                    label="Sin remisión (SIF)"
-                    description="El sistema genera la cadena hash y la conserva en local. La AEAT puede requerir la información a posteriori. Es la opción por defecto y la más segura mientras el alta administrativa esté en curso."
+                    label={t("verifactu.noRemissionLabel")}
+                    description={t("verifactu.noRemissionDesc")}
                     bullets={[
-                        "Sin envío automático a AEAT",
-                        "Cadena `huella` íntegra y verificable",
-                        "Cumple RD 1007/2023 art. 6 (SIF)",
+                        t("verifactu.noRemissionBullet1"),
+                        t("verifactu.noRemissionBullet2"),
+                        t("verifactu.noRemissionBullet3"),
                     ]}
                     onSelect={() => setMode("no_remission")}
                     busy={busy}
                 />
                 <ModeCard
                     selected={data.mode === "voluntary"}
-                    label="VERI*FACTU"
-                    description="Cada factura se remite telemáticamente a la AEAT al emitirse con firma XAdES y acuse de recibo. Es la modalidad voluntaria que da máxima transparencia frente a inspección."
+                    label={t("verifactu.voluntaryLabel")}
+                    description={t("verifactu.voluntaryDesc")}
                     bullets={[
-                        "Remisión inmediata a AEAT",
-                        "Acuse de recibo archivado por factura",
-                        "Recomendado tras DEC.14 + DEC.15",
+                        t("verifactu.voluntaryBullet1"),
+                        t("verifactu.voluntaryBullet2"),
+                        t("verifactu.voluntaryBullet3"),
                     ]}
                     onSelect={() => setMode("voluntary")}
                     busy={busy}
@@ -118,8 +118,8 @@ export function ModoVerifactuPanel() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-                Último cambio: {new Date(data.updated_at).toLocaleString("es-ES")}
-                {data.is_default && " · valor por defecto"}
+                {t("verifactu.lastChange")}: {new Date(data.updated_at).toLocaleString("es-ES")}
+                {data.is_default && ` · ${t("verifactu.defaultValue")}`}
             </p>
         </div>
     );
@@ -142,6 +142,7 @@ function ModeCard({
     busy: boolean;
     highlight?: boolean;
 }) {
+    const t = useTranslations("configuracion");
     return (
         <article
             className={`rounded-lg border p-5 transition-colors ${selected
@@ -154,7 +155,7 @@ function ModeCard({
                 {selected && (
                     <CheckCircle2
                         className="w-4 h-4 text-primary"
-                        aria-label="Modo activo"
+                        aria-label={t("verifactu.modeActiveAria")}
                     />
                 )}
                 {highlight && !selected && (
@@ -162,7 +163,7 @@ function ModeCard({
                         className="text-[10px] uppercase tracking-wider text-primary border border-primary/30 rounded px-1.5 py-0.5"
                         aria-hidden="true"
                     >
-                        recomendado
+                        {t("verifactu.recommended")}
                     </span>
                 )}
             </div>
@@ -193,7 +194,7 @@ function ModeCard({
                     : "bg-primary text-foreground hover:bg-primary/90"
                     }`}
             >
-                {selected ? "Activo" : "Activar este modo"}
+                {selected ? t("verifactu.active") : t("verifactu.activateMode")}
             </button>
         </article>
     );

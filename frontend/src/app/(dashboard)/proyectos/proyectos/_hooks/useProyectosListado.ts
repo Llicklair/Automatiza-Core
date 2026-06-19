@@ -1,20 +1,33 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { api, type Project } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 import { PlayCircle, CheckCircle2, Clock } from "lucide-react";
 
+type Translator = (key: string, values?: Record<string, string | number>) => string;
+
+export const getStatusConfig = (t: Translator): Record<string, { label: string; bg: string; text: string; icon: any }> => ({
+    active: { label: t("status.active"), bg: "bg-blue-500/10", text: "text-blue-400", icon: PlayCircle },
+    completed: { label: t("status.completed"), bg: "bg-emerald-500/10", text: "text-emerald-400", icon: CheckCircle2 },
+    on_hold: { label: t("status.onHold"), bg: "bg-amber-500/10", text: "text-amber-400", icon: Clock },
+});
+
+// Backward-compatible export (labels are resolved via getStatusConfig / hook return once consumers migrate).
 export const statusConfig: Record<string, { label: string; bg: string; text: string; icon: any }> = {
-    active: { label: "Activo", bg: "bg-blue-500/10", text: "text-blue-400", icon: PlayCircle },
-    completed: { label: "Completado", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: CheckCircle2 },
-    on_hold: { label: "En Pausa", bg: "bg-amber-500/10", text: "text-amber-400", icon: Clock },
+    active: { label: "active", bg: "bg-blue-500/10", text: "text-blue-400", icon: PlayCircle },
+    completed: { label: "completed", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: CheckCircle2 },
+    on_hold: { label: "on_hold", bg: "bg-amber-500/10", text: "text-amber-400", icon: Clock },
 };
 
 export function useProyectosListado() {
+    const t = useTranslations("proyectos");
+    const tc = useTranslations("common");
     const toast = useToastStore();
+    const statusConfig = getStatusConfig(t);
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -57,7 +70,7 @@ export function useProyectosListado() {
             setCreateOpen(false);
             setNewProject({ name: '', description: '', budget: 0, status: 'active' });
             loadData();
-        } catch { toast.error("Error creando el proyecto"); }
+        } catch { toast.error(t("listado.createError")); }
     };
 
     const saveEdit = async (e: React.FormEvent) => {
@@ -67,15 +80,15 @@ export function useProyectosListado() {
             await api.projects.update(editProject.id, editForm);
             setEditProject(null);
             loadData();
-        } catch { toast.error("Error actualizando el proyecto"); }
+        } catch { toast.error(t("listado.updateError")); }
     };
 
     const deleteProject = async (project: Project) => {
-        if (!await showConfirm({ message: `¿Eliminar el proyecto "${project.name}"? Se borrarán también sus tareas.`, confirmLabel: "Eliminar", confirmVariant: "danger" })) return;
+        if (!await showConfirm({ message: t("listado.deleteConfirm", { name: project.name }), confirmLabel: tc("delete"), confirmVariant: "danger" })) return;
         try {
             await api.projects.delete(project.id);
             loadData();
-        } catch { toast.error("Error eliminando el proyecto"); }
+        } catch { toast.error(t("listado.deleteError")); }
     };
 
     const openEditModal = (project: Project) => {
@@ -92,6 +105,7 @@ export function useProyectosListado() {
         editForm, setEditForm,
         openMenuId, setOpenMenuId,
         menuRef,
+        statusConfig,
         createProject, saveEdit, deleteProject, openEditModal,
     };
 }

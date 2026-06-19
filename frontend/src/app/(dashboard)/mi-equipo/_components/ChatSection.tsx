@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, Loader2, MessageSquare, Square } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { AIDisclosureBanner } from "@/components/ai/AIDisclosureBanner";
 
 interface ChatSectionProps {
@@ -22,6 +23,7 @@ export function ChatSection({
     chatMessages, setChatMessages, chatQuery, setChatQuery, chatLoading, onSend,
     progressSummary, onStop, isStreaming,
 }: ChatSectionProps) {
+    const t = useTranslations("miEquipo");
     return (
         <div className="mb-8 bg-card border border-primary/20 rounded-2xl overflow-hidden shadow-lg shadow-primary/20">
             <div className="px-5 pt-3">
@@ -29,11 +31,11 @@ export function ChatSection({
             </div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-primary/20">
                 <div className="flex items-center gap-2 text-primary text-sm font-medium">
-                    <Bot className="w-4 h-4" /> Asistente IA
+                    <Bot className="w-4 h-4" /> {t("chat.assistantTitle")}
                 </div>
                 {chatMessages.length > 0 && (
                     <button onClick={() => setChatMessages([])} className="text-xs text-muted-foreground hover:text-muted-foreground transition">
-                        Limpiar conversación
+                        {t("chat.clearConversation")}
                     </button>
                 )}
             </div>
@@ -78,10 +80,10 @@ export function ChatSection({
                                         <button
                                             type="button"
                                             onClick={onStop}
-                                            aria-label="Detener generación del agente"
+                                            aria-label={t("chat.stopAria")}
                                             className="ml-2 flex items-center gap-1 px-2 py-1 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex-shrink-0"
                                         >
-                                            <Square className="w-3 h-3" /> Detener
+                                            <Square className="w-3 h-3" /> {t("chat.stop")}
                                         </button>
                                     )}
                                 </div>
@@ -95,12 +97,12 @@ export function ChatSection({
                     <input type="text" value={chatQuery}
                         onChange={(e) => setChatQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && onSend()}
-                        placeholder="Pregunta lo que quieras... ej: ¿Cuántas facturas pendientes tengo?"
+                        placeholder={t("chat.inputPlaceholder")}
                         className="flex-1 bg-transparent border-none text-foreground text-sm px-4 py-3 focus:outline-none focus:ring-0 placeholder:text-muted-foreground" />
                     <button onClick={onSend} disabled={chatLoading || !chatQuery.trim()}
                         className="px-5 bg-primary hover:bg-primary text-foreground font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
                         <MessageSquare className="w-4 h-4" />
-                        Enviar
+                        {t("chat.send")}
                     </button>
                 </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, AlertTriangle, CheckCircle2, Database, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { ErpImportPreview, ErpImportResult } from "@/lib/api/documents";
 
@@ -18,6 +19,7 @@ export function ErpImportReview({
     onClose: () => void;
     onDone: (result: ErpImportResult) => void;
 }) {
+    const t = useTranslations("escaner");
     const [preview, setPreview] = useState<ErpImportPreview | null>(null);
     const [loading, setLoading] = useState(true);
     const [importing, setImporting] = useState(false);
@@ -29,7 +31,7 @@ export function ErpImportReview({
         try {
             setPreview(await api.documents.erpImportPreview(documentId, target));
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "No se pudo previsualizar");
+            setError(e instanceof Error ? e.message : t("erpReview.previewFailed"));
             setPreview(null);
         } finally {
             setLoading(false);
@@ -46,7 +48,7 @@ export function ErpImportReview({
             const res = await api.documents.erpImportApply(documentId, preview.target);
             onDone(res);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Error al importar");
+            setError(e instanceof Error ? e.message : t("erpReview.importFailed"));
         } finally {
             setImporting(false);
         }
@@ -58,17 +60,17 @@ export function ErpImportReview({
                 <div className="flex items-center gap-2 min-w-0">
                     <Database className="w-4 h-4 text-primary shrink-0" />
                     <span className="text-sm font-medium text-foreground truncate">
-                        Integrar «{fileName}» en el ERP
+                        {t("erpReview.title", { fileName })}
                     </span>
                 </div>
-                <button onClick={onClose} className="p-1 rounded hover:bg-muted text-muted-foreground" aria-label="Cerrar">
+                <button onClick={onClose} className="p-1 rounded hover:bg-muted text-muted-foreground" aria-label={t("erpReview.close")}>
                     <X className="w-4 h-4" aria-hidden="true" />
                 </button>
             </div>
 
             {loading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Analizando columnas…
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("erpReview.analyzingColumns")}
                 </div>
             ) : error && !preview ? (
                 <div className="flex items-start gap-2 text-sm text-amber-400">
@@ -78,7 +80,7 @@ export function ErpImportReview({
                 <>
                     {/* Target selector */}
                     <div>
-                        <span className="text-[11px] text-muted-foreground">Crear como</span>
+                        <span className="text-[11px] text-muted-foreground">{t("erpReview.createAs")}</span>
                         <div className="flex flex-wrap gap-2 mt-1">
                             {preview.available_targets.map(t => (
                                 <button key={t.key} onClick={() => loadPreview(t.key)}
@@ -96,12 +98,12 @@ export function ErpImportReview({
                     {/* Resumen del mapeo */}
                     <div className="text-xs text-muted-foreground space-y-1">
                         <div>
-                            <span className="text-green-400 font-medium">{preview.importable}</span> de {preview.total_rows} filas
-                            importables{preview.skipped > 0 && ` · ${preview.skipped} se omitirán (sin nombre)`}.
+                            <span className="text-green-400 font-medium">{preview.importable}</span> {t("erpReview.importableRows", { total: preview.total_rows })}
+                            {preview.skipped > 0 && ` · ${t("erpReview.skippedRows", { count: preview.skipped })}`}.
                         </div>
-                        <div>Columnas reconocidas: <span className="text-foreground">{preview.mapped_fields.join(", ") || "ninguna"}</span></div>
+                        <div>{t("erpReview.recognizedColumns")} <span className="text-foreground">{preview.mapped_fields.join(", ") || t("erpReview.none")}</span></div>
                         {preview.unmapped_columns.length > 0 && (
-                            <div>Ignoradas: {preview.unmapped_columns.join(", ")}</div>
+                            <div>{t("erpReview.ignoredColumns", { columns: preview.unmapped_columns.join(", ") })}</div>
                         )}
                     </div>
 
@@ -140,7 +142,7 @@ export function ErpImportReview({
                     <button onClick={handleImport} disabled={importing || preview.importable === 0}
                         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-foreground font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors">
                         {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                        Crear {preview.importable} {preview.target_label.toLowerCase()}
+                        {t("erpReview.createButton", { count: preview.importable, target: preview.target_label.toLowerCase() })}
                     </button>
                 </>
             ) : null}

@@ -7,6 +7,7 @@ import {
     AreaChart, Area, PieChart, Pie, Cell,
     XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Legend
 } from "recharts";
+import { useTranslations } from "next-intl";
 import type { AnalyticsDashboard } from "@/lib/api";
 import { KpiCard } from "./KpiCard";
 import { SectionHeader } from "./SectionHeader";
@@ -42,36 +43,37 @@ export function ResumenSection({
     importePendienteCobro, vencenProximos, importeVencenProximos,
     tasksDone, tasksSuccessRate,
 }: ResumenSectionProps) {
+    const t = useTranslations("analitica");
     return (
         <section className="space-y-8">
-            <SectionHeader icon={Activity} title="Resumen" subtitle="KPIs principales del periodo" />
+            <SectionHeader icon={Activity} title={t("resumen.title")} subtitle={t("resumen.subtitle")} />
             {/* KPIs del periodo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <KpiCard
-                    label={`Ingresos · ${periodLabel}`}
+                    label={t("resumen.kpiIngresos", { period: periodLabel })}
                     value={`${fmt(ingresosPeriodo)}€`}
-                    sub={`${emitidasCount} emitidas en total`}
+                    sub={t("resumen.kpiIngresosSub", { count: emitidasCount })}
                     icon={TrendingUp}
                     color="emerald"
                 />
                 <KpiCard
-                    label={`Gastos · ${periodLabel}`}
+                    label={t("resumen.kpiGastos", { period: periodLabel })}
                     value={`${fmt(gastosPeriodo)}€`}
-                    sub={`${recibidasCount} recibidas en total`}
+                    sub={t("resumen.kpiGastosSub", { count: recibidasCount })}
                     icon={TrendingDown}
                     color="red"
                 />
                 <KpiCard
-                    label="Beneficio del periodo"
+                    label={t("resumen.kpiBeneficio")}
                     value={`${fmt(beneficioPeriodo)}€`}
-                    sub={`Margen: ${margenPeriodo}%`}
+                    sub={t("resumen.kpiBeneficioSub", { margin: margenPeriodo })}
                     icon={Activity}
                     color="indigo"
                 />
                 <KpiCard
-                    label="Éxito agentes IA"
+                    label={t("resumen.kpiIaExito")}
                     value={`${tasksSuccessRate}%`}
-                    sub={`${tasksDone} tareas completadas`}
+                    sub={t("resumen.kpiIaExitoSub", { count: tasksDone })}
                     icon={BrainCircuit}
                     color="amber"
                 />
@@ -83,9 +85,9 @@ export function ResumenSection({
                     {vencenProximos > 0 && (
                         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-amber-300 uppercase font-semibold tracking-wide">Vencen en 7 días</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{vencenProximos} facturas</p>
-                                <p className="text-xs text-muted-foreground mt-1">{fmt(importeVencenProximos)}€ pendientes de cobro</p>
+                                <p className="text-xs text-amber-300 uppercase font-semibold tracking-wide">{t("resumen.dueSoonTitle")}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{t("resumen.dueSoonCount", { count: vencenProximos })}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t("resumen.dueSoonAmount", { amount: fmt(importeVencenProximos) })}</p>
                             </div>
                             <Clock className="w-8 h-8 text-amber-400/60" />
                         </div>
@@ -93,9 +95,9 @@ export function ResumenSection({
                     {importePendienteCobro > 0 && (
                         <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Pendiente de cobro total</p>
+                                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">{t("resumen.pendingTotalTitle")}</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{fmt(importePendienteCobro)}€</p>
-                                <p className="text-xs text-muted-foreground mt-1">{factPendientes} facturas emitidas sin cobrar</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t("resumen.pendingTotalSub", { count: factPendientes })}</p>
                             </div>
                             <FileText className="w-8 h-8 text-muted-foreground/40" />
                         </div>
@@ -107,13 +109,13 @@ export function ResumenSection({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-primary" /> Evolución del Cashflow
+                        <Activity className="w-4 h-4 text-primary" /> {t("resumen.cashflowTitle")}
                     </h2>
-                    <p className="text-xs text-muted-foreground mb-6">Ingresos vs Gastos — Últimos 6 meses</p>
+                    <p className="text-xs text-muted-foreground mb-6">{t("resumen.cashflowSubtitle")}</p>
                     <div className="h-[240px]">
                         {cashflow.length === 0 || cashflow.every(c => c.ingresos === 0 && c.gastos === 0) ? (
                             <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                                Sin datos de cashflow en los últimos 6 meses
+                                {t("resumen.cashflowEmpty")}
                             </div>
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
@@ -132,8 +134,8 @@ export function ResumenSection({
                                     <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                                     <RTooltip content={<CustomTooltip />} />
                                     <Legend wrapperStyle={{ fontSize: 12, color: "#71717a" }} />
-                                    <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn2)" />
-                                    <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut2)" />
+                                    <Area type="monotone" dataKey="ingresos" name={t("series.ingresos")} stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn2)" />
+                                    <Area type="monotone" dataKey="gastos" name={t("series.gastos")} stroke="#ef4444" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut2)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         )}
@@ -142,12 +144,12 @@ export function ResumenSection({
 
                 <div className="bg-card border border-border rounded-2xl p-6 shadow-lg shadow-black/20">
                     <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-primary" /> Estado de Facturas
+                        <FileText className="w-4 h-4 text-primary" /> {t("resumen.invoiceStatusTitle")}
                     </h2>
-                    <p className="text-xs text-muted-foreground mb-4">Distribución por importe (acumulado)</p>
+                    <p className="text-xs text-muted-foreground mb-4">{t("resumen.invoiceStatusSubtitle")}</p>
                     {pieData.length === 0 ? (
                         <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
-                            Sin facturas emitidas
+                            {t("resumen.invoiceStatusEmpty")}
                         </div>
                     ) : (
                         <>
@@ -183,11 +185,11 @@ export function ResumenSection({
             {!loading && (
                 <div className="grid grid-cols-3 gap-4">
                     {[
-                        { label: "Facturas Cobradas", count: factPagadas, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
-                        { label: "Facturas Pendientes", count: factPendientes, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/20" },
-                        { label: "Borradores", count: factBorrador, color: "text-muted-foreground", bg: "bg-muted border-border" },
+                        { key: "cobradas", label: t("resumen.statusPaid"), count: factPagadas, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
+                        { key: "pendientes", label: t("resumen.statusPending"), count: factPendientes, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/20" },
+                        { key: "borradores", label: t("resumen.statusDraft"), count: factBorrador, color: "text-muted-foreground", bg: "bg-muted border-border" },
                     ].map(item => (
-                        <div key={item.label} className={`rounded-2xl border ${item.bg} p-5 flex items-center justify-between`}>
+                        <div key={item.key} className={`rounded-2xl border ${item.bg} p-5 flex items-center justify-between`}>
                             <span className="text-sm text-muted-foreground">{item.label}</span>
                             <span className={`text-2xl font-bold ${item.color}`}>{item.count}</span>
                         </div>

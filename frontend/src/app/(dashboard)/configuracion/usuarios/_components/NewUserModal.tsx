@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import type { UserCreate } from "@/lib/api";
 
-import { USER_ROLES, ROLE_LABEL } from "../roles";
+import { USER_ROLES, roleLabels } from "../roles";
 import { Modal, ModalActions, Field } from "./Modal";
 
 export default function NewUserModal({
@@ -14,6 +16,8 @@ export default function NewUserModal({
     onCancel: () => void;
     onSubmit: (data: UserCreate) => Promise<void>;
 }) {
+    const t = useTranslations("configuracion");
+    const roleLabel = roleLabels(t);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [firstName, setFirstName] = useState("");
@@ -38,9 +42,9 @@ export default function NewUserModal({
     }
 
     return (
-        <Modal title="Crear usuario con contraseña" onClose={onCancel}>
+        <Modal title={t("usuarios.createUserTitle")} onClose={onCancel}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Email" required>
+                <Field label={t("usuarios.email")} required>
                     <input
                         type="email"
                         required
@@ -50,7 +54,7 @@ export default function NewUserModal({
                     />
                 </Field>
 
-                <Field label="Contraseña" required>
+                <Field label={t("usuarios.password")} required>
                     <input
                         type="password"
                         required
@@ -62,7 +66,7 @@ export default function NewUserModal({
                 </Field>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <Field label="Nombre">
+                    <Field label={t("usuarios.firstName")}>
                         <input
                             type="text"
                             value={firstName}
@@ -70,7 +74,7 @@ export default function NewUserModal({
                             className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
                         />
                     </Field>
-                    <Field label="Apellidos">
+                    <Field label={t("usuarios.lastName")}>
                         <input
                             type="text"
                             value={lastName}
@@ -80,19 +84,19 @@ export default function NewUserModal({
                     </Field>
                 </div>
 
-                <Field label="Rol">
+                <Field label={t("usuarios.role")}>
                     <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="w-full bg-muted border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:border-primary/20 outline-none"
                     >
                         {USER_ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>
+                            <option key={r} value={r}>{roleLabel[r] ?? r}</option>
                         ))}
                     </select>
                 </Field>
 
-                <ModalActions onCancel={onCancel} submitting={submitting} submitLabel="Crear usuario" />
+                <ModalActions onCancel={onCancel} submitting={submitting} submitLabel={t("usuarios.createUserAction")} />
             </form>
         </Modal>
     );

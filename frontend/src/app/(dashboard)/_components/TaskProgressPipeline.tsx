@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useNotificationSocket } from "@/lib/hooks/useNotificationSocket";
 import {
     Brain, Network, Cog, Sparkles, CheckCircle2, Calculator, Users, Mail,
@@ -19,29 +20,30 @@ interface Props {
 }
 
 const STEPS = [
-    { id: "classify",  label: "Clasificar",  icon: <Brain className="w-4 h-4" /> },
-    { id: "planner",   label: "Planear",     icon: <Network className="w-4 h-4" /> },
-    { id: "dispatch",  label: "Ejecutar",    icon: <Cog className="w-4 h-4" /> },
-    { id: "summarize", label: "Resumir",     icon: <Sparkles className="w-4 h-4" /> },
+    { id: "classify",  labelKey: "pipeline.stepClassify",  icon: <Brain className="w-4 h-4" /> },
+    { id: "planner",   labelKey: "pipeline.stepPlan",      icon: <Network className="w-4 h-4" /> },
+    { id: "dispatch",  labelKey: "pipeline.stepExecute",   icon: <Cog className="w-4 h-4" /> },
+    { id: "summarize", labelKey: "pipeline.stepSummarize", icon: <Sparkles className="w-4 h-4" /> },
 ];
 
-const DOMAIN_META: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-    billing:     { color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",   icon: <Calculator className="w-3 h-3" />,  label: "Billing" },
-    hr:          { color: "bg-violet-500/20 text-violet-300 border-violet-500/30",      icon: <Users className="w-3 h-3" />,       label: "RRHH" },
-    email:       { color: "bg-rose-500/20 text-rose-300 border-rose-500/30",            icon: <Mail className="w-3 h-3" />,        label: "Email" },
-    crm:         { color: "bg-amber-500/20 text-amber-300 border-amber-500/30",         icon: <Briefcase className="w-3 h-3" />,   label: "CRM" },
-    banking:     { color: "bg-sky-500/20 text-sky-300 border-sky-500/30",               icon: <Wallet className="w-3 h-3" />,      label: "Banca" },
-    compliance:  { color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",            icon: <Scale className="w-3 h-3" />,       label: "Fiscal" },
-    documents:   { color: "bg-orange-500/20 text-orange-300 border-orange-500/30",      icon: <FolderOpen className="w-3 h-3" />,  label: "Docs" },
-    excel:       { color: "bg-lime-500/20 text-lime-300 border-lime-500/30",            icon: <BarChart3 className="w-3 h-3" />,   label: "Excel" },
-    marketing:   { color: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30",   icon: <Megaphone className="w-3 h-3" />,   label: "Marketing" },
-    recruitment: { color: "bg-teal-500/20 text-teal-300 border-teal-500/30",            icon: <UserPlus className="w-3 h-3" />,    label: "RRHH-Sel" },
-    rag:         { color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",      icon: <Brain className="w-3 h-3" />,       label: "RAG" },
-    custom:      { color: "bg-slate-500/20 text-slate-300 border-slate-500/30",         icon: <User className="w-3 h-3" />,        label: "Custom" },
-    summary:     { color: "bg-primary/20 text-primary border-primary/30",               icon: <Sparkles className="w-3 h-3" />,    label: "Resumen" },
+const DOMAIN_META: Record<string, { color: string; icon: React.ReactNode; labelKey: string }> = {
+    billing:     { color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",   icon: <Calculator className="w-3 h-3" />,  labelKey: "pipeline.domainBilling" },
+    hr:          { color: "bg-violet-500/20 text-violet-300 border-violet-500/30",      icon: <Users className="w-3 h-3" />,       labelKey: "pipeline.domainHr" },
+    email:       { color: "bg-rose-500/20 text-rose-300 border-rose-500/30",            icon: <Mail className="w-3 h-3" />,        labelKey: "pipeline.domainEmail" },
+    crm:         { color: "bg-amber-500/20 text-amber-300 border-amber-500/30",         icon: <Briefcase className="w-3 h-3" />,   labelKey: "pipeline.domainCrm" },
+    banking:     { color: "bg-sky-500/20 text-sky-300 border-sky-500/30",               icon: <Wallet className="w-3 h-3" />,      labelKey: "pipeline.domainBanking" },
+    compliance:  { color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",            icon: <Scale className="w-3 h-3" />,       labelKey: "pipeline.domainCompliance" },
+    documents:   { color: "bg-orange-500/20 text-orange-300 border-orange-500/30",      icon: <FolderOpen className="w-3 h-3" />,  labelKey: "pipeline.domainDocuments" },
+    excel:       { color: "bg-lime-500/20 text-lime-300 border-lime-500/30",            icon: <BarChart3 className="w-3 h-3" />,   labelKey: "pipeline.domainExcel" },
+    marketing:   { color: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30",   icon: <Megaphone className="w-3 h-3" />,   labelKey: "pipeline.domainMarketing" },
+    recruitment: { color: "bg-teal-500/20 text-teal-300 border-teal-500/30",            icon: <UserPlus className="w-3 h-3" />,    labelKey: "pipeline.domainRecruitment" },
+    rag:         { color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",      icon: <Brain className="w-3 h-3" />,       labelKey: "pipeline.domainRag" },
+    custom:      { color: "bg-slate-500/20 text-slate-300 border-slate-500/30",         icon: <User className="w-3 h-3" />,        labelKey: "pipeline.domainCustom" },
+    summary:     { color: "bg-primary/20 text-primary border-primary/30",               icon: <Sparkles className="w-3 h-3" />,    labelKey: "pipeline.domainSummary" },
 };
 
 export function TaskProgressPipeline({ taskId, active }: Props) {
+    const t = useTranslations("dashboard");
     const [currentStep, setCurrentStep] = useState<string | null>(null);
     const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
     const [agentsSeen, setAgentsSeen] = useState<AgentSeen[]>([]);
@@ -122,7 +124,7 @@ export function TaskProgressPipeline({ taskId, active }: Props) {
                                             isCurrent ? "text-primary" : isPast ? "text-emerald-300" : "text-muted-foreground"
                                         }`}
                                     >
-                                        {step.label}
+                                        {t(step.labelKey)}
                                     </span>
                                 </div>
                                 {/* Línea conectora con flujo animado */}
@@ -163,7 +165,7 @@ export function TaskProgressPipeline({ taskId, active }: Props) {
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] ${meta.color} ${a.success ? "" : "opacity-60 line-through"} animate-in slide-in-from-bottom-1 fade-in duration-300`}
                             >
                                 {meta.icon}
-                                <span className="font-medium">{meta.label}</span>
+                                <span className="font-medium">{t(meta.labelKey)}</span>
                             </span>
                         );
                     })}

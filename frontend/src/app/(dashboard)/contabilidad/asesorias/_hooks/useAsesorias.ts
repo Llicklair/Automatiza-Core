@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { logError } from "@/lib/logger";
 
@@ -9,6 +10,7 @@ const CALENDAR_TYPES: Record<string, string[]> = {
 };
 
 export function useAsesorias() {
+    const t = useTranslations("contabilidad");
     const [news, setNews] = useState<any[]>([]);
     const [events, setEvents] = useState<any[]>([]);
     const [guides, setGuides] = useState<any[]>([]);
@@ -68,12 +70,12 @@ export function useAsesorias() {
                 const answer = results.slice().reverse().find(
                     (r: any) => r.action_taken && r.action_taken !== "Invocando herramientas de compliance" && r.action_taken !== "Operación compliance completada."
                 )?.action_taken;
-                setChatMessages(prev => [...prev, { role: "ai", content: answer || "No pude obtener una respuesta. Inténtalo de nuevo." }]);
+                setChatMessages(prev => [...prev, { role: "ai", content: answer || t("asesorias.chatNoAnswer") }]);
             } else {
-                setChatMessages(prev => [...prev, { role: "ai", content: current.error_message || "La tarea falló." }]);
+                setChatMessages(prev => [...prev, { role: "ai", content: current.error_message || t("asesorias.chatTaskFailed") }]);
             }
         } catch (err: any) {
-            setChatMessages(prev => [...prev, { role: "ai", content: `Error de conexión: ${err.message}` }]);
+            setChatMessages(prev => [...prev, { role: "ai", content: t("asesorias.chatConnectionError", { message: err.message }) }]);
         } finally {
             setChatLoading(false);
         }

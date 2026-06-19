@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, Loader2, Send, User, Scale } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AdvisoryChatPanelProps {
     chatMessages: { role: "user" | "ai"; content: string }[];
@@ -11,12 +12,13 @@ interface AdvisoryChatPanelProps {
 }
 
 export function AdvisoryChatPanel({ chatMessages, chatInput, setChatInput, chatLoading, onSubmit }: AdvisoryChatPanelProps) {
+    const t = useTranslations("contabilidad");
     return (
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg shadow-black/20 flex flex-col h-[400px]">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-card">
                 <div className="flex items-center gap-2">
                     <Bot className="w-5 h-5 text-primary" />
-                    <h2 className="text-sm font-semibold text-foreground">Consulta al Asesor IA</h2>
+                    <h2 className="text-sm font-semibold text-foreground">{t("advisoryChat.title")}</h2>
                 </div>
             </div>
 
@@ -26,8 +28,8 @@ export function AdvisoryChatPanel({ chatMessages, chatInput, setChatInput, chatL
                         <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                             <Scale className="w-6 h-6 text-primary" />
                         </div>
-                        <p className="text-sm text-muted-foreground">¿Tienes dudas fiscales?</p>
-                        <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">Pregunta sobre impuestos, deducciones o vencimientos de tu cuenta.</p>
+                        <p className="text-sm text-muted-foreground">{t("advisoryChat.emptyTitle")}</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">{t("advisoryChat.emptyDescription")}</p>
                     </div>
                 ) : (
                     chatMessages.map((msg, idx) => (
@@ -44,7 +46,7 @@ export function AdvisoryChatPanel({ chatMessages, chatInput, setChatInput, chatL
                     <div className="flex gap-3 justify-start">
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-primary" /></div>
                         <div className="px-4 py-3 rounded-2xl bg-muted text-muted-foreground rounded-bl-none text-sm flex items-center gap-2 border border-border">
-                            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" /> Analizando contexto legal...
+                            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" /> {t("advisoryChat.analyzing")}
                         </div>
                     </div>
                 )}
@@ -57,7 +59,7 @@ export function AdvisoryChatPanel({ chatMessages, chatInput, setChatInput, chatL
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         disabled={chatLoading}
-                        placeholder="Ej. ¿Cuándo presento el IVA?"
+                        placeholder={t("advisoryChat.placeholder")}
                         className="flex-1 bg-background border border-border text-sm text-foreground rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition disabled:opacity-50"
                     />
                     <button

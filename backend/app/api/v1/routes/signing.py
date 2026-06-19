@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user
+from app.core.tenant_context import rls_bypass
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.middleware.rate_limit import limiter
@@ -144,7 +145,10 @@ async def autofirma_callback(
         payload = (await request.body()).decode("utf-8", errors="ignore")
 
     try:
-        result = await process_signed_callback(db, session_token, payload)
+        # SEC.RLS: callback sin auth (AutoFirma no envía cookies); la sesión
+        # de firma se resuelve por session_token PRE-tenant, requiere bypass.
+        with rls_bypass():
+            result = await process_signed_callback(db, session_token, payload)
     except AutoFirmaError as e:
         raise HTTPException(status_code=422, detail=str(e))
 

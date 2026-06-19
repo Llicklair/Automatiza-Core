@@ -3,6 +3,7 @@
 import { Users, Plus, Search, Building2, DollarSign, Sparkles, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,15 +12,16 @@ import { Input } from "@/components/ui/input";
 import { useEmbudoDeVentas } from "./_hooks/useEmbudoDeVentas";
 import { CreateOpportunityModal } from "./_components/CreateOpportunityModal";
 
-const STAGES: { id: string; label: string; variant: "info" | "default" | "success" | "destructive" | "warning" }[] = [
-    { id: "new", label: "Nuevos", variant: "info" },
-    { id: "qualified", label: "Cualificados", variant: "default" },
-    { id: "proposal", label: "Propuesta", variant: "warning" },
-    { id: "won", label: "Ganados", variant: "success" },
-    { id: "lost", label: "Perdidos", variant: "destructive" },
+const STAGES: { id: string; variant: "info" | "default" | "success" | "destructive" | "warning" }[] = [
+    { id: "new", variant: "info" },
+    { id: "qualified", variant: "default" },
+    { id: "proposal", variant: "warning" },
+    { id: "won", variant: "success" },
+    { id: "lost", variant: "destructive" },
 ];
 
 export default function CRMPipelinePage() {
+    const t = useTranslations("crm");
     const {
         clients, isLoading,
         showModal, setShowModal,
@@ -37,8 +39,8 @@ export default function CRMPipelinePage() {
     return (
         <div className="p-8 max-w-[1400px] mx-auto">
             <PageHeader
-                title="Embudo de Ventas (CRM)"
-                description="Gestiona tus leads o deja que la IA los cualifique."
+                title={t("embudo.title")}
+                description={t("embudo.description")}
                 icon={Users}
                 actions={
                     <div className="flex items-center gap-2">
@@ -46,17 +48,17 @@ export default function CRMPipelinePage() {
                             <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                             <Input
                                 type="text"
-                                placeholder="Buscar oportunidad..."
+                                placeholder={t("embudo.searchPlaceholder")}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 className="pl-10 w-64"
                             />
                         </div>
                         <Button onClick={() => setShowModal(true)} variant="secondary">
-                            <Plus className="w-4 h-4 mr-2" /> Nuevo Trato
+                            <Plus className="w-4 h-4 mr-2" /> {t("embudo.newDeal")}
                         </Button>
                         <Button onClick={handleAiQualify} disabled={taskLoading} variant="outline">
-                            <Sparkles className="w-4 h-4 mr-2" /> {taskLoading ? "Enviando..." : "Pedir a la IA"}
+                            <Sparkles className="w-4 h-4 mr-2" /> {taskLoading ? t("embudo.sending") : t("embudo.askAi")}
                         </Button>
                     </div>
                 }
@@ -75,7 +77,7 @@ export default function CRMPipelinePage() {
                         >
                             <CardHeader className="p-4 pb-3 bg-muted/50 border-b border-border space-y-1">
                                 <div className="flex justify-between items-center">
-                                    <CardTitle className="text-sm font-medium text-foreground">{stage.label}</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-foreground">{t(`embudo.stages.${stage.id}`)}</CardTitle>
                                     <Badge variant="secondary" className="text-xs">
                                         {stageOpps.length}
                                     </Badge>
@@ -98,13 +100,13 @@ export default function CRMPipelinePage() {
                                                     size="icon"
                                                     className="h-6 w-6 absolute right-3 top-3 text-muted-foreground hover:text-destructive"
                                                     onClick={(e) => handleDelete(opp.id, e)}
-                                                 aria-label="Eliminar oportunidad">
+                                                 aria-label={t("embudo.deleteOpportunity")}>
                                                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </Button>
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
                                                 <Building2 className="w-3 h-3" />
-                                                <span className="truncate">{clients.find(c => c.id === opp.client_id)?.name || "Cliente desconocido"}</span>
+                                                <span className="truncate">{clients.find(c => c.id === opp.client_id)?.name || t("embudo.unknownClient")}</span>
                                             </div>
                                             <div className="flex items-center justify-between pt-3 border-t border-border">
                                                 <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
@@ -118,7 +120,7 @@ export default function CRMPipelinePage() {
                                 ))}
                                 {stageOpps.length === 0 && (
                                     <div className="h-24 border-2 border-dashed border-border rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-                                        Arrastra un trato aquí
+                                        {t("embudo.emptyStage")}
                                     </div>
                                 )}
                             </CardContent>

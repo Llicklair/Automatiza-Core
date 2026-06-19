@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api, type JournalEntry } from "@/lib/api";
 import { logError } from "@/lib/logger";
 
@@ -13,32 +14,35 @@ export interface AccountBalance {
     subsection: string;
 }
 
-function classify(code: string): { section: string; subsection: string; side: "activo" | "pasivo" | "patrimonio" | "result" } {
+type Translate = ReturnType<typeof useTranslations>;
+
+function classify(code: string, t: Translate): { section: string; subsection: string; side: "activo" | "pasivo" | "patrimonio" | "result" } {
     const g = code.charAt(0);
     const sub2 = code.substring(0, 2);
 
-    if (g === "6" || g === "7") return { section: "Patrimonio Neto", subsection: "Resultado del ejercicio", side: "result" };
-    if (g === "1") return { section: "Patrimonio Neto", subsection: "Capital y reservas", side: "patrimonio" };
-    if (g === "2") return { section: "Activo No Corriente", subsection: "Inmovilizado", side: "activo" };
-    if (g === "3") return { section: "Activo Corriente", subsection: "Existencias", side: "activo" };
+    if (g === "6" || g === "7") return { section: t("balance.sectionPatrimonioNeto"), subsection: t("balance.subResultadoEjercicio"), side: "result" };
+    if (g === "1") return { section: t("balance.sectionPatrimonioNeto"), subsection: t("balance.subCapitalReservas"), side: "patrimonio" };
+    if (g === "2") return { section: t("balance.sectionActivoNoCorriente"), subsection: t("balance.subInmovilizado"), side: "activo" };
+    if (g === "3") return { section: t("balance.sectionActivoCorriente"), subsection: t("balance.subExistencias"), side: "activo" };
 
-    if (sub2 === "43" || sub2 === "44") return { section: "Activo Corriente", subsection: "Deudores comerciales", side: "activo" };
-    if (sub2 === "40" || sub2 === "41") return { section: "Pasivo Corriente", subsection: "Acreedores comerciales", side: "pasivo" };
+    if (sub2 === "43" || sub2 === "44") return { section: t("balance.sectionActivoCorriente"), subsection: t("balance.subDeudoresComerciales"), side: "activo" };
+    if (sub2 === "40" || sub2 === "41") return { section: t("balance.sectionPasivoCorriente"), subsection: t("balance.subAcreedoresComerciales"), side: "pasivo" };
     if (g === "4") {
         const n = parseInt(sub2);
-        if (n >= 47) return { section: "Pasivo Corriente", subsection: "Administraciones Públicas", side: "pasivo" };
-        return { section: "Activo Corriente", subsection: "Otras cuentas deudoras", side: "activo" };
+        if (n >= 47) return { section: t("balance.sectionPasivoCorriente"), subsection: t("balance.subAdministracionesPublicas"), side: "pasivo" };
+        return { section: t("balance.sectionActivoCorriente"), subsection: t("balance.subOtrasCuentasDeudoras"), side: "activo" };
     }
 
-    if (sub2 === "57" || sub2 === "56") return { section: "Activo Corriente", subsection: "Tesorería", side: "activo" };
-    if (sub2 === "52" || sub2 === "53") return { section: "Pasivo Corriente", subsection: "Deudas financieras c/p", side: "pasivo" };
-    if (sub2 === "50" || sub2 === "51") return { section: "Pasivo No Corriente", subsection: "Deudas financieras l/p", side: "pasivo" };
-    if (g === "5") return { section: "Activo Corriente", subsection: "Inversiones financieras", side: "activo" };
+    if (sub2 === "57" || sub2 === "56") return { section: t("balance.sectionActivoCorriente"), subsection: t("balance.subTesoreria"), side: "activo" };
+    if (sub2 === "52" || sub2 === "53") return { section: t("balance.sectionPasivoCorriente"), subsection: t("balance.subDeudasFinancierasCp"), side: "pasivo" };
+    if (sub2 === "50" || sub2 === "51") return { section: t("balance.sectionPasivoNoCorriente"), subsection: t("balance.subDeudasFinancierasLp"), side: "pasivo" };
+    if (g === "5") return { section: t("balance.sectionActivoCorriente"), subsection: t("balance.subInversionesFinancieras"), side: "activo" };
 
-    return { section: "Activo Corriente", subsection: "Otros activos", side: "activo" };
+    return { section: t("balance.sectionActivoCorriente"), subsection: t("balance.subOtrosActivos"), side: "activo" };
 }
 
 export function useBalanceSituacion() {
+    const t = useTranslations("contabilidad");
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -53,9 +57,9 @@ export function useBalanceSituacion() {
     entries.forEach(entry => {
         entry.lines.forEach(line => {
             const code3 = line.account_code.substring(0, 3);
-            const cls = classify(line.account_code);
+            const cls = classify(line.account_code, t);
             if (!accountMap[code3]) {
-                accountMap[code3] = { code: code3, name: line.account_name || `Cuenta ${code3}`, saldo: 0, ...cls };
+                accountMap[code3] = { code: code3, name: line.account_name || t("balance.cuentaFallback", { code: code3 }), saldo: 0, ...cls };
             }
             accountMap[code3].saldo += Number(line.debit) - Number(line.credit);
         });

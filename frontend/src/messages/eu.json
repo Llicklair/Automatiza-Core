@@ -333,7 +333,34 @@
     "serviceVatPercent": "[EU] % IVA",
     "serviceVatReduced": "[EU] 10% (reducido)",
     "serviceVatSuperReduced": "[EU] 4% (superreducido)",
-    "serviceVatExempt": "[EU] 0% (exento)"
+    "serviceVatExempt": "[EU] 0% (exento)",
+    "home": {
+      "title": "Salmentak",
+      "subtitle": "Fakturazioa, aurrekontuak eta salmenta-ziklo osoaren kudeaketa komertziala.",
+      "open": "Ireki",
+      "sections": {
+        "facturas": {
+          "title": "Fakturak",
+          "description": "Salmenta-fakturen jaulkipena eta jarraipena, kobrantzak eta mugaegunak."
+        },
+        "pedidos": {
+          "title": "Eskaerak",
+          "description": "Bezeroen salmenta-eskaerak eta fakturara bihurtzea."
+        },
+        "presupuestos": {
+          "title": "Aurrekontuak",
+          "description": "Aurrekontuak eta eskaintza komertzialak salmenta berretsi aurretik."
+        },
+        "recurrentes": {
+          "title": "Errepikariak",
+          "description": "Fakturazio periodiko automatikoa harpidetza eta kuotetarako."
+        },
+        "servicios": {
+          "title": "Zerbitzuak",
+          "description": "Faktura daitezkeen zerbitzuen katalogoa eta haien tarifak."
+        }
+      }
+    }
   },
   "clientes": {
     "title": "[EU] Directorio de Clientes",
