@@ -55,7 +55,10 @@ async def _emit_invoice(ac: AsyncClient, client_id) -> dict:
 
 async def _records(db: AsyncSession) -> list[VerifactuRecord]:
     db.expire_all()
-    res = await db.execute(select(VerifactuRecord).order_by(VerifactuRecord.id))
+    # Orden de cadena = orden de creación. NO ordenar por `id` (UUID aleatorio):
+    # devolvería los eslabones en orden arbitrario y el assert de la cadena
+    # (recs[-1].huella_anterior == recs[-2].huella) fallaría ~50% → test flaky.
+    res = await db.execute(select(VerifactuRecord).order_by(VerifactuRecord.created_at))
     return list(res.scalars().all())
 
 
