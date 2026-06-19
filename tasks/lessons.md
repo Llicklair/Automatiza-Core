@@ -4,6 +4,27 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-19 — No afirmar hechos externos ni estado del código sin verificar primero
+
+**Contexto:** en la sesión de AEAT/VeriFactu cometí dos errores que el usuario detectó:
+1. Di el enlace `sede.fnmt.gob.es` (sin `www.`, muerto) de memoria; la URL real es
+   `https://www.sede.fnmt.gob.es`.
+2. Afirmé que el test `test_verifactu_registro_xml` estaba en *skip* (por el texto del
+   docstring) cuando los XSD ya estaban versionados y el test **pasaba**.
+
+**Patrón antipatrón:** asumir como verdad (a) URLs/plazos/normativa de fuentes externas y
+(b) el estado actual del código por su documentación/informes, sin comprobarlo. Con un
+usuario que valida y tiene aversión al detalle fiscal, esto erosiona la confianza.
+
+**Regla de prevención:**
+1. URLs/plazos/normativa externos → verificar con WebSearch antes de afirmar; si no se puede,
+   marcarlo explícitamente como "por confirmar".
+2. Estado del código ("ya está hecho", "está en skip", "ya existe") → comprobar con
+   grep/ls/git/ejecutar el test, NO inferir del docstring ni de un informe. Los informes
+   (cleanup, auditorías) caducan — re-verificar contra el código actual antes de actuar.
+
+---
+
 ## 2026-06-11 — Subagentes de migración i18n reportan "Done" con trabajo a medias
 
 **Contexto:** un subagente encargado de migrar `configuracion` reportó "Done" pero:
