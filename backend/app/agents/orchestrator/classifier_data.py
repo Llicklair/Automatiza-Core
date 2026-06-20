@@ -281,9 +281,10 @@ _CHITCHAT_TOKENS = {
 # Strong keywords: si alguno matchea → dominio devuelto directamente sin scoring.
 # Solo poner aquí términos altamente predictivos del dominio (alta precisión, baja
 # ambigüedad). Si dudas si añadir uno, NO lo añadas — déjalo en _KEYWORD_MAP.
-# Orden importa: el primer match gana cuando hay strong en varios dominios.
-# Pones primero los dominios más específicos / "acción primaria" frente a
-# dominios "objeto/recurso" (billing puede aparecer como complemento).
+# Desambiguación: cuando hay strong en varios dominios gana el keyword MÁS LARGO
+# (maximal-munch, proxy de especificidad — ver _strong_keyword_match); el orden de
+# este dict solo desempata longitudes iguales. Por eso un término específico
+# ('modelo 303') vence a uno genérico ('qué dice') aunque rag aparezca antes.
 _STRONG_KEYWORDS: dict[str, list[str]] = {
     # Acciones específicas primero
     "rag": [
@@ -339,7 +340,8 @@ _STRONG_KEYWORDS: dict[str, list[str]] = {
     ],
     # Dominios "objeto/recurso" al final (pueden aparecer como complemento de acción)
     "hr": ["nómina", "nóminas", "da de alta empleado", "alta del empleado",
-           "alta de empleado"],
+           "alta de empleado", "contrato indefinido", "contrato temporal",
+           "contrato fijo discontinuo"],
     "billing": ["factura", "facturas", "cobro de", "presupuesto"],
 }
 

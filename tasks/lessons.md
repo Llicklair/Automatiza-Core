@@ -969,3 +969,40 @@ la BD, no de la disciplina de cada caller.
 activa: borrar el `TenantDocument` elimina sus embeddings por cascade (la policy RLS y los
 grants de `pyme_app` permiten el cascade dentro del tenant). Misma idea aplicable a otras
 columnas `*_id` tipo String sin FK que apunten a entidades borrables.
+
+---
+
+## 2026-06-20 — Test de routing contra el LLM flaky enmascaraba un bug determinista
+
+**Contexto:** evaluando salidas del clasificador, `TestClassifierE2E` fallaba 6/8 y los 6
+fallos colapsaban a `compliance`. Pero el mismo input daba dominios distintos entre
+corridas: el test ejecuta el **prompt crudo** vía `claude -p`, que es no-determinista (con
+`compliance` como atractor erróneo). Producción NO usa esa ruta directa: clasifica con
+`cache → custom → keywords → LLM → chat`, y la capa de keywords (determinista) resuelve la
+mayoría ANTES del LLM. Al ejercer `_keyword_classify` directamente aparecieron dos bugs
+reales que el e2e ocultaba:
+
+1. **`_strong_keyword_match` con first-match-wins**: "¿qué dice la AEAT sobre el modelo
+   303?" matchea a la vez `rag` ("qué dice") y `compliance` ("aeat"/"modelo 303"). Como el
+   dict listaba `rag` antes, ganaba el genérico → ruteo fiscal a RAG, 100% reproducible. El
+   e2e lo daba en VERDE porque el LLM flaky devolvió compliance por suerte.
+2. **HR sin tipos de contrato**: "da de alta a María, contrato indefinido" → `unknown` →
+   caía al LLM flaky → misrouteado. "contrato" solo vivía en `documents`, empatando.
+
+**Patrón antipatrón:** (a) testear la calidad del routing contra un LLM no-determinista y
+fiar la guardia de un único sample — un verde por azar oculta un bug determinista, y un
+rojo no distingue "prompt malo" de "el modelo tiró una moneda". (b) Desambiguar keywords
+solapados por el ORDEN de inserción del dict: frágil e implícito; un término genérico
+colocado "primero" gana a uno específico.
+
+**Regla de prevención:**
+1. La lógica determinista (keywords, scoring, regex) se testea **sin el LLM**, con una tabla
+   `input→dominio` que es la guardia real. Reservar el e2e con LLM para smoke, nunca como
+   única red de routing. → `backend/tests/test_classifier_keyword_routing.py`.
+2. Cuando varios patrones solapan, desambiguar por **especificidad explícita**
+   (maximal-munch: el keyword más largo gana), no por orden de dict. Es más robusto Y se
+   alinea con la intención que el orden manual intentaba aproximar ("modelo 303" > "qué
+   dice"; "crea cliente" > "factura"). El orden solo desempata longitudes iguales.
+3. Un strong keyword debe ser de alta precisión: "contrato indefinido/temporal/fijo
+   discontinuo" son señal HR inequívoca (nadie los dice para archivar un PDF); "qué dice" a
+   secas NO es señal rag — el objeto ("según el documento") sí lo es.

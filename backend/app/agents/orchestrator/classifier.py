@@ -116,12 +116,23 @@ def _is_question(text: str) -> bool:
 
 
 def _strong_keyword_match(intent_lower: str) -> str | None:
-    """Devuelve el dominio si algún strong keyword matchea, None si no."""
+    """Devuelve el dominio del strong keyword MÁS específico (el más largo) que
+    aparezca en el texto, o None si ninguno matchea.
+
+    Maximal-munch: cuando varios dominios tienen un strong keyword presente gana
+    el término más largo —proxy de especificidad—, no el primero del dict. Así
+    'modelo 303' (compliance) vence al genérico 'qué dice' (rag) en
+    '¿qué dice la AEAT sobre el modelo 303?'. En empate de longitud desempata el
+    orden de _STRONG_KEYWORDS.
+    """
+    best_domain: str | None = None
+    best_len = 0
     for domain, keywords in _STRONG_KEYWORDS.items():
         for kw in keywords:
-            if kw in intent_lower:
-                return domain
-    return None
+            if kw in intent_lower and len(kw) > best_len:
+                best_domain = domain
+                best_len = len(kw)
+    return best_domain
 
 
 def _has_multi_step_connector(intent_lower: str) -> bool:
