@@ -27,6 +27,7 @@ frontend/.next/
 frontend/out/
 frontend/node_modules/
 *.tsbuildinfo
+frontend/coverage/
 
 # Uploads y archivos generados
 backend/uploads/
