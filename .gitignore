@@ -99,6 +99,13 @@ backups/
 .claude/worktrees/
 .claude/settings.local.json
 backend/scripts/_runs/
+# Salidas de scripts de seed/campañas (JSON generado en runtime, no código)
+backend/scripts/*_results*.json
+backend/scripts/_tasks_backup.json
+# Scripts de scratch/experimento de seed/campañas (no son código de producción)
+backend/scripts/_camp_*.py
+backend/scripts/_smoke_*.py
+backend/scripts/seed_massive.py
 
 data-gym-cache/
 

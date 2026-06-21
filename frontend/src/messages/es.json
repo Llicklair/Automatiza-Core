@@ -3632,7 +3632,23 @@
       "stock": "Stock",
       "notSold": "Sin vender",
       "value": "Valor",
-      "never": "nunca"
+      "never": "nunca",
+      "mermasTitle": "Mermas y bajas (últimos {days} días)",
+      "bajasUnits": "Bajas (uds)",
+      "bajasValue": "Valor bajas",
+      "boxBajas": "Bajas en cajas (uds)",
+      "belowMin": "Bajo mínimo",
+      "byReason": "Por motivo",
+      "reasonLabel": "Motivo",
+      "units": "Uds",
+      "topMermas": "Productos con más mermas",
+      "noBajas": "Sin bajas en el periodo.",
+      "reason": {
+        "rotura": "Rotura",
+        "merma": "Merma",
+        "robo": "Robo",
+        "caducado": "Caducado"
+      }
     },
     "labels": {
       "generateError": "No se pudieron generar las etiquetas",
@@ -4203,6 +4219,7 @@
       "notLinkedHint": "Pide al administrador que añada tu email ({email}) a tu ficha de empleado.",
       "selectEmployeeTitle": "Selecciona un empleado para previsualizar",
       "selectEmployeeHint": "Usa el selector de arriba para ver Mi portal de cualquier persona de tu plantilla.",
+      "loadFailed": "No se pudo cargar el portal de este empleado.",
       "tabFicha": "Mi ficha",
       "tabNominas": "Mis nóminas",
       "tabVacaciones": "Mis ausencias",
@@ -4406,7 +4423,12 @@
       "invoiceStatusEmpty": "Sin facturas emitidas",
       "statusPaid": "Facturas Cobradas",
       "statusPending": "Facturas Pendientes",
-      "statusDraft": "Borradores"
+      "statusDraft": "Borradores",
+      "mermasTitle": "Mermas del periodo",
+      "mermasCount": "{count} uds",
+      "mermasAmount": "Valor: {amount}€",
+      "belowMinTitle": "Bajo mínimo",
+      "belowMinCount": "{count} productos"
     },
     "ventas": {
       "title": "Ventas",

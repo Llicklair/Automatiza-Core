@@ -27,9 +27,30 @@ export function CostModal({ taskId, reason, onClose }: Props) {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchTaskCost(taskId)
-            .then(setData)
-            .catch((e: Error) => setError(e.message));
+        let cancelled = false;
+        let attempt = 0;
+        const run = () => {
+            fetchTaskCost(taskId)
+                .then((d) => {
+                    if (cancelled) return;
+                    // Carrera lectura-antes-de-escritura: el worker puede no haber
+                    // confirmado todavía la traza de coste. Si sale 0, reintenta
+                    // unas veces antes de darlo por definitivo.
+                    if (d.tokens_total === 0 && attempt < 3) {
+                        attempt++;
+                        setTimeout(run, 900);
+                        return;
+                    }
+                    setData(d);
+                })
+                .catch((e: Error) => {
+                    if (!cancelled) setError(e.message);
+                });
+        };
+        run();
+        return () => {
+            cancelled = true;
+        };
     }, [taskId]);
 
     return (

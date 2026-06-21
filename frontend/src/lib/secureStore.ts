@@ -32,7 +32,7 @@ function getElectronApi(): ElectronSecureStoreAPI | null {
 }
 
 const _memoryCache: Partial<Record<SecureKey, string>> = {};
-let _hydrated = false;
+let _hydrationPromise: Promise<void> | null = null;
 let _warnedFallback = false;
 
 function warnFallbackOnce(): void {
@@ -48,28 +48,34 @@ function warnFallbackOnce(): void {
 
 /**
  * Carga los tokens almacenados al boot del renderer.
- * Idempotente: llamar dos veces no re-cargar.
+ *
+ * Idempotente y *awaitable*: devuelve siempre la MISMA promesa en vuelo, así que
+ * quien la espere (p.ej. `client.ts:request()`) no leerá el cache antes de que
+ * el IPC asíncrono lo haya poblado. Antes marcaba un flag sincrónico al empezar
+ * y el cache quedaba vacío durante la carga → peticiones tempranas salían sin
+ * token (401 → refresh sin token → rebote espurio a /login).
  */
-export async function hydrateSecureStore(): Promise<void> {
-    if (_hydrated) return;
-    _hydrated = true;
+export function hydrateSecureStore(): Promise<void> {
+    if (_hydrationPromise) return _hydrationPromise;
+    _hydrationPromise = (async () => {
+        const api = getElectronApi();
+        if (api) {
+            for (const key of SECURE_KEYS) {
+                const value = await api.get(key);
+                if (value) _memoryCache[key] = value;
+            }
+            return;
+        }
 
-    const api = getElectronApi();
-    if (api) {
+        // Fallback dev/web: localStorage
+        warnFallbackOnce();
+        if (typeof window === "undefined") return;
         for (const key of SECURE_KEYS) {
-            const value = await api.get(key);
+            const value = window.localStorage.getItem(key);
             if (value) _memoryCache[key] = value;
         }
-        return;
-    }
-
-    // Fallback dev/web: localStorage
-    warnFallbackOnce();
-    if (typeof window === "undefined") return;
-    for (const key of SECURE_KEYS) {
-        const value = window.localStorage.getItem(key);
-        if (value) _memoryCache[key] = value;
-    }
+    })();
+    return _hydrationPromise;
 }
 
 /** Lee desde el cache sincrónico. Devuelve null si no hidratado o ausente. */

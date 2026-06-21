@@ -23,13 +23,24 @@ El patrón típico desde un agente LangGraph:
 """
 
 import hashlib
-from decimal import Decimal
+import logging
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.tasks import AgentExecutionTrace
+
+logger = logging.getLogger("services.agent_trace")
+
+# Conversión USD→EUR para el coste estimado. El tracker de uso LLM
+# (llm_usage_tracker.estimate_cost) trabaja en USD porque las tarifas de los
+# proveedores se publican en USD; la columna `cost_eur` y la UI (modal de
+# consumo) muestran €. Constante fija deliberada: el coste es una *estimación*
+# orientativa, no una factura — no justifica una llamada a una API de FX.
+# Revisar periódicamente junto con _PRICE_TABLE en llm_usage_tracker.
+USD_TO_EUR = Decimal("0.92")
 
 
 def _sha256_hex(text: str | None) -> str | None:
@@ -87,3 +98,57 @@ async def record_agent_execution(
     db.add(trace)
     await db.flush()
     return trace
+
+
+async def record_task_cost_trace(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    task_id: UUID,
+    agent_name: str,
+    tokens_in: int,
+    tokens_out: int,
+    cost_usd: float,
+    llm_provider: str | None = None,
+    execution_id: UUID | None = None,
+) -> AgentExecutionTrace | None:
+    """Persiste una traza-resumen con el coste real (tokens + EUR) de una task.
+
+    Atribución a nivel de TASK, no por-agente. Las trazas por-dispatch
+    (`_persist_agent_trace`) registran status/latencia para el AI Act, pero NO
+    tienen acceso a los tokens de cada llamada LLM: el `UsageTrackingCallback`
+    se engancha al grafo vía `config["callbacks"]` y acumula el total de TODA la
+    ejecución, sin exponer un delta por dispatch. Exponer tokens por-agente
+    exigiría un callback con scope por dispatcher + propagar tokens en el
+    `AgentResult` de los 12 dispatchers — coste/riesgo desproporcionado.
+
+    Como la tabla es append-only (triggers SEC.WORM bloquean UPDATE), el coste
+    no puede añadirse a las filas ya insertadas; se inserta UNA fila-resumen
+    extra. `summarize_task_cost` suma todas las filas de la task, así que el
+    total (tokens + €) que ve el modal/dashboard queda correcto.
+
+    Best-effort: nunca propaga errores (igual que el resto de observabilidad).
+    """
+    if tokens_in + tokens_out <= 0:
+        return None
+    try:
+        cost_eur = (Decimal(str(cost_usd)) * USD_TO_EUR).quantize(
+            Decimal("0.0001"), rounding=ROUND_HALF_UP
+        )
+        return await record_agent_execution(
+            db,
+            tenant_id=tenant_id,
+            agent_name=agent_name,
+            task_id=task_id,
+            execution_id=execution_id,
+            llm_provider=llm_provider,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_eur=cost_eur,
+            status="ok",
+        )
+    except Exception as e:  # noqa: BLE001 — observabilidad nunca rompe el flujo
+        logger.warning(
+            "No se pudo persistir traza de coste de task %s: %s", task_id, e
+        )
+        return None

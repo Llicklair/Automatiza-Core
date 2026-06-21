@@ -1,3 +1,4 @@
+from datetime import date as DateType
 from datetime import datetime
 from uuid import UUID
 
@@ -50,6 +51,7 @@ class ProductCreate(BaseModel):
     cost_price: float | None = None
     tax_percentage: float = 21.0
     stock_quantity: int = 0
+    stock_boxes: int = 0
     stock_min_alert: int = 0
     is_active: bool = True
     supplier_id: UUID | None = None
@@ -109,6 +111,7 @@ class ProductUpdate(BaseModel):
     cost_price: float | None = None
     tax_percentage: float | None = None
     stock_quantity: int | None = None
+    stock_boxes: int | None = None
     stock_min_alert: int | None = None
     is_active: bool | None = None
     supplier_id: UUID | None = None
@@ -171,6 +174,8 @@ class InvoiceResponse(BaseModel):
 class StockMovementCreate(BaseModel):
     movement_type: str  # entrada | salida | ajuste
     quantity: int
+    stock_kind: str = "unit"  # unit (unidades) | box (cajas)
+    reason: str | None = None  # baja: rotura | merma | robo | caducado
     unit_cost: float | None = None
     reference: str | None = None
     notes: str | None = None
@@ -184,6 +189,8 @@ class StockMovementResponse(BaseModel):
     product_id: UUID
     user_id: UUID | None = None
     movement_type: str
+    stock_kind: str
+    reason: str | None = None
     quantity: int
     stock_after: int
     unit_cost: float | None = None
@@ -320,8 +327,6 @@ class PurchaseOrderResponse(BaseModel):
 
 
 # --- Facturación Recurrente ---
-
-from datetime import date as DateType
 
 
 class RecurringLineItem(BaseModel):

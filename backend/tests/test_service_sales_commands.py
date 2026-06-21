@@ -176,6 +176,70 @@ class TestStockMovementCommands:
                 db, tenant.id, uuid4(), {"movement_type": "entrada", "quantity": 1}
             )
 
+    async def test_baja_unidades_con_motivo_persiste(self, db, seed_tenant_and_user):
+        tenant, _u, _t = seed_tenant_and_user
+        product = await create_product(db, tenant.id, _product_data(stock_quantity=10))
+        mov = await create_stock_movement(
+            db,
+            tenant.id,
+            product.id,
+            {"movement_type": "salida", "quantity": 3, "reason": "rotura"},
+        )
+        assert mov.stock_after == 7
+        assert mov.stock_kind == "unit"
+        assert mov.reason == "rotura"
+
+    async def test_baja_cajas_descuenta_contador_independiente(
+        self, db, seed_tenant_and_user
+    ):
+        tenant, _u, _t = seed_tenant_and_user
+        product = await create_product(
+            db, tenant.id, _product_data(stock_quantity=10, stock_boxes=5)
+        )
+        mov = await create_stock_movement(
+            db,
+            tenant.id,
+            product.id,
+            {"movement_type": "salida", "quantity": 2, "stock_kind": "box", "reason": "rotura"},
+        )
+        assert mov.stock_after == 3
+        assert mov.stock_kind == "box"
+        refreshed = (
+            await db.execute(select(Product).where(Product.id == product.id))
+        ).scalar_one()
+        # Las cajas bajan; las unidades NO se tocan (contadores separados).
+        assert refreshed.stock_boxes == 3
+        assert refreshed.stock_quantity == 10
+
+    async def test_baja_cajas_insuficiente_raise_value_error(
+        self, db, seed_tenant_and_user
+    ):
+        tenant, _u, _t = seed_tenant_and_user
+        product = await create_product(
+            db, tenant.id, _product_data(stock_quantity=100, stock_boxes=1)
+        )
+        with pytest.raises(ValueError, match="Stock de cajas insuficiente"):
+            await create_stock_movement(
+                db,
+                tenant.id,
+                product.id,
+                {"movement_type": "salida", "quantity": 5, "stock_kind": "box"},
+            )
+
+    async def test_entrada_cajas_incrementa(self, db, seed_tenant_and_user):
+        tenant, _u, _t = seed_tenant_and_user
+        product = await create_product(
+            db, tenant.id, _product_data(stock_boxes=2)
+        )
+        mov = await create_stock_movement(
+            db,
+            tenant.id,
+            product.id,
+            {"movement_type": "entrada", "quantity": 4, "stock_kind": "box"},
+        )
+        assert mov.stock_after == 6
+        assert mov.stock_kind == "box"
+
 
 # ── quotes ───────────────────────────────────────────────────────────────────
 

@@ -3,8 +3,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+
 from app.db.models.tasks import AgentExecutionTrace, Task
 from app.services.ai.task_cost import summarize_task_cost
+from app.services.observability import record_task_cost_trace
+from app.services.observability.agent_trace import USD_TO_EUR
 
 
 def _trace(*, tenant_id, task_id, agent: str, tin: int, tout: int, eur: str) -> AgentExecutionTrace:
@@ -87,6 +90,55 @@ class TestTaskCost:
         assert "billing" in agents
         assert agents["billing"]["tokens"] == 100 + 50 + 200 + 80
         assert agents["accounting"]["tokens"] == 70
+
+    async def test_record_task_cost_trace_alimenta_el_resumen(
+        self, db, seed_tenant_and_user
+    ):
+        """La traza-resumen de coste hace que el modal muestre tokens/€ reales
+        en lugar de 0 (regresión: las filas por-dispatch no llevan tokens)."""
+        tenant, user, _t = seed_tenant_and_user
+        task = _task(tenant.id, user.id)
+        db.add(task)
+        await db.flush()
+
+        trace = await record_task_cost_trace(
+            db,
+            tenant_id=tenant.id,
+            task_id=task.id,
+            agent_name="orchestrator",
+            tokens_in=1200,
+            tokens_out=400,
+            cost_usd=0.01,
+            llm_provider="anthropic",
+        )
+        assert trace is not None
+        await db.flush()
+
+        result = await summarize_task_cost(db, tenant_id=tenant.id, task_id=task.id)
+        assert result["tokens_total"] == 1600
+        # 0.01 USD * 0.92 = 0.0092 EUR
+        assert result["cost_eur"] == pytest.approx(float(Decimal("0.01") * USD_TO_EUR))
+        assert result["cost_eur"] > 0
+        assert result["trace_count"] == 1
+
+    async def test_record_task_cost_trace_ignora_cero_tokens(
+        self, db, seed_tenant_and_user
+    ):
+        tenant, user, _t = seed_tenant_and_user
+        task = _task(tenant.id, user.id)
+        db.add(task)
+        await db.flush()
+
+        trace = await record_task_cost_trace(
+            db,
+            tenant_id=tenant.id,
+            task_id=task.id,
+            agent_name="orchestrator",
+            tokens_in=0,
+            tokens_out=0,
+            cost_usd=0.0,
+        )
+        assert trace is None
 
     async def test_aislamiento_entre_tenants(self, db, seed_tenant_and_user):
         tenant, user, _t = seed_tenant_and_user

@@ -47,6 +47,12 @@ CASES = [
     ("según el documento de hacienda, ¿qué plazo hay?", "rag"),
     ("crea cliente nuevo y emítele una factura", "crm"),
     ("sube el contrato de maría en pdf", "documents"),
+    # — workflow: stem "automatiza" cubre verbo/plural/acento (campaña 2026-06-21) —
+    ("lista mis automatizaciones activas", "workflow"),
+    ("automatiza que cada fin de mes se generen las nóminas", "workflow"),
+    ("muéstrame mis automatizaciones", "workflow"),
+    # guarda: consulta mensual NO es automatización
+    ("¿cuánto facturamos cada mes?", "billing"),
 ]
 
 

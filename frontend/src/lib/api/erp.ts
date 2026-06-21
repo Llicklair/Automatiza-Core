@@ -124,6 +124,7 @@ export interface Product {
     cost_price: number | null;
     tax_percentage: number;
     stock_quantity: number;
+    stock_boxes: number;
     stock_min_alert: number;
     is_active: boolean;
     supplier_id: string | null;
@@ -138,10 +139,12 @@ export interface StockMovement {
     product_id: string;
     user_id: string | null;
     movement_type: string;
+    stock_kind: "unit" | "box";
     quantity: number;
     stock_after: number;
     unit_cost: number | null;
     reference: string | null;
+    reason: string | null;
     notes: string | null;
     created_at: string;
 }

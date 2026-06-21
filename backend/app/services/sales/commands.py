@@ -178,30 +178,46 @@ async def create_stock_movement(
 
     movement_type = data["movement_type"]
     quantity = data["quantity"]
+    # "unit" (unidades) | "box" (cajas). Las cajas son un contador independiente
+    # (`product.stock_boxes`) que NO pasa por FEFO/lotes/ProductStock (unit-only).
+    stock_kind = data.get("stock_kind", "unit")
 
-    if movement_type == "entrada":
-        new_stock = int(product.stock_quantity) + abs(quantity)
-    elif movement_type == "salida":
-        new_stock = int(product.stock_quantity) - abs(quantity)
-        if new_stock < 0:
-            raise ValueError("Stock insuficiente")
-    else:  # ajuste
-        new_stock = quantity
+    if stock_kind == "box":
+        current = int(product.stock_boxes)
+        if movement_type == "entrada":
+            new_stock = current + abs(quantity)
+        elif movement_type == "salida":
+            new_stock = current - abs(quantity)
+            if new_stock < 0:
+                raise ValueError("Stock de cajas insuficiente")
+        else:  # ajuste
+            new_stock = quantity
+        product.stock_boxes = new_stock
+    else:
+        if movement_type == "entrada":
+            new_stock = int(product.stock_quantity) + abs(quantity)
+        elif movement_type == "salida":
+            new_stock = int(product.stock_quantity) - abs(quantity)
+            if new_stock < 0:
+                raise ValueError("Stock insuficiente")
+        else:  # ajuste
+            new_stock = quantity
+        product.stock_quantity = new_stock
 
-    product.stock_quantity = new_stock
+        # Si el producto gestiona lotes, una salida los descuenta en orden FEFO.
+        if movement_type == "salida":
+            from app.services.inventory import lot_service
 
-    # Si el producto gestiona lotes, una salida los descuenta en orden FEFO.
-    if movement_type == "salida":
-        from app.services.inventory import lot_service
-
-        if await lot_service.has_lots(db, product_id):
-            await lot_service.deduct_fefo(db, product_id=product_id, quantity=abs(quantity))
+            if await lot_service.has_lots(db, product_id):
+                await lot_service.deduct_fefo(db, product_id=product_id, quantity=abs(quantity))
 
     movement = StockMovement(
         tenant_id=tenant_id,
         product_id=product_id,
         user_id=data.get("user_id"),
         movement_type=movement_type,
+        stock_kind=stock_kind,
+        reason=data.get("reason"),
         quantity=quantity,
         stock_after=new_stock,
         unit_cost=data.get("unit_cost"),

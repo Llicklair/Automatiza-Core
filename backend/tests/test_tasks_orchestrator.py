@@ -11,13 +11,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.models.ai_employees import AIEmployee, TokenLedger
 from app.db.models.auth import Tenant
 from app.db.models.models import Task, User
 from app.workers import _orchestrator_state as _state
 from app.workers import tasks_orchestrator as _to
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # ── _is_transient_error (pure) ───────────────────────────────────────────────
 
@@ -172,15 +173,6 @@ async def test_log_task_completion_marks_error_with_x(db, tenant_with_employee_a
 
 # ── End-to-end with _stream_and_log mocked ───────────────────────────────────
 
-class _FakeUsageCallback:
-    """Stand-in for UsageTrackingCallback with controllable token totals."""
-    def __init__(self, tokens_in=0, tokens_out=0, cost_usd=0.0, provider="anthropic"):
-        self.total_tokens_in = tokens_in
-        self.total_tokens_out = tokens_out
-        self.total_cost_usd = cost_usd
-        self._current_provider = provider
-
-
 @pytest.mark.asyncio
 async def test_execute_orchestrator_writes_token_ledger_for_employee_task(
     tenant_with_employee_and_task,
@@ -195,12 +187,14 @@ async def test_execute_orchestrator_writes_token_ledger_for_employee_task(
         "requires_human_approval": False,
         "error_message": None,
     }
-    fake_callback = _FakeUsageCallback(
-        tokens_in=1500, tokens_out=400, cost_usd=0.012, provider="anthropic"
-    )
-
-    async def fake_stream_and_log(task_id, initial_state, orchestrator):
-        return fake_final_state, fake_callback
+    async def fake_stream_and_log(task_id, initial_state, orchestrator, usage_callback):
+        # El worker crea y posee el usage_callback; aquí simulamos la acumulación
+        # de tokens que haría el streaming real antes de devolver el estado.
+        usage_callback.total_tokens_in = 1500
+        usage_callback.total_tokens_out = 400
+        usage_callback.total_cost_usd = 0.012
+        usage_callback._current_provider = "anthropic"
+        return fake_final_state
 
     with patch.object(_to, "_stream_and_log", new=fake_stream_and_log), \
          patch("app.services.workflow.activity.log_activity", new=AsyncMock(return_value=None)):

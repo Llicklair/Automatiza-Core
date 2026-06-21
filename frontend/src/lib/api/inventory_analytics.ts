@@ -26,6 +26,34 @@ export interface TopMover {
     sold: number;
 }
 
+export type BajaReason = "rotura" | "merma" | "robo" | "caducado";
+
+export interface BajaByReason {
+    reason: BajaReason;
+    units: number;
+    value_eur: number;
+}
+
+export interface BajaTopProduct {
+    product_id: string;
+    name: string;
+    units: number;
+    value_eur: number;
+}
+
+export interface InvBajas {
+    period_days: number;
+    total_units: number;
+    total_value_eur: number;
+    by_reason: BajaByReason[];
+    top_products: BajaTopProduct[];
+}
+
+export interface InvBelowMin {
+    count: number;
+    value_eur: number;
+}
+
 export interface InventoryAnalytics {
     valuation: InvValuation;
     dead_days: number;
@@ -34,6 +62,10 @@ export interface InventoryAnalytics {
     dead_value_cost: number;
     dead_stock: DeadStockItem[];
     top_movers: TopMover[];
+    merma_days: number;
+    bajas: InvBajas;
+    box_bajas_units: number;
+    below_min: InvBelowMin;
 }
 
 export const inventoryAnalytics = {

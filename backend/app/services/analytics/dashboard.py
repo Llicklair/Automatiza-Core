@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import InvoiceLine
 from app.db.models.hr import Expense, JornadaRecord, LeaveRequest
-from app.db.models.inventory import Product
+from app.db.models.inventory import Product, StockMovement
 from app.db.models.models import (
     BankTransaction,
     Client,
@@ -572,6 +572,41 @@ async def get_dashboard(
     period_start_dt = datetime.combine(start, datetime.min.time())
     period_end_dt = datetime.combine(end, datetime.max.time())
 
+    # ── Inventario: bajas/mermas (unidades) + bajo mínimo del periodo ────
+    # Baja = salida con motivo (reason no nulo), sólo unidades (stock_kind unit).
+    # Valor = unidades * coste (unit_cost del movimiento → cost_price → 0).
+    bajas_q = (
+        select(
+            func.coalesce(func.sum(func.abs(StockMovement.quantity)), 0),
+            func.coalesce(
+                func.sum(
+                    func.abs(StockMovement.quantity)
+                    * func.coalesce(StockMovement.unit_cost, Product.cost_price, 0)
+                ),
+                0,
+            ),
+        )
+        .select_from(StockMovement)
+        .join(Product, Product.id == StockMovement.product_id)
+        .where(
+            StockMovement.tenant_id == tenant_id,
+            StockMovement.movement_type == "salida",
+            StockMovement.reason.is_not(None),
+            StockMovement.stock_kind == "unit",
+            StockMovement.created_at >= period_start_dt,
+            StockMovement.created_at <= period_end_dt,
+        )
+    )
+    bajas_units_t, bajas_value_t = (await db.execute(bajas_q)).one()
+
+    below_min_q = select(func.count()).where(
+        Product.tenant_id == tenant_id,
+        Product.is_active.is_(True),
+        Product.stock_min_alert > 0,
+        Product.stock_quantity <= Product.stock_min_alert,
+    )
+    below_min_count = int((await db.execute(below_min_q)).scalar() or 0)
+
     agent_q = (
         select(
             AgentExecutionTrace.agent_name,
@@ -704,6 +739,11 @@ async def get_dashboard(
             "reconciliadas": reconciliadas,
             "pendientes_conciliar": pendientes_conciliar,
             "has_demo_data": has_demo_data,
+        },
+        "inventario": {
+            "bajas_units": int(bajas_units_t or 0),
+            "bajas_value_eur": round(float(bajas_value_t or 0), 2),
+            "below_min_count": below_min_count,
         },
         "ia": {
             "tasks_total": tasks_total,

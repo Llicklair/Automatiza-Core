@@ -52,6 +52,7 @@ const EMPTY_DASHBOARD: AnalyticsDashboard = {
     },
     ia_detalle: { por_agente: [], top_errores: [] },
     clientes: { total: 0, nuevos_periodo: 0 },
+    inventario: { bajas_units: 0, bajas_value_eur: 0, below_min_count: 0 },
 };
 
 export function useAnalitica() {
@@ -128,5 +129,6 @@ export function useAnalitica() {
         tasksPending: data.ia.tasks_pending,
         tasksPeriodo: data.ia.tasks_periodo,
         periodLabel: data.period_label,
+        inventario: data.inventario,
     };
 }

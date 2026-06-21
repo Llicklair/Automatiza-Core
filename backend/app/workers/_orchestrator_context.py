@@ -154,19 +154,21 @@ async def _broadcast(tenant_id: str, message: dict) -> None:
         await ws_manager.broadcast_to_tenant(tenant_id, message)
 
 
-async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> dict:
+async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage_callback) -> dict:
     """
     Ejecuta el grafo en modo streaming, emite logs por exec_log_store,
     transmite progreso por WebSocket y devuelve el estado final.
+
+    `usage_callback` lo crea y posee el caller (worker) para poder registrar el
+    consumo de tokens aunque la ejecución se cancele o falle a mitad.
     """
-    from app.core.llm_callbacks import UsageTrackingCallback, get_langfuse_callback
+    from app.core.llm_callbacks import get_langfuse_callback
 
     final_state = None
     tenant_id = initial_state.get("tenant_id", "")
     domain = initial_state.get("classified_domain") or "unknown"
     seen_results: set = set()
 
-    usage_callback = UsageTrackingCallback(tenant_id=tenant_id, agent_name=domain)
     callbacks: list = [usage_callback]
     langfuse_cb = get_langfuse_callback(
         tenant_id=tenant_id, agent=domain, task_id=task_id
@@ -248,7 +250,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator) -> di
         task_id, f"[{'OK' if status_val == 'done' else 'FAIL'}] Ejecucion finalizada ({status_val})"
     )
     logger.info("FINAL STATE RETURNED BY LANGGRAPH: %s", result)
-    return result, usage_callback
+    return result
 
 
 async def _load_task_and_approval(task_id: str, db):

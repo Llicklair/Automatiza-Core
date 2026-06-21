@@ -29,6 +29,7 @@ export function usePortal() {
     const [tab, setTab] = useState<Tab>("ficha");
     const [data, setData] = useState<PortalData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     // Admin "view as employee" mode
     const [employeesList, setEmployeesList] = useState<Employee[]>([]);
@@ -55,6 +56,7 @@ export function usePortal() {
 
     const load = async (asEmployeeId?: string) => {
         setLoading(true);
+        setLoadError(null);
         try {
             const portalData = asEmployeeId
                 ? await api.portal.meAs(asEmployeeId)
@@ -68,7 +70,12 @@ export function usePortal() {
             } else {
                 setMyExpenses([]);
             }
-        } catch { /* noop */ }
+        } catch (e) {
+            // No silenciar: un fallo aquí (p.ej. 500 en /portal/as/{id}) dejaba el
+            // panel en blanco sin pista. Lo exponemos para que la UI lo muestre.
+            setLoadError(e instanceof Error ? e.message : String(e));
+            setData(null);
+        }
         finally { setLoading(false); }
     };
 
@@ -164,7 +171,7 @@ export function usePortal() {
     return {
         isAdmin,
         tab, setTab,
-        data, loading,
+        data, loading, loadError,
         employeesList, selectedEmployeeId, readOnly,
         clockBusy, clockError,
         showLeave, setShowLeave, leaveForm, setLeaveForm, saving, leaveError, setLeaveError,

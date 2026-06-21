@@ -14,6 +14,46 @@
 
 ---
 
+## ✅ HECHO — Dar de baja stock por rotura/merma (unidades o cajas)
+
+**Decisiones**: cajas y unidades = contadores SEPARADOS (sin conversión) · baja con MOTIVO + historial auditable.
+**Diseño**: write-off = `movement_type="salida"` + `reason` (nuevo) + `stock_kind` (nuevo: `unit`|`box`). Reutiliza `POST /products/{id}/stock-movements`. Cajas = contador independiente `Product.stock_boxes` que NO pasa por FEFO/ProductStock/valoración (unit-only).
+
+Backend:
+- [ ] Modelo `Product.stock_boxes` (Int, def 0); `StockMovement.stock_kind` (def "unit") + `reason` (nullable). [db/models/inventory.py]
+- [ ] Migración `0065_stock_writeoff_fields.py` (add_column x3, server_default).
+- [ ] Schemas erp.py: Product* + `stock_boxes`; StockMovementCreate/Response + `stock_kind`/`reason`.
+- [ ] `create_stock_movement` [services/sales/commands.py]: rama `box` (descuenta `stock_boxes`, sin FEFO; ValueError "Stock de cajas insuficiente"); passthrough `reason`.
+- [ ] Tests: baja unidades/cajas con motivo; cajas insuficientes.
+
+Frontend:
+- [ ] erp.ts `MovementForm` + `stock_kind`/`reason`.
+- [ ] Modal "Dar de baja" (unidad/caja + motivo + cantidad) + mostrar cajas en lista.
+- [ ] Tests del modal.
+
+Verificación: ✅ backend 42 tests + ruff + mypy · frontend tsc + 7 tests + eslint.
+✅ Migración `0065` APLICADA a la BD (0064→0065).
+
+### Analíticas de mermas/bajas (ambos sitios) — ✅ HECHO
+- Backend: `inventory/analytics.py` (`bajas` por motivo + valor €, `top_products`, `box_bajas_units`, `below_min`; fix `_top_movers`), `analytics/dashboard.py` (sección `inventario`), endpoint `/inventory/analytics` (`merma_days`). 5 tests nuevos · ruff/mypy ✓.
+- Frontend: página `/inventario/analitica` (sección Mermas + tablas) y resumen del dashboard (KPIs mermas + bajo mínimo). tsc/eslint/vitest ✓.
+
+### Portal "ver como empleado" (admin) salía EN BLANCO — ✅ HECHO (raíz real)
+Reproducido: 20/25 empleados fallaban. Causa: `LeaveRequestResponse` (y `AttendanceResponse`) SIN `from_attributes` → `model_validate(orm)` en `_build_portal_payload` lanzaba ValidationError → `/portal/as/{id}` 500 para empleados con ≥1 vacación → el front lo tragaba (catch noop) → panel mudo.
+Fix: `from_attributes=True` en ambos schemas [api/v1/schemas/hr.py]; hardening front: el catch ya no es noop (expone error) + rama de error en [portal/page.tsx] + clave i18n es/en [usePortal.ts]. Test: test_portal_serialization (2). Verificado: backend ruff/mypy + frontend tsc/eslint. Sincronizado al exe → reiniciar app.
+Defecto aparte (no bloqueante): empleados sembrados con `email=NULL` → el autoservicio por-empleado no enlazará cuando les des login propio (fix de seed pendiente si se quiere).
+Auditoría en curso (bg): otros `*Response` validados desde ORM sin `from_attributes`.
+
+### Modal de consumo de IA — fix de raíz (provider no reportaba tokens) — ✅ HECHO
+3 causas confirmadas (BD: todas las trazas con tokens NULL):
+1. `claude_code` ejecutaba `claude -p` SIN `--output-format json` → el AIMessage no llevaba `usage_metadata` → `usage_cb`=0 → no se escribía traza. Ahora `--output-format json` + `_parse_cli_output` parsea `result`+`usage` y adjunta `usage_metadata` (fallback a texto si no es JSON). [core/llm/claude_code.py]
+2. Cancelar ("Detener") lanza `CancelledError` (no `Exception`) → `_record_run_usage` se saltaba. Ahora `except (Exception, asyncio.CancelledError)` registra el consumo parcial (execute + resume). [workers/tasks_orchestrator.py, _orchestrator_context.py]
+3. Carrera lectura-antes-de-escritura → el modal reintenta si sale 0. [components/ai/CostModal.tsx]
+Tests: test_claude_code_usage (6) + orchestrator. Verificado: backend 42 + ruff + mypy; frontend tsc + eslint.
+⚠️ Requiere reiniciar la app (recargar proceso Python) + rebuild .next; tokens solo en tareas NUEVAS.
+
+---
+
 ## Fiscal
 
 - [x] **F2.6 Conciliación bancaria explicable** ✅ (2026-06-12) — backend ya

@@ -76,3 +76,43 @@ def test_state_store_roundtrips_verifier():
     assert svc.pop_oauth_state("st-ms") == ("tenantB", None)
 
     assert svc.pop_oauth_state("st-google") is None  # consumido (single-use)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_callback_is_idempotent(monkeypatch):
+    """Un segundo callback con el mismo state (prefetch / doble navegación del
+    navegador del sistema en Electron) NO debe devolver "estado inválido" si el
+    primero ya canjeó el code y conectó la integración."""
+    svc._completed_oauth.clear()
+
+    async def fake_exchange(code, code_verifier=None):
+        return {"access_token": "tok", "refresh_token": "ref"}
+
+    monkeypatch.setattr(g, "exchange_code", fake_exchange)
+    monkeypatch.setattr(svc, "encrypt_credentials", lambda creds: "enc")
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return None
+
+    class FakeDB:
+        async def execute(self, *a, **k):
+            return FakeResult()
+
+        def add(self, obj):
+            pass
+
+        async def commit(self):
+            pass
+
+    db = FakeDB()
+    svc.set_oauth_state("st-dup", "tenantZ", "verifZ")
+
+    # 1er callback: canjea tokens y conecta → devuelve tenant.
+    assert await svc.handle_oauth_callback("code1", "st-dup", "google", db) == "tenantZ"
+    # 2º callback (duplicado): el state ya está consumido, pero responde éxito
+    # idempotente en vez de "estado inválido".
+    assert await svc.handle_oauth_callback("code1", "st-dup", "google", db) == "tenantZ"
+
+    # Un state que nunca se emitió sigue siendo un error real → None.
+    assert await svc.handle_oauth_callback("code1", "st-never", "google", db) is None

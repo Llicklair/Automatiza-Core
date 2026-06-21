@@ -331,10 +331,11 @@ async def inventory_analytics_overview(
     request: Request,
     dead_days: int = Query(default=90, ge=1, le=730, description="Dias sin venta para considerar stock muerto"),
     top_days: int = Query(default=30, ge=1, le=365, description="Ventana para los mas vendidos"),
+    merma_days: int = Query(default=30, ge=1, le=365, description="Ventana para bajas/mermas"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Analitica de inventario: valoracion, stock muerto y productos mas movidos."""
+    """Analitica de inventario: valoracion, stock muerto, mas movidos y bajas/mermas."""
     return await inventory_analytics.inventory_overview(
-        db, current_user.tenant_id, dead_days=dead_days, top_days=top_days
+        db, current_user.tenant_id, dead_days=dead_days, top_days=top_days, merma_days=merma_days
     )

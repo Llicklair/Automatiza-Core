@@ -9,8 +9,10 @@ import { logError } from "@/lib/logger";
 
 export interface MovementForm {
     movement_type: "entrada" | "salida" | "ajuste";
+    stock_kind: "unit" | "box";
     quantity: number;
     reference: string;
+    reason: string;
     notes: string;
 }
 
@@ -48,7 +50,7 @@ export function useStock() {
 
     const [showModal, setShowModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [movForm, setMovForm] = useState<MovementForm>({ movement_type: "entrada", quantity: 1, reference: "", notes: "" });
+    const [movForm, setMovForm] = useState<MovementForm>({ movement_type: "entrada", stock_kind: "unit", quantity: 1, reference: "", reason: "", notes: "" });
     const [saving, setSaving] = useState(false);
 
     const [showProductModal, setShowProductModal] = useState(false);
@@ -106,9 +108,9 @@ export function useStock() {
         }
     };
 
-    const openMovement = (product: Product) => {
+    const openMovement = (product: Product, movement_type: MovementForm["movement_type"] = "entrada") => {
         setSelectedProduct(product);
-        setMovForm({ movement_type: "entrada", quantity: 1, reference: "", notes: "" });
+        setMovForm({ movement_type, stock_kind: "unit", quantity: 1, reference: "", reason: "", notes: "" });
         setShowModal(true);
     };
 
@@ -116,8 +118,16 @@ export function useStock() {
         e.preventDefault();
         if (!selectedProduct) return;
         setSaving(true);
+        const payload = {
+            movement_type: movForm.movement_type,
+            stock_kind: movForm.stock_kind,
+            quantity: movForm.quantity,
+            reference: movForm.reference,
+            notes: movForm.notes,
+            ...(movForm.reason ? { reason: movForm.reason } : {}),
+        };
         try {
-            await api.erp.stock.addMovement(selectedProduct.id, movForm);
+            await api.erp.stock.addMovement(selectedProduct.id, payload);
             setShowModal(false);
             load();
             if (movements[selectedProduct.id]) {
