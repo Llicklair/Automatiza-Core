@@ -282,7 +282,10 @@ async def generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id
             result = await db.execute(
                 select(Payroll)
                 .options(joinedload(Payroll.employee))
-                .where(Payroll.id == uuid_mod.UUID(payroll_id))
+                .where(
+                    Payroll.id == uuid_mod.UUID(payroll_id),
+                    Payroll.tenant_id == uuid_mod.UUID(tenant_id),
+                )
             )
             payroll = result.unique().scalar_one_or_none()
             if not payroll:

@@ -156,16 +156,13 @@ async def backfill_tenant_verifactu_chain(
     # detrás del último (los registros existentes deben ser por orden cronológico).
     last_huella: str | None = None
     if existing_by_invoice:
-        # Ordenamos los existentes por created_at desc para obtener el último.
-        from sqlalchemy import desc
+        # Tail por ENLACE de la cadena, NO por created_at: con timestamps
+        # idénticos `created_at desc` es no determinista y podía encadenar tras
+        # un registro que no es la cola real → cadena bifurcada. Reutiliza el
+        # mismo helper que el alta normal (verifactu_chain.find_tail_huella).
+        from app.services.billing.verifactu_chain import find_tail_huella
 
-        last_q = await db.execute(
-            select(VerifactuRecord.huella)
-            .where(VerifactuRecord.tenant_id == tenant_id)
-            .order_by(desc(VerifactuRecord.created_at))
-            .limit(1)
-        )
-        last_huella = last_q.scalar_one_or_none()
+        last_huella = find_tail_huella(list(existing_by_invoice.values()))
 
     backfilled_count = 0
     backfilled_at = datetime.now(UTC)

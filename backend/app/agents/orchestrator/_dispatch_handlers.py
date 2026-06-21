@@ -243,6 +243,11 @@ async def _invoke_dispatcher_impl(
         except Exception as e:
             logger.warning("Error en dynamic employee routing para '%s': %s", agent_name, e)
 
+    logger.warning(
+        "[DISPATCH] Agente '%s' sin dispatcher ni empleado dinámico; devolviendo no-op "
+        "(revisar plan/blueprint: ¿nodo sin 'domain'?)",
+        agent_name,
+    )
     return {
         "subtask_id": subtask["id"],
         "agent": agent_name,
@@ -260,7 +265,9 @@ async def invoke_dispatcher(
     Es la superficie pública que consumen las capas de orquestación
     (`services/workflow`, `services/ai`) sin acoplarse a internals del agente.
     Instrumenta latencia y status; el routing real está en
-    `_invoke_dispatcher_impl`."""
+    `_invoke_dispatcher_impl`. Además persiste una traza append-only en
+    `agent_execution_trace` (AI Act Art. 12) — no-fatal: si la persistencia
+    falla, se loguea y la ejecución del agente continúa."""
     import time
 
     from app.core.observability import record_agent_run
@@ -275,7 +282,54 @@ async def invoke_dispatcher(
         status = "timeout"
         raise
     finally:
-        record_agent_run(agent_name, status, time.monotonic() - start)
+        elapsed = time.monotonic() - start
+        record_agent_run(agent_name, status, elapsed)
+        await _persist_agent_trace(enriched_state, agent_name, status, elapsed)
+
+
+# Mapeo status del dispatcher → status persistido que espera la analítica
+# (dashboard.py filtra por "ok"/"error"). timeout cuenta como error.
+_TRACE_STATUS_MAP = {"success": "ok", "failed": "error", "timeout": "error"}
+
+
+async def _persist_agent_trace(
+    enriched_state: dict, agent_name: str, dispatch_status: str, elapsed_s: float
+) -> None:
+    """Graba una traza append-only de la invocación. Nunca propaga errores."""
+    try:
+        from app.services.observability import record_agent_execution
+
+        tenant_id = enriched_state.get("tenant_id")
+        if not tenant_id:
+            return  # sin tenant no hay RLS válida; nada que registrar
+
+        task_id_raw = enriched_state.get("task_id")
+        execution_id_raw = (enriched_state.get("additional_metadata") or {}).get(
+            "execution_id"
+        )
+
+        def _as_uuid(val):
+            if not val:
+                return None
+            return val if isinstance(val, UUID) else UUID(str(val))
+
+        trace_status = _TRACE_STATUS_MAP.get(dispatch_status, "error")
+        error_class = dispatch_status if dispatch_status in ("failed", "timeout") else None
+
+        async with AsyncSessionLocal() as db:
+            await record_agent_execution(
+                db,
+                tenant_id=_as_uuid(tenant_id),
+                agent_name=agent_name,
+                task_id=_as_uuid(task_id_raw),
+                execution_id=_as_uuid(execution_id_raw),
+                duration_ms=int(elapsed_s * 1000),
+                status=trace_status,
+                error_class=error_class,
+            )
+            await db.commit()
+    except Exception as e:  # noqa: BLE001 — observabilidad nunca debe romper el flujo
+        logger.warning("No se pudo persistir agent_execution_trace para '%s': %s", agent_name, e)
 
 
 async def _execute_one(

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { sanitizeHTML } from "@/components/GenerativeUI";
 import {
     Mail, FileText, Loader2, Plus, Send, Trash2,
     CheckCircle2, Clock, AlertCircle, Eye, EyeOff, Users,
@@ -147,7 +148,7 @@ export default function TabCampaigns() {
                     {preview ? (
                         <div
                             className="min-h-[180px] bg-white rounded-lg border border-border p-4 overflow-auto"
-                            dangerouslySetInnerHTML={{ __html: form.html_body.replace("{{nombre}}", t("form.sampleName")).replace("{{email}}", "cliente@ejemplo.com") }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHTML(form.html_body.replace("{{nombre}}", t("form.sampleName")).replace("{{email}}", "cliente@ejemplo.com")) }}
                         />
                     ) : (
                         <textarea

@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
+import { sanitizeHTML } from "@/components/GenerativeUI";
 import { Loader2, X, Sparkles } from "lucide-react";
 import type { EmailDetail } from "@/lib/api/messaging";
 import { formatDate } from "../format";
@@ -63,7 +64,7 @@ export function MessageDetailModal({
                 <div className="p-5 overflow-auto flex-1">
                     {selectedMsg && (
                         selectedMsg.provider === "outlook" && /<[a-z][^>]*>/i.test(selectedMsg.body)
-                            ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedMsg.body }} />
+                            ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedMsg.body) }} />
                             : <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">{selectedMsg.body}</pre>
                     )}
                 </div>

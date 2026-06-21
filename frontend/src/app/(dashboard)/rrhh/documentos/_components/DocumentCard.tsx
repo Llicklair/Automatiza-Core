@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { sanitizeHTML } from "@/components/GenerativeUI";
 import { useFormat } from "@/hooks/useFormat";
 import { CheckCircle2, Copy, Download, Trash2, ChevronDown, ChevronUp, PenLine, Loader2 } from "lucide-react";
 import { hrDocuments, type HRDocument } from "@/lib/api/hr_documents";
@@ -147,7 +148,7 @@ export function DocumentCard({ doc, onApprove, onDelete }: Props) {
             {expanded && (
                 <div className="border-t border-border p-4 bg-background">
                     <div className="prose prose-invert prose-sm max-w-none text-foreground"
-                        dangerouslySetInnerHTML={{ __html: doc.content_html }} />
+                        dangerouslySetInnerHTML={{ __html: sanitizeHTML(doc.content_html) }} />
                 </div>
             )}
         </div>

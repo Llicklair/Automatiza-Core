@@ -92,7 +92,10 @@ def evaluate_conditions(condition: dict | None, context: dict) -> bool:
 
     if operator == "NOT":
         inner = condition.get("condition")
-        return not evaluate_conditions(inner, context) if inner else True
+        if not inner:
+            logger.warning("[CONDITIONS] Operador NOT sin condición interna; no se dispara (fail-closed)")
+            return False
+        return not evaluate_conditions(inner, context)
 
     # Condición hoja
     return _eval_leaf(condition, context)

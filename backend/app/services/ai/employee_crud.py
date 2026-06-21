@@ -17,45 +17,60 @@ logger = logging.getLogger(__name__)
 
 # â”€â”€ Skills catalog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-_KNOWN_SKILLS = [
-    "billing.create_invoice",
-    "billing.list_invoices",
-    "billing.send_reminder",
-    "hr.list_employees",
-    "hr.generate_payroll",
-    "hr.generate_document",
-    "crm.list_clients",
-    "crm.create_activity",
-    "email.send",
-    "email.read_inbox",
-    "documents.search_rag",
-    "documents.upload",
-    "banking.list_transactions",
-    "compliance.check",
-    "excel.export",
-    "reports.create_pdf_report",
-    "reports.create_pdf_text_report",
-]
-
+# Única fuente de verdad del catálogo de skills visible/asignable. CADA clave
+# DEBE resolver en el tool_registry: `get_tool_for_employee` usa el último
+# segmento tras el punto ("hr.calculate_and_create_payroll" → "calculate_and_create_payroll").
+# Antes coexistían dos catálogos divergentes y 12 de 17 skills de UI apuntaban a
+# tools inexistentes ("hr.generate_payroll", "email.send", "excel.export"…), que
+# el compiler descartaba en silencio → el empleado no podía ejecutarlas.
+# El invariante lo protege backend/tests/test_skill_catalog_valid.py.
 _SKILL_LABELS = {
+    # Facturación
     "billing.create_invoice": "Crear facturas",
     "billing.list_invoices": "Consultar facturas",
-    "billing.send_reminder": "Enviar recordatorios de cobro",
+    "billing.send_invoice_by_email": "Enviar facturas por email",
+    "billing.update_invoice_status": "Actualizar estado de facturas",
+    # RRHH / Nóminas
     "hr.list_employees": "Ver empleados",
-    "hr.generate_payroll": "Generar nóminas",
-    "hr.generate_document": "Generar documentos laborales",
-    "crm.list_clients": "Ver clientes",
-    "crm.create_activity": "Registrar actividad CRM",
-    "email.send": "Enviar emails",
-    "email.read_inbox": "Leer bandeja de entrada",
-    "documents.search_rag": "Buscar en documentos",
-    "documents.upload": "Subir documentos",
+    "hr.calculate_and_create_payroll": "Generar nómina de un empleado",
+    "hr.generate_all_payrolls": "Generar todas las nóminas del mes",
+    "hr.approve_payroll": "Aprobar nóminas",
+    # CRM
+    "crm.list_opportunities": "Ver oportunidades CRM",
+    "crm.create_opportunity": "Crear oportunidades",
+    "crm.qualify_leads": "Cualificar leads con IA",
+    # Banca
     "banking.list_transactions": "Ver transacciones bancarias",
-    "compliance.check": "Verificar compliance fiscal",
-    "excel.export": "Exportar a Excel",
+    "banking.financial_summary": "Resumen financiero",
+    "banking.reconcile_transactions": "Conciliar movimientos bancarios",
+    # Email
+    "email.send_email": "Enviar emails",
+    "email.check_inbox": "Leer bandeja de entrada",
+    "email.check_unread": "Ver correos sin leer",
+    # Documentos / RAG
+    "documents.classify_document": "Clasificar documentos",
+    "documents.search_documents_semantic": "Buscar en documentos (semántico)",
+    "documents.answer_from_documents": "Responder con base en documentos",
+    "documents.create_document": "Crear documentos",
+    # Compliance fiscal
+    "compliance.check_fiscal_deadlines": "Verificar plazos fiscales (AEAT)",
+    "compliance.fiscal_query": "Consultas fiscales (RAG)",
+    "compliance.check_boe_news": "Vigilar novedades del BOE",
+    # Excel
+    "excel.export_erp_data": "Exportar datos a Excel",
+    "excel.import_excel": "Importar/volcar datos desde Excel",
+    # Reclutamiento
+    "recruitment.process_cv": "Procesar CVs",
+    "recruitment.list_candidates": "Ver candidatos",
+    # Informes (universal)
     "reports.create_pdf_report": "Generar informes PDF (estructurado)",
     "reports.create_pdf_text_report": "Generar informes PDF (markdown)",
 }
+
+# Derivado de _SKILL_LABELS (antes era una lista duplicada y desincronizada).
+# employee_provisioning lo usa para filtrar lo que sugiere el LLM e indexa
+# _SKILL_LABELS[s], por lo que ambos DEBEN compartir exactamente las claves.
+_KNOWN_SKILLS = list(_SKILL_LABELS)
 
 AVAILABLE_SKILLS = [{"module": k, "label": v} for k, v in _SKILL_LABELS.items()]
 
@@ -293,9 +308,18 @@ async def instruct_employee(
     if employee.status == "paused":
         raise ValueError("paused")
     if employee.budget_limit_usd is not None:
-        spent = await get_employee_spend(employee_id, tenant_id, db)
-        if spent >= float(employee.budget_limit_usd):
-            raise ValueError(f"budget_exceeded:{spent:.4f}/{float(employee.budget_limit_usd):.2f}")
+        # Ventana MENSUAL, coherente con el guard que pausa por paso
+        # (agent_budget.get_budget_status). Antes este gate usaba gasto
+        # acumulado de siempre → un empleado podía bloquearse para siempre
+        # aquí pese a tener presupuesto del mes, o pasar el guard mensual
+        # indefinidamente mientras este lo bloqueaba.
+        from app.services.agent_budget import get_budget_status
+
+        status = await get_budget_status(str(employee.id), db)
+        if status and status["state"] == "exhausted":
+            raise ValueError(
+                f"budget_exceeded:{status['spend_usd']:.4f}/{float(status['limit_usd']):.2f}"
+            )
 
     task = Task(
         id=uuid.uuid4(),

@@ -636,13 +636,9 @@ async def run_recurring(
     now = dt_module.datetime.now(dt_module.UTC)
     invoice_number = f"REC-{now.strftime('%Y%m%d%H%M%S')}"
 
-    amount_base = 0.0
-    tax_amount = 0.0
-    for line in rec.lines_json or []:
-        base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
-        tax = base * (float(line.get("tax_percentage", 21)) / 100)
-        amount_base += base
-        tax_amount += tax
+    # Totales con Decimal (mismo cálculo canónico que create_invoice): respeta
+    # descuentos y valida el IVA, evitando el arrastre de redondeo del float.
+    totals = compute_invoice_totals(rec.lines_json or [])
 
     invoice = Invoice(
         tenant_id=tenant_id,
@@ -653,31 +649,55 @@ async def run_recurring(
         invoice_type="issued",
         notes=rec.notes,
         terms=rec.terms,
-        amount_base=round(amount_base, 2),
-        tax_amount=round(tax_amount, 2),
-        amount_total=round(amount_base + tax_amount, 2),
+        amount_base=totals["amount_base"],
+        tax_amount=totals["tax_amount"],
+        amount_total=totals["amount_total"],
     )
     db.add(invoice)
     await db.flush()
 
-    for line in rec.lines_json or []:
-        base = float(line.get("quantity", 1)) * float(line.get("unit_price", 0))
-        tax = base * (float(line.get("tax_percentage", 21)) / 100)
-        inv_line = InvoiceLine(
-            invoice_id=invoice.id,
-            description=line.get("description", ""),
-            quantity=line.get("quantity", 1),
-            unit_price=line.get("unit_price", 0),
-            discount_percentage=0,
-            tax_percentage=line.get("tax_percentage", 21),
-            total=round(base + tax, 2),
+    for ld in totals["lines"]:
+        db.add(
+            InvoiceLine(
+                invoice_id=invoice.id,
+                product_id=ld.get("product_id"),
+                description=ld.get("description", ""),
+                quantity=ld["quantity"],
+                unit_price=ld["unit_price"],
+                discount_percentage=ld["discount_percentage"],
+                tax_percentage=ld["tax_percentage"],
+                total=ld["_line_total"],
+            )
         )
-        db.add(inv_line)
 
-    interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
-    days = interval_map.get(rec.interval_type, 30)
-    rec.last_run_date = now.date()
-    rec.next_run_date = (now + dt_module.timedelta(days=days)).date()
+    # Verifactu: encadena la huella ANTES del commit (igual que create_invoice).
+    # Sin esto, una recurrente en modo Verifactu quedaba fuera de la cadena
+    # append-only (hueco). No-op si el tenant está en modo no_remission.
+    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+    await maybe_append_verifactu_record(db, invoice=invoice)
+
+    # Próxima ejecución respetando meses/años reales (fin de mes, bisiestos) en
+    # vez de sumar días fijos (30/90/365) que acumulan deriva. Aritmética de
+    # meses con `calendar` para no añadir una dependencia (dateutil) sin stubs.
+    import calendar as _cal
+
+    def _add_months(d: dt_module.date, months: int) -> dt_module.date:
+        m = d.month - 1 + months
+        y = d.year + m // 12
+        mon = m % 12 + 1
+        return d.replace(year=y, month=mon, day=min(d.day, _cal.monthrange(y, mon)[1]))
+
+    today = now.date()
+    if rec.interval_type == "weekly":
+        next_date = today + dt_module.timedelta(weeks=1)
+    elif rec.interval_type == "quarterly":
+        next_date = _add_months(today, 3)
+    elif rec.interval_type == "yearly":
+        next_date = _add_months(today, 12)
+    else:  # monthly (default)
+        next_date = _add_months(today, 1)
+    rec.last_run_date = today
+    rec.next_run_date = next_date
 
     await db.commit()
 

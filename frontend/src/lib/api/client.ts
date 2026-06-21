@@ -7,6 +7,7 @@ import { resolveApiBase } from "./base";
 import {
     clearAllSecureTokens,
     getCachedToken,
+    hydrateSecureStore,
     removeSecureToken,
     setSecureToken,
 } from "../secureStore";
@@ -52,21 +53,36 @@ export async function clearTokens(): Promise<void> {
     }
 }
 
+// Refresh single-flight: una página de datos (p.ej. el dashboard) dispara varias
+// peticiones a la vez; si el access token expiró, todas reciben 401 al unísono.
+// Sin deduplicar lanzarían N POST /refresh concurrentes (derroche y carreras).
+// Compartimos una única promesa de refresh en vuelo; la siguiente expiración
+// crea una nueva.
+let _refreshInFlight: Promise<boolean> | null = null;
+
 async function tryRefresh(): Promise<boolean> {
-    const refresh = getCachedToken("refresh_token");
-    if (!refresh) return false;
+    if (_refreshInFlight) return _refreshInFlight;
+    _refreshInFlight = (async () => {
+        const refresh = getCachedToken("refresh_token");
+        if (!refresh) return false;
+        try {
+            const res = await fetch(`${BASE}/api/v1/auth/refresh`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: refresh }),
+            });
+            if (!res.ok) return false;
+            const data = await res.json();
+            await setTokens(data.access_token, data.refresh_token);
+            return true;
+        } catch {
+            return false;
+        }
+    })();
     try {
-        const res = await fetch(`${BASE}/api/v1/auth/refresh`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: refresh }),
-        });
-        if (!res.ok) return false;
-        const data = await res.json();
-        await setTokens(data.access_token, data.refresh_token);
-        return true;
-    } catch {
-        return false;
+        return await _refreshInFlight;
+    } finally {
+        _refreshInFlight = null;
     }
 }
 
@@ -93,6 +109,11 @@ export async function request<T>(
     path: string,
     options: RequestInit = {}
 ): Promise<T> {
+    // Espera a que termine la hidratación de tokens antes de leer el access
+    // token: evita que una petición disparada al montar una página corra con el
+    // cache aún vacío (→ 401 → refresh sin token → rebote espurio a /login).
+    // Es idempotente y comparte la promesa en vuelo, así que el coste es nulo.
+    if (typeof window !== "undefined") await hydrateSecureStore();
     const token = getToken();
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -108,6 +129,14 @@ export async function request<T>(
         if (refreshed) {
             headers["Authorization"] = `Bearer ${getToken()}`;
             const retry = await safeFetch(`${BASE}${path}`, { ...options, headers });
+            if (retry.status === 401) {
+                // El refresh "tuvo éxito" pero el nuevo token tampoco vale
+                // (revocado, tenant deshabilitado): no dejar tokens muertos —
+                // logout limpio, igual que en la rama de refresh fallido.
+                await clearTokens();
+                window.location.href = "/login";
+                throw new ApiError(401, "Sesión expirada", undefined, "session_expired");
+            }
             if (!retry.ok) {
                 const err = await retry.json().catch(() => ({ detail: retry.statusText }));
                 throw new ApiError(
