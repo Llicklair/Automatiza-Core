@@ -20,9 +20,26 @@ logger = logging.getLogger(__name__)
 _oauth_states: dict[str, tuple[str, float, str | None]] = {}
 _OAUTH_STATE_TTL = 600
 
+# Estados OAuth ya consumidos con éxito, retenidos unos segundos para tolerar
+# callbacks DUPLICADOS. En el flujo de escritorio (Electron) el callback se abre
+# en el navegador del sistema y este puede solicitar la URL dos veces (prefetch,
+# doble navegación). Como el `state` es de un solo uso (pop_oauth_state), el
+# segundo callback encontraría None y devolvería la página de "estado inválido"
+# AUNQUE la integración ya quedó conectada en el primero. Recordar el tenant
+# brevemente permite responder éxito de forma idempotente sin re-canjear el
+# `code` (que además ya fue usado y el proveedor rechazaría).
+_completed_oauth: dict[str, tuple[str, float]] = {}
+_COMPLETED_OAUTH_GRACE = 120
+
 
 def set_oauth_state(state: str, tenant_id: str, code_verifier: str | None = None) -> None:
-    _oauth_states[state] = (tenant_id, _time.time() + _OAUTH_STATE_TTL, code_verifier)
+    now = _time.time()
+    # Barre states caducados: si el usuario inicia OAuth y no completa el flujo,
+    # su entrada (con el code_verifier PKCE) nunca se consumiría con
+    # pop_oauth_state → fuga de memoria no acotada en un proceso de vida larga.
+    for stale in [s for s, (_, exp, _) in _oauth_states.items() if exp <= now]:
+        del _oauth_states[stale]
+    _oauth_states[state] = (tenant_id, now + _OAUTH_STATE_TTL, code_verifier)
 
 
 def pop_oauth_state(state: str) -> tuple[str, str | None] | None:
@@ -211,6 +228,12 @@ async def handle_oauth_callback(
     """Procesa OAuth callback. Retorna tenant_id o None si state inválido."""
     popped = pop_oauth_state(state)
     if not popped:
+        # Callback duplicado: el primero ya consumió el state y conectó la
+        # integración. Si ocurrió hace poco, respondemos éxito (idempotente)
+        # en vez de "estado inválido o tokens fallidos".
+        done = _completed_oauth.get(state)
+        if done and done[1] > _time.time():
+            return done[0]
         return None
     tenant_id, code_verifier = popped
 
@@ -244,6 +267,11 @@ async def handle_oauth_callback(
     for itype in integration_types:
         await upsert_integration(tenant_id, itype, encrypted, db)
     await db.commit()
+    # Marca el state como completado para tolerar un callback duplicado.
+    now = _time.time()
+    _completed_oauth[state] = (tenant_id, now + _COMPLETED_OAUTH_GRACE)
+    for stale in [s for s, (_, exp) in _completed_oauth.items() if exp <= now]:
+        del _completed_oauth[stale]
     return tenant_id
 
 

@@ -49,10 +49,9 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
 
 async def _save_final_state(task, final_state: dict, db) -> None:
     """Persist LangGraph final state into the Task row. Shared by execute & resume."""
+    status_val = final_state.get("status")
     task.status = (
-        final_state["status"].value
-        if hasattr(final_state["status"], "value")
-        else final_state["status"]
+        status_val.value if hasattr(status_val, "value") else (status_val or "failed")
     )
     task.plan = final_state.get("plan")
     task.agent_results = final_state.get("agent_results", [])

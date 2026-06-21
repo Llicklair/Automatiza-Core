@@ -220,7 +220,11 @@ async def _plan_from_blueprint(state: OrchestratorState, wf) -> "list[SubTask] |
         plan.append(
             {
                 "id": node_id,
-                "agent": data.get("domain", "coordinator"),
+                # Default a "chat" (dispatcher real) y NO "coordinator": coordinator
+                # no está en DISPATCHER_MAP → caía al fallback que devuelve
+                # success=True sin ejecutar nada (éxito silencioso). chat al menos
+                # procesa el intent del nodo.
+                "agent": data.get("domain", "chat"),
                 "action": "execute_node",
                 "params": params,
                 "depends_on": final_deps,

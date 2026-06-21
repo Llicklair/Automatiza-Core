@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { sanitizeHTML } from "@/components/GenerativeUI";
 import {
     Loader2, Plus, Trash2, Eye, EyeOff, ChevronRight,
 } from "lucide-react";
@@ -114,7 +115,7 @@ export default function TabTemplates() {
                     {preview ? (
                         <div
                             className="min-h-[180px] bg-white rounded-lg border border-border p-4 overflow-auto"
-                            dangerouslySetInnerHTML={{ __html: form.html_body.replace("{{nombre}}", t("templates.sampleName")).replace("{{email}}", "cliente@ejemplo.com") }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHTML(form.html_body.replace("{{nombre}}", t("templates.sampleName")).replace("{{email}}", "cliente@ejemplo.com")) }}
                         />
                     ) : (
                         <textarea

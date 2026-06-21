@@ -178,6 +178,52 @@ async def _broadcast(manager, tenant_id: str, payload: dict) -> None:
         logger.debug("WS broadcast error: %s", exc)
 
 
+async def _record_run_usage(
+    db,
+    *,
+    task,
+    task_id: str,
+    tenant_id: str,
+    employee_id: str | None,
+    usage_cb,
+) -> None:
+    """Persiste el consumo de tokens/coste de una ejecución del orquestador.
+
+    Compartido por _execute_orchestrator y _resume_orchestrator para que tanto la
+    ejecución normal como la reanudación-tras-aprobación registren la
+    traza-resumen de coste (la que leen el modal de consumo de IA y el dashboard)
+    y, si la task iba dirigida a un AIEmployee, su uso de tokens.
+    """
+    if (usage_cb.total_tokens_in + usage_cb.total_tokens_out) <= 0:
+        return
+    # Traza-resumen append-only con el coste real de la task. Sin esto las filas
+    # de agent_execution_trace (insertadas por dispatch) no llevan tokens/cost y
+    # el modal de consumo muestra 0 €.
+    from app.services.observability import record_task_cost_trace
+    await record_task_cost_trace(
+        db,
+        tenant_id=task.tenant_id,
+        task_id=task.id,
+        agent_name="orchestrator",
+        tokens_in=usage_cb.total_tokens_in,
+        tokens_out=usage_cb.total_tokens_out,
+        cost_usd=usage_cb.total_cost_usd,
+        llm_provider=usage_cb._current_provider,
+    )
+    if employee_id:
+        from app.services.ai.employee_crud import record_token_usage
+        await record_token_usage(
+            employee_id=employee_id,
+            tenant_id=tenant_id,
+            task_id=task_id,
+            tokens_in=usage_cb.total_tokens_in,
+            tokens_out=usage_cb.total_tokens_out,
+            cost_usd=usage_cb.total_cost_usd,
+            provider=usage_cb._current_provider,
+            db=db,
+        )
+
+
 async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None):
     """Coordina: cargar tarea -> construir estado -> stream LangGraph -> persistir.
 
@@ -213,10 +259,42 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
         initial_state = await _build_initial_state(task, task_id, db)
         log_push(task_id, "Iniciando automatizacion...")
 
+        # El callback de uso lo posee el worker (no _stream_and_log) para poder
+        # registrar el consumo aunque la tarea se cancele ("Detener") o falle.
+        from app.core.llm_callbacks import UsageTrackingCallback
+
+        usage_cb = UsageTrackingCallback(
+            tenant_id=tenant_id,
+            agent_name=initial_state.get("classified_domain") or "unknown",
+        )
+
         try:
-            final_state, usage_cb = await _stream_and_log(task_id, initial_state, orchestrator)
-        except Exception:
+            final_state = await _stream_and_log(task_id, initial_state, orchestrator, usage_cb)
+        except (Exception, asyncio.CancelledError):
+            # Cancelación ("Detener") o error a mitad: registra el consumo PARCIAL
+            # ya acumulado antes de propagar, para que el modal de consumo no salga
+            # a 0 tras detener. Best-effort: nunca tapa la excepción original.
+            try:
+                await _record_run_usage(
+                    db, task=task, task_id=task_id, tenant_id=tenant_id,
+                    employee_id=employee_id, usage_cb=usage_cb,
+                )
+                await db.commit()
+            except Exception:
+                logger.warning(
+                    "No se pudo registrar consumo parcial (task=%s)", task_id, exc_info=True
+                )
             if employee_id:
+                # La excepción original pudo dejar la sesión en transacción fallida;
+                # sin rollback, el UPDATE de status + commit también fallarían y el
+                # empleado quedaría colgado en "working".
+                try:
+                    await db.rollback()
+                except Exception:
+                    logger.debug(
+                        "rollback previo a restaurar status falló (task=%s)",
+                        task_id, exc_info=True,
+                    )
                 await _set_agent_status(db, employee_id, tenant_id, "idle")
                 try:
                     await db.commit()
@@ -239,18 +317,14 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
         await _save_final_state(task, final_state, db)
         await _sync_workflow_artifacts(task, final_state, db)
 
-        if employee_id and (usage_cb.total_tokens_in + usage_cb.total_tokens_out) > 0:
-            from app.services.ai.employee_crud import record_token_usage
-            await record_token_usage(
-                employee_id=employee_id,
-                tenant_id=tenant_id,
-                task_id=task_id,
-                tokens_in=usage_cb.total_tokens_in,
-                tokens_out=usage_cb.total_tokens_out,
-                cost_usd=usage_cb.total_cost_usd,
-                provider=usage_cb._current_provider,
-                db=db,
-            )
+        await _record_run_usage(
+            db,
+            task=task,
+            task_id=task_id,
+            tenant_id=tenant_id,
+            employee_id=employee_id,
+            usage_cb=usage_cb,
+        )
 
         entry = await _log_task_completion(db, task, final_state, employee_id, tenant_id)
         if employee_id:
@@ -325,7 +399,41 @@ async def _resume_orchestrator(task_id: str, tenant_id_hint: str | None = None):
             "additional_metadata": task.additional_metadata or {},
         }
 
-        final_state = await orchestrator.ainvoke(initial_state, config={"recursion_limit": 50})
+        # Engancha el tracker de uso también en la reanudación: sin esto el LLM
+        # que corre tras la aprobación no contabilizaba tokens (el modal de
+        # consumo y el dashboard ignoraban el coste del tramo post-aprobación).
+        from app.core.llm_callbacks import UsageTrackingCallback
+
+        employee_id = (task.additional_metadata or {}).get("addressed_employee_id")
+        usage_cb = UsageTrackingCallback(
+            tenant_id=str(task.tenant_id), agent_name=task.domain or "unknown"
+        )
+        try:
+            final_state = await orchestrator.ainvoke(
+                initial_state, config={"recursion_limit": 50, "callbacks": [usage_cb]}
+            )
+        except (Exception, asyncio.CancelledError):
+            # Cancelación/error en la reanudación: registra el consumo parcial.
+            try:
+                await _record_run_usage(
+                    db, task=task, task_id=task_id, tenant_id=str(task.tenant_id),
+                    employee_id=employee_id, usage_cb=usage_cb,
+                )
+                await db.commit()
+            except Exception:
+                logger.warning(
+                    "No se pudo registrar consumo parcial en reanudación (task=%s)",
+                    task_id, exc_info=True,
+                )
+            raise
 
         await _save_final_state(task, final_state, db)
+        await _record_run_usage(
+            db,
+            task=task,
+            task_id=task_id,
+            tenant_id=str(task.tenant_id),
+            employee_id=employee_id,
+            usage_cb=usage_cb,
+        )
         await db.commit()

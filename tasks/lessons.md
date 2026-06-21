@@ -4,6 +4,49 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-21 — Inventariar IA por sus @tool, no por nombres de carpeta
+
+**Contexto:** En un análisis competitivo (Holded vs. AutomatizaPyme) subestimé la capa
+de IA: listé los 14 agentes por nombre de dominio pero NO lo que sus herramientas
+ejecutan. El usuario corrigió: los agentes hacen mucho más (triaje/envío de correo,
+campañas y publicación en redes, redacción de informes a PDF, generación/importación
+de Excel, OCR de facturas, ajustes masivos de stock). La diferenciación real vivía en
+los `@tool`, no en la estructura de directorios.
+
+**Patrón:** "qué agentes existen" ≠ "qué puede hacer la IA". El valor está en las
+funciones `@tool` de cada `agents/<dominio>/tools.py` y en el catálogo de skills
+(`agent_tools/ai_team.py::AVAILABLE_SKILLS`), no en los nombres de carpeta.
+
+**Regla de prevención:** Al evaluar/comparar capacidades de IA, inventariar las
+herramientas `@tool` (acción + docstring) y el catálogo de skills, no solo los agentes.
+Y distinguir siempre lo ejecutable-real de lo DEMO/stub (p.ej. banca PSD2 = datos demo,
+scoring de CVs deshabilitado en MVP) para no sobre-prometer en demos comerciales.
+
+---
+
+## 2026-06-21 — "Pestaña rota" = tabla nunca poblada (helper sin call-sites)
+
+**Contexto:** Analítica → IA mostraba "Sin ejecuciones de agentes en este periodo".
+La UI y la query (`services/analytics/dashboard.py`, tabla `agent_execution_trace`)
+eran correctas: la tabla estaba **vacía en toda la BD** pese a 4.484 tasks ejecutadas.
+Causa raíz: el helper `record_agent_execution()` existía y estaba exportado, pero
+**ningún sitio lo llamaba** — `grep` de call-sites solo devolvía la def y el re-export.
+
+**Patrón:** Cuando un panel "no funciona" pero dice "sin datos", verificar PRIMERO si
+la fuente de datos tiene filas (`SELECT count(*)`) antes de tocar UI/query. Un helper
+de persistencia sin call-sites reales es un bug silencioso clásico.
+
+**Regla de prevención:** Ante un empty-state, ordenar el diagnóstico de datos→arriba:
+(1) ¿la tabla tiene filas? (2) ¿se escriben en algún call-site? (3) ¿el filtro
+tenant/fecha es correcto? Solo entonces sospechar de la UI. Y al instrumentar el
+único chokepoint (aquí `invoke_dispatcher`), hacerlo **no-fatal** (try/except +
+logger.warning): la observabilidad nunca debe romper el hot-path del agente.
+
+**Status mapping:** el dispatcher emite `success/failed/timeout` pero la analítica
+filtra por `ok/error` — mapear explícitamente o las trazas no cuentan.
+
+---
+
 ## 2026-06-19 — No ordenar por UUID aleatorio para aserciones de orden
 
 **Contexto:** `test_e2e_verifactu::test_cadena_enlaza_dos_facturas` fallaba ~50% en CI
@@ -1006,3 +1049,43 @@ colocado "primero" gana a uno específico.
 3. Un strong keyword debe ser de alta precisión: "contrato indefinido/temporal/fijo
    discontinuo" son señal HR inequívoca (nadie los dice para archivar un PDF); "qué dice" a
    secas NO es señal rag — el objeto ("según el documento") sí lo es.
+
+---
+
+## 2026-06-21 — Keywords deben ser STEMS, no formas concretas (acento/plural/conjugación)
+
+**Contexto:** campaña de pruebas LLM (todos los dominios, contra tenant Demo Masivo). El
+routing por keywords falló en automatizaciones: "lista mis automatizaciones activas" →
+`billing`; "automatiza que cada fin de mes se generen las nóminas" → `unknown`→LLM→`hr`. Las
+keywords de workflow eran `"automatización"` (con tilde) y `"automatizar"` — y el match es
+substring (`kw in intent_lower`), así que NINGUNA captura `"automatiza"`, `"automatizaciones"`
+(plural sin tilde) ni el imperativo `"automatiza"`. Es la MISMA familia que el bug de
+[2026-06-20]: una forma léxica concreta no cubre las variantes que el usuario teclea.
+
+**Patrón antipatrón:** registrar keywords como palabras "de diccionario" (singular, con
+tilde, infinitivo). El usuario escribe plurales, imperativos y sin tildes. El match por
+substring las pierde en silencio → cae al LLM (no determinista) → misroute.
+
+**Regla de prevención:**
+1. Preferir el **stem más corto e inequívoco** como keyword: `"automatiza"` cubre de un golpe
+   automatiza/automatizar/automatización/automatizaciones (todas lo contienen). Un stem >
+   N formas concretas y nunca se queda corto ante una flexión nueva.
+2. Cubrir variantes recurrentes ("cada fin de mes" junto a "cada lunes/día/semana"), pero
+   NO meter términos genéricos ambiguos en _STRONG_ ("cada mes" colisiona con consultas
+   "¿cuánto facturamos cada mes?"): esos van solo a _KEYWORD_MAP (scoring) o se omiten.
+3. Toda corrección de routing entra como caso en `tests/test_classifier_keyword_routing.py`
+   (con su guarda de colisión), no solo el happy path.
+
+**Hallazgos a nivel LLM/agente — investigados: NO eran bugs, eran prompts de test
+infraespecificados.** (Lección: un "FAILED" de campaña LLM hay que reproducirlo de forma
+determinista antes de creerlo — el verdadero defecto puede estar en el caso de prueba.)
+- "da de alta a María, contrato indefinido, 2200€" → el agente HR pidió datos en vez de
+  crear. Causa: `create_employee` exige NIF EN 3 CAPAS (firma `nif: str` sin default; guard
+  `if not nif.strip(): return Error`; prompt "NIF obligatorio") — por diseño, un empleado sin
+  NIF no tributa. El prompt de la campaña venía SIN NIF → pedirlo es correcto, no un fallo.
+- "calcula la nómina de un empleado" → el agente respondió "problema técnico con la
+  herramienta". Reproducido directo (sin LLM) con un empleado real:
+  `calculate_and_create_payroll` FUNCIONA (genera DRAFT con SS/IRPF correctos). El fallo fue
+  que el prompt decía "un empleado" (genérico, sin NIF/nombre) → el agente no pudo resolver a
+  quién y lo verbalizó mal. Pulido opcional: que el agente diga "¿de qué empleado?" en vez de
+  "problema técnico". Tools HR sanas.
