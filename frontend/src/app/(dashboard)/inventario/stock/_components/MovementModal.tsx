@@ -26,6 +26,8 @@ interface MovementModalProps {
 export function MovementModal({ open, onOpenChange, selectedProduct, movForm, setMovForm, onSubmit, saving }: MovementModalProps) {
     const t = useTranslations("inventario");
     const tc = useTranslations("common");
+    const isSalida = movForm.movement_type === "salida";
+    const reasons = ["rotura", "merma", "robo", "caducado"] as const;
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
@@ -34,6 +36,7 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                     {selectedProduct && (
                         <DialogDescription>
                             {selectedProduct.name} &middot; {t("movementModal.currentStock")}: <span className="text-foreground font-mono">{fmt(selectedProduct.stock_quantity)}</span>
+                            {" "}&middot;{" "}<span className="text-foreground font-mono">{t("movementModal.boxesShort", { value: fmt(selectedProduct.stock_boxes) })}</span>
                         </DialogDescription>
                     )}
                 </DialogHeader>
@@ -61,6 +64,37 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                             </div>
                         </div>
                         <div>
+                            <Label className="text-xs mb-1.5">{t("movementModal.stockKind")}</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-1.5">
+                                {(["unit", "box"] as const).map(kind => (
+                                    <Button
+                                        key={kind}
+                                        type="button"
+                                        variant={movForm.stock_kind === kind ? "default" : "outline"}
+                                        onClick={() => setMovForm(f => ({ ...f, stock_kind: kind }))}
+                                    >
+                                        {t(`movementModal.kind_${kind}`)}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                        {isSalida && (
+                            <div>
+                                <Label className="text-xs">{t("movementModal.reason")}</Label>
+                                <select
+                                    value={movForm.reason}
+                                    onChange={e => setMovForm(f => ({ ...f, reason: e.target.value }))}
+                                    aria-label={t("movementModal.reason")}
+                                    className="mt-1.5 w-full bg-background border border-border text-foreground text-sm rounded-md px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                                >
+                                    <option value="">{t("movementModal.reasonNone")}</option>
+                                    {reasons.map(r => (
+                                        <option key={r} value={r}>{t(`movementModal.reason_${r}`)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div>
                             <Label className="text-xs">
                                 {movForm.movement_type === "ajuste" ? t("movementModal.newTotalStock") : t("movementModal.quantity")}
                             </Label>
@@ -72,9 +106,12 @@ export function MovementModal({ open, onOpenChange, selectedProduct, movForm, se
                             {movForm.movement_type !== "ajuste" && (
                                 <p className="text-xs text-muted-foreground mt-1">
                                     {t("movementModal.newStock")}: <span className="text-foreground font-mono">
-                                        {movForm.movement_type === "entrada"
-                                            ? fmt(selectedProduct.stock_quantity + (movForm.quantity || 0))
-                                            : fmt(Math.max(0, selectedProduct.stock_quantity - (movForm.quantity || 0)))}
+                                        {(() => {
+                                            const current = movForm.stock_kind === "box" ? selectedProduct.stock_boxes : selectedProduct.stock_quantity;
+                                            return movForm.movement_type === "entrada"
+                                                ? fmt(current + (movForm.quantity || 0))
+                                                : fmt(Math.max(0, current - (movForm.quantity || 0)));
+                                        })()}
                                     </span>
                                 </p>
                             )}

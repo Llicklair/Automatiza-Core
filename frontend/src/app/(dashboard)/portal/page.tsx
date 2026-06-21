@@ -17,7 +17,7 @@ export default function PortalPage() {
     const {
         isAdmin,
         tab, setTab,
-        data, loading,
+        data, loading, loadError,
         employeesList, selectedEmployeeId, readOnly,
         clockBusy, clockError,
         showLeave, setShowLeave, leaveForm, setLeaveForm, saving, leaveError, setLeaveError,
@@ -66,6 +66,14 @@ export default function PortalPage() {
                     <p className="text-xs text-muted-foreground">
                         {t("page.selectEmployeeHint")}
                     </p>
+                </div>
+            )}
+
+            {!loading && !emp && isAdmin && selectedEmployeeId && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-8 text-center space-y-2">
+                    <Briefcase className="w-8 h-8 mx-auto text-destructive opacity-50" />
+                    <p className="text-sm text-destructive font-medium">{t("page.loadFailed")}</p>
+                    {loadError && <p className="text-xs text-muted-foreground">{loadError}</p>}
                 </div>
             )}
 

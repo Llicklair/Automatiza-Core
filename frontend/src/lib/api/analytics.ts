@@ -156,6 +156,12 @@ export interface AnalyticsClientes {
     nuevos_periodo: number;
 }
 
+export interface AnalyticsInventario {
+    bajas_units: number;
+    bajas_value_eur: number;
+    below_min_count: number;
+}
+
 export interface AnalyticsDashboard {
     period: string;
     period_label: string;
@@ -172,6 +178,7 @@ export interface AnalyticsDashboard {
     ia: AnalyticsIA;
     ia_detalle: AnalyticsIADetalle;
     clientes: AnalyticsClientes;
+    inventario: AnalyticsInventario;
 }
 
 export const analytics = {

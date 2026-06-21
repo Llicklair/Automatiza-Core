@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon, ShoppingCart, Tags, BarChart3 } from "lucide-react";
+import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon, ShoppingCart, Tags, BarChart3, PackageMinus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { type Product } from "@/lib/api";
@@ -96,9 +96,14 @@ export default function StockPage() {
                 const isOut = product.stock_quantity === 0;
                 const isLow = product.stock_min_alert > 0 && product.stock_quantity <= product.stock_min_alert;
                 return (
-                    <span className={`text-lg font-bold font-mono ${isOut ? "text-rose-400" : isLow ? "text-amber-400" : "text-foreground"}`}>
-                        {fmt(product.stock_quantity)}
-                    </span>
+                    <div className="flex flex-col">
+                        <span className={`text-lg font-bold font-mono ${isOut ? "text-rose-400" : isLow ? "text-amber-400" : "text-foreground"}`}>
+                            {t("stock.unitsShort", { value: fmt(product.stock_quantity) })}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                            {t("stock.boxesShort", { value: fmt(product.stock_boxes) })}
+                        </span>
+                    </div>
                 );
             },
         },
@@ -179,6 +184,9 @@ export default function StockPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => openEditProduct(product)}>
                                     <Pencil className="mr-2 w-3.5 h-3.5" /> {tc("edit")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openMovement(product, "salida")}>
+                                    <PackageMinus className="mr-2 w-3.5 h-3.5" /> {t("stock.writeOff")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => handleDelete(product)}

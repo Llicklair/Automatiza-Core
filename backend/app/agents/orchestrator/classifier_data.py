@@ -150,14 +150,14 @@ _KEYWORD_MAP: dict[str, list[str]] = {
         "cruza",
     ],
     "workflow": [
-        "automatización",
+        "automatiza",  # stem: cubre automatiza/automatizar/automatización/automatizaciones
         "regla",
         "cada vez que",
         "programar",
         "automático",
         "workflow",
-        "automatizar",
         "repetir",
+        "cada fin de mes",
     ],
     "recruitment": [
         "reclutamiento",
@@ -303,9 +303,9 @@ _STRONG_KEYWORDS: dict[str, list[str]] = {
     "email": ["envía un email", "envía email", "envía un correo", "envía correo",
               "manda un email", "manda email", "manda un correo", "responde el correo",
               "responde el email", "bandeja de entrada", "revisa el inbox"],
-    "workflow": ["crea un workflow", "automatización", "workflow", "cada lunes",
+    "workflow": ["crea un workflow", "automatiza", "workflow", "cada lunes",
                  "cada martes", "cada miércoles", "cada jueves", "cada viernes",
-                 "cada día", "cada semana"],
+                 "cada día", "cada semana", "cada fin de mes"],
     "documents": ["escanea", "escanear este", "sube este pdf", "sube este documento",
                   "clasifica los documentos", "clasifica el documento"],
     "recruitment": ["candidato", "currículum", "shortlist", "selección de personal",

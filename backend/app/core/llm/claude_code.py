@@ -80,6 +80,8 @@ async def _spawn_process() -> "asyncio.subprocess.Process":
     return await asyncio.create_subprocess_exec(
         _resolve_claude_bin(),
         "-p",
+        "--output-format",
+        "json",
         "--dangerously-skip-permissions",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
@@ -87,6 +89,47 @@ async def _spawn_process() -> "asyncio.subprocess.Process":
         env=_clean_env(),
         cwd=_neutral_cwd(),
     )
+
+
+def _parse_cli_output(raw: str) -> tuple[str, dict | None]:
+    """Parsea la salida de `claude -p --output-format json`.
+
+    El envelope JSON del CLI trae el texto de respuesta en `result` y los tokens
+    consumidos en `usage`. Devuelve (texto, usage_metadata) donde usage_metadata
+    sigue la forma que espera `UsageTrackingCallback._extract_tokens`
+    (input_tokens/output_tokens/total_tokens).
+
+    Fallback robusto: si la salida NO es ese envelope (CLI antiguo sin la flag,
+    un mensaje de error en texto plano, etc.) devuelve (raw, None) y el flujo la
+    trata como texto — así nunca rompemos la IA aunque cambie el formato del CLI.
+    """
+    raw = (raw or "").strip()
+    if not raw.startswith("{"):
+        return raw, None
+    try:
+        env = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw, None
+    if not isinstance(env, dict) or "result" not in env:
+        return raw, None
+    text = env.get("result") or ""
+    usage = env.get("usage") or {}
+    tokens_in = (
+        int(usage.get("input_tokens") or 0)
+        + int(usage.get("cache_read_input_tokens") or 0)
+        + int(usage.get("cache_creation_input_tokens") or 0)
+    )
+    tokens_out = int(usage.get("output_tokens") or 0)
+    meta = (
+        {
+            "input_tokens": tokens_in,
+            "output_tokens": tokens_out,
+            "total_tokens": tokens_in + tokens_out,
+        }
+        if (tokens_in or tokens_out)
+        else None
+    )
+    return text, meta
 
 
 # ---------------------------------------------------------------------------
@@ -401,7 +444,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             return ""
         return _build_tool_system_prompt(self._bound_tools)
 
-    def _process_response(self, text: str) -> ChatResult:
+    def _process_response(self, text: str, usage: dict | None = None) -> ChatResult:
         if self._bound_tools:
             msg = _parse_tool_response(text)
             if not msg.tool_calls and self._bound_tools:
@@ -437,6 +480,10 @@ class ClaudeCodeChatModel(BaseChatModel):
                     )
         else:
             msg = AIMessage(content=text)
+        # Adjunta los tokens reales (claude -p --output-format json) para que
+        # UsageTrackingCallback los contabilice y el modal de consumo no salga a 0.
+        if usage:
+            msg.usage_metadata = usage
         return ChatResult(generations=[ChatGeneration(message=msg)])
 
     # -- sync ----------------------------------------------------------------
@@ -447,23 +494,30 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
-        text = self._call_cli(prompt)
+        text, usage = self._call_cli(prompt)
         try:
-            return self._process_response(text)
+            return self._process_response(text, usage)
         except LLMRefusedToolUseError:
             if not self._bound_tools:
                 raise
             _log.warning("[ClaudeCode] rehúsa de tools detectada, reintentando con prompt correctivo")
             retry_prompt = f"{prompt}\n\n[System]: {_REFUSAL_RETRY_INSTRUCTION}"
-            return self._process_response(self._call_cli(retry_prompt))
+            rtext, rusage = self._call_cli(retry_prompt)
+            return self._process_response(rtext, rusage)
 
-    def _call_cli(self, prompt: str) -> str:
-        """Invoca `claude -p` de forma síncrona y devuelve el texto (o un mensaje de error)."""
+    def _call_cli(self, prompt: str) -> tuple[str, dict | None]:
+        """Invoca `claude -p --output-format json` (sync). Devuelve (texto, usage_metadata)."""
         import subprocess
 
         try:
             result = subprocess.run(
-                [_resolve_claude_bin(), "-p", "--dangerously-skip-permissions"],
+                [
+                    _resolve_claude_bin(),
+                    "-p",
+                    "--output-format",
+                    "json",
+                    "--dangerously-skip-permissions",
+                ],
                 input=prompt,
                 capture_output=True,
                 text=True,
@@ -472,17 +526,18 @@ class ClaudeCodeChatModel(BaseChatModel):
                 env=_clean_env(),
                 cwd=_neutral_cwd(),
             )
-            return result.stdout.strip() or result.stderr.strip() or "Sin respuesta del CLI"
+            raw = result.stdout.strip() or result.stderr.strip() or "Sin respuesta del CLI"
+            return _parse_cli_output(raw)
         except subprocess.TimeoutExpired:
-            return "Error: Claude Code CLI no respondio en el tiempo limite."
+            return "Error: Claude Code CLI no respondio en el tiempo limite.", None
         except FileNotFoundError:
             return (
                 "IA no configurada: no hay una clave de API activa. "
                 "Ve a Configuración → Claves API y añade tu clave de Anthropic, "
                 "OpenAI o Groq para que los agentes funcionen."
-            )
+            ), None
         except Exception as e:
-            return f"Error inesperado en Claude Code CLI: {e}"
+            return f"Error inesperado en Claude Code CLI: {e}", None
 
     # -- async ----------------------------------------------------------------
     async def _agenerate(
@@ -492,18 +547,19 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
-        text = await self._acall_cli(prompt)
+        text, usage = await self._acall_cli(prompt)
         try:
-            return self._process_response(text)
+            return self._process_response(text, usage)
         except LLMRefusedToolUseError:
             if not self._bound_tools:
                 raise
             _log.warning("[ClaudeCode] rehúsa de tools detectada, reintentando con prompt correctivo")
             retry_prompt = f"{prompt}\n\n[System]: {_REFUSAL_RETRY_INSTRUCTION}"
-            return self._process_response(await self._acall_cli(retry_prompt))
+            rtext, rusage = await self._acall_cli(retry_prompt)
+            return self._process_response(rtext, rusage)
 
-    async def _acall_cli(self, prompt: str) -> str:
-        """Invoca `claude -p` de forma asíncrona y devuelve el texto (o un mensaje de error)."""
+    async def _acall_cli(self, prompt: str) -> tuple[str, dict | None]:
+        """Invoca `claude -p --output-format json` (async). Devuelve (texto, usage_metadata)."""
         proc: asyncio.subprocess.Process | None = None
         text = ""
         try:
@@ -557,7 +613,7 @@ class ClaudeCodeChatModel(BaseChatModel):
                 except Exception:
                     _log.debug("[ClaudeCode] no se pudo limpiar el proceso colgado; continúo", exc_info=True)
         _log.info("[ClaudeCode] _acall_cli key='%s': %d chars", self.pool_key, len(text))
-        return text
+        return _parse_cli_output(text)
 
     # -- tool binding ---------------------------------------------------------
     def bind_tools(self, tools, *, tool_choice=None, **kwargs):

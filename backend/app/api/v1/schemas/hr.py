@@ -90,6 +90,7 @@ class AttendanceResponse(BaseModel):
     clock_out: datetime | None = None
     date: date
     notes: str | None = None
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Leave Requests ────────────────────────────────────────────────────────────
@@ -142,6 +143,7 @@ class LeaveRequestResponse(BaseModel):
     status: str
     notes: str | None = None
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PayrollBase(BaseModel):

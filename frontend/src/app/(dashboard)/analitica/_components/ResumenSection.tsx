@@ -2,6 +2,7 @@
 
 import {
     TrendingUp, TrendingDown, FileText, Activity, BrainCircuit, Clock,
+    PackageMinus, AlertTriangle,
 } from "lucide-react";
 import {
     AreaChart, Area, PieChart, Pie, Cell,
@@ -33,6 +34,9 @@ interface ResumenSectionProps {
     importeVencenProximos: number;
     tasksDone: number;
     tasksSuccessRate: number;
+    bajasUnits: number;
+    bajasValueEur: number;
+    belowMinCount: number;
 }
 
 export function ResumenSection({
@@ -42,6 +46,7 @@ export function ResumenSection({
     factPagadas, factPendientes, factBorrador,
     importePendienteCobro, vencenProximos, importeVencenProximos,
     tasksDone, tasksSuccessRate,
+    bajasUnits, bajasValueEur, belowMinCount,
 }: ResumenSectionProps) {
     const t = useTranslations("analitica");
     return (
@@ -100,6 +105,29 @@ export function ResumenSection({
                                 <p className="text-xs text-muted-foreground mt-1">{t("resumen.pendingTotalSub", { count: factPendientes })}</p>
                             </div>
                             <FileText className="w-8 h-8 text-muted-foreground/40" />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Inventario: mermas y bajo mínimo */}
+            {(bajasUnits > 0 || belowMinCount > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-rose-300 uppercase font-semibold tracking-wide">{t("resumen.mermasTitle")}</p>
+                            <p className="text-xl font-bold text-foreground mt-1">{t("resumen.mermasCount", { count: bajasUnits })}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t("resumen.mermasAmount", { amount: fmt(bajasValueEur) })}</p>
+                        </div>
+                        <PackageMinus className="w-8 h-8 text-rose-400/60" />
+                    </div>
+                    {belowMinCount > 0 && (
+                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-amber-300 uppercase font-semibold tracking-wide">{t("resumen.belowMinTitle")}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{t("resumen.belowMinCount", { count: belowMinCount })}</p>
+                            </div>
+                            <AlertTriangle className="w-8 h-8 text-amber-400/60" />
                         </div>
                     )}
                 </div>

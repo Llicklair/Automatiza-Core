@@ -3632,7 +3632,23 @@
       "stock": "Stock",
       "notSold": "Unsold for",
       "value": "Value",
-      "never": "never"
+      "never": "never",
+      "mermasTitle": "Shrinkage and write-offs (last {days} days)",
+      "bajasUnits": "Write-offs (units)",
+      "bajasValue": "Write-off value",
+      "boxBajas": "Box write-offs (units)",
+      "belowMin": "Below minimum",
+      "byReason": "By reason",
+      "reasonLabel": "Reason",
+      "units": "Units",
+      "topMermas": "Products with most shrinkage",
+      "noBajas": "No write-offs in the period.",
+      "reason": {
+        "rotura": "Breakage",
+        "merma": "Shrinkage",
+        "robo": "Theft",
+        "caducado": "Expired"
+      }
     },
     "labels": {
       "generateError": "Could not generate the labels",
@@ -4203,6 +4219,7 @@
       "notLinkedHint": "Ask your administrator to add your email ({email}) to your employee record.",
       "selectEmployeeTitle": "Select an employee to preview",
       "selectEmployeeHint": "Use the selector above to view My portal for anyone on your staff.",
+      "loadFailed": "Could not load this employee's portal.",
       "tabFicha": "My record",
       "tabNominas": "My payslips",
       "tabVacaciones": "My absences",
@@ -4406,7 +4423,12 @@
       "invoiceStatusEmpty": "No invoices issued",
       "statusPaid": "Collected Invoices",
       "statusPending": "Pending Invoices",
-      "statusDraft": "Drafts"
+      "statusDraft": "Drafts",
+      "mermasTitle": "Shrinkage this period",
+      "mermasCount": "{count} units",
+      "mermasAmount": "Value: {amount}€",
+      "belowMinTitle": "Below minimum",
+      "belowMinCount": "{count} products"
     },
     "ventas": {
       "title": "Sales",

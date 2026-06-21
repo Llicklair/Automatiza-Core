@@ -38,6 +38,7 @@ export default function AnaliticaPage() {
         rrhh, banca,
         ia, iaDetalle,
         tasksDone, tasksFailed, tasksSuccessRate, tasksPending,
+        inventario,
     } = useAnalitica();
 
     const months = [
@@ -118,6 +119,9 @@ export default function AnaliticaPage() {
                     importeVencenProximos={importeVencenProximos}
                     tasksDone={tasksDone}
                     tasksSuccessRate={tasksSuccessRate}
+                    bajasUnits={inventario.bajas_units}
+                    bajasValueEur={inventario.bajas_value_eur}
+                    belowMinCount={inventario.below_min_count}
                 />
 
                 {/* ── VENTAS ────────────────────────────────────────────── */}

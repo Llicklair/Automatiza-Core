@@ -37,6 +37,11 @@ class Product(Base):
     cost_price = Column(Numeric(10, 2))
     tax_percentage = Column(Numeric(5, 2), default=21.0)
     stock_quantity = Column(Integer, nullable=False, default=0)
+    # Contador de CAJAS independiente de `stock_quantity` (unidades sueltas). No
+    # hay conversión automática entre ambos: una baja por rotura descuenta del
+    # contador que corresponda según `StockMovement.stock_kind`. Las cajas NO
+    # pasan por FEFO/lotes/ProductStock/valoración (todo eso es unit-only).
+    stock_boxes = Column(Integer, nullable=False, default=0)
     stock_min_alert = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
     supplier_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True)
@@ -101,6 +106,12 @@ class StockMovement(Base):
     )
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     movement_type = Column(String(50), nullable=False)
+    # "unit" (unidades, por defecto) | "box" (cajas). Indica sobre qué contador
+    # del producto actúa el movimiento y a qué se refiere `stock_after`.
+    stock_kind = Column(String(10), nullable=False, default="unit")
+    # Motivo de una baja (salida): "rotura" | "merma" | "robo" | "caducado" | ...
+    # Null en movimientos normales (entrada/salida de venta/ajuste sin motivo).
+    reason = Column(String(30), nullable=True)
     quantity = Column(Integer, nullable=False)
     stock_after = Column(Integer, nullable=False, default=0)
     unit_cost = Column(Numeric(10, 2), nullable=True)
