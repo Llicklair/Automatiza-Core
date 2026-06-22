@@ -14,6 +14,58 @@
 
 ---
 
+## 2026-06-22 — Contraste del consejo + Item 10 (reproducibilidad de deps)
+
+Contraste de `consejo-report-20260622-222059`: la narrativa de "urgencia de
+seguridad RLS" estaba sobredimensionada (el listener RLS global de `app/db/rls.py`
+ya sella el aislamiento **fail-closed**; los ítems 1/6 son higiene, no P0), y el
+ítem 10 estaba mal ejecutado (requirements.txt no era la fuente de verdad).
+
+### ✅ HECHO — Item 10: requirements.txt pineado y reproducible
+- `pyproject.toml`: `celery`/`redis` → grupo `cloud`; `sentence-transformers`/
+  `langchain-huggingface` → grupo `localml` (no se empaquetan al escritorio);
+  `opendataloader-pdf` añadido a main (dep real ausente del lock).
+- `requirements.txt` = export pineado (`poetry export --only main`): 122 deps `==`,
+  ASCII-only, cabecera "generado, no editar". +langchain-anthropic (cerró gap: el
+  proveedor Anthropic no se empaquetaba). Sin torch/celery/redis.
+- Verificado dry-run `pip install --target` en Windows/py3.11 (EXIT 0).
+- CI: `poetry 1.8.2 → 2.3.4` (1.8.2 no leía el lock 2.1, CI estaba roto) +
+  drift-guard que falla si requirements.txt deja de coincidir con el export.
+- Opcional pendiente: paso 2 = vendorizar wheels + `--require-hashes` (offline).
+
+### ✅ HECHO — Item 4: Onboarding "datos de ejemplo" (seed demo-empresa) (2026-06-23)
+Confirmado ~80% ya existía (estado/wizard/API). Gap real = endpoint de seed.
+- `is_demo` en Client/Product/Invoice (migración `0066`); datos demo VISIBLES en
+  listados/dashboard/analítica pero EXCLUIDOS de TODO lo fiscal (12 sitios:
+  modelos_aeat/fiscal/backfill_verifactu/preventive_check). Facturas demo con
+  numeración `DEMO-`/`PROV-DEMO-` que NO consume la serie correlativa, sin VeriFactu.
+- `services/onboarding/seed.py` (seed/clear/status, idempotente, tenant-scoped) +
+  endpoints `POST/DELETE/GET /onboarding/wizard/seed`; marca `step_data`.
+- Frontend: `DemoDataCard` en `/primeros-pasos` (cargar/borrar + badge EJEMPLO) +
+  métodos en `lib/api/onboarding.ts` + i18n es/en.
+- Verificado: 6 tests nuevos + suite completa 2237✓; ruff/mypy/tsc/eslint ✓.
+- Pendiente opcional: industrias (abogado/peluquería…) para variar el dataset.
+
+### Items 6 + 1 + 3 — hardening RLS (2026-06-23) — investigado y acotado
+Confirmado: NO son P0 (listener RLS global + policy fail-closed ya sellan).
+- ✅ **Item 6 HECHO**: `tool_session()` exige `tenant_id` (raise en None); fallback
+  silencioso eliminado + test. Los 8 call-sites (inventory) ya pasaban tenant → 0 roturas.
+- ✅ **Hallazgo nuevo HECHO**: `accounting/agent.py` NO aplicaba `_isolated()` → el
+  agente confiaba en el `tenant_id` del LLM (protegido solo por la RLS ambiente).
+  Añadido `_isolated(tools)`. Es lo más relevante de seguridad de la investigación.
+- ⏸️ **Item 3 DIFERIDO** (con evidencia): las 9 sesiones/tick son SECUENCIALES
+  (APScheduler serial), no concurrentes → la "presión de conexiones" no existe; la
+  RLS ya es correcta (cross-tenant en `rls_bypass`, per-tenant en `set_current_tenant`).
+  El refactor SAVEPOINT = complejidad injustificada. Micro-opt opcional: sacar el
+  `AsyncSessionLocal()` del bucle per-tenant en `_emit_month_end_events`.
+- ⏸️ **Item 1 DIFERIDO (recomendado)**: migrar agent_tools/documents/accounting a
+  `tool_session()` es PURA higiene (queries ya filtran por tenant + enforce_tenant +
+  RLS fail-closed = triple protección). Minas: inyección-vía-arg en agentes no
+  aislados, `_update_doc_status` sin tenant_id, compat de tests. Hacerlo como PR
+  propio enfocado con patrón seguro, no a ciegas. Bajo valor/riesgo ⇒ no urgente.
+
+---
+
 ## ✅ HECHO — Dar de baja stock por rotura/merma (unidades o cajas)
 
 **Decisiones**: cajas y unidades = contadores SEPARADOS (sin conversión) · baja con MOTIVO + historial auditable.

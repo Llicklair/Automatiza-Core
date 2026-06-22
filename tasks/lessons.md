@@ -4,6 +4,63 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-23 — La capa RLS ya estaba sellada; el riesgo real era otro
+
+**Contexto:** Los items 1/3/6 del consejo se vendían como "hardening de aislamiento
+multi-tenant P0". Al mapear la superficie: (a) el scheduler ya usa `rls_bypass()` en
+los scans cross-tenant y `set_current_tenant()` en el trabajo per-tenant, y sus 9
+sesiones/tick son SECUENCIALES (APScheduler serial) — la "presión de conexiones" que
+justificaba el refactor SAVEPOINT no existe; (b) `tool_session()` solo se usa en
+inventory (8 call-sites, todos con tenant explícito); (c) el verdadero gap era que
+`accounting/agent.py` NO aplicaba `_isolated()`/enforce_tenant — confiaba en el
+`tenant_id` del LLM (protegido solo por la RLS ambiente).
+
+**Patrón:** Una migración "mecánica" en código de seguridad puede INTRODUCIR el fallo
+que pretende evitar. Migrar raw `AsyncSessionLocal` → `tool_session(arg_del_LLM)` en un
+agente NO aislado fijaría el ContextVar al tenant que diga el LLM → fuga cross-tenant.
+La sesión debe escoparse por el tenant AMBIENTE de confianza, no por el arg.
+
+**Regla de prevención:**
+- Antes de un refactor que añade complejidad "por rendimiento", VERIFICAR la premisa
+  (¿concurrente o secuencial?) leyendo/perfilando — no asumirla.
+- Al revisar aislamiento multi-tenant de agentes, comprobar que CADA agente que arma su
+  propia lista de tools aplica `_isolated()`; el que la olvida confía en el LLM.
+- `tool_session()` exige `tenant_id` explícito (raise en None); para acceso deliberado
+  sin tenant, `AsyncSessionLocal()` dentro de `rls_bypass()`.
+
+---
+
+## 2026-06-22 — requirements.txt no era la fuente de verdad: el backend usa Poetry
+
+**Contexto:** El "consejo de los 7 sabios" priorizó (item #10) "pinear requirements.txt"
+porque tenía 33 deps con `>=` y cero `==`. Al contrastarlo, requirements.txt resultó un
+**artefacto huérfano/desactualizado**: la fuente de verdad real es Poetry
+(`backend/pyproject.toml` + `poetry.lock`, 205 paquetes con hashes). requirements.txt
+divergía del árbol testeado (faltaban langchain-anthropic, celery, redis; sobraba
+opendataloader-pdf, que ni estaba en el lock). El CI ya era reproducible (poetry.lock);
+el agujero estaba en el **instalador de escritorio** (`desktop/python-manager.js:169`),
+que hace `pip install -r requirements.txt` desde PyPI **en cada máquina al arrancar** →
+100 escritorios resolvían árboles distintos. Además el CI estaba roto: instalaba
+`poetry==1.8.2`, incapaz de leer el `poetry.lock` lock-version 2.1 (Poetry 2.x).
+
+**Patrón:** Mismo punto ciego que "leer `tool_session` sin mirar `rls.py`": razonar sobre
+un archivo (requirements.txt) **en aislamiento** lleva a conclusiones falsas cuando otra
+capa (Poetry) es la que manda. Un archivo de deps con `>=` no implica "sin lock".
+
+**Regla de prevención:**
+- Antes de razonar sobre gestión de dependencias, buscar pyproject.toml / poetry.lock /
+  Pipfile.lock / uv.lock. No asumir que requirements.txt es autoritativo.
+- requirements.txt es ahora un **artefacto GENERADO**: `poetry -C backend export --only
+  main --without-hashes -o requirements.txt`. Nunca editarlo a mano; un drift-guard en CI
+  lo verifica.
+- Mantener requirements.txt **ASCII-only**: en Windows pip lo lee con el locale del
+  sistema (cp1252), y un acento (p.ej. `Á`=`0xC3 0x81`) **rompe la instalación cliente**.
+- Alinear el pin de Poetry en CI con el lock-version del poetry.lock (lock 2.1 ⇒ Poetry
+  2.x). Deps pesadas/opcionales del escritorio (torch vía sentence-transformers,
+  celery/redis) van en grupos no-main (`localml`, `cloud`) para excluirlas del export.
+
+---
+
 ## 2026-06-21 — Inventariar IA por sus @tool, no por nombres de carpeta
 
 **Contexto:** En un análisis competitivo (Holded vs. AutomatizaPyme) subestimé la capa
