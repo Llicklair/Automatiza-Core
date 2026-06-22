@@ -28,10 +28,12 @@ langchain-core = "^0.3.0"
 langchain-openai = ">=0.2,<0.4"
 langchain-anthropic = "^0.3.0"
 langchain-groq = "^0.2.0"
-langchain-huggingface = "^0.1.0"
-sentence-transformers = "^3.0.0"
+# langchain-huggingface + sentence-transformers → grupo `localml` (embeddings
+# locales opcionales: import lazy con fallback en llm_factory.py; NO se
+# empaquetan en el escritorio embebido para no arrastrar torch (~2-3 GB).
 cryptography = "^43.0.0"
 pypdf = "^5.0.0"
+opendataloader-pdf = ">=2.4,<3"
 pgvector = ">=0.3.6,<0.5.0"
 reportlab = "^4.2.0"
 # Renderer PDF basado en HTML+CSS para informes textuales (whitepapers, estudios).
@@ -46,8 +48,9 @@ docxtpl = ">=0.16,<0.21"
 mammoth = "^1.6.0"
 htmldocx = "^0.0.6"
 python-docx = "^1.1.0"
-celery = { extras = ["redis"], version = ">=5.3,<6" }
-redis = { extras = ["hiredis"], version = ">=5.0,<7" }
+# celery + redis → grupo `cloud` (infra de tareas distribuidas; el escritorio
+# embebido usa APScheduler in-process y cache/ws-relay con fallback local, así
+# que NO se empaquetan en el instalador).
 # Observabilidad LLM opcional: si las keys LANGFUSE_* no están en .env,
 # el integrador degrada silenciosamente y no se envía ninguna traza.
 langfuse = { version = ">=2.50,<3", optional = true }
@@ -64,6 +67,18 @@ httpx = "^0.28.0"
 ruff = ">=0.7,<0.16"
 mypy = "^1.13.0"
 aiosqlite = ">=0.20,<0.23"
+
+# Grupos NO empaquetados en el escritorio embebido: se excluyen del export
+# `--only main` que genera backend/requirements.txt (lo que el instalador
+# pip-instala en cada máquina). NO son `optional`, así que `poetry install`
+# (CI + dev) SÍ los instala y los tests siguen cubriendo su código.
+[tool.poetry.group.cloud.dependencies]
+celery = { extras = ["redis"], version = ">=5.3,<6" }
+redis = { extras = ["hiredis"], version = ">=5.0,<7" }
+
+[tool.poetry.group.localml.dependencies]
+langchain-huggingface = "^0.1.0"
+sentence-transformers = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -34,8 +34,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      # Poetry 2.x: el poetry.lock commiteado es lock-version 2.1 (generado por
+      # Poetry 2.3.4) — Poetry 1.8.2 NO puede leerlo y aborta. El plugin export
+      # se usa en el drift-guard de requirements.txt más abajo.
       - name: Install Poetry
-        run: pip install poetry==1.8.2
+        run: pip install poetry==2.3.4 poetry-plugin-export
 
       - name: Cache Poetry deps
         uses: actions/cache@v5
@@ -45,6 +48,20 @@ jobs:
 
       - name: Install dependencies
         run: poetry install --no-interaction
+
+      # QA.CI — requirements.txt es un ARTEFACTO GENERADO desde poetry.lock (es
+      # lo que el instalador de escritorio pip-instala en cada máquina). Este
+      # guard falla si alguien lo editó a mano o cambió deps sin regenerarlo,
+      # impidiendo que el árbol del cliente vuelva a divergir del que testea CI.
+      # Se comparan solo las líneas de dependencia (se ignoran comentarios/blancos).
+      - name: Verify requirements.txt sync (no drift)
+        run: |
+          poetry export --only main --without-hashes -o /tmp/req.expected.txt
+          if ! diff <(grep -vE '^[[:space:]]*#' requirements.txt | sed '/^[[:space:]]*$/d' | sort) \
+                    <(grep -vE '^[[:space:]]*#' /tmp/req.expected.txt | sed '/^[[:space:]]*$/d' | sort); then
+            echo "::error::backend/requirements.txt está desincronizado con poetry.lock. Regenéralo: poetry -C backend export --only main --without-hashes -o requirements.txt"
+            exit 1
+          fi
 
       - name: Ruff lint
         run: poetry run ruff check app/ --select E,W,F,I --ignore E501,E402,E701,E702,E731,W293
@@ -107,7 +124,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
-        run: pip install poetry==1.8.2
+        run: pip install poetry==2.3.4
 
       - name: Install dependencies
         run: poetry install --no-interaction
