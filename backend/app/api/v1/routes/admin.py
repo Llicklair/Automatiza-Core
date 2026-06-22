@@ -19,9 +19,12 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import require_role
+from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 
@@ -204,3 +207,53 @@ async def invalidate_llm_cache(
         current_user.email, prefix, removed,
     )
     return {"ok": True, "prefix": prefix, "removed": removed}
+
+
+# ── DB migration status ─────────────────────────────────────────────────────────
+
+
+@router.get("/db-status")
+@limiter.limit("30/minute")
+async def db_status(
+    request: Request,
+    current_user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Revisión actual de Alembic vs. head esperado (detección de drift).
+
+    Permite detectar desde fuera si la BD quedó atascada en una migración vieja
+    (p. ej. un ``alembic upgrade head`` que abortó en el arranque del desktop sin
+    avisar — ver lessons.md 2026-05-20). ``up_to_date=False`` ⇒ faltan migraciones.
+    """
+    # Revisión actual (tabla alembic_version). Puede no existir si la BD aún no se
+    # ha inicializado → lo tratamos como "sin revisión", no como error 500.
+    current: str | None = None
+    try:
+        result = await db.execute(text("SELECT version_num FROM alembic_version"))
+        current = result.scalar_one_or_none()
+    except Exception as e:
+        logger.warning("db-status: no se pudo leer alembic_version: %s", e)
+
+    # Head esperado, derivado de los scripts versionados (independiente del cwd).
+    head: str | None = None
+    try:
+        from pathlib import Path
+
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        import app.db
+
+        cfg = Config()
+        cfg.set_main_option(
+            "script_location", str(Path(app.db.__file__).resolve().parent / "migrations")
+        )
+        head = ScriptDirectory.from_config(cfg).get_current_head()
+    except Exception as e:
+        logger.warning("db-status: no se pudo resolver el head de Alembic: %s", e)
+
+    return {
+        "current_revision": current,
+        "head_revision": head,
+        "up_to_date": bool(current) and current == head,
+    }
