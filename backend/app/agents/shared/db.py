@@ -9,8 +9,9 @@ Uso:
     async with tool_session(tenant_id) as db:
         ...
 
-Sin `tenant_id` se comporta como `AsyncSessionLocal()` a secas (hereda el
-ContextVar del request/task actual).
+`tenant_id` es OBLIGATORIO. Para flujos deliberados SIN tenant (auth pre-tenant,
+scan cross-tenant del scheduler, webhooks) usar `AsyncSessionLocal()` dentro de
+`rls_bypass()` — ver `app/workers/tasks_scheduler.py`.
 """
 
 from __future__ import annotations
@@ -26,12 +27,22 @@ from app.db.base import AsyncSessionLocal
 
 
 @asynccontextmanager
-async def tool_session(tenant_id: str | UUID | None = None) -> AsyncIterator[AsyncSession]:
-    """Abre una AsyncSession con el tenant-context aplicado (RLS)."""
-    if tenant_id is not None:
-        with tenant_context(str(tenant_id)):
-            async with AsyncSessionLocal() as db:
-                yield db
-    else:
+async def tool_session(tenant_id: str | UUID) -> AsyncIterator[AsyncSession]:
+    """Abre una AsyncSession con el tenant-context aplicado (RLS).
+
+    `tenant_id` es OBLIGATORIO: fija el ContextVar para que el listener RLS
+    aplique `SET LOCAL app.current_tenant`. Antes aceptaba None y caía a una
+    `AsyncSessionLocal()` "a secas" (heredando el ContextVar ambiente) — un
+    fallback SILENCIOSO que enmascaraba olvidos de contexto. Ahora exige el
+    tenant explícito y falla ruidosamente si falta (defensa en profundidad
+    sobre la RLS fail-closed). Para acceso deliberado sin tenant: usar
+    `AsyncSessionLocal()` dentro de `rls_bypass()`.
+    """
+    if tenant_id is None:
+        raise ValueError(
+            "tool_session() requiere un tenant_id explícito. Para acceso "
+            "deliberado sin tenant usa AsyncSessionLocal() dentro de rls_bypass()."
+        )
+    with tenant_context(str(tenant_id)):
         async with AsyncSessionLocal() as db:
             yield db
