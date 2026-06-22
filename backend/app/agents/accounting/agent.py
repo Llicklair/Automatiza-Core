@@ -30,6 +30,14 @@ tools = [
     create_pdf_text_report,
 ]
 
+# Defensa multi-tenant (SEC): ignorar el tenant_id que pase el LLM y usar
+# SIEMPRE el del ContextVar activo, igual que el resto de agentes. Sin esto, el
+# agente de contabilidad confiaba en el tenant_id del LLM (protegido solo por la
+# RLS ambiente). enforce_tenant es no-op si no hay contexto activo (tests).
+from app.agents.tenant_context import isolated as _isolated
+
+tools = _isolated(tools)
+
 
 async def accounting_agent_node(state: AgentState):
     """Nodo principal: el LLM razona y elige herramientas contables."""
