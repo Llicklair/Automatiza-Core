@@ -5887,6 +5887,23 @@
       "markPending": "Mark as pending",
       "markDone": "Mark as completed"
     },
+    "demoData": {
+      "label": "Sample data",
+      "title": "Try it with a sample company",
+      "description": "Load sample clients, products and invoices to see the dashboard, invoicing and analytics in action. They don't affect your taxes (excluded from VAT returns and real numbering) and you can delete them anytime.",
+      "load": "Load sample data",
+      "loading": "Loading…",
+      "clear": "Delete sample data",
+      "clearing": "Deleting…",
+      "loaded": "Sample data loaded: {clients} clients, {products} products, {invoices} invoices.",
+      "alreadyLoaded": "You already have sample data loaded.",
+      "cleared": "Sample data deleted.",
+      "confirmClear": "Delete all sample data? This does not affect your real data.",
+      "confirmYes": "Yes, delete",
+      "cancel": "Cancel",
+      "badge": "SAMPLE",
+      "error": "The operation could not be completed. Please try again."
+    },
     "modules": {
       "title": "Explore all modules",
       "ventas": "Sales",

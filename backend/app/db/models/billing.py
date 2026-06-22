@@ -70,6 +70,12 @@ class Invoice(Base):
 
     status = Column(String(50), nullable=False, default="draft")
     invoice_type = Column(String(50), nullable=False, default="issued")
+    # Datos de ejemplo del onboarding: se muestran en listados/analítica para que
+    # el producto "se vea vivo", pero quedan FUERA de toda declaración fiscal
+    # (303/130/390/libro registro/VeriFactu). Borrables de golpe. Ver
+    # services/onboarding/seed.py. Las facturas demo NO consumen la serie
+    # correlativa (numeración "DEMO-").
+    is_demo = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     notes = Column(Text)
     terms = Column(Text)
     external_id = Column(String(255))

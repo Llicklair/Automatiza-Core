@@ -48,6 +48,8 @@ class Client(Base):
     client_type = Column(String(50), default="customer")
     # Opt-in RGPD: solo los clientes con consentimiento reciben email marketing
     marketing_consent = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    # Dato de ejemplo del onboarding (borrable de golpe). Ver onboarding/seed.py.
+    is_demo = Column(Boolean, nullable=False, default=False, server_default=text("false"))
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

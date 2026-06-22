@@ -9,6 +9,7 @@ import {
     Play, Lock
 } from "lucide-react";
 import { usePrimerosPassos, COLOR_MAP } from "./_hooks/usePrimerosPassos";
+import { DemoDataCard } from "./_components/DemoDataCard";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function PrimerosPassPage() {
@@ -56,6 +57,9 @@ export default function PrimerosPassPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Datos de ejemplo (seed demo-empresa) */}
+            <DemoDataCard />
 
             {/* IA Quick Demo */}
             <div className="mb-8 bg-gradient-to-br from-indigo-600/10 via-violet-600/5 to-transparent border border-primary/20 rounded-2xl p-5 relative overflow-hidden">

@@ -293,6 +293,7 @@ async def _check_unlinked_received_documents(
         sa.select(Invoice.document_id).where(
             Invoice.tenant_id == tenant_id,
             Invoice.invoice_type == "received",
+            Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
             Invoice.document_id.in_([d.id for d in docs]),
         )
     )

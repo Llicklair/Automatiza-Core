@@ -1,6 +1,6 @@
 """Modelos de inventario: Productos y Movimientos de stock."""
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, text
 
 from .common import (
     UUID,
@@ -44,6 +44,8 @@ class Product(Base):
     stock_boxes = Column(Integer, nullable=False, default=0)
     stock_min_alert = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
+    # Dato de ejemplo del onboarding (borrable de golpe). Ver onboarding/seed.py.
+    is_demo = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     supplier_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True, index=True)
     reorder_quantity = Column(Integer, nullable=True)
 

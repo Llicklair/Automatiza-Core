@@ -5887,6 +5887,23 @@
       "markPending": "Marcar como pendiente",
       "markDone": "Marcar como completado"
     },
+    "demoData": {
+      "label": "Datos de ejemplo",
+      "title": "Prueba con una empresa de ejemplo",
+      "description": "Carga clientes, productos y facturas de ejemplo para ver el panel, la facturación y la analítica funcionando. No afectan a tus impuestos (quedan fuera del 303 y de la numeración real) y puedes borrarlos cuando quieras.",
+      "load": "Cargar datos de ejemplo",
+      "loading": "Cargando…",
+      "clear": "Borrar datos de ejemplo",
+      "clearing": "Borrando…",
+      "loaded": "Datos de ejemplo cargados: {clients} clientes, {products} productos, {invoices} facturas.",
+      "alreadyLoaded": "Ya tienes datos de ejemplo cargados.",
+      "cleared": "Datos de ejemplo borrados.",
+      "confirmClear": "¿Borrar todos los datos de ejemplo? No afecta a tus datos reales.",
+      "confirmYes": "Sí, borrar",
+      "cancel": "Cancelar",
+      "badge": "EJEMPLO",
+      "error": "No se pudo completar la operación. Inténtalo de nuevo."
+    },
     "modules": {
       "title": "Explora todos los módulos",
       "ventas": "Ventas",

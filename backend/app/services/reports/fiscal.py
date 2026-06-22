@@ -76,6 +76,7 @@ async def aggregate_fiscal(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "issued",
+                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,
             )
@@ -92,6 +93,7 @@ async def aggregate_fiscal(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "received",
+                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,
             )
@@ -210,6 +212,7 @@ async def build_modelo_303_data(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "issued",
+                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,
             )
@@ -254,6 +257,7 @@ async def build_modelo_303_data(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "received",
+                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,
             )
@@ -329,6 +333,7 @@ async def build_libro_registro_csv(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == invoice_type,
+                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
                 Invoice.status.notin_(["cancelled"]),
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,

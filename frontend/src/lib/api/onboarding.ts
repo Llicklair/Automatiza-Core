@@ -43,9 +43,37 @@ export interface Simulate303Result {
     };
 }
 
+export interface DemoCounts {
+    clients: number;
+    products: number;
+    invoices: number;
+}
+
+export interface DemoSeedResult extends DemoCounts {
+    already_seeded: boolean;
+}
+
+export interface DemoStatus {
+    seeded: boolean;
+    counts: DemoCounts;
+}
+
 export const onboarding = {
     get: (): Promise<OnboardingState> =>
         request<OnboardingState>("/api/v1/onboarding/wizard"),
+
+    // Datos de ejemplo: siembran/borran una pyme demo (clientes/productos/
+    // facturas) para que el producto se vea vivo. No tocan lo fiscal.
+    seedDemo: (): Promise<DemoSeedResult> =>
+        request<DemoSeedResult>("/api/v1/onboarding/wizard/seed", { method: "POST" }),
+
+    clearDemo: (): Promise<{ deleted: DemoCounts }> =>
+        request<{ deleted: DemoCounts }>("/api/v1/onboarding/wizard/seed", {
+            method: "DELETE",
+        }),
+
+    demoStatus: (): Promise<DemoStatus> =>
+        request<DemoStatus>("/api/v1/onboarding/wizard/seed"),
 
     setStep: (step: OnboardingStepKey, value: boolean): Promise<OnboardingState> =>
         request<OnboardingState>("/api/v1/onboarding/wizard", {

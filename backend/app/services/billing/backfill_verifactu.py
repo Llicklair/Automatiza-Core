@@ -84,6 +84,7 @@ async def _is_backfill_needed(db: AsyncSession, tenant_id: UUID) -> bool:
         .where(
             Invoice.tenant_id == tenant_id,
             Invoice.invoice_type == "issued",
+            Invoice.is_demo.is_(False),  # datos demo del onboarding fuera de la cadena VeriFactu
             VerifactuRecord.id.is_(None),
         )
         .limit(1)
@@ -131,6 +132,7 @@ async def backfill_tenant_verifactu_chain(
         .where(
             Invoice.tenant_id == tenant_id,
             Invoice.invoice_type == "issued",
+            Invoice.is_demo.is_(False),  # datos demo del onboarding fuera de la cadena VeriFactu
         )
         .order_by(
             asc(Invoice.date),
@@ -244,6 +246,7 @@ async def list_tenants_pending_backfill(db: AsyncSession) -> list[UUID]:
         )
         .where(
             Invoice.invoice_type == "issued",
+            Invoice.is_demo.is_(False),  # datos demo del onboarding fuera de la cadena VeriFactu
             VerifactuRecord.id.is_(None),
         )
         .distinct()
