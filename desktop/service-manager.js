@@ -572,7 +572,30 @@ async function startAll(onProgress) {
   onProgress("Aplicando migraciones...", 60);
   // Las migraciones (DDL + creación del rol pyme_app) corren con el rol ADMIN
   // superusuario, no con el rol de aplicación con el que arranca el backend.
-  runMigrations({ ...backendEnv, DATABASE_URL: getAdminDatabaseURL() });
+  const MIGRATIONS_MARKER = path.join(APPDATA_DIR, "migrations_blocked.txt");
+  const migResult = runMigrations({ ...backendEnv, DATABASE_URL: getAdminDatabaseURL() });
+  if (!migResult || !migResult.ok) {
+    // NO arrancar el backend contra un esquema desactualizado: dejar marca
+    // persistente + propagar el error para que main.js lo muestre (showErrorBox)
+    // en vez de arrancar "normal" con la BD atascada (ver lessons.md 2026-05-20).
+    const detail = (migResult && migResult.error) || "Error desconocido aplicando migraciones.";
+    try {
+      fs.writeFileSync(
+        MIGRATIONS_MARKER,
+        `[${new Date().toISOString()}] Migración de la base de datos fallida:\n\n${detail}\n`
+      );
+    } catch (e) {
+      logBoot(`No se pudo escribir migrations_blocked.txt: ${e.message}`);
+    }
+    logBoot(`ERROR: migraciones fallidas — ${detail}`);
+    throw new Error(
+      "No se pudieron aplicar las migraciones de la base de datos. " +
+      "La aplicación no puede arrancar con un esquema desactualizado.\n\n" +
+      `Detalle: ${detail}\n\nSe guardó el error en:\n${MIGRATIONS_MARKER}`
+    );
+  }
+  // Migración OK → limpiar cualquier marca de un fallo anterior ya resuelto.
+  try { fs.unlinkSync(MIGRATIONS_MARKER); } catch {}
 
   logBoot("Arrancando backend...");
   onProgress("Arrancando backend...", 65);

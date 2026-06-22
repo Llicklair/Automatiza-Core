@@ -432,18 +432,24 @@ print("[MIGRATE] SEC.RLS: rol pyme_app y policies aseguradas.")
 `;
   try {
     fs.writeFileSync(migrationScript, scriptContent);
+    // stdout heredado para ver el progreso en vivo; stderr a 'pipe' para PODER
+    // capturar el traceback de Python si falla. Antes (stdio "inherit") el error
+    // se perdía: era la causa de que un `alembic upgrade` abortado quedara
+    // invisible y la BD se atascara sin avisar (ver lessons.md 2026-05-20).
     execSync(`"${PYTHON_EXE}" "${migrationScript}"`, {
       cwd: BACKEND_DIR,
       env,
-      stdio: "inherit",
+      stdio: ["inherit", "inherit", "pipe"],
       timeout: 120000,
     });
     logPython("Migraciones aplicadas correctamente.");
-    return true;
+    return { ok: true, error: null };
   } catch (err) {
-    logPython(`Error en migraciones: ${err.message}`);
-    console.error(`Error en migraciones: ${err.message}`);
-    return false;
+    const stderr = err.stderr ? err.stderr.toString() : "";
+    const detail = (stderr.trim() || err.message || "Error desconocido").slice(-3000);
+    logPython(`Error en migraciones: ${detail}`);
+    console.error(`Error en migraciones: ${detail}`);
+    return { ok: false, error: detail };
   } finally {
     try { fs.unlinkSync(migrationScript); } catch {}
   }
