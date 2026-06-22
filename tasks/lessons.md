@@ -173,6 +173,15 @@ acepta `tenant_id: str = ""` (ignorado; Unsplash es global).
 
 ## 2026-05-20 — Electron arranca `alembic upgrade head` en silencio: fallos quedan invisibles
 
+> ✅ **RESUELTA 2026-06-22.** Las 3 reglas de prevención están implementadas:
+> 1. **Surfacing del fallo** — `runMigrations` (`desktop/python-manager.js`) devuelve
+>    `{ok, error}` capturando stderr; `desktop/service-manager.js` aborta el arranque
+>    con `throw` si falla (→ `main.js` muestra `dialog.showErrorBox`). Commit `d2335b9`.
+> 2. **Endpoint admin** — `GET /api/v1/admin/db-status` (current vs head revision +
+>    `up_to_date`). Commit `5ec037a`.
+> 3. **Marca persistente** — `service-manager.js` escribe `migrations_blocked.txt` en
+>    APPDATA con el error en cada fallo y la borra al volver a migrar OK. Commit `d2335b9`.
+
 **Contexto**: Aplicando la migración 0029 (AIEmployee contract) tras una sesión
 de smoke testing, `alembic_version` estaba en `0027_tasks_is_deleted`.
 Faltaba aplicar **dos** migraciones (0028 y 0029), pese a que el usuario
