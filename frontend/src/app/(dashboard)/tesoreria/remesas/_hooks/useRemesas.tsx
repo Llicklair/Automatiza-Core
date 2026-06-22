@@ -77,7 +77,7 @@ export function useRemesas() {
         setTimeout(() => setToast(null), 5000);
     };
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [inv, pay] = await Promise.all([
@@ -123,9 +123,9 @@ export function useRemesas() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => { loadData(); }, [loadData]);
 
     const filtered = items.filter(i => i.type === activeType);
     const selected = items.filter(i => i.selected);

@@ -66,7 +66,7 @@ export function CalendarioTab() {
                 if (surfaceIfConnectivity(err)) return;
                 setError(err instanceof Error ? err.message : t("calendario.loadError"));
             });
-    }, []);
+    }, [t]);
 
     if (loading) {
         return (

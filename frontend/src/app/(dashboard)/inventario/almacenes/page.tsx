@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Warehouse as WarehouseIcon, Plus, Loader2, Star, Pencil, Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { warehouses as whApi, type Warehouse } from "@/lib/api/warehouses";
@@ -23,7 +23,7 @@ export default function WarehousesPage() {
     const [editId, setEditId] = useState<string | null>(null);
     const [editName, setEditName] = useState("");
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             setItems(await whApi.list());
@@ -32,9 +32,9 @@ export default function WarehousesPage() {
             setError(e?.message || t("warehouses.loadError"));
         }
         setLoading(false);
-    };
+    }, [t]);
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { load(); }, [load]);
 
     const create = async (e: React.FormEvent) => {
         e.preventDefault();

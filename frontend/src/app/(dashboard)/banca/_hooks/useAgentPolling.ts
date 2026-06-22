@@ -35,7 +35,7 @@ export function useAgentPolling() {
             setStatus("failed");
             setError(e instanceof Error ? e.message : t("agente.createError"));
         }
-    }, [stop]);
+    }, [stop, t]);
 
     useEffect(() => () => stop(), [stop]);
     return { launch, status, result, error };

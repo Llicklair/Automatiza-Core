@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 type T = ReturnType<typeof useTranslations>;
 import { Database, Download, RefreshCw, Trash2, Upload } from "lucide-react";
@@ -59,7 +59,7 @@ export default function BackupsPage() {
         file: "",
     });
 
-    const reload = async () => {
+    const reload = useCallback(async () => {
         try {
             setItems(await system.listBackups());
         } catch (e) {
@@ -67,11 +67,11 @@ export default function BackupsPage() {
             toast.error(t("backups.loadError", { message: msg }));
             setItems([]);
         }
-    };
+    }, [toast, t]);
 
     useEffect(() => {
         reload();
-    }, []);
+    }, [reload]);
 
     const onCreate = async () => {
         setCreating(true);

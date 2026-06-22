@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, Warehouse as WarehouseIcon, ArrowLeftRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { warehouses as whApi, type Warehouse, type WarehouseStock } from "@/lib/api/warehouses";
@@ -28,7 +28,7 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
     const [to, setTo] = useState("");
     const [qty, setQty] = useState(1);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const [s, w] = await Promise.all([whApi.stockByProduct(productId), whApi.list()]);
@@ -39,9 +39,9 @@ export function WarehouseStockPanel({ productId, onChanged }: Props) {
             setError(e?.message || t("warehouseStock.loadError"));
         }
         setLoading(false);
-    };
+    }, [productId, t]);
 
-    useEffect(() => { load();   }, [productId]);
+    useEffect(() => { load();   }, [load]);
 
     const doTransfer = async (e: React.FormEvent) => {
         e.preventDefault();

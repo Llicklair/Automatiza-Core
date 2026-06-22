@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, AlertTriangle, CheckCircle2, Database, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
@@ -25,7 +25,7 @@ export function ErpImportReview({
     const [importing, setImporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    async function loadPreview(target?: string) {
+    const loadPreview = useCallback(async (target?: string) => {
         setLoading(true);
         setError(null);
         try {
@@ -36,9 +36,9 @@ export function ErpImportReview({
         } finally {
             setLoading(false);
         }
-    }
+    }, [documentId, t]);
 
-    useEffect(() => { loadPreview();   }, [documentId]);
+    useEffect(() => { loadPreview();   }, [loadPreview]);
 
     async function handleImport() {
         if (!preview) return;

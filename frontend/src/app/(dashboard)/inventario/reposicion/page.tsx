@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Loader2, ShoppingCart, AlertTriangle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -19,7 +19,7 @@ export default function ReposicionPage() {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<GeneratePosResult | null>(null);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             setItems(await reorderApi.suggestions());
@@ -28,9 +28,9 @@ export default function ReposicionPage() {
             setError(e?.message || t("reorder.loadError"));
         }
         setLoading(false);
-    };
+    }, [t]);
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { load(); }, [load]);
 
     const generate = async () => {
         setGenerating(true);
