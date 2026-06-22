@@ -5,6 +5,10 @@ on:
     branches: [master, main, develop]
   pull_request:
     branches: [master, main]
+  # Permite que release.yml (uses: ./.github/workflows/ci.yml) reutilice este
+  # workflow como "Full Test Suite" en el flujo de release (tags v*). Sin esta
+  # clave GitHub falla: "workflow_call key is not defined in the referenced workflow".
+  workflow_call:
 
 env:
   # QA.CI — Python exact match con el binario embebido en el instalador
