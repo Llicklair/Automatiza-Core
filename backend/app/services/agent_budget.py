@@ -35,7 +35,8 @@ async def get_budget_status(employee_id: str, db: AsyncSession) -> dict | None:
     'exhausted' (>=100%). Es la única fuente del cálculo de gasto mensual:
     `check_agent_budget` y el heartbeat la reutilizan.
     """
-    result = await db.execute(select(AIEmployee).where(AIEmployee.id == employee_id))
+    emp_uuid = uuid.UUID(str(employee_id))
+    result = await db.execute(select(AIEmployee).where(AIEmployee.id == emp_uuid))
     employee = result.scalar_one_or_none()
     if not employee:
         return None
@@ -55,7 +56,7 @@ async def get_budget_status(employee_id: str, db: AsyncSession) -> dict | None:
     )
     monthly_spend_result = await db.execute(
         select(func.sum(TokenLedger.cost_usd)).where(
-            TokenLedger.employee_id == employee_id,
+            TokenLedger.employee_id == emp_uuid,
             TokenLedger.created_at >= first_of_month,
         )
     )
@@ -90,7 +91,7 @@ async def check_agent_budget(employee_id: str, db: AsyncSession) -> bool:
 
     # exhausted → pausar
     await db.execute(
-        update(AIEmployee).where(AIEmployee.id == employee_id).values(status="paused")
+        update(AIEmployee).where(AIEmployee.id == uuid.UUID(str(employee_id))).values(status="paused")
     )
     await db.commit()
     logger.warning(
