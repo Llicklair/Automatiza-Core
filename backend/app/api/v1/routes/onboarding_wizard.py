@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import User
+from app.services.onboarding.seed import clear_demo_data, demo_status, seed_demo_data
 from app.services.onboarding.simulate_303 import simulate_modelo_303
 from app.services.onboarding.wizard import (
     reset,
@@ -112,3 +113,37 @@ async def post_reset(
     record = await reset(db, tenant_id=user.tenant_id)
     await db.commit()
     return to_dict(record)
+
+
+# ── Datos de ejemplo (seed demo-empresa) ─────────────────────────────────────
+# Siembran/borran una pyme de ejemplo en el tenant para que el producto se vea
+# vivo en el trial. Los datos demo (`is_demo=True`) salen en listados/analítica
+# pero NUNCA en declaraciones fiscales ni consumen la serie correlativa. Ver
+# services/onboarding/seed.py.
+
+
+@router.post("/seed")
+async def post_seed(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Siembra datos de ejemplo (clientes/productos/facturas demo). Idempotente."""
+    return await seed_demo_data(db, tenant_id=user.tenant_id, user_id=user.id)
+
+
+@router.delete("/seed")
+async def delete_seed(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Borra todos los datos de ejemplo del tenant."""
+    return await clear_demo_data(db, tenant_id=user.tenant_id)
+
+
+@router.get("/seed")
+async def get_seed(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Estado de los datos de ejemplo: sembrados o no + conteos."""
+    return await demo_status(db, tenant_id=user.tenant_id)
