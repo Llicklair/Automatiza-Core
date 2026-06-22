@@ -67,11 +67,11 @@ function pickEmployeeForDomain(
 
 export function useAutomatizacionesCRUD() {
     const t = useTranslations("automatizaciones");
-    const TRIGGER_LABELS: Record<string, string> = {
+    const TRIGGER_LABELS: Record<string, string> = useMemo(() => ({
         event_based: t("triggerLabels.eventBased"),
         schedule_based: t("triggerLabels.scheduleBased"),
         manual: t("triggerLabels.manual"),
-    };
+    }), [t]);
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,7 +127,7 @@ export function useAutomatizacionesCRUD() {
             { id: "trigger_default", type: "trigger", position: { x: 250, y: 0 }, data: { label: triggerLabel, trigger_type: triggerType } },
             { id: "skill_default", type: "skill", position: { x: 250, y: 130 }, data: skillData },
         ];
-    }, [triggerType, actionIntent, detectAssignment]);
+    }, [triggerType, actionIntent, detectAssignment, TRIGGER_LABELS, t]);
 
     const defaultEditorEdges = useMemo(() => [
         { id: "e-trigger_default-skill_default", source: "trigger_default", target: "skill_default" },

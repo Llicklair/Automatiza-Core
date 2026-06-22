@@ -37,7 +37,7 @@ export function Expediente303Drawer({ quarter, year, open, onClose }: Props) {
             .then(setData)
             .catch((e: Error) => setError(e.message || t("expediente303.generError")))
             .finally(() => setLoading(false));
-    }, [open, quarter, year]);
+    }, [open, quarter, year, t]);
 
     if (!open) return null;
 

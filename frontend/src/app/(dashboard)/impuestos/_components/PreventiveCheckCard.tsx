@@ -81,7 +81,7 @@ export function PreventiveCheckCard({ quarter, year }: Props) {
             .then(setData)
             .catch((e: Error) => setError(e.message || t("preventive.checkError")))
             .finally(() => setLoading(false));
-    }, [quarter, year]);
+    }, [quarter, year, t]);
 
     return (
         <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">

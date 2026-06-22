@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, Pencil, Check, X, Layers } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { lots as lotsApi, type ProductLot } from "@/lib/api/inventory_lots";
@@ -58,7 +58,7 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
     const [editId, setEditId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ lot_number: "", expiry_date: "", cost_price: "" });
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             setLots(await lotsApi.listForProduct(productId));
@@ -67,9 +67,9 @@ export function LotsPanel({ productId, onStockChanged }: LotsPanelProps) {
             setError(e?.message || t("lots.loadError"));
         }
         setLoading(false);
-    };
+    }, [productId, t]);
 
-    useEffect(() => { load();   }, [productId]);
+    useEffect(() => { load();   }, [load]);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Newspaper, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
@@ -32,7 +32,7 @@ export function BOETab() {
     const [error, setError] = useState<string | null>(null);
     const [soloPyme, setSoloPyme] = useState(false);
 
-    async function fetchBOE(s: Seccion) {
+    const fetchBOE = useCallback(async (s: Seccion) => {
         setLoading(true);
         setError(null);
         try {
@@ -51,11 +51,11 @@ export function BOETab() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [t]);
 
     useEffect(() => {
         fetchBOE(seccion);
-    }, [seccion]);
+    }, [seccion, fetchBOE]);
 
     const visibles = soloPyme ? items.filter(i => i.relevante_pyme) : items;
     const totalRelevantes = items.filter(i => i.relevante_pyme).length;

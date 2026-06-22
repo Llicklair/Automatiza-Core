@@ -66,7 +66,7 @@ export default function AutonomyPage() {
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     useEffect(() => {
         load();

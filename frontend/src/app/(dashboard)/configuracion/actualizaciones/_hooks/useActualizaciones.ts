@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 
@@ -31,7 +31,7 @@ export function useActualizaciones() {
     const [downloadPercent, setDownloadPercent] = useState(0);
     const [updateVersion, setUpdateVersion] = useState("");
 
-    async function loadHealth() {
+    const loadHealth = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
@@ -42,7 +42,7 @@ export function useActualizaciones() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [t]);
 
     async function checkForUpdates() {
         setUpdateStatus("checking");
@@ -81,7 +81,7 @@ export function useActualizaciones() {
         return () => eAPI.removeUpdateListeners();
     }, []);
 
-    useEffect(() => { loadHealth(); }, []);
+    useEffect(() => { loadHealth(); }, [loadHealth]);
 
     const checks = health?.checks || {};
 

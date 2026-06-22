@@ -56,7 +56,7 @@ export function useMiEquipo() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         if (activeTab !== "equipo") return;
