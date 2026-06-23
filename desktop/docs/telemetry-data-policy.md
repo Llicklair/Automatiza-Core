@@ -11,8 +11,12 @@
 > sin tu permiso explícito."* (A.9bis consensuado)
 
 **Datos de negocio** = facturas, clientes, NIFs, IBANs, importes, nóminas,
-contabilidad, contenido de prompts y outputs de agentes. Estos nunca salen
-del equipo del cliente.
+contabilidad, contenido de prompts y outputs de agentes. AutomatizaCore
+nunca recibe estos datos en sus servidores ni en la telemetría. La base de
+datos operativa permanece en el equipo del cliente; el contenido de prompts
+y outputs de agentes se envía únicamente al proveedor LLM que el cliente
+configura (Anthropic/OpenAI/…), bajo el DPA de ese proveedor, para poder
+ejecutar las funciones de IA.
 
 **Datos técnicos** = información de uso del software (versión, errores,
 performance) que puede enviarse opcionalmente y solo con consentimiento.

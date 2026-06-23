@@ -40,7 +40,7 @@ La app te lleva a **Primeros pasos**. Haz estos dos, que son los importantes:
 ---
 
 ## Bueno saber
-- **Tus datos** se guardan **en tu propio ordenador** (no en la nube). Hay copias de seguridad automáticas.
+- **Tus datos** se guardan **en tu propio ordenador** (no hay servidor en la nube con tu base de datos). Hay copias de seguridad automáticas. Cuando usas la IA, solo los datos necesarios para tu petición se envían directamente al proveedor de IA que configuraste con tu clave (p. ej. Anthropic), nunca a nuestros servidores.
 - **Actualizaciones**: la app se actualiza sola (*Configuración → Actualizaciones*).
 - **¿Algo no funciona?** Anota qué hacías y escríbenos. En el piloto, tu feedback es lo que más vale.
 
