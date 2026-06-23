@@ -40,6 +40,15 @@ class LLMRefusedToolUseError(RuntimeError):
     """
 
 
+class LLMToolFormatError(RuntimeError):
+    """El LLM mencionó una tool por su nombre pero NO emitió el bloque
+    <<<TOOL_CALL>>> (narró la acción / formato erróneo), y aún no había resultados
+    de tools en la conversación (turno de acción, no resumen final). Se reintenta
+    UNA vez forzando el formato; si vuelve a fallar se degrada a texto y la red de
+    seguridad es `detect_failure`. Causa G de la auditoría E2E 2026-06-23.
+    """
+
+
 TIMEOUT = 290  # segundos — 10s antes que el dispatcher (300s) para que el
               # error útil "CLI no respondió" aparezca primero, no el del wrapper.
 
@@ -199,6 +208,29 @@ _REFUSAL_RETRY_INSTRUCTION = (
     "Invoca ahora la herramienta adecuada. NO expliques que no tienes acceso."
 )
 
+# Instrucción correctiva cuando el LLM mencionó la tool por su nombre pero no emitió
+# el bloque <<<TOOL_CALL>>> (narró la acción en prosa). Le obliga a emitir el bloque.
+_NO_TOOL_FORMAT_RETRY_INSTRUCTION = (
+    "Tu respuesta anterior se refirió a una herramienta por su nombre pero NO emitió el "
+    f"bloque {_TOOL_CALL_START}...{_TOOL_CALL_END} requerido, así que la acción NO se ha "
+    "ejecutado. Si la petición implica crear, actualizar, enviar, registrar, modificar o "
+    "borrar datos, DEBES emitir AHORA el bloque con la tool y sus argumentos. No vuelvas a "
+    "narrar que lo has hecho sin emitir el bloque."
+)
+
+# Marcadores en el NOMBRE de una tool que implican MUTACIÓN (escritura). Sirve para
+# distinguir un resumen legítimo (ya se ejecutó una escritura) de un "leí y narro el
+# create sin emitirlo" — en este último el write aún NO ocurrió y conviene reintentar.
+_WRITE_NAME_MARKERS = (
+    "create", "update", "delete", "remove", "send", "register",
+    "add", "upsert", "approve", "reconcile", "propose", "import",
+)
+
+
+def _is_write_tool_name(name: str) -> bool:
+    n = (name or "").lower()
+    return any(mk in n for mk in _WRITE_NAME_MARKERS)
+
 
 def _build_tool_system_prompt(tools) -> str:
     """Genera el system prompt que instruye al LLM a usar el formato de tool calling."""
@@ -231,7 +263,7 @@ def _build_tool_system_prompt(tools) -> str:
         "## RULES (CRITICAL — follow exactly):\n"
         f"1. ONLY output the {_TOOL_CALL_START}...{_TOOL_CALL_END} block. "
         "NO text before, NO text after, NO markdown fences.\n"
-        "2. If you do NOT need a tool, respond with plain text (no markers).\n"
+        "2. If the request is purely informational and genuinely NO tool fits, respond with plain text (no markers).\n"
         "3. ALL parameter values must be the correct type (string, number, boolean).\n"
         "4. Include ALL required parameters. Omit optional ones unless the user specified them.\n"
         "5. Use EXACT tool names from the list below.\n"
@@ -240,7 +272,12 @@ def _build_tool_system_prompt(tools) -> str:
         "unavailable, not registered, MCP-only, or that you lack access — that is false. "
         "Just emit the TOOL_CALL block.\n"
         "8. NEVER reply with an explanation that you cannot use the tools. If a tool "
-        "fits the request, call it. If genuinely none fits, answer in plain text.\n\n"
+        "fits the request, call it. If genuinely none fits, answer in plain text.\n"
+        "9. ACTIONS REQUIRE A TOOL CALL. If the user asks you to create, add, register, "
+        "update, modify, send, delete, approve, calculate, schedule or otherwise CHANGE or "
+        "PERSIST data, you MUST emit a TOOL_CALL block. Describing the action in prose does "
+        "NOT perform it and is treated as a FAILURE — never claim you did something without "
+        "emitting the corresponding tool call.\n\n"
         f"## EXAMPLE — calling {example_name}:\n"
         f"{_TOOL_CALL_START}\n"
         f"{json.dumps({'tool_calls': [{'name': example_name, 'arguments': example_args}]}, ensure_ascii=False)}\n"
@@ -444,7 +481,9 @@ class ClaudeCodeChatModel(BaseChatModel):
             return ""
         return _build_tool_system_prompt(self._bound_tools)
 
-    def _process_response(self, text: str, usage: dict | None = None) -> ChatResult:
+    def _process_response(
+        self, text: str, usage: dict | None = None, write_already_done: bool = False
+    ) -> ChatResult:
         if self._bound_tools:
             msg = _parse_tool_response(text)
             if not msg.tool_calls and self._bound_tools:
@@ -472,6 +511,18 @@ class ClaudeCodeChatModel(BaseChatModel):
                         raise LLMRefusedToolUseError(
                             f"LLM mencionó tools {mentioned} pero rehusó invocarlas: {text[:200]}"
                         )
+                    # Mencionó la tool por su nombre pero NO emitió el bloque. Si todavía
+                    # NO se ha ejecutado ninguna escritura (es un turno de acción o un
+                    # "leí y narro el create sin emitirlo", no un resumen tras escribir),
+                    # señalizar retry para forzar el formato. Causa G auditoría 2026-06-23.
+                    if not write_already_done:
+                        _log.warning(
+                            "[ClaudeCode] menciono tools %s sin emitir el bloque TOOL_CALL; retry para forzar formato",
+                            mentioned,
+                        )
+                        raise LLMToolFormatError(
+                            f"LLM mencionó tools {mentioned} sin emitir el bloque TOOL_CALL: {text[:200]}"
+                        )
                     _log.warning(
                         "[ClaudeCode] Claude menciono tools %s en texto pero no uso el formato correcto. "
                         "Respuesta (primeros 200 chars): %s",
@@ -494,16 +545,34 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
+        write_done = any(
+            getattr(m, "type", None) == "tool" and _is_write_tool_name(getattr(m, "name", ""))
+            for m in messages
+        )
         text, usage = self._call_cli(prompt)
         try:
-            return self._process_response(text, usage)
-        except LLMRefusedToolUseError:
+            return self._process_response(text, usage, write_already_done=write_done)
+        except (LLMRefusedToolUseError, LLMToolFormatError) as exc:
             if not self._bound_tools:
                 raise
-            _log.warning("[ClaudeCode] rehúsa de tools detectada, reintentando con prompt correctivo")
-            retry_prompt = f"{prompt}\n\n[System]: {_REFUSAL_RETRY_INSTRUCTION}"
+            instruction = (
+                _REFUSAL_RETRY_INSTRUCTION
+                if isinstance(exc, LLMRefusedToolUseError)
+                else _NO_TOOL_FORMAT_RETRY_INSTRUCTION
+            )
+            _log.warning("[ClaudeCode] %s; reintentando con prompt correctivo", type(exc).__name__)
+            retry_prompt = f"{prompt}\n\n[System]: {instruction}"
             rtext, rusage = self._call_cli(retry_prompt)
-            return self._process_response(rtext, rusage)
+            try:
+                return self._process_response(rtext, rusage, write_already_done=write_done)
+            except LLMToolFormatError:
+                # 2º intento sigue sin emitir el bloque: degradar a texto.
+                # Red de seguridad: detect_failure marca el fallo si era una acción.
+                _log.warning("[ClaudeCode] retry sin tool_call; devuelvo texto (red: detect_failure)")
+                m = AIMessage(content=rtext)
+                if rusage:
+                    m.usage_metadata = rusage
+                return ChatResult(generations=[ChatGeneration(message=m)])
 
     def _call_cli(self, prompt: str) -> tuple[str, dict | None]:
         """Invoca `claude -p --output-format json` (sync). Devuelve (texto, usage_metadata)."""
@@ -547,16 +616,34 @@ class ClaudeCodeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
+        write_done = any(
+            getattr(m, "type", None) == "tool" and _is_write_tool_name(getattr(m, "name", ""))
+            for m in messages
+        )
         text, usage = await self._acall_cli(prompt)
         try:
-            return self._process_response(text, usage)
-        except LLMRefusedToolUseError:
+            return self._process_response(text, usage, write_already_done=write_done)
+        except (LLMRefusedToolUseError, LLMToolFormatError) as exc:
             if not self._bound_tools:
                 raise
-            _log.warning("[ClaudeCode] rehúsa de tools detectada, reintentando con prompt correctivo")
-            retry_prompt = f"{prompt}\n\n[System]: {_REFUSAL_RETRY_INSTRUCTION}"
+            instruction = (
+                _REFUSAL_RETRY_INSTRUCTION
+                if isinstance(exc, LLMRefusedToolUseError)
+                else _NO_TOOL_FORMAT_RETRY_INSTRUCTION
+            )
+            _log.warning("[ClaudeCode] %s; reintentando con prompt correctivo", type(exc).__name__)
+            retry_prompt = f"{prompt}\n\n[System]: {instruction}"
             rtext, rusage = await self._acall_cli(retry_prompt)
-            return self._process_response(rtext, rusage)
+            try:
+                return self._process_response(rtext, rusage, write_already_done=write_done)
+            except LLMToolFormatError:
+                # 2º intento sigue sin emitir el bloque: degradar a texto.
+                # Red de seguridad: detect_failure marca el fallo si era una acción.
+                _log.warning("[ClaudeCode] retry sin tool_call; devuelvo texto (red: detect_failure)")
+                m = AIMessage(content=rtext)
+                if rusage:
+                    m.usage_metadata = rusage
+                return ChatResult(generations=[ChatGeneration(message=m)])
 
     async def _acall_cli(self, prompt: str) -> tuple[str, dict | None]:
         """Invoca `claude -p --output-format json` (async). Devuelve (texto, usage_metadata)."""
