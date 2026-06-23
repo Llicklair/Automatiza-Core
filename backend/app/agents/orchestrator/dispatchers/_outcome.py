@@ -31,7 +31,7 @@ _ACTION_INTENT_KW = (
     "da de alta", "dar de alta", "alta de", "registra", "registrar",
     "añade", "añadir", "agrega", "agregar", "concilia", "conciliar",
     "calcula", "calcular", "aprueba", "aprobar", "asigna", "asignar",
-    "reconcilia",
+    "reconcilia", "abre ", "abrir", "publica ", "publicar",
 )
 
 # Frases INEQUÍVOCAS de fallo en la respuesta del LLM.
@@ -49,6 +49,7 @@ _FAIL_PHRASES = (
 _TOOL_REFUSAL_PHRASES = (
     "no están disponibles", "no disponibles en mi contexto",
     "no tengo acceso a", "no está disponible",
+    "no dispongo de", "no cuento con",
 )
 
 # Ambiguas: solo fallo cuando la operación NO es una consulta.
@@ -62,6 +63,27 @@ def tool_was_invoked(messages: list[Any]) -> bool:
     for m in messages or ():
         if getattr(m, "tool_calls", None):
             return True
+    return False
+
+
+# Marcadores en el NOMBRE de la tool que implican MUTACIÓN (escritura en BD). Un
+# intent de acción debe disparar una de estas; si solo dispara tools de lectura
+# (get_*/list_*/find_*/search_*) y luego "narra" el éxito, es un phantom-write.
+# Excluidos a propósito: "pay" (colisiona con list_payrolls, lectura) y "generate"
+# (ambiguo). "create" ya cubre calculate_and_create_payroll. Ver lessons 2026-06-23.
+_WRITE_TOOL_MARKERS = (
+    "create", "update", "delete", "remove", "send", "register",
+    "add", "upsert", "approve", "reconcile", "propose", "import",
+)
+
+
+def write_tool_was_invoked(messages: list[Any]) -> bool:
+    """True si alguna tool invocada parece de ESCRITURA (mutación), no solo lectura."""
+    for m in messages or ():
+        for tc in getattr(m, "tool_calls", None) or ():
+            name = (tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")) or ""
+            if any(mk in name.lower() for mk in _WRITE_TOOL_MARKERS):
+                return True
     return False
 
 
@@ -92,9 +114,17 @@ def detect_failure(
     if strict_not_found and any(p in low for p in _NOT_FOUND_PHRASES):
         return True, final_text
 
-    # Señal estructurada principal: acción pedida pero ninguna tool invocada.
+    # Señal estructurada principal: acción pedida pero NINGUNA tool de ESCRITURA
+    # invocada. Antes se exigía "0 tools" (any), pero un phantom-write dispara una
+    # tool de LECTURA (get_*/list_*) y narra el éxito → se colaba como success=True.
+    # Para un intent de acción exigimos una tool de mutación. Ver lessons 2026-06-23.
     intent_low = (intent or "").lower()
-    if any(kw in intent_low for kw in _ACTION_INTENT_KW) and not tool_was_invoked(messages):
+    if any(kw in intent_low for kw in _ACTION_INTENT_KW) and not write_tool_was_invoked(messages):
+        if tool_was_invoked(messages):
+            return True, (
+                "La operación no se ejecutó: el agente solo consultó datos pero no invocó "
+                "ninguna herramienta de escritura (posible respuesta fabricada)."
+            )
         return True, (
             "La operación no se ejecutó: el agente no invocó ninguna herramienta "
             "(posible rechazo del LLM a usar las tools)."
