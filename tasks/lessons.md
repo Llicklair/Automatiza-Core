@@ -4,6 +4,40 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-23 — El CI verde miente: probar agentes E2E con el LLM real revela otra app
+
+**Contexto:** Auditoría iterando órdenes NL una a una contra el orquestador REAL
+(provider `claude_code` = `claude` CLI, sin API key) sobre el tenant Demo Masivo. La
+suite pasa en verde porque corre con `ENVIRONMENT=testing` → **MockChatModel**, que
+devuelve tool-calls deterministas. Pero el escritorio envía `claude_code`, que hace
+**tool-calling basado en prompt** (`<<<TOOL_CALL>>>`), no nativo. Resultado real:
+banking/hr/documents/crm-lectura perfectos; pero accounting (sus tools nunca disparan,
+alucina una excusa "MCP no registrado"), inventory-create y billing/crm-create devuelven
+**0 tool-calls**. CI nunca toca ese camino. Informe: `tasks/e2e_agent_audit_2026-06-23.md`.
+
+**Patrón:** Un mock que "siempre llama la tool" oculta la pregunta más importante del
+sistema agéntico: *¿el LLM real decide invocar la tool?*. El verde da falsa confianza
+sobre exactamente el mecanismo que falla en producción. Además, dos amplificadores
+convierten el fallo en **falso éxito**: (a) `dispatchers/reports.py` fabrica un informe
+financiero para CUALQUIER intent (sin guard de relevancia) y lo marca `success=True`;
+(b) el clasificador hace `intent.lower()` **sin quitar tildes**, así que "perdidas"
+(sin tilde) no casa la keyword "pérdidas y ganancias" y gana un genérico ("dame el
+resumen"→report).
+
+**Regla de prevención:**
+- Para agentes LLM, además de la suite mock, mantener un **smoke E2E con el provider real**
+  sobre un puñado de órdenes de ESCRITURA; el mock no valida la elicitación de tools.
+- Clasificadores por keyword: **normalizar diacríticos** (NFKD) antes de matchear; los
+  usuarios omiten tildes. Y un match de score 1 con runner-up genérico debe delegar al
+  LLM, no resolver (un acierto erróneo se cachea 24 h).
+- Dispatchers determinISTAS que "siempre producen algo" necesitan un **guard de
+  relevancia** o devolverán artefactos plausibles-pero-falsos marcados como éxito.
+- Reutilizable: runner `c:/tmp/run_order.py` (traza tools via `BaseTool.invoke`), python
+  embebido del escritorio, tenant Demo Masivo. OJO: agota la cuota de la suscripción
+  Claude Code (el escritorio comparte ese pozo).
+
+---
+
 ## 2026-06-23 — La capa RLS ya estaba sellada; el riesgo real era otro
 
 **Contexto:** Los items 1/3/6 del consejo se vendían como "hardening de aislamiento

@@ -1,6 +1,6 @@
 # Tareas activas — AutomatizaCore
 
-Última actualización: 2026-06-19 (reconciliado contra el código)
+Última actualización: 2026-06-23 (reconciliado contra el código)
 
 > Solo trabajo **PENDIENTE**. Lo completado se ha retirado (queda en el historial
 > git). Vista global priorizada y verificada contra el código:
@@ -11,6 +11,17 @@
 > Zernio, ya no llama a la Graph API de Meta) y se detectó que la **cobertura E2E**
 > no estaba reflejada aquí (ver sección al final). El resto de "Deuda técnica
 > diferida" (A1-A7) se verificó vivo en código.
+>
+> **Reconciliación 2026-06-23** (4 subagentes verificando ~40 afirmaciones contra
+> el código real): la inmensa mayoría se confirmó respaldada por código. **4
+> correcciones**: (1) Modelo **131 NO es "cero código"** — tiene presentación
+> asistida vía XML (`presentacion/asistida.py`), solo le falta el PDF calcado;
+> (2) el botón "Firmar" de AutoFirma vive en `rrhh/documentos/DocumentCard.tsx`,
+> no en comunicación; (3) requirements.txt tiene **125** deps `==` (no 122);
+> (4) son **13** dispatchers de dominio tipados `-> AgentResult` (no 17). El resto
+> (RLS fail-closed, tool_session, seed demo `is_demo`, los 10 E2E, stock write-off,
+> casillas AEAT, deps cloud/localml, i18n es/en, contrato AIEmployee retirado) se
+> verificó **vivo y exacto** en código.
 
 ---
 
@@ -25,7 +36,7 @@ ya sella el aislamiento **fail-closed**; los ítems 1/6 son higiene, no P0), y e
 - `pyproject.toml`: `celery`/`redis` → grupo `cloud`; `sentence-transformers`/
   `langchain-huggingface` → grupo `localml` (no se empaquetan al escritorio);
   `opendataloader-pdf` añadido a main (dep real ausente del lock).
-- `requirements.txt` = export pineado (`poetry export --only main`): 122 deps `==`,
+- `requirements.txt` = export pineado (`poetry export --only main`): 125 deps `==`,
   ASCII-only, cabecera "generado, no editar". +langchain-anthropic (cerró gap: el
   proveedor Anthropic no se empaquetaba). Sin torch/celery/redis.
 - Verificado dry-run `pip install --target` en Windows/py3.11 (EXIT 0).
@@ -155,16 +166,20 @@ Tests: test_claude_code_usage (6) + orchestrator. Verificado: backend 42 + ruff 
   - [x] Migrar el **303** al módulo compartido ✅ — eliminados los helpers duplicados
     de `_fiscal_modelo303.py`; ahora usa `_aeat_layout` con `pct_codes=_PCT_CASILLAS`
     en cada `_casillas_table`. Batería de tests del 303 verde sin cambios.
-- [ ] **Modelos no cubiertos (futuro, P2)** — **131** (IRPF módulos / estimación
-  objetiva) y **TicketBAI** (País Vasco/Navarra): cero código hoy. Diferidos a
-  demanda real de cliente.
+- [~] **Modelos parcialmente cubiertos (futuro, P2)** — **131** (IRPF módulos /
+  estimación objetiva): NO tiene PDF "calcado" con casillas como el resto, pero SÍ
+  existe **presentación asistida** vía XML predeclaración (`services/presentacion/
+  asistida.py` → `build_modelo_131_xml` + deep-link a Sede AEAT, el usuario importa y
+  presenta). **TicketBAI** (País Vasco/Navarra): cero código hoy (confirmado). El PDF
+  calcado del 131 y TicketBAI quedan diferidos a demanda real de cliente.
 
 ## Gestoría / Firma
 
 - [~] **F3.11 Firma AutoFirma** ✅ implementado (2026-06-12) — backend
   (`autofirma.py` + init/callback) + **endpoint de estado** `GET /signing/
   autofirma/status/{token}` (3 tests) + **botón "Firmar"** en `DocumentCard`
-  (aprobados): obtiene el PDF → base64 → `init` → lanza `afirma://` → polling de
+  (`rrhh/documentos/DocumentCard.tsx`, en docs aprobados): obtiene el PDF → base64 →
+  `init` → lanza `afirma://` → polling de
   estado → toast. **Pendiente de verificación e2e**: requiere AutoFirma instalado
   para probar el handshake del certificado FNMT (no verificable en CI).
 
@@ -212,7 +227,7 @@ Migración `0029_aiemployee_contract` + modelo + `employee_memory` ✅.
   dominios especiales esperados).
 - [x] **#3 `AgentResult` end-to-end** ✅ RESUELTO POR DISEÑO (verificado 2026-06-12)
   — el objetivo (contrato `AgentResult` uniforme en todo el dispatch) **ya se
-  cumple**: los 17 dispatchers están tipados `-> AgentResult` y los graph-based
+  cumple**: los 13 dispatchers de dominio están tipados `-> AgentResult` y los graph-based
   pasan por el adaptador único `_run_graph_agent(graph, …) -> AgentResult`
   (`dispatchers/misc.py`). La tarea original (añadir `run_agent()` a cada
   `agent.py`) describía otro enfoque, superado por ese adaptador; el refactor
