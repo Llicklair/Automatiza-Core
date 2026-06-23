@@ -22,7 +22,7 @@ relectura). NO se usó `ENVIRONMENT=testing` (eso fuerza un MockChatModel que no
 | **crm** | 🟡 PARTIAL | 3/3 ✓ | list_opportunities (401), search_client | ✗ `create_opportunity` nunca disparó (exige cliente preexistente) |
 | **billing** | 🟡 PARTIAL | 1/3 | list_invoices, list_albaranes | ✗ "crea albarán"→inventory (no-op); "busca cliente"→excel |
 | **recruitment** | 🔴 PARTIAL/FAIL | reads ✓, write→crm | list_positions | ✗ misrouteado + **falso éxito** |
-| **inventory** | 🔴 FAIL | 3/3 ✓ | find_products, get_product_stock | ✗ `create_product` = **0 tool-calls** (determinista 2/2) |
+| **inventory** | 🟡 feature ausente | 3/3 ✓ | find_products, get_product_stock, get_stock_overview | **NO existe tool `create_product`** (solo `batch_adjust_stock`/`batch_update_products` con preview+confirm); el modelo declina crear — correcto, no bug de elicitación |
 | **accounting** | 🔴 FAIL | 1/3 | — (sus tools nunca disparan) | ✗ "libro diario"→0 tools + **excusa MCP alucinada** |
 | **compliance** | 🔴 FAIL | 0/3 | — | ✗ inalcanzable; `report` **fabrica** informe + **falso éxito** |
 | **excel** | 🟡 PARTIAL | "facturas a Excel"→billing | export_erp_data (.xlsx real) | ⚠ billing exporta **.CSV diciendo "Excel"** y capa a 50 filas en silencio |
@@ -141,7 +141,7 @@ mejor que dejar al agente decidir en una sola pasada. Coste: lento (~257 s multi
 
 ## Estado: survey COMPLETO (14 comportamientos, 9 dominios + orquestador)
 Scoreboard: **PASS** banking, hr · **PASS c/peros** documents, orquestador(multi-paso/chitchat)
-· **PARTIAL** crm, billing, email, excel · **FAIL** inventory, accounting, compliance, marketing.
+· **PARTIAL** crm, billing, email, excel · **FAIL** accounting, compliance · **feature ausente** inventory(create) · marketing(create) **arreglado por causa-G** (ver fixes).
 Para reproducir una orden: `"$DESKPY" c:/tmp/run_order.py "<orden>"` (DESKPY = python
 embebido del escritorio). OJO: agota la cuota de la suscripción Claude Code (la comparte
 el escritorio); ~15-20 órdenes la tumban hasta el reset.
@@ -157,7 +157,10 @@ los tests existentes + 7 nuevos, todos verdes) y **confirmados E2E con LLM real*
 | 1 | `detect_failure`: +verbos (`abre/abrir`, `publica/publicar`), +frase (`no dispongo de`), y exige tool de **escritura** (no cualquiera) para intents de acción → mata el phantom-write | `dispatchers/_outcome.py` | "crea campaña" → `success=False`/failed (antes true) |
 | 2 | Clasificador **tildes-tolerante** (NFKD): `_keyword_classify` auto-normaliza; keywords se normalizan en cada comparación. Tablas intactas (las parsea el audit script) | `classifier.py` | "balance de situacion" (sin tilde) → `accounting` + tools disparadas (antes misrouteo) |
 | 3 | Guard de relevancia en `report`: rechaza intents de auditoría/cumplimiento/GDPR en vez de fabricar un informe financiero re-etiquetado | `dispatchers/reports.py` | "registro de auditoría" → `success=False` con mensaje claro (antes informe falso true) |
+| 4 | **claude_code tool-elicitation** (causa G): regla "ACTIONS REQUIRE A TOOL CALL" en el prompt + retry *write-aware* cuando el modelo menciona la tool sin emitir el bloque (salvo que ya se ejecutara una escritura = resumen legítimo) | `core/llm/claude_code.py` | marketing "crea campaña" → **`create_campaign` dispara** (antes fantasma); banking read intacto; 5 escenarios offline ✓ |
 
-Pendiente (no incluido, requiere decisión de producto): mejorar la precisión del keyword-classifier
-(causas B–D), elicitación de writes bajo `claude_code` (causa G), conjunción "X y Y" (causa I),
-y el gap del mock en CI (causa H — añadir un smoke E2E con provider real).
+Causa G **parcialmente resuelta**: el caso "lee y narra el create" (marketing) ya dispara la
+escritura; queda el caso raro en que el modelo no menciona NINGUNA tool. Pendiente (requiere
+decisión de producto): precisión fina del keyword-classifier (causas B–D) y conjunción "X y Y"
+(causa I); gap del mock en CI (causa H — smoke E2E con provider real); el agente **inventory no
+tiene `create_product`** (¿alta de productos por NL como feature?).

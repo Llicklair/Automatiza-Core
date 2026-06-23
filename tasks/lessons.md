@@ -35,6 +35,11 @@ resumen"→report).
 - Reutilizable: runner `c:/tmp/run_order.py` (traza tools via `BaseTool.invoke`), python
   embebido del escritorio, tenant Demo Masivo. OJO: agota la cuota de la suscripción
   Claude Code (el escritorio comparte ese pozo).
+- Un agente que devuelve 0 tool-calls NO siempre es bug de elicitación del LLM: **verifica
+  primero que la tool EXISTE**. El "inventory no crea productos" no era fallo del modelo —
+  el agente no tiene `create_product` (solo `batch_adjust_stock`/`batch_update_products`).
+  Lee `tools.py`/`prompts.py` del agente antes de culpar al provider. (La causa-G real —
+  el modelo lee y narra el create sin emitirlo — sí se arregló con retry write-aware.)
 
 ---
 
