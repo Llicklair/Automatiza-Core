@@ -4,6 +4,45 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-06-23 — "Prompt caching = margen" es falso por dos vías (verificar antes de barrer)
+
+**Contexto:** El consejo (item 7) marcó "14 SystemMessage sin cachear sangrando margen
+en cada invocación" como crítico-para-viabilidad. Verificación en código: el helper
+`make_cached_system_message()` ([llm_factory.py:67](../backend/app/core/llm_factory.py#L67))
+**ya está adoptado en los 12 agentes principales** y añade `cache_control: ephemeral`
+solo si el provider activo es anthropic. Medición de tamaños reales: el system prompt
+más grande del repo es inventory ~571 tok; accounting ~460; HR ~480. Los ~18 sitios
+`SystemMessage(` directos restantes (tools/services) son todos <450 tok y casi todos
+de un solo turno (OCR, CV, clasificación). El mínimo cacheable de prefijo (fuente:
+skill claude-api, `shared/prompt-caching.md`) depende del modelo: **`claude-sonnet-4-6`
+(default del proyecto, config.py) = 2048 tok; Opus 4.6/4.7/4.8 = 4096 tok**; el 1024 clásico
+solo aplica a Sonnet 4.5 y anteriores. Por debajo del umbral, `cache_control` se **ignora**
+(silencioso, `cache_creation_input_tokens: 0`).
+
+**Patrón:** Dos premisas falsas independientes hundían el item:
+(a) **Elegibilidad** — ningún prompt del código llega al umbral, así que el caching
+(adoptado o no) **no ahorra nada hoy**; migrar los 18 restantes es trabajo cero-valor.
+(b) **Quién paga** — el modelo comercial real es **BYOK** (la landing: «trae tu clave…
+pagas tu consumo directamente al proveedor»). El coste de tokens es del CLIENTE, no
+COGS del vendedor → "margen-crítico" no aplica. Si acaso, el caching es un *argumento
+de venta* ("baja tu factura de IA"), no margen propio.
+
+**Regla de prevención:**
+- Antes de recomendar/ejecutar un barrido de prompt-caching: (1) **medir tokens** del
+  prompt real ensamblado (no el literal en `prompts.py` — muchos se concatenan en runtime,
+  p.ej. HR `build_system_prompt`) y compararlo con el **umbral del modelo configurado**
+  (2048 para sonnet-4-6, 4096 para Opus); (2) confirmar **quién paga** el LLM (BYOK vs SaaS)
+  antes de llamarlo "margen".
+- La única superficie que podría acercarse al umbral aquí es el **bloque de tools**
+  (`.bind_tools(tools)`, reenviado cada turno): docstrings 230–645 tok + firmas/JSON-schema;
+  el mayor (billing) ~1459 tok **sigue por debajo de 2048**, así que ni eso cachea en
+  sonnet-4-6. Palanca real (si alguna): **congelar el system prompt** (sacar `today`/`tenant_id`
+  del bloque cacheado, hoy invalidan el prefijo cada día), no anotar tools.
+- No migrar a un helper "por consistencia" cuando el helper es un no-op en ese contexto:
+  parece productivo y no mueve ninguna métrica.
+
+---
+
 ## 2026-06-23 — El CI verde miente: probar agentes E2E con el LLM real revela otra app
 
 **Contexto:** Auditoría iterando órdenes NL una a una contra el orquestador REAL
