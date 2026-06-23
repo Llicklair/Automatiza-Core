@@ -31,6 +31,28 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
     """Genera el informe mensual de empresa y lo guarda como documento PDF."""
     intent = subtask.get("params", {}).get("intent", state.get("user_intent", ""))
 
+    # Guard de relevancia: este dispatcher SIEMPRE fabrica un informe FINANCIERO.
+    # Intents de auditoría/cumplimiento/legal misrutean aquí (no hay dominio propio) y
+    # antes salían como un informe financiero re-etiquetado con success=true (auditoría
+    # E2E 2026-06-23: "Registro de Auditoría" falso). No inventes: devuelve fallo claro.
+    _il = intent.lower()
+    _OUT_OF_SCOPE = (
+        "auditoria", "auditoría", "cumplimiento", "compliance",
+        "gdpr", "rgpd", "proteccion de datos", "protección de datos",
+        "blanqueo", "lopd", "registro de auditoria", "registro de auditoría",
+    )
+    if any(t in _il for t in _OUT_OF_SCOPE):
+        return {
+            "subtask_id": subtask.get("id", "report_1"),
+            "agent": "report",
+            "success": False,
+            "output": {},
+            "error": (
+                "El informe financiero no cubre solicitudes de auditoría/cumplimiento; "
+                "esa funcionalidad no está disponible todavía."
+            ),
+        }
+
     # Extraer mes del intent con lógica robusta de lenguaje natural
     _month, _year = extract_month_year(intent)
     month_str = f"{_year}-{_month:02d}"

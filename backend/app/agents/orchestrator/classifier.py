@@ -20,6 +20,7 @@ entradas con prefijo ``classify:`` para todos los tenants.
 """
 
 import logging
+import unicodedata
 
 from app.agents.orchestrator.classifier_data import (
     _CHITCHAT_TOKENS,
@@ -43,6 +44,15 @@ from app.agents.orchestrator.state import (
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_accents(text: str) -> str:
+    """Quita diacríticos (tildes, ñ→n) vía NFKD. Hace el matching de keywords
+    tolerante a que el usuario omita tildes ('perdidas' == 'pérdidas'). Ver auditoría
+    E2E 2026-06-23: la insensibilidad a tildes provocaba misrouting (accounting→report)."""
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
+    )
 
 
 def _normalize_for_cache(text: str) -> str:
@@ -86,7 +96,7 @@ def _is_question(text: str) -> bool:
             "sube",
             "subir",
         ]
-        return not any(v in t.lower() for v in action_verbs)
+        return not any(_strip_accents(v) in _strip_accents(t.lower()) for v in action_verbs)
     question_starts = [
         "cuántas",
         "cuántos",
@@ -112,7 +122,7 @@ def _is_question(text: str) -> bool:
         "buenas",
         "gracias",
     ]
-    return any(t.lower().startswith(q) for q in question_starts)
+    return any(_strip_accents(t.lower()).startswith(_strip_accents(q)) for q in question_starts)
 
 
 def _strong_keyword_match(intent_lower: str) -> str | None:
@@ -129,14 +139,14 @@ def _strong_keyword_match(intent_lower: str) -> str | None:
     best_len = 0
     for domain, keywords in _STRONG_KEYWORDS.items():
         for kw in keywords:
-            if kw in intent_lower and len(kw) > best_len:
+            if _strip_accents(kw) in intent_lower and len(kw) > best_len:
                 best_domain = domain
                 best_len = len(kw)
     return best_domain
 
 
 def _has_multi_step_connector(intent_lower: str) -> bool:
-    return any(c in intent_lower for c in _MULTI_STEP_CONNECTORS)
+    return any(_strip_accents(c) in intent_lower for c in _MULTI_STEP_CONNECTORS)
 
 
 def _is_pure_chitchat(intent_lower: str) -> bool:
@@ -147,7 +157,7 @@ def _is_pure_chitchat(intent_lower: str) -> bool:
     # Hasta 6 palabras y empieza por un token de chitchat
     if len(stripped.split()) > 6:
         return False
-    return any(stripped.startswith(t) for t in _CHITCHAT_TOKENS)
+    return any(stripped.startswith(_strip_accents(t)) for t in _CHITCHAT_TOKENS)
 
 
 def _keyword_classify(intent_lower: str) -> str:
@@ -157,6 +167,10 @@ def _keyword_classify(intent_lower: str) -> str:
     Devuelve el dominio con score máximo si gana de forma clara; si hay empate
     o ningún match, devuelve 'unknown' para que el LLM decida.
     """
+    # Tildes-tolerante: normaliza el intent (los usuarios omiten tildes); las keywords
+    # se normalizan en cada comparación. Self-strip → robusto para cualquier caller
+    # (tests pasan el intent con tildes). Ver _strip_accents / auditoría E2E 2026-06-23.
+    intent_lower = _strip_accents(intent_lower)
     # 0. Saludos puros → chat directo
     if _is_pure_chitchat(intent_lower):
         return "chat"
@@ -169,7 +183,7 @@ def _keyword_classify(intent_lower: str) -> str:
     for domain, keywords in _KEYWORD_MAP.items():
         if domain == "chat":
             continue
-        n = sum(1 for kw in keywords if kw in intent_lower)
+        n = sum(1 for kw in keywords if _strip_accents(kw) in intent_lower)
         if n:
             scores[domain] = n
 
