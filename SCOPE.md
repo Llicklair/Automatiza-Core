@@ -18,7 +18,7 @@ AutomatizaCore es un ERP de escritorio con inteligencia artificial integrada. En
 - Hoy usan Excel, papel o un ERP genérico que no entienden
 - No tienen departamento de IT
 - Necesitan facturación, nóminas, control de clientes y documentos en un solo sitio
-- Valoran que sus datos NO salgan de su ordenador
+- Valoran que su base de datos NO se aloje en servidores de terceros (queda en su ordenador; las funciones de IA envían solo los datos necesarios al proveedor LLM que el cliente elija, nunca a un servidor de AutomatizaCore)
 
 ### Por qué existe
 
@@ -26,14 +26,14 @@ Los ERP existentes (Holded, Sage, A3, Contasol) tienen dos problemas para este s
 1. **Curva de aprendizaje alta** — el usuario necesita saber dónde está cada función
 2. **Datos en la nube** — muchas PYMEs y asesorías son reticentes a subir datos fiscales y de empleados a servidores de terceros
 
-AutomatizaCore resuelve ambos: la IA elimina la curva de aprendizaje, y la arquitectura local-first garantiza que los datos nunca salen del ordenador del cliente.
+AutomatizaCore resuelve ambos: la IA elimina la curva de aprendizaje, y la arquitectura local-first mantiene toda la base de datos en el ordenador del cliente, sin servidor central que la almacene. La inferencia de IA envía los datos necesarios directamente al proveedor LLM que el cliente configura (Anthropic/OpenAI/…), bajo el DPA de ese proveedor y nunca a través de servidores de AutomatizaCore.
 
 ### Riesgo competitivo
 
 Holded, Sage y otros están añadiendo asistentes IA. La ventaja no es "tener IA" sino:
 - **IA como interfaz principal**, no como chatbot añadido al margen
 - **Agentes que ejecutan acciones**, no solo responden preguntas
-- **Local-first**: cumplimiento de privacidad sin esfuerzo
+- **Local-first**: sin servidor central con datos del cliente (la BD vive en su equipo); la IA usa el proveedor LLM del cliente bajo DPA
 - **Precio de entrada bajo** vs suscripciones SaaS crecientes
 
 Esta ventaja tiene fecha de caducidad. La velocidad de lanzamiento es el factor decisivo.
@@ -149,7 +149,7 @@ Usuario instala → abre app → asistente guiado:
 | Sin firma electrónica | No hay integración con DocuSign/Autofirma |
 | Sin presentación automática a AEAT | Requiere certificado digital y API de sede electrónica |
 | Una empresa por instalación | Diseño deliberado: una empresa = una BD local |
-| Datos no se sincronizan a la nube | Decisión de privacidad, no limitación técnica |
+| La BD operativa no se sincroniza a la nube | Decisión de privacidad, no limitación técnica (las funciones de IA sí envían datos al proveedor LLM elegido) |
 | Requiere internet para IA | El LLM es remoto; sin conexión, la IA no funciona |
 
 ---
@@ -354,4 +354,4 @@ Sin un número, no sabes cuándo has terminado. Propuesta:
 | Electron + PostgreSQL embebido | Instalación sin dependencias, familiar para usuario Windows | Inicio proyecto |
 | Claude como LLM principal | Mejor relación calidad/coste para español + tool use | Inicio proyecto |
 | Un tenant por instalación | Simplifica v1, multi-empresa planificado para v2 | Inicio proyecto |
-| Datos nunca salen del ordenador | Elimina preocupaciones RGPD de hosting, reduce costes infra | Inicio proyecto |
+| Sin servidor central con datos del cliente (BD local) | Elimina el riesgo de brecha masiva y las preocupaciones RGPD de hosting; la IA usa el proveedor LLM del cliente bajo DPA | Inicio proyecto |

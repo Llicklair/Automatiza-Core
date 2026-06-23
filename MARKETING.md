@@ -12,13 +12,19 @@
 
 ## Definición de "datos de negocio"
 
-Datos protegidos por la promesa anterior:
+Datos protegidos por la promesa anterior (nunca enviados a servidores de
+AutomatizaCore):
 
 - Facturas (números, importes, líneas).
 - Clientes / proveedores (NIFs, IBANs, nombres, direcciones).
 - Nóminas, retenciones, contabilidad.
-- Contenido de prompts y outputs de agentes IA.
 - Documentos subidos por el usuario.
+
+Excepción inherente a la IA: el contenido de prompts y los outputs de los
+agentes se envían directamente desde tu equipo al proveedor LLM que tú
+configures (Anthropic/OpenAI/…), bajo el DPA de ese proveedor. Nunca pasan
+por servidores de AutomatizaCore, pero sí salen de tu equipo para ejecutar
+las funciones de IA.
 
 Datos técnicos que el usuario puede autorizar a enviar (opt-in):
 

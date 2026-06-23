@@ -402,9 +402,13 @@ except Exception as e:
 **AutomatizaCore no centraliza datos de negocio del cliente en servidores propios.**
 
 Datos de negocio = facturas, clientes, NIFs, IBANs, importes, nóminas,
-contabilidad, contenido de prompts y outputs de agentes. Estos viven
-exclusivamente en el equipo del cliente (Postgres local gestionado por el
-desktop Electron).
+contabilidad, contenido de prompts y outputs de agentes. Estos viven en el
+equipo del cliente (Postgres local gestionado por el desktop Electron) y
+nunca se centralizan en servidores de AutomatizaCore. Excepción inherente a
+la IA: el contenido de prompts y los outputs de agentes se envían al
+proveedor LLM que el cliente configura (Anthropic/OpenAI/…), directamente
+desde el equipo del cliente y bajo el DPA de ese proveedor — nunca a través
+de infraestructura de AutomatizaCore.
 
 Servicios opcionales del cliente que pueden enviar datos al VPS:
 
