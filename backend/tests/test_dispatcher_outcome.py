@@ -4,7 +4,11 @@ Cubre la señal principal: intent de ACCIÓN sin herramienta invocada → fallo
 (el caso en que el LLM se rehúsa a usar tools y devuelve prosa convincente, que
 antes se marcaba success=True).
 """
-from app.agents.orchestrator.dispatchers._outcome import detect_failure, tool_was_invoked
+from app.agents.orchestrator.dispatchers._outcome import (
+    detect_failure,
+    tool_was_invoked,
+    write_tool_was_invoked,
+)
 
 
 class _AIMsg:
@@ -74,3 +78,44 @@ def test_tool_was_invoked():
     assert tool_was_invoked(_msgs(tool=False)) is False
     assert tool_was_invoked([]) is False
     assert tool_was_invoked(None) is False
+
+
+# --- Regresión auditoría E2E 2026-06-23: phantom-write + verbos/frases nuevos ---
+
+
+def _msgs_tool(name: str):
+    """Mensajes con UNA tool invocada de nombre arbitrario (para distinguir read/write)."""
+    return [_AIMsg("intent"), _AIMsg("", tool_calls=[{"name": name, "args": {}}]), _AIMsg("final")]
+
+
+def test_phantom_write_only_read_tool_is_failure():
+    # Acción pedida pero solo se invocó una tool de LECTURA → la operación no se ejecutó.
+    # Antes (regla "0 tools") esto pasaba como success=True (phantom-write).
+    is_err, _ = detect_failure(
+        _msgs_tool("get_product_catalog"), "He preparado la campana.", "crea una campana"
+    )
+    assert is_err is True
+
+
+def test_action_with_write_tool_is_success():
+    assert detect_failure(_msgs_tool("create_campaign"), "Campana creada.", "crea una campana")[0] is False
+
+
+def test_abrir_verb_without_tool_is_failure():
+    assert detect_failure([], "He abierto el puesto.", "abre un puesto de trabajo")[0] is True
+
+
+def test_no_dispongo_de_refusal_is_failure():
+    is_err, _ = detect_failure(
+        [_AIMsg("No dispongo de herramientas de RRHH.")],
+        "No dispongo de herramientas de RRHH.",
+        "abre un puesto",
+    )
+    assert is_err is True
+
+
+def test_write_tool_was_invoked_excludes_reads():
+    assert write_tool_was_invoked(_msgs_tool("create_invoice")) is True
+    assert write_tool_was_invoked(_msgs_tool("update_stock")) is True
+    assert write_tool_was_invoked(_msgs_tool("list_payrolls")) is False
+    assert write_tool_was_invoked(_msgs_tool("get_account_balance")) is False
