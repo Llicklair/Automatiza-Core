@@ -158,9 +158,10 @@ los tests existentes + 7 nuevos, todos verdes) y **confirmados E2E con LLM real*
 | 2 | Clasificador **tildes-tolerante** (NFKD): `_keyword_classify` auto-normaliza; keywords se normalizan en cada comparación. Tablas intactas (las parsea el audit script) | `classifier.py` | "balance de situacion" (sin tilde) → `accounting` + tools disparadas (antes misrouteo) |
 | 3 | Guard de relevancia en `report`: rechaza intents de auditoría/cumplimiento/GDPR en vez de fabricar un informe financiero re-etiquetado | `dispatchers/reports.py` | "registro de auditoría" → `success=False` con mensaje claro (antes informe falso true) |
 | 4 | **claude_code tool-elicitation** (causa G): regla "ACTIONS REQUIRE A TOOL CALL" en el prompt + retry *write-aware* cuando el modelo menciona la tool sin emitir el bloque (salvo que ya se ejecutara una escritura = resumen legítimo) | `core/llm/claude_code.py` | marketing "crea campaña" → **`create_campaign` dispara** (antes fantasma); banking read intacto; 5 escenarios offline ✓ |
+| 5 | **Guardia de CI determinista** (causa H): tests que inyectan las salidas-CLI reales y verifican retry/parseo/degradado/rechazo del provider SIN LLM real (CI no tiene `claude`), + casos phantom-write en el outcome | `tests/test_claude_code_tool_elicitation.py`, `tests/test_dispatcher_outcome.py` | py_compile ✓; lógica probada offline; smoke real gateado con `RUN_REAL_LLM_SMOKE=1` |
 
 Causa G **parcialmente resuelta**: el caso "lee y narra el create" (marketing) ya dispara la
-escritura; queda el caso raro en que el modelo no menciona NINGUNA tool. Pendiente (requiere
-decisión de producto): precisión fina del keyword-classifier (causas B–D) y conjunción "X y Y"
-(causa I); gap del mock en CI (causa H — smoke E2E con provider real); el agente **inventory no
+escritura; queda el caso raro en que el modelo no menciona NINGUNA tool. Causa H **resuelta**:
+guardia de CI determinista (fix #5). Pendiente (requiere decisión de producto): precisión fina
+del keyword-classifier (causas B–D) y conjunción "X y Y" (causa I); el agente **inventory no
 tiene `create_product`** (¿alta de productos por NL como feature?).
