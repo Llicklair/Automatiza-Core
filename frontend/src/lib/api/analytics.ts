@@ -157,6 +157,9 @@ export interface AnalyticsClientes {
 }
 
 export interface AnalyticsInventario {
+    productos_activos: number;
+    unidades_stock: number;
+    valor_stock_eur: number;
     bajas_units: number;
     bajas_value_eur: number;
     below_min_count: number;

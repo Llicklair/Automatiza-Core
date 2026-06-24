@@ -4434,6 +4434,8 @@
       "statusPaid": "Facturas Cobradas",
       "statusPending": "Facturas Pendientes",
       "statusDraft": "Borradores",
+      "stockValueTitle": "Valor del inventario",
+      "stockValueSub": "{units} uds · {products} productos en stock",
       "mermasTitle": "Mermas del periodo",
       "mermasCount": "{count} uds",
       "mermasAmount": "Valor: {amount}€",

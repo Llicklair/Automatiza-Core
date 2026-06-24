@@ -4434,6 +4434,8 @@
       "statusPaid": "Collected Invoices",
       "statusPending": "Pending Invoices",
       "statusDraft": "Drafts",
+      "stockValueTitle": "Inventory value",
+      "stockValueSub": "{units} units · {products} products in stock",
       "mermasTitle": "Shrinkage this period",
       "mermasCount": "{count} units",
       "mermasAmount": "Value: {amount}€",

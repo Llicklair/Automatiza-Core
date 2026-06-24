@@ -2,7 +2,7 @@
 
 import {
     TrendingUp, TrendingDown, FileText, Activity, BrainCircuit, Clock,
-    PackageMinus, AlertTriangle,
+    Package, PackageMinus, AlertTriangle,
 } from "lucide-react";
 import {
     AreaChart, Area, PieChart, Pie, Cell,
@@ -34,6 +34,9 @@ interface ResumenSectionProps {
     importeVencenProximos: number;
     tasksDone: number;
     tasksSuccessRate: number;
+    productosActivos: number;
+    unidadesStock: number;
+    valorStockEur: number;
     bajasUnits: number;
     bajasValueEur: number;
     belowMinCount: number;
@@ -46,6 +49,7 @@ export function ResumenSection({
     factPagadas, factPendientes, factBorrador,
     importePendienteCobro, vencenProximos, importeVencenProximos,
     tasksDone, tasksSuccessRate,
+    productosActivos, unidadesStock, valorStockEur,
     bajasUnits, bajasValueEur, belowMinCount,
 }: ResumenSectionProps) {
     const t = useTranslations("analitica");
@@ -110,9 +114,20 @@ export function ResumenSection({
                 </div>
             )}
 
-            {/* Inventario: mermas y bajo mínimo */}
-            {(bajasUnits > 0 || belowMinCount > 0) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Inventario: estado de stock + mermas y bajo mínimo */}
+            {(productosActivos > 0 || bajasUnits > 0 || belowMinCount > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {productosActivos > 0 && (
+                        <div className="rounded-2xl border border-border bg-card p-5 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">{t("resumen.stockValueTitle")}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{fmt(valorStockEur)}€</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t("resumen.stockValueSub", { units: unidadesStock, products: productosActivos })}</p>
+                            </div>
+                            <Package className="w-8 h-8 text-muted-foreground/40" />
+                        </div>
+                    )}
+                    {bajasUnits > 0 && (
                     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-rose-300 uppercase font-semibold tracking-wide">{t("resumen.mermasTitle")}</p>
@@ -121,6 +136,7 @@ export function ResumenSection({
                         </div>
                         <PackageMinus className="w-8 h-8 text-rose-400/60" />
                     </div>
+                    )}
                     {belowMinCount > 0 && (
                         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex items-center justify-between">
                             <div>

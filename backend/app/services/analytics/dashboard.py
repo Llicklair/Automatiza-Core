@@ -39,6 +39,11 @@ from app.services.cache import cached_json
 _DASHBOARD_TTL_SECONDS = 300
 
 DEMO_TX_PREFIX = "[DEMO]"
+# Facturas EMITIDAS por nosotros = issued + rectificativas/abono (mismo conjunto
+# canónico que services/billing/commands.py y el índice único parcial). Las
+# rectificativas llevan amount_total negativo, así que func.sum() las neutraliza
+# correctamente en ingresos/IVA/top-clientes; excluirlas sobreestimaba las cifras (B8).
+_EMITTED = ("issued", "rectificativa")
 _MONTHS_ES = [
     "Ene", "Feb", "Mar", "Abr", "May", "Jun",
     "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
@@ -119,9 +124,9 @@ async def get_dashboard(
         func.count(),
     ).where(
         Invoice.tenant_id == tenant_id,
-        Invoice.invoice_type == "issued",
-        Invoice.date >= start,
-        Invoice.date <= end,
+        Invoice.invoice_type.in_(_EMITTED),
+        func.date(Invoice.date) >= start,
+        func.date(Invoice.date) <= end,
     )
     received_period_q = select(
         func.coalesce(func.sum(Invoice.amount_total), 0),
@@ -129,8 +134,8 @@ async def get_dashboard(
     ).where(
         Invoice.tenant_id == tenant_id,
         Invoice.invoice_type == "received",
-        Invoice.date >= start,
-        Invoice.date <= end,
+        func.date(Invoice.date) >= start,
+        func.date(Invoice.date) <= end,
     )
     ingresos_periodo_t, emitidas_periodo = (await db.execute(issued_period_q)).one()
     gastos_periodo_t, recibidas_periodo = (await db.execute(received_period_q)).one()
@@ -150,7 +155,7 @@ async def get_dashboard(
         func.coalesce(func.sum(Invoice.amount_total), 0),
     ).where(
         Invoice.tenant_id == tenant_id,
-        Invoice.invoice_type == "issued",
+        Invoice.invoice_type.in_(_EMITTED),
     ).group_by(Invoice.status)
     status_rows = (await db.execute(status_breakdown_q)).all()
 
@@ -169,7 +174,7 @@ async def get_dashboard(
 
     total_ingresos_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
         Invoice.tenant_id == tenant_id,
-        Invoice.invoice_type == "issued",
+        Invoice.invoice_type.in_(_EMITTED),
         Invoice.status != "cancelled",
     )
     total_gastos_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
@@ -195,7 +200,7 @@ async def get_dashboard(
         func.count(), func.coalesce(func.sum(Invoice.amount_total), 0)
     ).where(
         Invoice.tenant_id == tenant_id,
-        Invoice.invoice_type == "issued",
+        Invoice.invoice_type.in_(_EMITTED),
         Invoice.status.in_(["pending", "sent"]),
         Invoice.due_date.is_not(None),
         Invoice.due_date <= today + timedelta(days=7),
@@ -209,17 +214,17 @@ async def get_dashboard(
     for m_start, m_end, label in iter_months_back(start, 6):
         ing_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
             Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "issued",
+            Invoice.invoice_type.in_(_EMITTED),
             Invoice.status != "cancelled",
-            Invoice.date >= m_start,
-            Invoice.date <= m_end,
+            func.date(Invoice.date) >= m_start,
+            func.date(Invoice.date) <= m_end,
         )
         gas_q = select(func.coalesce(func.sum(Invoice.amount_total), 0)).where(
             Invoice.tenant_id == tenant_id,
             Invoice.invoice_type == "received",
             Invoice.status != "cancelled",
-            Invoice.date >= m_start,
-            Invoice.date <= m_end,
+            func.date(Invoice.date) >= m_start,
+            func.date(Invoice.date) <= m_end,
         )
         ing = float((await db.execute(ing_q)).scalar() or 0)
         gas = float((await db.execute(gas_q)).scalar() or 0)
@@ -236,10 +241,10 @@ async def get_dashboard(
         .join(Invoice, Invoice.client_id == Client.id)
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "issued",
+            Invoice.invoice_type.in_(_EMITTED),
             Invoice.status != "cancelled",
-            Invoice.date >= start,
-            Invoice.date <= end,
+            func.date(Invoice.date) >= start,
+            func.date(Invoice.date) <= end,
         )
         .group_by(Client.name)
         .order_by(desc("total"))
@@ -381,10 +386,10 @@ async def get_dashboard(
         .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "issued",
+            Invoice.invoice_type.in_(_EMITTED),
             Invoice.status != "cancelled",
-            Invoice.date >= start,
-            Invoice.date <= end,
+            func.date(Invoice.date) >= start,
+            func.date(Invoice.date) <= end,
         )
         .group_by(iva_rate_expr)
         .order_by(desc("total_con_iva"))
@@ -417,10 +422,10 @@ async def get_dashboard(
         .outerjoin(Product, Product.id == InvoiceLine.product_id)
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "issued",
+            Invoice.invoice_type.in_(_EMITTED),
             Invoice.status != "cancelled",
-            Invoice.date >= start,
-            Invoice.date <= end,
+            func.date(Invoice.date) >= start,
+            func.date(Invoice.date) <= end,
         )
         .group_by(product_name)
         .order_by(desc("total"))
@@ -445,10 +450,10 @@ async def get_dashboard(
         )
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.invoice_type == "issued",
+            Invoice.invoice_type.in_(_EMITTED),
             Invoice.status != "cancelled",
-            Invoice.date >= start,
-            Invoice.date <= end,
+            func.date(Invoice.date) >= start,
+            func.date(Invoice.date) <= end,
         )
         .group_by(dow_expr)
         .order_by(dow_expr)
@@ -607,6 +612,18 @@ async def get_dashboard(
     )
     below_min_count = int((await db.execute(below_min_q)).scalar() or 0)
 
+    # Estado de stock ACTUAL: nº de productos activos, unidades en stock y valor a
+    # coste (Σ stock_quantity × cost_price). Antes la analítica solo reflejaba
+    # bajas/merma y bajo-mínimo, no el estado real del inventario (A6).
+    stock_q = select(
+        func.count(Product.id),
+        func.coalesce(func.sum(Product.stock_quantity), 0),
+        func.coalesce(
+            func.sum(Product.stock_quantity * func.coalesce(Product.cost_price, 0)), 0
+        ),
+    ).where(Product.tenant_id == tenant_id, Product.is_active.is_(True))
+    productos_activos, unidades_stock, valor_stock = (await db.execute(stock_q)).one()
+
     agent_q = (
         select(
             AgentExecutionTrace.agent_name,
@@ -741,6 +758,9 @@ async def get_dashboard(
             "has_demo_data": has_demo_data,
         },
         "inventario": {
+            "productos_activos": int(productos_activos or 0),
+            "unidades_stock": int(unidades_stock or 0),
+            "valor_stock_eur": round(float(valor_stock or 0), 2),
             "bajas_units": int(bajas_units_t or 0),
             "bajas_value_eur": round(float(bajas_value_t or 0), 2),
             "below_min_count": below_min_count,

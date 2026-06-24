@@ -52,7 +52,10 @@ const EMPTY_DASHBOARD: AnalyticsDashboard = {
     },
     ia_detalle: { por_agente: [], top_errores: [] },
     clientes: { total: 0, nuevos_periodo: 0 },
-    inventario: { bajas_units: 0, bajas_value_eur: 0, below_min_count: 0 },
+    inventario: {
+        productos_activos: 0, unidades_stock: 0, valor_stock_eur: 0,
+        bajas_units: 0, bajas_value_eur: 0, below_min_count: 0,
+    },
 };
 
 export function useAnalitica() {
