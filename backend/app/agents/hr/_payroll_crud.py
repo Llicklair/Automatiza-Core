@@ -63,10 +63,11 @@ async def _update_payroll_async(
             changes = []
 
             base = float(payroll.base_salary)
-            # Preservar el % de IRPF aplicado ANTES de cambiar la base: se deriva
-            # de los valores actuales (irpf/base). Calcularlo después de reasignar
-            # la base nueva distorsionaba el tipo (irpf_viejo / base_nueva).
-            irpf_rate = (float(payroll.irpf or 0) / base * 100) if base > 0 else 15.0
+            # El tipo de IRPF se lee del campo persistido pct_irpf (la fuente de
+            # verdad que fija el servicio al crear la nómina). Antes se re-derivaba
+            # como irpf/base, lo que daba un tipo ERRÓNEO cuando el bruto ≠ base
+            # (jornada parcial, extras) y rompía con base==0 (B4).
+            irpf_rate = float(payroll.pct_irpf or 15.0)
             if base_salary_str.strip():
                 try:
                     base = float(base_salary_str.strip().replace(",", "."))
