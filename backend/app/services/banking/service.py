@@ -133,6 +133,26 @@ async def purge_demo_transactions(db: AsyncSession, tenant_id: uuid.UUID) -> int
     return int(res.rowcount or 0)
 
 
+async def _apply_payment_entry(db, tenant_id, tx, invoice) -> None:
+    """Genera el asiento de cobro/pago (idempotente) y enlaza tx.journal_entry_id.
+
+    Best-effort: un fallo contable (p.ej. periodo cerrado) no debe abortar la
+    conciliación. Compartido por la conciliación manual y la automática para que
+    ambas dejen la MISMA huella contable — antes auto_reconcile marcaba la factura
+    pagada SIN generar el asiento de cobro (B16).
+    """
+    try:
+        from app.services.billing.auto_accounting import create_invoice_payment_entry
+
+        entry = await create_invoice_payment_entry(db, tenant_id, invoice)
+        if entry:
+            tx.journal_entry_id = entry.id
+    except Exception as acc_err:
+        import logging
+
+        logging.getLogger(__name__).warning("Asiento de cobro no generado: %s", acc_err)
+
+
 async def reconcile_transaction(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -172,16 +192,7 @@ async def reconcile_transaction(
             f"Emitela primero antes de conciliarla."
         )
 
-    try:
-        from app.services.billing.auto_accounting import create_invoice_payment_entry
-
-        entry = await create_invoice_payment_entry(db, tenant_id, invoice)
-        if entry:
-            tx.journal_entry_id = entry.id
-    except Exception as acc_err:
-        import logging
-
-        logging.getLogger(__name__).warning("Asiento de cobro no generado: %s", acc_err)
+    await _apply_payment_entry(db, tenant_id, tx, invoice)
 
     await db.commit()
     await emit_event(
@@ -321,10 +332,19 @@ def _score_match(tx, inv, tx_amount: float) -> int:
 
 def _candidates_for(tx, invoices, used_ids: set[str]) -> list:
     """Devuelve invoices candidatos con (inv, score, reasons)."""
-    tx_amount = abs(float(tx.amount))
+    tx_raw = float(tx.amount)
+    tx_amount = abs(tx_raw)
+    # B6 — dirección: un cobro (tx>0) solo casa con facturas EMITIDAS
+    # (issued/rectificativa); un pago (tx<0) solo con facturas RECIBIDAS. Antes
+    # se casaba por importe absoluto ignorando invoice_type y el signo, así que
+    # un cargo podía conciliarse contra una factura emitida (y viceversa).
+    want_emitted = tx_raw >= 0
     cands = []
     for inv in invoices:
         if str(inv.id) in used_ids:
+            continue
+        is_emitted = (inv.invoice_type or "issued") != "received"
+        if is_emitted != want_emitted:
             continue
         if abs(abs(float(inv.amount_total)) - tx_amount) > 0.02:
             continue
@@ -450,6 +470,10 @@ async def auto_reconcile(
             tx.status = "reconciled"
             if can_transition("Invoice", winner.status, "paid"):
                 winner.status = "paid"
+            # Mismo asiento de cobro (idempotente) que la conciliación manual:
+            # antes auto_reconcile dejaba la contabilidad sin el asiento (B16).
+            if winner.status == "paid":
+                await _apply_payment_entry(db, tenant_id, tx, winner)
             used_ids.add(str(winner.id))
             matched_count += 1
 
