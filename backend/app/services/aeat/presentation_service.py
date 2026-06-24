@@ -178,7 +178,14 @@ async def submit_presentation(
 
     p.submitted_at = datetime.now()
     p.response_raw = result.response_body
-    if result.accepted:
+    if result.accepted and result.dry_run:
+        # Ensayo (dry_run): NO es una presentación real ante la AEAT. LÍNEA ROJA:
+        # nunca debe quedar como 'accepted' ni con un CSV que parezca un
+        # justificante válido. Estado propio 'simulado' y csv_justificante=None
+        # (esto último hace que download_acuse devuelva 422 automáticamente).
+        p.status = "simulado"
+        p.csv_justificante = None
+    elif result.accepted:
         p.status = "accepted"
         p.csv_justificante = result.csv
         p.accepted_at = datetime.now()
@@ -204,10 +211,24 @@ async def get_presentation(
 
 
 def build_acuse_text(p: AeatPresentation) -> str:
-    """Acuse de recibo en texto plano con el CSV justificante de la AEAT."""
+    """Acuse de recibo en texto plano con el CSV justificante de la AEAT.
+
+    Si la presentación NO está realmente aceptada por la AEAT (ensayo dry_run =
+    status 'simulado', o sin CSV real), el documento se marca de forma inequívoca
+    como SIN VALIDEZ y se omite la línea de verificación en sede — nunca debe
+    parecer un justificante real.
+    """
+    es_real = p.status == "accepted" and bool(p.csv_justificante)
     lines = [
         "ACUSE DE RECIBO — PRESENTACIÓN ELECTRÓNICA AEAT",
         "=" * 48,
+    ]
+    if not es_real:
+        lines += [
+            "*** ENSAYO — JUSTIFICANTE SIMULADO, SIN VALIDEZ ANTE LA AEAT ***",
+            "=" * 48,
+        ]
+    lines += [
         f"Modelo:        {p.model_code}",
         f"Ejercicio:     {p.year}",
         f"Periodo:       {p.period}",
@@ -217,8 +238,12 @@ def build_acuse_text(p: AeatPresentation) -> str:
         f"Presentado:    {p.submitted_at.isoformat() if p.submitted_at else '—'}",
         f"Aceptado:      {p.accepted_at.isoformat() if p.accepted_at else '—'}",
         "",
-        "Verificable en https://sede.agenciatributaria.gob.es con el CSV.",
     ]
+    lines.append(
+        "Verificable en https://sede.agenciatributaria.gob.es con el CSV."
+        if es_real
+        else "Documento de ensayo interno. NO presentado realmente ante la AEAT."
+    )
     return "\n".join(lines)
 
 
