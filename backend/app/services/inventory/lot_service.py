@@ -108,14 +108,52 @@ async def add_lot(
     return lot
 
 
-async def deduct_fefo(db: AsyncSession, *, product_id: UUID, quantity: int) -> dict:
-    """Descuenta `quantity` unidades en orden FEFO de los lotes del producto.
+async def deduct_fefo(
+    db: AsyncSession,
+    *,
+    product_id: UUID,
+    quantity: int,
+    warehouse_id: UUID | None = None,
+) -> dict:
+    """Descuenta `quantity` unidades en orden FEFO de los lotes del producto,
+    SOLO del almacén destino (o del almacén por defecto si no se indica).
 
     Devuelve un resumen: lotes afectados y `shortage` (lo que no se pudo cubrir
     con lotes, p.ej. por desfase entre stock agregado y lotes). No falla por
     desfase: descuenta lo disponible y deja constancia en el log.
+
+    B18: antes deducía de los lotes de CUALQUIER almacén, así que una venta podía
+    vaciar lotes de otro almacén. Ahora se restringe al almacén destino; los lotes
+    con warehouse_id NULL (legacy) pertenecen al almacén por defecto y se incluyen
+    solo cuando el destino es ese (coherente con la derivación de stock por almacén).
     """
-    lots = await _load_lots(db, product_id)
+    all_lots = await _load_lots(db, product_id)
+    if not all_lots:
+        return {"deducted": [], "shortage": int(quantity)}
+
+    # Almacén por defecto del tenant (derivado de los propios lotes).
+    from app.db.models.inventory import Warehouse
+
+    default_id = (
+        await db.execute(
+            select(Warehouse.id)
+            .where(
+                Warehouse.tenant_id == all_lots[0].tenant_id,
+                Warehouse.is_default.is_(True),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    target = warehouse_id if warehouse_id is not None else default_id
+    if target is None:
+        # Sin almacenes configurados → comportamiento global heredado.
+        lots = all_lots
+    elif target == default_id:
+        lots = [lot for lot in all_lots if lot.warehouse_id in (target, None)]
+    else:
+        lots = [lot for lot in all_lots if lot.warehouse_id == target]
+
     if not lots:
         return {"deducted": [], "shortage": int(quantity)}
 
@@ -134,7 +172,7 @@ async def deduct_fefo(db: AsyncSession, *, product_id: UUID, quantity: int) -> d
             }
         )
 
-    # Limpia lotes agotados.
+    # Limpia lotes agotados (solo del almacén procesado).
     for lot in lots:
         if int(lot.quantity) <= 0:
             await db.delete(lot)

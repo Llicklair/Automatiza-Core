@@ -98,7 +98,10 @@ async def get_by_warehouse(db: AsyncSession, tenant_id: UUID, product_id: UUID) 
     out: list[dict] = []
     for w in warehouses:
         if w.is_default:
-            qty = global_stock - nondefault_total
+            # El default = global − suma de los no-default. Suelo a 0: si los
+            # no-default superan el global (desfase), no mostramos stock negativo
+            # (carecía de sentido y confundía la lectura) (B19).
+            qty = max(0, global_stock - nondefault_total)
         else:
             qty = stored.get(w.id, 0)
         out.append(
