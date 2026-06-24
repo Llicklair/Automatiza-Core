@@ -67,9 +67,15 @@ export function useAsesorias() {
 
             if (current.status === "done" && current.agent_results?.length) {
                 const results: any[] = current.agent_results;
-                const answer = results.slice().reverse().find(
-                    (r: any) => r.action_taken && r.action_taken !== "Invocando herramientas de compliance" && r.action_taken !== "Operación compliance completada."
-                )?.action_taken;
+                // La respuesta del agente va en output.response / summary, NO en
+                // action_taken (que es solo una etiqueta de estado y no existe en
+                // los resultados de dispatcher). Antes se leía action_taken y por eso
+                // el widget mostraba siempre "No pude obtener una respuesta" pese a
+                // completarse la tarea correctamente.
+                const placeholders = ["Invocando herramientas de compliance", "Operación compliance completada."];
+                const answer = results.slice().reverse()
+                    .map((r: any) => r?.output?.response || r?.output?.message || r?.summary || r?.action_taken)
+                    .find((txt: any) => typeof txt === "string" && txt.trim() && !placeholders.includes(txt));
                 setChatMessages(prev => [...prev, { role: "ai", content: answer || t("asesorias.chatNoAnswer") }]);
             } else {
                 setChatMessages(prev => [...prev, { role: "ai", content: current.error_message || t("asesorias.chatTaskFailed") }]);
