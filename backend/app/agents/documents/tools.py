@@ -126,13 +126,18 @@ async def import_invoice_document(
             d = data.to_dict()
 
             if not confirm:
+                # El preview leía claves inexistentes (supplier_name/base_amount/
+                # total_amount) → siempre salía en blanco y marcaba "campos no
+                # detectados". Las claves reales de extract_invoice_data().to_dict()
+                # son emisor.{name,nif}, amount_base, amount_total (B21).
+                emisor = d.get("emisor") or {}
                 lines_count = len(d.get("lines") or [])
                 missing = [
                     f
                     for f, v in [
-                        ("proveedor", d.get("supplier_name")),
+                        ("proveedor", emisor.get("name")),
                         ("nº factura", d.get("invoice_number")),
-                        ("total", d.get("total_amount")),
+                        ("total", d.get("amount_total")),
                     ]
                     if not v
                 ]
@@ -143,13 +148,13 @@ async def import_invoice_document(
                 )
                 return (
                     f"Datos extraídos de '{doc.file_name}':\n"
-                    f"  Proveedor: {d.get('supplier_name') or '—'}\n"
-                    f"  NIF proveedor: {d.get('supplier_nif') or '—'}\n"
+                    f"  Proveedor: {emisor.get('name') or '—'}\n"
+                    f"  NIF proveedor: {emisor.get('nif') or '—'}\n"
                     f"  Nº factura: {d.get('invoice_number') or '—'}\n"
                     f"  Fecha: {d.get('issue_date') or '—'}\n"
-                    f"  Base imponible: {d.get('base_amount') or '—'}€\n"
+                    f"  Base imponible: {d.get('amount_base') or '—'}€\n"
                     f"  IVA: {d.get('tax_amount') or '—'}€\n"
-                    f"  Total: {d.get('total_amount') or '—'}€\n"
+                    f"  Total: {d.get('amount_total') or '—'}€\n"
                     f"  Líneas detectadas: {lines_count}"
                     f"{conf_note}\n\n"
                     "¿Qué quieres hacer?\n"
