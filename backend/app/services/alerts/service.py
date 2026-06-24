@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.alerts import AlertLog
 from app.db.models.auth import Tenant
@@ -32,16 +33,31 @@ def _fmt(n) -> str:
 
 
 async def run_daily_alerts() -> None:
-    """Entry point para el scheduler. Itera todos los tenants activos."""
+    """Entry point para el scheduler. Itera todos los tenants activos.
+
+    SEC.RLS: este job corre desde APScheduler SIN tenant en contexto. Bajo RLS
+    fail-closed, leer la lista de tenants o las tablas por-tenant sin contexto
+    devuelve 0 filas (mismo patrón que workers/tasks_scheduler.py). Por eso la
+    enumeración global va en rls_bypass() y cada tenant fija set_current_tenant
+    antes de sus checks; si no, NINGUNA alerta llega a generarse.
+    """
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Tenant).where(Tenant.is_active.is_(True)))
-        for tenant in result.scalars():
+        set_current_tenant(None)
+        with rls_bypass():  # SEC.RLS: enumeración cross-tenant pre-tenant
+            tenants = (
+                (await db.execute(select(Tenant).where(Tenant.is_active.is_(True))))
+                .scalars()
+                .all()
+            )
+        for tenant in tenants:
             try:
+                set_current_tenant(str(tenant.id))
                 count = await check_and_alert_tenant(db, tenant.id)
                 if count:
                     logger.info("Alertas enviadas para tenant %s: %d", tenant.id, count)
             except Exception as exc:
                 logger.error("Error en alertas para tenant %s: %s", tenant.id, exc)
+        set_current_tenant(None)
 
 
 async def check_and_alert_tenant(db: AsyncSession, tenant_id) -> int:
