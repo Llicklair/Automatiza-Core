@@ -119,6 +119,9 @@ export default function AnaliticaPage() {
                     importeVencenProximos={importeVencenProximos}
                     tasksDone={tasksDone}
                     tasksSuccessRate={tasksSuccessRate}
+                    productosActivos={inventario.productos_activos}
+                    unidadesStock={inventario.unidades_stock}
+                    valorStockEur={inventario.valor_stock_eur}
                     bajasUnits={inventario.bajas_units}
                     bajasValueEur={inventario.bajas_value_eur}
                     belowMinCount={inventario.below_min_count}
