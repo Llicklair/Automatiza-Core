@@ -55,27 +55,42 @@ async def create_journal_entry(
 
         parsed_date = date.fromisoformat(entry_date)
 
+        from app.services.accounting import PeriodClosedError
+        from app.services.billing.commands import (
+            create_journal_entry as svc_create_journal_entry,
+        )
+
+        norm_lines = [
+            {
+                "account_code": str(ln.get("account_code", "")),
+                "account_name": ln.get("account_name", ""),
+                "debit": float(ln.get("debit", 0) or 0),
+                "credit": float(ln.get("credit", 0) or 0),
+            }
+            for ln in lines
+        ]
+
         async with AsyncSessionLocal() as db:
-            entry = JournalEntry(
-                tenant_id=UUID(tenant_id),
-                date=parsed_date,
-                description=description,
+            try:
+                # Delega en el servicio canónico: valida cuadre Y cierre de periodo.
+                # La tool creaba el asiento directo, saltándose el bloqueo fiscal (B3).
+                entry = await svc_create_journal_entry(
+                    db,
+                    UUID(tenant_id),
+                    date=parsed_date,
+                    description=description,
+                    reference_id=None,
+                    lines=norm_lines,
+                )
+            except PeriodClosedError as e:
+                return (
+                    f"Error: el periodo contable está cerrado ({e}). "
+                    "No se puede crear un asiento en esa fecha."
+                )
+            return (
+                f"Asiento creado correctamente. ID: {entry.id}. Descripción: {description}. "
+                f"Fecha: {entry_date}. Importe: {total_debit:.2f}€."
             )
-            db.add(entry)
-            await db.flush()
-
-            for ln in lines:
-                db.add(JournalLine(
-                    tenant_id=UUID(tenant_id),
-                    entry_id=entry.id,
-                    account_code=str(ln["account_code"]),
-                    account_name=ln.get("account_name", ""),
-                    debit=Decimal(str(ln.get("debit", 0))),
-                    credit=Decimal(str(ln.get("credit", 0))),
-                ))
-
-            await db.commit()
-            return f"Asiento creado correctamente. ID: {entry.id}. Descripción: {description}. Fecha: {entry_date}. Importe: {total_debit:.2f}€."
     except Exception as e:
         logger.exception("Error creando asiento")
         return f"Error creando asiento: {e}"

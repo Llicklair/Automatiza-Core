@@ -89,6 +89,13 @@ async def create_invoice_journal_entry(db, tenant_id, invoice) -> JournalEntry |
 
 
 async def create_invoice_payment_entry(db, tenant_id, invoice) -> JournalEntry | None:
+    # Idempotencia: el asiento de DEVENGO comparte invoice_id, así que hay que
+    # deduplicar por reference_id (no por invoice_id). Sin esta guarda, re-conciliar
+    # una factura ya pagada (reconcile manual + acción aprobable) duplicaba el
+    # asiento de cobro 572/430 en la contabilidad (B1/B5).
+    if await _has_entry(db, tenant_id, reference_id=f"PAY-INV-{invoice.id}"):
+        return None
+
     total = float(invoice.amount_total)
 
     if invoice.invoice_type == "issued":
@@ -154,6 +161,10 @@ async def create_payroll_journal_entry(db, tenant_id, payroll) -> JournalEntry |
 
 
 async def create_payroll_payment_entry(db, tenant_id, payroll) -> JournalEntry | None:
+    # Idempotencia por reference_id (el asiento de devengo comparte payroll_id).
+    if await _has_entry(db, tenant_id, reference_id=f"PAY-NOM-{payroll.id}"):
+        return None
+
     net = float(payroll.net_salary or 0)
     emp_name = payroll.employee.name if payroll.employee else "Empleado"
     period = payroll.period_start.strftime("%m/%Y") if payroll.period_start else ""
