@@ -300,6 +300,30 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
     Resuelve el cliente, crea Invoice + InvoiceLine y avanza el paso de la tarea.
     Devuelve False si no se puede continuar.
     """
+    # Guarda: un payload de aprobación de TEXTO heredado ({intent/agent_response},
+    # sin importes ni cliente) NO describe una factura. Antes esto fabricaba una
+    # factura de 0 € o fallaba la tarea. Ahora avanzamos sin fabricar nada y
+    # dejamos que el orquestador reanude el agente (ya aprobado). El camino
+    # correcto son las aprobaciones estructuradas {kind, params}.
+    if not any(k in payload_data for k in ("amount_base", "client_nif", "contact_id_local")):
+        results = list(task.agent_results or [])
+        results.append(
+            {
+                "agent": "approval",
+                "success": True,
+                "output": {
+                    "action": "resumed_after_approval",
+                    "note": "Aprobación sin acción estructurada; se reanuda el agente.",
+                },
+            }
+        )
+        task.agent_results = results
+        task.current_step = (task.current_step or 0) + 1
+        task.status = "executing"
+        task.requires_human_approval = False
+        await db.commit()
+        return True
+
     client_nif = payload_data.get("client_nif")
     amount_base = Decimal(str(payload_data.get("amount_base", "0")).replace(",", "."))
     vat_rate = Decimal(str(payload_data.get("vat_rate", 21)))
