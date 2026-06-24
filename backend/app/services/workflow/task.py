@@ -149,18 +149,25 @@ async def get_task(db: AsyncSession, *, task_id: UUID, tenant_id: UUID) -> Task:
 async def cancel_task(db: AsyncSession, *, task_id: UUID, tenant_id: UUID) -> None:
     task = await get_task(db, task_id=task_id, tenant_id=tenant_id)
 
-    if task.status in TERMINAL_STATUSES:
-        raise ValueError(f"Tarea en estado '{task.status}' no se puede cancelar")
-
-    task.status = "cancelled"
+    # El botón de borrar/abortar del kanban (DELETE /{task_id}) llega aquí.
+    # Antes: (a) lanzaba 400 en estados terminales → las tarjetas terminadas no
+    # se podían quitar; (b) en activas solo ponía status='cancelled' SIN marcar
+    # is_deleted, pero el listado filtra por is_deleted (no por status), así que
+    # la tarjeta seguía visible → "se pueden mover pero no borrar". Ahora siempre
+    # hace soft-delete (como cleanup_tasks) y revoca el dispatch solo si estaba activa.
+    was_active = task.status not in TERMINAL_STATUSES
+    if was_active:
+        task.status = "cancelled"
+    task.is_deleted = True
     await db.commit()
 
-    try:
-        from app.services.workflow.task_dispatch import cancel_task as cancel_task_dispatch
+    if was_active:
+        try:
+            from app.services.workflow.task_dispatch import cancel_task as cancel_task_dispatch
 
-        await cancel_task_dispatch(str(task_id))
-    except Exception as e:
-        logger.error("Error al revocar la tarea: %s", e)
+            await cancel_task_dispatch(str(task_id))
+        except Exception as e:
+            logger.error("Error al revocar la tarea: %s", e)
 
 
 async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
