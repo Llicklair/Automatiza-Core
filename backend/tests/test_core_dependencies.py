@@ -69,6 +69,22 @@ class TestGetCurrentUser:
             await get_current_user(request=_mock_request(), credentials=creds, db=db)
         assert exc_info.value.status_code == 401
 
+    @pytest.mark.asyncio
+    async def test_malformed_uuid_sub_raises_401(self, db: AsyncSession):
+        """SEC: un JWT VÁLIDAMENTE firmado pero con `sub` que no es un UUID
+        debe dar 401, no un 500 por `ValueError` sin capturar en `UUID(...)`.
+        Regresión del try/except alrededor de `UUID(user_id)`.
+        """
+        token = create_access_token({
+            "sub": "not-a-uuid",
+            "tenant_id": str(uuid4()),
+            "role": "admin",
+        })
+        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user(request=_mock_request(), credentials=creds, db=db)
+        assert exc_info.value.status_code == 401
+
 
 class TestRequireRole:
     @pytest.mark.asyncio
