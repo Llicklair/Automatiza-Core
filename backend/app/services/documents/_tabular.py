@@ -12,6 +12,8 @@ from app.services.documents._file_ops import save_file_to_disk
 
 logger = logging.getLogger(__name__)
 
+MAX_TABULAR_ROWS = 50_000
+
 
 def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[dict], str]:
     """Parsea archivo tabular. Retorna (columnas, filas, formato). Soporta csv/xlsx/xls/json/ods."""
@@ -29,7 +31,11 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
                 dialect = csv.excel
             reader = csv.DictReader(f, dialect=dialect)
             columns = reader.fieldnames or []
-            rows = [row for row in reader]
+            rows = []
+            for row in reader:
+                rows.append(row)
+                if len(rows) > MAX_TABULAR_ROWS:
+                    raise ValueError(f"El archivo supera el máximo de {MAX_TABULAR_ROWS} filas")
         return columns, rows, "csv"
 
     elif ext in (".xlsx", ".xls", ".ods"):
@@ -37,7 +43,12 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
 
         wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
         ws = wb.active
-        rows_raw = list(ws.iter_rows(values_only=True))
+        rows_raw = []
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            rows_raw.append(row)
+            if i > MAX_TABULAR_ROWS:
+                wb.close()
+                raise ValueError(f"El archivo supera el máximo de {MAX_TABULAR_ROWS} filas")
         wb.close()
         if not rows_raw:
             return [], [], "excel"
@@ -52,11 +63,17 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
         with open(file_path, encoding="utf-8") as f:
             data = json_mod.load(f)
         if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+            if len(data) > MAX_TABULAR_ROWS:
+                raise ValueError(f"El archivo supera el máximo de {MAX_TABULAR_ROWS} filas")
             columns = list(data[0].keys())
             return columns, data, "json"
         elif isinstance(data, dict):
             for key, val in data.items():
                 if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
+                    if len(val) > MAX_TABULAR_ROWS:
+                        raise ValueError(
+                            f"El archivo supera el máximo de {MAX_TABULAR_ROWS} filas"
+                        )
                     columns = list(val[0].keys())
                     return columns, val, "json"
             columns = list(data.keys())
