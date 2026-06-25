@@ -86,7 +86,7 @@ class Casilla303:
 def _round2(x: float | Decimal) -> Decimal:
     # ROUND_HALF_UP: criterio fiscal AEAT, coherente con reports/fiscal.py
     # y facturación (evita el HALF_EVEN por defecto de Python en x.xx5).
-    return Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return Decimal(str(x or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def build_casillas_303(data: dict) -> list[Casilla303]:
