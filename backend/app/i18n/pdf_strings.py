@@ -149,7 +149,7 @@ def get_locale_or_default(raw: str | None) -> Locale:
         return DEFAULT_LOCALE
     raw_lower = raw.lower().split("-")[0].split("_")[0]
     if raw_lower in SUPPORTED_LOCALES:
-        return raw_lower  # type: ignore[return-value]
+        return raw_lower
     return DEFAULT_LOCALE
 
 
