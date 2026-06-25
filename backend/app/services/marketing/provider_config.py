@@ -85,5 +85,11 @@ async def client_for_account(db: AsyncSession, account: SocialAccount) -> Zernio
         raise ZernioError(
             "La cuenta no está vinculada a ninguna cuenta de Zernio; reconéctala."
         )
-    cfg = await db.get(MarketingProviderConfig, account.provider_config_id)
+    res = await db.execute(
+        select(MarketingProviderConfig).where(
+            MarketingProviderConfig.id == account.provider_config_id,
+            MarketingProviderConfig.tenant_id == account.tenant_id,
+        )
+    )
+    cfg = res.scalar_one_or_none()
     return client_for_config(cfg)

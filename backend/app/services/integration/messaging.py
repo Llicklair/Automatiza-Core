@@ -121,13 +121,15 @@ async def handle_link_command(
 
 async def send_typing_indicator(chat_id: int):
     """Send typing indicator via Telegram."""
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return
+    client = TelegramClient(settings.TELEGRAM_BOT_TOKEN)
     try:
-        bot_token = settings.TELEGRAM_BOT_TOKEN
-        client = TelegramClient(bot_token)
         await client.send_typing(chat_id)
-        await client.close()
     except Exception:
         logger.debug("No se pudo enviar el indicador de typing a Telegram; continúo", exc_info=True)
+    finally:
+        await client.close()
 
 
 async def process_and_reply(tenant_id: str, chat_id: int, text: str, reply_to: int):

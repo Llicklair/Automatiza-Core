@@ -104,7 +104,8 @@ async def semantic_search(
     if valid_ids:
         names_q = await db.execute(
             select(TenantDocument.id, TenantDocument.file_name).where(
-                TenantDocument.id.in_(valid_ids)
+                TenantDocument.id.in_(valid_ids),
+                TenantDocument.tenant_id == tenant_id,
             )
         )
         names = {str(row.id): row.file_name for row in names_q.all()}
