@@ -13,6 +13,7 @@ from sqlalchemy import select
 from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
+from app.services.billing.numbering import next_invoice_number
 from app.services.idempotency import IdempotencyGuard
 from app.services.workflow import execute_deterministic_steps
 from app.services.workflow.conditions import evaluate_conditions
@@ -349,10 +350,15 @@ async def _process_recurring_invoices():
                 amount_base = sum(b for b, _ in line_totals)
                 tax_amount = sum(t for _, t in line_totals)
 
+                # Número correlativo por serie (RD 1619/2012 Art. 6.1), igual que
+                # commands.run_recurring: advisory lock + FOR UPDATE dentro de la
+                # misma transacción; cada iteración incrementa el contador "REC".
+                invoice_number = await next_invoice_number(db, rec.tenant_id, series="REC")
+
                 invoice = Invoice(
                     tenant_id=rec.tenant_id,
                     client_id=rec.client_id,
-                    invoice_number=f"REC-{now.strftime('%Y%m%d%H%M%S')}-{generated}",
+                    invoice_number=invoice_number,
                     date=now,
                     status="draft",
                     invoice_type="issued",

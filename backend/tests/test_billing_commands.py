@@ -252,9 +252,9 @@ async def test_run_recurring_genera_factura(db, seed_tenant_and_user):
     """La plantilla recurrente genera factura draft con totales correctos y
     avanza next_run_date según el intervalo.
 
-    Observación (no bug bloqueante, documentado): run_recurring numera con
-    "REC-<timestamp>" fuera de la numeración correlativa de next_invoice_number,
-    a diferencia de create_invoice.
+    Numeración: run_recurring usa next_invoice_number(series="REC"), igual que
+    create_invoice/create_rectificativa — número correlativo por serie y año
+    (RD 1619/2012), no un timestamp.
     """
     tenant, _u, _t = seed_tenant_and_user
     cli = await _seed_client(db, tenant.id)
@@ -277,7 +277,8 @@ async def test_run_recurring_genera_factura(db, seed_tenant_and_user):
     assert inv.status == "draft"
     assert inv.invoice_type == "issued"
     assert inv.client_id == cli.id
-    assert inv.invoice_number.startswith("REC-")
+    # Numeración correlativa por serie/año: REC{year}-{NNNN} (no timestamp).
+    assert inv.invoice_number == f"REC{datetime.now(UTC).year}-0001"
     assert float(inv.amount_base) == 100.0
     assert float(inv.tax_amount) == 21.0
     assert float(inv.amount_total) == 121.0
