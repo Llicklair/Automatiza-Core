@@ -1,5 +1,18 @@
 # Estado del bucle /ronda (memoria del proyecto en disco)
 
+> **Protocolo de parada y resumen (bucle continuo `/loop ronda`)**
+> 1. **Bitácora viva**: cada pasada con hallazgos añade UNA línea a la sección
+>    "Bitácora del bucle" de abajo (fecha · qué revisó · veredicto · acción). Las
+>    pasadas "sin novedades" NO escriben (evita bloat). Así el resumen está SIEMPRE
+>    en disco aunque la sesión muera o se agoten los tokens.
+> 2. **Parar al agotar cuota**: si al lanzar revisores fallan por límite/cuota
+>    (errores de API repetidos), DETÉN el bucle (no reprogramar ScheduleWakeup) y
+>    presenta el resumen consolidado leyendo la "Bitácora del bucle".
+> 3. **Parada manual**: si el usuario dice "para"/"resumen", consolida la bitácora
+>    y preséntala; deja de reprogramar.
+> 4. Nota: en true-zero de tokens no puedo ejecutarme para resumir → por eso el
+>    resumen se mantiene en disco en cada pasada, no al final.
+
 El agente olvida; este archivo no. Cada pasada de `/ronda` añade una fila.
 Última pasada revisada hasta: **2026-06-25 · working tree @ 08bf60c** (cambios sin commitear)
 
@@ -20,4 +33,11 @@ Verificado: `ruff check app/` ✓ · mypy sin errores nuevos en ficheros tocados
 - **Correctitud**: `publish_posts_batch` commit por ítem + try/except; `delete_campaign` con guarda de estado ("sending"→409); TOCTOU count/list eliminado; `scheduled_at` pasado → 422; `frontend_origin()` con fallback+log.
 - **Tipos**: módulos nuevos de email_marketing tipados (`tenant_id: UUID`, return types). `integrations.py`/`documents.py` pre-existentes fuera de scope (advisory en CI).
 
-> Nota: los cambios siguen SIN commitear. La próxima `/ronda` los re-escaneará y re-verificará (no asumir que están bien por esta fila).
+> Nota: estos cambios se commitearon y pushearon a `master` (f6fb297, fc6827e, 759864d).
+
+## Bitácora del bucle (resumen vivo — lee esto para "qué ha hecho /ronda")
+
+| fecha/hora | pasada | resultado |
+|------------|--------|-----------|
+| 2026-06-25 ~14:30 | review inicial (5 áreas) + fixes | 5 REJECT atendidos, verificado (ruff/mypy/17 tests), commiteado+pusheado a master |
+| 2026-06-25 ~14:47 | iter. continua #1 | sin novedades de código (solo `.consejo/` + `.jsonl` generados, ignorados) |
