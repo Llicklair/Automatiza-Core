@@ -168,9 +168,17 @@ async def build_modelo_347_data(
     by_nif: dict[str, dict[str, Any]] = {}
 
     issued = await _invoices_in_period(db, tenant_id, invoice_type="issued", start=start, end=end)
+    received = await _invoices_in_period(db, tenant_id, invoice_type="received", start=start, end=end)
+
+    # Cargamos todos los clientes/proveedores en UNA query (evita N+1).
+    client_ids = {inv.client_id for inv in issued + received if inv.client_id}
+    clients_by_id: dict[Any, Client] = {}
+    if client_ids:
+        cq = await db.execute(select(Client).where(Client.id.in_(client_ids)))
+        clients_by_id = {c.id: c for c in cq.scalars().all()}
+
     for inv in issued:
-        client_q = await db.execute(select(Client).where(Client.id == inv.client_id))
-        client = client_q.scalar_one_or_none()
+        client = clients_by_id.get(inv.client_id)
         nif = (client.nif if client else None) or "SIN_NIF"
         name = (client.name if client else "Cliente desconocido")
         entry = by_nif.setdefault(
@@ -178,12 +186,10 @@ async def build_modelo_347_data(
         )
         entry["emitidas"] += Decimal(inv.amount_total or 0)
 
-    received = await _invoices_in_period(db, tenant_id, invoice_type="received", start=start, end=end)
     for inv in received:
         # Para facturas recibidas, el "tercero" es el proveedor. Reutilizamos client_id
         # porque en el modelo actual la contraparte vive en la misma tabla `clients`.
-        client_q = await db.execute(select(Client).where(Client.id == inv.client_id))
-        client = client_q.scalar_one_or_none()
+        client = clients_by_id.get(inv.client_id)
         nif = (client.nif if client else None) or "SIN_NIF"
         name = (client.name if client else "Proveedor desconocido")
         entry = by_nif.setdefault(
