@@ -1050,8 +1050,9 @@ async def build_modelo_200_data(
     base_imponible = resultado_contable  # ajustes fiscales = 0 en MVP
     cuota_integra = max(Decimal(0), base_imponible * tipo / Decimal(100))
 
+    retenciones = sum((Decimal(i.retencion_irpf_amount or 0) for i in issued), Decimal(0))
     pagos = Decimal(str(pagos_fraccionados_pagados or 0))
-    resultado_declaracion = cuota_integra - pagos
+    resultado_declaracion = cuota_integra - retenciones - pagos
 
     return {
         "modelo": "200",
@@ -1065,6 +1066,7 @@ async def build_modelo_200_data(
         "base_imponible": float(round(base_imponible, 2)),
         "tipo_impositivo_pct": float(tipo),
         "cuota_integra": float(round(cuota_integra, 2)),
+        "retenciones_soportadas": float(round(retenciones, 2)),
         "pagos_fraccionados_pagados": float(pagos),
         "resultado_declaracion": float(round(resultado_declaracion, 2)),
         "signo": (
