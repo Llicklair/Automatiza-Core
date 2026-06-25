@@ -245,7 +245,11 @@ async def microsoft_callback(
     state: str,
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = await svc.handle_oauth_callback(code, state, "microsoft", db)
+    # SEC.RLS: OAuth callback público sin JWT; el tenant se decodifica del
+    # `state` (in-memory) DENTRO de handle_oauth_callback, que además hace
+    # upsert de la integración. No disponible antes → bypass pre-tenant.
+    with rls_bypass():
+        tenant_id = await svc.handle_oauth_callback(code, state, "microsoft", db)
     if not tenant_id:
         return HTMLResponse(
             "<html><body><h2>Error: estado OAuth inválido o tokens fallidos</h2></body></html>",
