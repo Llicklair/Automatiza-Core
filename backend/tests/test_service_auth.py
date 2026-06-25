@@ -246,3 +246,39 @@ class TestResetPassword:
 
         with pytest.raises(ValueError, match="expirado"):
             await auth_service.reset_password(raw_token, "ValidPass1!", db)
+
+    async def test_reset_falla_si_cuenta_desactivada(self, db):
+        """SEC: un token VÁLIDO (no usado, no expirado) de una cuenta
+        desactivada NO debe permitir reactivar el acceso reseteando la
+        contraseña. Regresión de `if not user.is_active: raise ValueError`.
+        """
+        user = await _seed_user(
+            db, email="desactivada@empresa.com", password="OldPass123!", is_active=False
+        )
+        old_hash = user.hashed_password
+
+        import hashlib
+        import secrets
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        prt = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(hours=1),  # válido, no usado
+        )
+        db.add(prt)
+        await db.commit()
+
+        with pytest.raises(ValueError, match="desactivada"):
+            await auth_service.reset_password(raw_token, "NewPass456!", db)
+
+        # La contraseña NO debe haber cambiado…
+        await db.refresh(user)
+        assert user.hashed_password == old_hash
+        assert verify_password("OldPass123!", user.hashed_password)
+        assert not verify_password("NewPass456!", user.hashed_password)
+        # …y el token NO debe quedar marcado como usado (sigue gastado solo si
+        # alguien reactiva la cuenta y vuelve a intentarlo).
+        await db.refresh(prt)
+        assert prt.used_at is None
