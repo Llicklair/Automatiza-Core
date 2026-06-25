@@ -7,7 +7,7 @@ desde la ficha del empleado. Editar la base de un empleado a media jornada
 recalcula como jornada completa -> el neto se DUPLICA.
 
 Este test fija el comportamiento CORRECTO (el neto tras editar debe seguir
-reflejando la media jornada) y se marca xfail mientras el bug exista.
+reflejando la media jornada). Tras el fix /forja queda como guard verde.
 """
 
 from datetime import UTC, date, datetime
@@ -40,11 +40,6 @@ async def _seed_part_time_employee(db: AsyncSession, tenant_id) -> Employee:
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="BUG: update_payroll ignora jornada_pct/num_pagas/dias_baja_it al "
-    "recalcular -> neto incorrecto al editar (hallazgo /forja)",
-    strict=False,
-)
 async def test_update_payroll_respeta_media_jornada(db: AsyncSession, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     emp = await _seed_part_time_employee(db, tenant.id)
