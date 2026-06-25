@@ -1,22 +1,36 @@
-"""Email marketing: plantillas, campañas y envíos masivos."""
+"""Email marketing: plantillas, campañas y envíos masivos.
+
+Rutas delgadas: validan input + mapean a HTTP. La lógica de negocio vive en
+`services/email_marketing/` (templates / campaigns / recipients).
+"""
 
 import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel
-from sqlalchemy import func, select
+from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
-from app.db.models.crm import Client
-from app.db.models.email_marketing import EmailCampaign, EmailCampaignRecipient, EmailTemplate
+from app.db.models.email_marketing import EmailCampaign, EmailTemplate
 from app.db.models.models import User
+from app.services.email_marketing import campaigns as campaigns_svc
+from app.services.email_marketing import recipients as recipients_svc
 from app.services.email_marketing import send_campaign as send_campaign_service
+from app.services.email_marketing import templates as templates_svc
 
 router = APIRouter(prefix="/email-marketing", tags=["email-marketing"])
+
+
+def _validate_future(v: datetime.datetime | None) -> datetime.datetime | None:
+    """Rechaza un `scheduled_at` en el pasado (normaliza naive→UTC para comparar)."""
+    if v is not None:
+        now = datetime.datetime.now(datetime.UTC)
+        vv = v if v.tzinfo is not None else v.replace(tzinfo=datetime.UTC)
+        if vv < now:
+            raise ValueError("scheduled_at debe ser una fecha futura")
+    return v
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
@@ -33,7 +47,7 @@ class TemplateOut(BaseModel):
     subject: str
     html_body: str
     created_at: datetime.datetime
-    updated_at: Optional[datetime.datetime] = None
+    updated_at: datetime.datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -42,15 +56,25 @@ class CampaignCreate(BaseModel):
     name: str
     subject: str
     html_body: str
-    template_id: Optional[UUID] = None
-    scheduled_at: Optional[datetime.datetime] = None
+    template_id: UUID | None = None
+    scheduled_at: datetime.datetime | None = None
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def _check_scheduled_at(cls, v: datetime.datetime | None) -> datetime.datetime | None:
+        return _validate_future(v)
 
 
 class CampaignUpdate(BaseModel):
-    name: Optional[str] = None
-    subject: Optional[str] = None
-    html_body: Optional[str] = None
-    scheduled_at: Optional[datetime.datetime] = None
+    name: str | None = None
+    subject: str | None = None
+    html_body: str | None = None
+    scheduled_at: datetime.datetime | None = None
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def _check_scheduled_at(cls, v: datetime.datetime | None) -> datetime.datetime | None:
+        return _validate_future(v)
 
 
 class CampaignOut(BaseModel):
@@ -59,12 +83,12 @@ class CampaignOut(BaseModel):
     subject: str
     html_body: str
     status: str
-    scheduled_at: Optional[datetime.datetime] = None
-    sent_at: Optional[datetime.datetime] = None
+    scheduled_at: datetime.datetime | None = None
+    sent_at: datetime.datetime | None = None
     total_count: int
     sent_count: int
     failed_count: int
-    template_id: Optional[UUID] = None
+    template_id: UUID | None = None
     created_at: datetime.datetime
 
     model_config = {"from_attributes": True}
@@ -77,13 +101,8 @@ class CampaignOut(BaseModel):
 async def list_templates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailTemplate)
-        .where(EmailTemplate.tenant_id == current_user.tenant_id)
-        .order_by(EmailTemplate.created_at.desc())
-    )
-    return result.scalars().all()
+) -> list[EmailTemplate]:
+    return await templates_svc.list_templates(current_user.tenant_id, db)
 
 
 @router.post("/templates", response_model=TemplateOut, status_code=status.HTTP_201_CREATED)
@@ -91,17 +110,8 @@ async def create_template(
     body: TemplateCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    tpl = EmailTemplate(
-        tenant_id=current_user.tenant_id,
-        name=body.name,
-        subject=body.subject,
-        html_body=body.html_body,
-    )
-    db.add(tpl)
-    await db.commit()
-    await db.refresh(tpl)
-    return tpl
+) -> EmailTemplate:
+    return await templates_svc.create_template(body, current_user.tenant_id, db)
 
 
 @router.put("/templates/{template_id}", response_model=TemplateOut)
@@ -110,21 +120,10 @@ async def update_template(
     body: TemplateCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailTemplate).where(
-            EmailTemplate.id == template_id,
-            EmailTemplate.tenant_id == current_user.tenant_id,
-        )
-    )
-    tpl = result.scalar_one_or_none()
-    if not tpl:
+) -> EmailTemplate:
+    tpl = await templates_svc.update_template(template_id, body, current_user.tenant_id, db)
+    if tpl is None:
         raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-    tpl.name = body.name
-    tpl.subject = body.subject
-    tpl.html_body = body.html_body
-    await db.commit()
-    await db.refresh(tpl)
     return tpl
 
 
@@ -133,18 +132,9 @@ async def delete_template(
     template_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailTemplate).where(
-            EmailTemplate.id == template_id,
-            EmailTemplate.tenant_id == current_user.tenant_id,
-        )
-    )
-    tpl = result.scalar_one_or_none()
-    if not tpl:
+) -> None:
+    if not await templates_svc.delete_template(template_id, current_user.tenant_id, db):
         raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-    await db.delete(tpl)
-    await db.commit()
 
 
 # ── Campaigns ──────────────────────────────────────────────────────────────────
@@ -154,13 +144,8 @@ async def delete_template(
 async def list_campaigns(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailCampaign)
-        .where(EmailCampaign.tenant_id == current_user.tenant_id)
-        .order_by(EmailCampaign.created_at.desc())
-    )
-    return result.scalars().all()
+) -> list[EmailCampaign]:
+    return await campaigns_svc.list_campaigns(current_user.tenant_id, db)
 
 
 @router.post("/campaigns", response_model=CampaignOut, status_code=status.HTTP_201_CREATED)
@@ -168,50 +153,8 @@ async def create_campaign(
     body: CampaignCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    # Cuenta destinatarios: clientes con email del tenant
-    count_result = await db.execute(
-        select(func.count()).select_from(Client).where(
-            Client.tenant_id == current_user.tenant_id,
-            Client.email.isnot(None),
-            Client.email != "",
-            Client.marketing_consent.is_(True),
-        )
-    )
-    total = count_result.scalar() or 0
-
-    campaign = EmailCampaign(
-        tenant_id=current_user.tenant_id,
-        template_id=body.template_id,
-        name=body.name,
-        subject=body.subject,
-        html_body=body.html_body,
-        scheduled_at=body.scheduled_at,
-        status="scheduled" if body.scheduled_at else "draft",
-        total_count=total,
-    )
-    db.add(campaign)
-    await db.flush()
-
-    # Precarga destinatarios desde CRM
-    clients_result = await db.execute(
-        select(Client).where(
-            Client.tenant_id == current_user.tenant_id,
-            Client.email.isnot(None),
-            Client.email != "",
-            Client.marketing_consent.is_(True),
-        )
-    )
-    for client in clients_result.scalars().all():
-        db.add(EmailCampaignRecipient(
-            campaign_id=campaign.id,
-            email=client.email,
-            name=client.name,
-        ))
-
-    await db.commit()
-    await db.refresh(campaign)
-    return campaign
+) -> EmailCampaign:
+    return await campaigns_svc.create_campaign(body, current_user.tenant_id, db)
 
 
 @router.put("/campaigns/{campaign_id}", response_model=CampaignOut)
@@ -220,28 +163,10 @@ async def update_campaign(
     body: CampaignUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailCampaign).where(
-            EmailCampaign.id == campaign_id,
-            EmailCampaign.tenant_id == current_user.tenant_id,
-            EmailCampaign.status.in_(["draft", "scheduled"]),
-        )
-    )
-    campaign = result.scalar_one_or_none()
-    if not campaign:
+) -> EmailCampaign:
+    campaign = await campaigns_svc.update_campaign(campaign_id, body, current_user.tenant_id, db)
+    if campaign is None:
         raise HTTPException(status_code=404, detail="Campaña no encontrada o ya enviada")
-    if body.name is not None:
-        campaign.name = body.name
-    if body.subject is not None:
-        campaign.subject = body.subject
-    if body.html_body is not None:
-        campaign.html_body = body.html_body
-    if body.scheduled_at is not None:
-        campaign.scheduled_at = body.scheduled_at
-        campaign.status = "scheduled"
-    await db.commit()
-    await db.refresh(campaign)
     return campaign
 
 
@@ -250,18 +175,16 @@ async def delete_campaign(
     campaign_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailCampaign).where(
-            EmailCampaign.id == campaign_id,
-            EmailCampaign.tenant_id == current_user.tenant_id,
-        )
-    )
-    campaign = result.scalar_one_or_none()
-    if not campaign:
+) -> None:
+    try:
+        deleted = await campaigns_svc.delete_campaign(campaign_id, current_user.tenant_id, db)
+    except campaigns_svc.CampaignInSendingError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="La campaña se está enviando ahora mismo; espera a que termine para borrarla",
+        ) from None
+    if not deleted:
         raise HTTPException(status_code=404, detail="Campaña no encontrada")
-    await db.delete(campaign)
-    await db.commit()
 
 
 @router.post("/campaigns/{campaign_id}/send")
@@ -270,15 +193,8 @@ async def send_campaign(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(EmailCampaign).where(
-            EmailCampaign.id == campaign_id,
-            EmailCampaign.tenant_id == current_user.tenant_id,
-            EmailCampaign.status.in_(["draft", "scheduled"]),
-        )
-    )
-    campaign = result.scalar_one_or_none()
+) -> dict[str, int]:
+    campaign = await campaigns_svc.get_sendable_campaign(campaign_id, current_user.tenant_id, db)
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaña no encontrada o ya enviada")
 
@@ -294,13 +210,5 @@ async def send_campaign(
 async def recipient_count(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(func.count()).select_from(Client).where(
-            Client.tenant_id == current_user.tenant_id,
-            Client.email.isnot(None),
-            Client.email != "",
-            Client.marketing_consent.is_(True),
-        )
-    )
-    return {"count": result.scalar() or 0}
+) -> dict[str, int]:
+    return {"count": await recipients_svc.count_recipients(current_user.tenant_id, db)}

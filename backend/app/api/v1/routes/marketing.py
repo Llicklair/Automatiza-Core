@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import datetime
+import json
 from typing import Optional
 from uuid import UUID
 
@@ -12,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import frontend_origin, settings
 from app.core.dependencies import get_current_user
 from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
@@ -22,7 +23,6 @@ from app.services.encryption import decrypt_str, encrypt_str
 from app.services.marketing.image_generation import generate_image as _generate_image
 from app.services.marketing.provider_config import (
     add_provider_config,
-    client_for_account,
     client_for_config,
     delete_provider_config,
     get_config,
@@ -41,12 +41,13 @@ def _popup_html(success: bool, platform: str = "", message: str = "") -> HTMLRes
             <h2>{platform.capitalize()} conectado</h2>
             <p>Puedes cerrar esta ventana.</p>
         """
-        script = """
-            if (window.opener) {
-                window.opener.postMessage({ type: 'oauth-complete' }, '*');
-            }
-            setTimeout(() => window.close(), 1800);
-        """
+        # M2: targetOrigin explícito (no '*') para que solo el frontend reciba el mensaje.
+        script = (
+            "if (window.opener) {"
+            "  window.opener.postMessage({ type: 'oauth-complete' }, " + json.dumps(frontend_origin()) + ");"
+            "}"
+            "setTimeout(() => window.close(), 1800);"
+        )
     else:
         body = f"""
             <div class="icon error">✗</div>
@@ -264,28 +265,14 @@ async def disconnect_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(SocialAccount).where(
-            SocialAccount.id == account_id,
-            SocialAccount.tenant_id == current_user.tenant_id,
-        )
-    )
-    account = result.scalar_one_or_none()
-    if not account:
-        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
-    # Libera el hueco en Zernio (plan gratis: 2 redes/email) para poder conectar otra.
+    from app.services.marketing import social_accounts
+
     try:
-        client = await client_for_account(db, account)
-    except ZernioError:
-        client = None
-    if client is not None:
-        try:
-            await client.disconnect_account(account.account_id)
-        except ZernioError as e:
-            if e.status != 404:  # 404 = ya no existe en Zernio; continuamos
-                raise HTTPException(status_code=502, detail=f"No se pudo desconectar en Zernio: {e}")
-    account.is_active = False
-    await db.commit()
+        ok = await social_accounts.disconnect_account(account_id, current_user.tenant_id, db)
+    except ZernioError as e:
+        raise HTTPException(status_code=502, detail=f"No se pudo desconectar en Zernio: {e}")
+    if not ok:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 
 
 @router.get("/zernio/callback/{state}")
@@ -778,24 +765,16 @@ async def publish_post_now(
     current_user: User = Depends(get_current_user),
 ):
     """Publica un post borrador o programado inmediatamente."""
-    from app.services.marketing.publishing import get_publisher
+    from app.services.marketing.publishing import PostAlreadyPublishedError, publish_single_post
 
-    result = await db.execute(
-        select(ScheduledPost).where(
-            ScheduledPost.id == post_id,
-            ScheduledPost.tenant_id == current_user.tenant_id,
-        )
-    )
-    post = result.scalar_one_or_none()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post no encontrado")
-    if post.status == "published":
+    try:
+        res = await publish_single_post(post_id, current_user.tenant_id, db)
+    except PostAlreadyPublishedError:
         raise HTTPException(status_code=409, detail="El post ya está publicado")
-
-    publish_result = await get_publisher().publish_post(post, db)
-    await db.commit()
-    await db.refresh(post)
-    if not publish_result.ok:
+    if res is None:
+        raise HTTPException(status_code=404, detail="Post no encontrado")
+    post, ok = res
+    if not ok:
         # No dar por publicado un post que falló: propagar el error al cliente
         # (antes se devolvía 200 con status='failed' y el front lo daba por OK).
         raise HTTPException(
@@ -812,27 +791,9 @@ async def publish_batch(
     current_user: User = Depends(get_current_user),
 ):
     """Publica varios posts inmediatamente. Devuelve resumen con ok/failed."""
-    from app.services.marketing.publishing import get_publisher
+    from app.services.marketing.publishing import publish_posts_batch
 
-    publisher = get_publisher()
-    ok_ids, failed_ids = [], []
-    for pid in body.post_ids:
-        result = await db.execute(
-            select(ScheduledPost).where(
-                ScheduledPost.id == pid,
-                ScheduledPost.tenant_id == current_user.tenant_id,
-                ScheduledPost.status != "published",
-            )
-        )
-        post = result.scalar_one_or_none()
-        if not post:
-            failed_ids.append(str(pid))
-            continue
-        success = await publisher.publish_post(post, db)
-        (ok_ids if success.ok else failed_ids).append(str(pid))
-
-    await db.commit()
-    return {"published": ok_ids, "failed": failed_ids}
+    return await publish_posts_batch(body.post_ids, current_user.tenant_id, db)
 
 
 @router.patch("/posts/{post_id}", response_model=PostOut)

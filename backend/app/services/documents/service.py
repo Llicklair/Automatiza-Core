@@ -15,6 +15,7 @@ import os
 import uuid
 import zipfile
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +47,80 @@ from app.services.documents._tabular import (  # noqa: F401
 )
 
 logger = logging.getLogger(__name__)
+
+
+class EmbedderUnavailableError(Exception):
+    """No hay proveedor de embeddings configurado (la ruta lo mapea a HTTP 503)."""
+
+
+async def semantic_search(
+    query: str, limit: int, tenant_id: uuid.UUID, db: AsyncSession
+) -> list[dict[str, Any]]:
+    """Búsqueda semántica RAG (coseno en Python) sobre los documentos del tenant.
+
+    Devuelve hits ordenados por similitud, ya con el nombre de archivo resuelto.
+    Asume `query` no vacía (la valida la ruta). Lanza ``EmbedderUnavailableError``
+    si no hay proveedor de embeddings; devuelve [] si la tabla de embeddings aún
+    no existe en este tenant.
+    """
+    from app.agents.agent_tools.semantic_search import (
+        cosine_topk,
+        is_missing_table_or_extension,
+        similarity_from_distance,
+    )
+    from app.core.llm_factory import get_embedder
+    from app.db.models.tenant import TenantDocument
+
+    embedder = get_embedder()
+    if not embedder:
+        raise EmbedderUnavailableError
+
+    query_vector = await embedder.aembed_query(query)
+    try:
+        scored = await cosine_topk(
+            db,
+            tenant_id=str(tenant_id),
+            query_vector=query_vector,
+            top_k=max(1, min(limit, 20)),
+        )
+    except Exception as exc:  # tabla aún no creada en este tenant → sin resultados
+        if is_missing_table_or_extension(exc):
+            return []
+        raise
+
+    if not scored:
+        return []
+
+    # Nombres de archivo en una sola consulta (evita N+1). Sólo IDs que sean UUID
+    # válidos — document_id se almacena como texto y podría traer datos legacy
+    # no-UUID que romperían el filtro tipado contra TenantDocument.id.
+    valid_ids = []
+    for emb, _ in scored:
+        try:
+            valid_ids.append(uuid.UUID(str(emb.document_id)))
+        except (ValueError, TypeError):
+            continue
+    names: dict[str, str] = {}
+    if valid_ids:
+        names_q = await db.execute(
+            select(TenantDocument.id, TenantDocument.file_name).where(
+                TenantDocument.id.in_(valid_ids)
+            )
+        )
+        names = {str(row.id): row.file_name for row in names_q.all()}
+
+    return [
+        {
+            "document_id": str(emb.document_id),
+            "file_name": names.get(str(emb.document_id)),
+            "chunk_index": emb.chunk_index,
+            "text": (emb.text_content or "")[:500],
+            "page_number": emb.page_number,
+            "element_type": emb.element_type,
+            "similarity": round(similarity_from_distance(dist), 4),
+        }
+        for emb, dist in scored
+    ]
 
 
 # â”€â”€ Dispatch interno â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

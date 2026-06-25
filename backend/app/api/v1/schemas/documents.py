@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentOut(BaseModel):
@@ -87,3 +87,14 @@ class SemanticSearchHit(BaseModel):
     page_number: int | None = None
     element_type: str | None = None
     similarity: float
+
+
+class DocumentContentUpdate(BaseModel):
+    """Cuerpo de PATCH /{id}/content. `content` acotado para evitar payloads enormes."""
+    content: str = Field(max_length=5_000_000)
+    append: bool = False
+
+
+class ErpImportRequest(BaseModel):
+    """Cuerpo (opcional) de los endpoints erp-import. El `target` lo valida el servicio."""
+    target: str | None = None

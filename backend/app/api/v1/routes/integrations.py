@@ -1,5 +1,6 @@
 """Rutas para gestionar integraciones de cada tenant — thin controller."""
 
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -7,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.integrations import EmailConnectRequest, Psd2ConnectRequest
-from app.core.config import settings
+from app.core.config import frontend_origin
 from app.core.dependencies import get_current_user, require_role
 from app.core.tenant_context import rls_bypass
 from app.db.base import get_db
@@ -147,10 +148,14 @@ async def google_callback(
             "<html><body><h2>Error: estado OAuth inválido o tokens fallidos</h2></body></html>",
             status_code=400,
         )
+    # M2: targetOrigin explícito (no '*') para que solo el frontend reciba el mensaje.
+    target = json.dumps(frontend_origin())
+    href = json.dumps(frontend_origin() + "/integraciones?connected=google")
     return HTMLResponse(
         "<html><body><script>"
-        "if(window.opener){window.opener.postMessage({type:'oauth_success',provider:'google'},'*');window.close();}"
-        "else{window.location.href='" + settings.FRONTEND_URL + "/integraciones?connected=google';}"
+        "if(window.opener){window.opener.postMessage("
+        "{type:'oauth_success',provider:'google'}," + target + ");window.close();}"
+        "else{window.location.href=" + href + ";}"
         "</script><p>Conectado con Google. Puedes cerrar esta ventana.</p></body></html>"
     )
 
@@ -246,12 +251,14 @@ async def microsoft_callback(
             "<html><body><h2>Error: estado OAuth inválido o tokens fallidos</h2></body></html>",
             status_code=400,
         )
+    # M2: targetOrigin explícito (no '*') para que solo el frontend reciba el mensaje.
+    target = json.dumps(frontend_origin())
+    href = json.dumps(frontend_origin() + "/integraciones?connected=microsoft")
     return HTMLResponse(
         "<html><body><script>"
-        "if(window.opener){window.opener.postMessage({type:'oauth_success',provider:'microsoft'},'*');window.close();}"
-        "else{window.location.href='"
-        + settings.FRONTEND_URL
-        + "/integraciones?connected=microsoft';}"
+        "if(window.opener){window.opener.postMessage("
+        "{type:'oauth_success',provider:'microsoft'}," + target + ");window.close();}"
+        "else{window.location.href=" + href + ";}"
         "</script><p>Conectado con Microsoft. Puedes cerrar esta ventana.</p></body></html>"
     )
 

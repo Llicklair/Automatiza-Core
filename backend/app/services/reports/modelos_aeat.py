@@ -44,14 +44,24 @@ async def _invoices_in_period(
     start: date,
     end: date,
 ) -> list[Invoice]:
+    # Invariante fiscal (N1/N2, 2026-06-25): el lado emitido incluye las
+    # rectificativas (abono, importes negados → minoran el devengado) y se
+    # excluyen las anuladas ('cancelled') para cuadrar con el libro registro.
+    # Los borradores SÍ cuentan (las compras nacen 'draft').
+    type_clause = (
+        Invoice.invoice_type.in_(("issued", "rectificativa"))
+        if invoice_type == "issued"
+        else Invoice.invoice_type == invoice_type
+    )
     q = await db.execute(
         select(Invoice)
         .options(jl(Invoice.lines))
         .where(
             and_(
                 Invoice.tenant_id == tenant_id,
-                Invoice.invoice_type == invoice_type,
+                type_clause,
                 Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
+                Invoice.status.notin_(["cancelled"]),
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,
             )
@@ -106,6 +116,15 @@ async def build_modelo_130_data(
     if pago_fraccionado_bruto < 0:
         pago_fraccionado_bruto = Decimal("0.00")
 
+    # N4: retenciones de IRPF que los clientes han practicado sobre las facturas
+    # EMITIDAS (acumuladas desde el 1-ene) → casilla 06; reducen el pago fraccionado.
+    retenciones = sum(
+        (Decimal(inv.retencion_irpf_amount or 0) for inv in issued), Decimal("0")
+    )
+    resultado = pago_fraccionado_bruto - retenciones
+    if resultado < 0:
+        resultado = Decimal("0.00")
+
     return {
         "modelo": "130",
         "ejercicio": year,
@@ -115,11 +134,11 @@ async def build_modelo_130_data(
         "gastos_acumulados": float(gastos),
         "beneficio_acumulado": float(beneficio),
         "pago_fraccionado_bruto": float(pago_fraccionado_bruto),
-        # Las siguientes casillas requieren datos cross-period que aquí se
-        # dejan al usuario por simplicidad MVP — el wizard fiscal las completa.
-        "retenciones_soportadas": 0.0,
+        "retenciones_soportadas": float(retenciones),
+        # pagos_fraccionados_anteriores es cross-period (130 ya presentados este
+        # ejercicio): no derivable de facturas, lo completa el wizard fiscal.
         "pagos_fraccionados_anteriores": 0.0,
-        "resultado_a_ingresar": float(pago_fraccionado_bruto),
+        "resultado_a_ingresar": float(resultado),
         "num_facturas_emitidas": len(issued),
         "num_facturas_recibidas": len(received),
     }
@@ -154,7 +173,9 @@ async def build_modelo_347_data(
         client = client_q.scalar_one_or_none()
         nif = (client.nif if client else None) or "SIN_NIF"
         name = (client.name if client else "Cliente desconocido")
-        entry = by_nif.setdefault(nif, {"nif": nif, "nombre": name, "emitidas": Decimal("0"), "recibidas": Decimal("0")})
+        entry = by_nif.setdefault(
+            nif, {"nif": nif, "nombre": name, "emitidas": Decimal("0"), "recibidas": Decimal("0")}
+        )
         entry["emitidas"] += Decimal(inv.amount_total or 0)
 
     received = await _invoices_in_period(db, tenant_id, invoice_type="received", start=start, end=end)
@@ -165,7 +186,9 @@ async def build_modelo_347_data(
         client = client_q.scalar_one_or_none()
         nif = (client.nif if client else None) or "SIN_NIF"
         name = (client.name if client else "Proveedor desconocido")
-        entry = by_nif.setdefault(nif, {"nif": nif, "nombre": name, "emitidas": Decimal("0"), "recibidas": Decimal("0")})
+        entry = by_nif.setdefault(
+            nif, {"nif": nif, "nombre": name, "emitidas": Decimal("0"), "recibidas": Decimal("0")}
+        )
         entry["recibidas"] += Decimal(inv.amount_total or 0)
 
     declarables = []
@@ -297,6 +320,7 @@ async def build_modelo_111_data(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "received",
                 Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
+                Invoice.status.notin_(["cancelled"]),  # N1: anuladas fuera del modelo
                 Invoice.retencion_irpf_amount.isnot(None),
                 Invoice.retencion_irpf_amount > 0,
                 func.date(Invoice.date) >= start,
@@ -450,6 +474,7 @@ async def build_modelo_190_data(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "received",
                 Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
+                Invoice.status.notin_(["cancelled"]),  # N1: anuladas fuera del modelo
                 Invoice.retencion_irpf_amount.isnot(None),
                 Invoice.retencion_irpf_amount > 0,
                 func.date(Invoice.date) >= start,

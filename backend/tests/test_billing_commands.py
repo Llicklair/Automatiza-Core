@@ -157,10 +157,11 @@ async def test_delete_bloqueado_si_hay_registro_verifactu(db, seed_tenant_and_us
 
 @pytest.mark.asyncio
 async def test_delete_borra_asientos_vinculados(db, seed_tenant_and_user):
-    """Una factura con asiento contable (periodo abierto) se borra junto al asiento."""
+    """Una factura BORRADOR con asiento contable se borra junto al asiento. Las
+    emitidas ya numeradas NO se borran (N7) — se anulan con rectificativa."""
     tenant, _u, _t = seed_tenant_and_user
     cli = await _seed_client(db, tenant.id)
-    inv = await _seed_invoice(db, tenant.id, cli.id)
+    inv = await _seed_invoice(db, tenant.id, cli.id, status="draft")
 
     entry = await create_journal_entry(
         db,
@@ -184,6 +185,23 @@ async def test_delete_borra_asientos_vinculados(db, seed_tenant_and_user):
 
 
 @pytest.mark.asyncio
+async def test_delete_bloqueado_si_factura_emitida_numerada(db, seed_tenant_and_user):
+    """N7: una factura emitida ya numerada (pending/sent/paid) no se borra; se anula
+    con una rectificativa. El contador correlativo no retrocede (RD 1619/2012)."""
+    tenant, _u, _t = seed_tenant_and_user
+    cli = await _seed_client(db, tenant.id)
+    inv = await _seed_invoice(db, tenant.id, cli.id, status="pending")
+    inv_id = inv.id
+
+    with pytest.raises(ValueError, match="rectificativa"):
+        await delete_invoice(inv_id, tenant.id, db)
+    await db.rollback()
+
+    still = await db.execute(select(Invoice.id).where(Invoice.id == inv_id))
+    assert still.scalar_one_or_none() is not None, "La factura emitida no debe borrarse"
+
+
+@pytest.mark.asyncio
 async def test_journal_entry_descuadrado_rechazado(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     with pytest.raises(ValueError, match="descuadrado"):
@@ -196,6 +214,32 @@ async def test_journal_entry_descuadrado_rechazado(db, seed_tenant_and_user):
             lines=[
                 {"account_code": "430", "debit": 100.0, "credit": 0.0},
                 {"account_code": "700", "debit": 0.0, "credit": 50.0},
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_journal_entry_tolera_un_centimo_pero_no_dos(db, seed_tenant_and_user):
+    """N6: un descuadre de 0,01 € (redondeo legítimo base/IVA/total) se tolera; uno
+    de 0,02 € se rechaza. El cuadre se evalúa en Decimal, no en float."""
+    tenant, _u, _t = seed_tenant_and_user
+    entry = await create_journal_entry(
+        db, tenant.id, date=datetime(YEAR, 5, 10, tzinfo=UTC),
+        description="redondeo 1c", reference_id=None,
+        lines=[
+            {"account_code": "430", "debit": 100.00, "credit": 0.0},
+            {"account_code": "700", "debit": 0.0, "credit": 99.99},
+        ],
+    )
+    assert entry is not None  # 0,01 € tolerado
+
+    with pytest.raises(ValueError, match="descuadrado"):
+        await create_journal_entry(
+            db, tenant.id, date=datetime(YEAR, 5, 10, tzinfo=UTC),
+            description="descuadre 2c", reference_id=None,
+            lines=[
+                {"account_code": "430", "debit": 100.00, "credit": 0.0},
+                {"account_code": "700", "debit": 0.0, "credit": 99.98},
             ],
         )
 

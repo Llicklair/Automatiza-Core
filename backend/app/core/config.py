@@ -1,9 +1,13 @@
+import logging
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_logger = logging.getLogger(__name__)
+
+_DEFAULT_FRONTEND_URL = "http://localhost:3000"
 _DEFAULT_SECRET = "CAMBIA_ESTO_EN_PRODUCCION_usa_openssl_rand_hex_32"
 _DEFAULT_ENCRYPTION = "CAMBIA_ESTO_EN_PRODUCCION_usa_fernet_generate_key"
 
@@ -23,7 +27,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     PORT: int = 8080
-    FRONTEND_URL: str = "http://localhost:3000"  # Acepta múltiples orígenes separados por coma
+    FRONTEND_URL: str = _DEFAULT_FRONTEND_URL  # Acepta múltiples orígenes separados por coma
     # URL pública del portal de clientes (la que verán los clientes finales al abrir el enlace).
     # Si está vacía, el frontend cae a window.location.origin con advertencia. En producción debe
     # apuntar a la URL accesible desde internet (Cloudflare Tunnel, dominio propio, IP fija…).
@@ -156,3 +160,25 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+
+def frontend_origin() -> str:
+    """Origen (scheme://host:port) del primer FRONTEND_URL.
+
+    Para `postMessage`/CORS hace falta UN origen exacto, no una lista ni una ruta
+    (M2: evita `targetOrigin='*'`). Cae al valor crudo si no se puede parsear.
+    """
+    from urllib.parse import urlparse
+
+    first = (settings.FRONTEND_URL or "").split(",")[0].strip()
+    parsed = urlparse(first)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    # Sin un origen válido, postMessage(..., "") se trata como "null" y el popup
+    # de OAuth se cuelga en silencio. Caemos al default y dejamos rastro en logs
+    # en vez de devolver una cadena vacía indetectable.
+    _logger.warning(
+        "FRONTEND_URL ('%s') no es un origen válido; usando %s para postMessage/OAuth",
+        settings.FRONTEND_URL, _DEFAULT_FRONTEND_URL,
+    )
+    return first or _DEFAULT_FRONTEND_URL

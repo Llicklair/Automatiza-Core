@@ -26,9 +26,11 @@ def send_password_reset_email(to_email: str, reset_url: str, user_name: str = ""
     <!DOCTYPE html>
     <html>
     <body style="font-family: -apple-system, sans-serif; background: #09090b; color: #e4e4e7; padding: 40px 20px;">
-      <div style="max-width: 480px; margin: 0 auto; background: #111113; border: 1px solid #27272a; border-radius: 16px; padding: 40px;">
+      <div style="max-width: 480px; margin: 0 auto; background: #111113;
+                  border: 1px solid #27272a; border-radius: 16px; padding: 40px;">
         <div style="text-align: center; margin-bottom: 32px;">
-          <div style="display: inline-flex; background: #4f46e5; width: 48px; height: 48px; border-radius: 12px; align-items: center; justify-content: center; margin-bottom: 16px;">
+          <div style="display: inline-flex; background: #4f46e5; width: 48px; height: 48px;
+                      border-radius: 12px; align-items: center; justify-content: center; margin-bottom: 16px;">
             <span style="color: white; font-size: 24px;">⚡</span>
           </div>
           <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">AutomatizaCore</h1>
@@ -63,12 +65,17 @@ def send_password_reset_email(to_email: str, reset_url: str, user_name: str = ""
     </html>
     """
 
-    # Sin SMTP configurado → modo desarrollo
+    # Sin SMTP configurado (X1)
     if not settings.SMTP_HOST or not settings.SMTP_USER:
-        logger.info("=" * 60)
-        logger.info("[RESET PASSWORD] Enlace de recuperación (dev mode):")
-        logger.info(reset_url)
-        logger.info("=" * 60)
+        if settings.ENVIRONMENT == "production":
+            # En producción es una mala configuración: NO fingir que se envió ni
+            # filtrar el token de reset (va en reset_url) en los logs.
+            logger.error(
+                "SMTP no configurado: no se pudo enviar el email de reset a %s", to_email
+            )
+            return False
+        # Modo desarrollo: mostrar el enlace en consola para poder probar el flujo.
+        logger.info("[RESET PASSWORD dev] enlace de recuperación para %s: %s", to_email, reset_url)
         return True
 
     try:

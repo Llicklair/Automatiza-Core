@@ -198,7 +198,14 @@ def _detalles(invoice, lines) -> list[_Detalle]:
             rate = Decimal(getattr(ln, "tax_percentage", None) or 0)
             qty = Decimal(getattr(ln, "quantity", None) or 0)
             unit = Decimal(getattr(ln, "unit_price", None) or 0)
-            groups.setdefault(_fmt_tipo(rate), []).append((rate, qty * unit))
+            # N5: restar el descuento de línea igual que compute_invoice_totals /
+            # vat_breakdown_by_rate; si no, la base del DesgloseIVA del XML
+            # diverge de la base real de la factura y del 303.
+            discount = Decimal(getattr(ln, "discount_percentage", None) or 0)
+            line_base = qty * unit
+            if discount:
+                line_base -= line_base * discount / Decimal("100")
+            groups.setdefault(_fmt_tipo(rate), []).append((rate, line_base))
         detalles: list[_Detalle] = []
         for tipo, items in groups.items():
             base_sum = sum((b for _, b in items), Decimal("0"))

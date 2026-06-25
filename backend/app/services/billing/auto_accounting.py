@@ -29,6 +29,7 @@ PGC = {
     "compras": ("600", "Compras de mercaderías"),
     "bancos": ("572", "Bancos c/c vista"),
     "sueldos": ("640", "Sueldos y salarios"),
+    "ss_empresa": ("642", "Seguridad Social a cargo de la empresa"),
     "ss_acreedora": ("476", "Organismos de la Seguridad Social, acreedores"),
     "irpf_retenido": ("4751", "Hacienda Pública, acreedora por retenciones"),
     "remuneraciones_ptes": ("465", "Remuneraciones pendientes de pago"),
@@ -136,12 +137,21 @@ async def create_payroll_journal_entry(db, tenant_id, payroll) -> JournalEntry |
         float(getattr(payroll, f, 0) or 0)
         for f in ("ss_contingencias_comunes", "ss_desempleo", "ss_formacion_profesional", "ss_mei")
     )
+    # Cuota patronal de SS (642): coste real de la empresa, NO parte del bruto del
+    # trabajador. Se lee de cuotas_empresa_json ({cc, at_ep, desempleo, fogasa,
+    # fp, mei}); la 476 acreedora recoge worker + empresa (total a pagar a la TGSS).
+    cuotas = payroll.cuotas_empresa_json or {}
+    ss_empresa = (
+        sum(float(v or 0) for v in cuotas.values()) if isinstance(cuotas, dict) else 0.0
+    )
     irpf = float(payroll.irpf or 0)
     net = float(payroll.net_salary or 0)
 
     lines = [_line("sueldos", debit=gross)]
-    if ss_total > 0:
-        lines.append(_line("ss_acreedora", credit=ss_total))
+    if ss_empresa > 0:
+        lines.append(_line("ss_empresa", debit=ss_empresa))
+    if ss_total + ss_empresa > 0:
+        lines.append(_line("ss_acreedora", credit=ss_total + ss_empresa))
     if irpf > 0:
         lines.append(_line("irpf_retenido", credit=irpf))
     lines.append(_line("remuneraciones_ptes", credit=net))

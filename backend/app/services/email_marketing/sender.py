@@ -33,8 +33,15 @@ async def send_campaign(campaign_id: str, tenant_id: str) -> None:
     from app.db.base import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
+        # Esta sesión corre en background/scheduler: NO pasa por get_current_user,
+        # así que el tenant del listener RLS no está fijado. Anclamos la consulta
+        # al tenant_id (que ya llega como parámetro) como defensa en profundidad:
+        # un campaign_id de otro tenant nunca se envía con estas credenciales.
         result = await db.execute(
-            select(EmailCampaign).where(EmailCampaign.id == UUID(campaign_id))
+            select(EmailCampaign).where(
+                EmailCampaign.id == UUID(campaign_id),
+                EmailCampaign.tenant_id == UUID(tenant_id),
+            )
         )
         campaign = result.scalar_one_or_none()
         if not campaign or campaign.status in ("sending", "sent"):

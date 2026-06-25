@@ -8,6 +8,7 @@ import logging
 import os
 import uuid as uuid_mod
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -334,6 +335,20 @@ async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
             "No se puede borrar: la factura tiene un registro Verifactu (cadena inmutable)."
         )
 
+    # N7: una factura EMITIDA ya numerada (pending/sent/paid) no se borra: rompería
+    # la numeración correlativa (RD 1619/2012 Art. 6.1) y el contador no retrocede.
+    # Los borradores sí (nunca se emitieron); las recibidas y las demo también.
+    # Para anular una factura emitida, se emite una factura rectificativa.
+    if (
+        invoice.invoice_type == "issued"
+        and not invoice.is_demo
+        and (invoice.status or "draft") != "draft"
+    ):
+        raise ValueError(
+            f"No se puede borrar una factura emitida (estado '{invoice.status}'): rompería "
+            "la numeración correlativa. Para anularla, emite una factura rectificativa."
+        )
+
     entries_res = await db.execute(
         select(JournalEntry).where(
             JournalEntry.invoice_id == invoice_id,
@@ -427,10 +442,14 @@ async def create_journal_entry(
     invoice_id: UUID | None = None,
     payroll_id: UUID | None = None,
 ) -> JournalEntry:
-    total_debit = sum(line["debit"] for line in lines)
-    total_credit = sum(line["credit"] for line in lines)
+    # N6: cuadre en Decimal (no float) para no enmascarar descuadres reales. Se
+    # tolera ≤1 céntimo: al redondear base/IVA/total de una factura por separado
+    # puede quedar un descuadre legítimo de 0,01 € (no es error binario). Un cuadre
+    # EXACTO exigiría una línea de ajuste por redondeo (669/769) — fuera de alcance.
+    total_debit = sum((Decimal(str(line["debit"])) for line in lines), Decimal("0"))
+    total_credit = sum((Decimal(str(line["credit"])) for line in lines), Decimal("0"))
 
-    if abs(total_debit - total_credit) > 0.01:
+    if abs(total_debit - total_credit) > Decimal("0.01"):
         raise ValueError(
             f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})"
         )

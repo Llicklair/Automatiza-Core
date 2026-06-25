@@ -174,9 +174,10 @@ async def restore_backup(
         raise HTTPException(status_code=503, detail="psql no está disponible en el servidor")
 
     if proc.returncode != 0:
-        err = stderr.decode(errors="ignore")[:500]
-        logger.error("psql restore error: %s", err)
-        raise HTTPException(status_code=500, detail=f"Error al restaurar: {err}")
+        # M4: el stderr de psql puede revelar rutas/estructura de la BD → se loguea
+        # server-side pero NO se devuelve al cliente (mensaje genérico).
+        logger.error("psql restore error: %s", stderr.decode(errors="ignore")[:500])
+        raise HTTPException(status_code=500, detail="Error al restaurar la base de datos")
 
     logger.info("Base de datos restaurada por usuario %s", current_user.email)
     return {"ok": True, "message": "Base de datos restaurada correctamente"}

@@ -37,6 +37,39 @@ def _round2(d: Decimal) -> Decimal:
     return Decimal(d).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+def _period_invoices_stmt(tenant_id: uuid.UUID, *, side: str, start: date, end: date):
+    """SELECT base de facturas de un lado (``side`` = 'issued'|'received') para los
+    modelos fiscales Y el libro registro (que reutiliza esta misma sentencia).
+    Invariante único (N1/N2, 2026-06-25): modelo y libro declaran EL MISMO
+    CONJUNTO de facturas, así nunca se contradicen sobre qué se incluye:
+
+      - El lado emitido incluye las RECTIFICATIVAS (abono): llevan importes negados
+        y MINORAN el devengado del 303/390/130/347 (N2).
+      - Se EXCLUYEN las anuladas ('cancelled') (N1). Los BORRADORES sí cuentan: las
+        compras nacen 'draft' y el 303 ya las declara (preventive_check avisa).
+      - Los datos demo del onboarding nunca entran en lo fiscal.
+    """
+    type_clause = (
+        Invoice.invoice_type.in_(("issued", "rectificativa"))
+        if side == "issued"
+        else Invoice.invoice_type == side
+    )
+    return (
+        select(Invoice)
+        .options(jl(Invoice.lines))
+        .where(
+            and_(
+                Invoice.tenant_id == tenant_id,
+                type_clause,
+                Invoice.is_demo.is_(False),
+                Invoice.status.notin_(["cancelled"]),
+                func.date(Invoice.date) >= start,
+                func.date(Invoice.date) <= end,
+            )
+        )
+    )
+
+
 def vat_breakdown_by_rate(invoices) -> dict[Decimal, dict]:
     """Desglose de IVA por tipo impositivo calculado con Decimal.
 
@@ -71,34 +104,15 @@ async def aggregate_fiscal(
     # ── IVA: Repercutido (ventas/emitidas) ──
     # Eager-load Invoice.lines en el outer query — antes había un N+1 que
     # hacía una SELECT por factura para cargar lines (lessons 2026-05-19).
-    issued_q = await db.execute(
-        select(Invoice).options(jl(Invoice.lines)).where(
-            and_(
-                Invoice.tenant_id == tenant_id,
-                Invoice.invoice_type == "issued",
-                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
-                func.date(Invoice.date) >= start,
-                func.date(Invoice.date) <= end,
-            )
-        )
-    )
+    # Filtros fiscales (rectificativas dentro, anuladas fuera): _period_invoices_stmt.
+    issued_q = await db.execute(_period_invoices_stmt(tenant_id, side="issued", start=start, end=end))
     issued_invoices = issued_q.unique().scalars().all()
 
     # IVA repercutido (ventas) por tipo, con Decimal (sin arrastre de float).
     rep = vat_breakdown_by_rate(issued_invoices)
 
     # ── IVA: Soportado (compras/recibidas) ──
-    received_q = await db.execute(
-        select(Invoice).options(jl(Invoice.lines)).where(
-            and_(
-                Invoice.tenant_id == tenant_id,
-                Invoice.invoice_type == "received",
-                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
-                func.date(Invoice.date) >= start,
-                func.date(Invoice.date) <= end,
-            )
-        )
-    )
+    received_q = await db.execute(_period_invoices_stmt(tenant_id, side="received", start=start, end=end))
     received_invoices = received_q.unique().scalars().all()
 
     # IVA soportado (compras) por tipo, con Decimal.
@@ -142,11 +156,16 @@ async def aggregate_fiscal(
     )
     payrolls = payroll_q.scalars().all()
     irpf_nominas = round(sum(float(p.irpf or 0) for p in payrolls), 2)
+    # N4: retenciones de IRPF practicadas por los clientes sobre las facturas
+    # emitidas (mismo criterio que el Modelo 130/100), antes ignoradas (0.0).
+    retenciones_facturas = round(
+        sum(float(i.retencion_irpf_amount or 0) for i in issued_invoices), 2
+    )
 
     irpf_section = FiscalIRPF(
         retenciones_nominas=irpf_nominas,
-        retenciones_facturas=0.0,
-        total_retenciones=irpf_nominas,
+        retenciones_facturas=retenciones_facturas,
+        total_retenciones=round(irpf_nominas + retenciones_facturas, 2),
     )
 
     # ── IS: Estimacion Impuesto de Sociedades ──
@@ -206,18 +225,9 @@ async def build_modelo_303_data(
     tenant_name = tenant_obj.name if tenant_obj else "Mi Empresa"
     tenant_nif = tenant_obj.nif if tenant_obj else "B00000000"
 
-    # IVA devengado (ventas) — eager-load lines (antes N+1)
-    issued_q = await db.execute(
-        select(Invoice).options(jl(Invoice.lines)).where(
-            and_(
-                Invoice.tenant_id == tenant_id,
-                Invoice.invoice_type == "issued",
-                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
-                func.date(Invoice.date) >= start,
-                func.date(Invoice.date) <= end,
-            )
-        )
-    )
+    # IVA devengado (ventas) — eager-load lines (antes N+1).
+    # Filtros fiscales (rectificativas dentro, anuladas fuera): _period_invoices_stmt.
+    issued_q = await db.execute(_period_invoices_stmt(tenant_id, side="issued", start=start, end=end))
     issued_invoices = issued_q.unique().scalars().all()
 
     # IVA devengado (ventas) por tipo, con Decimal (sin arrastre de float).
@@ -251,18 +261,8 @@ async def build_modelo_303_data(
                 }
             )
 
-    # IVA deducible (compras) — eager-load lines (antes N+1)
-    received_q = await db.execute(
-        select(Invoice).options(jl(Invoice.lines)).where(
-            and_(
-                Invoice.tenant_id == tenant_id,
-                Invoice.invoice_type == "received",
-                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
-                func.date(Invoice.date) >= start,
-                func.date(Invoice.date) <= end,
-            )
-        )
-    )
+    # IVA deducible (compras) — eager-load lines (antes N+1).
+    received_q = await db.execute(_period_invoices_stmt(tenant_id, side="received", start=start, end=end))
     received_invoices = received_q.unique().scalars().all()
 
     # Separar compras por régimen: las intracomunitarias y las de inversión
@@ -326,19 +326,15 @@ async def build_libro_registro_csv(
     start = date(year, 1, 1)
     end = date(year, 12, 31)
 
+    # El libro comparte EXACTAMENTE el mismo SELECT que los modelos
+    # (_period_invoices_stmt): mismos filtros — rectificativas dentro (abono),
+    # anuladas fuera, datos demo fuera, borradores dentro. Así el libro y el
+    # 303/390 nunca se contradicen sobre QUÉ facturas declaran. (No implica que
+    # el total ANUAL del libro iguale el de un trimestre del 303 — son periodos
+    # distintos; lo que cuadra es el conjunto de facturas incluidas.)
     q = await db.execute(
-        select(Invoice)
-        .options(jl(Invoice.client), jl(Invoice.lines))
-        .where(
-            and_(
-                Invoice.tenant_id == tenant_id,
-                Invoice.invoice_type == invoice_type,
-                Invoice.is_demo.is_(False),  # datos demo del onboarding NUNCA en fiscal
-                Invoice.status.notin_(["cancelled"]),
-                func.date(Invoice.date) >= start,
-                func.date(Invoice.date) <= end,
-            )
-        )
+        _period_invoices_stmt(tenant_id, side=invoice_type, start=start, end=end)
+        .options(jl(Invoice.client))
         .order_by(Invoice.date)
     )
     invoices = q.unique().scalars().all()

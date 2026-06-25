@@ -126,6 +126,24 @@ async def get_current_client_portal(
     client = result.scalar_one_or_none()
     if client is None or str(client.tenant_id) != tenant_id:
         raise exc
+    # M1: el JWT del portal debe seguir respaldado por un ClientPortalToken ACTIVO.
+    # Así, revocar el acceso en BD (is_active=False) invalida los JWT ya emitidos en
+    # la siguiente petición (revocación efectiva, no solo al expirar el JWT).
+    from app.db.models.auth import ClientPortalToken
+
+    active = await db.execute(
+        select(ClientPortalToken.id)
+        .where(
+            ClientPortalToken.client_id == UUID(client_id),
+            # Defensa en profundidad: anclamos el token al tenant del JWT (firmado),
+            # no solo al client_id; el lookup no depende únicamente del listener RLS.
+            ClientPortalToken.tenant_id == UUID(tenant_id),
+            ClientPortalToken.is_active.is_(True),
+        )
+        .limit(1)
+    )
+    if active.scalar_one_or_none() is None:
+        raise exc
     return client
 
 
