@@ -294,7 +294,9 @@ async def get_albaran_pdf_data(albaran_id: UUID, tenant_id: UUID, db: AsyncSessi
     client_name = ""
     client_nif = ""
     if note.client_id:
-        client_result = await db.execute(select(Client).where(Client.id == note.client_id))
+        client_result = await db.execute(
+            select(Client).where(Client.id == note.client_id, Client.tenant_id == tenant_id)
+        )
         client = client_result.scalar_one_or_none()
         if client:
             client_name = client.name or ""
