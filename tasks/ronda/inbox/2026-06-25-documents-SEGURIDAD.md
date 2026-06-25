@@ -24,7 +24,6 @@ si siempre se fijan server-side bajo UPLOAD_DIR, es defensa en profundidad; si n
    la RAM. Fix: acumulador de bytes descomprimidos con tope (p.ej. 200 MB) → `ValueError`.
 
 ## Validación ausente — [media]
-5. **`service.py:~207-242` `scan_single` salta `validate_upload`**: el endpoint `/scan` guarda
-   sin comprobar extensión/tamaño (sube `.exe`/`.sh`/`.php`); `upload_single` sí valida. Fix
-   limpio: llamar `validate_upload(filename, len(contents))` igual que `upload_single`. (Candidato
-   a auto-fix en otro turno, tras confirmar que scan no necesita tipos más amplios.)
+5. ✅ RESUELTO (PR #51, 527cc48): **`scan_single` saltaba `validate_upload`**. Ahora valida
+   extensión/tamaño con `validate_upload` igual que `upload_single` (verificado: los tipos de scan
+   ⊆ ALLOWED_EXTENSIONS, no rompe casos legítimos). El endpoint /scan rechaza .exe/.sh/.php y >50MB.
