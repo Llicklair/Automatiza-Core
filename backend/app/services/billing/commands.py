@@ -653,7 +653,7 @@ async def run_recurring(
         return None
 
     now = dt_module.datetime.now(dt_module.UTC)
-    invoice_number = f"REC-{now.strftime('%Y%m%d%H%M%S')}"
+    invoice_number = await next_invoice_number(db, tenant_id, series="REC")
 
     # Totales con Decimal (mismo cálculo canónico que create_invoice): respeta
     # descuentos y valida el IVA, evitando el arrastre de redondeo del float.
