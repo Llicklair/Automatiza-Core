@@ -107,12 +107,13 @@ async def list_products(
     query = select(Product).where(Product.tenant_id == tenant_id)
 
     if q:
-        like = f"%{q}%"
+        q_esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{q_esc}%"
         query = query.where(
             or_(
-                Product.name.ilike(like),
-                Product.sku.ilike(like),
-                Product.barcode.ilike(like),
+                Product.name.ilike(like, escape="\\"),
+                Product.sku.ilike(like, escape="\\"),
+                Product.barcode.ilike(like, escape="\\"),
             )
         )
     if category:
