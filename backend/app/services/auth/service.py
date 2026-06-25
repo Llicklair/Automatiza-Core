@@ -217,6 +217,8 @@ async def reset_password(token: str, new_password: str, db: AsyncSession) -> dic
         user = user_result.scalar_one_or_none()
         if not user:
             raise ValueError("Usuario no encontrado.")
+        if not user.is_active:
+            raise ValueError("Cuenta desactivada.")
 
         user.hashed_password = get_password_hash(new_password)
         reset_token.used_at = datetime.now(UTC)
