@@ -257,7 +257,13 @@ async def upload_bulk(
     entries = extract_zip_entries(contents)
     docs = []
     for original_name, extracted_data, mime_type in entries:
-        ext = os.path.splitext(original_name)[1]
+        try:
+            ext = validate_upload(original_name, len(extracted_data))
+        except ValueError as e:
+            logger.warning(
+                "upload_bulk: entrada ZIP rechazada %s: %s", original_name, e
+            )
+            continue
         file_path = save_file_to_disk(extracted_data, ext)
 
         doc = TenantDocument(
