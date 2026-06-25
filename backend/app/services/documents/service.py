@@ -214,7 +214,7 @@ async def scan_single(
     db: AsyncSession,
 ) -> tuple[TenantDocument, str]:
     """Procesa un archivo para scan: guardar, clasificar, lanzar IA. Retorna (doc, auto_category)."""
-    ext = os.path.splitext(filename)[1]
+    ext = validate_upload(filename, len(contents))
     file_path = save_file_to_disk(contents, ext)
     auto_cat = auto_classify_category(filename, content_type)
 
