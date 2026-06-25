@@ -198,7 +198,7 @@ async def test_execute_orchestrator_writes_token_ledger_for_employee_task(
 
     with patch.object(_to, "_stream_and_log", new=fake_stream_and_log), \
          patch("app.services.workflow.activity.log_activity", new=AsyncMock(return_value=None)):
-        await _to._execute_orchestrator(str(task.id))
+        await _to._execute_orchestrator(str(task.id), tenant_id_hint=str(tenant.id))
 
     # Re-fetch via a fresh session to avoid the test fixture's stale view
     from app.db.base import AsyncSessionLocal
@@ -229,7 +229,7 @@ async def test_execute_orchestrator_writes_token_ledger_for_employee_task(
 
 @pytest.mark.asyncio
 async def test_execute_orchestrator_skips_cancelled_task(db, tenant_with_employee_and_task):
-    _, _, task = tenant_with_employee_and_task
+    tenant, _, task = tenant_with_employee_and_task
     task.status = "cancelled"
     await db.commit()
 
@@ -237,7 +237,7 @@ async def test_execute_orchestrator_skips_cancelled_task(db, tenant_with_employe
         raise AssertionError("LangGraph stream should not run for cancelled task")
 
     with patch.object(_to, "_stream_and_log", new=must_not_be_called):
-        await _to._execute_orchestrator(str(task.id))
+        await _to._execute_orchestrator(str(task.id), tenant_id_hint=str(tenant.id))
 
     from app.db.base import AsyncSessionLocal
     async with AsyncSessionLocal() as fresh_db:
