@@ -75,3 +75,22 @@ como "sin verificar" en el fichero de salida `wkohju62h.output`).
 4. **Analítica (B8/B17/A6)** — cifras erróneas en el panel.
 5. **Inventario (B18/B19/B20)** y **VeriFactu en edición (B2/B11)**.
 6. **Deuda de diseño** (B13/B14/B15/B22 — el agente habla con la BD saltándose la capa de servicios; es la causa común de la mitad de los bugs fiscales).
+
+---
+
+## E. Actualización 2026-06-25 — barrera fiscal del agente
+
+- **B2 ✅ cerrado** — `agents/billing/_invoice_write_tools.py::_update_invoice_async`:
+  (a) si la factura ya tiene `VerifactuRecord`, el agente RECHAZA cambiar base/IVA
+  y exige rectificativa (mismo invariante que `delete_invoice`); (b) cuando no hay
+  registro, recalcula con `compute_invoice_totals` (Decimal), no float crudo.
+- **B11 ✅ cerrado** — `_update_invoice_status_async` delega en
+  `services/state_machine.validate_transition("Invoice", …)`; se elimina la tabla
+  duplicada que permitía `paid → cancelled` y que ignoraba el estado `sent`.
+- Regresión: `tests/test_agent_invoice_barrier.py` (5 tests, en verde).
+- **A4 (horarios IA): ya estaba resuelto** — el schema `employee_ids` es opcional y
+  la ruta `/schedules/ai-suggest` cae a "todos los empleados activos" cuando no se
+  envían IDs; el frontend manda `instruction` y aplica `suggestions`. No requería cambio.
+- Pendiente de raíz: B13/B14/B15/B22 (el agente sigue tocando la BD saltándose la
+  capa de servicios en HR/contabilidad); B12 (asiento de nómina, falla ruidoso) y
+  B20 (revertir albarán no recrea lotes FEFO).
