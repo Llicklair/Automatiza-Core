@@ -122,6 +122,18 @@ async def get_dashboard(
     issued_period_q = select(
         func.coalesce(func.sum(Invoice.amount_total), 0),
         func.count(),
+        # Issued-only (excluye rectificativas/abono): para el ticket medio, que
+        # debe medir la media de facturas EMITIDAS reales. Una rectificativa lleva
+        # amount_total negativo y restaría del numerador a la vez que suma +1 al
+        # denominador, infravalorando el ticket. Ver ticket_medio_periodo abajo.
+        func.coalesce(
+            func.sum(case((Invoice.invoice_type == "issued", Invoice.amount_total), else_=0)),
+            0,
+        ),
+        func.coalesce(
+            func.sum(case((Invoice.invoice_type == "issued", 1), else_=0)),
+            0,
+        ),
     ).where(
         Invoice.tenant_id == tenant_id,
         Invoice.invoice_type.in_(_EMITTED),
@@ -137,7 +149,9 @@ async def get_dashboard(
         func.date(Invoice.date) >= start,
         func.date(Invoice.date) <= end,
     )
-    ingresos_periodo_t, emitidas_periodo = (await db.execute(issued_period_q)).one()
+    ingresos_periodo_t, emitidas_periodo, issued_sum_t, issued_count = (
+        await db.execute(issued_period_q)
+    ).one()
     gastos_periodo_t, recibidas_periodo = (await db.execute(received_period_q)).one()
     ingresos_periodo = float(ingresos_periodo_t or 0)
     gastos_periodo = float(gastos_periodo_t or 0)
@@ -361,9 +375,13 @@ async def get_dashboard(
     nuevos_clientes_periodo = int((await db.execute(new_clients_q)).scalar() or 0)
 
     # ── Ventas: ticket medio, IVA, top productos, día de la semana ──────
+    # Ticket medio = media de facturas EMITIDAS reales (issued-only). Excluye
+    # rectificativas tanto del numerador como del denominador: un abono negativo
+    # no es una "venta" y contarlo infravaloraba el ticket (5 fras de 1000€ + 1
+    # rectificativa -200€ daba 4800/6=800€ en vez de 5000/5=1000€).
     ticket_medio_periodo = (
-        round(ingresos_periodo / int(emitidas_periodo or 0), 2)
-        if int(emitidas_periodo or 0) > 0
+        round(float(issued_sum_t or 0) / int(issued_count or 0), 2)
+        if int(issued_count or 0) > 0
         else 0.0
     )
 
