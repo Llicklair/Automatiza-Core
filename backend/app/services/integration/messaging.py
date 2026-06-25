@@ -56,10 +56,20 @@ async def find_integration_by_chat(db: AsyncSession, chat_id: int) -> TenantInte
 
 
 def verify_webhook_secret(secret_header: str | None) -> bool:
-    """Return True if secret token is valid (or not configured)."""
-    if settings.TELEGRAM_WEBHOOK_SECRET:
-        return TelegramClient.verify_secret(secret_header, settings.TELEGRAM_WEBHOOK_SECRET)
-    return True
+    """Return True solo si el secret token coincide.
+
+    Fail-CLOSED: si ``TELEGRAM_WEBHOOK_SECRET`` no está configurado, se RECHAZA el
+    webhook (antes devolvía True → el endpoint quedaba sin autenticación y
+    cualquiera podía inyectar updates falsos y disparar el orquestador LLM). El
+    secreto debe configurarse al registrar el webhook en Telegram (SEC1).
+    """
+    if not settings.TELEGRAM_WEBHOOK_SECRET:
+        logger.error(
+            "TELEGRAM_WEBHOOK_SECRET no configurado: webhook de Telegram rechazado "
+            "(fail-closed). Configura el secreto para habilitarlo."
+        )
+        return False
+    return TelegramClient.verify_secret(secret_header, settings.TELEGRAM_WEBHOOK_SECRET)
 
 
 async def handle_link_command(

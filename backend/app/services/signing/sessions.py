@@ -8,7 +8,7 @@ ruta usa estas dos funciones; la lógica de URI/parse vive en
 from __future__ import annotations
 
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -29,6 +29,12 @@ from app.services.signing.autofirma import (
 def _new_session_token() -> str:
     # 32 chars hex = 16 bytes — suficiente entropía y compat AutoFirma.
     return secrets.token_hex(16)
+
+
+# Caducidad de una sesión de firma PENDIENTE: la firma con AutoFirma es
+# interactiva y de vida corta; un callback sobre una sesión más antigua se
+# rechaza para acotar la ventana de uso de un token filtrado (SEC2).
+_SESSION_TTL_HOURS = 1
 
 
 async def start_signing_session(
@@ -95,6 +101,18 @@ async def process_signed_callback(
         raise AutoFirmaError(f"Sesión de firma no encontrada: {session_token}")
     if sd.status == "signed":
         return _signed_doc_to_dict(sd)
+
+    # Caducidad de la sesión pendiente (SEC2, defensa en profundidad: acota la
+    # ventana de un token de firma filtrado). El módulo trabaja en UTC naive.
+    created = sd.created_at
+    if created is not None:
+        if created.tzinfo is not None:
+            created = created.replace(tzinfo=None)
+        if datetime.utcnow() - created > timedelta(hours=_SESSION_TTL_HOURS):
+            sd.status = "failed"
+            sd.metadata_json = {"error": "Sesión de firma caducada."}
+            await db.commit()
+            raise AutoFirmaError("La sesión de firma ha caducado; inicia una nueva.")
 
     try:
         parsed = parse_autofirma_response(payload)

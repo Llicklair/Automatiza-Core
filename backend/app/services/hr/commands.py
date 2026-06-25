@@ -183,24 +183,23 @@ async def generate_document(
         logger.error("Error generando documento con LLM: %s", e)
         raise ValueError(f"Error al generar el documento: {e}") from e
 
-    # Save with fresh session to avoid expiry issues
+    # R2: guardar con el `db` inyectado (atómico con la request), no con una sesión
+    # aparte. `refresh` recarga id/doc_number/created_at sin lazy-load — mismo patrón
+    # que create_invoice/create_payroll.
     try:
-        from app.db.base import AsyncSessionLocal
-
-        async with AsyncSessionLocal() as save_db:
-            doc = HRDocument(
-                id=uuid_mod.uuid4(),
-                tenant_id=tenant_id,
-                doc_type=doc_type,
-                title=title,
-                employee_name=employee_name,
-                content_html=content_html,
-                instructions=instructions,
-                status="draft",
-            )
-            save_db.add(doc)
-            await save_db.commit()
-            await save_db.refresh(doc)
+        doc = HRDocument(
+            id=uuid_mod.uuid4(),
+            tenant_id=tenant_id,
+            doc_type=doc_type,
+            title=title,
+            employee_name=employee_name,
+            content_html=content_html,
+            instructions=instructions,
+            status="draft",
+        )
+        db.add(doc)
+        await db.commit()
+        await db.refresh(doc)
     except Exception as e:
         logger.error("Error guardando documento en BD: %s", e)
         raise ValueError(f"Documento generado pero no guardado: {e}") from e

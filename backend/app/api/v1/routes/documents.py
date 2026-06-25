@@ -16,7 +16,9 @@ from app.api.v1.schemas.documents import (
     ContractPreviewHtmlOut,
     ContractSaveIn,
     ContractTemplateOut,
+    DocumentContentUpdate,
     DocumentOut,
+    ErpImportRequest,
     ImportDBOut,
     ScanResultOut,
     SemanticSearchHit,
@@ -24,6 +26,7 @@ from app.api.v1.schemas.documents import (
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
+from app.db.models.tenant import TenantDocument
 from app.middleware.rate_limit import limiter
 from app.services.documents import service as svc
 
@@ -41,80 +44,24 @@ async def search_documents(
     limit: int = 5,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[SemanticSearchHit]:
     """Búsqueda semántica (RAG, coseno en Python) sobre los documentos del tenant.
 
     Devuelve los fragmentos más relevantes a la consulta `q`, con su documento
     de origen, página y puntuación de similitud [0-1].
     """
-    from app.agents.agent_tools.semantic_search import (
-        cosine_topk,
-        is_missing_table_or_extension,
-        similarity_from_distance,
-    )
-    from app.core.llm_factory import get_embedder
-    from app.db.models.tenant import TenantDocument
-
     query = (q or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="La consulta no puede estar vacía")
 
-    embedder = get_embedder()
-    if not embedder:
+    try:
+        hits = await svc.semantic_search(query, limit, current_user.tenant_id, db)
+    except svc.EmbedderUnavailableError:
         raise HTTPException(
             status_code=503, detail="No hay proveedor de embeddings configurado"
-        )
+        ) from None
 
-    query_vector = await embedder.aembed_query(query)
-    try:
-        scored = await cosine_topk(
-            db,
-            tenant_id=str(current_user.tenant_id),
-            query_vector=query_vector,
-            top_k=max(1, min(limit, 20)),
-        )
-    except Exception as exc:  # tabla aún no creada en este tenant → sin resultados
-        if is_missing_table_or_extension(exc):
-            return []
-        raise
-
-    if not scored:
-        return []
-
-    # Nombres de archivo en una sola consulta (evita N+1). Sólo IDs que sean
-    # UUID válidos — document_id se almacena como texto y podría traer datos
-    # legacy no-UUID que romperían el filtro tipado contra TenantDocument.id.
-    import uuid as _uuid
-
-    from sqlalchemy import select as _select
-
-    valid_ids = []
-    for emb, _ in scored:
-        try:
-            valid_ids.append(_uuid.UUID(str(emb.document_id)))
-        except (ValueError, TypeError):
-            continue
-    names: dict[str, str] = {}
-    if valid_ids:
-        names_q = await db.execute(
-            _select(TenantDocument.id, TenantDocument.file_name).where(
-                TenantDocument.id.in_(valid_ids)
-            )
-        )
-        names = {str(row.id): row.file_name for row in names_q.all()}
-
-    return [
-        SemanticSearchHit(
-            document_id=str(emb.document_id),
-            file_name=names.get(str(emb.document_id)),
-            chunk_index=emb.chunk_index,
-            text=(emb.text_content or "")[:500],
-            page_number=emb.page_number,
-            element_type=emb.element_type,
-            similarity=round(similarity_from_distance(dist), 4),
-        )
-        for emb, dist in scored
-    ]
+    return [SemanticSearchHit(**hit) for hit in hits]
 
 
 @router.post("/contracts/interview", response_model=ContractInterviewOut)
@@ -386,17 +333,17 @@ async def download_document(
 async def update_document_content(
     request: Request,
     document_id: uuid.UUID,
-    body: dict,
+    body: DocumentContentUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> TenantDocument:
     """Actualiza el contenido textual de un documento existente (TXT/JSON)."""
     doc = await svc.get_document(document_id, current_user.tenant_id, db)
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
-    new_content: str = body.get("content", "")
-    append_mode: bool = body.get("append", False)
+    new_content = body.content
+    append_mode = body.append
     if not new_content:
         raise HTTPException(status_code=400, detail="El campo 'content' es obligatorio")
 
@@ -595,6 +542,21 @@ async def delete_contract_template(
 # ── Importar bases de datos ──────────────────────────────────────────────────
 
 
+_MAX_IMPORT_BYTES = 50 * 1024 * 1024  # 50 MB — límite del import tabular (M3, anti-DoS)
+
+
+def _oversized_import_result(filename: str) -> "ImportDBOut":
+    return ImportDBOut(
+        document_id=uuid.uuid4(),
+        file_name=filename,
+        rows_detected=0,
+        columns=[],
+        category="otros",
+        task_id=None,
+        message="El archivo supera el límite de 50 MB permitido.",
+    )
+
+
 @limiter.limit("30/minute")
 @router.post("/import-db", response_model=list[ImportDBOut])
 async def import_database(
@@ -625,7 +587,15 @@ async def import_database(
             )
             continue
 
+        # M3: límite de tamaño ANTES de leer el fichero en memoria (anti-DoS).
+        if (file.size or 0) > _MAX_IMPORT_BYTES:
+            results.append(_oversized_import_result(file.filename))
+            continue
+
         contents = await file.read()
+        if len(contents) > _MAX_IMPORT_BYTES:  # fallback si no llegó Content-Length
+            results.append(_oversized_import_result(file.filename))
+            continue
         doc, columns, row_count, auto_cat, task_id = await svc.import_tabular_file(
             file.filename,
             contents,
@@ -654,7 +624,7 @@ async def import_database(
 async def erp_import_preview(
     request: Request,
     document_id: uuid.UUID,
-    payload: dict | None = None,
+    payload: ErpImportRequest | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -665,7 +635,7 @@ async def erp_import_preview(
     """
     from app.services.documents.erp_import import preview_import
 
-    target = (payload or {}).get("target")
+    target = payload.target if payload else None
     try:
         return await preview_import(db, current_user.tenant_id, document_id, target)
     except LookupError as e:
@@ -679,7 +649,7 @@ async def erp_import_preview(
 async def erp_import_apply(
     request: Request,
     document_id: uuid.UUID,
-    payload: dict | None = None,
+    payload: ErpImportRequest | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -689,7 +659,7 @@ async def erp_import_apply(
     """
     from app.services.documents.erp_import import apply_import
 
-    target = (payload or {}).get("target")
+    target = payload.target if payload else None
     try:
         return await apply_import(db, current_user.tenant_id, document_id, target)
     except LookupError as e:

@@ -76,8 +76,14 @@ def create_refresh_token(data: dict) -> str:
 
 
 def create_client_portal_access_token(client_id: str, tenant_id: str) -> str:
-    """JWT de corta duración para el portal de clientes (type=client_portal)."""
-    expire = datetime.now(UTC) + timedelta(days=7)
+    """JWT de sesión del portal de clientes (type=client_portal).
+
+    TTL corto (24 h en vez de 7 días, M1): es una sesión derivada del magic-link
+    `ClientPortalToken`; el cliente la renueva re-canjeando el enlace. Además
+    `get_current_client_portal` exige que el ClientPortalToken siga activo, así que
+    revocarlo en BD invalida los JWT ya emitidos.
+    """
+    expire = datetime.now(UTC) + timedelta(hours=24)
     payload = {"sub": client_id, "tenant_id": tenant_id, "exp": expire, "type": "client_portal"}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
