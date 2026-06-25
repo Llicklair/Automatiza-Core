@@ -119,11 +119,22 @@ async def update_employee(
 
 
 async def delete_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> bool:
+    from sqlalchemy.exc import IntegrityError
+
+    from app.core.exceptions import ConflictError
+
     emp = await get_employee(employee_id, tenant_id, db)
     if not emp:
         return False
-    await db.delete(emp)
-    await db.commit()
+    try:
+        await db.delete(emp)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictError(
+            "No se puede eliminar el empleado porque tiene registros asociados "
+            "(nóminas, fichajes, etc.)"
+        ) from None
     return True
 
 

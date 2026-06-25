@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.core.exceptions import ConflictError
 from app.db.models.billing import DeliveryNote, DeliveryNoteLine
 from app.db.models.models import (
     Client,
@@ -120,6 +121,11 @@ async def delete_client(
     try:
         await db.delete(client)
         await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictError(
+            "No se puede eliminar el cliente porque tiene facturas o pedidos asociados"
+        ) from None
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error("Error eliminando cliente %s: %s", client_id, e)
@@ -303,8 +309,14 @@ async def delete_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> Non
     quote = result.scalar_one_or_none()
     if not quote:
         raise LookupError("Quote not found")
-    await db.delete(quote)
-    await db.commit()
+    try:
+        await db.delete(quote)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictError(
+            "No se puede eliminar el presupuesto porque tiene registros asociados"
+        ) from None
 
 
 async def convert_to_invoice(
@@ -758,8 +770,14 @@ async def delete_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUI
     order = result.scalar_one_or_none()
     if not order:
         raise LookupError("Pedido de compra no encontrado")
-    await db.delete(order)
-    await db.commit()
+    try:
+        await db.delete(order)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictError(
+            "No se puede eliminar el pedido de compra porque tiene registros asociados"
+        ) from None
 
 
 # ---------------------------------------------------------------------------
@@ -845,5 +863,11 @@ async def delete_sales_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) 
     order = result.scalar_one_or_none()
     if not order:
         raise LookupError("Pedido no encontrado")
-    await db.delete(order)
-    await db.commit()
+    try:
+        await db.delete(order)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictError(
+            "No se puede eliminar el pedido porque tiene registros asociados"
+        ) from None
