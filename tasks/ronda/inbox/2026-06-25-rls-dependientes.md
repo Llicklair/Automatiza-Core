@@ -1,5 +1,9 @@
 # Inbox /ronda — hallazgos que dependen de confirmar RLS (2026-06-25)
 
+> **ESTADO: RESUELTO — NO es trabajo pendiente.** (1) sender y (2) dependencies: filtro de
+> tenant explícito añadido y commiteado (f6fb297). (3) sessions: falso positivo (callback
+> externo con `rls_bypass()` deliberado). El discovery de /forja debe SALTAR este fichero.
+
 Estos 3 hallazgos los marcaron los jueces como [alta] por **falta de filtro de tenant
 explícito** en la consulta. Pero su gravedad real depende de si el listener RLS global
 (fail-closed) está activo en ESE contexto de sesión. El bucle no puede decidirlo solo —
