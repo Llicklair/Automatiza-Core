@@ -98,7 +98,9 @@ async def create_payroll_auto(payload, tenant_id, db: AsyncSession) -> Payroll:
     await db.commit()
 
     result = await db.execute(
-        select(Payroll).options(joinedload(Payroll.employee)).where(Payroll.id == new_payroll.id)
+        select(Payroll)
+        .options(joinedload(Payroll.employee))
+        .where(Payroll.id == new_payroll.id, Payroll.tenant_id == tenant_id)
     )
     return result.unique().scalar_one()
 
