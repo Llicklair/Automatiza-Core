@@ -8,7 +8,7 @@ import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
@@ -36,9 +36,9 @@ def _validate_future(v: datetime.datetime | None) -> datetime.datetime | None:
 
 
 class TemplateCreate(BaseModel):
-    name: str
-    subject: str
-    html_body: str
+    name: str = Field(max_length=200)
+    subject: str = Field(max_length=300)
+    html_body: str = Field(max_length=500_000)
 
 
 class TemplateOut(BaseModel):
@@ -53,9 +53,9 @@ class TemplateOut(BaseModel):
 
 
 class CampaignCreate(BaseModel):
-    name: str
-    subject: str
-    html_body: str
+    name: str = Field(max_length=200)
+    subject: str = Field(max_length=300)
+    html_body: str = Field(max_length=500_000)
     template_id: UUID | None = None
     scheduled_at: datetime.datetime | None = None
 
