@@ -26,7 +26,10 @@ class ZernioPublisher:
 
     async def publish_post(self, post: ScheduledPost, db: AsyncSession) -> PublishResult:
         res = await db.execute(
-            select(SocialAccount).where(SocialAccount.id == post.social_account_id)
+            select(SocialAccount).where(
+                SocialAccount.id == post.social_account_id,
+                SocialAccount.tenant_id == post.tenant_id,
+            )
         )
         account = res.scalar_one_or_none()
         if account is None or not account.account_id:
