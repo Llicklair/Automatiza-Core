@@ -301,7 +301,7 @@ async def zernio_callback(
     if not accountId:
         return _popup_html(False, message="Zernio no devolvió la cuenta conectada. Reinténtalo.")
 
-    platform = connected or "social"
+    platform = connected if connected in _ZERNIO_PLATFORMS else "social"
     existing = await db.execute(
         select(SocialAccount).where(
             SocialAccount.tenant_id == tenant_id,

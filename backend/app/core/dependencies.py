@@ -55,6 +55,11 @@ async def get_current_user(
     user_id: str = payload.get("sub")
     if user_id is None:
         raise credentials_exception
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        # JWT firmado pero con `sub` no-UUID → 401, no 500 (sin fuga de stacktrace).
+        raise credentials_exception
 
     # Eager-load tenant: get_current_tenant() accede a user.tenant; sin esto la
     # relación lazy dispara un segundo SELECT (o MissingGreenlet en async) en
@@ -64,7 +69,7 @@ async def get_current_user(
     # login de todos. `users` lleva tenant_id, así que está sujeta a la policy.
     with rls_bypass():
         result = await db.execute(
-            select(User).where(User.id == UUID(user_id)).options(joinedload(User.tenant))
+            select(User).where(User.id == user_uuid).options(joinedload(User.tenant))
         )
         user = result.scalar_one_or_none()
     if user is None or not user.is_active:
@@ -117,12 +122,18 @@ async def get_current_client_portal(
     tenant_id: str | None = payload.get("tenant_id")
     if not client_id or not tenant_id:
         raise exc
+    try:
+        # JWT firmado pero con `sub`/`tenant_id` no-UUID → 401, no 500.
+        client_uuid = UUID(client_id)
+        tenant_uuid = UUID(tenant_id)
+    except ValueError:
+        raise exc
     # El token del portal YA trae el tenant: lo fijamos ANTES del lookup para que
     # la RLS (fail-closed) ancle la propia SELECT del Client a ese tenant. Así un
     # client_id de otro tenant simplemente no aparece (defensa en profundidad),
     # en vez de depender solo del check explícito de abajo.
     set_current_tenant(tenant_id)
-    result = await db.execute(select(Client).where(Client.id == UUID(client_id)))
+    result = await db.execute(select(Client).where(Client.id == client_uuid))
     client = result.scalar_one_or_none()
     if client is None or str(client.tenant_id) != tenant_id:
         raise exc
@@ -134,10 +145,10 @@ async def get_current_client_portal(
     active = await db.execute(
         select(ClientPortalToken.id)
         .where(
-            ClientPortalToken.client_id == UUID(client_id),
+            ClientPortalToken.client_id == client_uuid,
             # Defensa en profundidad: anclamos el token al tenant del JWT (firmado),
             # no solo al client_id; el lookup no depende únicamente del listener RLS.
-            ClientPortalToken.tenant_id == UUID(tenant_id),
+            ClientPortalToken.tenant_id == tenant_uuid,
             ClientPortalToken.is_active.is_(True),
         )
         .limit(1)
