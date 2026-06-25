@@ -1233,3 +1233,64 @@ determinista antes de creerlo — el verdadero defecto puede estar en el caso de
   que el prompt decía "un empleado" (genérico, sin NIF/nombre) → el agente no pudo resolver a
   quién y lo verbalizó mal. Pulido opcional: que el agente diga "¿de qué empleado?" en vez de
   "problema técnico". Tools HR sanas.
+
+---
+
+## 2026-06-24 — "Mi arreglo no se ve en la app" puede ser procesos HUÉRFANOS, no el código
+
+**Contexto:** tras `sync:rebuild` + reiniciar la app, la tarjeta de inventario (A6) seguía sin
+aparecer en Analítica. Diagnóstico exhaustivo: backend nuevo (el `.pyc cpython-311` que carga
+el proceso contenía el string `valor_stock_eur`), build `.next` nuevo servido por :3000 (chunk
+con `stockValueTitle`, 200 OK), datos OK (155 prod/€8.65M en el tenant del user `Aut`), sin
+Redis (caché no-op), ruta `/dashboard` sin `response_model` que recorte, sin early-return por
+`is_empty`. TODO correcto — y aun así no se veía. **Causa real: un backend/frontend de un
+arranque ANTERIOR seguía vivo** sirviendo código/render viejo; el "Salir → reabrir" de la app
+no mata limpio el árbol de hijos. Cerrar el árbol entero a mano y reabrir → A6 apareció.
+
+**Patrón antipatrón:** ante "no se refleja mi cambio", asumir que falta copiar/reconstruir
+código y seguir tocando ficheros. Se pueden quemar horas verificando código que YA está bien
+cuando el bloqueador es de runtime (proceso rancio). El `mtime` del `.py`/`.pyc` y el `BUILD_ID`
+dicen que el código es nuevo, pero NO dicen qué proceso está realmente escuchando el puerto.
+
+**Regla de prevención:**
+1. Antes de auditar código por "no se ve mi arreglo", **verificar el runtime primero**:
+   `Get-NetTCPConnection -LocalPort 8080,3000,5433` → coger el PID dueño → `StartTime`. Si el
+   arranque del proceso es ANTERIOR al `sync`/edición, está sirviendo código viejo. Barato y
+   descarta el 90% de estos casos en 30 s.
+2. Fix fiable (no confiar en "Salir"): `taskkill /F /T /PID <Electron main>` (cascada a backend
+   :8080 y frontend :3000) + matar la Postgres embebida :5433 SOLO si su ruta es
+   `AppData\Roaming\AutomatizaPyme`, verificar puertos libres, reabrir. Ver
+   [[desktop-app-code-sync-restart]].
+3. Para confirmar contenido de runtime sin tocar nada: el string embebido en el `.pyc`
+   (`grep valor_stock_eur dashboard.cpython-311.pyc`) y el chunk servido por :3000 prueban el
+   código cargado sin necesitar un token/HTTP. Útil cuando el JWT está cifrado (safeStorage v10).
+
+---
+
+## Un subagente de verificación leyó mal un tipo `Optional` y marcó un bug como abierto (2026-06-25)
+
+**Qué pasó:** al verificar los 23 hallazgos del informe ERP, un subagente reportó **A4
+(horarios IA) como OPEN** afirmando que el schema exigía `employee_ids: list[UUID]`. El campo
+real era `employee_ids: list[UUID] | None = None` (opcional) y la ruta `/schedules/ai-suggest`
+cae a "todos los empleados activos" cuando no llegan IDs. A4 ya estaba resuelto; casi escribo un
+"arreglo" innecesario.
+
+**Patrón antipatrón:** tratar el veredicto de un subagente (o de un informe con fecha previa a
+varios commits de fix) como verdad de base. El subagente resumió el tipo y se comió el `| None`.
+
+**Regla de prevención:**
+1. Antes de "arreglar" un hallazgo marcado OPEN por un agente/informe, **abrir el fichero y leer
+   la línea exacta** (schema, default, firma). Los `| None = None`, defaults y ramas de fallback
+   se pierden en los resúmenes.
+2. Cuando hay commits de fix posteriores a un informe, el informe es **histórico**: contrastar
+   contra el código vivo, no contra el informe. Mapear commit→hallazgo antes de tocar nada.
+3. Para "¿está roto de verdad?", trazar el flujo entero (frontend→schema→ruta→servicio), no solo
+   el síntoma; el contrato puede cerrarse en cualquier capa.
+
+**Reincidencia (2026-06-25, R4):** la auditoría de arquitectura marcó 4 tools que "lanzan
+`ValueError` al orquestador". Verificado: **falso positivo**. inventory/recruitment envuelven
+CADA `_parse_uuid` en `try/except ValueError → return f"Error: {e}"`; `shared/db.tool_session`
+es un guard fail-fast (tenant None = bug) y los tools lo atrapan; `workers/compiler.compile_dynamic_agent`
+**no es un tool** (es el compilador del grafo, con `Raises:` documentado y manejado por su caller).
+**Regla añadida:** un `raise` marcado por un informe NO es violación hasta comprobar (a) que el caller
+lo atrapa, y (b) que la función es realmente un `@tool` (no infra/helper). Mirar el call-site, no la línea.
