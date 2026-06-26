@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 # --- Journal Lines ---
@@ -13,7 +13,15 @@ class JournalLineBase(BaseModel):
 
 
 class JournalLineCreate(JournalLineBase):
-    pass
+    @model_validator(mode="after")
+    def _check_line(self):
+        if self.debit < 0 or self.credit < 0:
+            raise ValueError("El debe y el haber no pueden ser negativos")
+        if self.debit > 0 and self.credit > 0:
+            raise ValueError("Una línea no puede tener debe y haber a la vez")
+        if self.debit == 0 and self.credit == 0:
+            raise ValueError("Cada línea debe tener importe en el debe o en el haber")
+        return self
 
 
 class JournalLineResponse(JournalLineBase):
