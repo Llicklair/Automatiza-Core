@@ -57,6 +57,12 @@ async def enforce_sqlite_foreign_keys():
         yield
     finally:
         event.remove(sync_engine, "connect", _set_sqlite_pragma)
+        # Restaurar el estado por defecto (FK OFF) en la conexión compartida del
+        # StaticPool. Sin esto, la verificación de FK quedaría ACTIVADA para el
+        # resto de la suite (una sola conexión compartida) y rompería los tests
+        # posteriores que insertan filas con FKs "de atajo" (caps, ledger, audit…).
+        async with _test_engine.begin() as conn:
+            await conn.execute(text("PRAGMA foreign_keys=OFF"))
 
 
 class TestDeleteClientConflict409:
