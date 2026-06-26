@@ -14,12 +14,40 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.inventory import Product, ProductLot, ProductStock, Warehouse
 
 from ._fefo import plan_fefo_deduction
+
+
+async def decrement_product_stock(db: AsyncSession, product: Product, qty: int) -> None:
+    """Decremento ATÓMICO y race-safe de Product.stock_quantity.
+
+    UPDATE condicional `... WHERE stock_quantity >= qty`: dos transacciones
+    concurrentes se serializan por el row-lock del UPDATE y la segunda re-evalúa
+    el WHERE sobre el valor ya decrementado → nunca queda negativo. Si no hay
+    stock suficiente, NO modifica nada y lanza ValueError. Sincroniza el atributo
+    en memoria (para `stock_after`). NO commitea (lo controla el caller).
+    """
+    if qty <= 0:
+        return
+    res = await db.execute(
+        update(Product)
+        .where(
+            Product.id == product.id,
+            Product.tenant_id == product.tenant_id,
+            Product.stock_quantity >= qty,
+        )
+        .values(stock_quantity=Product.stock_quantity - qty)
+    )
+    await db.refresh(product, ["stock_quantity"])
+    if res.rowcount != 1:
+        raise ValueError(
+            f"Stock insuficiente para '{product.name}' "
+            f"(disponible {product.stock_quantity}, solicitado {qty})"
+        )
 
 
 async def _default_warehouse_id(db: AsyncSession, tenant_id: UUID) -> UUID | None:

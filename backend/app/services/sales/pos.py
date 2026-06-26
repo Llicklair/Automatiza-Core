@@ -235,24 +235,22 @@ async def checkout(
         product = prod_res.scalar_one_or_none()
         if product is None:
             continue
-        new_stock = int(product.stock_quantity) - int(line.quantity)
-        if new_stock < 0:
-            raise ValueError(
-                f"Stock insuficiente para '{product.name}' "
-                f"(disponible {product.stock_quantity}, solicitado {line.quantity})"
-            )
-        product.stock_quantity = new_stock
-        from app.services.inventory import lot_service
+        qty = int(line.quantity)
+        from app.services.inventory import lot_service, stock_service
+
+        # Decremento atómico y race-safe (anti-sobreventa).
+        await stock_service.decrement_product_stock(db, product, qty)
+        new_stock = int(product.stock_quantity)
 
         if await lot_service.has_lots(db, product.id):
-            await lot_service.deduct_fefo(db, product_id=product.id, quantity=int(line.quantity))
+            await lot_service.deduct_fefo(db, product_id=product.id, quantity=qty)
         db.add(
             StockMovement(
                 tenant_id=tenant_id,
                 product_id=product.id,
                 user_id=user_id,
                 movement_type="salida",
-                quantity=int(line.quantity),
+                quantity=qty,
                 stock_after=new_stock,
                 unit_cost=product.cost_price,
                 reference=reference,

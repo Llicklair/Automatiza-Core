@@ -194,22 +194,23 @@ async def create_stock_movement(
             new_stock = quantity
         product.stock_boxes = new_stock
     else:
-        if movement_type == "entrada":
-            new_stock = int(product.stock_quantity) + abs(quantity)
-        elif movement_type == "salida":
-            new_stock = int(product.stock_quantity) - abs(quantity)
-            if new_stock < 0:
-                raise ValueError("Stock insuficiente")
-        else:  # ajuste
-            new_stock = quantity
-        product.stock_quantity = new_stock
-
-        # Si el producto gestiona lotes, una salida los descuenta en orden FEFO.
         if movement_type == "salida":
-            from app.services.inventory import lot_service
+            # Decremento atómico y race-safe (anti-sobreventa): el helper
+            # aplica un UPDATE condicional y sincroniza product.stock_quantity.
+            from app.services.inventory import lot_service, stock_service
 
+            await stock_service.decrement_product_stock(db, product, abs(quantity))
+            new_stock = int(product.stock_quantity)
+
+            # Si el producto gestiona lotes, una salida los descuenta en orden FEFO.
             if await lot_service.has_lots(db, product_id):
                 await lot_service.deduct_fefo(db, product_id=product_id, quantity=abs(quantity))
+        else:
+            if movement_type == "entrada":
+                new_stock = int(product.stock_quantity) + abs(quantity)
+            else:  # ajuste
+                new_stock = quantity
+            product.stock_quantity = new_stock
 
     movement = StockMovement(
         tenant_id=tenant_id,
@@ -520,14 +521,11 @@ async def _deduct_stock_for_albaran(
         product = product_res.scalar_one_or_none()
         if product is None:
             continue
-        new_stock = int(product.stock_quantity) - qty
-        if new_stock < 0:
-            raise ValueError(
-                f"Stock insuficiente para '{product.name}' "
-                f"(disponible {product.stock_quantity}, solicitado {qty})"
-            )
-        product.stock_quantity = new_stock
-        from app.services.inventory import lot_service
+        from app.services.inventory import lot_service, stock_service
+
+        # Decremento atómico y race-safe (anti-sobreventa).
+        await stock_service.decrement_product_stock(db, product, qty)
+        new_stock = int(product.stock_quantity)
 
         if await lot_service.has_lots(db, product.id):
             await lot_service.deduct_fefo(db, product_id=product.id, quantity=qty)
