@@ -5,7 +5,7 @@
 
 ## Dos métricas distintas
 
-### 1) AMPLITUD — áreas tocadas ≥1 vez · **28/65 ≈ 43%** (sales_orders ya con 6 lentes)
+### 1) AMPLITUD — áreas tocadas ≥1 vez · **29/65 ≈ 45%** (sales_orders ya con 6 lentes)
 Denominador = 65 route-areas. Una marca ✅ = "he barrido **1 flujo** de esta área con **1 lente**". El área
 (p.ej. `accounting`) tiene MUCHOS flujos y funciones; tocar uno NO la revisa entera. Por eso 41% suena a
 mucho con pocos turnos: es "primer contacto", barato.
@@ -43,9 +43,9 @@ llegar a 100% si el usuario lo deja correr.)
 ✅ accounting · aeat_presentation · analytics · auth · banking · client_portal · clients · collections ·
 crm · documents · hr_employees · hr_payrolls · import_bulk · integrations · invoices · messaging ·
 modelos_aeat · onboarding_wizard · portal · pos · products · purchase_orders · quotes · recurring_invoices ·
-treasury · email_marketing · marketing · **sales_orders ⭐(6 lentes — amplitud≈profundidad en este)**
+treasury · email_marketing · marketing · users **(L2 seguridad — escalada privilegios, PR #57)** · **sales_orders ⭐(6 lentes — amplitud≈profundidad en este)**
 🔶 verifactu_config · verify · hr_time · hr_expenses · albaranes · approvals · signing
 ⬜ admin · advisory · ai_employees · alerts · autonomy · backup_local · calendar · collections_(done) ·
 generative_ui · hr · hr_documents · license · llm_usage · marketplace · metrics · notifications ·
 onboarding_regap · presentacion_asistida · projects · recruitment · scanner · search ·
-system · tasks · telemetry · templates · tenant · users · warehouses · workflows · erp
+system · tasks · telemetry · templates · tenant · warehouses · workflows · erp
