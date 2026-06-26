@@ -80,10 +80,19 @@ async def count_unread(
 
 
 async def mark_read(
-    db: AsyncSession, *, tenant_id: UUID, notification_id: UUID
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    notification_id: UUID,
+    user_id: UUID | None = None,
 ) -> bool:
-    """Marca una notificación como leída. Devuelve True si cambió."""
-    result = await db.execute(
+    """Marca una notificación como leída. Devuelve True si cambió.
+
+    Si se pasa ``user_id``, solo afecta a notificaciones propias del usuario
+    o broadcasts (``user_id IS NULL``): evita que un usuario marque leída la
+    notificación privada de otro usuario del mismo tenant (IDOR intra-tenant).
+    """
+    stmt = (
         update(Notification)
         .where(
             Notification.id == notification_id,
@@ -92,6 +101,11 @@ async def mark_read(
         )
         .values(read_at=datetime.now(UTC))
     )
+    if user_id is not None:
+        stmt = stmt.where(
+            (Notification.user_id == user_id) | (Notification.user_id.is_(None))
+        )
+    result = await db.execute(stmt)
     return result.rowcount > 0
 
 

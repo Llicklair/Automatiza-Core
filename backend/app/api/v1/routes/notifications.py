@@ -59,7 +59,10 @@ async def mark_read_endpoint(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     changed = await svc.mark_read(
-        db, tenant_id=user.tenant_id, notification_id=notification_id,
+        db,
+        tenant_id=user.tenant_id,
+        notification_id=notification_id,
+        user_id=user.id,
     )
     if not changed:
         raise HTTPException(status_code=404, detail="Notificación no encontrada o ya leída")

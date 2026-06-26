@@ -44,6 +44,10 @@ async def scan_invoice(
       3. Overrides aprendidos → aplica correcciones del usuario.
     """
     from app.services.ocr import InvoiceExtractionError, extract_invoice_data
+    from app.services.ocr._upload_validation import (
+        INVOICE_EXTENSIONS,
+        validate_ocr_upload,
+    )
     from app.services.ocr.supplier_learning import (
         apply_template_overrides,
         build_few_shot_block,
@@ -54,6 +58,7 @@ async def scan_invoice(
         save_to_cache,
     )
 
+    validate_ocr_upload(file, INVOICE_EXTENSIONS)
     content = await file.read()
     mime = file.content_type or "image/jpeg"
 
@@ -153,6 +158,10 @@ async def scan_invoices_batch(
     nada en BD; el frontend revisa y confirma con POST /invoices/import.
     """
     from app.services.ocr import InvoiceExtractionError, extract_invoice_data
+    from app.services.ocr._upload_validation import (
+        INVOICE_EXTENSIONS,
+        validate_ocr_upload,
+    )
     from app.services.ocr.supplier_learning import (
         apply_template_overrides,
         file_sha256,
@@ -168,6 +177,10 @@ async def scan_invoices_batch(
     results: list[dict] = []
     for f in files:
         try:
+            # Validación de entrada por fichero: un formato no soportado se
+            # rechaza con su error por-fichero (semántica existente del lote:
+            # un fallo no tumba el resto), sin invocar el LLM.
+            validate_ocr_upload(f, INVOICE_EXTENSIONS)
             content = await f.read()
             mime = f.content_type or "image/jpeg"
             file_hash = file_sha256(content)
@@ -197,6 +210,10 @@ async def scan_invoices_batch(
                 extracted_data=payload,
             )
             results.append({"filename": f.filename, "extracted": payload, "error": None})
+        except HTTPException as e:
+            # Validación de entrada (formato no soportado): error por-fichero,
+            # no tumba el lote ni se loguea como fallo inesperado.
+            results.append({"filename": f.filename, "extracted": None, "error": e.detail})
         except InvoiceExtractionError as e:
             results.append({"filename": f.filename, "extracted": None, "error": str(e)})
         except Exception as e:  # noqa: BLE001 — aislar fallos por fichero
