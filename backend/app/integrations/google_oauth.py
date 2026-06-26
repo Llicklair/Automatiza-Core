@@ -70,11 +70,12 @@ def generate_auth_url(tenant_id: str) -> tuple[str, str, str]:
     return f"{GOOGLE_AUTH_URL}?{urlencode(params)}", state, verifier
 
 
-async def exchange_code(code: str, code_verifier: str | None = None) -> dict:
+async def exchange_code(code: str, code_verifier: str) -> dict:
     """Exchange authorization code for access + refresh tokens.
 
-    code_verifier: el verifier PKCE devuelto por generate_auth_url. Es opcional
-    por compatibilidad, pero el flujo normal siempre lo pasa.
+    code_verifier: el verifier PKCE devuelto por generate_auth_url. Es OBLIGATORIO
+    — el flujo siempre lo pasa y degradar a un canje sin PKCE sería inseguro
+    (sobre localhost no-TLS en la app de escritorio).
     """
     data = {
         "code": code,
@@ -82,9 +83,8 @@ async def exchange_code(code: str, code_verifier: str | None = None) -> dict:
         "client_secret": _client_secret(),
         "redirect_uri": _redirect_uri(),
         "grant_type": "authorization_code",
+        "code_verifier": code_verifier,
     }
-    if code_verifier:
-        data["code_verifier"] = code_verifier
     async with httpx.AsyncClient() as client:
         resp = await client.post(GOOGLE_TOKEN_URL, data=data)
         resp.raise_for_status()

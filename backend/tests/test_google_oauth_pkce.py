@@ -63,9 +63,13 @@ async def test_exchange_code_forwards_verifier(monkeypatch):
     assert captured["code_verifier"] == "verif-xyz"
     assert captured["grant_type"] == "authorization_code"
 
-    captured.clear()
-    await g.exchange_code("the-code")  # sin verifier → no añade la clave
-    assert "code_verifier" not in captured
+
+def test_exchange_code_requires_verifier():
+    """code_verifier es obligatorio: PKCE no puede degradarse silenciosamente."""
+    import inspect
+
+    sig = inspect.signature(g.exchange_code)
+    assert sig.parameters["code_verifier"].default is inspect.Parameter.empty
 
 
 def test_state_store_roundtrips_verifier():
@@ -85,7 +89,7 @@ async def test_duplicate_callback_is_idempotent(monkeypatch):
     primero ya canjeó el code y conectó la integración."""
     svc._completed_oauth.clear()
 
-    async def fake_exchange(code, code_verifier=None):
+    async def fake_exchange(code, code_verifier):
         return {"access_token": "tok", "refresh_token": "ref"}
 
     monkeypatch.setattr(g, "exchange_code", fake_exchange)
