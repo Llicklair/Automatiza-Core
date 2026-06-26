@@ -107,12 +107,13 @@ async def list_products(
     query = select(Product).where(Product.tenant_id == tenant_id)
 
     if q:
-        like = f"%{q}%"
+        q_esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{q_esc}%"
         query = query.where(
             or_(
-                Product.name.ilike(like),
-                Product.sku.ilike(like),
-                Product.barcode.ilike(like),
+                Product.name.ilike(like, escape="\\"),
+                Product.sku.ilike(like, escape="\\"),
+                Product.barcode.ilike(like, escape="\\"),
             )
         )
     if category:
@@ -294,7 +295,9 @@ async def get_albaran_pdf_data(albaran_id: UUID, tenant_id: UUID, db: AsyncSessi
     client_name = ""
     client_nif = ""
     if note.client_id:
-        client_result = await db.execute(select(Client).where(Client.id == note.client_id))
+        client_result = await db.execute(
+            select(Client).where(Client.id == note.client_id, Client.tenant_id == tenant_id)
+        )
         client = client_result.scalar_one_or_none()
         if client:
             client_name = client.name or ""

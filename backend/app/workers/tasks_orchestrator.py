@@ -6,7 +6,11 @@ Coroutines puras ejecutadas por TaskRunner.
 import asyncio
 import logging
 
-from app.core.tenant_context import set_current_task, set_current_tenant
+from app.core.tenant_context import (
+    get_current_tenant,
+    set_current_task,
+    set_current_tenant,
+)
 from app.db.base import AsyncSessionLocal
 from app.services.exec_log_store import push as log_push
 from app.services.idempotency import IdempotencyGuard
@@ -234,6 +238,20 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
     """
     from app.agents.orchestrator import orchestrator
     from app.api.ws.notifications import manager
+
+    # Fail-safe RLS: si no hay tenant por NINGÚN lado (hint None y ContextVar
+    # vacío), abortamos antes de abrir la sesión. De lo contrario la SELECT de
+    # bootstrap (_load_and_start_task) correría sin aislamiento; en prod RLS
+    # fail-closed lo contiene, pero en dev/staging sin listener podría cargar
+    # una Task de otro tenant. No afecta al path legítimo (hint válido, o hint
+    # None con el ContextVar ya fijado por el caller).
+    if not tenant_id_hint and not get_current_tenant():
+        logger.error(
+            "Orchestrator sin tenant (hint None y ContextVar vacío); aborto para "
+            "no correr sin aislamiento. task=%s",
+            task_id,
+        )
+        return
 
     if tenant_id_hint:
         set_current_tenant(tenant_id_hint)

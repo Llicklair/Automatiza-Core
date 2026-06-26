@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EmployeeBase(BaseModel):
@@ -25,7 +25,13 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    jornada_horas_semana: float | None = Field(None, gt=0, le=168)
+
+    @model_validator(mode="after")
+    def _check_contract_dates(self):
+        if self.join_date and self.contract_end_date and self.contract_end_date < self.join_date:
+            raise ValueError("La fecha de fin de contrato no puede ser anterior a la de alta")
+        return self
 
 
 class EmployeeUpdate(BaseModel):
@@ -40,12 +46,18 @@ class EmployeeUpdate(BaseModel):
     num_pagas: int | None = None  # 12 | 14
     prorratear_pagas: bool | None = None
     jornada_tipo: str | None = None  # completa | parcial
-    jornada_horas_semana: float | None = None
+    jornada_horas_semana: float | None = Field(None, gt=0, le=168)
     join_date: datetime | None = None
     contract_end_date: datetime | None = None
     leave_type: str | None = None
     leave_start: date | None = None
     leave_end: date | None = None
+
+    @model_validator(mode="after")
+    def _check_contract_dates(self):
+        if self.join_date and self.contract_end_date and self.contract_end_date < self.join_date:
+            raise ValueError("La fecha de fin de contrato no puede ser anterior a la de alta")
+        return self
 
 
 class EmployeeResponse(EmployeeBase):

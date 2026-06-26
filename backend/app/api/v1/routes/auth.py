@@ -55,9 +55,14 @@ async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depe
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(payload: RefreshRequest):
+@limiter.limit("20/hour")
+async def refresh(
+    request: Request,
+    payload: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+):
     try:
-        return svc.refresh(payload.refresh_token)
+        return await svc.refresh(payload.refresh_token, db)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 

@@ -2,7 +2,7 @@ from datetime import date as DateType
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ClientCreate(BaseModel):
@@ -15,6 +15,14 @@ class ClientCreate(BaseModel):
     postal_code: str | None = None
     client_type: str = "customer"
     marketing_consent: bool = False
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("El nombre del cliente no puede estar vacío")
+        return v
 
 
 class ClientResponse(BaseModel):

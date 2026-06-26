@@ -390,7 +390,11 @@ async def generate_alta_xml(db, *, record: "VerifactuRecord", sistema=None) -> s
     res = await db.execute(
         select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id == record.invoice_id)
     )
-    invoice = res.scalar_one()
+    invoice = res.scalar_one_or_none()
+    if invoice is None:
+        raise ValueError(
+            f"Factura {record.invoice_id} no encontrada al generar el alta VeriFactu"
+        )
     tenant = await db.get(Tenant, record.tenant_id)
 
     prev_record = None

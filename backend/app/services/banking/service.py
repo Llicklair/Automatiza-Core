@@ -231,7 +231,9 @@ async def unreconcile_transaction(
     if not tx:
         raise LookupError("Transacción no encontrada")
     if tx.invoice_id:
-        inv_res = await db.execute(select(Invoice).where(Invoice.id == tx.invoice_id))
+        inv_res = await db.execute(
+            select(Invoice).where(Invoice.id == tx.invoice_id, Invoice.tenant_id == tenant_id)
+        )
         invoice = inv_res.scalars().first()
         if invoice and invoice.status == "paid":
             invoice.status = "sent"

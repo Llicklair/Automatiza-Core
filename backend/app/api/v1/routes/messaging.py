@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/messaging", tags=["messaging"])
 
+# Retiene referencias a tasks fire-and-forget para que el GC de CPython no las
+# recolecte a media ejecución (ver asyncio docs sobre create_task).
+_background_tasks: set = set()
+
 
 # ─── Telegram Webhook (sin auth — llamado por Telegram) ──────────────────────
 
@@ -86,7 +90,11 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     set_current_tenant(tenant_id)
     await svc.send_typing_indicator(chat_id)
 
-    asyncio.create_task(svc.process_and_reply(tenant_id, chat_id, text, update.message_id))
+    _task = asyncio.create_task(
+        svc.process_and_reply(tenant_id, chat_id, text, update.message_id)
+    )
+    _background_tasks.add(_task)
+    _task.add_done_callback(_background_tasks.discard)
 
     return {"ok": True}
 

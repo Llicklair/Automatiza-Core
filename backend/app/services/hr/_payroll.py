@@ -144,6 +144,7 @@ async def approve_payroll(payroll_id: UUID, tenant_id, user_id, db: AsyncSession
 
 async def update_payroll(payroll_id: UUID, payload, tenant_id, db: AsyncSession) -> Payroll | None:
     """Actualiza nomina draft. Recalcula si cambia base_salary."""
+    from app.services.hr.queries import calc_payroll_for_employee
     from app.services.hr.service import calc_payroll
 
     result = await db.execute(
@@ -159,33 +160,45 @@ async def update_payroll(payroll_id: UUID, payload, tenant_id, db: AsyncSession)
 
     data = payload.model_dump(exclude_unset=True)
 
-    if "base_salary" in data:
+    def _recalc(base_value: float) -> dict:
+        # Recalcula derivando jornada/pagas/baja IT de la ficha del empleado,
+        # igual que create_payroll_auto. calc_payroll (defaults) descuadraba el
+        # neto al editar a media jornada (lo duplicaba). Sin empleado cargado,
+        # cae al calculo a jornada completa como antes.
         emp = payroll.employee
         irpf_rate = float(emp.irpf_rate or 15.0) if emp else 15.0
-        calc = calc_payroll(data["base_salary"], irpf_rate)
+        if emp is None:
+            return calc_payroll(base_value, irpf_rate)
+        return calc_payroll_for_employee(
+            emp,
+            base_value,
+            irpf_rate,
+            year=payroll.period_start.year if payroll.period_start else None,
+            period_start=payroll.period_start,
+            period_end=payroll.period_end,
+        )
+
+    if "base_salary" in data:
+        calc = _recalc(float(data["base_salary"]))
+        other = float(payroll.other_deductions or 0)
         data.update(
             {
+                "gross_salary": calc["gross_salary"],
                 "ss_contingencias_comunes": calc["ss_contingencias_comunes"],
                 "ss_desempleo": calc["ss_desempleo"],
                 "ss_formacion_profesional": calc["ss_formacion_profesional"],
                 "ss_mei": calc["ss_mei"],
                 "cuota_solidaridad": calc["cuota_solidaridad"],
                 "irpf": calc["irpf"],
-                "deductions": round(calc["deductions"] + float(payroll.other_deductions or 0), 2),
-                "net_salary": round(
-                    data["base_salary"] - calc["deductions"] - float(payroll.other_deductions or 0),
-                    2,
-                ),
+                "deductions": round(calc["deductions"] + other, 2),
+                "net_salary": round(calc["net_salary"] - other, 2),
             }
         )
 
     if "other_deductions" in data and "base_salary" not in data:
-        base = float(payroll.base_salary)
-        emp = payroll.employee
-        irpf_rate = float(emp.irpf_rate or 15.0) if emp else 15.0
-        calc = calc_payroll(base, irpf_rate)
+        calc = _recalc(float(payroll.base_salary))
         data["deductions"] = round(calc["deductions"] + data["other_deductions"], 2)
-        data["net_salary"] = round(base - data["deductions"], 2)
+        data["net_salary"] = round(calc["net_salary"] - data["other_deductions"], 2)
 
     for field, value in data.items():
         setattr(payroll, field, value)

@@ -112,6 +112,76 @@ class TestJournalEntries:
         assert len(resp.json()) >= 1
 
 
+class TestJournalLineValidation:
+    """Regresión: el schema de entrada rechaza líneas contablemente inválidas."""
+
+    @pytest.mark.asyncio
+    async def test_create_journal_entry_negative_amount(self, auth_client: AsyncClient):
+        payload = {
+            "date": datetime.now().isoformat(),
+            "description": "Línea negativa",
+            "lines": [
+                {"account_code": "570", "debit": -100.0, "credit": 0.0},
+                {"account_code": "100", "debit": 0.0, "credit": -100.0},
+            ],
+        }
+        resp = await auth_client.post("/api/v1/accounting/journal", json=payload)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_journal_entry_debit_and_credit(self, auth_client: AsyncClient):
+        payload = {
+            "date": datetime.now().isoformat(),
+            "description": "Debe y haber a la vez",
+            "lines": [
+                {"account_code": "570", "debit": 100.0, "credit": 50.0},
+                {"account_code": "100", "debit": 0.0, "credit": 50.0},
+            ],
+        }
+        resp = await auth_client.post("/api/v1/accounting/journal", json=payload)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_journal_entry_empty_line(self, auth_client: AsyncClient):
+        payload = {
+            "date": datetime.now().isoformat(),
+            "description": "Línea hueca",
+            "lines": [
+                {"account_code": "570", "debit": 0.0, "credit": 0.0},
+                {"account_code": "100", "debit": 0.0, "credit": 0.0},
+            ],
+        }
+        resp = await auth_client.post("/api/v1/accounting/journal", json=payload)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_journal_entry_valid_line_still_works(self, auth_client: AsyncClient):
+        payload = {
+            "date": datetime.now().isoformat(),
+            "description": "Asiento válido cuadrado",
+            "lines": [
+                {"account_code": "570", "debit": 300.0, "credit": 0.0},
+                {"account_code": "100", "debit": 0.0, "credit": 300.0},
+            ],
+        }
+        resp = await auth_client.post("/api/v1/accounting/journal", json=payload)
+        assert resp.status_code == 201
+
+    def test_journal_line_response_serializes_legacy_bad_data(self):
+        """Trampa: el Response debe seguir leyendo datos legacy 'malos' sin error."""
+        from app.api.v1.schemas.accounting import JournalLineResponse
+
+        line = JournalLineResponse(
+            id=uuid4(),
+            tenant_id=uuid4(),
+            entry_id=uuid4(),
+            account_code="430",
+            debit=-5.0,
+            credit=0.0,
+        )
+        assert line.debit == -5.0
+
+
 class TestFixedAssets:
     @pytest.mark.asyncio
     async def test_list_assets_empty(self, auth_client: AsyncClient):

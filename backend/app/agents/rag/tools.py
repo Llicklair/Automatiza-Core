@@ -277,3 +277,7 @@ tools = [
     create_pdf_report,
     create_pdf_text_report,
 ]
+
+from app.agents.tenant_context import isolated as _isolated
+
+tools = _isolated(tools)
