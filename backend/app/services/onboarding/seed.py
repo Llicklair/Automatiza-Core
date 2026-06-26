@@ -27,7 +27,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_context import tenant_context
@@ -134,6 +134,18 @@ async def seed_demo_data(
     "invoices": int}``.
     """
     with tenant_context(str(tenant_id)):
+        # Serializa seeds concurrentes (doble-clic en "Sembrar datos demo"):
+        # sin esto, dos post_seed pasan el check-then-write a la vez y duplican
+        # los datos demo. El advisory lock por tenant hace que la 2ª espere y
+        # vea los datos ya commiteados → devuelve already_seeded. Mismo patrón
+        # que billing/numbering.py:next_invoice_number. No-op en SQLite.
+        dialect = db.bind.dialect.name if db.bind is not None else ""
+        if dialect == "postgresql":
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
+                {"k": f"seed_demo:{tenant_id}"},
+            )
+
         existing = await _demo_counts(db, tenant_id)
         if any(existing.values()):
             return {"already_seeded": True, **existing}
