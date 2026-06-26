@@ -240,6 +240,35 @@ class TestStockMovementCommands:
         assert mov.stock_after == 6
         assert mov.stock_kind == "box"
 
+    async def test_baja_cajas_exacta_y_sobreventa_no_deja_negativo(
+        self, db, seed_tenant_and_user
+    ):
+        """Contrato del guard atómico de cajas (hermana de la sobreventa de
+        unidades): salida exacta vacía a 0; una salida que excede lanza
+        ValueError y NO altera el contador (no queda negativo)."""
+        tenant, _u, _t = seed_tenant_and_user
+        product = await create_product(
+            db, tenant.id, _product_data(stock_boxes=5)
+        )
+        mov = await create_stock_movement(
+            db,
+            tenant.id,
+            product.id,
+            {"movement_type": "salida", "quantity": 5, "stock_kind": "box"},
+        )
+        assert mov.stock_after == 0
+        with pytest.raises(ValueError, match="Stock de cajas insuficiente"):
+            await create_stock_movement(
+                db,
+                tenant.id,
+                product.id,
+                {"movement_type": "salida", "quantity": 6, "stock_kind": "box"},
+            )
+        refreshed = (
+            await db.execute(select(Product).where(Product.id == product.id))
+        ).scalar_one()
+        assert refreshed.stock_boxes == 0
+
 
 # ── quotes ───────────────────────────────────────────────────────────────────
 

@@ -183,16 +183,20 @@ async def create_stock_movement(
     stock_kind = data.get("stock_kind", "unit")
 
     if stock_kind == "box":
-        current = int(product.stock_boxes)
-        if movement_type == "entrada":
-            new_stock = current + abs(quantity)
-        elif movement_type == "salida":
-            new_stock = current - abs(quantity)
-            if new_stock < 0:
-                raise ValueError("Stock de cajas insuficiente")
+        if movement_type == "salida":
+            # Decremento atómico y race-safe de cajas (anti-sobreventa): misma
+            # race que las unidades; el helper aplica UPDATE condicional y
+            # sincroniza product.stock_boxes.
+            from app.services.inventory import stock_service
+
+            await stock_service.decrement_product_stock(
+                db, product, abs(quantity), column="stock_boxes"
+            )
+        elif movement_type == "entrada":
+            product.stock_boxes = int(product.stock_boxes) + abs(quantity)
         else:  # ajuste
-            new_stock = quantity
-        product.stock_boxes = new_stock
+            product.stock_boxes = quantity
+        new_stock = int(product.stock_boxes)
     else:
         if movement_type == "salida":
             # Decremento atómico y race-safe (anti-sobreventa): el helper

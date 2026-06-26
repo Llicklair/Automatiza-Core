@@ -22,31 +22,39 @@ from app.db.models.inventory import Product, ProductLot, ProductStock, Warehouse
 from ._fefo import plan_fefo_deduction
 
 
-async def decrement_product_stock(db: AsyncSession, product: Product, qty: int) -> None:
-    """Decremento ATÓMICO y race-safe de Product.stock_quantity.
+async def decrement_product_stock(
+    db: AsyncSession, product: Product, qty: int, *, column: str = "stock_quantity"
+) -> None:
+    """Decremento ATÓMICO y race-safe de una columna de stock de Product.
 
-    UPDATE condicional `... WHERE stock_quantity >= qty`: dos transacciones
+    UPDATE condicional `... WHERE <column> >= qty`: dos transacciones
     concurrentes se serializan por el row-lock del UPDATE y la segunda re-evalúa
     el WHERE sobre el valor ya decrementado → nunca queda negativo. Si no hay
     stock suficiente, NO modifica nada y lanza ValueError. Sincroniza el atributo
     en memoria (para `stock_after`). NO commitea (lo controla el caller).
+
+    `column` permite reusar el guard tanto para unidades (`stock_quantity`, por
+    defecto) como para cajas (`stock_boxes`), misma race en ambos contadores.
     """
     if qty <= 0:
         return
+    col = getattr(Product, column)
     res = await db.execute(
         update(Product)
         .where(
             Product.id == product.id,
             Product.tenant_id == product.tenant_id,
-            Product.stock_quantity >= qty,
+            col >= qty,
         )
-        .values(stock_quantity=Product.stock_quantity - qty)
+        .values({column: col - qty})
     )
-    await db.refresh(product, ["stock_quantity"])
+    await db.refresh(product, [column])
     if res.rowcount != 1:
+        disponible = getattr(product, column)
+        label = "Stock de cajas insuficiente" if column == "stock_boxes" else "Stock insuficiente"
         raise ValueError(
-            f"Stock insuficiente para '{product.name}' "
-            f"(disponible {product.stock_quantity}, solicitado {qty})"
+            f"{label} para '{product.name}' "
+            f"(disponible {disponible}, solicitado {qty})"
         )
 
 
