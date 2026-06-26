@@ -1,0 +1,15 @@
+# Estado del loop /forja — RUN 2 (motor HÍBRIDO) · 2026-06-26
+
+> Motor nuevo tras la sesión nocturna: **marco global (orquestador + GitNexus) → átomos → puerta global
+> por lote**. Kit endurecido (escaneo de hermanas, busca-mitigación-antes-de-severidad, gate de suite
+> completa por infra/lote, trampa herencia-schema, trampa fixture-teardown, etiquetado honesto, veto por
+> blast radius, changelog humano, lente diversa). Base: master con #52. PR acumulador: **#56**
+> (`loop/forja/auto2`). NUNCA auto-merge. Saltar lo ya en vuelo: #52 (mergeado), #53 stock, #54 reconcile,
+> #55 numeración, e inbox.
+
+## Bitácora run-2
+| fecha/hora | flujo · lente | marco global | resultado |
+|------------|---------------|--------------|-----------|
+| 2026-06-26 14:10 | onboarding seed demo · correctitud+seguridad | GitNexus context: `seed_demo_data`←`post_seed`+6 tests que codifican el contrato is_demo (intencional+testeado) → frame pre-empta el falso positivo "demo en analítica" | **1 fix** (f2b5998 → **PR #56**, 6 tests verde): #1 TOCTOU en idempotencia (2 `post_seed` concurrentes duplican demo) → advisory lock por tenant (patrón `numbering.py`). El finder NO re-flaggeó el contrato y calibró **authz como sólida** (no ALTA). Etiquetado honesto: no-op SQLite, no probado en concurrencia. #2 `clear` sin rollback explícito → inbox. **El motor nuevo evitó el falso positivo clásico.** |
+| 2026-06-26 14:19 | CRM oportunidades→(pivot) generación de contratos · correctitud+seguridad | GitNexus: `update_opportunity` CRUD fino (13 líneas, sin conversión/procesos) → **frame triajó como bajo rendimiento y PIVOTÉ** sin gastar finder. Finder en contract_generator. | **Hallazgo SISTÉMICO**: escaneo de hermanas → **~20 sitios `Content-Disposition` con filename de datos de usuario, SIN saneado** = header injection en toda la API. **1 fix** (2e313af → **PR #56**, 219 tests verde): helper `safe_content_disposition_filename` (`core/security.py`) + aplicado a contrato + nómina (2 ocurrencias; el worker hizo su propio escaneo de hermanas) + test. Por **veto de blast radius** NO auto-fixeé las ~18 rutas restantes → inbox como PR dedicado. Contrato #1 (path traversal mitigado por tenant) / #4 (salario sin formato legal, delicado) → inbox. **El frame ahorró un finder en CRUD y el escaneo de hermanas destapó un patrón sistémico que el modo atómico habría picoteado de uno en uno.** |
+| 2026-06-26 14:34 | portal del cliente · seguridad/IDOR | Frame: portal con auth propia (`client_portal_access_token` lleva client_id+tenant). **Calibración clave: RLS solo aísla tenant, NO client** → el frame dirigió a verificar filtro por `client_id` (donde RLS no llega). | **0 fix — portal SÓLIDO.** Verificados los WHERE reales: `/me` y `/invoices/{id}/pdf` filtran por `client_id` del token; `get_current_client_portal` valida pertenencia. **Sin IDOR.** El finder verificó en vez de inventar. #1 token-lookup sin anclar tenant (baja, entropía cubre, fix no trivial) + #2 token en URL del magic-link (media, diseño) → inbox. **Resultado limpio = resultado válido; el frame hizo la pregunta correcta y el finder no manufacturó hallazgo.** |
