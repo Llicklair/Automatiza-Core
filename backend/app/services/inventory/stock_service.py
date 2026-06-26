@@ -150,7 +150,7 @@ async def transfer(
 ) -> dict:
     """Transfiere unidades entre almacenes. No cambia el total global; solo
     redistribuye. Mueve también los lotes (FEFO) si los hay en el origen."""
-    qty = abs(int(quantity))
+    qty = int(quantity)
     if qty <= 0:
         raise ValueError("La cantidad debe ser mayor que cero")
     if from_warehouse_id == to_warehouse_id:
