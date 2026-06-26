@@ -20,15 +20,20 @@ async def global_search(
     tenant_id = current_user.tenant_id
     results: list[dict] = []
 
+    # Escapar metacaracteres LIKE para que %/_/\ del usuario sean literales,
+    # no comodines (mismo patrón que services/sales/queries.py).
+    q_esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    like = f"%{q_esc}%"
+
     # Employees
     rows = await db.execute(
         select(Employee)
         .where(
             Employee.tenant_id == tenant_id,
             or_(
-                Employee.name.ilike(f"%{q}%"),
-                Employee.email.ilike(f"%{q}%"),
-                Employee.nif.ilike(f"%{q}%"),
+                Employee.name.ilike(like, escape="\\"),
+                Employee.email.ilike(like, escape="\\"),
+                Employee.nif.ilike(like, escape="\\"),
             ),
         )
         .limit(5)
@@ -50,8 +55,8 @@ async def global_search(
         .where(
             Client.tenant_id == tenant_id,
             or_(
-                Client.name.ilike(f"%{q}%"),
-                Client.email.ilike(f"%{q}%"),
+                Client.name.ilike(like, escape="\\"),
+                Client.email.ilike(like, escape="\\"),
             ),
         )
         .limit(5)
@@ -72,7 +77,7 @@ async def global_search(
         select(Invoice)
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.invoice_number.ilike(f"%{q}%"),
+            Invoice.invoice_number.ilike(like, escape="\\"),
         )
         .limit(5)
     )

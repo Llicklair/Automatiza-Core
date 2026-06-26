@@ -38,6 +38,8 @@ async def create_user(
     role: str,
     db: AsyncSession,
 ) -> User:
+    if role not in ALLOWED_ROLES:
+        raise ValueError(f"Rol inválido: {role}")
     full_name = " ".join(filter(None, [first_name, last_name])) or None
     user = User(
         id=uuid.uuid4(),
@@ -61,6 +63,8 @@ async def update_user(
     is_active: bool | None,
     db: AsyncSession,
 ) -> User:
+    if role is not None and role not in ALLOWED_ROLES:
+        raise ValueError(f"Rol inválido: {role}")
     parts = [first_name, last_name]
     if any(p is not None for p in parts):
         user.full_name = " ".join(filter(None, parts)) or user.full_name

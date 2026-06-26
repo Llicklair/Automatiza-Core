@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class WarehouseCreate(BaseModel):
@@ -27,4 +27,4 @@ class StockTransferRequest(BaseModel):
     product_id: UUID
     from_warehouse_id: UUID
     to_warehouse_id: UUID
-    quantity: int
+    quantity: int = Field(gt=0)

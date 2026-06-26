@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -150,6 +150,14 @@ async def get_current_client_portal(
             # no solo al client_id; el lookup no depende únicamente del listener RLS.
             ClientPortalToken.tenant_id == tenant_uuid,
             ClientPortalToken.is_active.is_(True),
+            # Un token caducado (expires_at en el pasado) NO debe respaldar el JWT
+            # aunque is_active siga True: no hay job que ponga is_active=False al
+            # expirar, así que el guard por-request debe comprobar expiry igual que
+            # hace /auth antes de emitir el JWT. NULL = sin caducidad (no expira).
+            or_(
+                ClientPortalToken.expires_at.is_(None),
+                ClientPortalToken.expires_at > func.now(),
+            ),
         )
         .limit(1)
     )

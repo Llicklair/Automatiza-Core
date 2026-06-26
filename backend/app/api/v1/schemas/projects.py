@@ -1,7 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
+
+
+def _check_date_range(model):
+    """Valida que due_date no sea anterior a start_date (ambos presentes)."""
+    if (
+        model.start_date is not None
+        and model.due_date is not None
+        and model.due_date < model.start_date
+    ):
+        raise ValueError("due_date no puede ser anterior a start_date")
+    return model
 
 
 # --- Projects ---
@@ -16,7 +27,7 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    pass
+    _validate_dates = model_validator(mode="after")(_check_date_range)
 
 
 class ProjectUpdate(BaseModel):
@@ -27,6 +38,8 @@ class ProjectUpdate(BaseModel):
     client_id: UUID | None = None
     start_date: datetime | None = None
     due_date: datetime | None = None
+
+    _validate_dates = model_validator(mode="after")(_check_date_range)
 
 
 class ProjectResponse(ProjectBase):
@@ -48,7 +61,7 @@ class ProjectTaskBase(BaseModel):
 
 
 class ProjectTaskCreate(ProjectTaskBase):
-    pass
+    _validate_dates = model_validator(mode="after")(_check_date_range)
 
 
 class ProjectTaskUpdate(BaseModel):
@@ -58,6 +71,8 @@ class ProjectTaskUpdate(BaseModel):
     assignee_id: UUID | None = None
     start_date: datetime | None = None
     due_date: datetime | None = None
+
+    _validate_dates = model_validator(mode="after")(_check_date_range)
 
 
 class ProjectTaskResponse(ProjectTaskBase):

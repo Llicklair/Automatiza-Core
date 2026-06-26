@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
@@ -35,13 +36,13 @@ class UserCreate(BaseModel):
     password: str
     first_name: str | None = None
     last_name: str | None = None
-    role: str = "user"
+    role: Literal["admin", "user", "viewer", "employee"] = "user"
 
 
 class UserUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
-    role: str | None = None
+    role: Literal["admin", "user", "viewer", "employee"] | None = None
     is_active: bool | None = None
 
 
@@ -69,7 +70,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def create_user(
     payload: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     user = await user_service.create_user(
         tenant_id=current_user.tenant_id,
@@ -280,7 +281,7 @@ async def update_user(
     user_id: str,
     payload: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     user = await user_service.get_user(uuid.UUID(user_id), current_user.tenant_id, db)
     if not user:
