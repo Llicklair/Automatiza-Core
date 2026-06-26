@@ -69,6 +69,26 @@ def sanitize_spreadsheet_cell(value):
     return value
 
 
+# Caracteres que rompen la cabecera Content-Disposition (quoted-string):
+# control chars (incl. CR/LF), DEL, comilla doble y backslash. Un nombre con
+# CR/LF permitiría inyectar cabeceras HTTP adicionales (header injection).
+_CD_FILENAME_RE = re.compile(r'[\x00-\x1f\x7f"\\]')
+
+
+def safe_content_disposition_filename(name: str | None, fallback: str = "download") -> str:
+    """Filename seguro para la cabecera Content-Disposition.
+
+    Elimina CR/LF, caracteres de control y comillas/backslash que rompen la
+    cabecera (quoted-string) → evita header injection. Devuelve SOLO el filename
+    (sin la cabecera). No intenta RFC 5987; el objetivo es neutralizar el vector
+    de inyección manteniendo legibles los nombres normales.
+    """
+    if not name:
+        return fallback
+    cleaned = _CD_FILENAME_RE.sub("", name).strip()
+    return cleaned or fallback
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 

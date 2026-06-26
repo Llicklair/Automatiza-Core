@@ -7,6 +7,7 @@ from app.core.security import (
     decode_token,
     get_password_hash,
     mask_iban,
+    safe_content_disposition_filename,
     sanitize_spreadsheet_cell,
     verify_password,
 )
@@ -177,3 +178,41 @@ class TestSanitizeSpreadsheetCell:
             ws = wb["Hoja"]
             assert ws.cell(row=2, column=1).value == "'=1+1"  # saneada
             assert ws.cell(row=3, column=1).value == "Acme SL"  # intacta
+
+
+class TestSafeContentDispositionFilename:
+    """Anti header-injection en Content-Disposition (safe_content_disposition_filename)."""
+
+    def test_nombre_normal_no_cambia(self):
+        # Un nombre limpio debe pasar intacto (no debe cambiar filenames existentes).
+        assert safe_content_disposition_filename("Acme SL") == "Acme SL"
+
+    def test_acentos_y_unicode_se_conservan(self):
+        # Solo se eliminan control/comillas/backslash; los acentos son legítimos.
+        assert safe_content_disposition_filename("José Núñez") == "José Núñez"
+
+    def test_crlf_header_injection_neutralizado(self):
+        out = safe_content_disposition_filename('x"\r\nSet-Cookie: a=b')
+        assert "\r" not in out
+        assert "\n" not in out
+        assert '"' not in out
+        assert "\\" not in out
+        # El texto legible sobrevive, solo se quitan los caracteres peligrosos.
+        assert "Set-Cookie: a=b" in out
+
+    def test_backslash_y_control_chars_eliminados(self):
+        out = safe_content_disposition_filename("a\\b\x00c\x1fd\x7fe")
+        assert out == "abcde"
+
+    def test_vacio_usa_fallback_por_defecto(self):
+        assert safe_content_disposition_filename("") == "download"
+
+    def test_none_usa_fallback_por_defecto(self):
+        assert safe_content_disposition_filename(None) == "download"
+
+    def test_fallback_personalizado(self):
+        assert safe_content_disposition_filename(None, "contrato") == "contrato"
+
+    def test_solo_caracteres_peligrosos_cae_a_fallback(self):
+        # Si tras sanear no queda nada, se usa el fallback en vez de "".
+        assert safe_content_disposition_filename('"\r\n', "empleado") == "empleado"

@@ -10,6 +10,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.core.security import safe_content_disposition_filename
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Payroll, Tenant, TenantDocument
 from app.services.pdf import generate_payroll_pdf
@@ -311,7 +312,11 @@ async def generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id
 
             pdf_bytes = build_payroll_pdf(payroll, theme_config, tenant=tenant)
 
-            emp_name = payroll.employee.name.replace(" ", "_") if payroll.employee else "empleado"
+            emp_name = (
+        safe_content_disposition_filename(payroll.employee.name, "empleado").replace(" ", "_")
+        if payroll.employee
+        else "empleado"
+    )
             period = payroll.period_start.strftime("%Y-%m") if payroll.period_start else "periodo"
             filename = f"Nomina_{emp_name}_{period}.pdf"
 
@@ -359,7 +364,11 @@ async def download_payroll_pdf(
     tenant = await db.get(Tenant, tenant_id)
 
     pdf_bytes = build_payroll_pdf(payroll, theme_config, tenant=tenant)
-    emp_name = payroll.employee.name.replace(" ", "_") if payroll.employee else "empleado"
+    emp_name = (
+        safe_content_disposition_filename(payroll.employee.name, "empleado").replace(" ", "_")
+        if payroll.employee
+        else "empleado"
+    )
     period = payroll.period_start.strftime("%Y-%m") if payroll.period_start else "periodo"
     filename = f"Nomina_{emp_name}_{period}.pdf"
 

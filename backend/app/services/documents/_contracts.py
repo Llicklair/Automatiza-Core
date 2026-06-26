@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import safe_content_disposition_filename
 from app.db.models.models import TenantDocument
 from app.services.documents._file_ops import save_file_to_disk
 
@@ -176,7 +177,7 @@ async def generate_contract_from_template(
 
     docx_bytes = generate_contract(tpl_doc.file_path, context)
     base_name = os.path.splitext(tpl_doc.file_name)[0]
-    entity_slug = (entity.name or "contrato").replace(" ", "_")
+    entity_slug = safe_content_disposition_filename(entity.name, "contrato").replace(" ", "_")
     filename = f"{base_name}_{entity_slug}_BORRADOR.docx"
 
     return docx_bytes, filename
