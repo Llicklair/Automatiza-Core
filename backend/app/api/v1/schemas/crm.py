@@ -1,7 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
+
+
+def _check_event_range(model):
+    """Valida que end_time no sea anterior a start_time (ambos presentes)."""
+    if (
+        model.start_time is not None
+        and model.end_time is not None
+        and model.end_time < model.start_time
+    ):
+        raise ValueError("end_time no puede ser anterior a start_time")
+    return model
 
 
 class OpportunityBase(BaseModel):
@@ -62,7 +73,7 @@ class EventBase(BaseModel):
 
 
 class EventCreate(EventBase):
-    pass
+    _validate_range = model_validator(mode="after")(_check_event_range)
 
 
 class EventResponse(EventBase):
@@ -83,7 +94,7 @@ class ReservationBase(BaseModel):
 
 
 class ReservationCreate(ReservationBase):
-    pass
+    _validate_range = model_validator(mode="after")(_check_event_range)
 
 
 class ReservationUpdate(BaseModel):
@@ -91,6 +102,8 @@ class ReservationUpdate(BaseModel):
     notes: str | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
+
+    _validate_range = model_validator(mode="after")(_check_event_range)
 
 
 class ReservationResponse(ReservationBase):
@@ -109,3 +122,5 @@ class EventUpdate(BaseModel):
     type: str | None = None
     location_or_link: str | None = None
     client_id: UUID | None = None
+
+    _validate_range = model_validator(mode="after")(_check_event_range)

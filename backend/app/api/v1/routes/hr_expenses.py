@@ -69,7 +69,12 @@ async def scan_expense_receipt(
     revise/edite antes de llamar a POST /expenses para confirmar.
     """
     from app.services.ocr import ReceiptExtractionError, extract_receipt_data
+    from app.services.ocr._upload_validation import (
+        RECEIPT_EXTENSIONS,
+        validate_ocr_upload,
+    )
 
+    validate_ocr_upload(file, RECEIPT_EXTENSIONS)
     content = await file.read()
     mime = file.content_type or "image/jpeg"
     try:

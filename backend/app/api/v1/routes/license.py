@@ -12,6 +12,20 @@ class ActivateRequest(BaseModel):
     key: str
 
 
+def _mask_key(key: str | None) -> str | None:
+    """Enmascara la clave de licencia dejando solo los últimos 4 caracteres.
+
+    Este endpoint es público (allowlist del middleware de licencia), así que no
+    debe exponer la clave completa a un visitante anónimo. Devolvemos el campo
+    como string enmascarado para no romper a quien lea `key` del status.
+    """
+    if not key:
+        return key
+    if len(key) <= 4:
+        return "…" + key
+    return "…" + key[-4:]
+
+
 @router.get("/status")
 async def license_status(request: Request):
     """Estado actual de la licencia."""
@@ -20,7 +34,7 @@ async def license_status(request: Request):
     return {
         "valid": valid,
         "plan": plan,
-        "key": get_stored_key(),
+        "key": _mask_key(get_stored_key()),
     }
 
 

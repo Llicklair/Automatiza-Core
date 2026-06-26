@@ -11,7 +11,7 @@ from app.api.v1.schemas.tenant import (
     TenantMeResponse,
     TenantMeUpdate,
 )
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.auth import Tenant
 from app.db.models.models import User
@@ -40,7 +40,7 @@ async def update_tenant_me(
     request: Request,
     payload: TenantMeUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     try:
         return await svc.update_tenant(
@@ -75,7 +75,7 @@ async def update_llm_config(
     request: Request,
     payload: LlmConfigUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     try:
         data = await svc.update_llm_config(
@@ -94,7 +94,7 @@ async def update_llm_config(
 @limiter.limit("5/minute")
 async def claude_code_setup(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     """Verifica/instala Claude Code CLI y comprueba autenticación."""
     data = await svc.claude_code_setup()
@@ -105,7 +105,7 @@ async def claude_code_setup(
 @limiter.limit("5/minute")
 async def claude_code_login(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     """Lanza claude auth login (abre navegador para OAuth)."""
     data = await svc.claude_code_login()
@@ -116,7 +116,7 @@ async def claude_code_login(
 @limiter.limit("5/minute")
 async def claude_code_logout(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     """Cierra la sesión de Claude Code CLI."""
     data = await svc.claude_code_logout()
@@ -151,7 +151,7 @@ async def upload_certificate(
     file: UploadFile = File(...),
     password: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     if not file.filename or not file.filename.lower().endswith((".p12", ".pfx")):
         raise HTTPException(status_code=400, detail="El archivo debe ser .p12 o .pfx")
@@ -182,7 +182,7 @@ async def upload_certificate(
 async def delete_certificate(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = res.scalar_one_or_none()
@@ -224,7 +224,7 @@ async def upload_logo(
     request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="Falta el nombre del archivo")
@@ -265,7 +265,7 @@ async def upload_logo(
 async def delete_logo(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = res.scalar_one_or_none()

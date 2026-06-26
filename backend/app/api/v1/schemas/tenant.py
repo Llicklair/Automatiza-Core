@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 # Re-export de la ubicación canónica en services/
 from app.services._tenant_schemas import LlmProviderConfig  # noqa: F401
@@ -24,6 +24,15 @@ class TenantMeUpdate(BaseModel):
     address: str | None = None
     phone: str | None = None
     contact_email: str | None = None
+
+    @field_validator("nif", "name", mode="after")
+    @classmethod
+    def _no_blank(cls, v: str | None) -> str | None:
+        # Solo aplica al schema de ENTRADA (Update). Si el campo viene presente,
+        # no puede ser cadena vacía/espacios; None (campo omitido) sí se permite.
+        if v is not None and not v.strip():
+            raise ValueError("no puede estar vacío")
+        return v
 
 
 # LlmProviderConfig vive en services/_tenant_schemas — re-exportado arriba
