@@ -31,7 +31,7 @@ from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 
 _PAID_STATUSES = ("paid", "reconciled", "settled")
-_UNPAID_STATUSES = ("sent", "pending", "draft", "overdue")
+_UNPAID_STATUSES = ("sent", "pending", "overdue")
 
 
 @dataclass

@@ -58,6 +58,25 @@ def test_compute_risk_cliente_perfecto():
     assert score.ratio_paid_on_time == 1.0
 
 
+def test_compute_risk_borrador_vencido_no_cuenta_como_impagado():
+    """Un borrador (nunca emitido al cliente) NO es deuda aunque su due_date
+    esté en el pasado: no debe inflar unpaid/overdue ni el score de riesgo."""
+    client = Client(name="Cliente con borradores", nif="B7")
+    today = date(2026, 5, 21)
+    inv = _inv(
+        None, None,
+        number="BORRADOR-1", total=Decimal("8000"), status="draft",
+        issue=datetime(2026, 1, 1, tzinfo=UTC),
+        due=datetime(2026, 2, 1, tzinfo=UTC),  # "vencido" hace meses
+    )
+    score = compute_client_risk(client, [inv], today=today)
+    assert score.unpaid_count == 0
+    assert score.overdue_count == 0
+    assert score.overdue_amount == 0.0
+    assert score.risk_level == "low"
+    assert score.risk_score == 0
+
+
 def test_compute_risk_cliente_con_factura_vencida():
     """Una sola factura vencida 50 días con 8000€ → medium (alerta pero no rojo)."""
     client = Client(name="Moroso SL", nif="B2")
