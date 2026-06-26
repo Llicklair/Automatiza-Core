@@ -6,6 +6,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import sanitize_spreadsheet_cell
 from app.db.models.hr import WorkSchedule
 from app.db.models.models import Employee
 
@@ -62,7 +63,12 @@ def build_schedules_xlsx(grid: list[dict]) -> bytes:
         cell.alignment = Alignment(horizontal="center")
 
     for row in grid:
-        ws.append([row["employee"], *[row["days"].get(d, "—") for d in range(7)]])
+        ws.append(
+            [
+                sanitize_spreadsheet_cell(row["employee"]),
+                *[row["days"].get(d, "—") for d in range(7)],
+            ]
+        )
     for r in ws.iter_rows(min_row=2):
         for cell in r:
             cell.border = thin

