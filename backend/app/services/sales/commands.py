@@ -12,7 +12,7 @@ from datetime import date as date_type
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -32,6 +32,7 @@ from app.db.models.models import (
     SalesOrderLine,
     StockMovement,
 )
+from app.services.billing.numbering import next_invoice_number
 from app.services.sales.queries import _get_quote_or_raise, _quote_query_with_rels
 
 logger = logging.getLogger(__name__)
@@ -330,12 +331,11 @@ async def convert_to_invoice(
     if quote.status == "accepted":
         raise ValueError("Este presupuesto ya fue convertido en factura")
 
-    count_res = await db.execute(
-        select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant_id)
-    )
-    invoice_count = (count_res.scalar() or 0) + 1
     now = datetime.now(UTC)
-    invoice_number = f"FAC-{now.year}-{invoice_count:04d}"
+    # Numeración correlativa por serie (RD 1619/2012 Art. 6.1): advisory lock +
+    # FOR UPDATE en next_invoice_number. Antes COUNT(*) reusaba número (al borrar
+    # una factura el contador bajaba) y tenía carrera de concurrencia.
+    invoice_number = await next_invoice_number(db, tenant_id, series="F")
 
     new_invoice = Invoice(
         tenant_id=tenant_id,

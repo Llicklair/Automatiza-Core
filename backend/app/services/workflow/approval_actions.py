@@ -21,7 +21,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_context import get_current_task
@@ -29,6 +29,7 @@ from app.db.base import AsyncSessionLocal
 from app.db.models.accounting import JournalEntry, JournalLine
 from app.db.models.hr import Payroll
 from app.db.models.models import Client, Invoice, InvoiceLine, PendingApproval
+from app.services.billing.numbering import next_invoice_number
 
 logger = logging.getLogger(__name__)
 
@@ -237,10 +238,8 @@ async def _exec_create_invoice(
 
     tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
     total_amount = amount_base + tax_amount
-    count_res = await db.execute(
-        select(func.count(Invoice.id)).where(Invoice.tenant_id == tid)
-    )
-    invoice_number = f"FAC-{inv_date.year}-{(count_res.scalar() or 0) + 1:04d}"
+    # Numeración correlativa por serie (advisory lock + FOR UPDATE); antes COUNT(*).
+    invoice_number = await next_invoice_number(db, tid, series="F")
 
     invoice = Invoice(
         tenant_id=tid,
