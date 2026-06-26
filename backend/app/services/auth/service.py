@@ -4,6 +4,7 @@ import hashlib
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -141,20 +142,39 @@ async def login(email: str, password: str, db: AsyncSession) -> dict:
     return _make_token_pair(_build_token_data(user))
 
 
-def refresh(refresh_token: str) -> dict:
-    """Genera nuevos tokens a partir de un refresh token. Raises ValueError."""
+async def refresh(refresh_token: str, db: AsyncSession) -> dict:
+    """Genera nuevos tokens a partir de un refresh token. Raises ValueError.
+
+    Reemitir tokens NO es solo decodificar el JWT: hay que revalidar contra BD que
+    el usuario sigue existiendo y activo. Si no, un usuario desactivado seguiría
+    renovando access tokens durante toda la vida del refresh token (días),
+    saltándose la revocación que `get_current_user` ya aplica en cada request.
+    """
     data = decode_token(refresh_token)
     if not data or data.get("type") != "refresh":
         raise ValueError("Refresh token inválido o expirado")
 
-    token_data = {
-        "sub": data["sub"],
-        "tenant_id": data["tenant_id"],
-        "role": data["role"],
-        "full_name": data.get("full_name", ""),
-        "email": data.get("email", ""),
-    }
-    return _make_token_pair(token_data)
+    # `sub` puede no ser UUID (token manipulado/legacy) → mismo error genérico,
+    # nunca un 500 por ValueError de UUID(). Mensaje idéntico para no filtrar.
+    user_id = data.get("sub")
+    if user_id is None:
+        raise ValueError("Refresh token inválido o expirado")
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise ValueError("Refresh token inválido o expirado")
+
+    # Lookup PRE-tenant del User (el token aún no fija el ContextVar de tenant) →
+    # bypass RLS, igual que login/get_current_user; `users` lleva tenant_id.
+    with rls_bypass():
+        result = await db.execute(select(User).where(User.id == user_uuid))
+        user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise ValueError("Refresh token inválido o expirado")
+
+    # Reconstruimos el token_data desde el User fresco de BD: si cambió el rol u
+    # otros datos desde que se emitió el refresh token, los nuevos tokens lo reflejan.
+    return _make_token_pair(_build_token_data(user))
 
 
 async def forgot_password(email: str, db: AsyncSession) -> dict:

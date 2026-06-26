@@ -8,6 +8,7 @@ billing/hr/etc llaman a este service, no a `app.agents.email`.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
@@ -125,8 +126,13 @@ async def send_email(
                 await client.close()
         elif imap_creds:
             attachment_paths = await resolve_smtp_attachments(tenant_id, attachment_ids or [])
-            result = send_email_smtp(
-                imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths
+            result = await asyncio.to_thread(
+                send_email_smtp,
+                imap_creds,
+                to=to,
+                subject=subject,
+                body=body,
+                attachment_paths=attachment_paths,
             )
             if result["success"]:
                 return f"Correo enviado via SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"

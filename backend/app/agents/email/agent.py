@@ -156,6 +156,10 @@ async def run_email_agent(
     else:
         tools_list = build_tools_list()
 
+    from app.agents.tenant_context import isolated as _isolated
+
+    tools_list = _isolated(tools_list)
+
     mode_note = _build_provider_note(providers, available_names, is_mock)
     graph = _build_graph(tools_list, mode_note)
 

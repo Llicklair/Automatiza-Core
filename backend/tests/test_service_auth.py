@@ -124,28 +124,69 @@ class TestLogin:
 # ── refresh ──────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.asyncio
 class TestRefresh:
-    def test_genera_nuevos_tokens(self):
-        token_data = {
-            "sub": str(uuid4()),
-            "tenant_id": str(uuid4()),
-            "role": "admin",
-            "full_name": "X",
-            "email": "x@y.com",
-        }
-        rt = create_refresh_token(token_data)
-        result = auth_service.refresh(rt)
+    async def test_genera_nuevos_tokens(self, db):
+        # Usuario ACTIVO real en BD: el refresh debe devolver el par de tokens.
+        user = await _seed_user(db, email="refresh-ok@empresa.com")
+        rt = create_refresh_token(
+            {
+                "sub": str(user.id),
+                "tenant_id": str(user.tenant_id),
+                "role": user.role,
+                "full_name": user.full_name or "",
+                "email": user.email,
+            }
+        )
+        result = await auth_service.refresh(rt, db)
         assert "access_token" in result and "refresh_token" in result
 
-    def test_falla_si_token_invalido(self):
+    async def test_falla_si_token_invalido(self, db):
         with pytest.raises(ValueError):
-            auth_service.refresh("no-es-un-token-jwt")
+            await auth_service.refresh("no-es-un-token-jwt", db)
 
-    def test_falla_si_es_access_token_en_lugar_de_refresh(self):
+    async def test_falla_si_es_access_token_en_lugar_de_refresh(self, db):
         token_data = {"sub": str(uuid4()), "tenant_id": str(uuid4()), "role": "admin"}
         at = create_access_token(token_data)
         with pytest.raises(ValueError):
-            auth_service.refresh(at)
+            await auth_service.refresh(at, db)
+
+    async def test_falla_si_sub_no_es_uuid(self, db):
+        # `sub` manipulado/no-UUID → ValueError (401), nunca un 500.
+        rt = create_refresh_token({"sub": "no-uuid", "tenant_id": str(uuid4()), "role": "admin"})
+        with pytest.raises(ValueError):
+            await auth_service.refresh(rt, db)
+
+    async def test_falla_si_usuario_no_existe(self, db):
+        # Refresh token bien formado pero su `sub` no corresponde a ningún User.
+        rt = create_refresh_token(
+            {"sub": str(uuid4()), "tenant_id": str(uuid4()), "role": "admin"}
+        )
+        with pytest.raises(ValueError):
+            await auth_service.refresh(rt, db)
+
+    async def test_falla_si_usuario_desactivado(self, db):
+        # REGRESIÓN (SEGURIDAD): un usuario desactivado tras emitirse el refresh
+        # token NO debe poder reemitir tokens. Antes del fix esto devolvía un par
+        # de tokens válido durante toda la vida del refresh token.
+        user = await _seed_user(db, email="refresh-off@empresa.com")
+        rt = create_refresh_token(
+            {
+                "sub": str(user.id),
+                "tenant_id": str(user.tenant_id),
+                "role": user.role,
+                "full_name": user.full_name or "",
+                "email": user.email,
+            }
+        )
+        # Con el usuario ACTIVO el mismo flujo funciona (no es tautológico):
+        ok = await auth_service.refresh(rt, db)
+        assert "access_token" in ok
+        # Lo desactivamos y volvemos a intentar con el MISMO refresh token:
+        user.is_active = False
+        await db.commit()
+        with pytest.raises(ValueError):
+            await auth_service.refresh(rt, db)
 
 
 # ── forgot/reset password ────────────────────────────────────────────────────
@@ -246,3 +287,39 @@ class TestResetPassword:
 
         with pytest.raises(ValueError, match="expirado"):
             await auth_service.reset_password(raw_token, "ValidPass1!", db)
+
+    async def test_reset_falla_si_cuenta_desactivada(self, db):
+        """SEC: un token VÁLIDO (no usado, no expirado) de una cuenta
+        desactivada NO debe permitir reactivar el acceso reseteando la
+        contraseña. Regresión de `if not user.is_active: raise ValueError`.
+        """
+        user = await _seed_user(
+            db, email="desactivada@empresa.com", password="OldPass123!", is_active=False
+        )
+        old_hash = user.hashed_password
+
+        import hashlib
+        import secrets
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        prt = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(hours=1),  # válido, no usado
+        )
+        db.add(prt)
+        await db.commit()
+
+        with pytest.raises(ValueError, match="desactivada"):
+            await auth_service.reset_password(raw_token, "NewPass456!", db)
+
+        # La contraseña NO debe haber cambiado…
+        await db.refresh(user)
+        assert user.hashed_password == old_hash
+        assert verify_password("OldPass123!", user.hashed_password)
+        assert not verify_password("NewPass456!", user.hashed_password)
+        # …y el token NO debe quedar marcado como usado (sigue gastado solo si
+        # alguien reactiva la cuenta y vuelve a intentarlo).
+        await db.refresh(prt)
+        assert prt.used_at is None

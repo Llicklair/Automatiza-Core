@@ -42,6 +42,9 @@ async def receive(
     if po is None:
         raise LookupError(f"Pedido de compra {order_id} no encontrado")
 
+    if po.status in ("received", "cancelled"):
+        raise ValueError(f"No se puede recibir un pedido en estado '{po.status}'")
+
     wh = (
         await stock_service.resolve_warehouse(db, tenant_id, warehouse_id)
         if hasattr(stock_service, "resolve_warehouse")
