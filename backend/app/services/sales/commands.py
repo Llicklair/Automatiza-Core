@@ -632,6 +632,10 @@ async def update_albaran_status(
         select(DeliveryNote)
         .where(DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == tenant_id)
         .options(selectinload(DeliveryNote.lines))
+        # Lock de fila (Postgres): serializa dos confirmaciones concurrentes del
+        # MISMO albarán. La 2ª espera al commit de la 1ª y entonces lee
+        # old_status="confirmed" → el guard de abajo evita el doble descuento.
+        .with_for_update()
     )
     note = result.scalar_one_or_none()
     if not note:
