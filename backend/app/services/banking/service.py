@@ -162,13 +162,19 @@ async def reconcile_transaction(
 ) -> dict:
     """Reconcile a bank transaction against an invoice."""
     result = await db.execute(
-        select(BankTransaction).where(
-            BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id
-        )
+        select(BankTransaction)
+        .where(BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id)
+        # Lock de fila (Postgres): serializa dos conciliaciones concurrentes de la
+        # MISMA transacción (doble-clic / reintento) para que el guard de abajo
+        # evite un 2º asiento de cobro.
+        .with_for_update()
     )
     tx = result.scalars().first()
     if not tx:
         raise LookupError("Transaccion no encontrada")
+    if tx.status == "reconciled":
+        # Idempotente: ya conciliada → no crear un 2º asiento contable.
+        return {"message": "La transacción ya estaba conciliada", "status": "ok"}
 
     result_inv = await db.execute(
         select(Invoice).where(
