@@ -227,6 +227,13 @@ async def ignore_transaction(
     tx = result.scalars().first()
     if not tx:
         raise LookupError("Transacción no encontrada")
+    # No se ignora una transaccion ya CONCILIADA: dejaria su asiento contable
+    # (journal_entry_id) huerfano con la tx marcada "ignored" -> incoherencia.
+    # Primero hay que deshacer la conciliacion (unreconcile_transaction).
+    if tx.status == "reconciled" or tx.journal_entry_id is not None:
+        raise ValueError(
+            "No se puede ignorar una transacción conciliada; deshaz la conciliación primero."
+        )
     tx.status = "ignored"
     await db.commit()
     return {"message": "Transacción ignorada", "status": "ok"}

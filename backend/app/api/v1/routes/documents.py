@@ -356,7 +356,8 @@ async def update_document_content(
     try:
         doc = await svc.update_content(doc, new_content, append_mode, db)
     except OSError as e:
-        raise HTTPException(status_code=500, detail=f"Error escribiendo archivo: {e}")
+        logger.error("update_content: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Error al escribir el archivo")
     return doc
 
 
@@ -443,7 +444,7 @@ async def preview_contract_template_html(
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error("preview_contract_template_html: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error generando vista previa: {e}")
+        raise HTTPException(status_code=500, detail="Error al generar la vista previa")
     return ContractPreviewHtmlOut(**data)
 
 
@@ -473,7 +474,7 @@ async def save_contract_template_body_html(
         raise HTTPException(status_code=422, detail=str(e))
     except OSError as e:
         logger.error("save_contract_template_body_html: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"No se pudo guardar el archivo: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo guardar el archivo")
 
     return {"status": "saved", "file_size": new_size}
 
@@ -512,7 +513,8 @@ async def generate_contract(
             status_code=501, detail="docxtpl no instalado. Ejecuta: pip install docxtpl"
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando contrato: {e}")
+        logger.error("generate_contract: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Error al generar el contrato")
 
     return Response(
         content=docx_bytes,

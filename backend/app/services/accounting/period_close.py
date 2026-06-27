@@ -184,6 +184,14 @@ async def reopen_period(
     period = res.scalar_one_or_none()
     if period is None:
         raise LookupError("Periodo no encontrado")
+    # Solo se reabre un periodo CERRADO (contrato ya documentado: el motivo se pide
+    # "para reabrir un periodo cerrado"). Sin este guard se podia "reabrir" un
+    # periodo abierto, ya-reabierto o nunca cerrado, sobre-escribiendo
+    # reopened_at/motivo y dejando el estado contable incoherente.
+    if period.status != "closed":
+        raise ValueError(
+            f"Solo se puede reabrir un periodo cerrado (estado actual: '{period.status}')."
+        )
 
     period.status = "reopened"
     period.reopened_at = datetime.now()

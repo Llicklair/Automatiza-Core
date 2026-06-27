@@ -78,9 +78,9 @@ async def scan_invoice(
         )
     except InvoiceExtractionError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("Fallo procesando factura recibida")
-        raise HTTPException(status_code=500, detail=f"Error procesando factura: {e}")
+        raise HTTPException(status_code=500, detail="Error al procesar la factura")
 
     payload = data.to_dict()
     nif = (payload.get("emisor") or {}).get("nif")

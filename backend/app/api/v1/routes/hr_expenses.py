@@ -81,9 +81,9 @@ async def scan_expense_receipt(
         data = await extract_receipt_data(content, mime)
     except ReceiptExtractionError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("Fallo procesando ticket")
-        raise HTTPException(status_code=500, detail=f"Error procesando ticket: {e}")
+        raise HTTPException(status_code=500, detail="Error al procesar el ticket")
     return data.to_dict()
 
 
