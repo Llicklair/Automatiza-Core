@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.dependencies import get_current_user
@@ -12,7 +14,7 @@ router = APIRouter(prefix="/advisory", tags=["advisory"])
 @limiter.limit("30/minute")
 async def get_boe_news(
     request: Request,
-    section: str = Query(
+    section: Literal["fiscal", "laboral", "mercantil"] = Query(
         "fiscal", description="Sección del BOE a scrapear (fiscal, laboral, mercantil)"
     ),
     limit: int = Query(10, description="Número máximo de noticias a obtener"),
@@ -36,7 +38,9 @@ async def get_boe_news(
 @limiter.limit("30/minute")
 async def get_fiscal_calendar(
     request: Request,
-    days_ahead: int = Query(90, description="Días hacia adelante a buscar vencimientos"),
+    days_ahead: int = Query(
+        90, ge=1, le=365, description="Días hacia adelante a buscar vencimientos"
+    ),
     current_user=Depends(get_current_user),
 ):
     """
@@ -54,7 +58,9 @@ async def get_fiscal_calendar(
 @limiter.limit("30/minute")
 async def get_advisory_guides(
     request: Request,
-    section: str = Query("fiscal", description="Sección normativa (fiscal, laboral, mercantil)"),
+    section: Literal["fiscal", "laboral", "mercantil"] = Query(
+        "fiscal", description="Sección normativa (fiscal, laboral, mercantil)"
+    ),
     current_user=Depends(get_current_user),
 ):
     """

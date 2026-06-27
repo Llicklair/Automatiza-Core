@@ -9,6 +9,7 @@ import os
 import shutil
 import uuid as uuid_mod
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, text
@@ -740,7 +741,7 @@ async def upload_expense_receipt(
     exp = await _get_expense(db, tenant_id, expense_id)
     subdir = os.path.join(UPLOAD_DIR, "gastos", str(expense_id))
     os.makedirs(subdir, exist_ok=True)
-    safe_name = f"{uuid_mod.uuid4().hex[:8]}_{filename}"
+    safe_name = f"{uuid_mod.uuid4().hex[:8]}_{Path(filename).name}"
     dest = os.path.join(subdir, safe_name)
     with open(dest, "wb") as f:
         f.write(file_bytes)

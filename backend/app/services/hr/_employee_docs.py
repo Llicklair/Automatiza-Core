@@ -2,6 +2,7 @@
 
 import os
 import uuid as uuid_mod
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import desc, select
@@ -49,7 +50,7 @@ async def upload_employee_document(
 
     folder = os.path.join(UPLOAD_DIR, "empleados", str(employee_id))
     os.makedirs(folder, exist_ok=True)
-    safe_name = f"{uuid_mod.uuid4().hex[:8]}_{filename}"
+    safe_name = f"{uuid_mod.uuid4().hex[:8]}_{Path(filename).name}"
     file_path = os.path.join(folder, safe_name)
     with open(file_path, "wb") as f:
         f.write(content)

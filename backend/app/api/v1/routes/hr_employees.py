@@ -23,7 +23,7 @@ from app.api.v1.schemas.hr import (
     LiquidacionRequest,
     RegistroJornadaRequest,
 )
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
@@ -98,7 +98,7 @@ async def delete_employee(
 async def list_employee_documents(
     employee_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     return await svc.list_employee_documents(employee_id, current_user.tenant_id, db)
 
@@ -108,7 +108,7 @@ async def upload_employee_document_file(
     employee_id: UUID,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     content = await file.read()
     try:
@@ -130,7 +130,7 @@ async def download_employee_document(
     employee_id: UUID,
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     doc = await svc.get_employee_document(employee_id, doc_id, current_user.tenant_id, db)
     if not doc:
@@ -153,7 +153,7 @@ async def delete_employee_document(
     employee_id: UUID,
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     if not await svc.delete_employee_document(employee_id, doc_id, current_user.tenant_id, db):
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -168,7 +168,7 @@ async def generate_finiquito_pdf_endpoint(
     request: Request,
     payload: FiniquitoRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     try:
         emp, tenant = await svc.load_employee_and_tenant(
@@ -198,7 +198,7 @@ async def generate_liquidacion_finiquito_pdf_endpoint(
     request: Request,
     payload: LiquidacionRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     try:
         emp, tenant = await svc.load_employee_and_tenant(
@@ -221,7 +221,7 @@ async def generate_registro_jornada_pdf_endpoint(
     request: Request,
     payload: RegistroJornadaRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     try:
         emp, tenant = await svc.load_employee_and_tenant(

@@ -1,8 +1,9 @@
 """Pydantic schemas for recruitment endpoints."""
 
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PositionCreate(BaseModel):
@@ -11,8 +12,18 @@ class PositionCreate(BaseModel):
     description: str = ""
     required_skills: list[str] = []
     experience_min_years: float = 0
-    salary_range_min: float | None = None
-    salary_range_max: float | None = None
+    salary_range_min: float | None = Field(default=None, ge=0)
+    salary_range_max: float | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _check_salary_range(self) -> "PositionCreate":
+        if (
+            self.salary_range_min is not None
+            and self.salary_range_max is not None
+            and self.salary_range_min > self.salary_range_max
+        ):
+            raise ValueError("salary_range_min no puede ser mayor que salary_range_max")
+        return self
 
 
 class PositionResponse(BaseModel):
@@ -50,4 +61,4 @@ class CandidateResponse(BaseModel):
 
 
 class StatusUpdate(BaseModel):
-    status: str
+    status: Literal["new", "reviewed", "shortlisted", "rejected", "hired"]

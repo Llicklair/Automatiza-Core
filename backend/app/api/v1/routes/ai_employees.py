@@ -17,7 +17,7 @@ from app.api.v1.schemas.ai_employees import (
     AIEmployeeProvision,
     InstructPayload,
 )
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.services.ai import employee as svc
@@ -104,7 +104,7 @@ async def provision_ai_employee(
     employee_id: str,
     payload: AIEmployeeProvision,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     result = await svc.provision_employee(
         employee_id,
@@ -218,7 +218,7 @@ async def delete_ai_employee(
 @router.post("/ai-employees/seed", status_code=status.HTTP_200_OK)
 async def seed_builtin_employees(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     created = await svc.seed_builtin(current_user.tenant_id, db)
     return {"created": created, "message": f"{len(created)} empleados creados"}

@@ -197,6 +197,17 @@ async def run_workflow_with_context(
     if not workflow.is_active:
         raise ValueError("El workflow esta desactivado")
 
+    existing = await db.execute(
+        select(models.WorkflowExecution).where(
+            models.WorkflowExecution.workflow_id == workflow_id,
+            models.WorkflowExecution.status.in_(["running", "pending"]),
+        )
+    )
+    if existing.scalars().first():
+        raise ValueError(
+            "Este workflow ya tiene una ejecucion en curso. Espera a que termine antes de lanzarlo de nuevo."
+        )
+
     base_instruction = _build_ai_instruction(workflow)
     intent = (
         f"{base_instruction}\n\nContexto adicional: {context_msg}"

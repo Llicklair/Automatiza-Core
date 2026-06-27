@@ -219,7 +219,12 @@ async def provision_employee_bg(
         unassigned_skills = [s for s in _KNOWN_SKILLS if s not in assigned_skills]
 
         async with AsyncSessionLocal() as session:
-            result = await session.execute(select(AIEmployee).where(AIEmployee.id == employee_id))
+            result = await session.execute(
+                select(AIEmployee).where(
+                    AIEmployee.id == uuid.UUID(str(employee_id)),
+                    AIEmployee.tenant_id == uuid.UUID(str(tenant_id)),
+                )
+            )
             emp = result.scalar_one_or_none()
             if not emp:
                 return
@@ -283,7 +288,10 @@ async def provision_employee_bg(
         try:
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
-                    select(AIEmployee).where(AIEmployee.id == employee_id)
+                    select(AIEmployee).where(
+                        AIEmployee.id == uuid.UUID(str(employee_id)),
+                        AIEmployee.tenant_id == uuid.UUID(str(tenant_id)),
+                    )
                 )
                 emp = result.scalar_one_or_none()
                 if emp and emp.status == "pending_setup":
