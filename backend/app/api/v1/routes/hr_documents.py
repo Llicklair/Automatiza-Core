@@ -43,7 +43,10 @@ async def generate_hr_document(
             db=db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # ValueError de generate_document = validacion de dominio (no es un
+        # fallo del servidor) -> 422 con el mensaje de dominio, en linea con el
+        # resto de rutas (documents/invoices/hr_expenses mapean ValueError a 4xx).
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.get("", response_model=list[HRDocumentOut])

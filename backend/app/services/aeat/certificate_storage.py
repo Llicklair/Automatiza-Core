@@ -178,6 +178,10 @@ async def revoke_certificate(
     cert = res.scalar_one_or_none()
     if cert is None:
         raise LookupError("Certificado no encontrado")
+    # Idempotencia: una 2a revocacion NO debe re-escribir revoked_at (perderia la
+    # hora REAL de revocacion en la traza). Si ya esta revocado, devuelve tal cual.
+    if cert.status == "revoked":
+        return cert
     cert.status = "revoked"
     cert.revoked_at = datetime.now()
     await db.commit()
