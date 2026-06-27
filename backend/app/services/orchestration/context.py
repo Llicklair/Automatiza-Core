@@ -247,11 +247,16 @@ async def save_ai_result_as_csv(
         upload_dir = _resolve_upload_dir(category)
         file_path = os.path.join(upload_dir, filename)
 
+        from app.core.security import sanitize_spreadsheet_cell
+
         keys = data[0].keys()
+        safe_rows = [
+            {k: sanitize_spreadsheet_cell(v) for k, v in row.items()} for row in data
+        ]
         with open(file_path, "w", newline="", encoding="utf-8") as f:
             dict_writer = csv.DictWriter(f, fieldnames=keys)
             dict_writer.writeheader()
-            dict_writer.writerows(data)
+            dict_writer.writerows(safe_rows)
 
         async with AsyncSessionLocal() as db:
             doc = TenantDocument(
