@@ -23,11 +23,11 @@ passlib = { extras = ["bcrypt"], version = "^1.7.4" }
 python-multipart = ">=0.0.12,<0.0.33"
 apscheduler = "^3.10.0"
 httpx = "^0.28.0"
-langgraph = "^0.2.0"
-langchain-core = "^0.3.0"
-langchain-openai = ">=0.2,<0.4"
-langchain-anthropic = "^0.3.0"
-langchain-groq = "^0.2.0"
+langgraph = "^1.0"
+langchain-core = "^1.0"
+langchain-openai = "^1.0"
+langchain-anthropic = "^1.0"
+langchain-groq = "^1.0"
 # langchain-huggingface + sentence-transformers → grupo `localml` (embeddings
 # locales opcionales: import lazy con fallback en llm_factory.py; NO se
 # empaquetan en el escritorio embebido para no arrastrar torch (~2-3 GB).
@@ -77,7 +77,7 @@ celery = { extras = ["redis"], version = ">=5.3,<6" }
 redis = { extras = ["hiredis"], version = ">=5.0,<7" }
 
 [tool.poetry.group.localml.dependencies]
-langchain-huggingface = "^0.1.0"
+langchain-huggingface = "^1.0"
 sentence-transformers = "^3.0.0"
 
 [build-system]
