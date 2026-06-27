@@ -214,14 +214,15 @@ async def backfill_verifactu_endpoint(
 
 @router.get("/diagnostic-bundle")
 async def get_diagnostic_bundle(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Genera un ZIP con logs scrubbed + info de versión + esquema actual.
 
     Diseñado para soporte L1/L2: el cliente lo descarga y lo envía sin
-    revelar PII. Los logs ya están scrubbed por `JSONFormatter`. La descarga
-    requiere autenticación.
+    revelar PII. Los logs ya están scrubbed por `JSONFormatter`. El bundle
+    contiene logs COMPLETOS del servidor → solo admin (coherente con
+    /backups/*); require_role("admin") gatea y devuelve el User autenticado.
     """
     zip_bytes = await build_diagnostic_bundle(db)
     filename = f"automatizacore-diagnostic-{user.tenant_id}.zip"

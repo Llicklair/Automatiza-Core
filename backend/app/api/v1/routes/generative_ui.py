@@ -63,7 +63,7 @@ async def generate_ui(
         raise
     except Exception as e:
         logger.error("Error generando UI: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error al generar la interfaz: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error interno generando la interfaz")
 
     return GeneratedUIOut(
         id=str(ui.id),

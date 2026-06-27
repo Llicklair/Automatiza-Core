@@ -270,6 +270,17 @@ async def approve_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
     if not doc:
         raise ValueError("Documento no encontrado")
 
+    # Idempotencia: una 2a aprobacion (doble-click/reintento) NO debe re-escribir
+    # `approved_at` —perderia la hora REAL de aprobacion en la traza legal— ni
+    # re-tocar el folio. Si ya esta aprobado, devuelve el estado actual sin mutar.
+    if doc.status == "approved":
+        return {
+            "id": str(doc.id),
+            "status": "approved",
+            "approved_at": doc.approved_at.isoformat() if doc.approved_at else None,
+            "doc_number": doc.doc_number,
+        }
+
     doc.status = "approved"
     doc.approved_at = datetime.now(UTC)
     if not doc.doc_number:
@@ -394,6 +405,13 @@ async def upload_cv(
     position = pos_result.scalars().first()
     if not position:
         raise LookupError("Puesto no encontrado")
+    # No se admiten CVs en un puesto CERRADO: crearia un Candidate bajo un
+    # proceso ya finalizado (backlog huerfano filtrado de las vistas de puestos
+    # abiertos que ningun reclutador gestionara). 'paused' SI se permite (puede
+    # seguir recibiendo CVs para cuando se reactive). Corta ANTES de escribir el
+    # fichero a disco.
+    if position.status == "closed":
+        raise ValueError("El puesto está cerrado y no admite nuevas candidaturas")
 
     # Save file
     tenant_dir = os.path.join(UPLOAD_DIR_CVS, str(tenant_id))
@@ -646,6 +664,14 @@ async def create_leave_request(
 async def approve_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> LeaveRequest:
     """Approve a leave request and update employee status."""
     req = await _get_leave_request(db, tenant_id, request_id)
+    # Idempotencia + maquina de estados: solo se decide una solicitud PENDIENTE.
+    # Sin este guard, un doble-click re-escribia emp.status/leave_* (benigno) y,
+    # peor, aprobar→rechazar dejaba emp.status="leave" HUERFANO (el reject no
+    # revierte el estado del empleado) → el empleado figuraba de baja para
+    # siempre pese a la solicitud rechazada. Deshacer una decision ya tomada es
+    # un flujo aparte (reopen) que debe revertir emp.status → inbox.
+    if req.status != "pending":
+        raise ValueError(f"La solicitud ya está '{req.status}'; no se puede aprobar de nuevo")
     req.status = "approved"
     emp = await get_employee(req.employee_id, tenant_id, db)
     if emp:
@@ -662,6 +688,12 @@ async def approve_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -
 
 async def reject_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> LeaveRequest:
     req = await _get_leave_request(db, tenant_id, request_id)
+    # Idempotencia + maquina de estados: solo se rechaza una solicitud PENDIENTE.
+    # Rechazar una YA APROBADA dejaba emp.status="leave" huerfano (este reject no
+    # revierte el estado del empleado). Deshacer una aprobacion = flujo reopen
+    # aparte (debe revertir emp.status/leave_*) → inbox.
+    if req.status != "pending":
+        raise ValueError(f"La solicitud ya está '{req.status}'; no se puede rechazar")
     req.status = "rejected"
     await db.commit()
     await db.refresh(req)
@@ -710,6 +742,12 @@ async def create_expense(
 
 async def approve_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
     exp = await _get_expense(db, tenant_id, expense_id)
+    # Maquina de estados del gasto (pending → approved/rejected; approved →
+    # reimbursed; rejected/reimbursed terminales). Solo se aprueba un PENDIENTE:
+    # sin este guard se podia re-aprobar un gasto ya rechazado o ya REEMBOLSADO
+    # (re-abriendo un gasto pagado) — corrompe el registro financiero. Idempotente.
+    if exp.status != "pending":
+        raise ValueError(f"Solo se puede aprobar un gasto pendiente (estado actual: '{exp.status}')")
     exp.status = "approved"
     await db.commit()
     await db.refresh(exp)
@@ -719,6 +757,10 @@ async def approve_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expe
 
 async def reject_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
     exp = await _get_expense(db, tenant_id, expense_id)
+    # Solo se rechaza un gasto PENDIENTE: sin guard se podia rechazar un gasto
+    # ya APROBADO o ya REEMBOLSADO (marcar como rechazado algo ya pagado).
+    if exp.status != "pending":
+        raise ValueError(f"Solo se puede rechazar un gasto pendiente (estado actual: '{exp.status}')")
     exp.status = "rejected"
     await db.commit()
     await db.refresh(exp)
@@ -728,6 +770,12 @@ async def reject_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expen
 
 async def reimburse_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
     exp = await _get_expense(db, tenant_id, expense_id)
+    # Solo se reembolsa un gasto APROBADO: sin guard se podia marcar "reembolsado"
+    # (= registro de que se pagó al empleado) un gasto PENDIENTE (saltando la
+    # aprobacion) o RECHAZADO (pagar algo rechazado), e idempotente frente a
+    # doble-reembolso.
+    if exp.status != "approved":
+        raise ValueError(f"Solo se puede reembolsar un gasto aprobado (estado actual: '{exp.status}')")
     exp.status = "reimbursed"
     await db.commit()
     await db.refresh(exp)

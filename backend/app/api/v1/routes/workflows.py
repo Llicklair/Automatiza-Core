@@ -191,8 +191,9 @@ async def resume_execution(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al programar la reanudación: {e}")
+    except Exception:
+        _logger.exception("Error reanudando ejecucion de workflow")
+        raise HTTPException(status_code=500, detail="Error interno al reanudar la ejecución")
     if not execution:
         raise HTTPException(status_code=404, detail="Ejecución no encontrada")
     return execution

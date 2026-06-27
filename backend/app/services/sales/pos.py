@@ -204,8 +204,14 @@ async def checkout(
     """Cierra la sesión: descuenta stock, calcula totales, guarda método.
 
     Atómico: si algún producto no tiene stock suficiente, NADA se aplica
-    (raise ValueError → HTTP 400 desde el route). El descuento de stock
-    usa reference=POS_SESSION:<id> idempotentemente.
+    (raise ValueError → HTTP 400 desde el route).
+
+    Re-submit SECUENCIAL (doble-click/retry): lo frena el guard de estado
+    (`status != "open" → ValueError`), así que no se duplica venta ni stock.
+    `reference=POS_SESSION:<id>` en los StockMovement es solo trazabilidad —
+    NO hay UNIQUE sobre él, así que NO es un guard de idempotencia. La race
+    SIMULTÁNEA (dos requests en la misma ventana de commit, sin SELECT FOR
+    UPDATE) sigue pendiente → ver inbox (sobreventa/concurrencia).
     """
     session = await _get_session_for_user(db, tenant_id, session_id)
     if session.status != "open":

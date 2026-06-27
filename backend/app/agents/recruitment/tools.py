@@ -167,6 +167,10 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
             position = pos_result.scalars().first()
             if not position:
                 return f"Error: puesto {position_id} no encontrado."
+            # Mismo guard que el servicio upload_cv: no crear candidatos en un
+            # puesto CERRADO (backlog huerfano). 'paused' SI se permite.
+            if position.status == "closed":
+                return f"Error: el puesto {position_id} está cerrado y no admite nuevas candidaturas."
 
         async with AsyncSessionLocal() as db:
             candidate = Candidate(

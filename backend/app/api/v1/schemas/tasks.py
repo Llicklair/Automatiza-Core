@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Re-export para compatibilidad — la fuente canónica es agents.types
 from app.agents.types import StepResult  # noqa: F401
@@ -13,8 +13,14 @@ from app.agents.types import StepResult  # noqa: F401
 
 
 class TaskCreate(BaseModel):
-    domain: str
-    user_intent: str
+    # domain se persiste en Task.domain = String(100) → tope = longitud real
+    # de la columna para evitar un INSERT que reviente en BD (500 no manejado).
+    domain: str = Field(max_length=100)
+    # user_intent se embebe en el prompt del agente LLM. Sin tope, un payload
+    # multi-MB = DoS de coste. Cap generoso (≈10KB / ~2500 tokens): no rompe
+    # instrucciones legítimas (siempre texto corto de usuario en este endpoint;
+    # los flujos internos de contexto acumulado NO construyen TaskCreate).
+    user_intent: str = Field(max_length=10000)
     additional_metadata: dict | None = None
     parent_task_id: str | None = None
 

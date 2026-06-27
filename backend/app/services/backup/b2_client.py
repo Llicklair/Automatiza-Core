@@ -38,6 +38,12 @@ logger = logging.getLogger("backup.b2_client")
 _AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v2/b2_authorize_account"
 _DEFAULT_TIMEOUT = 60.0
 
+# Timeout del cliente: acota la CONEXIÓN/handshake a 30s (caso "host B2
+# inalcanzable cuelga indefinidamente") pero permite hasta 600s de
+# transferencia para uploads/downloads de backups GRANDES. Un read/write
+# corto rompería un upload legítimo → regresión peor que el cuelgue.
+_CLIENT_TIMEOUT = httpx.Timeout(connect=30.0, read=600.0, write=600.0, pool=30.0)
+
 
 class B2Error(RuntimeError):
     """Error genérico del cliente B2 — NO incluye credenciales."""
@@ -97,7 +103,7 @@ async def authorize(
 
     if http_client is not None:
         return await _do(http_client)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_CLIENT_TIMEOUT) as client:
         return await _do(client)
 
 
@@ -121,7 +127,7 @@ async def get_upload_url(
 
     if http_client is not None:
         return await _do(http_client)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_CLIENT_TIMEOUT) as client:
         return await _do(client)
 
 
@@ -157,7 +163,7 @@ async def upload_file(
 
     if http_client is not None:
         return await _do(http_client)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_CLIENT_TIMEOUT) as client:
         return await _do(client)
 
 
@@ -184,7 +190,7 @@ async def list_file_names(
 
     if http_client is not None:
         return await _do(http_client)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_CLIENT_TIMEOUT) as client:
         return await _do(client)
 
 
@@ -204,7 +210,7 @@ async def download_file_by_name(
 
     if http_client is not None:
         return await _do(http_client)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_CLIENT_TIMEOUT) as client:
         return await _do(client)
 
 
@@ -227,7 +233,7 @@ async def delete_file_version(
     if http_client is not None:
         await _do(http_client)
     else:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_CLIENT_TIMEOUT) as client:
             await _do(client)
 
 

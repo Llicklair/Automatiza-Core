@@ -89,6 +89,24 @@ async def record_movement(
     if not product:
         raise LookupError(f"Producto con código '{code}' no encontrado")
 
+    # Lock de fila + relectura: serializa movimientos concurrentes del MISMO
+    # producto via escaner (doble-scan, dos operarios sobre el mismo SKU). Sin
+    # el, dos scans leen el mismo `stock_quantity`, computan y escriben → lost
+    # update; en salida AMBOS pasan el guard `qty > current_stock` → doble
+    # descuento. Re-seleccionamos con with_for_update() + populate_existing para
+    # bloquear la fila Y refrescar stock_quantity al valor COMMITTEADO (la 2a
+    # request, tras el commit de la 1a, lee el stock real → el guard corta). No
+    # lo metemos en `_find_product_by_code` porque lo comparte el lookup de solo
+    # lectura `scan_product`. Mismo patron que stock_service.transfer /
+    # purchase_receiving. En SQLite (tests) el dialecto omite FOR UPDATE.
+    locked = await db.execute(
+        select(Product)
+        .where(Product.id == product.id, Product.tenant_id == tenant_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    product = locked.scalar_one()
+
     current_stock = float(product.stock_quantity or 0)
     qty = abs(quantity)
 

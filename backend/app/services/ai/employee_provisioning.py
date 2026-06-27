@@ -232,8 +232,23 @@ async def provision_employee_bg(
             emp.domain = data.get("domain", "custom")
             emp.role = data.get("role", role_description)
             emp.system_prompt = data.get("system_prompt", emp.system_prompt)
-            emp.status = "idle"
+            # Solo pending_setup → idle (mismo guard que la ruta SINCRONA
+            # `provision_employee`). Sin el, si un admin PAUSA el empleado durante
+            # la ventana de esta tarea BG (la llamada LLM de arriba tarda
+            # segundos), el provisioning sobre-escribiria silenciosamente el
+            # "paused" → "idle".
+            if emp.status == "pending_setup":
+                emp.status = "idle"
 
+            # Borrar antes de insertar (mismo guard que `provision_employee`):
+            # esta tarea BG puede re-ejecutarse (reintento / doble-submit) y
+            # AgentSkill NO tiene UNIQUE(employee_id, tool_module) → sin esto las
+            # skills se DUPLICAN (el compilador de tools las cuenta todas).
+            from sqlalchemy import delete as sa_delete
+
+            await session.execute(
+                sa_delete(AgentSkill).where(AgentSkill.employee_id == emp.id)
+            )
             for tool_module in assigned_skills:
                 session.add(AgentSkill(employee_id=emp.id, tool_module=tool_module))
 

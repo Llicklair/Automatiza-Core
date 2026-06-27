@@ -4,6 +4,7 @@ import asyncio
 import base64
 import datetime
 import json
+import logging
 from typing import Optional
 from uuid import UUID
 
@@ -30,6 +31,8 @@ from app.services.marketing.provider_config import (
     set_default_profile_id,
 )
 from app.services.marketing.zernio_client import ZernioClient, ZernioError
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
 
@@ -252,8 +255,9 @@ async def connect_account(
     redirect_url = f"{base}/api/v1/marketing/zernio/callback/{state}"
     try:
         auth_url = await client.connect_url(platform, profile_id, redirect_url)
-    except ZernioError as e:
-        raise HTTPException(status_code=502, detail=f"Zernio: {e}")
+    except ZernioError:
+        _logger.exception("Error con el proveedor Zernio")
+        raise HTTPException(status_code=502, detail="Error al comunicar con el proveedor Zernio")
     if not auth_url:
         raise HTTPException(status_code=502, detail="Zernio no devolvió URL de conexión.")
     return {"auth_url": auth_url}
@@ -269,8 +273,9 @@ async def disconnect_account(
 
     try:
         ok = await social_accounts.disconnect_account(account_id, current_user.tenant_id, db)
-    except ZernioError as e:
-        raise HTTPException(status_code=502, detail=f"No se pudo desconectar en Zernio: {e}")
+    except ZernioError:
+        _logger.exception("Error con el proveedor Zernio")
+        raise HTTPException(status_code=502, detail="Error al comunicar con el proveedor Zernio")
     if not ok:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 

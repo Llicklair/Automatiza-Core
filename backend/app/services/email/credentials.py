@@ -94,7 +94,7 @@ async def get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
                 else "https://gmail.googleapis.com/gmail/v1/users/me/profile"
             )
 
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 test = await client.get(
                     test_url, headers={"Authorization": f"Bearer {access_token}"}
                 )

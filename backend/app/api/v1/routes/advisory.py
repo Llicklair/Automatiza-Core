@@ -1,3 +1,4 @@
+import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -6,6 +7,8 @@ from app.core.dependencies import get_current_user
 from app.integrations.advisory_guides import get_guides
 from app.integrations.boe_scraper import BOEScraper, get_proximos_vencimientos
 from app.middleware.rate_limit import limiter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/advisory", tags=["advisory"])
 
@@ -28,8 +31,9 @@ async def get_boe_news(
     try:
         news = await scraper.get_novedades(seccion=section, max_items=limit)
         return news
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error obteniendo BOE: {str(e)}")
+    except Exception:
+        logger.exception("Error obteniendo BOE")
+        raise HTTPException(status_code=500, detail="Error interno obteniendo el BOE")
     finally:
         await scraper.close()
 
@@ -50,8 +54,9 @@ async def get_fiscal_calendar(
     try:
         events = get_proximos_vencimientos(days_ahead=days_ahead)
         return events
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando calendario: {str(e)}")
+    except Exception:
+        logger.exception("Error obteniendo calendario fiscal")
+        raise HTTPException(status_code=500, detail="Error interno obteniendo el calendario fiscal")
 
 
 @router.get("/guides", response_model=list[dict])
