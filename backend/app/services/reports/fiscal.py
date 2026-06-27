@@ -15,6 +15,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload as jl
 
+from app.core.security import sanitize_spreadsheet_cell
 from app.db.models.models import Invoice, Payroll, Tenant
 from app.services.reports._schemas import (
     FiscalIRPF,
@@ -363,10 +364,10 @@ async def build_libro_registro_csv(
     )
 
     for inv in invoices:
-        counterpart_nif = inv.client.nif if inv.client else ""
-        counterpart_name = inv.client.name if inv.client else ""
+        counterpart_nif = sanitize_spreadsheet_cell(inv.client.nif if inv.client else "")
+        counterpart_name = sanitize_spreadsheet_cell(inv.client.name if inv.client else "")
         inv_date = inv.date.strftime("%d/%m/%Y") if inv.date else ""
-        inv_number = inv.invoice_number or str(inv.id)[:8].upper()
+        inv_number = sanitize_spreadsheet_cell(inv.invoice_number or str(inv.id)[:8].upper())
 
         if inv.lines:
             for line in inv.lines:
