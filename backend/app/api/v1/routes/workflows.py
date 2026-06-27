@@ -169,7 +169,7 @@ async def run_workflow_with_context(
             db,
         )
     except ValueError as e:
-        status = 400 if "desactivado" in str(e) else 404
+        status = 409 if "en curso" in str(e) else 400 if "desactivado" in str(e) else 404
         raise HTTPException(status_code=status, detail=str(e))
 
 

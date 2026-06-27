@@ -5,6 +5,7 @@ worker APScheduler que dispara las campañas programadas al vencer su
 `scheduled_at`.
 """
 
+import html
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
@@ -18,10 +19,20 @@ from app.services.email.sender import send_email, send_failed
 logger = logging.getLogger(__name__)
 
 
-def _render(template: str, recipient: EmailCampaignRecipient) -> str:
-    return template.replace("{{nombre}}", recipient.name or "").replace(
-        "{{email}}", recipient.email
-    )
+def _render(
+    template: str, recipient: EmailCampaignRecipient, *, escape_html: bool = False
+) -> str:
+    # En el CUERPO HTML escapamos los valores sustituidos (no la plantilla, que es
+    # HTML que el tenant escribe a propósito) para que `&`, `<`, `>`… no rompan el
+    # HTML ni permitan inyección de marcado/XSS. En el ASUNTO (cabecera de texto
+    # plano) NO se escapa: el cliente de correo no decodifica entidades HTML en el
+    # Subject, así que escaparlo mostraría `&amp;` literal.
+    name = recipient.name or ""
+    email = recipient.email or ""
+    if escape_html:
+        name = html.escape(name)
+        email = html.escape(email)
+    return template.replace("{{nombre}}", name).replace("{{email}}", email)
 
 
 async def send_campaign(campaign_id: str, tenant_id: str) -> None:
@@ -66,7 +77,7 @@ async def send_campaign(campaign_id: str, tenant_id: str) -> None:
                     tenant_id=tenant_id,
                     to=r.email,
                     subject=_render(campaign.subject, r),
-                    body=_render(campaign.html_body, r),
+                    body=_render(campaign.html_body, r, escape_html=True),
                 )
             except Exception as e:  # send_email no debería lanzar, pero por si acaso
                 result = f"Error al enviar correo: {e}"

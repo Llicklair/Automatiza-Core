@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.db.models.workflows import Workflow
@@ -80,9 +80,9 @@ async def install_marketplace_template(
 async def seed_official(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
-    """Crea las plantillas oficiales que falten. Idempotente."""
+    """Crea las plantillas oficiales que falten. Idempotente. Solo admin."""
     return await seed_official_templates(db)
 
 

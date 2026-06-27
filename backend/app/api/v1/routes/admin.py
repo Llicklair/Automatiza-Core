@@ -33,6 +33,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+async def _read_upload_capped(file, max_bytes: int) -> bytes:
+    """Lee un upload por chunks acumulando hasta `max_bytes`.
+
+    Aborta con HTTPException(413) en cuanto el total supera `max_bytes`, SIN
+    seguir leyendo el resto del stream (evita materializar ficheros enormes
+    en RAM antes de validar el tope). Acepta cualquier objeto con un método
+    `await read(n)` (UploadFile o fakes en tests).
+    """
+    chunk_size = 1024 * 1024  # 1 MB
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413, detail="El archivo supera los 100 MB permitidos"
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _parse_db_url(url: str) -> dict:
     """Extrae host, port, user, password y dbname de DATABASE_URL."""
     # Normaliza asyncpg → psycopg2 scheme para parsear
@@ -129,10 +153,8 @@ async def restore_backup(
     if not file.filename or not file.filename.lower().endswith(".sql"):
         raise HTTPException(status_code=400, detail="El archivo debe tener extensión .sql")
 
-    # Límite 100 MB
-    content = await file.read()
-    if len(content) > 100 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="El archivo supera los 100 MB permitidos")
+    # Límite 100 MB — lectura por chunks con tope (rechaza ANTES de materializar)
+    content = await _read_upload_capped(file, 100 * 1024 * 1024)
 
     # Validación mínima: debe contener SQL típico de pg_dump
     snippet = content[:2048].decode("utf-8", errors="ignore")

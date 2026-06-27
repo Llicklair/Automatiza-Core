@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_role
@@ -100,7 +100,7 @@ async def revoke_cert(
 
 class _CreatePresentationIn(BaseModel):
     model_code: str
-    year: int
+    year: int = Field(ge=2020, le=2099)
     period: str
     xml_unsigned: str
     environment: str = "preproduccion"
@@ -134,7 +134,7 @@ async def create_presentation_endpoint(
 async def create_303_from_quarter(
     request: Request,
     quarter: int = Query(ge=1, le=4),
-    year: int = Query(...),
+    year: int = Query(ge=2020, le=2099),
     environment: str = Query("preproduccion"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -212,7 +212,7 @@ async def create_quarterly_presentation(
     request: Request,
     model_code: str = Query(..., description="111 | 130 | 115 | 349"),
     quarter: int = Query(ge=1, le=4),
-    year: int = Query(...),
+    year: int = Query(ge=2020, le=2099),
     environment: str = Query("preproduccion"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -239,7 +239,7 @@ async def create_quarterly_presentation(
 async def create_yearly_presentation(
     request: Request,
     model_code: str = Query(..., description="190 | 347 | 390"),
-    year: int = Query(...),
+    year: int = Query(ge=2020, le=2099),
     environment: str = Query("preproduccion"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
