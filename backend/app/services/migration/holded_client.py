@@ -169,7 +169,7 @@ async def iter_contacts(
         async for page in _run(http_client):
             yield page
         return
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
         async for page in _run(client):
             yield page
 
@@ -194,7 +194,7 @@ async def iter_invoices(
         async for page in _run(http_client):
             yield page
         return
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
         async for page in _run(client):
             yield page
 

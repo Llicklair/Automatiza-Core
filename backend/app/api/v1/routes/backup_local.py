@@ -1,5 +1,6 @@
 """Endpoints REST de registro de backups locales (BAK.LOC + BAK.UI)."""
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,6 +14,8 @@ from app.services.backup_local import (
     backup_status_for_banner,
     record_backup,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/backup-local", tags=["backup"])
 
@@ -69,8 +72,9 @@ async def record_backup_endpoint(
             encryption_key_label=body.encryption_key_label,
             note=body.note,
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error registrando backup: {e}")
+    except Exception:
+        logger.exception("Error registrando backup")
+        raise HTTPException(status_code=500, detail="Error interno registrando el backup")
 
     await db.commit()
     return RecordBackupResponse(

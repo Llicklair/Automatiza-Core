@@ -170,6 +170,18 @@ async def reconcile_transaction(
     if not tx:
         raise LookupError("Transaccion no encontrada")
 
+    # Idempotencia/estado (L3): una tx ya conciliada no debe re-procesarse. Sin
+    # esto, una 2ª llamada (doble-click/retry) devolvía 200 falso y, con un
+    # invoice_id distinto, re-asociaba la tx a OTRA factura dejando la 1ª "paid"
+    # sin transacción vinculada (descuadre silencioso). Para cambiar el match hay
+    # que `unreconcile` primero. auto_reconcile ya filtra status=="unreconciled"
+    # en SQL, así que este guard no le afecta.
+    if tx.status == "reconciled" or tx.journal_entry_id is not None:
+        raise ValueError(
+            "Esta transacción ya está conciliada; deshaz la conciliación antes "
+            "de volver a conciliar."
+        )
+
     result_inv = await db.execute(
         select(Invoice).where(
             Invoice.id == uuid.UUID(invoice_id_str), Invoice.tenant_id == tenant_id

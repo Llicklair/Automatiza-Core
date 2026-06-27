@@ -139,11 +139,12 @@ async def _check_overdue_invoices(db: AsyncSession, tenant_id) -> list[dict]:
         .options(selectinload(Invoice.client))
         .where(
             Invoice.tenant_id == tenant_id,
-            # Estados reales del sistema: draft|pending|paid|cancelled. "sent" no
-            # existe — el filtro anterior se saltaba todas las "pending" (factura
-            # emitida sin cobrar), que son justo las que vencen. Vencida = no
-            # pagada ni anulada.
-            Invoice.status.in_(["pending", "draft"]),
+            # Solo facturas EMITIDAS-impagadas vencen: "pending" y "sent" (esta
+            # última la usa banking al deshacer una conciliación de una "paid").
+            # "draft" queda FUERA: un borrador no se ha emitido al cliente, así
+            # que una due_date pasada no es un vencimiento real y no debe disparar
+            # eventos de cobro. "paid"/"cancelled" tampoco vencen.
+            Invoice.status.in_(["pending", "sent"]),
             Invoice.due_date.is_not(None),
             Invoice.due_date < now,
         )
@@ -171,7 +172,8 @@ async def _check_due_soon_invoices(db: AsyncSession, tenant_id) -> list[dict]:
         .options(selectinload(Invoice.client))
         .where(
             Invoice.tenant_id == tenant_id,
-            Invoice.status.in_(["pending", "draft"]),
+            # Mismo criterio que overdue: solo emitidas-impagadas, sin "draft".
+            Invoice.status.in_(["pending", "sent"]),
             Invoice.due_date.is_not(None),
             Invoice.due_date > now,
             Invoice.due_date <= horizon,
@@ -196,6 +198,7 @@ async def _check_low_stock(db: AsyncSession, tenant_id) -> list[dict]:
     rows = await db.execute(
         select(Product).where(
             Product.tenant_id == tenant_id,
+            Product.is_active.is_(True),
             Product.stock_min_alert > 0,
             Product.stock_quantity <= Product.stock_min_alert,
         )

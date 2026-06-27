@@ -133,9 +133,9 @@ async def preview_template(
     """Genera un PDF de muestra con la configuracion de tema enviada."""
     try:
         pdf_bytes = svc.generate_preview(payload.model_dump())
-    except Exception as e:
+    except Exception:
         logger.exception("Error generando preview de plantilla")
-        raise HTTPException(status_code=500, detail=f"Error generando preview: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al generar la vista previa")
 
     return Response(
         content=pdf_bytes,

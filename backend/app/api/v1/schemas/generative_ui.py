@@ -1,10 +1,10 @@
 """Schemas Pydantic para Generative UI."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GenerateRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(max_length=8000)
     title: str | None = None
 
 

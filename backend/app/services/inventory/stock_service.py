@@ -156,6 +156,23 @@ async def transfer(
     if from_warehouse_id == to_warehouse_id:
         raise ValueError("El almacén de origen y destino deben ser distintos")
 
+    # Lock de fila sobre el Producto = ancla de serializacion de las
+    # transferencias CONCURRENTES del mismo producto. Sin el, dos transfers
+    # simultaneas leen `available` con el mismo valor stale (el camino
+    # read-check-write de _available_in + _set_nondefault no tiene lock) y
+    # reparten mal el stock (lost update); ademas el clamp `max(0,...)` de
+    # _set_nondefault ENMASCARA el sobregiro del origen mientras los destinos
+    # suman de mas → conservacion rota. El lock obliga a la 2a transfer a
+    # esperar el commit de la 1a y releer el `available` real → el guard de
+    # stock insuficiente corta. Mismo patron que services/billing/numbering.py:62
+    # y services/sales/purchase_receiving.py. En SQLite (tests) el dialecto
+    # omite FOR UPDATE; en Postgres (prod) aplica el bloqueo de fila.
+    await db.execute(
+        select(Product.id)
+        .where(Product.id == product_id, Product.tenant_id == tenant_id)
+        .with_for_update()
+    )
+
     default_id = await _default_warehouse_id(db, tenant_id)
     available = await _available_in(db, tenant_id, product_id, from_warehouse_id, default_id)
     if qty > available:

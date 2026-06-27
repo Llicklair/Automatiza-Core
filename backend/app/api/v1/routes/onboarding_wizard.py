@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.services.onboarding.seed import clear_demo_data, demo_status, seed_demo_data
@@ -58,7 +58,7 @@ class SetStepIn(BaseModel):
 @router.patch("", response_model=WizardStateOut)
 async def patch_step(
     payload: SetStepIn,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Marca un paso como completado o pendiente."""
@@ -77,7 +77,7 @@ async def patch_step(
 
 @router.post("/skip", response_model=WizardStateOut)
 async def post_skip(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Marca el wizard como saltado por el usuario."""
@@ -106,7 +106,7 @@ async def get_simulate_303(
 
 @router.post("/reset", response_model=WizardStateOut)
 async def post_reset(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Reinicia el wizard — útil para re-onboarding."""
@@ -124,7 +124,7 @@ async def post_reset(
 
 @router.post("/seed")
 async def post_seed(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Siembra datos de ejemplo (clientes/productos/facturas demo). Idempotente."""
@@ -133,7 +133,7 @@ async def post_seed(
 
 @router.delete("/seed")
 async def delete_seed(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Borra todos los datos de ejemplo del tenant."""

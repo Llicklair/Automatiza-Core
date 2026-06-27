@@ -296,6 +296,25 @@ async def _catchup_missed_workflows():
             if next_run > now_local:
                 continue
 
+            # Idempotencia persistente (sobrevive reinicios): clave por el
+            # instante PROGRAMADO que se recupera, en el MISMO namespace
+            # ("workflow_beat") que el beat normal. Asi dos arranques que
+            # solapan (crash-restart en bucle, deploy rolling con dos
+            # instancias vivas a la vez) no recuperan dos veces la misma
+            # ejecucion perdida: has_active_execution es solo un SELECT sin
+            # lock (TOCTOU) y no basta en multi-instancia. El beat programado
+            # ya usa este guard (linea ~219); el catchup era el unico camino
+            # de disparo sin clave de idempotencia.
+            idempotency_key = f"{wf.id}:{next_run.strftime('%Y%m%d%H%M')}"
+            guard = IdempotencyGuard(ttl=(_GRACE_MINUTES + 5) * 60)
+            if await guard.already_executed("workflow_beat", idempotency_key):
+                logger.debug(
+                    "[CATCHUP] Workflow '%s' ya recuperado (%s). Skip.",
+                    wf.name,
+                    idempotency_key,
+                )
+                continue
+
             logger.info(
                 "[CATCHUP] Workflow '%s' perdio ejecucion(es) desde %s. Disparando una vez.",
                 wf.name,
@@ -309,7 +328,7 @@ async def _catchup_missed_workflows():
             execution = await create_execution(
                 db, wf, {"source": "catchup", "since": since.isoformat()}
             )
-            await _dispatch_workflow(db, wf, execution, "catchup")
+            await _dispatch_workflow(db, wf, execution, "catchup", guard, idempotency_key)
 
         set_current_tenant(None)
         await db.commit()

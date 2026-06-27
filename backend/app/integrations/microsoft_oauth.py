@@ -46,7 +46,7 @@ def generate_auth_url(tenant_id: str) -> tuple[str, str]:
 
 async def exchange_code(code: str) -> dict:
     """Exchange authorization code for access + refresh tokens."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             MS_TOKEN_URL,
             data={
@@ -63,7 +63,7 @@ async def exchange_code(code: str) -> dict:
 
 async def refresh_access_token(refresh_token: str) -> dict:
     """Use refresh token to get a new access token."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             MS_TOKEN_URL,
             data={

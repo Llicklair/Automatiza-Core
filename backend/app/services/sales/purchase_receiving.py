@@ -33,10 +33,20 @@ async def receive(
     `receipts`: lista de dicts con `line_id` (UUID), `quantity` (float) y,
     opcionalmente, `lot_number` y `expiry_date`.
     """
+    # Lock de fila (FOR UPDATE) sobre el pedido: serializa recepciones
+    # CONCURRENTES del mismo pedido. Sin el, dos requests simultaneas (doble
+    # POST / reintento en vuelo) leen ambas `received_quantity` pre-commit con
+    # el mismo valor stale -> ambas calculan el mismo `remaining` y dan entrada
+    # de stock DOS veces (la cantidad recibida en la linea solo refleja una,
+    # pero el almacen suma ambas). El lock obliga a la 2a a esperar el commit de
+    # la 1a y releer el `remaining` real -> el cap (qty<=0) la deja en no-op.
+    # Mismo patron que el numerador de facturas (services/billing/numbering.py).
+    # En SQLite (tests) el dialecto omite FOR UPDATE; en Postgres (prod) aplica.
     result = await db.execute(
         select(PurchaseOrder)
         .where(PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == tenant_id)
         .options(selectinload(PurchaseOrder.lines))
+        .with_for_update()
     )
     po = result.scalars().first()
     if po is None:

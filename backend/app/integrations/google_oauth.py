@@ -85,7 +85,7 @@ async def exchange_code(code: str, code_verifier: str | None = None) -> dict:
     }
     if code_verifier:
         data["code_verifier"] = code_verifier
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(GOOGLE_TOKEN_URL, data=data)
         resp.raise_for_status()
         return resp.json()
@@ -93,7 +93,7 @@ async def exchange_code(code: str, code_verifier: str | None = None) -> dict:
 
 async def refresh_access_token(refresh_token: str) -> dict:
     """Use refresh token to get a new access token."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             GOOGLE_TOKEN_URL,
             data={

@@ -23,7 +23,7 @@ from app.api.v1.schemas.documents import (
     ScanResultOut,
     SemanticSearchHit,
 )
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
 from app.db.models.models import User
 from app.db.models.tenant import TenantDocument
@@ -626,7 +626,7 @@ async def erp_import_preview(
     document_id: uuid.UUID,
     payload: ErpImportRequest | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     """Previsualiza el mapeo de un archivo tabular ya subido → entidades del ERP.
 
@@ -651,7 +651,7 @@ async def erp_import_apply(
     document_id: uuid.UUID,
     payload: ErpImportRequest | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     """Crea en el ERP los registros del archivo tabular ya revisado.
 

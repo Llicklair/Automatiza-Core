@@ -302,7 +302,7 @@ async def get_oauth_access_token(
 
     import httpx
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         test = await client.get(test_url, headers={"Authorization": f"Bearer {access_token}"})
 
     logger.info("Token test for %s: status=%d", integration_type, test.status_code)

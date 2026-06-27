@@ -494,9 +494,9 @@ async def classify_email_inbox(
         ])
     except EmailAIError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("Error clasificando bandeja")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Error interno al clasificar mensajes")
 
     return {"items": [r.to_dict() for r in results]}
 
@@ -554,8 +554,8 @@ async def draft_email_reply(
         )
     except EmailAIError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("Error redactando borrador")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Error interno al generar el borrador")
 
     return draft.to_dict()
