@@ -365,46 +365,55 @@ async def _process_recurring_invoices():
         for rec in recurring:
             try:
                 set_current_tenant(str(rec.tenant_id))
-                line_totals = [_calc_line_totals(ln) for ln in (rec.lines_json or [])]
-                amount_base = sum(b for b, _ in line_totals)
-                tax_amount = sum(t for _, t in line_totals)
+                # Savepoint por item: si la generación de una plantilla falla, se
+                # revierte SOLO ese item. Sin esto, un flush() fallido marcaba la
+                # transacción del lote como "must rollback" y el commit final
+                # (abajo) lanzaba InvalidRequestError, descartando TODAS las
+                # facturas correctas ya generadas y dejando el correlativo en gap.
+                async with db.begin_nested():
+                    line_totals = [_calc_line_totals(ln) for ln in (rec.lines_json or [])]
+                    amount_base = sum(b for b, _ in line_totals)
+                    tax_amount = sum(t for _, t in line_totals)
 
-                # Número correlativo por serie (RD 1619/2012 Art. 6.1), igual que
-                # commands.run_recurring: advisory lock + FOR UPDATE dentro de la
-                # misma transacción; cada iteración incrementa el contador "REC".
-                invoice_number = await next_invoice_number(db, rec.tenant_id, series="REC")
+                    # Número correlativo por serie (RD 1619/2012 Art. 6.1), igual que
+                    # commands.run_recurring: advisory lock + FOR UPDATE dentro de la
+                    # misma transacción; cada iteración incrementa el contador "REC".
+                    # Si el savepoint revierte, el contador también → sin gap.
+                    invoice_number = await next_invoice_number(db, rec.tenant_id, series="REC")
 
-                invoice = Invoice(
-                    tenant_id=rec.tenant_id,
-                    client_id=rec.client_id,
-                    invoice_number=invoice_number,
-                    date=now,
-                    status="draft",
-                    invoice_type="issued",
-                    notes=rec.notes,
-                    terms=rec.terms,
-                    amount_base=round(amount_base, 2),
-                    tax_amount=round(tax_amount, 2),
-                    amount_total=round(amount_base + tax_amount, 2),
-                )
-                db.add(invoice)
-                await db.flush()
-
-                for line, (base, tax) in zip(rec.lines_json or [], line_totals):
-                    db.add(
-                        InvoiceLine(
-                            invoice_id=invoice.id,
-                            description=line.get("description", ""),
-                            quantity=line.get("quantity", 1),
-                            unit_price=line.get("unit_price", 0),
-                            discount_percentage=0,
-                            tax_percentage=line.get("tax_percentage", 21),
-                            total=round(base + tax, 2),
-                        )
+                    invoice = Invoice(
+                        tenant_id=rec.tenant_id,
+                        client_id=rec.client_id,
+                        invoice_number=invoice_number,
+                        date=now,
+                        status="draft",
+                        invoice_type="issued",
+                        notes=rec.notes,
+                        terms=rec.terms,
+                        amount_base=round(amount_base, 2),
+                        tax_amount=round(tax_amount, 2),
+                        amount_total=round(amount_base + tax_amount, 2),
                     )
+                    db.add(invoice)
+                    await db.flush()
 
-                rec.last_run_date = today
-                rec.next_run_date = today + timedelta(days=interval_map.get(rec.interval_type, 30))
+                    for line, (base, tax) in zip(rec.lines_json or [], line_totals):
+                        db.add(
+                            InvoiceLine(
+                                invoice_id=invoice.id,
+                                description=line.get("description", ""),
+                                quantity=line.get("quantity", 1),
+                                unit_price=line.get("unit_price", 0),
+                                discount_percentage=0,
+                                tax_percentage=line.get("tax_percentage", 21),
+                                total=round(base + tax, 2),
+                            )
+                        )
+
+                    rec.last_run_date = today
+                    rec.next_run_date = today + timedelta(
+                        days=interval_map.get(rec.interval_type, 30)
+                    )
                 generated += 1
             except Exception as e:
                 logger.error("[RECURRING] Error procesando plantilla %s: %s", rec.id, e)

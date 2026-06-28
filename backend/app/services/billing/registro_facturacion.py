@@ -51,6 +51,10 @@ _IMPUESTO_IVA = "01"
 _CLAVE_REGIMEN_GENERAL = "01"
 _CALIFICACION_SUJETA_NO_EXENTA = "S1"
 _MODEL_CODE = "SuministroLR"  # nombre del XSD raíz en services/aeat/xsd/
+# ClaveTipoRectificativaType: "S" SUSTITUTIVA | "I" INCREMENTAL (por diferencias).
+# `create_rectificativa` genera líneas NEGADAS (reversión total = diferencia
+# negativa de la original), por lo que el tipo correcto es "I".
+_TIPO_RECTIFICATIVA_POR_DIFERENCIAS = "I"
 
 
 # ── Identificación del SIF (este software) ──────────────────────────────────
@@ -260,11 +264,16 @@ def build_registro_alta_xml(
     sistema: Optional[SistemaInformatico] = None,
     prev_record: Optional["VerifactuRecord"] = None,
     descripcion: Optional[str] = None,
+    rectified_invoice: Optional["Invoice"] = None,
 ) -> str:
     """Genera el XML `RegFactuSistemaFacturacion` con un `RegistroAlta`.
 
     Reutiliza `record.payload_canonico` (campos exactos hasheados) y `record.huella`,
     de modo que el XML es consistente con la cadena por construcción.
+
+    `rectified_invoice`: factura original cuando esta es una rectificativa (R1–R5).
+    Permite poblar `TipoRectificativa` + `FacturasRectificadas`, obligatorios para
+    la AEAT en rectificaciones. NO entran en la huella (la cadena no cambia).
     """
     p = _parse_payload(record.payload_canonico)
     sistema = sistema or default_sistema_informatico()
@@ -281,6 +290,16 @@ def build_registro_alta_xml(
     _txt(idf, NS_SF, "FechaExpedicionFactura", p["FechaExpedicionFactura"])
     _txt(alta, NS_SF, "NombreRazonEmisor", (emisor_nombre or "")[:120])
     _txt(alta, NS_SF, "TipoFactura", p["TipoFactura"])
+    # Rectificativa (R1–R5): el XSD coloca `TipoRectificativa` + `FacturasRectificadas`
+    # JUSTO tras `TipoFactura` y antes de `DescripcionOperacion` (orden estricto).
+    if p["TipoFactura"].upper().startswith("R") and rectified_invoice is not None:
+        _txt(alta, NS_SF, "TipoRectificativa", _TIPO_RECTIFICATIVA_POR_DIFERENCIAS)
+        fr = SubElement(alta, f"{{{NS_SF}}}FacturasRectificadas")
+        idr = SubElement(fr, f"{{{NS_SF}}}IDFacturaRectificada")
+        # IDFacturaARType: IDEmisor (mismo obligado) + NºSerie + Fecha de la original.
+        _txt(idr, NS_SF, "IDEmisorFactura", p["IDEmisorFactura"])
+        _txt(idr, NS_SF, "NumSerieFactura", rectified_invoice.invoice_number or "")
+        _txt(idr, NS_SF, "FechaExpedicionFactura", _fmt_fecha_expedicion(rectified_invoice.date))
     _txt(alta, NS_SF, "DescripcionOperacion", (descripcion or _descripcion(invoice, lines))[:500])
     _desglose(alta, invoice, lines)
     _txt(alta, NS_SF, "CuotaTotal", p["CuotaTotal"])
@@ -407,6 +426,14 @@ async def generate_alta_xml(db, *, record: "VerifactuRecord", sistema=None) -> s
         )
         prev_record = pr.scalar_one_or_none()
 
+    # Rectificativa: cargar la factura original para poblar FacturasRectificadas.
+    rectified_invoice = None
+    if getattr(invoice, "rectifies_invoice_id", None):
+        ri = await db.execute(
+            select(Invoice).where(Invoice.id == invoice.rectifies_invoice_id)
+        )
+        rectified_invoice = ri.scalar_one_or_none()
+
     return build_registro_alta_xml(
         record=record,
         invoice=invoice,
@@ -414,4 +441,5 @@ async def generate_alta_xml(db, *, record: "VerifactuRecord", sistema=None) -> s
         lines=list(invoice.lines),
         sistema=sistema,
         prev_record=prev_record,
+        rectified_invoice=rectified_invoice,
     )

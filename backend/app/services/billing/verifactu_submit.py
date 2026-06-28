@@ -268,6 +268,20 @@ class PreproduccionSubmitter:
                 detail="dry-run: XML generado y validado contra XSD; NO remitido (confirmed=False)",
             )
 
+        # 2.5) Guard de cumplimiento: NUNCA remitir a la AEAT con el NIF del SIF
+        # (productor del software) en placeholder. RD 1007/2023 + Orden HAC/1177/2024
+        # exigen el NIF real del productor homologado en `SistemaInformatico`. Sin
+        # esto, `default_sistema_informatico()` cae a "B00000000" y se firmaría/enviaría
+        # un registro con un NIF ficticio (sanción AEAT). Solo aplica al envío real
+        # (confirmed=True); el dry-run de arriba sigue permitido para validar el XML.
+        sif_nif = (_rf.default_sistema_informatico().nif or "").strip().upper()
+        if not sif_nif or sif_nif == "B00000000":
+            raise VerifactuSubmitError(
+                "VERIFACTU_SIF_NIF no configurado (placeholder 'B00000000'): no se remite a la "
+                "AEAT con el NIF del productor de software ficticio. Configura VERIFACTU_SIF_NIF "
+                "con el NIF real del SIF homologado antes de activar el envío en real."
+            )
+
         # 3) Cargar el certificado del tenant (BYO) — sin cert no se envía.
         tenant_id = getattr(record, "tenant_id", None)
         if tenant_id is None:

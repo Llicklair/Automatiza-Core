@@ -30,6 +30,27 @@ _ORCHESTRATOR_NODES = frozenset(
 )
 
 
+def _approval_invoice_key(payload_data: dict) -> str:
+    """Huella estable del payload de una factura por aprobación.
+
+    Sirve para hacer idempotente `_create_invoice_from_approval` entre reintentos
+    de la reanudación: si un reintento re-ejecuta la función con el MISMO payload,
+    no se duplica la factura. Distintos payloads → claves distintas, de modo que
+    una task que genere varias facturas reales no produce falsos positivos.
+    """
+    return "|".join(
+        str(payload_data.get(k, ""))
+        for k in (
+            "contact_id_local",
+            "client_nif",
+            "amount_base",
+            "vat_rate",
+            "concept",
+            "invoice_date",
+        )
+    )
+
+
 async def _build_tenant_context(tenant_id: str, db) -> str:
     """
     Carga contexto del tenant desde BD y lo devuelve como string para inyectar en el intent.
@@ -324,6 +345,25 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
         await db.commit()
         return True
 
+    # Idempotencia: si un intento previo de esta misma reanudación ya creó la
+    # factura (la factura + su línea + este agent_result se commitean atómicamente
+    # más abajo), un reintento NO debe duplicarla. Se correlaciona por la huella
+    # del payload para no bloquear tasks que generen varias facturas distintas.
+    inv_key = _approval_invoice_key(payload_data)
+    for r in (task.agent_results or []):
+        out = r.get("output") if isinstance(r, dict) else None
+        if (
+            isinstance(out, dict)
+            and out.get("action") == "draft_created"
+            and out.get("payload_key") == inv_key
+        ):
+            logger.info(
+                "[RESUME] Factura ya creada para task %s (payload_key idempotente); "
+                "reintento no la duplica.",
+                task.id,
+            )
+            return True
+
     client_nif = payload_data.get("client_nif")
     amount_base = Decimal(str(payload_data.get("amount_base", "0")).replace(",", "."))
     vat_rate = Decimal(str(payload_data.get("vat_rate", 21)))
@@ -411,6 +451,7 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
             "output": {
                 "action": "draft_created",
                 "local_invoice_id": str(new_invoice.id),
+                "payload_key": inv_key,
                 "note": "Factura creada tras aprobacion manual.",
             },
         }

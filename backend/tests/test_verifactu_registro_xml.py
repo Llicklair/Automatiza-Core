@@ -125,6 +125,67 @@ def test_anulacion_valida_xsd():
 
 
 @_xsd_required
+def test_rectificativa_incluye_tipo_y_facturas_rectificadas_valida_xsd():
+    """B3: una rectificativa (R1) emite `TipoRectificativa` + `FacturasRectificadas`
+    referenciando la original, y valida contra el XSD oficial. Como
+    `create_rectificativa` genera líneas NEGADAS (reversión total), el tipo es
+    'I' (por diferencias/incremental)."""
+    payload = build_payload_alta(
+        id_emisor=_NIF,
+        num_serie_factura="R2026/001",
+        fecha_expedicion=_fmt_fecha_expedicion(_FECHA),
+        tipo_factura="R1",
+        cuota_total=Decimal("-21.00"),
+        importe_total=Decimal("-121.00"),
+        huella_anterior=None,
+        fecha_hora_gen=_FHG,
+    )
+    record = SimpleNamespace(
+        payload_canonico=payload,
+        huella=compute_huella(payload),
+        huella_anterior=None,
+        nif_emisor=_NIF,
+        numero_factura="R2026/001",
+        fecha_emision=_FECHA,
+    )
+    rect_invoice = SimpleNamespace(amount_base=Decimal("-100.00"), tax_amount=Decimal("-21.00"))
+    neg_lines = [
+        SimpleNamespace(
+            quantity=Decimal("1"),
+            unit_price=Decimal("-100.00"),
+            tax_percentage=Decimal("21.00"),
+            description="Abono Consultoría",
+        )
+    ]
+    original = SimpleNamespace(invoice_number="FA2026/001", date=_FECHA)
+
+    xml = rf.build_registro_alta_xml(
+        record=record,
+        invoice=rect_invoice,
+        emisor_nombre="EMPRESA EJEMPLO SL",
+        lines=neg_lines,
+        rectified_invoice=original,
+    )
+    assert rf.validate_verifactu_xml(xml) == []
+    assert "TipoRectificativa>I<" in xml
+    assert "FacturasRectificadas" in xml
+    assert "IDFacturaRectificada" in xml
+    assert "FA2026/001" in xml  # NumSerie de la factura original rectificada
+
+
+@_xsd_required
+def test_alta_normal_no_incluye_campos_rectificativa():
+    """Control (no sobre-emisión): una F1 sin original NO lleva TipoRectificativa."""
+    record = _make_record()
+    xml = rf.build_registro_alta_xml(
+        record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines()
+    )
+    assert rf.validate_verifactu_xml(xml) == []
+    assert "TipoRectificativa" not in xml
+    assert "FacturasRectificadas" not in xml
+
+
+@_xsd_required
 def test_multiples_tipos_iva_generan_varios_detalles():
     record = _make_record(cuota="31.50", importe="231.50")
     lines = [
