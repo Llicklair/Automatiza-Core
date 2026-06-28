@@ -131,7 +131,7 @@ async def delete_backup_endpoint(filename: str):
 # ── CONT.KILL — kill-switch de precondiciones legales ──────────────────────
 
 
-@router.get("/preconditions")
+@router.get("/preconditions", dependencies=[_admin_only])
 async def get_invoice_preconditions(
     db: AsyncSession = Depends(get_db),
 ) -> dict:

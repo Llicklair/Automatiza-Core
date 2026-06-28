@@ -120,17 +120,26 @@ async def resume_orchestrator(task_id: str, tenant_id: str | None = None):
         result = await _resume_orchestrator(task_id, tenant_id)
         await guard.mark_executed("resume_orchestrator", task_id, {"status": "done"})
         return result
-    except Exception:
+    except Exception as exc:
         logger.exception("Error en resume_orchestrator:%s", task_id)
-        await guard.release("resume_orchestrator", task_id)
-        return await _retry(
-            "resume_orchestrator",
-            task_id,
-            lambda: _resume_orchestrator(task_id, tenant_id),
-            guard,
-            attempts=3,
-            backoff_base=10,
-        )
+        # Espeja execute_orchestrator: SOLO los errores transitorios liberan la
+        # idempotencia y reintentan. Un error NO transitorio (p.ej. tras crear la
+        # factura) no debe reintentarse: `guard.release()` + retry re-ejecutaría
+        # `_create_invoice_from_approval` y emitiría una factura DUPLICADA. Para
+        # esos casos marcamos la tarea como fallida sin reintentar. (La creación de
+        # factura es además idempotente por payload_key como defensa en profundidad.)
+        if _is_transient_error(exc):
+            await guard.release("resume_orchestrator", task_id)
+            return await _retry(
+                "resume_orchestrator",
+                task_id,
+                lambda: _resume_orchestrator(task_id, tenant_id),
+                guard,
+                attempts=3,
+                backoff_base=10,
+            )
+        await _mark_task_failed(task_id, str(exc))
+        raise
 
 
 async def _set_agent_status(db, employee_id: str, tenant_id: str, status: str) -> None:

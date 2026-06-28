@@ -142,8 +142,14 @@ class _FakeTransport:
         return self.response
 
 
-def _patch(monkeypatch, *, xml_valid=True, cert_error=False, signed=True):
-    """Mockea generación de XML, carga de cert y firma (evita BD/cert/red)."""
+def _patch(monkeypatch, *, xml_valid=True, cert_error=False, signed=True, sif_nif="B11111111"):
+    """Mockea generación de XML, carga de cert y firma (evita BD/cert/red).
+
+    `sif_nif`: NIF del SIF (productor) que ve el guard de cumplimiento de
+    `submit()`. Por defecto un NIF real para ejercitar el camino de envío; pasar
+    `sif_nif=None` deja el placeholder "B00000000" (default) para probar que el
+    guard B2 bloquea el envío.
+    """
     async def _gen(db, *, record, sistema=None):
         return "<RegFactuSistemaFacturacion/>"
 
@@ -167,6 +173,21 @@ def _patch(monkeypatch, *, xml_valid=True, cert_error=False, signed=True):
     )
     monkeypatch.setattr("app.services.aeat.certificate_storage.load_decrypted", _load)
     monkeypatch.setattr("app.services.aeat.xades_signer.sign_xades_bes", _sign)
+    if sif_nif is not None:
+        from app.services.billing.registro_facturacion import SistemaInformatico
+
+        sistema = SistemaInformatico(
+            nombre_razon="Productor Test S.L.",
+            nif=sif_nif,
+            nombre_sistema="AutomatizaCore",
+            id_sistema="01",
+            version="1.0",
+            numero_instalacion="0001",
+        )
+        monkeypatch.setattr(
+            "app.services.billing.registro_facturacion.default_sistema_informatico",
+            lambda: sistema,
+        )
 
 
 _REC = SimpleNamespace(tenant_id=uuid.uuid4())
@@ -202,6 +223,19 @@ class TestSubmitters:
         _patch(monkeypatch, cert_error=True)
         transport = _FakeTransport(fail_if_called=True)
         with pytest.raises(CertificateError):
+            await vs.PreproduccionSubmitter(transport=transport).submit(
+                None, record=_REC, confirmed=True
+            )
+        assert transport.calls == 0
+
+    async def test_confirmed_sif_nif_placeholder_aborta(self, monkeypatch):
+        """B2: con el NIF del SIF (productor) en placeholder 'B00000000' NO se
+        remite a la AEAT aunque confirmed=True. Se aborta ANTES de cargar el
+        certificado o firmar — nunca se envía un registro con NIF de productor
+        ficticio (RD 1007/2023 + Orden HAC/1177/2024)."""
+        _patch(monkeypatch, sif_nif=None)  # deja el placeholder por defecto
+        transport = _FakeTransport(fail_if_called=True)
+        with pytest.raises(vs.VerifactuSubmitError, match="VERIFACTU_SIF_NIF"):
             await vs.PreproduccionSubmitter(transport=transport).submit(
                 None, record=_REC, confirmed=True
             )

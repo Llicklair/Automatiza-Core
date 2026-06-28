@@ -45,6 +45,52 @@ def test_is_transient_returns_false(exc):
     assert _to._is_transient_error(exc) is False
 
 
+# ── B5: idempotencia anti-duplicado de _create_invoice_from_approval ──────────
+
+@pytest.mark.asyncio
+async def test_create_invoice_from_approval_is_idempotent(db: AsyncSession):
+    """B5 (anti-duplicado): reanudar dos veces con el MISMO payload (p.ej. un
+    reintento transitorio tras el commit de la factura) NO debe crear una
+    segunda factura. Antes, cada reintento generaba una FAC distinta → emisión
+    ilegal de facturas duplicadas en un ERP VeriFactu/AEAT."""
+    from app.db.models.models import Client, Invoice
+    from app.workers._orchestrator_context import _create_invoice_from_approval
+
+    tenant = Tenant(id=uuid.uuid4(), name="T Dup", nif="B10000000", plan="starter")
+    db.add(tenant)
+    await db.flush()
+    client = Client(id=uuid.uuid4(), tenant_id=tenant.id, nif="B20000000", name="Cliente Dup")
+    user = User(
+        id=uuid.uuid4(), tenant_id=tenant.id, email="dup@t.com",
+        hashed_password="x", full_name="Dup", role="admin",
+    )
+    task = Task(
+        id=uuid.uuid4(), tenant_id=tenant.id, created_by=user.id,
+        domain="billing", user_intent="Crear factura", status="executing",
+        current_step=0, agent_results=[],
+    )
+    db.add_all([client, user, task])
+    await db.commit()
+
+    payload = {
+        "contact_id_local": str(client.id),
+        "amount_base": "100.00",
+        "vat_rate": "21",
+        "concept": "Servicio mensual",
+        "invoice_date": "2026-06-01",
+    }
+
+    assert await _create_invoice_from_approval(task, payload, db) is True
+    # Reintento con el MISMO payload (lo que haría un retry transitorio):
+    assert await _create_invoice_from_approval(task, payload, db) is True
+
+    res = await db.execute(select(Invoice).where(Invoice.tenant_id == tenant.id))
+    invoices = res.scalars().all()
+    assert len(invoices) == 1, (
+        f"Se duplicó la factura en el reintento: {len(invoices)} facturas creadas."
+    )
+
+
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
