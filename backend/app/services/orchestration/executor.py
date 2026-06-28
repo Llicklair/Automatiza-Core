@@ -41,8 +41,18 @@ async def release_employee(db, employee, *, label: str) -> None:
     except Exception:
         logger.debug("[ORCHESTRATOR] rollback de limpieza falló; continúo", exc_info=True)
     try:
-        employee.status = "idle"
-        await asyncio.wait_for(db.commit(), timeout=10)
+        async def _set_idle_if_working() -> None:
+            # El rollback expiró el objeto: recarga el estado real de BD para
+            # no pisar un "paused" que un admin haya puesto durante los 180s de
+            # ejecución (los `paused` están excluidos del dispatch). Todo dentro
+            # del wait_for: el cleanup sigue acotado a 10s (no reintroduce el
+            # cuelgue de ~8min del commit sin tope).
+            await db.refresh(employee)
+            if employee.status == "working":
+                employee.status = "idle"
+                await db.commit()
+
+        await asyncio.wait_for(_set_idle_if_working(), timeout=10)
     except Exception as commit_err:
         logger.warning(
             "[ORCHESTRATOR] cleanup post-%s para employee '%s' falló (status no actualizado): %s",
