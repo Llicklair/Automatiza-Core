@@ -80,9 +80,12 @@ async def post_start(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Step 1 → 2: usuario eligió método de autenticación en el wizard."""
-    record = await start_identification(
-        db, tenant_id=user.tenant_id, auth_method=payload.auth_method,
-    )
+    try:
+        record = await start_identification(
+            db, tenant_id=user.tenant_id, auth_method=payload.auth_method,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     await db.commit()
     return _to_out(record)
 

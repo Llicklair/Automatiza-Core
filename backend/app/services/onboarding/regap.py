@@ -93,6 +93,15 @@ async def start_identification(
     `cert_pending` mientras solicita el certificado FNMT (proceso de 5-10 d).
     """
     record = await get_regap_status(db, tenant_id=tenant_id)
+    if record.status in ("power_granted", "verified"):
+        # Forward-only: reiniciar la identificación desde un estado ya
+        # completado regresaría el apoderamiento AEAT verificado a
+        # `cert_pending`/`identifying` y perdería el progreso. Para cambiar de
+        # método hay que pasar por `reset_regap` explícitamente.
+        raise ValueError(
+            f"Transición ilegal: estado actual '{record.status}' ya completó la "
+            f"identificación; usa el reinicio para cambiar de método"
+        )
 
     record.auth_method = auth_method
     if auth_method == "cert_fnmt":

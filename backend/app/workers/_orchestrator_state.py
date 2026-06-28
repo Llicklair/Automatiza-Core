@@ -32,6 +32,11 @@ async def _mark_task_failed(task_id: str, error_msg: str):
             result = await db.execute(select(Task).where(Task.id == task_uuid))
             task = result.scalar_one_or_none()
             if task:
+                if task.status in ("done", "awaiting_approval"):
+                    # No clobber: una tarea ya completada con éxito, o pausada
+                    # esperando aprobación humana, no debe re-marcarse "failed"
+                    # por un cleanup tardío del orquestador.
+                    return
                 task.status = "failed"
                 task.error_message = f"Error interno del agente: {error_msg[:500]}"
                 task.completed_at = datetime.now(UTC)
