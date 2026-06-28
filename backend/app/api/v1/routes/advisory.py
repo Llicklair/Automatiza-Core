@@ -31,9 +31,9 @@ async def get_boe_news(
     try:
         news = await scraper.get_novedades(seccion=section, max_items=limit)
         return news
-    except Exception:
+    except Exception as exc:
         logger.exception("Error obteniendo BOE")
-        raise HTTPException(status_code=500, detail="Error interno obteniendo el BOE")
+        raise HTTPException(status_code=500, detail="Error interno obteniendo el BOE") from exc
     finally:
         await scraper.close()
 
@@ -54,9 +54,9 @@ async def get_fiscal_calendar(
     try:
         events = get_proximos_vencimientos(days_ahead=days_ahead)
         return events
-    except Exception:
+    except Exception as exc:
         logger.exception("Error obteniendo calendario fiscal")
-        raise HTTPException(status_code=500, detail="Error interno obteniendo el calendario fiscal")
+        raise HTTPException(status_code=500, detail="Error interno obteniendo el calendario fiscal") from exc
 
 
 @router.get("/guides", response_model=list[dict])

@@ -27,6 +27,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.datetime_utils import local_today
 from app.db.models.billing import Invoice
 
 _PAID_STATUSES = ("paid", "reconciled", "settled", "cancelled", "voided")
@@ -132,7 +133,7 @@ def build_reminder_schedule(
     invoice: Invoice, *, today: date | None = None, sender_name: str = "Tu equipo"
 ) -> list[ReminderStep]:
     """Devuelve los pasos planificados para esta factura, ordenados por fire_date."""
-    today = today or date.today()
+    today = today or local_today()
     due = _safe_date(invoice.due_date)
     if due is None:
         return []
@@ -209,7 +210,7 @@ async def invoices_due_for_reminder(
     Pensado para que un cron diario los procese: por cada paso devuelto,
     la capa de orquestación llama al email_sender y registra el envío.
     """
-    today = today or date.today()
+    today = today or local_today()
     invoices_q = await db.execute(
         sa.select(Invoice)
         .options(selectinload(Invoice.client))

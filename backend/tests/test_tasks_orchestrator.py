@@ -91,6 +91,48 @@ async def test_create_invoice_from_approval_is_idempotent(db: AsyncSession):
     )
 
 
+# ── idempotencia anti-doble-ejecución de _execute_from_approval ───────────────
+
+@pytest.mark.asyncio
+async def test_execute_from_approval_is_idempotent(db: AsyncSession):
+    """Re-resume con el MISMO payload estructurado {kind, params} NO debe re-ejecutar
+    la acción financiera. Antes _execute_from_approval llamaba execute_approved_action
+    en cada reintento → doble asiento/nómina/acción financiera (mismo riesgo que la
+    factura duplicada de B5, pero por la ruta estructurada). Defensa en profundidad
+    por payload_key, igual que _create_invoice_from_approval."""
+    from app.workers._orchestrator_context import _execute_from_approval
+
+    tenant = Tenant(id=uuid.uuid4(), name="T Exec", nif="B30000000", plan="starter")
+    db.add(tenant)
+    await db.flush()
+    user = User(
+        id=uuid.uuid4(), tenant_id=tenant.id, email="exec@t.com",
+        hashed_password="x", full_name="Exec", role="admin",
+    )
+    task = Task(
+        id=uuid.uuid4(), tenant_id=tenant.id, created_by=user.id,
+        domain="accounting", user_intent="Crear asiento", status="executing",
+        current_step=0, agent_results=[],
+    )
+    db.add_all([user, task])
+    await db.commit()
+
+    payload = {"kind": "create_journal_entry", "params": {"amount": "100.00", "concept": "X"}}
+
+    with patch(
+        "app.services.workflow.approval_actions.execute_approved_action",
+        new=AsyncMock(return_value=(True, "Asiento creado")),
+    ) as mock_exec:
+        assert await _execute_from_approval(task, payload, db) is True
+        # Reintento con el MISMO payload (lo que haría un retry transitorio tras commit):
+        assert await _execute_from_approval(task, payload, db) is True
+
+    assert mock_exec.await_count == 1, (
+        f"La acción financiera se re-ejecutó en el reintento: {mock_exec.await_count} "
+        "veces (debe ser 1). Falta el guard de idempotencia por payload_key."
+    )
+
+
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture

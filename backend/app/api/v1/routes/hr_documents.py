@@ -46,7 +46,7 @@ async def generate_hr_document(
         # ValueError de generate_document = validacion de dominio (no es un
         # fallo del servidor) -> 422 con el mensaje de dominio, en linea con el
         # resto de rutas (documents/invoices/hr_expenses mapean ValueError a 4xx).
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @router.get("", response_model=list[HRDocumentOut])
@@ -78,7 +78,7 @@ async def get_hr_document(
     try:
         return await svc.get_document(doc_id, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.get("/{doc_id}/pdf")
@@ -95,7 +95,7 @@ async def hr_document_pdf(
     try:
         pdf, filename = await svc.get_document_pdf(doc_id, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return Response(
         content=pdf,
         media_type="application/pdf",
@@ -112,7 +112,7 @@ async def approve_hr_document(
     try:
         return await svc.approve_document(doc_id, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -124,4 +124,4 @@ async def delete_hr_document(
     try:
         await svc.delete_document(doc_id, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

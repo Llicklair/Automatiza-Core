@@ -29,8 +29,8 @@ _INVENTORY_DOMAIN = "inventory"
 def _parse_uuid(value: str, label: str = "tenant_id") -> UUID:
     try:
         return UUID(value)
-    except (ValueError, TypeError, AttributeError):
-        raise ValueError(f"{label} '{value}' no es un identificador válido.")
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ValueError(f"{label} '{value}' no es un identificador válido.") from exc
 
 
 def _parse_items(items_json: str) -> list[dict]:

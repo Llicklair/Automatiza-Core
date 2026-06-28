@@ -61,9 +61,9 @@ async def update_tenant(
 
     try:
         await db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
-        raise ValueError("Ya existe otra empresa con ese NIF. Usa un NIF distinto.")
+        raise ValueError("Ya existe otra empresa con ese NIF. Usa un NIF distinto.") from exc
 
     await db.refresh(tenant)
     return tenant
@@ -340,8 +340,12 @@ async def claude_code_login() -> dict[str, Any]:
         return {"status": "error", "version": None, "message": error}
 
     try:
-        subprocess.Popen(
-            [claude_bin, "auth", "login"],
+        # Spawn no-bloqueante en async: asyncio en vez de subprocess.Popen (ASYNC220).
+        # Fire-and-forget — no esperamos a que termine (abre el navegador de login).
+        await asyncio.create_subprocess_exec(
+            claude_bin,
+            "auth",
+            "login",
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,

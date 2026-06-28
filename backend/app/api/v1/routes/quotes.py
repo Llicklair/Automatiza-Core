@@ -51,7 +51,7 @@ async def get_quote(
     try:
         return await svc.get_quote(db, quote_id, current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.patch("/{quote_id}", response_model=QuoteResponse)
@@ -67,7 +67,7 @@ async def update_quote(
         update_data = quote_update.model_dump(exclude_unset=True)
         return await svc.update_quote(db, quote_id, current_user.tenant_id, update_data)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.post("/{quote_id}/convert-to-invoice")
@@ -84,9 +84,9 @@ async def convert_quote_to_invoice(
     try:
         return await svc.convert_to_invoice(db, quote_id, current_user.tenant_id, current_user.id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.delete("/{quote_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -100,4 +100,4 @@ async def delete_quote(
     try:
         await svc.delete_quote(db, quote_id, current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

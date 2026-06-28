@@ -4,7 +4,7 @@ Generación de PDF: Registro de Actividades de Tratamiento (Art. 30 RGPD).
 
 import io
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -147,7 +147,7 @@ def generate_rgpd_registry_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 3 * mm))
     elements.append(
         Paragraph(
-            f"Registro generado el {datetime.now().strftime('%d/%m/%Y')} · AutomatizaCore",
+            f"Registro generado el {datetime.now(UTC).strftime('%d/%m/%Y')} · AutomatizaCore",
             s["footer"],
         )
     )

@@ -2,12 +2,13 @@
 
 import json
 import logging
-from datetime import date, timedelta
+from datetime import timedelta
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 
 from app.agents.banking._psd2_helpers import _DEMO_TXS, ALERT_THRESHOLDS
+from app.core.datetime_utils import local_today
 from app.core.llm_factory import get_llm
 from app.services.banking.psd2 import get_psd2_credentials as _get_psd2_credentials
 
@@ -48,7 +49,7 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
 
     try:
         await client._get_access_token()
-        date_from = date.today() - timedelta(days=days_back)
+        date_from = local_today() - timedelta(days=days_back)
 
         for acc_id in creds.get("account_ids", []):
             try:

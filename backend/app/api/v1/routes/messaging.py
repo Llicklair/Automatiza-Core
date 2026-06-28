@@ -116,7 +116,7 @@ async def connect_telegram(
     try:
         result = await svc.connect_telegram(db, current_user.tenant_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return TelegramConnectResponse(**result)
 
 
@@ -131,7 +131,7 @@ async def disconnect_telegram(
     try:
         return await svc.disconnect_telegram(db, current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @limiter.limit("10/minute")
@@ -161,7 +161,7 @@ async def setup_telegram_webhook(
     try:
         return await svc.setup_webhook()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 # ─── Email ───────────────────────────────────────────────────────────────────
@@ -493,10 +493,10 @@ async def classify_email_inbox(
             for m in payload.messages
         ])
     except EmailAIError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as exc:
         logger.exception("Error clasificando bandeja")
-        raise HTTPException(status_code=500, detail="Error interno al clasificar mensajes")
+        raise HTTPException(status_code=500, detail="Error interno al clasificar mensajes") from exc
 
     return {"items": [r.to_dict() for r in results]}
 
@@ -524,7 +524,7 @@ async def draft_email_reply(
     tenant_id = str(current_user.tenant_id)
 
     full_msg: dict | None = None
-    for provider, ClientCls in [("gmail", "GmailClient"), ("outlook", "OutlookClient")]:
+    for provider, _ClientCls in [("gmail", "GmailClient"), ("outlook", "OutlookClient")]:
         token = await get_oauth_token(tenant_id, provider)
         if not token:
             continue
@@ -553,9 +553,9 @@ async def draft_email_reply(
             user_full_name=getattr(current_user, "full_name", None),
         )
     except EmailAIError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as exc:
         logger.exception("Error redactando borrador")
-        raise HTTPException(status_code=500, detail="Error interno al generar el borrador")
+        raise HTTPException(status_code=500, detail="Error interno al generar el borrador") from exc
 
     return draft.to_dict()

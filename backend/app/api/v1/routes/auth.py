@@ -40,7 +40,7 @@ async def register(request: Request, payload: UserCreate, db: AsyncSession = Dep
     try:
         return await svc.register(payload, db)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -49,9 +49,9 @@ async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depe
     try:
         return await svc.login(payload.email, payload.password, db)
     except LookupError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)) from e
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -64,7 +64,7 @@ async def refresh(
     try:
         return await svc.refresh(payload.refresh_token, db)
     except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail=str(e)) from e
 
 
 # ── Password Reset ─────────────────────────────────────────────────────────────
@@ -89,4 +89,4 @@ async def reset_password(
     try:
         return await svc.reset_password(payload.token, payload.new_password, db)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e

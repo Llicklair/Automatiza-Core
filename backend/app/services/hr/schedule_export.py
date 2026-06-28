@@ -1,11 +1,11 @@
 """Export de horarios de trabajo a Excel (openpyxl) y PDF (reportlab)."""
 
 import io
-from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.core.security import sanitize_spreadsheet_cell
 from app.db.models.hr import WorkSchedule
 from app.db.models.models import Employee
@@ -116,7 +116,7 @@ def build_schedules_pdf(grid: list[dict], company_name: str = "") -> bytes:
     title = "Horarios de trabajo" + (f" — {company_name}" if company_name else "")
     elements = [
         Paragraph(title, S["title"]),
-        Paragraph(f"Generado el {date.today().strftime('%d/%m/%Y')}", S["small"]),
+        Paragraph(f"Generado el {local_today().strftime('%d/%m/%Y')}", S["small"]),
         Spacer(1, 6 * mm),
     ]
     data = [["Empleado", *DAY_NAMES]]

@@ -26,7 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -218,7 +218,7 @@ async def record_extraction(
                 last_extraction=extraction,
                 extractions_count=1,
                 avg_amount_total=amount_total,
-                last_seen_at=datetime.utcnow(),
+                last_seen_at=datetime.now(UTC),
             )
         )
     else:
@@ -228,7 +228,7 @@ async def record_extraction(
         template.last_extraction = extraction
         template.extractions_count = n + 1
         template.avg_amount_total = new_avg
-        template.last_seen_at = datetime.utcnow()
+        template.last_seen_at = datetime.now(UTC)
         if name and not template.supplier_name:
             template.supplier_name = name
     await db.commit()

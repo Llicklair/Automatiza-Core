@@ -1,12 +1,12 @@
 """Company snapshot GET + POST generate + report management (list, download, delete)."""
 
 import uuid
-from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
@@ -36,12 +36,12 @@ async def get_company_snapshot(
 ):
     """Devuelve el snapshot agregado de la empresa para el mes indicado (sin generar PDF)."""
     if not month:
-        month = date.today().strftime("%Y-%m")
+        month = local_today().strftime("%Y-%m")
 
     try:
         start, end = parse_month(month)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return await aggregate(db, current_user.tenant_id, start, end)
 
 
@@ -55,12 +55,12 @@ async def generate_company_snapshot_pdf(
 ):
     """Genera el informe mensual PDF y lo guarda en documentos del tenant."""
     if not month:
-        month = date.today().strftime("%Y-%m")
+        month = local_today().strftime("%Y-%m")
 
     try:
         start, end = parse_month(month)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     company_name = await get_tenant_name(current_user.tenant_id, db)
     snap = await aggregate(db, current_user.tenant_id, start, end)

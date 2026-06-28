@@ -1,7 +1,7 @@
 """Formateo de resúmenes de agentes y extracción de fechas en español."""
 
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 
 def _summary_from_response(output: dict, prefix: str = "✅") -> str | None:
@@ -165,7 +165,7 @@ def extract_month_year(intent: str) -> tuple[int, int]:
     - Numérico directo: "03/2026", "3/2026", "mes 3"
     - Sin contexto: devuelve mes actual
     """
-    now = datetime.now()
+    now = datetime.now(UTC)
     text = intent.lower()
 
     # Relativos primero

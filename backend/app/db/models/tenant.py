@@ -1,5 +1,7 @@
 """Modelos de configuración del tenant: integraciones, conocimiento y documentos."""
 
+from sqlalchemy import UniqueConstraint
+
 from .common import (
     JSONB,
     UUID,
@@ -18,6 +20,11 @@ from .common import (
 
 class TenantIntegration(Base):
     __tablename__ = "tenant_integrations"
+    __table_args__ = (
+        # Una sola integración por (tenant, tipo): evita duplicados cuando dos
+        # connect_* concurrentes pasan el select-then-add (TOCTOU) a la vez.
+        UniqueConstraint("tenant_id", "integration_type", name="uq_tenant_integration_type"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)

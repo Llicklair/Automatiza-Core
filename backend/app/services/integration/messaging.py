@@ -10,6 +10,7 @@ import secrets
 from uuid import UUID as _UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -229,6 +230,7 @@ async def connect_telegram(db: AsyncSession, tenant_id) -> dict:
         existing.encrypted_credentials = encrypted
         existing.is_active = False
         existing.config = {}
+        await db.commit()
     else:
         db.add(
             TenantIntegration(
@@ -239,8 +241,24 @@ async def connect_telegram(db: AsyncSession, tenant_id) -> dict:
                 config={},
             )
         )
-
-    await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # Carrera: otro connect_telegram concurrente creó la integración primero.
+            # La UNIQUE (tenant_id, integration_type) la rechaza; re-leemos y actualizamos
+            # en vez de duplicar (antes el select-then-add tenía TOCTOU sin barrera en BD).
+            await db.rollback()
+            result = await db.execute(
+                select(TenantIntegration).where(
+                    TenantIntegration.tenant_id == tenant_id,
+                    TenantIntegration.integration_type == "telegram",
+                )
+            )
+            existing = result.scalar_one()
+            existing.encrypted_credentials = encrypted
+            existing.is_active = False
+            existing.config = {}
+            await db.commit()
 
     link_url = f"https://t.me/{bot_username}?start={link_token}" if bot_username else ""
 

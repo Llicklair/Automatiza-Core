@@ -12,6 +12,8 @@ import io
 import os
 import re as _re
 
+from app.core.datetime_utils import local_today
+
 _PDF_STYLESHEET = """
 @page {
   size: A4;
@@ -175,14 +177,13 @@ def render_markdown_report(
             "Falta dependencia para PDF (markdown-it-py o xhtml2pdf): " + str(e)
         ) from e
 
-    from datetime import date as _date
 
     # commonmark base + tablas GFM. Sin linkify (no instalado).
     md = MarkdownIt("commonmark", {"html": False, "breaks": False, "linkify": False}).enable("table")
     body_html = md.render(body or "")
     body_html = _classify_blockquotes(body_html)
 
-    today = _date.today().strftime("%d/%m/%Y")
+    today = local_today().strftime("%d/%m/%Y")
 
     # Sanitizar campos del usuario (escape HTML en strings de portada)
     safe_title = _html.escape(title or "Informe")

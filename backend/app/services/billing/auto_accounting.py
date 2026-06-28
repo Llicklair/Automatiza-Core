@@ -9,7 +9,7 @@ entidad, retornan None sin crear duplicados.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -81,7 +81,7 @@ async def create_invoice_journal_entry(db, tenant_id, invoice) -> JournalEntry |
     return await create_journal_entry(
         db,
         tenant_id,
-        date=invoice.date or datetime.utcnow(),
+        date=invoice.date or datetime.now(UTC),
         description=desc,
         reference_id=f"INV-{invoice.id}",
         lines=lines,
@@ -115,7 +115,7 @@ async def create_invoice_payment_entry(db, tenant_id, invoice) -> JournalEntry |
     return await create_journal_entry(
         db,
         tenant_id,
-        date=datetime.utcnow(),
+        date=datetime.now(UTC),
         description=desc,
         reference_id=f"PAY-INV-{invoice.id}",
         lines=lines,
@@ -162,7 +162,7 @@ async def create_payroll_journal_entry(db, tenant_id, payroll) -> JournalEntry |
     return await create_journal_entry(
         db,
         tenant_id,
-        date=payroll.issue_date or datetime.utcnow(),
+        date=payroll.issue_date or datetime.now(UTC),
         description=f"Nómina {emp_name} {period}",
         reference_id=f"PAY-{payroll.id}",
         lines=lines,
@@ -182,7 +182,7 @@ async def create_payroll_payment_entry(db, tenant_id, payroll) -> JournalEntry |
     return await create_journal_entry(
         db,
         tenant_id,
-        date=datetime.utcnow(),
+        date=datetime.now(UTC),
         description=f"Pago nómina {emp_name} {period}",
         reference_id=f"PAY-NOM-{payroll.id}",
         lines=[

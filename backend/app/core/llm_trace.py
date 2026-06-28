@@ -139,10 +139,9 @@ class LLMTraceCallback(BaseCallbackHandler):
         try:
             run_key = str(run_id)
             self._starts[run_key] = {"t0": time.monotonic()}
-            flat: list[dict[str, Any]] = []
-            for batch in messages or []:
-                for m in batch:
-                    flat.append(_serialize_message(m))
+            flat: list[dict[str, Any]] = [
+                _serialize_message(m) for batch in messages or [] for m in batch
+            ]
             tools_meta = []
             inv = invocation_params or kwargs.get("invocation_params") or {}
             for t in inv.get("tools", []) or []:

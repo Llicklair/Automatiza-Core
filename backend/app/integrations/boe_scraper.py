@@ -10,6 +10,8 @@ from datetime import date
 
 import httpx
 
+from app.core.datetime_utils import local_today
+
 BOE_RSS_BASE = "https://www.boe.es/rss"
 BOE_API_BASE = "https://boe.es/datosabiertos/api"
 
@@ -169,7 +171,7 @@ def get_calendario_fiscal(year: int) -> list[dict]:
         )
 
     # Modelo 111 — Retenciones IRPF (trimestral)
-    for trimestre, inicio, fin, limite in trimestres_303:
+    for trimestre, _inicio, _fin, limite in trimestres_303:
         eventos.append(
             {
                 "modelo": "111",
@@ -222,7 +224,7 @@ def get_calendario_fiscal(year: int) -> list[dict]:
     )
 
     # Modelo 349 — Operaciones intracomunitarias (trimestral)
-    for trimestre, inicio, fin, limite in trimestres_303:
+    for trimestre, _inicio, _fin, limite in trimestres_303:
         eventos.append(
             {
                 "modelo": "349",
@@ -236,7 +238,7 @@ def get_calendario_fiscal(year: int) -> list[dict]:
         )
 
     # Modelo 115 — Retenciones alquileres urbanos (trimestral)
-    for trimestre, inicio, fin, limite in trimestres_303:
+    for trimestre, _inicio, _fin, limite in trimestres_303:
         eventos.append(
             {
                 "modelo": "115",
@@ -356,7 +358,7 @@ def get_proximos_vencimientos(days_ahead: int = 90, min_count: int = 5) -> list[
     para evitar pantallas vacías entre trimestres (p.ej. en mayo, el siguiente
     vencimiento clave cae +61d y un rango de 60 días lo dejaría fuera).
     """
-    today = date.today()
+    today = local_today()
     year = today.year
     calendario = get_calendario_fiscal(year) + get_calendario_fiscal(year + 1)
 

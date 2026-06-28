@@ -51,7 +51,7 @@ async def connect_psd2(
     try:
         await svc.connect_psd2(payload.secret_id, payload.secret_key, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return {"status": "conectado", "integration": "psd2"}
 
 
@@ -91,7 +91,7 @@ async def connect_email(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return {"status": "conectado", "integration": "email", **result}
 
 

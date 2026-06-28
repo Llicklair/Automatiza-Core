@@ -70,7 +70,7 @@ async def update_template(
             payload.model_dump(exclude_unset=True),
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -84,7 +84,7 @@ async def delete_template(
     try:
         await svc.delete_template(db, template_id, current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.post("/{template_id}/set-default", response_model=TemplateResponse)
@@ -98,7 +98,7 @@ async def set_default(
     try:
         return await svc.set_default(db, template_id, current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # ── Seed defaults ────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ async def seed_defaults(
     try:
         return await svc.seed_defaults(db, current_user.tenant_id, template_type)
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
 
 # ── Preview ──────────────────────────────────────────────────────────────────
@@ -133,9 +133,9 @@ async def preview_template(
     """Genera un PDF de muestra con la configuracion de tema enviada."""
     try:
         pdf_bytes = svc.generate_preview(payload.model_dump())
-    except Exception:
+    except Exception as exc:
         logger.exception("Error generando preview de plantilla")
-        raise HTTPException(status_code=500, detail="Error interno al generar la vista previa")
+        raise HTTPException(status_code=500, detail="Error interno al generar la vista previa") from exc
 
     return Response(
         content=pdf_bytes,

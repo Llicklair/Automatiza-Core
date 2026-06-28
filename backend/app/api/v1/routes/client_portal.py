@@ -232,7 +232,7 @@ async def portal_download_invoice_pdf(
         )
     except ValueError as e:
         logger.warning("[PORTAL] Error generando PDF factura %s: %s", invoice_id, e)
-        raise HTTPException(status_code=404, detail="No se pudo generar el PDF de la factura")
+        raise HTTPException(status_code=404, detail="No se pudo generar el PDF de la factura") from e
 
     return Response(
         content=pdf_bytes,

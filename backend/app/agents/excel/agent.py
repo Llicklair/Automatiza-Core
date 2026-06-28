@@ -9,7 +9,7 @@ El LLM decide qué herramientas usar según la intención del usuario:
 Cada herramienta ejecuta lógica determinista (BD, openpyxl, pandas).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
@@ -38,7 +38,7 @@ async def excel_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"excel_step_{datetime.now().timestamp()}",
+        step_id=f"excel_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de Excel...",
         status="completed",
         action_taken="Invocando herramientas de Excel"

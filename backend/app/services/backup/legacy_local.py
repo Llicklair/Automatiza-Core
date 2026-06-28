@@ -23,7 +23,7 @@ import os
 import shutil
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -93,7 +93,7 @@ async def create_backup(backup_dir: Path | None = None) -> Path | None:
     target_dir.mkdir(parents=True, exist_ok=True)
 
     db = _parse_db_url(settings.DATABASE_URL)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     out_file = target_dir / f"{db['dbname']}_{timestamp}.dump"
 
     cmd = [
@@ -153,7 +153,7 @@ def rotate_backups(
         return 0
 
     days = retention_days if retention_days is not None else settings.BACKUP_RETENTION_DAYS
-    cutoff = datetime.now() - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     cutoff_ts = cutoff.timestamp()
 
     deleted = 0
@@ -230,7 +230,7 @@ def list_backups() -> list[dict[str, Any]]:
             {
                 "filename": entry.name,
                 "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "created_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
                 "age_hours": round((time.time() - stat.st_mtime) / 3600, 1),
             }
         )

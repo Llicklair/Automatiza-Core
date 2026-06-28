@@ -51,10 +51,10 @@ async def create_client(
             db, current_user.tenant_id, current_user.id, payload.model_dump()
         )
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    except RuntimeError:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except RuntimeError as exc:
         logger.exception("Error creando cliente")
-        raise HTTPException(status_code=500, detail="Error interno al crear el cliente")
+        raise HTTPException(status_code=500, detail="Error interno al crear el cliente") from exc
 
 
 @router.patch("/clients/{client_id}", response_model=ClientResponse, tags=["erp"])
@@ -71,10 +71,10 @@ async def update_client(
             db, current_user.tenant_id, client_id, payload.model_dump(exclude_none=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except RuntimeError:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except RuntimeError as exc:
         logger.exception("Error actualizando cliente")
-        raise HTTPException(status_code=500, detail="Error interno al actualizar el cliente")
+        raise HTTPException(status_code=500, detail="Error interno al actualizar el cliente") from exc
 
 
 @router.delete("/clients/{client_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
@@ -88,10 +88,10 @@ async def delete_client(
     try:
         await svc.delete_client(db, current_user.tenant_id, client_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except RuntimeError:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except RuntimeError as exc:
         logger.exception("Error borrando cliente")
-        raise HTTPException(status_code=500, detail="Error interno al eliminar el cliente")
+        raise HTTPException(status_code=500, detail="Error interno al eliminar el cliente") from exc
 
 
 @router.get("/clients/{client_id}/invoices", response_model=list[InvoiceResponse], tags=["erp"])
@@ -110,4 +110,4 @@ async def list_client_invoices(
             db, current_user.tenant_id, client_id, skip=skip, limit=limit
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

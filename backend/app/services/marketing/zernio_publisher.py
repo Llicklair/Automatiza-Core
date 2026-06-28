@@ -48,6 +48,11 @@ class ZernioPublisher:
         self, post: ScheduledPost, account: SocialAccount | None, client: ZernioClient
     ) -> PublishResult:
         """Publica con un cliente y cuenta ya resueltos (testeable sin BD)."""
+        if post.status == "published":
+            # Idempotencia ante re-disparo SECUENCIAL (retry / re-deque): no
+            # re-publicar un post ya publicado — evita doble post en la red y
+            # pisar published_at/platform_post_id. No protege carrera concurrente.
+            return PublishResult(True, False)
         if account is None or not account.account_id:
             post.status = "failed"
             post.error_message = "Cuenta no conectada en Zernio (conéctala en Marketing → Cuentas)"

@@ -52,18 +52,18 @@ async def generate_ui(
             db,
             title=payload.title,
         )
-    except TimeoutError:
+    except TimeoutError as exc:
         raise HTTPException(
             status_code=504,
             detail="El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.",
-        )
+        ) from exc
     except ValueError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Error generando UI: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Error interno generando la interfaz")
+        raise HTTPException(status_code=500, detail="Error interno generando la interfaz") from e
 
     return GeneratedUIOut(
         id=str(ui.id),

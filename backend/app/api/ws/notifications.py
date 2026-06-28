@@ -70,8 +70,8 @@ async def get_token_tenant(token: str) -> str:
         if tenant_id is None:
             raise ValueError("Token no contiene tenant_id")
         return tenant_id
-    except JWTError:
-        raise ValueError("Token inválido")
+    except JWTError as exc:
+        raise ValueError("Token inválido") from exc
 
 
 @router.websocket("/ws/notifications")

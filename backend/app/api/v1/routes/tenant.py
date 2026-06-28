@@ -31,7 +31,7 @@ async def get_tenant_me(
     try:
         return await svc.get_tenant(db, current_user.tenant_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.patch("/me", response_model=TenantMeResponse)
@@ -55,7 +55,7 @@ async def update_tenant_me(
     except ValueError as e:
         detail = str(e)
         status = 400 if "NIF" in detail else 404
-        raise HTTPException(status_code=status, detail=detail)
+        raise HTTPException(status_code=status, detail=detail) from e
 
 
 @router.get("/llm-config", response_model=LlmConfigResponse)
@@ -86,7 +86,7 @@ async def update_llm_config(
             providers=payload.providers,
         )
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     return LlmConfigResponse(**data)
 
 
@@ -168,7 +168,7 @@ async def upload_certificate(
             db=db,
         )
     except CertificateError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return {
         "message": "Certificado cargado correctamente",

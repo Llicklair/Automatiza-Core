@@ -118,11 +118,11 @@ async def download_backup(
             env={**__import__("os").environ, **env},
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
-    except TimeoutError:
-        raise HTTPException(status_code=504, detail="pg_dump tardó demasiado (timeout 120s)")
-    except FileNotFoundError:
+    except TimeoutError as exc:
+        raise HTTPException(status_code=504, detail="pg_dump tardó demasiado (timeout 120s)") from exc
+    except FileNotFoundError as exc:
         # Dependencia ausente (no es un crash del servidor) → 503, no 500.
-        raise HTTPException(status_code=503, detail="pg_dump no está disponible en el servidor")
+        raise HTTPException(status_code=503, detail="pg_dump no está disponible en el servidor") from exc
 
     if proc.returncode != 0:
         logger.error("pg_dump error: %s", stderr.decode())
@@ -187,13 +187,13 @@ async def restore_backup(
             env={**__import__("os").environ, **env},
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(input=content), timeout=300)
-    except TimeoutError:
+    except TimeoutError as exc:
         raise HTTPException(
             status_code=504, detail="La restauración tardó demasiado (timeout 5min)"
-        )
-    except FileNotFoundError:
+        ) from exc
+    except FileNotFoundError as exc:
         # Dependencia ausente (no es un crash del servidor) → 503, no 500.
-        raise HTTPException(status_code=503, detail="psql no está disponible en el servidor")
+        raise HTTPException(status_code=503, detail="psql no está disponible en el servidor") from exc
 
     if proc.returncode != 0:
         # M4: el stderr de psql puede revelar rutas/estructura de la BD → se loguea

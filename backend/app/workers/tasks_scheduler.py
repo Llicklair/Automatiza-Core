@@ -5,11 +5,12 @@ Coroutines puras invocadas por APScheduler.
 
 import logging
 import zoneinfo
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from croniter import croniter
 from sqlalchemy import select
 
+from app.core.datetime_utils import local_today
 from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
@@ -343,7 +344,7 @@ async def process_recurring_invoices():
 
 
 async def _process_recurring_invoices():
-    today = date.today()
+    today = local_today()
     now = datetime.now(UTC)
     interval_map = {"weekly": 7, "monthly": 30, "quarterly": 90, "yearly": 365}
 
@@ -397,7 +398,7 @@ async def _process_recurring_invoices():
                     db.add(invoice)
                     await db.flush()
 
-                    for line, (base, tax) in zip(rec.lines_json or [], line_totals):
+                    for line, (base, tax) in zip(rec.lines_json or [], line_totals, strict=False):
                         db.add(
                             InvoiceLine(
                                 invoice_id=invoice.id,

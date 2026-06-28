@@ -1,8 +1,10 @@
 """HR agent — payroll PDF generation helper."""
 
+import asyncio
 import logging
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
@@ -62,8 +64,7 @@ async def _generate_and_save_payroll_pdf(
 
         file_name = f"Nomina_{employee.name.replace(' ', '_')}_{month}_{year}.pdf"
         file_path = os.path.join(upload_dir, file_name)
-        with open(file_path, "wb") as f:
-            f.write(pdf_bytes)
+        await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
         # task_id del contexto async — permite que _save_ai_result_as_document
         # (helper compartido) detecte que ya hay PDF para esta task y no

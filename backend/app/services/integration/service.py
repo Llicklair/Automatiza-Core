@@ -135,8 +135,8 @@ async def connect_psd2(secret_id: str, secret_key: str, tenant_id, db: AsyncSess
     client = NordigenClient(secret_id=secret_id, secret_key=secret_key)
     try:
         await client._get_access_token()
-    except Exception:
-        raise ValueError("Las credenciales de Nordigen/GoCardless no son válidas.")
+    except Exception as exc:
+        raise ValueError("Las credenciales de Nordigen/GoCardless no son válidas.") from exc
     finally:
         await client.close()
 

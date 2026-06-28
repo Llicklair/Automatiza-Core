@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.db.models.hr import (
     Attendance,
     Candidate,
@@ -104,7 +105,7 @@ def cuota_solidaridad_trabajador(base_salary: float, year: int | None = None) ->
     if tipos is None or base_salary <= tope:
         return 0.0
     total = 0.0
-    for (mult_low, mult_high), tipo in zip(_SOLIDARIDAD_TRAMOS, tipos):
+    for (mult_low, mult_high), tipo in zip(_SOLIDARIDAD_TRAMOS, tipos, strict=False):
         low = tope * mult_low
         high = tope * mult_high if mult_high is not None else float("inf")
         portion = min(base_salary, high) - low
@@ -643,24 +644,23 @@ async def list_positions(
     count_result = await db.execute(count_q)
     counts = dict(count_result.all())
 
-    out = []
-    for p in positions:
-        out.append(
-            {
-                "id": p.id,
-                "title": p.title,
-                "department": p.department,
-                "description": p.description,
-                "required_skills": p.required_skills,
-                "experience_min_years": float(p.experience_min_years)
-                if p.experience_min_years
-                else 0,
-                "salary_range_min": float(p.salary_range_min) if p.salary_range_min else None,
-                "salary_range_max": float(p.salary_range_max) if p.salary_range_max else None,
-                "status": p.status,
-                "candidate_count": counts.get(p.id, 0),
-            }
-        )
+    out = [
+        {
+            "id": p.id,
+            "title": p.title,
+            "department": p.department,
+            "description": p.description,
+            "required_skills": p.required_skills,
+            "experience_min_years": float(p.experience_min_years)
+            if p.experience_min_years
+            else 0,
+            "salary_range_min": float(p.salary_range_min) if p.salary_range_min else None,
+            "salary_range_max": float(p.salary_range_max) if p.salary_range_max else None,
+            "status": p.status,
+            "candidate_count": counts.get(p.id, 0),
+        }
+        for p in positions
+    ]
     return out
 
 
@@ -721,9 +721,8 @@ def _schedule_row(r: WorkSchedule) -> dict:
 
 async def list_attendance(db: AsyncSession, tenant_id, date=None) -> list[dict]:
     """Return attendance records for a day (defaults to today)."""
-    from datetime import date as date_type
 
-    target = date or date_type.today()
+    target = date or local_today()
     result = await db.execute(
         select(Attendance)
         .where(Attendance.tenant_id == tenant_id, Attendance.date == target)

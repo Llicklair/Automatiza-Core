@@ -45,8 +45,8 @@ def parse_month(month: str) -> tuple[date, date]:
         last_day = monthrange(year, mon)[1]
         end = date(year, mon, last_day)
         return start, end
-    except Exception:
-        raise ValueError("Formato de mes invalido. Usa YYYY-MM.")
+    except Exception as exc:
+        raise ValueError("Formato de mes invalido. Usa YYYY-MM.") from exc
 
 
 def parse_period(period: str) -> tuple[date, date, str]:
@@ -84,8 +84,8 @@ def parse_period(period: str) -> tuple[date, date, str]:
             ]
             label = f"{months[start.month - 1]} {start.year}"
             return start, end, label
-    except (ValueError, IndexError):
-        raise ValueError("Formato de periodo invalido. Usa YYYY-MM o YYYY-Q1..Q4.")
+    except (ValueError, IndexError) as exc:
+        raise ValueError("Formato de periodo invalido. Usa YYYY-MM o YYYY-Q1..Q4.") from exc
 
 
 # ─── Report text builder ────────────────────────────────────────────────────

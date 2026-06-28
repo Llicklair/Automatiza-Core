@@ -4,6 +4,7 @@ Sub-módulo del orquestador: funciones que construyen contexto de ejecución
 """
 
 import asyncio
+import json
 import logging
 import traceback
 import uuid
@@ -12,6 +13,7 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
+from app.core.datetime_utils import local_today
 from app.db.models.auth import Tenant
 from app.db.models.models import (
     Client,
@@ -51,12 +53,29 @@ def _approval_invoice_key(payload_data: dict) -> str:
     )
 
 
+def _approval_action_key(payload_data: dict) -> str:
+    """Huella estable de una acción estructurada {kind, params} por aprobación.
+
+    Hace idempotente `_execute_from_approval` entre reintentos de la reanudación:
+    si un reintento re-ejecuta la MISMA acción, no se re-dispara el side-effect
+    financiero (asiento/nómina/...). Payloads distintos → claves distintas, para no
+    bloquear una task que registre varias acciones reales.
+    """
+    kind = str(payload_data.get("kind", ""))
+    params = payload_data.get("params", {})
+    try:
+        params_str = json.dumps(params, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        params_str = str(params)
+    return f"{kind}|{params_str}"
+
+
 async def _build_tenant_context(tenant_id: str, db) -> str:
     """
     Carga contexto del tenant desde BD y lo devuelve como string para inyectar en el intent.
     Incluye: nombre empresa, NIF, fecha actual, primeros clientes disponibles.
     """
-    lines = [f"Fecha actual: {date.today().strftime('%d/%m/%Y')}. Moneda: EUR. Pais: Espana."]
+    lines = [f"Fecha actual: {local_today().strftime('%d/%m/%Y')}. Moneda: EUR. Pais: Espana."]
 
     try:
         tenant_res = await db.execute(select(Tenant).where(Tenant.id == uuid.UUID(tenant_id)))
@@ -251,7 +270,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage
 
     try:
         await asyncio.wait_for(_run(), timeout=900)
-    except TimeoutError:
+    except TimeoutError as exc:
         logger.error("Timeout global (900s) en orquestador para tarea %s", task_id)
         # OrchestratorTimeoutError extiende Exception (NO TimeoutError) para que
         # _is_transient_error NO lo considere retry-able. Un cuelgue del LLM
@@ -261,7 +280,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage
         from app.core.exceptions import OrchestratorTimeoutError
         raise OrchestratorTimeoutError(
             f"Orquestador excedio el tiempo limite de 900s para tarea {task_id}"
-        )
+        ) from exc
 
     result = final_state if final_state is not None else initial_state
     status_val = result.get("status")
@@ -474,6 +493,27 @@ async def _execute_from_approval(task, payload_data: dict, db) -> bool:
     """
     from app.services.workflow.approval_actions import execute_approved_action
 
+    # Idempotencia (defensa en profundidad, igual que _create_invoice_from_approval):
+    # si un reintento de esta MISMA reanudación ya ejecutó esta acción, NO re-disparar
+    # el side-effect financiero. Correlación por huella del payload. Es idempotencia
+    # entre REINTENTOS secuenciales de la reanudación; la serialización entre resumes la
+    # garantiza el IdempotencyGuard del worker, no este guard (no protege la carrera
+    # concurrente real de dos resumes simultáneos).
+    action_key = _approval_action_key(payload_data)
+    for r in (task.agent_results or []):
+        out = r.get("output") if isinstance(r, dict) else None
+        if (
+            isinstance(out, dict)
+            and out.get("action") == "executed_after_approval"
+            and out.get("payload_key") == action_key
+        ):
+            logger.info(
+                "[RESUME] Acción ya ejecutada para task %s (payload_key idempotente); "
+                "reintento no la re-ejecuta.",
+                task.id,
+            )
+            return True
+
     ok, summary = await execute_approved_action(payload_data, db, str(task.tenant_id))
     if not ok:
         task.status = "failed"
@@ -486,7 +526,11 @@ async def _execute_from_approval(task, payload_data: dict, db) -> bool:
         {
             "agent": payload_data.get("kind", "approval"),
             "success": True,
-            "output": {"action": "executed_after_approval", "note": summary},
+            "output": {
+                "action": "executed_after_approval",
+                "note": summary,
+                "payload_key": action_key,
+            },
         }
     )
     task.agent_results = existing_results

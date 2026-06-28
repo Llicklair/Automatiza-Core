@@ -1,11 +1,10 @@
 """Fiscal snapshot GET + POST generate + modelo 303 + libro registro endpoints."""
 
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.core.dependencies import get_current_user, get_tenant_or_404
 from app.db.base import get_db
 from app.db.models.models import Tenant, User
@@ -33,13 +32,13 @@ async def get_fiscal_snapshot(
 ):
     """Devuelve el snapshot fiscal para el periodo indicado."""
     if not period:
-        today = date.today()
+        today = local_today()
         period = today.strftime("%Y-%m")
 
     try:
         start, end, label = parse_period(period)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return await aggregate_fiscal(db, current_user.tenant_id, start, end, period, label)
 
 
@@ -52,13 +51,13 @@ async def generate_fiscal_snapshot_pdf(
 ):
     """Genera el informe fiscal PDF y lo guarda en documentos del tenant."""
     if not period:
-        today = date.today()
+        today = local_today()
         period = today.strftime("%Y-%m")
 
     try:
         start, end, label = parse_period(period)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     company_name = tenant.name if tenant.name else "Tu empresa"
 

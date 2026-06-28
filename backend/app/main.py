@@ -72,7 +72,9 @@ async def lifespan(app: FastAPI):
         logger.info("[LICENSE] Estado inicial desde caché · plan=%s", init.plan)
     else:
         logger.info("[LICENSE] Sin licencia válida en caché (%s) — revalidando en background", init.reason)
-    asyncio.create_task(refresh_app_license_state(app))
+    from app.core.background import spawn
+
+    spawn(refresh_app_license_state(app), name="license.refresh")
     # Restaurar el consumo LLM persistido para que el dashboard sobreviva al reinicio.
     from app.services import llm_usage_tracker
 

@@ -58,7 +58,7 @@ async def update_project(
             db, current_user.tenant_id, project_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -72,7 +72,7 @@ async def delete_project(
     try:
         await svc.delete_project(db, current_user.tenant_id, project_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # --- Project Tasks ---
@@ -112,7 +112,7 @@ async def update_task(
             db, current_user.tenant_id, task_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -126,4 +126,4 @@ async def delete_task(
     try:
         await svc.delete_task(db, current_user.tenant_id, task_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

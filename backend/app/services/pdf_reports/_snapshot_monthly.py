@@ -4,7 +4,7 @@ Generación de PDF: informe mensual de gestión (snapshot).
 
 import io
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
             [
                 Paragraph(month_label, s_month),
                 Spacer(1, 3),
-                Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", s_generated),
+                Paragraph(f"Generado: {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')}", s_generated),
             ],
         ]
     ]
@@ -484,7 +484,7 @@ def generate_snapshot_pdf(snap: dict, company_name: str, month: str) -> bytes:
     elements.append(
         Paragraph(
             "Informe generado automáticamente por el motor de IA de AutomatizaCore · "
-            f"Período: {month_label} · {datetime.now().strftime('%d/%m/%Y')}",
+            f"Período: {month_label} · {datetime.now(UTC).strftime('%d/%m/%Y')}",
             s_footer,
         )
     )

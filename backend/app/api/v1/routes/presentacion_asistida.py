@@ -30,7 +30,7 @@ async def get_info(
     try:
         link = get_sede_link(modelo)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     descriptions = {
         "131": "IRPF — Estimación objetiva (módulos). Trimestral.",

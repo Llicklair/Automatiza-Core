@@ -57,9 +57,9 @@ async def get_current_user(
         raise credentials_exception
     try:
         user_uuid = UUID(user_id)
-    except ValueError:
+    except ValueError as exc:
         # JWT firmado pero con `sub` no-UUID → 401, no 500 (sin fuga de stacktrace).
-        raise credentials_exception
+        raise credentials_exception from exc
 
     # Eager-load tenant: get_current_tenant() accede a user.tenant; sin esto la
     # relación lazy dispara un segundo SELECT (o MissingGreenlet en async) en
@@ -99,8 +99,8 @@ async def get_tenant_or_404(
     """FastAPI dependency: resolve current user's tenant or raise 404."""
     try:
         return await tenant_service.get_tenant(db, current_user.tenant_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant no encontrado")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant no encontrado") from exc
 
 
 async def get_current_client_portal(
@@ -126,8 +126,8 @@ async def get_current_client_portal(
         # JWT firmado pero con `sub`/`tenant_id` no-UUID → 401, no 500.
         client_uuid = UUID(client_id)
         tenant_uuid = UUID(tenant_id)
-    except ValueError:
-        raise exc
+    except ValueError as err:
+        raise exc from err
     # El token del portal YA trae el tenant: lo fijamos ANTES del lookup para que
     # la RLS (fail-closed) ancle la propia SELECT del Client a ese tenant. Así un
     # client_id de otro tenant simplemente no aparece (defensa en profundidad),

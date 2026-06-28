@@ -72,9 +72,9 @@ async def record_backup_endpoint(
             encryption_key_label=body.encryption_key_label,
             note=body.note,
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("Error registrando backup")
-        raise HTTPException(status_code=500, detail="Error interno registrando el backup")
+        raise HTTPException(status_code=500, detail="Error interno registrando el backup") from exc
 
     await db.commit()
     return RecordBackupResponse(

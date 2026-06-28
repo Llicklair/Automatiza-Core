@@ -76,7 +76,7 @@ async def upload_cert(
             notes=notes,
         )
     except CertificateError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     return cert_to_dict(cert)
 
 
@@ -91,7 +91,7 @@ async def revoke_cert(
     try:
         cert = await revoke_certificate(db, current_user.tenant_id, cert_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return cert_to_dict(cert)
 
 
@@ -125,7 +125,7 @@ async def create_presentation_endpoint(
             environment=payload.environment,
         )
     except PresentationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return presentation_to_dict(p)
 
 
@@ -162,7 +162,7 @@ async def create_303_from_quarter(
             xml_unsigned=xml_str, environment=environment,
         )
     except PresentationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return presentation_to_dict(p)
 
 
@@ -230,7 +230,7 @@ async def create_quarterly_presentation(
             xml_unsigned=xml_str, environment=environment,
         )
     except PresentationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return presentation_to_dict(p)
 
 
@@ -257,7 +257,7 @@ async def create_yearly_presentation(
             xml_unsigned=xml_str, environment=environment,
         )
     except PresentationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return presentation_to_dict(p)
 
 
@@ -282,9 +282,9 @@ async def submit_presentation_endpoint(
             confirmed_by_user_id=None if dry_run else current_user.id,
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except PresentationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return presentation_to_dict(p)
 
 

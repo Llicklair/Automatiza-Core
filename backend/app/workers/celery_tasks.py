@@ -66,7 +66,7 @@ if celery_app is not None:
             asyncio.run(execute_orchestrator(task_id, tenant_id))
         except Exception as exc:
             _log.exception("celery_execute_orchestrator falló para task_id=%s", task_id)
-            raise self.retry(exc=exc)
+            raise self.retry(exc=exc) from exc
 
     @celery_app.task(
         name="resume_orchestrator",
@@ -87,7 +87,7 @@ if celery_app is not None:
             asyncio.run(resume_orchestrator(task_id, tenant_id))
         except Exception as exc:
             _log.exception("celery_resume_orchestrator falló para task_id=%s", task_id)
-            raise self.retry(exc=exc)
+            raise self.retry(exc=exc) from exc
 
 else:
     # Stubs so import never fails regardless of Redis availability

@@ -6,7 +6,7 @@ Si no → usa datos de demostración para no romper el flujo.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph
@@ -68,7 +68,7 @@ def _build_graph(tools_list, mode_note: str = ""):
         response = await local_llm_with_tools.ainvoke(state["messages"])
 
         result_log = StepResult(
-            step_id=f"email_step_{datetime.now().timestamp()}",
+            step_id=f"email_step_{datetime.now(UTC).timestamp()}",
             description="Procesando correos electrónicos...",
             status="completed",
             action_taken=(

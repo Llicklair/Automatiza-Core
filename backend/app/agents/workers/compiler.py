@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentState
 from app.agents.tool_registry import get_tool_for_employee
+from app.core.datetime_utils import local_today
 from app.core.llm_factory import get_llm
 from app.db.models.ai_employees import AgentSkill, AIEmployee
 
@@ -84,11 +85,10 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     employee_name = employee.name
 
     def _enriched_system_prompt(state: AgentState) -> str:
-        from datetime import date as _date
 
         tenant_id = state.get("tenant_id", "")
         user_id = state.get("user_id", "")
-        today = _date.today().isoformat()
+        today = local_today().isoformat()
         runtime_ctx = (
             "\n\n--- CONTEXTO DE EJECUCIÓN (USAR SIEMPRE) ---\n"
             f"tenant_id={tenant_id}\n"

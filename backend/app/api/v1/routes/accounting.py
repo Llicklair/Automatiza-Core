@@ -67,9 +67,9 @@ async def create_journal_entry(
             lines=[line.model_dump() for line in payload.lines],
         )
     except PeriodClosedError as exc:
-        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.delete("/journal/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -83,9 +83,9 @@ async def delete_journal_entry(
     try:
         await svc.delete_journal_entry(db, current_user.tenant_id, entry_id)
     except PeriodClosedError as exc:
-        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc)) from exc
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # ─── Fixed Assets ─────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ async def update_fixed_asset(
             db, current_user.tenant_id, asset_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete("/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -140,7 +140,7 @@ async def delete_fixed_asset(
     try:
         await svc.delete_fixed_asset(db, current_user.tenant_id, asset_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # ─── Cierre de periodo + libros oficiales ─────────────────────────────────────
@@ -199,7 +199,7 @@ async def close_accounting_period(
             payload.year, payload.kind, payload.period_index, payload.notes,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _period_to_dict(period)
 
 
@@ -216,9 +216,9 @@ async def reopen_accounting_period(
     try:
         period = await reopen_period(db, current_user.tenant_id, current_user.id, period_id, payload.reason)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _period_to_dict(period)
 
 

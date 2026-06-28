@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +84,6 @@ def check_last_backup() -> dict[str, Any]:
         "file": latest.name,
         "size_mb": round(stat.st_size / (1024 * 1024), 2),
         "age_hours": round(age_hours, 1),
-        "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        "created_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
         "total_dumps": len(dumps),
     }

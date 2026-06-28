@@ -1,7 +1,7 @@
 """HR agent — agent definition, graph nodes, and LLM orchestration."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
@@ -77,7 +77,7 @@ async def hr_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"hr_step_{datetime.now().timestamp()}",
+        step_id=f"hr_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de RRHH...",
         status="completed",
         action_taken=(

@@ -81,7 +81,7 @@ async def scan_product(
     try:
         return await svc.scan_product(db, UUID(scanner["tenant_id"]), payload.sku)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/stock-entry")
@@ -110,7 +110,7 @@ async def stock_entry(
             cost_price=payload.cost_price,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/stock-exit")
@@ -133,9 +133,9 @@ async def stock_exit(
             scanner.get("device", "mobile"),
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/confirm-delivery")
@@ -150,4 +150,4 @@ async def confirm_delivery(
     try:
         return await svc.confirm_delivery(db, UUID(scanner["tenant_id"]), payload.albaran_number)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

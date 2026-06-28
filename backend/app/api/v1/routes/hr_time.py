@@ -163,7 +163,7 @@ async def clock_in(
     try:
         record = await svc.clock_in(db, current_user.tenant_id, payload.employee_id, payload.notes)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return {"id": str(record.id), "employee_id": str(record.employee_id), "clock_in": record.clock_in.isoformat(), "clock_out": None, "date": record.date.isoformat(), "notes": record.notes}
 
 
@@ -178,7 +178,7 @@ async def clock_out(
     try:
         record = await svc.clock_out_attendance(db, current_user.tenant_id, attendance_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return {"id": str(record.id), "employee_id": str(record.employee_id), "clock_in": record.clock_in.isoformat(), "clock_out": record.clock_out.isoformat() if record.clock_out else None, "date": record.date.isoformat(), "notes": record.notes}
 
 
@@ -222,7 +222,7 @@ async def approve_leave_request(
     try:
         req = await svc.approve_leave_request(db, current_user.tenant_id, request_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _leave_row(req)
 
 
@@ -237,7 +237,7 @@ async def reject_leave_request(
     try:
         req = await svc.reject_leave_request(db, current_user.tenant_id, request_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _leave_row(req)
 
 
@@ -252,7 +252,7 @@ async def delete_leave_request(
     try:
         await svc.delete_leave_request(db, current_user.tenant_id, request_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 def _leave_row(req) -> dict:

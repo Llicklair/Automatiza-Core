@@ -79,9 +79,9 @@ async def reconcile_transaction(
             db, current_user.tenant_id, current_user.id, tx_id, payload.invoice_id
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/transactions/{tx_id}/ignore")
@@ -95,7 +95,7 @@ async def ignore_transaction(
     try:
         return await svc.ignore_transaction(db, current_user.tenant_id, tx_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.post("/transactions/{tx_id}/unreconcile")
@@ -109,7 +109,7 @@ async def unreconcile_transaction(
     try:
         return await svc.unreconcile_transaction(db, current_user.tenant_id, tx_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.get("/reconciliation/suggestions")
@@ -137,10 +137,10 @@ async def reject_reconciliation_suggestion(
     try:
         tx_id = uuid.UUID(str(payload.get("transaction_id")))
         inv_id = uuid.UUID(str(payload.get("invoice_id")))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
         raise HTTPException(
             status_code=422, detail="transaction_id e invoice_id deben ser UUIDs."
-        )
+        ) from exc
     return await svc.reject_reconciliation_suggestion(
         db,
         current_user.tenant_id,

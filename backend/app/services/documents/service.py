@@ -9,12 +9,14 @@ Sub-módulos extraídos:
 - _tabular: parseo e importación de archivos tabulares
 """
 
+import asyncio
 import io
 import logging
 import os
 import uuid
 import zipfile
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import desc, select
@@ -509,8 +511,7 @@ async def _regenerate_ai_invoice_pdf(
     if not pdf_bytes.startswith(b"%PDF-"):
         raise ValueError("No se pudo regenerar el PDF (bytes inválidos)")
 
-    with open(file_path, "wb") as f:
-        f.write(pdf_bytes)
+    await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
     doc.file_size = len(pdf_bytes)
     doc.file_type = "application/pdf"
     doc.processed_at = datetime.now(UTC)
@@ -545,8 +546,7 @@ async def update_content(
     else:
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         file_path = os.path.join(UPLOAD_DIR, doc.file_name or f"doc_{doc.id}.txt")
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(new_content)
+        await asyncio.to_thread(Path(file_path).write_text, new_content, encoding="utf-8")
         doc.file_path = file_path
         doc.file_size = len(new_content.encode())
 

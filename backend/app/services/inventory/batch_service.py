@@ -211,8 +211,8 @@ def _coerce_field(field: str, value: object) -> object:
     if field in _NUMERIC_FIELDS:
         try:
             num = Decimal(str(value))
-        except (InvalidOperation, ValueError, TypeError):
-            raise ValueError(f"'{field}' debe ser numérico (recibido: {value!r})")
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            raise ValueError(f"'{field}' debe ser numérico (recibido: {value!r})") from exc
         if num < 0:
             raise ValueError(f"'{field}' no puede ser negativo")
         if field == "stock_min_alert":

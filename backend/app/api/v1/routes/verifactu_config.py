@@ -63,6 +63,6 @@ async def put_endpoint(
             updated_by=user.id,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     await db.commit()
     return to_dict(record)

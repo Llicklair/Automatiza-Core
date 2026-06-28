@@ -2,11 +2,15 @@
 Generación de PDF: Informe Fiscal (IVA + IRPF + IS) y persistencia en BD.
 """
 
+import asyncio
 import io
 import logging
 import os
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
+
+from app.core.datetime_utils import BUSINESS_TZ
 
 _logger = logging.getLogger(__name__)
 
@@ -130,7 +134,7 @@ def _fiscal_header(company_name: str, period_label: str, st: dict) -> list:
                 Paragraph(period_label, st["period"]),
                 Spacer(1, 5),
                 Paragraph(
-                    f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", st["generated"]
+                    f"Generado: {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}", st["generated"]
                 ),
             ],
         ]
@@ -534,7 +538,7 @@ def _fiscal_footer(st: dict) -> list:
         ),
         Spacer(1, 3 * mm),
         Paragraph(
-            f"Generado por AutomatizaCore \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore \u00b7 {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}",
             st["footer"],
         ),
     ]
@@ -608,8 +612,7 @@ async def save_fiscal_report_to_db(
     safe_period = period.replace("-", "_")
     file_name = f"fiscal_{safe_period}_{uuid.uuid4().hex[:8]}.pdf"
     file_path = os.path.join(UPLOAD_DIR, file_name)
-    with open(file_path, "wb") as fh:
-        fh.write(pdf_bytes)
+    await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
     doc = TenantDocument(
         id=uuid.uuid4(),

@@ -14,7 +14,7 @@ from __future__ import annotations
 import io
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -185,7 +185,7 @@ def _build_cover(
             spaceAfter=12,
         )
     )
-    today = datetime.now().strftime("%d/%m/%Y")
+    today = datetime.now(UTC).strftime("%d/%m/%Y")
     story.append(Paragraph(f"<b>Empresa:</b> {tenant_name}", meta_style))
     story.append(Paragraph(f"<b>Autor:</b> {report.author}", meta_style))
     story.append(Paragraph(f"<b>Fecha:</b> {today}", meta_style))

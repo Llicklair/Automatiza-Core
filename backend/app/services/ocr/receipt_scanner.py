@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from app.core.config import settings
+from app.core.datetime_utils import local_today
 
 _log = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ def _build_receipt(payload: dict) -> ReceiptData:
     try:
         fecha = date.fromisoformat(str(payload["date"])[:10])
     except (KeyError, ValueError, TypeError):
-        fecha = date.today()
+        fecha = local_today()
 
     category = str(payload.get("category", "otro")).lower()
     if category not in ALLOWED_CATEGORIES:

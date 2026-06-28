@@ -46,7 +46,7 @@ async def preview_payroll(
         return PayrollCalculateResponse(**result)
     except ValueError as e:
         code = 404 if "no encontrado" in str(e) else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=str(e)) from e
 
 
 @router.post("/payrolls/auto", response_model=PayrollResponse, status_code=status.HTTP_201_CREATED)
@@ -61,7 +61,7 @@ async def generate_payroll_auto(
         return await svc.create_payroll_auto(payload, current_user.tenant_id, db)
     except ValueError as e:
         code = 404 if "no encontrado" in str(e) else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=str(e)) from e
 
 
 @router.get("/payrolls", response_model=list[PayrollResponse])
@@ -97,9 +97,9 @@ async def approve_payroll(
     try:
         payroll = await svc.approve_payroll(payroll_id, current_user.tenant_id, current_user.id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except InvalidTransitionError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     background_tasks.add_task(
         svc.generate_and_save_payroll_pdf,
@@ -122,7 +122,7 @@ async def update_payroll(
     try:
         payroll = await svc.update_payroll(payroll_id, payload, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not payroll:
         raise HTTPException(status_code=404, detail="Nómina no encontrada")
     return payroll
@@ -140,7 +140,7 @@ async def delete_payroll(
         if not await svc.delete_payroll(payroll_id, current_user.tenant_id, db):
             raise HTTPException(status_code=404, detail="Nómina no encontrada")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/payrolls/{payroll_id}/pdf")
@@ -158,7 +158,7 @@ async def download_payroll_pdf(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     return Response(
         content=pdf_bytes,

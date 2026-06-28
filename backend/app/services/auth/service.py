@@ -161,8 +161,8 @@ async def refresh(refresh_token: str, db: AsyncSession) -> dict:
         raise ValueError("Refresh token inválido o expirado")
     try:
         user_uuid = UUID(user_id)
-    except ValueError:
-        raise ValueError("Refresh token inválido o expirado")
+    except ValueError as exc:
+        raise ValueError("Refresh token inválido o expirado") from exc
 
     # Lookup PRE-tenant del User (el token aún no fija el ContextVar de tenant) →
     # bypass RLS, igual que login/get_current_user; `users` lleva tenant_id.

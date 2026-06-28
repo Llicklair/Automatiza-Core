@@ -123,7 +123,7 @@ async def run_workflow_manually(
         return await svc.run_workflow(workflow_id, current_user.tenant_id, current_user.id, db)
     except ValueError as e:
         status = 409 if "en curso" in str(e) else 400 if "desactivado" in str(e) else 404
-        raise HTTPException(status_code=status, detail=str(e))
+        raise HTTPException(status_code=status, detail=str(e)) from e
 
 
 @router.post(
@@ -143,7 +143,7 @@ async def cancel_execution(
             execution_id, workflow_id, current_user.tenant_id, db
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not execution:
         raise HTTPException(status_code=404, detail="Ejecución no encontrada")
     return execution
@@ -170,7 +170,7 @@ async def run_workflow_with_context(
         )
     except ValueError as e:
         status = 409 if "en curso" in str(e) else 400 if "desactivado" in str(e) else 404
-        raise HTTPException(status_code=status, detail=str(e))
+        raise HTTPException(status_code=status, detail=str(e)) from e
 
 
 @router.post(
@@ -190,10 +190,10 @@ async def resume_execution(
             execution_id, workflow_id, current_user.tenant_id, db
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as exc:
         _logger.exception("Error reanudando ejecucion de workflow")
-        raise HTTPException(status_code=500, detail="Error interno al reanudar la ejecución")
+        raise HTTPException(status_code=500, detail="Error interno al reanudar la ejecución") from exc
     if not execution:
         raise HTTPException(status_code=404, detail="Ejecución no encontrada")
     return execution
@@ -236,7 +236,7 @@ async def parse_natural_language_workflow(
         payload = await svc.parse_natural_language(body.text, current_user.tenant_id)
         return schemas.WorkflowParseResponse(**payload)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"No se pudo parsear la regla: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"No se pudo parsear la regla: {str(e)}") from e
 
 
 @router.post("/fire-event")

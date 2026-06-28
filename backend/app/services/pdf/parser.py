@@ -132,7 +132,7 @@ def _parse_with_opendataloader(file_path: str) -> ParsedDocument | None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def _parse_with_pypdf(file_path: str = None, file_bytes: bytes = None) -> ParsedDocument:
+def _parse_with_pypdf(file_path: str | None = None, file_bytes: bytes | None = None) -> ParsedDocument:
     """Fallback: parsea con pypdf (sin límite de 8 páginas)."""
     from pypdf import PdfReader
 
@@ -164,7 +164,7 @@ def _parse_with_pypdf(file_path: str = None, file_bytes: bytes = None) -> Parsed
     )
 
 
-def parse_pdf(file_path: str = None, file_bytes: bytes = None) -> ParsedDocument:
+def parse_pdf(file_path: str | None = None, file_bytes: bytes | None = None) -> ParsedDocument:
     """
     Parsea un PDF usando OpenDataLoader (preferido) o pypdf (fallback).
 

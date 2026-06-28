@@ -52,4 +52,4 @@ async def update_warehouse(
             db, current_user.tenant_id, warehouse_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

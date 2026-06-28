@@ -4,11 +4,13 @@ All functions here produce side effects: INSERT/UPDATE/DELETE or file writes.
 Read helpers are imported from queries.py to avoid duplication.
 """
 
+import asyncio
 import logging
 import os
 import uuid as uuid_mod
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -392,8 +394,7 @@ async def generate_and_save_invoice_pdf(invoice, tenant_id, user_id) -> None:
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         unique_name = f"{uuid_mod.uuid4().hex}.pdf"
         file_path = os.path.join(UPLOAD_DIR, unique_name)
-        with open(file_path, "wb") as f:
-            f.write(pdf_bytes)
+        await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
         async with AsyncSessionLocal() as session:
             doc = TenantDocument(
@@ -456,7 +457,7 @@ async def create_journal_entry(
 
     # Bloquear escritura si el periodo está cerrado
     from app.services.accounting import PeriodClosedError, is_date_locked
-    _date_for_check = date.date() if hasattr(date, "date") and callable(getattr(date, "date")) else date
+    _date_for_check = date.date() if hasattr(date, "date") and callable(date.date) else date
     locked, label = await is_date_locked(db, tenant_id, _date_for_check)
     if locked:
         raise PeriodClosedError(label or "?", target_date=_date_for_check if hasattr(_date_for_check, "isoformat") else None)
@@ -509,7 +510,7 @@ async def delete_journal_entry(
 
     # Bloquear borrado si el periodo está cerrado
     from app.services.accounting import PeriodClosedError, is_date_locked
-    _date_for_check = entry.date.date() if hasattr(entry.date, "date") and callable(getattr(entry.date, "date")) else entry.date
+    _date_for_check = entry.date.date() if hasattr(entry.date, "date") and callable(entry.date.date) else entry.date
     locked, label = await is_date_locked(db, tenant_id, _date_for_check)
     if locked:
         raise PeriodClosedError(label or "?", target_date=_date_for_check)

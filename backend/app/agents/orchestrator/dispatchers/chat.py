@@ -5,7 +5,7 @@ sin invocar agentes especializados. Usa el LLM directamente con contexto del ten
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -58,7 +58,7 @@ async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult
         extra_context = await _build_extra_context(state)
 
         system_prompt = _CHAT_SYSTEM.format(
-            date=datetime.now().strftime("%d/%m/%Y"),
+            date=datetime.now(UTC).strftime("%d/%m/%Y"),
             tenant_context=tenant_context,
             extra_context=extra_context,
         )
@@ -110,9 +110,7 @@ def _build_tenant_context(state: OrchestratorState) -> str:
     if not knowledge:
         return "No hay información adicional del tenant disponible."
 
-    lines = []
-    for fact in knowledge:
-        lines.append(f"- {fact.get('key', '')}: {fact.get('value', '')}")
+    lines = [f"- {fact.get('key', '')}: {fact.get('value', '')}" for fact in knowledge]
     return "\n".join(lines)
 
 

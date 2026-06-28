@@ -85,9 +85,9 @@ async def download_backup_endpoint(filename: str):
     try:
         path = backup_service.get_backup_path(filename)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FileResponse(
         path=path,
         filename=filename,
@@ -107,9 +107,9 @@ async def restore_backup_endpoint(filename: str):
     try:
         return await backup_service.restore_backup(filename)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete(
@@ -122,7 +122,7 @@ async def delete_backup_endpoint(filename: str):
     try:
         deleted = backup_service.delete_backup(filename)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Backup no encontrado: {filename}")
     return None

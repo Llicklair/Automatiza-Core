@@ -2,10 +2,12 @@
 Herramientas del agente de documentos.
 """
 
+import asyncio
 import json
 import logging
 import os
 import re
+from pathlib import Path
 from uuid import UUID
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -116,8 +118,7 @@ async def import_invoice_document(
             if not doc.file_path or not os.path.exists(doc.file_path):
                 return f"Error: no se encuentra el fichero de '{doc.file_name}'."
 
-            with open(doc.file_path, "rb") as f:
-                content = f.read()
+            content = await asyncio.to_thread(Path(doc.file_path).read_bytes)
             mime = doc.file_type or "application/pdf"
             uploaded_by = doc.uploaded_by
             tid = doc.tenant_id
@@ -218,8 +219,7 @@ async def _load_doc_and_extract_text(
 
         file_bytes = None
         if doc.file_path and os.path.exists(doc.file_path):
-            with open(doc.file_path, "rb") as f:
-                file_bytes = f.read()
+            file_bytes = await asyncio.to_thread(Path(doc.file_path).read_bytes)
 
         parsed_doc = None
         raw_text = ""
@@ -301,7 +301,7 @@ async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, par
                 select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id))
             )
             jurisdiction = j_res.scalar() or "ES_TAX"
-            for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors)):
+            for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors, strict=False)):
                 db.add(
                     DocumentEmbedding(
                         document_id=UUID(str(document_id)),

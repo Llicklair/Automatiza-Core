@@ -18,6 +18,7 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import case, desc, extract, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.db.models.billing import InvoiceLine
 from app.db.models.hr import Expense, JornadaRecord, LeaveRequest
 from app.db.models.inventory import Product, StockMovement
@@ -116,7 +117,7 @@ async def get_dashboard(
     Cacheado en Redis con TTL de 5 min (ver `_DASHBOARD_TTL_SECONDS`).
     Si Redis no está disponible (sin REDIS_URL), se ejecuta sin caché.
     """
-    today = date.today()
+    today = local_today()
 
     # ── Facturas: agregaciones del periodo ───────────────────────────────
     issued_period_q = select(
