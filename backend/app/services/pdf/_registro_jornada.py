@@ -2,7 +2,7 @@
 
 import calendar
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.services.pdf._hr_common import _generate_simple_text, _make_hr_doc
 from app.services.pdf.pdf_base import (
@@ -43,7 +43,7 @@ def generate_registro_jornada_pdf(registro_data: dict) -> bytes:
     employee = registro_data.get("employee", {})
     company = registro_data.get("company", {})
     mes = int(registro_data.get("mes", 1))
-    anio = int(registro_data.get("anio", datetime.now().year))
+    anio = int(registro_data.get("anio", datetime.now(UTC).year))
 
     # Titulo
     elements.append(Spacer(1, 4 * mm))
@@ -140,7 +140,7 @@ def generate_registro_jornada_pdf(registro_data: dict) -> bytes:
     # Localidad y fecha
     elements.append(
         Paragraph(
-            f"A {datetime.now().day} de {_month_name_es(datetime.now().month)} de {datetime.now().year}",
+            f"A {datetime.now(UTC).day} de {_month_name_es(datetime.now(UTC).month)} de {datetime.now(UTC).year}",
             S["body"],
         )
     )

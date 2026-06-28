@@ -3,7 +3,7 @@ Utilidades compartidas para la generación de PDFs.
 Importaciones de ReportLab + helpers de estilo reutilizables.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 try:
     from reportlab.lib import colors
@@ -247,7 +247,7 @@ def table_style_commands(theme: dict, num_data_rows: int = 1) -> list:
 
 def _format_date(date_str: str) -> str:
     if not date_str:
-        return datetime.now().strftime("%d/%m/%Y")
+        return datetime.now(UTC).strftime("%d/%m/%Y")
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         return dt.strftime("%d/%m/%Y")
@@ -374,7 +374,7 @@ def _trad_table_style(has_header: bool = True, grid: bool = True) -> list:
 
 def _signature_block(labels: list[str], width_mm: float = 180) -> "Table":
     """Bloque de firmas con N columnas (Fdo. empresa, Fdo. trabajador, etc.)."""
-    if not REPORTLAB_AVAILABLE:
+    if not REPORTLAB_AVAILABLE or not labels:
         return None
     col_w = (width_mm / len(labels)) * mm
     header_row = [
@@ -466,7 +466,7 @@ def _invoice_footer(
         ),
         Spacer(1, 2 * mm),
         Paragraph(
-            f"Generado por AutomatizaCore \u00b7 {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore \u00b7 {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')}",
             ParagraphStyle(
                 "IF_ts",
                 parent=styles["Normal"],

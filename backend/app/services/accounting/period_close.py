@@ -11,7 +11,7 @@ Reglas:
 from __future__ import annotations
 
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -144,7 +144,7 @@ async def close_period(
         if existing.status == "closed":
             return existing  # idempotente
         existing.status = "closed"
-        existing.closed_at = datetime.now()
+        existing.closed_at = datetime.now(UTC)
         existing.closed_by_id = user_id
         existing.notes = notes
         await db.commit()
@@ -194,7 +194,7 @@ async def reopen_period(
         )
 
     period.status = "reopened"
-    period.reopened_at = datetime.now()
+    period.reopened_at = datetime.now(UTC)
     period.reopened_by_id = user_id
     period.reopen_reason = reason.strip()[:500]
     await db.commit()

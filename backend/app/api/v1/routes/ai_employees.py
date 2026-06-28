@@ -199,10 +199,10 @@ async def instruct_employee(
     except ValueError as e:
         msg = str(e)
         if "pausado" in msg or "paused" in msg:
-            raise HTTPException(status_code=409, detail="El empleado está pausado")
+            raise HTTPException(status_code=409, detail="El empleado está pausado") from e
         if "budget_exceeded" in msg:
-            raise HTTPException(status_code=402, detail="Presupuesto agotado para este empleado")
-        raise HTTPException(status_code=404, detail=msg)
+            raise HTTPException(status_code=402, detail="Presupuesto agotado para este empleado") from e
+        raise HTTPException(status_code=404, detail=msg) from e
 
 
 @router.delete("/ai-employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)

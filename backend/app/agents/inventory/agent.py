@@ -1,6 +1,6 @@
 """Inventory (stock) agent — LangGraph graph for stock queries and batch edits."""
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
@@ -16,6 +16,8 @@ from .tools import tools
 
 async def inventory_agent_node(state: AgentState):
     """Nodo principal: el LLM razona y elige herramientas de stock."""
+    # Fecha de negocio para el prompt: día local (Madrid), no UTC — cerca de medianoche
+    # UTC daría el día anterior y confundiría el razonamiento del LLM.
     today = date.today().isoformat()
 
     if "messages" not in state or not state["messages"]:
@@ -36,7 +38,7 @@ async def inventory_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"inventory_step_{datetime.now().timestamp()}",
+        step_id=f"inventory_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de stock...",
         status="completed",
         action_taken=(

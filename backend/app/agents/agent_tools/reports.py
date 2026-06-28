@@ -8,10 +8,12 @@ fila correspondiente en TenantDocument para que aparezca en el Gestor.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 from langchain_core.tools import tool
@@ -153,11 +155,10 @@ async def create_pdf_report(
             return f"Error generando PDF: {e}"
 
         upload_dir = _resolve_upload_dir(category)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         file_name = f"{_slugify(report.title)}_{ts}.pdf"
         file_path = os.path.join(upload_dir, file_name)
-        with open(file_path, "wb") as f:
-            f.write(pdf_bytes)
+        await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
         async with AsyncSessionLocal() as db:
             doc = TenantDocument(
@@ -262,7 +263,7 @@ async def create_pdf_text_report(
         # contenido del LLM suele ser más completo que el primero.
         from datetime import timedelta
         async with AsyncSessionLocal() as db:
-            cutoff = datetime.now() - timedelta(seconds=90)
+            cutoff = datetime.now(UTC) - timedelta(seconds=90)
             recent = await db.execute(
                 select(TenantDocument)
                 .where(
@@ -286,12 +287,11 @@ async def create_pdf_text_report(
         if existing:
             file_path = existing.file_path
             file_name = existing.file_name
-            with open(file_path, "wb") as f:
-                f.write(pdf_bytes)
+            await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
             async with AsyncSessionLocal() as db:
                 # refresh tamaño/timestamp + task_id si aún no estaba seteado
                 from sqlalchemy import update
-                values = {"file_size": len(pdf_bytes), "processed_at": datetime.now()}
+                values = {"file_size": len(pdf_bytes), "processed_at": datetime.now(UTC)}
                 if task_uuid is not None and existing.task_id is None:
                     values["task_id"] = task_uuid
                 await db.execute(
@@ -306,11 +306,10 @@ async def create_pdf_text_report(
                 f"{len(pdf_bytes)} bytes."
             )
 
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         file_name = f"{slug}_{ts}.pdf"
         file_path = os.path.join(upload_dir, file_name)
-        with open(file_path, "wb") as f:
-            f.write(pdf_bytes)
+        await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
         async with AsyncSessionLocal() as db:
             doc = TenantDocument(

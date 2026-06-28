@@ -182,7 +182,7 @@ async def create_invitation(
             ttl_days=payload.ttl_days,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return InvitationCreateResponse(
         id=str(inv.id),

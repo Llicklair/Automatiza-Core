@@ -8,6 +8,8 @@ import re
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from app.core.datetime_utils import local_today
+
 # ─── NIF / CIF ────────────────────────────────────────────────────────────────
 
 # Tabla de control DNI
@@ -189,7 +191,7 @@ def validate_amount(amount) -> tuple[bool, str]:
 
 
 def validate_invoice_date(invoice_date: date) -> tuple[bool, str]:
-    today = date.today()
+    today = local_today()
     too_old = today - timedelta(days=365)  # Más de 1 año en el pasado
     too_future = today + timedelta(days=365)  # Más de 1 año en el futuro
 

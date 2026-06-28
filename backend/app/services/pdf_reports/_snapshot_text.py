@@ -4,7 +4,7 @@ Generación de PDF: informe de texto genérico.
 
 import io
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def generate_text_report_pdf(title: str, content: str, category: str = "Informe"
 
     elements = []
 
-    elements.append(Paragraph(datetime.now().strftime("%d/%m/%Y %H:%M"), date_style))
+    elements.append(Paragraph(datetime.now(UTC).strftime("%d/%m/%Y %H:%M"), date_style))
     elements.append(Paragraph(category, category_style))
     elements.append(Paragraph(title, title_style))
     elements.append(

@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.db.models.models import Activity, Event, Opportunity, Reservation
 
 # ---- Opportunities ----
@@ -69,9 +70,8 @@ async def list_reservations(db: AsyncSession, tenant_id: UUID) -> list[Reservati
 
 def build_context_for_client(client, tenant) -> dict:
     import uuid
-    from datetime import date
 
-    today = date.today()
+    today = local_today()
     ctx = {
         "nombre_cliente": client.name or "",
         "nif_cliente": client.nif or "",
@@ -87,9 +87,8 @@ def build_context_for_client(client, tenant) -> dict:
 
 def build_context_for_employee(employee, tenant) -> dict:
     import uuid
-    from datetime import date
 
-    today = date.today()
+    today = local_today()
     ctx = {
         "nombre_empleado": employee.name or "",
         "nif_empleado": employee.nif or "",

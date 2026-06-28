@@ -70,7 +70,7 @@ async def patch_step(
             value=payload.value,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     await db.commit()
     return to_dict(record)
 
@@ -101,7 +101,7 @@ async def get_simulate_303(
     try:
         return simulate_modelo_303(quarter=quarter, year=year)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/reset", response_model=WizardStateOut)

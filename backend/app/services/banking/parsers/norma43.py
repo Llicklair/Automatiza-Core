@@ -19,7 +19,7 @@ calculado a partir del saldo inicial de la cuenta.
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 
 class Norma43Error(ValueError):
@@ -64,7 +64,7 @@ def _date(s: str) -> date | None:
     if not s or s == "000000":
         return None
     try:
-        return datetime.strptime(s, "%y%m%d").date()
+        return datetime.strptime(s, "%y%m%d").replace(tzinfo=UTC).date()
     except ValueError as e:
         raise Norma43Error(f"Fecha inválida en N43: {s!r}") from e
 

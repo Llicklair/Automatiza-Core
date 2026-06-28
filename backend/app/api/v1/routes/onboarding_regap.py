@@ -100,7 +100,7 @@ async def post_grant(
     try:
         record = await mark_power_granted(db, tenant_id=user.tenant_id)
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
     await db.commit()
     return _to_out(record)
 
@@ -125,7 +125,7 @@ async def post_verify(
             db, tenant_id=user.tenant_id, nif_cliente=payload.nif_cliente,
         )
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
     await db.commit()
     return _to_out(record)
 

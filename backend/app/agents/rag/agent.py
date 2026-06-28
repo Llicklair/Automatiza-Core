@@ -2,7 +2,7 @@
 RAG agent — LangGraph graph definition and node logic.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
@@ -31,7 +31,7 @@ async def rag_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"rag_step_{datetime.now().timestamp()}",
+        step_id=f"rag_step_{datetime.now(UTC).timestamp()}",
         description="Procesando consulta documental...",
         status="completed",
         action_taken="Buscando en documentos"

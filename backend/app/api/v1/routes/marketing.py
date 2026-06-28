@@ -247,7 +247,7 @@ async def connect_account(
     try:
         client = client_for_config(cfg)
     except ZernioError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     profile_id = await _resolve_profile_id(db, cfg, client)
     base = settings.OAUTH_REDIRECT_URI.split("/api/v1")[0]
@@ -255,9 +255,9 @@ async def connect_account(
     redirect_url = f"{base}/api/v1/marketing/zernio/callback/{state}"
     try:
         auth_url = await client.connect_url(platform, profile_id, redirect_url)
-    except ZernioError:
+    except ZernioError as exc:
         _logger.exception("Error con el proveedor Zernio")
-        raise HTTPException(status_code=502, detail="Error al comunicar con el proveedor Zernio")
+        raise HTTPException(status_code=502, detail="Error al comunicar con el proveedor Zernio") from exc
     if not auth_url:
         raise HTTPException(status_code=502, detail="Zernio no devolvió URL de conexión.")
     return {"auth_url": auth_url}
@@ -273,9 +273,9 @@ async def disconnect_account(
 
     try:
         ok = await social_accounts.disconnect_account(account_id, current_user.tenant_id, db)
-    except ZernioError:
+    except ZernioError as exc:
         _logger.exception("Error con el proveedor Zernio")
-        raise HTTPException(status_code=502, detail="Error al comunicar con el proveedor Zernio")
+        raise HTTPException(status_code=502, detail="Error al comunicar con el proveedor Zernio") from exc
     if not ok:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 
@@ -389,7 +389,7 @@ async def add_zernio_config(
     try:
         profiles = await client.list_profiles()
     except ZernioError as e:
-        raise HTTPException(status_code=400, detail=f"La API key no es válida: {e}")
+        raise HTTPException(status_code=400, detail=f"La API key no es válida: {e}") from e
     default_pid = str(profiles[0].get("_id") or profiles[0].get("id")) if profiles else None
     cfg = await add_provider_config(
         db, current_user.tenant_id, key, label=body.label, default_profile_id=default_pid,
@@ -665,7 +665,7 @@ async def generate_plan(
                 # de Render puede estar frío y N búsquedas secuenciales colgaban
                 # la request HTTP. Sin imagen → None (editable después).
                 imgs = await _search_images_bounded([p.name for p in products])
-                for day, (prod, img) in enumerate(zip(products, imgs), start=1):
+                for day, (prod, img) in enumerate(zip(products, imgs, strict=False), start=1):
                     price = f"{prod.price:.0f}€" if prod.price else ""
                     desc = (prod.description or "").strip()
                     hook = desc[:180] if desc else "La solución que tu empresa necesita para dar el siguiente paso."
@@ -726,7 +726,7 @@ async def generate_plan(
         missing = [p for p in created if not p.image_url]
         if missing:
             imgs = await _search_images_bounded([p.content[:80] for p in missing])
-            for p, img in zip(missing, imgs):
+            for p, img in zip(missing, imgs, strict=False):
                 if img:
                     p.image_url = img
 
@@ -774,8 +774,8 @@ async def publish_post_now(
 
     try:
         res = await publish_single_post(post_id, current_user.tenant_id, db)
-    except PostAlreadyPublishedError:
-        raise HTTPException(status_code=409, detail="El post ya está publicado")
+    except PostAlreadyPublishedError as exc:
+        raise HTTPException(status_code=409, detail="El post ya está publicado") from exc
     if res is None:
         raise HTTPException(status_code=404, detail="Post no encontrado")
     post, ok = res

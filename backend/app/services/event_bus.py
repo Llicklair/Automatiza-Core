@@ -165,11 +165,10 @@ async def emit_event(
 
     # 7. Notificar via WebSocket (UI dinámica)
     try:
-        import asyncio
-
         from app.api.ws.notifications import manager
+        from app.core.background import spawn
 
-        asyncio.create_task(
+        spawn(
             manager.broadcast_to_tenant(
                 str(tenant_id),
                 {"type": "event", "event": event_name, "workflow_count": len(triggered_ids)},

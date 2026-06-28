@@ -237,7 +237,9 @@ class TestHrProviders:
 
     async def _make_payrolls(self, db, tenant_id, employees_count, statuses):
         emps = []
-        for i in range(employees_count):
+        # Un empleado por nómina: la UNIQUE (tenant, employee, period_start) impide
+        # varias nóminas del mismo empleado en el mismo período (mismo mes aquí).
+        for i in range(max(employees_count, len(statuses))):
             e = Employee(
                 tenant_id=tenant_id,
                 name=f"PEmp {i}",
@@ -254,7 +256,7 @@ class TestHrProviders:
         for i, status in enumerate(statuses):
             db.add(Payroll(
                 tenant_id=tenant_id,
-                employee_id=emps[i % len(emps)].id,
+                employee_id=emps[i].id,
                 period_start=_utcnow().replace(day=1),
                 period_end=_utcnow(),
                 issue_date=_utcnow(),

@@ -77,10 +77,10 @@ async def scan_invoice(
             db=db,
         )
     except InvoiceExtractionError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as exc:
         logger.exception("Fallo procesando factura recibida")
-        raise HTTPException(status_code=500, detail="Error al procesar la factura")
+        raise HTTPException(status_code=500, detail="Error al procesar la factura") from exc
 
     payload = data.to_dict()
     nif = (payload.get("emisor") or {}).get("nif")
@@ -300,7 +300,7 @@ async def update_invoice_status(
         return await svc.update_status(invoice_id, current_user.tenant_id, payload.status, db)
     except ValueError as e:
         code = 404 if "no encontrada" in str(e) else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=str(e)) from e
 
 
 @router.delete("/invoices/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
@@ -315,7 +315,7 @@ async def delete_invoice(
         deleted = await svc.delete_invoice(invoice_id, current_user.tenant_id, db)
     except ValueError as e:
         # Verifactu inmutable o periodo contable cerrado → 409 (conflicto), no 500.
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
     if not deleted:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
@@ -348,7 +348,7 @@ async def create_invoice(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     background_tasks.add_task(
         svc.generate_and_save_invoice_pdf,
@@ -403,7 +403,7 @@ async def create_rectificativa(
         )
     except ValueError as e:
         code = 404 if "no encontrada" in str(e) else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=str(e)) from e
 
     background_tasks.add_task(
         svc.generate_and_save_invoice_pdf,
@@ -429,7 +429,7 @@ async def download_invoice_pdf(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -454,7 +454,7 @@ async def download_rectificative_invoice_pdf(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -479,7 +479,7 @@ async def download_retention_invoice_pdf(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -498,7 +498,7 @@ async def download_facturae(
     try:
         xml_bytes, file_name = await generate_facturae_xml(invoice_id, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     # Auto-sign if tenant has a certificate
     tenant_res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
@@ -528,4 +528,4 @@ async def send_to_verifactu(
     try:
         return await mark_verifactu_sent(invoice_id, current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

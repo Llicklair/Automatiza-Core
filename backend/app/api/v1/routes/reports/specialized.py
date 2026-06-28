@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.core.dependencies import get_current_user, get_tenant_or_404
 from app.db.base import get_db
 from app.db.models.models import Tenant, User
@@ -33,8 +34,8 @@ async def generate_cashflow(
     try:
         start_date = date.fromisoformat(start)
         end_date = date.fromisoformat(end)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Formato de fecha invalido. Usa YYYY-MM-DD.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Formato de fecha invalido. Usa YYYY-MM-DD.") from exc
 
     data = await build_cashflow_data(db, current_user.tenant_id, start_date, end_date)
     pdf_bytes = generate_cashflow_report_pdf(data)
@@ -57,7 +58,7 @@ async def generate_delinquency(
     """Genera PDF de informe de morosidad (facturas vencidas impagadas)."""
     data = await build_delinquency_data(db, current_user.tenant_id)
     pdf_bytes = generate_delinquency_report_pdf(data)
-    file_name = f"Morosidad_{date.today().isoformat()}.pdf"
+    file_name = f"Morosidad_{local_today().isoformat()}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

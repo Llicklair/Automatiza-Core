@@ -1,6 +1,8 @@
 """Rutas RRHH — gastos de empleados."""
 
+import asyncio
 import logging
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import (
@@ -80,10 +82,10 @@ async def scan_expense_receipt(
     try:
         data = await extract_receipt_data(content, mime)
     except ReceiptExtractionError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as exc:
         logging.getLogger(__name__).exception("Fallo procesando ticket")
-        raise HTTPException(status_code=500, detail="Error al procesar el ticket")
+        raise HTTPException(status_code=500, detail="Error al procesar el ticket") from exc
     return data.to_dict()
 
 
@@ -98,7 +100,7 @@ async def approve_expense(
     try:
         exp = await svc.approve_expense(db, current_user.tenant_id, expense_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _expense_row(exp)
 
 
@@ -113,7 +115,7 @@ async def reject_expense(
     try:
         exp = await svc.reject_expense(db, current_user.tenant_id, expense_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _expense_row(exp)
 
 
@@ -128,7 +130,7 @@ async def reimburse_expense(
     try:
         exp = await svc.reimburse_expense(db, current_user.tenant_id, expense_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _expense_row(exp)
 
 
@@ -147,7 +149,7 @@ async def upload_expense_receipt(
             db, current_user.tenant_id, expense_id, content, file.filename or "recibo"
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return _expense_row(exp)
 
 
@@ -167,8 +169,7 @@ async def download_expense_receipt(
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     import mimetypes
     mime, _ = mimetypes.guess_type(filename)
-    with open(path, "rb") as f:
-        content = f.read()
+    content = await asyncio.to_thread(Path(path).read_bytes)
     return Response(
         content=content,
         media_type=mime or "application/octet-stream",
@@ -187,7 +188,7 @@ async def delete_expense(
     try:
         await svc.delete_expense(db, current_user.tenant_id, expense_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 def _expense_row(exp) -> dict:

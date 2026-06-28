@@ -132,9 +132,11 @@ async def save_ai_result_as_document(
     Guarda el resultado textual de un Agente IA como un documento PDF.
     Implementa lógica de SOBREESCRITURA si existe un documento similar en la carpeta.
     """
+    import asyncio
     import os
     import uuid
     from datetime import UTC, datetime
+    from pathlib import Path
 
     from sqlalchemy import or_, select
 
@@ -172,8 +174,7 @@ async def save_ai_result_as_document(
         # Generar PDF desde el contenido
         pdf_bytes = generate_text_report_pdf(title, content, category)
 
-        with open(file_path, "wb") as f:
-            f.write(pdf_bytes)
+        await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
         async with AsyncSessionLocal() as db:
             # Buscar si ya existe un doc similar para SOBREESCRIBIR

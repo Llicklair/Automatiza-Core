@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 _log = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ async def submit_signed_xml(
         body = (
             f"<respuesta><resultado>OK</resultado>"
             f"<csv>{fake_csv}</csv>"
-            f"<fecha>{datetime.utcnow().isoformat()}Z</fecha>"
+            f"<fecha>{datetime.now(UTC).replace(tzinfo=None).isoformat()}Z</fecha>"
             f"<dryRun>true</dryRun></respuesta>"
         )
         _log.info("AEAT dry-run submission: model=%s env=%s csv=%s", model_code, environment, fake_csv)

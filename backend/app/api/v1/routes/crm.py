@@ -55,7 +55,7 @@ async def update_opportunity(
             db, current_user.tenant_id, opp_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/opportunities/{opp_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -69,7 +69,7 @@ async def delete_opportunity(
     try:
         await svc.delete_opportunity(db, current_user.tenant_id, opp_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # ---- Activities ----
@@ -79,8 +79,8 @@ async def delete_opportunity(
 @limiter.limit("30/minute")
 async def list_activities(
     request: Request,
-    client_id: UUID = None,
-    opportunity_id: UUID = None,
+    client_id: UUID | None = None,
+    opportunity_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -113,7 +113,7 @@ async def delete_activity(
     try:
         await svc.delete_activity(db, current_user.tenant_id, activity_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # ---- Events / Calendar ----
@@ -154,7 +154,7 @@ async def update_event(
             db, current_user.tenant_id, event_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -168,7 +168,7 @@ async def delete_event(
     try:
         await svc.delete_event(db, current_user.tenant_id, event_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # ---- Reservations ----
@@ -211,7 +211,7 @@ async def update_reservation(
             db, current_user.tenant_id, res_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/reservations/{res_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -225,4 +225,4 @@ async def delete_reservation(
     try:
         await svc.delete_reservation(db, current_user.tenant_id, res_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

@@ -140,9 +140,10 @@ async def list_journal_entries(
             if not entries:
                 return "No se encontraron asientos con los filtros indicados."
 
-            lines_out = []
-            for e in entries:
-                lines_out.append(f"- [{e.date.strftime('%d/%m/%Y') if e.date else '?'}] {e.description} | ID: {e.id}")
+            lines_out = [
+                f"- [{e.date.strftime('%d/%m/%Y') if e.date else '?'}] {e.description} | ID: {e.id}"
+                for e in entries
+            ]
             return f"Asientos encontrados ({len(entries)}):\n" + "\n".join(lines_out)
     except Exception as e:
         logger.exception("Error listando asientos")

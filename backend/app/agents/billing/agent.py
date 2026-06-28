@@ -2,7 +2,7 @@
 Billing agent — LangGraph graph definition and node logic.
 """
 
-from datetime import date, datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
@@ -10,6 +10,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.agents.base import AgentState
 from app.agents.types import StepResult
+from app.core.datetime_utils import local_today
 from app.core.llm_factory import get_llm, make_cached_system_message
 
 from .prompts import BILLING_SYSTEM_PROMPT
@@ -18,7 +19,7 @@ from .tools import tools
 
 async def billing_agent_node(state: AgentState):
     """Nodo principal: el LLM razona y elige herramientas."""
-    today = date.today().isoformat()
+    today = local_today().isoformat()
 
     if "messages" not in state or not state["messages"]:
         sys_msg = make_cached_system_message(
@@ -37,7 +38,7 @@ async def billing_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"billing_step_{datetime.now().timestamp()}",
+        step_id=f"billing_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de facturación...",
         status="completed",
         action_taken=(

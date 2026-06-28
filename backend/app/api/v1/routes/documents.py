@@ -85,7 +85,7 @@ async def contract_interview(
             [m.model_dump() for m in body.messages],
         )
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @router.post("/contracts/save", response_model=DocumentOut)
@@ -136,7 +136,7 @@ async def upload_document(
         )
     except ValueError as e:
         code = 413 if "grande" in str(e) else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=str(e)) from e
     return doc
 
 
@@ -239,8 +239,8 @@ async def upload_bulk_documents(
             db,
             category,
         )
-    except zipfile.BadZipFile:
-        raise HTTPException(status_code=400, detail="El archivo ZIP esta corrupto")
+    except zipfile.BadZipFile as exc:
+        raise HTTPException(status_code=400, detail="El archivo ZIP esta corrupto") from exc
     return docs
 
 
@@ -311,9 +311,9 @@ async def download_document(
     try:
         file_path = await svc.prepare_download(doc, current_user.tenant_id, db)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
     media_type = doc.file_type or "application/octet-stream"
     safe_filename = doc.file_name.replace('"', "_") if doc.file_name else f"documento_{document_id}"
@@ -357,7 +357,7 @@ async def update_document_content(
         doc = await svc.update_content(doc, new_content, append_mode, db)
     except OSError as e:
         logger.error("update_content: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Error al escribir el archivo")
+        raise HTTPException(status_code=500, detail="Error al escribir el archivo") from e
     return doc
 
 
@@ -400,7 +400,7 @@ async def upload_contract_template(
         )
     except ValueError as e:
         code = 413 if "grande" in str(e) else 400
-        raise HTTPException(status_code=code, detail=str(e))
+        raise HTTPException(status_code=code, detail=str(e)) from e
     return doc
 
 
@@ -430,21 +430,21 @@ async def preview_contract_template_html(
     try:
         file_path = svc.validate_template_on_disk(doc)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     try:
         data = svc.preview_contract_html(file_path)
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(
             status_code=501, detail="mammoth no instalado. Ejecuta: pip install mammoth"
-        )
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Archivo de plantilla no encontrado")
+        ) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Archivo de plantilla no encontrado") from exc
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
         logger.error("preview_contract_template_html: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Error al generar la vista previa")
+        raise HTTPException(status_code=500, detail="Error al generar la vista previa") from e
     return ContractPreviewHtmlOut(**data)
 
 
@@ -465,16 +465,16 @@ async def save_contract_template_body_html(
     try:
         new_size = await svc.save_contract_html_and_update(body.html, doc, db)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ImportError:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ImportError as exc:
         raise HTTPException(
             status_code=501, detail="htmldocx no instalado. Ejecuta: pip install htmldocx"
-        )
+        ) from exc
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except OSError as e:
         logger.error("save_contract_template_body_html: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="No se pudo guardar el archivo")
+        raise HTTPException(status_code=500, detail="No se pudo guardar el archivo") from e
 
     return {"status": "saved", "file_size": new_size}
 
@@ -496,7 +496,7 @@ async def generate_contract(
     try:
         svc.validate_template_on_disk(doc)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     try:
         docx_bytes, filename = await svc.generate_contract_from_template(
@@ -507,14 +507,14 @@ async def generate_contract(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except ImportError:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except ImportError as exc:
         raise HTTPException(
             status_code=501, detail="docxtpl no instalado. Ejecuta: pip install docxtpl"
-        )
+        ) from exc
     except Exception as e:
         logger.error("generate_contract: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Error al generar el contrato")
+        raise HTTPException(status_code=500, detail="Error al generar el contrato") from e
 
     return Response(
         content=docx_bytes,
@@ -641,9 +641,9 @@ async def erp_import_preview(
     try:
         return await preview_import(db, current_user.tenant_id, document_id, target)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except (ValueError, FileNotFoundError) as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @limiter.limit("10/minute")
@@ -665,6 +665,6 @@ async def erp_import_apply(
     try:
         return await apply_import(db, current_user.tenant_id, document_id, target)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except (ValueError, FileNotFoundError) as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e

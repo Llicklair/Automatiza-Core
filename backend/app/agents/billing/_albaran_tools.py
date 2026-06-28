@@ -11,6 +11,7 @@ from uuid import UUID
 from langchain_core.tools import tool
 from sqlalchemy import desc, select
 
+from app.core.datetime_utils import local_today
 from app.db.base import AsyncSessionLocal
 from app.db.models.billing import DeliveryNote, DeliveryNoteLine
 
@@ -67,7 +68,7 @@ async def create_albaran(
     """
     try:
         lines_data = json.loads(lines_json)
-        entry_date = date.fromisoformat(albaran_date) if albaran_date else date.today()
+        entry_date = date.fromisoformat(albaran_date) if albaran_date else local_today()
 
         client_result = await _resolve_client(tenant_id, client_name)
         if isinstance(client_result, str):

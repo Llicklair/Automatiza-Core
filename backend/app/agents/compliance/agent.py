@@ -2,7 +2,7 @@
 Compliance agent — LangGraph graph definition and node logic.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
@@ -31,7 +31,7 @@ async def compliance_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"compliance_step_{datetime.now().timestamp()}",
+        step_id=f"compliance_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de compliance...",
         status="completed",
         action_taken="Invocando herramientas de compliance"

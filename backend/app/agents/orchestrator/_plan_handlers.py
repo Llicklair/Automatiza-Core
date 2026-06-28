@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -315,7 +315,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
         "Conoces el PGC 2007, la normativa AEAT, tipos de IVA (21%/10%/4%/0%), "
         "Seguridad Social (CC 4,70%, desempleo 1,55%, FP 0,10%, MEI según el año "
         "—0,13% en 2025, 0,15% en 2026—) y el ET.\n"
-        f"La empresa opera en euros bajo ley española. Hoy es {datetime.now().strftime('%d/%m/%Y')}.\n\n"
+        f"La empresa opera en euros bajo ley española. Hoy es {datetime.now(UTC).strftime('%d/%m/%Y')}.\n\n"
         "Descompón la petición en pasos MÍNIMOS usando SOLO los agentes necesarios. Ejecución puntual — NO crees reglas recurrentes.\n\n"
         f"Petición: {state['user_intent']}\n\n"
         "AGENTES BUILTIN: billing, hr, crm, banking, email, compliance, documents, rag, excel\n"

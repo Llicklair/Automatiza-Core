@@ -23,13 +23,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.db.models.billing import Invoice
 from app.db.models.hr import Payroll
 from app.db.models.models import BankTransaction
@@ -97,7 +98,7 @@ async def _current_balance(db: AsyncSession, tenant_id: UUID) -> float:
     if val is not None:
         return float(val)
 
-    since = datetime.utcnow() - timedelta(days=30)
+    since = datetime.now(UTC) - timedelta(days=30)
     sum_q = await db.execute(
         sa.select(sa.func.coalesce(sa.func.sum(BankTransaction.amount), 0)).where(
             BankTransaction.tenant_id == tenant_id,
@@ -142,7 +143,7 @@ async def project_cashflow(
     if days_ahead < 1 or days_ahead > 365:
         raise ValueError(f"days_ahead fuera de rango (1..365): {days_ahead}")
 
-    today = today or date.today()
+    today = today or local_today()
     horizon = today + timedelta(days=days_ahead)
 
     opening = await _current_balance(db, tenant_id)

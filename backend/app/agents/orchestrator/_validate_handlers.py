@@ -1,9 +1,9 @@
 """Node handlers: validate_node."""
 
-import asyncio
 import logging
 
 from app.agents.orchestrator.state import VALID_DOMAINS, OrchestratorState, TaskStatus
+from app.core.background import spawn
 from app.services.llm_cache import llm_cache
 
 logger = logging.getLogger(__name__)
@@ -176,7 +176,7 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
         try:
             _tenant_id = state.get("tenant_id", "")
             _cache_key = f"plan:{state['user_intent']}"
-            asyncio.create_task(llm_cache.invalidate(_tenant_id, _cache_key))
+            spawn(llm_cache.invalidate(_tenant_id, _cache_key))
         except Exception as _e:
             logger.warning("Error invalidando caché de plan envenenado: %s", _e)
         return {

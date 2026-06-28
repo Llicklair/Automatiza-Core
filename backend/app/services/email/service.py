@@ -178,7 +178,7 @@ def read_inbox(
                     continue
 
     except imaplib.IMAP4.error as e:
-        raise ConnectionError(f"Error IMAP al conectar con {credentials.imap_host}: {e}")
+        raise ConnectionError(f"Error IMAP al conectar con {credentials.imap_host}: {e}") from e
 
     return messages
 
@@ -223,7 +223,7 @@ def read_unread(credentials: EmailCredentials, max_results: int = 10) -> list[Em
                     _logger.debug("No se pudo parsear un correo no leído; salto al siguiente", exc_info=True)
                     continue
     except imaplib.IMAP4.error as e:
-        raise ConnectionError(f"Error IMAP: {e}")
+        raise ConnectionError(f"Error IMAP: {e}") from e
     return messages
 
 

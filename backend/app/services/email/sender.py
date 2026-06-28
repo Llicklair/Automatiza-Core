@@ -12,6 +12,7 @@ import asyncio
 import logging
 import os
 import uuid
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -50,10 +51,10 @@ async def load_attachments(
                         "Adjunto doc_id=%s con file_path inválido: %s", doc_id, row.file_path
                     )
                     continue
-                with open(row.file_path, "rb") as f:
-                    attachments.append(
-                        (row.file_name or os.path.basename(row.file_path), f.read())
-                    )
+                _data = await asyncio.to_thread(Path(row.file_path).read_bytes)
+                attachments.append(
+                    (row.file_name or os.path.basename(row.file_path), _data)
+                )
             except Exception as _e:
                 logger.warning(
                     "Error leyendo adjunto doc_id=%s tenant=%s: %s", doc_id, tenant_id, _e

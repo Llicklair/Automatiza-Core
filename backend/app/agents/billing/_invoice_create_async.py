@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 
 from app.agents.shared.validators.billing import APPROVAL_THRESHOLD_EUR, validate_invoice_data
+from app.core.datetime_utils import local_today
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Client, Invoice
 
@@ -40,7 +41,7 @@ async def _create_invoice_async(
         return err
 
     # Parsear fecha
-    inv_date_str = invoice_date_str.strip() if invoice_date_str else date.today().isoformat()
+    inv_date_str = invoice_date_str.strip() if invoice_date_str else local_today().isoformat()
     try:
         inv_date = date.fromisoformat(inv_date_str)
     except ValueError:

@@ -2,13 +2,14 @@
 
 import logging
 import re
-from datetime import date, timedelta
+from datetime import timedelta
 from typing import Optional
 from uuid import UUID
 
 from langchain_core.tools import tool
 from sqlalchemy import select
 
+from app.core.datetime_utils import local_today
 from app.db.base import AsyncSessionLocal
 from app.db.models.hr import LeaveRequest
 from app.db.models.models import Employee
@@ -67,7 +68,7 @@ async def propose_schedule(
             return f"Error: empleados no encontrados en el tenant: {', '.join(missing)}"
 
         # Avisos por ausencias aprobadas en los próximos 7 días (no bloquea)
-        today = date.today()
+        today = local_today()
         leaves_res = await db.execute(
             select(LeaveRequest.employee_id, LeaveRequest.leave_type).where(
                 LeaveRequest.tenant_id == UUID(tenant_id),

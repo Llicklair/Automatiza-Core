@@ -59,7 +59,7 @@ async def get_albaran(
     try:
         return await svc.get_albaran(albaran_id, current_user.tenant_id, db)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.patch("/{albaran_id}/status", response_model=DeliveryNoteResponse)
@@ -80,9 +80,9 @@ async def update_albaran_status(
             user_id=current_user.id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete("/{albaran_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -98,7 +98,7 @@ async def delete_albaran(
             albaran_id, current_user.tenant_id, db, user_id=current_user.id
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/{albaran_id}/pdf")
@@ -114,7 +114,7 @@ async def get_albaran_pdf(
             albaran_id, current_user.tenant_id, db
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return Response(
         content=pdf_bytes,

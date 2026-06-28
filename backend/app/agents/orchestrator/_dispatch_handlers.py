@@ -585,7 +585,7 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
     # Esperar a que los audit logs se escriban (máx 5s) antes de devolver estado
     if _audit_tasks:
         done, pending = await asyncio.wait(_audit_tasks, timeout=5)
-        for t in pending:
+        for _t in pending:
             logger.warning("[ORCHESTRATOR] Audit log no completó en 5s, dejando en background")
         for t in done:
             if t.exception():

@@ -3,6 +3,7 @@ Banking agent node + LangGraph graph builder.
 """
 
 import logging
+from datetime import UTC
 from datetime import datetime as dt
 
 from langchain_core.messages import HumanMessage
@@ -34,7 +35,7 @@ async def banking_agent_node(state: AgentState):
     response = await llm_with_tools.ainvoke(state["messages"])
 
     result_log = StepResult(
-        step_id=f"banking_step_{dt.now().timestamp()}",
+        step_id=f"banking_step_{dt.now(UTC).timestamp()}",
         description="Procesando solicitud bancaria...",
         status="completed",
         action_taken="Invocando herramientas bancarias"

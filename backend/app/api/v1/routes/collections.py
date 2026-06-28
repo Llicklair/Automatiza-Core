@@ -5,6 +5,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import User
@@ -55,7 +56,7 @@ async def get_due_reminders(
         db, current_user.tenant_id, today=fire_date
     )
     return {
-        "fire_date": (fire_date or date.today()).isoformat(),
+        "fire_date": (fire_date or local_today()).isoformat(),
         "count": len(steps),
         "steps": [s.to_dict() for s in steps],
     }

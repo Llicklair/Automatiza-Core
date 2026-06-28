@@ -76,7 +76,7 @@ async def put_policy(
             updated_by=user.id,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     await db.commit()
     return {"mode": record.mode, "is_default": False}
 
@@ -95,5 +95,5 @@ async def delete_policy(
     try:
         await reset_policy(db, tenant_id=user.tenant_id, domain=domain)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     await db.commit()

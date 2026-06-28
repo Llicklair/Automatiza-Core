@@ -27,7 +27,7 @@ def _to_xml(parent: Element, name: str, value) -> None:
         return
     if isinstance(value, (list, tuple)):
         node = SubElement(parent, name)
-        for i, v in enumerate(value):
+        for _i, v in enumerate(value):
             _to_xml(node, "Item", v)
         return
     if isinstance(value, (int, float)):

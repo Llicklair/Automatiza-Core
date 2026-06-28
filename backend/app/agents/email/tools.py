@@ -52,13 +52,12 @@ def check_inbox(tenant_id: str, max_results: int = 10) -> str:
         tenant_id: ID del tenant
         max_results: Máximo de correos a recuperar (por defecto 10)
     """
-    lines = []
-    for em in MOCK_EMAILS[:max_results]:
-        lines.append(
-            f"- [ID: {em['id']}] De: {em['from']} | Fecha: {em['date']}\n"
-            f"  Asunto: {em['subject']}\n"
-            f"  Cuerpo: {em['body']}"
-        )
+    lines = [
+        f"- [ID: {em['id']}] De: {em['from']} | Fecha: {em['date']}\n"
+        f"  Asunto: {em['subject']}\n"
+        f"  Cuerpo: {em['body']}"
+        for em in MOCK_EMAILS[:max_results]
+    ]
     if not lines:
         return "Bandeja de entrada vacía."
     return "[DEMO] Correos en Bandeja de Entrada:\n\n" + "\n\n".join(lines)

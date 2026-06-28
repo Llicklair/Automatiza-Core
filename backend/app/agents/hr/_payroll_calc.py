@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.agents.hr._payroll_pdf import _generate_and_save_payroll_pdf
+from app.core.datetime_utils import local_today
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Employee, Payroll
 from app.services.hr.queries import calc_payroll_for_employee
@@ -32,9 +33,7 @@ async def calculate_and_create_payroll(
     """
     if not (1 <= int(month) <= 12):
         return f"Error: mes inválido {month}. Debe estar entre 1 y 12."
-    from datetime import date as _date
-
-    current_year = _date.today().year
+    current_year = local_today().year
     if not (2000 <= int(year) <= current_year + 1):
         return f"Error: año inválido {year}. Debe estar entre 2000 y {current_year + 1}."
     if deductions < 0:

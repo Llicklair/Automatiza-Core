@@ -22,8 +22,8 @@ def _parse_uuid(value: str, label: str) -> UUID:
     """Convierte a UUID o lanza ValueError con mensaje claro para el usuario."""
     try:
         return UUID(value)
-    except (ValueError, TypeError, AttributeError):
-        raise ValueError(f"{label} '{value}' no es un identificador válido.")
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ValueError(f"{label} '{value}' no es un identificador válido.") from exc
 
 
 @tool

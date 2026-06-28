@@ -2,12 +2,13 @@
 
 import random
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import desc, extract, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.datetime_utils import local_today
 from app.db.models.models import BankTransaction, Invoice
 from app.services.analytics import DEMO_TX_PREFIX
 from app.services.event_bus import emit_event
@@ -21,7 +22,7 @@ def _real_tx_filter():
 
 async def get_summary(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     """Financial summary derived from invoices in the last 30 days."""
-    since = date.today() - timedelta(days=30)
+    since = local_today() - timedelta(days=30)
     query = select(Invoice).where(
         Invoice.tenant_id == tenant_id,
         Invoice.date >= since,
@@ -92,10 +93,10 @@ async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uui
         "Transferencia recibida F. Perez",
         "Pago Suministros",
     ]
-    today = date.today()
+    today = local_today()
 
     balance = 14500.00
-    for i in range(5):
+    for _i in range(5):
         day_offset = random.randint(0, 15)
         amount = random.uniform(-500, 1500)
         balance += amount
@@ -567,7 +568,7 @@ async def reject_reconciliation_suggestion(
 
 async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     """Return real cashflow data and dynamic insights for the Home Page."""
-    today = date.today()
+    today = local_today()
     month_names = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
                    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 

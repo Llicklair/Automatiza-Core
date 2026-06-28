@@ -27,6 +27,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.datetime_utils import local_today
 from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 
@@ -86,7 +87,7 @@ def compute_client_risk(
     client: Client, invoices: list[Invoice], *, today: date | None = None
 ) -> ClientRiskScore:
     """Computa el scoring para un cliente concreto sobre sus facturas emitidas."""
-    today = today or date.today()
+    today = today or local_today()
     total = len(invoices)
     paid = [inv for inv in invoices if (inv.status or "").lower() in _PAID_STATUSES]
     unpaid = [inv for inv in invoices if (inv.status or "").lower() in _UNPAID_STATUSES]

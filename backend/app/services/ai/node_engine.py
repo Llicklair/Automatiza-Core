@@ -115,6 +115,13 @@ class NodeEngine:
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
 
+        if execution.status in ("success", "failed"):
+            # Re-entrada SECUENCIAL: no re-arrancar una ejecución ya finalizada
+            # (un retry / doble-resume reviviría un workflow terminal). El resume
+            # legítimo entra en estado 'paused'/'running'. No protege la carrera
+            # concurrente real de dos resume simultáneos.
+            return {"status": execution.status, "error": "Execution already finalized"}
+
         self.node_states = dict(execution.node_states or {})
 
         from app.services.ai.node_graph_helpers import PAUSED, WAITING
@@ -194,7 +201,7 @@ class NodeEngine:
                 )
 
                 has_suspend = False
-                for node, res in zip(ready_nodes, parallel_results):
+                for node, res in zip(ready_nodes, parallel_results, strict=False):
                     nid = node["id"]
                     if isinstance(res, Exception):
                         self.node_states[nid] = {

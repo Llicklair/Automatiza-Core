@@ -58,10 +58,10 @@ async def create_employee(
     try:
         return await svc.create_employee(payload.model_dump(), current_user.tenant_id, db)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except Exception as e:
         logger.error("Error guardando empleado: %s", e)
-        raise HTTPException(status_code=500, detail="Error al guardar el empleado")
+        raise HTTPException(status_code=500, detail="Error al guardar el empleado") from e
 
 
 @router.patch("/employees/{employee_id}", response_model=EmployeeResponse)
@@ -122,7 +122,7 @@ async def upload_employee_document_file(
             db,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.get("/employees/{employee_id}/documents/{doc_id}/download")
@@ -137,8 +137,8 @@ async def download_employee_document(
         raise HTTPException(status_code=404, detail="Documento no encontrado")
     try:
         content, media_type, filename = svc.read_document_file(doc)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Documento no encontrado en disco")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado en disco") from exc
     return Response(
         content=content,
         media_type=media_type,
@@ -175,7 +175,7 @@ async def generate_finiquito_pdf_endpoint(
             payload.employee_id, current_user.tenant_id, db
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     pdf_bytes, filename, calc = svc.generate_finiquito_pdf(emp, tenant, payload)
 
@@ -205,7 +205,7 @@ async def generate_liquidacion_finiquito_pdf_endpoint(
             payload.employee_id, current_user.tenant_id, db
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     pdf_bytes, filename = svc.generate_liquidacion_pdf(emp, tenant, payload)
     return Response(
@@ -228,7 +228,7 @@ async def generate_registro_jornada_pdf_endpoint(
             payload.employee_id, current_user.tenant_id, db
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     pdf_bytes, filename = svc.generate_registro_jornada(emp, tenant, payload)
     return Response(

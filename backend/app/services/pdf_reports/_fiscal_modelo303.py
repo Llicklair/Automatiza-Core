@@ -15,6 +15,7 @@ import io
 import logging
 from datetime import datetime
 
+from app.core.datetime_utils import BUSINESS_TZ, local_today
 from app.services.aeat.casillas_303 import build_casillas_303
 from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
@@ -59,7 +60,7 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
     s = _common_styles()
     C = s["C"]
     quarter = int(data.get("quarter", 1))
-    year = int(data.get("year", datetime.now().year))
+    year = int(data.get("year", local_today().year))
 
     casillas = build_casillas_303(data)
     cmap = {c.codigo: c for c in casillas}
@@ -141,7 +142,7 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
         ),
         Spacer(1, 2 * mm),
         Paragraph(
-            f"Generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore · {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}",
             s["footer"],
         ),
     ]

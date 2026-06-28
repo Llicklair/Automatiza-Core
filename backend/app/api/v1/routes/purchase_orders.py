@@ -66,7 +66,7 @@ async def update_purchase_order(
             db, current_user.tenant_id, order_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/purchase-orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
@@ -80,7 +80,7 @@ async def delete_purchase_order(
     try:
         await svc.delete_purchase_order(db, current_user.tenant_id, order_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.post("/purchase-orders/{order_id}/receive", tags=["erp"])
@@ -103,6 +103,6 @@ async def receive_purchase_order(
             warehouse_id=payload.warehouse_id,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

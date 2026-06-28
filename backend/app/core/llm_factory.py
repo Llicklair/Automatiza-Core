@@ -86,8 +86,8 @@ def make_cached_system_message(text: str):
 
 def get_llm(
     temperature: float = 0,
-    format_output: str = None,
-    provider: str = None,
+    format_output: str | None = None,
+    provider: str | None = None,
     max_tokens: int | None = None,
 ) -> BaseChatModel:
     """
@@ -156,7 +156,7 @@ def get_llm(
         return _attach_trace(mock_fallback)
 
 
-def get_llm_with_fallback(temperature: float = 0, provider: str = None) -> BaseChatModel:
+def get_llm_with_fallback(temperature: float = 0, provider: str | None = None) -> BaseChatModel:
     """Mantenido por compatibilidad, get_llm ya incluye fallbacks."""
     return get_llm(temperature=temperature, provider=provider)
 
@@ -165,7 +165,7 @@ async def get_llm_for_tenant(
     tenant_id,
     db,
     temperature: float = 0,
-    format_output: str = None,
+    format_output: str | None = None,
 ) -> BaseChatModel:
     """
     Devuelve el LLM configurado para el tenant específico.

@@ -1,9 +1,11 @@
 """Servicio para generación y gestión de informes snapshot (PDF mensuales)."""
 
+import asyncio
 import logging
 import os
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,8 +34,7 @@ async def save_snapshot_report(
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_name = f"informe_{month}_{uuid.uuid4().hex[:8]}.pdf"
     file_path = os.path.join(UPLOAD_DIR, file_name)
-    with open(file_path, "wb") as fh:
-        fh.write(pdf_bytes)
+    await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
     doc = TenantDocument(
         id=uuid.uuid4(),

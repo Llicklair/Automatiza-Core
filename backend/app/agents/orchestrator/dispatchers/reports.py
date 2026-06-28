@@ -2,11 +2,13 @@
 Dispatcher de informes mensuales (report).
 """
 
+import asyncio
 import logging
 import os
 import uuid
 from calendar import monthrange
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 from sqlalchemy import and_, func, select
 
@@ -220,8 +222,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
             os.makedirs(upload_dir, exist_ok=True)
             file_name = f"informe_{month_str}_{uuid.uuid4().hex[:8]}.pdf"
             file_path = os.path.join(upload_dir, file_name)
-            with open(file_path, "wb") as fh:
-                fh.write(pdf_bytes)
+            await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
             # Guardar en tenant_documents
             doc = TenantDocument(

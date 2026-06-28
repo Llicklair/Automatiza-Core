@@ -4,9 +4,11 @@ All functions here produce side effects: INSERT/UPDATE/DELETE or file writes.
 Read helpers are imported from queries.py to avoid duplication.
 """
 
+import asyncio
 import logging
 import os
 import shutil
+import tempfile
 import uuid as uuid_mod
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,6 +17,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.db.models.hr import (
     Attendance,
     Candidate,
@@ -480,7 +483,8 @@ async def analyze_cv_standalone(file_name: str, file_obj) -> dict:
     if not file_name or not file_name.lower().endswith(".pdf"):
         raise ValueError("Solo se aceptan archivos PDF")
 
-    tmp_path = f"/tmp/cv_standalone_{uuid4().hex}.pdf"
+    # Directorio temporal del SO (cross-platform: no existe `/tmp` en Windows).
+    tmp_path = os.path.join(tempfile.gettempdir(), f"cv_standalone_{uuid4().hex}.pdf")
     try:
         with open(tmp_path, "wb") as f:
             shutil.copyfileobj(file_obj, f)
@@ -551,7 +555,6 @@ async def clock_in(
     db: AsyncSession, tenant_id, employee_id: UUID, notes: str | None = None
 ) -> Attendance:
     """Create an attendance clock-in. Raises ValueError if already open."""
-    from datetime import date as date_type
 
     existing = await db.execute(
         select(Attendance).where(
@@ -566,7 +569,7 @@ async def clock_in(
     record = Attendance(
         tenant_id=tenant_id,
         employee_id=employee_id,
-        date=date_type.today(),
+        date=local_today(),
         notes=notes,
     )
     db.add(record)
@@ -629,10 +632,9 @@ async def clock_out_attendance(db: AsyncSession, tenant_id, attendance_id: UUID)
 
 async def _ws_notify(tenant_id, message: str, notif_type: str = "info") -> None:
     try:
-        import asyncio
-
         from app.api.ws.notifications import manager
-        asyncio.create_task(
+        from app.core.background import spawn
+        spawn(
             manager.broadcast_to_tenant(
                 str(tenant_id),
                 {"type": "hr_notification", "message": message, "notif_type": notif_type},
@@ -791,8 +793,7 @@ async def upload_expense_receipt(
     os.makedirs(subdir, exist_ok=True)
     safe_name = f"{uuid_mod.uuid4().hex[:8]}_{Path(filename).name}"
     dest = os.path.join(subdir, safe_name)
-    with open(dest, "wb") as f:
-        f.write(file_bytes)
+    await asyncio.to_thread(Path(dest).write_bytes, file_bytes)
     exp.receipt_filename = filename
     exp.receipt_path = dest
     await db.commit()

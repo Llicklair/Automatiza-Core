@@ -4,12 +4,12 @@ Extracted from api/v1/routes/reports/specialized.py.
 """
 
 import uuid
-from datetime import date
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload as jl
 
+from app.core.datetime_utils import local_today
 from app.db.models.models import Invoice, Tenant
 
 
@@ -21,7 +21,7 @@ async def build_delinquency_data(
 
     Returns dict ready for PDF generation.
     """
-    today = date.today()
+    today = local_today()
 
     # Tenant
     tenant_q = await db.execute(select(Tenant).where(Tenant.id == tenant_id))

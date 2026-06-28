@@ -75,8 +75,8 @@ def _remittance_to_dict(r, *, include_orders: bool = False) -> dict:
 def _parse_uuid(value: str) -> uuid.UUID:
     try:
         return uuid.UUID(str(value))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=422, detail="Identificador inválido.")
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Identificador inválido.") from exc
 
 
 @router.get("/cashflow/projection")
@@ -91,7 +91,7 @@ async def get_cashflow_projection(
     try:
         return await project_cashflow(db, current_user.tenant_id, days_ahead)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @router.post("/sepa/pain001", status_code=status.HTTP_200_OK)
@@ -124,8 +124,8 @@ async def generate_pain001(
     exec_date_raw = (payload or {}).get("execution_date")
     try:
         execution_date = date.fromisoformat(str(exec_date_raw))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=422, detail="execution_date inválida (YYYY-MM-DD).")
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="execution_date inválida (YYYY-MM-DD).") from exc
 
     tenant = (
         await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
@@ -158,7 +158,7 @@ async def generate_pain001(
             for o in raw_orders
         ]
     except (KeyError, TypeError, ValueError) as e:
-        raise HTTPException(status_code=422, detail=f"Estructura de 'orders' inválida: {e}")
+        raise HTTPException(status_code=422, detail=f"Estructura de 'orders' inválida: {e}") from e
 
     links = [
         {
@@ -173,7 +173,7 @@ async def generate_pain001(
             db, current_user.tenant_id, debtor, execution_date, orders, links=links
         )
     except Pain001Error as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     await db.commit()
 
     return {
@@ -237,8 +237,8 @@ async def generate_pain008(
 
     try:
         collection_date = date.fromisoformat(str((payload or {}).get("collection_date")))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=422, detail="collection_date inválida (YYYY-MM-DD).")
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="collection_date inválida (YYYY-MM-DD).") from exc
 
     creditor_id = (payload or {}).get("creditor_id")
     if not creditor_id:
@@ -282,7 +282,7 @@ async def generate_pain008(
             for o in raw_orders
         ]
     except (KeyError, TypeError, ValueError) as e:
-        raise HTTPException(status_code=422, detail=f"Estructura de 'orders' inválida: {e}")
+        raise HTTPException(status_code=422, detail=f"Estructura de 'orders' inválida: {e}") from e
 
     links = [
         {
@@ -297,7 +297,7 @@ async def generate_pain008(
             db, current_user.tenant_id, creditor, collection_date, orders, links=links
         )
     except Pain008Error as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     await db.commit()
 
     return {
@@ -400,6 +400,6 @@ async def change_remittance_status(
             bank_transaction_id=_parse_uuid(btx_raw) if btx_raw else None,
         )
     except RemittanceError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     await db.commit()
     return _remittance_to_dict(remittance)

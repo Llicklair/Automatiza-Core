@@ -8,7 +8,7 @@ para que el frontend muestre progreso real.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -115,7 +115,7 @@ async def submit_presentation(
         cert = await get_active_certificate(db, tenant_id)
         if cert is None:
             raise CertificateError("No hay certificado activo configurado.")
-        if cert.valid_until and cert.valid_until.replace(tzinfo=None) < datetime.utcnow():
+        if cert.valid_until and cert.valid_until.replace(tzinfo=None) < datetime.now(UTC).replace(tzinfo=None):
             raise CertificateError("El certificado activo está caducado.")
         pfx_bytes, password = await load_decrypted(db, tenant_id)
     except CertificateError as e:
@@ -176,7 +176,7 @@ async def submit_presentation(
         await db.refresh(p)
         return p
 
-    p.submitted_at = datetime.now()
+    p.submitted_at = datetime.now(UTC)
     p.response_raw = result.response_body
     if result.accepted and result.dry_run:
         # Ensayo (dry_run): NO es una presentación real ante la AEAT. LÍNEA ROJA:
@@ -188,7 +188,7 @@ async def submit_presentation(
     elif result.accepted:
         p.status = "accepted"
         p.csv_justificante = result.csv
-        p.accepted_at = datetime.now()
+        p.accepted_at = datetime.now(UTC)
     else:
         p.status = "rejected"
         p.error_code = result.error_code

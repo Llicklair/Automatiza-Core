@@ -68,7 +68,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
             columns = list(data[0].keys())
             return columns, data, "json"
         elif isinstance(data, dict):
-            for key, val in data.items():
+            for _key, val in data.items():
                 if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
                     if len(val) > MAX_TABULAR_ROWS:
                         raise ValueError(

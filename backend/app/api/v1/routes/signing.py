@@ -58,25 +58,25 @@ async def init_autofirma(
         raise HTTPException(status_code=422, detail="document_b64 requerido.")
     try:
         document_bytes = base64.b64decode(doc_b64)
-    except Exception:
-        raise HTTPException(status_code=422, detail="document_b64 inválido.")
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="document_b64 inválido.") from exc
 
     fmt_raw = (payload or {}).get("signature_format") or "PAdES"
     try:
         fmt = SignatureFormat(fmt_raw)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=422,
             detail=f"signature_format inválido: {fmt_raw}. Usa PAdES, XAdES o CAdES.",
-        )
+        ) from exc
 
     document_id_raw = (payload or {}).get("document_id")
     document_id: uuid.UUID | None = None
     if document_id_raw:
         try:
             document_id = uuid.UUID(str(document_id_raw))
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=422, detail="document_id no es UUID.")
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="document_id no es UUID.") from exc
 
     try:
         return await start_signing_session(
@@ -90,7 +90,7 @@ async def init_autofirma(
             visible_signature=bool((payload or {}).get("visible_signature", False)),
         )
     except AutoFirmaError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @router.get("/autofirma/status/{session_token}")
@@ -150,7 +150,7 @@ async def autofirma_callback(
         with rls_bypass():
             result = await process_signed_callback(db, session_token, payload)
     except AutoFirmaError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
     # No devolvemos los bytes firmados al callback de AutoFirma (no los
     # necesita); sí persistimos el hash y la metadata.

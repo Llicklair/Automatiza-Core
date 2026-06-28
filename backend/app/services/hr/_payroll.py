@@ -1,9 +1,11 @@
 ﻿"""Payroll CRUD, calculation preview, PDF generation and persistence."""
 
+import asyncio
 import logging
 import os
 import uuid as uuid_mod
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import desc, select
@@ -318,8 +320,7 @@ async def generate_and_save_payroll_pdf(payroll_id: str, tenant_id: str, user_id
             nominas_dir = os.path.join(UPLOAD_DIR, "Nominas")
             os.makedirs(nominas_dir, exist_ok=True)
             file_path = os.path.join(nominas_dir, filename)
-            with open(file_path, "wb") as f:
-                f.write(pdf_bytes)
+            await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
             doc = TenantDocument(
                 tenant_id=uuid_mod.UUID(tenant_id),

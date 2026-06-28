@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.core.datetime_utils import local_today
 from app.core.exceptions import ConflictError
 from app.db.models.billing import DeliveryNote, DeliveryNoteLine
 from app.db.models.models import (
@@ -55,13 +56,13 @@ async def create_client(
     try:
         await db.commit()
         await db.refresh(new_client)
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
-        raise ValueError("Ya existe un cliente con ese NIF o email")
+        raise ValueError("Ya existe un cliente con ese NIF o email") from exc
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error("Error guardando cliente: %s", e)
-        raise RuntimeError("Error al guardar el cliente")
+        raise RuntimeError("Error al guardar el cliente") from e
 
     try:
         from app.services.event_bus import emit_event
@@ -103,7 +104,7 @@ async def update_client(
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error("Error actualizando cliente %s: %s", client_id, e)
-        raise RuntimeError("Error al actualizar el cliente")
+        raise RuntimeError("Error al actualizar el cliente") from e
     return client
 
 
@@ -129,7 +130,7 @@ async def delete_client(
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error("Error eliminando cliente %s: %s", client_id, e)
-        raise RuntimeError("Error al eliminar el cliente")
+        raise RuntimeError("Error al eliminar el cliente") from e
 
 
 # ---------------------------------------------------------------------------
@@ -435,7 +436,7 @@ async def create_albaran(
     db: AsyncSession,
 ) -> DeliveryNote:
     albaran_number = await _next_albaran_number(tenant_id, db)
-    resolved_date = entry_date or date_type.today()
+    resolved_date = entry_date or local_today()
 
     amount_base = Decimal("0")
     tax_amount = Decimal("0")
@@ -694,7 +695,7 @@ async def delete_albaran(
 async def create_purchase_order(
     db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]
 ) -> PurchaseOrder:
-    order_number = data.pop("order_number", None) or f"PC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    order_number = data.pop("order_number", None) or f"PC-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
 
     amount_base = 0.0
     tax_amount = 0.0
@@ -789,7 +790,7 @@ async def create_sales_order(
     db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]
 ) -> SalesOrder:
     order_number = (
-        data.pop("order_number", None) or f"PED-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        data.pop("order_number", None) or f"PED-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
     )
 
     amount_base = 0.0

@@ -2,8 +2,10 @@
 PDF generation and template helpers for invoices.
 """
 
+import asyncio
 import logging
 import os
+from pathlib import Path
 from uuid import UUID
 
 from app.core.config import settings
@@ -91,8 +93,7 @@ async def _generate_and_save_invoice_pdf(
 
         file_name = f"Factura_{invoice.invoice_number}.pdf"
         file_path = os.path.join(upload_dir, file_name)
-        with open(file_path, "wb") as f:
-            f.write(pdf_bytes)
+        await asyncio.to_thread(Path(file_path).write_bytes, pdf_bytes)
 
         doc = TenantDocument(
             tenant_id=UUID(tenant_id),

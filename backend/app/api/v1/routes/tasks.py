@@ -88,7 +88,7 @@ async def get_task(
     try:
         return await svc.get_task(db, task_id=task_id, tenant_id=current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -102,9 +102,9 @@ async def cancel_task(
     try:
         await svc.cancel_task(db, task_id=task_id, tenant_id=current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/{task_id}/cost")
@@ -148,7 +148,7 @@ async def stream_task_events(
     try:
         await svc.get_task(db, task_id=task_id, tenant_id=current_user.tenant_id)
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     async def _event_generator():
         # Comment inicial para forzar flush de cabeceras en proxies (NGINX).
@@ -185,4 +185,4 @@ async def get_task_audit(
             is_admin=current_user.role == "admin",
         )
     except LookupError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e

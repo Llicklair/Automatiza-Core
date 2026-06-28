@@ -80,7 +80,7 @@ async def update_product(
     try:
         return await svc.update_product(db, current_user.tenant_id, product_id, payload.model_dump(exclude_none=True))
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["erp"])
@@ -94,7 +94,7 @@ async def delete_product(
     try:
         await svc.delete_product(db, current_user.tenant_id, product_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
@@ -155,9 +155,9 @@ async def create_stock_movement(
     try:
         return await svc.create_stock_movement(db, current_user.tenant_id, product_id, data)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ─── Lotes (caducidad / FEFO) ─────────────────────────────────────────────────
@@ -187,7 +187,7 @@ async def list_product_lots(
     try:
         return await lot_service.list_lots(db, current_user.tenant_id, product_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post(
@@ -215,9 +215,9 @@ async def create_product_lot(
             cost_price=payload.cost_price,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.patch("/products/{product_id}/lots/{lot_id}", tags=["inventory"])
@@ -236,7 +236,7 @@ async def update_product_lot(
             db, current_user.tenant_id, lot_id, payload.model_dump(exclude_unset=True)
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/products/{product_id}/stock-by-warehouse", tags=["inventory"])
@@ -251,7 +251,7 @@ async def stock_by_warehouse(
     try:
         return await stock_service.get_by_warehouse(db, current_user.tenant_id, product_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/inventory/transfer", tags=["inventory"])
@@ -273,9 +273,9 @@ async def transfer_stock(
             quantity=payload.quantity,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/inventory/reorder-suggestions", tags=["inventory"])
@@ -317,7 +317,7 @@ async def labels_pdf(
             show_price=payload.show_price,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(
         content=pdf,
         media_type="application/pdf",

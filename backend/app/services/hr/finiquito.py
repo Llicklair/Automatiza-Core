@@ -16,6 +16,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import local_today
 from app.db.models.hr import Settlement
 from app.db.models.models import Employee
 from app.services.hr.queries import (
@@ -177,7 +178,7 @@ async def create_settlement(
     calc: dict,
 ) -> Settlement:
     """Persiste el finiquito calculado como Settlement (estado draft)."""
-    f_baja = _parse_date(calc.get("fecha_baja")) or date.today()
+    f_baja = _parse_date(calc.get("fecha_baja")) or local_today()
     settlement = Settlement(
         tenant_id=tenant_id,
         employee_id=employee_id,

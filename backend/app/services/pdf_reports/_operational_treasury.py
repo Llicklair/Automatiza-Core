@@ -8,6 +8,7 @@ from datetime import datetime
 
 _logger = logging.getLogger(__name__)
 
+from app.core.datetime_utils import BUSINESS_TZ
 from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
     _common_styles,
@@ -288,7 +289,7 @@ def generate_cashflow_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 3 * mm))
     elements.append(
         Paragraph(
-            f"Informe de tesorería generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Informe de tesorería generado por AutomatizaCore · {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}",
             s["footer"],
         )
     )
@@ -394,7 +395,7 @@ def generate_delinquency_report_pdf(data: dict) -> bytes:
         Paragraph("Importe", s["header"]),
     ]
     aging_data = [aging_header]
-    for bucket, bcolor in zip(bucket_order, bucket_colors):
+    for bucket, bcolor in zip(bucket_order, bucket_colors, strict=False):
         b = aging.get(bucket, {})
         aging_data.append(
             [
@@ -495,7 +496,7 @@ def generate_delinquency_report_pdf(data: dict) -> bytes:
     elements.append(Spacer(1, 2 * mm))
     elements.append(
         Paragraph(
-            f"Generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por AutomatizaCore · {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}",
             s["footer"],
         )
     )

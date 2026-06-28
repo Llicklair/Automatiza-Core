@@ -44,7 +44,7 @@ class SkillRegistry:
             try:
                 module = importlib.import_module(module_name)
                 # Buscar clases concretas que hereden de BaseSkill
-                for name, obj in inspect.getmembers(module, inspect.isclass):
+                for _name, obj in inspect.getmembers(module, inspect.isclass):
                     if issubclass(obj, BaseSkill) and obj is not BaseSkill:
                         # Para evitar instanciar clases abstractas (ABC)
                         if not inspect.isabstract(obj):

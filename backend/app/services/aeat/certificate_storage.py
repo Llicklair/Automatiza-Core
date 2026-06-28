@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -113,7 +113,7 @@ async def store_certificate(
         update(TenantCertificate)
         .where(TenantCertificate.tenant_id == tenant_id)
         .where(TenantCertificate.status == "active")
-        .values(status="revoked", revoked_at=datetime.now())
+        .values(status="revoked", revoked_at=datetime.now(UTC))
     )
 
     cert = TenantCertificate(
@@ -183,7 +183,7 @@ async def revoke_certificate(
     if cert.status == "revoked":
         return cert
     cert.status = "revoked"
-    cert.revoked_at = datetime.now()
+    cert.revoked_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(cert)
     return cert
@@ -206,6 +206,6 @@ def cert_to_dict(cert: TenantCertificate) -> dict:
         "notes": cert.notes,
         "is_expired": (
             cert.valid_until is not None
-            and cert.valid_until.replace(tzinfo=None) < datetime.utcnow()
+            and cert.valid_until.replace(tzinfo=None) < datetime.now(UTC).replace(tzinfo=None)
         ),
     }

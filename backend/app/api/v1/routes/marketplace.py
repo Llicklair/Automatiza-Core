@@ -71,7 +71,7 @@ async def install_marketplace_template(
             name_override=name_override,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     return result
 
 
@@ -124,4 +124,4 @@ async def import_workflow_yaml(
             db, current_user.tenant_id, yaml_str, created_by=current_user.id
         )
     except WorkflowYamlError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e

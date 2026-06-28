@@ -81,6 +81,14 @@ class Employee(Base):
 
 class Payroll(Base):
     __tablename__ = "payrolls"
+    __table_args__ = (
+        # Una nómina por (tenant, empleado, período): el batch generate_all_payrolls
+        # tenía un guard check-then-act (TOCTOU) que dos ejecuciones concurrentes
+        # saltaban → nóminas duplicadas. Esta UNIQUE es la barrera real en BD.
+        UniqueConstraint(
+            "tenant_id", "employee_id", "period_start", name="uq_payroll_tenant_emp_period"
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)

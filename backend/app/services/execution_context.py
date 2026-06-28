@@ -319,7 +319,7 @@ class ExecutionContext:
             if key in data and data[key] is not None:
                 self.entities[key] = data[key]
 
-    def build_enriched_intent(self, current_instruction: str = None) -> str:
+    def build_enriched_intent(self, current_instruction: str | None = None) -> str:
         """
         Genera la intención enriquecida que recibirá el próximo agente.
 
@@ -386,7 +386,7 @@ class ExecutionContext:
 
     def last_result_from(self, agent: str) -> dict | None:
         """Devuelve el último output del agente indicado o None."""
-        for step, output in zip(reversed(self.step_summaries), reversed(self.previous_outputs)):
+        for step, output in zip(reversed(self.step_summaries), reversed(self.previous_outputs), strict=False):
             if step["agent"] == agent:
                 return output
         return None

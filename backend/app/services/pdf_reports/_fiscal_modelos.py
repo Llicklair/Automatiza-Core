@@ -13,6 +13,7 @@ import io
 import logging
 from datetime import datetime
 
+from app.core.datetime_utils import BUSINESS_TZ
 from app.services.aeat.casillas_100 import build_casillas_100
 from app.services.aeat.casillas_111 import build_casillas_111
 from app.services.aeat.casillas_115 import build_casillas_115
@@ -63,7 +64,7 @@ def _footer(s, C) -> list:
                            alignment=TA_CENTER),
         ),
         Spacer(1, 2 * mm),
-        Paragraph(f"Generado por AutomatizaCore · {datetime.now().strftime('%d/%m/%Y %H:%M')}", s["footer"]),
+        Paragraph(f"Generado por AutomatizaCore · {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}", s["footer"]),
     ]
 
 

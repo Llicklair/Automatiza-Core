@@ -156,8 +156,8 @@ async def get_portal_as_employee(
     """Vista admin: previsualiza Mi portal de cualquier empleado del tenant en modo lectura."""
     try:
         emp_uuid = uuid.UUID(employee_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="ID de empleado inválido")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="ID de empleado inválido") from exc
 
     result = await db.execute(
         select(Employee).where(
@@ -208,7 +208,7 @@ async def my_clock_in(
     try:
         record = await svc_clock_in(db, current_user.tenant_id, employee.id, notes)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _attendance_dict(record)
 
 
@@ -227,5 +227,5 @@ async def my_clock_out(
     try:
         record = await svc_clock_out(db, current_user.tenant_id, active.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _attendance_dict(record)

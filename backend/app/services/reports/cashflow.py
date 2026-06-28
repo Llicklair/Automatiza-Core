@@ -112,18 +112,17 @@ async def build_cashflow_data(
         )
 
     # Pending receivables detail (client ya viene eager-loaded del outer query)
-    recv_detail = []
-    for inv in sorted(issued_pending, key=lambda x: float(x.amount_total or 0), reverse=True)[:10]:
-        recv_detail.append(
-            {
-                "client_name": inv.client.name if inv.client else "—",
-                "invoice_number": inv.invoice_number or str(inv.id)[:8],
-                "due_date": (inv.due_date or inv.date).isoformat()
-                if (inv.due_date or inv.date)
-                else "",
-                "amount": float(inv.amount_total or 0),
-            }
-        )
+    recv_detail = [
+        {
+            "client_name": inv.client.name if inv.client else "—",
+            "invoice_number": inv.invoice_number or str(inv.id)[:8],
+            "due_date": (inv.due_date or inv.date).isoformat()
+            if (inv.due_date or inv.date)
+            else "",
+            "amount": float(inv.amount_total or 0),
+        }
+        for inv in sorted(issued_pending, key=lambda x: float(x.amount_total or 0), reverse=True)[:10]
+    ]
 
     return {
         "company": {"name": company_name, "nif": tenant_obj.nif if tenant_obj else ""},

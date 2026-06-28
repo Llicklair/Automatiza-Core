@@ -3,9 +3,11 @@ Herramientas compartidas para que los agentes IA lean y modifiquen
 documentos del Escanear (TenantDocument) en la BD local.
 """
 
+import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 from langchain_core.tools import tool
@@ -84,8 +86,7 @@ async def create_document(
 
             upload_dir = _resolve_upload_dir(category)
             file_path = os.path.join(upload_dir, file_name)
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            await asyncio.to_thread(Path(file_path).write_text, content, encoding="utf-8")
 
             doc = TenantDocument(
                 tenant_id=UUID(tenant_id),
@@ -148,14 +149,13 @@ async def list_tenant_documents(
             if not docs:
                 return f"No hay documentos{' en la categoria ' + category if category != 'all' else ''} en el escaner."
 
-            lines = []
-            for doc in docs:
-                lines.append(
-                    f"- [{doc.category or 'Sin categoria'}] {doc.file_name} | "
-                    f"ID: {doc.id} | "
-                    f"Fecha: {doc.created_at.strftime('%d/%m/%Y') if doc.created_at else 'N/A'} | "
-                    f"Tipo: {doc.file_type or 'desconocido'}"
-                )
+            lines = [
+                f"- [{doc.category or 'Sin categoria'}] {doc.file_name} | "
+                f"ID: {doc.id} | "
+                f"Fecha: {doc.created_at.strftime('%d/%m/%Y') if doc.created_at else 'N/A'} | "
+                f"Tipo: {doc.file_type or 'desconocido'}"
+                for doc in docs
+            ]
             header = (
                 f"Documentos en el Gestor "
                 f"({'categoria ' + category + ', ' if category != 'all' else ''}"
@@ -211,15 +211,14 @@ async def update_existing_document(
                 with open(doc.file_path, mode, encoding="utf-8") as f:
                     if append:
                         f.write(
-                            f"\n\n--- Actualizacion {datetime.now().strftime('%d/%m/%Y %H:%M')} (Agente IA) ---\n"
+                            f"\n\n--- Actualizacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} (Agente IA) ---\n"
                         )
                     f.write(new_content)
                 doc.file_size = os.path.getsize(doc.file_path)
             else:
                 upload_dir = _resolve_upload_dir(_normalize_category(doc.category))
                 file_path = os.path.join(upload_dir, doc.file_name or f"doc_{document_id}.txt")
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(new_content)
+                await asyncio.to_thread(Path(file_path).write_text, new_content, encoding="utf-8")
                 doc.file_path = file_path
                 doc.file_size = len(new_content.encode())
 
@@ -228,7 +227,7 @@ async def update_existing_document(
             else:
                 doc.parsed_content = new_content
 
-            doc.processed_at = datetime.now()
+            doc.processed_at = datetime.now(UTC)
             doc.status = "completed"
             await db.commit()
 
@@ -274,8 +273,9 @@ async def get_document_content(tenant_id: str, document_id: str) -> str:
 
             if doc.file_path and os.path.exists(doc.file_path) and not _is_binary:
                 try:
-                    with open(doc.file_path, encoding="utf-8") as f:
-                        content = f.read()
+                    content = await asyncio.to_thread(
+                        Path(doc.file_path).read_text, encoding="utf-8"
+                    )
                     return f"Contenido de '{doc.file_name}':\n\n{content[:3000]}{'...(truncado)' if len(content) > 3000 else ''}"
                 except UnicodeDecodeError:
                     # Archivo no era texto pese a extensión "segura". Fallback silencioso.
