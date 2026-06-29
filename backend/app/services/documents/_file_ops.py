@@ -34,6 +34,8 @@ ALLOWED_EXTENSIONS = {
 }
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_ZIP_TOTAL_SIZE = 200 * 1024 * 1024  # 200MB descomprimido agregado (anti zip-bomb)
+MAX_ZIP_ENTRIES = 1000  # nº máximo de entradas dentro de un ZIP
 
 # ── Clasificación automática ─────────────────────────────────────────────────
 
@@ -102,14 +104,45 @@ def save_file_to_disk(contents: bytes, ext: str) -> str:
     return file_path
 
 
+def _read_zip_entry_capped(z: zipfile.ZipFile, info: zipfile.ZipInfo, max_bytes: int) -> bytes:
+    """Lee una entrada del ZIP por streaming, abortando si supera ``max_bytes``.
+
+    NO se fía de ``info.file_size`` (lo declara quien construye el ZIP): lee el flujo
+    real en bloques y corta en cuanto excede el tope. Defensa contra zip-bombs
+    (entrada minúscula comprimida que se expande a gigabytes al descomprimir).
+    """
+    out = io.BytesIO()
+    total = 0
+    with z.open(info) as fh:
+        while True:
+            block = fh.read(64 * 1024)
+            if not block:
+                break
+            total += len(block)
+            if total > max_bytes:
+                raise ValueError(
+                    f"La entrada '{info.filename}' supera el máximo de "
+                    f"{max_bytes // (1024 * 1024)}MB al descomprimir"
+                )
+            out.write(block)
+    return out.getvalue()
+
+
 def extract_zip_entries(contents: bytes) -> list[tuple[str, bytes, str | None]]:
     """Extrae archivos de un ZIP. Retorna lista de (filename, data, mime_type).
 
     Raises zipfile.BadZipFile si el ZIP es inválido.
+    Raises ValueError si el ZIP tiene demasiadas entradas, o si una entrada o el
+    total descomprimido superan los topes (defensa anti zip-bomb: lectura acotada
+    por streaming, sin fiarse de los tamaños declarados en la cabecera del ZIP).
     """
     entries = []
+    total_uncompressed = 0
     with zipfile.ZipFile(io.BytesIO(contents)) as z:
-        for info in z.infolist():
+        infos = z.infolist()
+        if len(infos) > MAX_ZIP_ENTRIES:
+            raise ValueError(f"El ZIP contiene demasiados ficheros (máx. {MAX_ZIP_ENTRIES})")
+        for info in infos:
             if (
                 info.is_dir()
                 or info.filename.startswith("__MACOSX")
@@ -119,7 +152,13 @@ def extract_zip_entries(contents: bytes) -> list[tuple[str, bytes, str | None]]:
             original_name = os.path.basename(info.filename)
             if not original_name:
                 continue
-            extracted_data = z.read(info.filename)
+            extracted_data = _read_zip_entry_capped(z, info, MAX_FILE_SIZE)
+            total_uncompressed += len(extracted_data)
+            if total_uncompressed > MAX_ZIP_TOTAL_SIZE:
+                raise ValueError(
+                    f"El ZIP supera el máximo total descomprimido de "
+                    f"{MAX_ZIP_TOTAL_SIZE // (1024 * 1024)}MB"
+                )
             mime_type, _ = mimetypes.guess_type(original_name)
             entries.append((original_name, extracted_data, mime_type))
     return entries
