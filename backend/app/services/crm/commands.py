@@ -12,35 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.crm import Client
 from app.db.models.models import Activity, Event, Opportunity, Reservation
-
-
-async def _assert_fk_in_tenant(
-    db: AsyncSession,
-    model: type,
-    entity_id: UUID | None,
-    tenant_id: UUID,
-    label: str,
-) -> None:
-    """Reject a foreign key pointing to another tenant's row (cross-tenant IDOR).
-
-    No-op when ``entity_id`` is None. Raises LookupError when the referenced row does
-    not exist within ``tenant_id`` — same 'not found' semantics used elsewhere, so a
-    caller cannot assign across tenants nor probe which IDs exist in other tenants.
-    """
-    if entity_id is None:
-        return
-    found = await db.execute(
-        select(model.id).where(model.id == entity_id, model.tenant_id == tenant_id)
-    )
-    if found.scalar_one_or_none() is None:
-        raise LookupError(f"{label} not found")
-
+from app.services._tenant_guard import assert_fk_in_tenant
 
 # ---- Opportunities ----
 
 
 async def create_opportunity(db: AsyncSession, tenant_id: UUID, data: dict) -> Opportunity:
-    await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+    await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
     opp = Opportunity(tenant_id=tenant_id, **data)
     db.add(opp)
     await db.commit()
@@ -58,7 +36,7 @@ async def update_opportunity(
     if not opp:
         raise LookupError("Oportunidad no encontrada")
     if "client_id" in data:
-        await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+        await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
     for key, value in data.items():
         setattr(opp, key, value)
     await db.commit()
@@ -81,8 +59,8 @@ async def delete_opportunity(db: AsyncSession, tenant_id: UUID, opp_id: UUID) ->
 
 
 async def create_activity(db: AsyncSession, tenant_id: UUID, data: dict) -> Activity:
-    await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
-    await _assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
+    await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+    await assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
     act = Activity(tenant_id=tenant_id, **data)
     db.add(act)
     await db.commit()
@@ -105,8 +83,8 @@ async def delete_activity(db: AsyncSession, tenant_id: UUID, activity_id: UUID) 
 
 
 async def create_event(db: AsyncSession, tenant_id: UUID, data: dict) -> Event:
-    await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
-    await _assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
+    await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+    await assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
     evt = Event(tenant_id=tenant_id, **data)
     db.add(evt)
     await db.commit()
@@ -122,9 +100,9 @@ async def update_event(db: AsyncSession, tenant_id: UUID, event_id: UUID, data: 
     if not evt:
         raise LookupError("Evento no encontrado")
     if "client_id" in data:
-        await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+        await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
     if "opportunity_id" in data:
-        await _assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
+        await assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
     for key, value in data.items():
         setattr(evt, key, value)
     await db.commit()
@@ -147,8 +125,8 @@ async def delete_event(db: AsyncSession, tenant_id: UUID, event_id: UUID) -> Non
 
 
 async def create_reservation(db: AsyncSession, tenant_id: UUID, data: dict) -> Reservation:
-    await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
-    await _assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
+    await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+    await assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
     res = Reservation(tenant_id=tenant_id, **data)
     db.add(res)
     await db.commit()
@@ -166,9 +144,9 @@ async def update_reservation(
     if not res:
         raise LookupError("Reserva no encontrada")
     if "client_id" in data:
-        await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
+        await assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
     if "opportunity_id" in data:
-        await _assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
+        await assert_fk_in_tenant(db, Opportunity, data.get("opportunity_id"), tenant_id, "Opportunity")
     for key, value in data.items():
         setattr(res, key, value)
     await db.commit()
