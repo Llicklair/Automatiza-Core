@@ -1,6 +1,5 @@
 """Portal externo de clientes — autenticación por token + vista de facturas."""
 import logging
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -10,17 +9,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.datetime_utils import as_aware
 from app.core.dependencies import get_current_client_portal, get_current_user
 from app.core.security import create_client_portal_access_token
 from app.db.base import get_db
-from app.db.models.auth import ClientPortalToken
-from app.db.models.billing import Invoice, Quote
 from app.db.models.crm import Client
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as invoice_svc
-from app.services.client_portal.tokens import hash_token, issue_token
+from app.services.client_portal import (
+    PortalAuthError,
+    authenticate_and_stamp,
+    get_invoice_for_client,
+    get_portal_me,
+    get_portal_token_status,
+    hash_token,
+    issue_token,
+    revoke_portal_tokens,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,26 +42,17 @@ class PortalAuthRequest(BaseModel):
 
 @router.get("/admin/tokens/{client_id}", tags=["client-portal"])
 @limiter.limit("30/minute")
-async def get_portal_token_status(
+async def get_portal_token_status_route(
     request: Request,
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    row = await db.execute(
-        select(ClientPortalToken).where(
-            ClientPortalToken.client_id == client_id,
-            ClientPortalToken.tenant_id == current_user.tenant_id,
-            ClientPortalToken.is_active.is_(True),
-        )
+    return await get_portal_token_status(
+        client_id=client_id,
+        tenant_id=current_user.tenant_id,
+        db=db,
     )
-    token = row.scalar_one_or_none()
-    return {
-        "has_token": token is not None,
-        "expires_at": token.expires_at.isoformat() if token and token.expires_at else None,
-        "created_at": token.created_at.isoformat() if token else None,
-        "last_used_at": token.last_used_at.isoformat() if token and token.last_used_at else None,
-    }
 
 
 @router.post("/admin/tokens/{client_id}", tags=["client-portal"])
@@ -70,7 +66,10 @@ async def generate_portal_token(
 ):
     # Verify client belongs to tenant (validación de transporte)
     cl_res = await db.execute(
-        select(Client).where(Client.id == client_id, Client.tenant_id == current_user.tenant_id)
+        select(Client).where(
+            Client.id == client_id,
+            Client.tenant_id == current_user.tenant_id,
+        )
     )
     client = cl_res.scalar_one_or_none()
     if not client:
@@ -104,15 +103,11 @@ async def revoke_portal_token(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    existing = await db.execute(
-        select(ClientPortalToken).where(
-            ClientPortalToken.client_id == client_id,
-            ClientPortalToken.tenant_id == current_user.tenant_id,
-        )
+    await revoke_portal_tokens(
+        client_id=client_id,
+        tenant_id=current_user.tenant_id,
+        db=db,
     )
-    for t in existing.scalars():
-        t.is_active = False
-    await db.commit()
 
 
 # ── Público: intercambiar token → JWT ────────────────────────────────────────
@@ -124,24 +119,11 @@ async def authenticate_portal(
     payload: PortalAuthRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    raw_token = payload.token
-    token_hash = hash_token(raw_token)
-    now = datetime.now(UTC)
-
-    res = await db.execute(
-        select(ClientPortalToken).where(
-            ClientPortalToken.token_hash == token_hash,
-            ClientPortalToken.is_active.is_(True),
-        )
-    )
-    portal_token = res.scalar_one_or_none()
-    if not portal_token:
-        raise HTTPException(status_code=401, detail="Token inválido o revocado")
-    if portal_token.expires_at and as_aware(portal_token.expires_at) < now:
-        raise HTTPException(status_code=401, detail="El enlace de acceso ha expirado")
-
-    portal_token.last_used_at = now
-    await db.commit()
+    token_hash = hash_token(payload.token)
+    try:
+        portal_token = await authenticate_and_stamp(token_hash=token_hash, db=db)
+    except PortalAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     access_token = create_client_portal_access_token(
         str(portal_token.client_id), str(portal_token.tenant_id)
@@ -158,53 +140,7 @@ async def portal_me(
     db: AsyncSession = Depends(get_db),
     client: Client = Depends(get_current_client_portal),
 ):
-    inv_res = await db.execute(
-        select(Invoice)
-        .where(Invoice.client_id == client.id, Invoice.tenant_id == client.tenant_id)
-        .order_by(Invoice.date.desc())
-        .limit(50)
-    )
-    invoices = inv_res.scalars().all()
-
-    quote_res = await db.execute(
-        select(Quote)
-        .where(Quote.client_id == client.id, Quote.tenant_id == client.tenant_id)
-        .order_by(Quote.date.desc())
-        .limit(20)
-    )
-    quotes = quote_res.scalars().all()
-
-    return {
-        "client": {
-            "id": str(client.id),
-            "name": client.name,
-            "email": client.email,
-            "nif": client.nif,
-            "address": client.address,
-            "city": client.city,
-        },
-        "invoices": [
-            {
-                "id": str(i.id),
-                "invoice_number": i.invoice_number,
-                "date": i.date.isoformat() if i.date else None,
-                "due_date": i.due_date.isoformat() if i.due_date else None,
-                "amount_total": float(i.amount_total or 0),
-                "status": i.status,
-            }
-            for i in invoices
-        ],
-        "quotes": [
-            {
-                "id": str(q.id),
-                "quote_number": q.quote_number,
-                "date": q.date.isoformat() if q.date else None,
-                "amount_total": float(q.amount_total or 0),
-                "status": q.status,
-            }
-            for q in quotes
-        ],
-    }
+    return await get_portal_me(client=client, db=db)
 
 
 @router.get("/invoices/{invoice_id}/pdf", tags=["client-portal"])
@@ -215,15 +151,8 @@ async def portal_download_invoice_pdf(
     db: AsyncSession = Depends(get_db),
     client: Client = Depends(get_current_client_portal),
 ):
-    # Verify invoice belongs to this client
-    res = await db.execute(
-        select(Invoice).where(
-            Invoice.id == invoice_id,
-            Invoice.client_id == client.id,
-            Invoice.tenant_id == client.tenant_id,
-        )
-    )
-    if not res.scalar_one_or_none():
+    # Verify invoice belongs to this client (ownership guard — stays in route layer)
+    if not await get_invoice_for_client(invoice_id=invoice_id, client=client, db=db):
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
     try:
