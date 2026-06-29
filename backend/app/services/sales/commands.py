@@ -40,6 +40,28 @@ logger = logging.getLogger(__name__)
 VALID_STATUSES = ("draft", "confirmed", "delivered")
 
 
+async def _assert_fk_in_tenant(
+    db: AsyncSession,
+    model: type,
+    entity_id: UUID | None,
+    tenant_id: UUID,
+    label: str,
+) -> None:
+    """Reject a foreign key pointing to another tenant's row (cross-tenant IDOR).
+
+    No-op when ``entity_id`` is None. Raises LookupError when the referenced row does
+    not exist within ``tenant_id`` — same 'not found' semantics used elsewhere, so a
+    caller cannot assign across tenants nor probe which IDs exist in other tenants.
+    """
+    if entity_id is None:
+        return
+    found = await db.execute(
+        select(model.id).where(model.id == entity_id, model.tenant_id == tenant_id)
+    )
+    if found.scalar_one_or_none() is None:
+        raise LookupError(f"{label} not found")
+
+
 # ---------------------------------------------------------------------------
 # client commands
 # ---------------------------------------------------------------------------
@@ -261,6 +283,7 @@ async def create_quote(db: AsyncSession, tenant_id: UUID, data: dict) -> Quote:
     data.pop("tax_amount", None)
     data.pop("amount_total", None)
 
+    await _assert_fk_in_tenant(db, Client, data.get("client_id"), tenant_id, "Client")
     db_quote = Quote(
         tenant_id=tenant_id,
         amount_base=amount_base,
@@ -298,6 +321,8 @@ async def update_quote(
     update_data: dict,
 ) -> Quote:
     quote = await _get_quote_or_raise(db, quote_id, tenant_id)
+    if "client_id" in update_data:
+        await _assert_fk_in_tenant(db, Client, update_data.get("client_id"), tenant_id, "Client")
     for field, value in update_data.items():
         setattr(quote, field, value)
     await db.commit()
@@ -451,6 +476,7 @@ async def create_albaran(
         tax_amount += tax
     amount_total = amount_base + tax_amount
 
+    await _assert_fk_in_tenant(db, Client, client_id, tenant_id, "Client")
     note = DeliveryNote(
         tenant_id=tenant_id,
         client_id=client_id,
@@ -525,8 +551,8 @@ async def _deduct_stock_for_albaran(
     # Sort lines by product_id (deterministic lock order) to prevent deadlocks
     # when two concurrent transactions lock multiple products simultaneously.
     sorted_lines = sorted(
-        (l for l in note.lines if l.product_id is not None),
-        key=lambda l: l.product_id,
+        (ln for ln in note.lines if ln.product_id is not None),
+        key=lambda ln: ln.product_id,
     )
     for line in sorted_lines:
         qty = int(line.quantity or 0)
@@ -616,8 +642,8 @@ async def _revert_stock_for_albaran(
     # Sort lines by product_id (deterministic lock order) to prevent deadlocks
     # when two concurrent transactions lock multiple products simultaneously.
     sorted_lines = sorted(
-        (l for l in note.lines if l.product_id is not None),
-        key=lambda l: l.product_id,
+        (ln for ln in note.lines if ln.product_id is not None),
+        key=lambda ln: ln.product_id,
     )
     for line in sorted_lines:
         qty = int(line.quantity or 0)
