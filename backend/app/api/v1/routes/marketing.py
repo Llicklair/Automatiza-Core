@@ -11,26 +11,25 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import frontend_origin, settings
 from app.core.dependencies import get_current_user
 from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
-from app.db.models.marketing import Campaign, ScheduledPost, SocialAccount
+from app.db.models.marketing import ScheduledPost, SocialAccount
 from app.db.models.models import User
 from app.services.encryption import decrypt_str, encrypt_str
 from app.services.marketing.image_generation import generate_image as _generate_image
 from app.services.marketing.provider_config import (
-    add_provider_config,
+    add_zernio_config,
     client_for_config,
-    delete_provider_config,
     get_config,
+    list_configs_with_counts,
     list_provider_configs,
     set_default_profile_id,
 )
-from app.services.marketing.zernio_client import ZernioClient, ZernioError
+from app.services.marketing.zernio_client import ZernioError
 
 _logger = logging.getLogger(__name__)
 
@@ -162,13 +161,9 @@ async def list_accounts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(SocialAccount).where(
-            SocialAccount.tenant_id == current_user.tenant_id,
-            SocialAccount.is_active.is_(True),
-        )
-    )
-    return result.scalars().all()
+    from app.services.marketing.social_accounts import list_accounts as _list_accounts
+
+    return await _list_accounts(current_user.tenant_id, db)
 
 
 class GenerateImageRequest(BaseModel):
@@ -295,6 +290,8 @@ async def zernio_callback(
     `connected`, `accountId`, `username`. No hay tokens de cuenta: en BYO la
     publicación usa la API key del tenant, no credenciales OAuth de la cuenta.
     """
+    from app.services.marketing.social_accounts import upsert_from_callback
+
     try:
         tenant_id, config_id = _zernio_unstate(state)
     except Exception:
@@ -307,29 +304,7 @@ async def zernio_callback(
         return _popup_html(False, message="Zernio no devolvió la cuenta conectada. Reinténtalo.")
 
     platform = connected if connected in _ZERNIO_PLATFORMS else "social"
-    existing = await db.execute(
-        select(SocialAccount).where(
-            SocialAccount.tenant_id == tenant_id,
-            SocialAccount.account_id == accountId,
-        )
-    )
-    account = existing.scalar_one_or_none()
-    if account:
-        account.platform = platform
-        account.account_name = username or account.account_name
-        account.provider_config_id = config_id
-        account.is_active = True
-    else:
-        account = SocialAccount(
-            tenant_id=tenant_id,
-            platform=platform,
-            account_id=accountId,
-            account_name=username,
-            provider_config_id=config_id,
-            is_active=True,
-        )
-        db.add(account)
-    await db.commit()
+    await upsert_from_callback(tenant_id, config_id, accountId, username, platform, db)
     return _popup_html(True, platform=platform)
 
 
@@ -354,25 +329,17 @@ async def list_zernio_configs(
     current_user: User = Depends(get_current_user),
 ):
     """Lista las cuentas de Zernio del tenant (sin exponer la API key)."""
-    configs = await list_provider_configs(db, current_user.tenant_id)
-    out: list[ZernioConfigOut] = []
-    for c in configs:
-        n = await db.scalar(
-            select(func.count())
-            .select_from(SocialAccount)
-            .where(
-                SocialAccount.provider_config_id == c.id,
-                SocialAccount.is_active.is_(True),
-            )
+    items = await list_configs_with_counts(db, current_user.tenant_id)
+    return [
+        ZernioConfigOut(
+            id=c.id, label=c.label, default_profile_id=c.default_profile_id, num_accounts=c.num_accounts,
         )
-        out.append(ZernioConfigOut(
-            id=c.id, label=c.label, default_profile_id=c.default_profile_id, num_accounts=n or 0,
-        ))
-    return out
+        for c in items
+    ]
 
 
 @router.post("/zernio-config", response_model=ZernioConfigOut, status_code=status.HTTP_201_CREATED)
-async def add_zernio_config(
+async def add_zernio_config_endpoint(
     body: ZernioConfigCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -385,18 +352,12 @@ async def add_zernio_config(
     key = (body.api_key or "").strip()
     if not key.startswith("sk_"):
         raise HTTPException(status_code=400, detail="La API key de Zernio debe empezar por 'sk_'.")
-    client = ZernioClient(key)
     try:
-        profiles = await client.list_profiles()
+        cfg = await add_zernio_config(db, current_user.tenant_id, key, label=body.label)
     except ZernioError as e:
         raise HTTPException(status_code=400, detail=f"La API key no es válida: {e}") from e
-    default_pid = str(profiles[0].get("_id") or profiles[0].get("id")) if profiles else None
-    cfg = await add_provider_config(
-        db, current_user.tenant_id, key, label=body.label, default_profile_id=default_pid,
-    )
-    await db.commit()
     return ZernioConfigOut(
-        id=cfg.id, label=cfg.label, default_profile_id=cfg.default_profile_id, num_accounts=0,
+        id=cfg.id, label=cfg.label, default_profile_id=cfg.default_profile_id, num_accounts=cfg.num_accounts,
     )
 
 
@@ -406,6 +367,8 @@ async def delete_zernio_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from app.services.marketing.provider_config import delete_provider_config
+
     ok = await delete_provider_config(db, config_id, current_user.tenant_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Cuenta de Zernio no encontrada")
@@ -420,12 +383,9 @@ async def list_campaigns(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Campaign)
-        .where(Campaign.tenant_id == current_user.tenant_id)
-        .order_by(Campaign.created_at.desc())
-    )
-    return result.scalars().all()
+    from app.services.marketing.campaigns import list_campaigns as _list_campaigns
+
+    return await _list_campaigns(current_user.tenant_id, db)
 
 
 @router.post("/campaigns", response_model=CampaignOut, status_code=status.HTTP_201_CREATED)
@@ -434,15 +394,9 @@ async def create_campaign(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    campaign = Campaign(
-        tenant_id=current_user.tenant_id,
-        name=body.name,
-        description=body.description,
-    )
-    db.add(campaign)
-    await db.commit()
-    await db.refresh(campaign)
-    return campaign
+    from app.services.marketing.campaigns import create_campaign as _create_campaign
+
+    return await _create_campaign(current_user.tenant_id, body.name, body.description, db)
 
 
 @router.get("/campaigns/{campaign_id}/metrics")
@@ -455,15 +409,10 @@ async def campaign_metrics(
 
     Devuelve la última métrica conocida de cada post (el job diario las refresca).
     """
+    from app.services.marketing.campaigns import get_campaign
     from app.services.marketing.metrics import get_campaign_metrics
 
-    result = await db.execute(
-        select(Campaign).where(
-            Campaign.id == campaign_id,
-            Campaign.tenant_id == current_user.tenant_id,
-        )
-    )
-    if result.scalar_one_or_none() is None:
+    if await get_campaign(campaign_id, current_user.tenant_id, db) is None:
         raise HTTPException(status_code=404, detail="Campaña no encontrada")
     return await get_campaign_metrics(db, current_user.tenant_id, campaign_id)
 
@@ -477,15 +426,9 @@ async def list_posts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    q = select(ScheduledPost).where(ScheduledPost.tenant_id == current_user.tenant_id)
-    if status_filter:
-        q = q.where(ScheduledPost.status == status_filter)
-    q = q.order_by(
-        ScheduledPost.scheduled_at.asc().nulls_last(),
-        ScheduledPost.created_at.desc(),
-    )
-    result = await db.execute(q)
-    return result.scalars().all()
+    from app.services.marketing.posts import list_posts as _list_posts
+
+    return await _list_posts(current_user.tenant_id, db, status_filter=status_filter)
 
 
 @router.post("/posts", response_model=PostOut, status_code=status.HTTP_201_CREATED)
@@ -494,30 +437,21 @@ async def create_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    acc = await db.execute(
-        select(SocialAccount).where(
-            SocialAccount.id == body.social_account_id,
-            SocialAccount.tenant_id == current_user.tenant_id,
-            SocialAccount.is_active.is_(True),
-        )
-    )
-    if not acc.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Cuenta social no encontrada")
+    from app.services.marketing.posts import create_post as _create_post
 
-    post = ScheduledPost(
-        tenant_id=current_user.tenant_id,
-        social_account_id=body.social_account_id,
-        campaign_id=body.campaign_id,
-        platform=body.platform,
-        content=body.content,
-        image_url=body.image_url,
-        scheduled_at=body.scheduled_at,
-        status="scheduled" if body.scheduled_at else "draft",
-    )
-    db.add(post)
-    await db.commit()
-    await db.refresh(post)
-    return post
+    try:
+        return await _create_post(
+            current_user.tenant_id,
+            body.social_account_id,
+            body.platform,
+            body.content,
+            body.image_url,
+            body.campaign_id,
+            body.scheduled_at,
+            db,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -526,18 +460,11 @@ async def delete_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(ScheduledPost).where(
-            ScheduledPost.id == post_id,
-            ScheduledPost.tenant_id == current_user.tenant_id,
-            ScheduledPost.status != "published",
-        )
-    )
-    post = result.scalar_one_or_none()
-    if not post:
+    from app.services.marketing.posts import delete_post as _delete_post
+
+    ok = await _delete_post(post_id, current_user.tenant_id, db)
+    if not ok:
         raise HTTPException(status_code=404, detail="Post no encontrado o ya publicado")
-    await db.delete(post)
-    await db.commit()
 
 
 # ── Agent: generar plan ────────────────────────────────────────────────────────
@@ -597,8 +524,9 @@ async def generate_plan(
     async def _created_since():
         # Posts creados EN ESTA EJECUCIÓN, en cualquier estado: borradores
         # (create_post) y programados de campaña (create_campaign → scheduled).
+        from sqlalchemy import select as _select
         r = await db.execute(
-            select(ScheduledPost)
+            _select(ScheduledPost)
             .where(
                 ScheduledPost.tenant_id == current_user.tenant_id,
                 ScheduledPost.created_at >= run_started,
@@ -629,6 +557,8 @@ async def generate_plan(
     fallback_used = False
     fallback_blocked_manual = False
     if not created:
+        from sqlalchemy import select as _select
+
         from app.db.models.inventory import Product
         from app.services.autonomy_gate import evaluate_autonomy
 
@@ -646,14 +576,14 @@ async def generate_plan(
             fallback_blocked_manual = True
         else:
             prod_res = await db.execute(
-                select(Product)
+                _select(Product)
                 .where(Product.tenant_id == current_user.tenant_id)
                 .order_by(Product.created_at.desc())
                 .limit(3)
             )
             products = prod_res.scalars().all()
             acc_res = await db.execute(
-                select(SocialAccount).where(
+                _select(SocialAccount).where(
                     SocialAccount.tenant_id == current_user.tenant_id,
                     SocialAccount.is_active.is_(True),
                 )
@@ -695,8 +625,10 @@ async def generate_plan(
     # garantizamos, sin depender del modelo: (1) un post por CADA cuenta conectada
     # (replicando contenido si falta), y (2) una imagen en todos los posts.
     if created:
+        from sqlalchemy import select as _select
+
         acc_res = await db.execute(
-            select(SocialAccount).where(
+            _select(SocialAccount).where(
                 SocialAccount.tenant_id == current_user.tenant_id,
                 SocialAccount.is_active.is_(True),
             )
@@ -809,28 +741,16 @@ async def update_post(
     current_user: User = Depends(get_current_user),
 ):
     """Edita contenido, imagen o horario de un post borrador o programado."""
-    result = await db.execute(
-        select(ScheduledPost).where(
-            ScheduledPost.id == post_id,
-            ScheduledPost.tenant_id == current_user.tenant_id,
-            ScheduledPost.status.in_(["draft", "scheduled"]),
-        )
+    from app.services.marketing.posts import update_post as _update_post
+
+    post = await _update_post(
+        post_id,
+        current_user.tenant_id,
+        body.content,
+        body.image_url,
+        body.scheduled_at,
+        db,
     )
-    post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post no encontrado o ya publicado")
-
-    if body.content is not None:
-        post.content = body.content
-    if body.image_url is not None:
-        # En el modal de edición el campo refleja el estado final: cadena vacía
-        # = "quitar imagen" → NULL (no '' falsy, que rompe los checks `if image_url`
-        # de la publicación, p.ej. Instagram).
-        post.image_url = body.image_url.strip() or None
-    if body.scheduled_at is not None:
-        post.scheduled_at = body.scheduled_at
-        post.status = "scheduled"
-
-    await db.commit()
-    await db.refresh(post)
     return post
