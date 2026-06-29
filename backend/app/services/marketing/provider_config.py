@@ -7,12 +7,64 @@ se guardan cifradas con TENANT_ENCRYPTION_KEY.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from dataclasses import dataclass
+from typing import Optional
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.marketing import MarketingProviderConfig, SocialAccount
 from app.services.encryption import decrypt_str, encrypt_str
 from app.services.marketing.zernio_client import ZernioClient, ZernioError
+
+
+@dataclass
+class ZernioConfigInfo:
+    id: object
+    label: Optional[str]
+    default_profile_id: Optional[str]
+    num_accounts: int
+
+
+async def list_configs_with_counts(db: AsyncSession, tenant_id) -> list[ZernioConfigInfo]:
+    """Lista cuentas de Zernio del tenant con el recuento de cuentas sociales activas."""
+    configs = await list_provider_configs(db, tenant_id)
+    out: list[ZernioConfigInfo] = []
+    for c in configs:
+        n = await db.scalar(
+            select(func.count())
+            .select_from(SocialAccount)
+            .where(
+                SocialAccount.provider_config_id == c.id,
+                SocialAccount.is_active.is_(True),
+            )
+        )
+        out.append(ZernioConfigInfo(
+            id=c.id, label=c.label, default_profile_id=c.default_profile_id, num_accounts=n or 0,
+        ))
+    return out
+
+
+async def add_zernio_config(
+    db: AsyncSession,
+    tenant_id,
+    api_key: str,
+    label: Optional[str] = None,
+) -> ZernioConfigInfo:
+    """Valida la API key de Zernio contra su API y persiste la nueva cuenta.
+
+    Raises ZernioError si la key no es válida.
+    """
+    client = ZernioClient(api_key)
+    profiles = await client.list_profiles()
+    default_pid = str(profiles[0].get("_id") or profiles[0].get("id")) if profiles else None
+    cfg = await add_provider_config(
+        db, tenant_id, api_key, label=label, default_profile_id=default_pid,
+    )
+    await db.commit()
+    return ZernioConfigInfo(
+        id=cfg.id, label=cfg.label, default_profile_id=cfg.default_profile_id, num_accounts=0,
+    )
 
 
 async def list_provider_configs(db: AsyncSession, tenant_id) -> list[MarketingProviderConfig]:
