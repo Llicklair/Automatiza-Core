@@ -10,7 +10,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.db.models.email_marketing import EmailCampaign, EmailCampaignRecipient
 from app.services.audit import log_action
@@ -48,6 +48,26 @@ async def send_campaign(campaign_id: str, tenant_id: str) -> None:
         # así que el tenant del listener RLS no está fijado. Anclamos la consulta
         # al tenant_id (que ya llega como parámetro) como defensa en profundidad:
         # un campaign_id de otro tenant nunca se envía con estas credenciales.
+        # Atomic claim: flip the campaign to "sending" in ONE conditional UPDATE.
+        # Only one concurrent caller (scheduler tick vs. manual "send now") can match
+        # `status NOT IN (sending, sent)`; the loser matches 0 rows and bails. This
+        # closes the TOCTOU double-send race (the old SELECT-check-write let both
+        # callers pass the guard and every recipient got 2 emails). Correct by
+        # construction at the DB level — the exclusivity is the UPDATE's WHERE, not a
+        # read-then-write window.
+        claim = await db.execute(
+            update(EmailCampaign)
+            .where(
+                EmailCampaign.id == UUID(campaign_id),
+                EmailCampaign.tenant_id == UUID(tenant_id),
+                EmailCampaign.status.not_in(("sending", "sent")),
+            )
+            .values(status="sending")
+        )
+        await db.commit()
+        if claim.rowcount == 0:
+            return  # already claimed by a concurrent sender, missing, or wrong tenant
+
         result = await db.execute(
             select(EmailCampaign).where(
                 EmailCampaign.id == UUID(campaign_id),
@@ -55,11 +75,8 @@ async def send_campaign(campaign_id: str, tenant_id: str) -> None:
             )
         )
         campaign = result.scalar_one_or_none()
-        if not campaign or campaign.status in ("sending", "sent"):
+        if not campaign:
             return
-
-        campaign.status = "sending"
-        await db.commit()
 
         recipients = await db.execute(
             select(EmailCampaignRecipient).where(
