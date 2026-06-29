@@ -1,6 +1,5 @@
 """Marketing: social accounts, campaigns, scheduled posts, OAuth callbacks."""
 
-import asyncio
 import base64
 import datetime
 import json
@@ -17,7 +16,6 @@ from app.core.config import frontend_origin, settings
 from app.core.dependencies import get_current_user
 from app.core.tenant_context import set_current_tenant
 from app.db.base import get_db
-from app.db.models.marketing import ScheduledPost, SocialAccount
 from app.db.models.models import User
 from app.services.encryption import decrypt_str, encrypt_str
 from app.services.marketing.image_generation import generate_image as _generate_image
@@ -470,37 +468,6 @@ async def delete_post(
 # ── Agent: generar plan ────────────────────────────────────────────────────────
 
 
-async def _search_images_bounded(
-    queries: list[str], *, timeout: float = 15.0
-) -> list[Optional[str]]:
-    """Busca imágenes en paralelo con un timeout GLOBAL.
-
-    Devuelve una lista alineada con `queries`; cada elemento es la URL o None.
-    Evita el cuelgue de la request HTTP cuando el proxy de imágenes (Render)
-    está frío: N búsquedas en serie podían sumar minutos. Si expira el timeout
-    global, devuelve None para todas (la imagen no es bloqueante: los posts son
-    borradores editables).
-    """
-    from app.services.marketing.image_search import search_image
-
-    async def _one(q: str) -> Optional[str]:
-        try:
-            img = await search_image(q)
-            return img if isinstance(img, str) and img else None
-        except Exception:
-            return None
-
-    if not queries:
-        return []
-    try:
-        return await asyncio.wait_for(
-            asyncio.gather(*(_one(q) for q in queries)),
-            timeout=timeout,
-        )
-    except asyncio.TimeoutError:
-        return [None] * len(queries)
-
-
 class GeneratePlanRequest(BaseModel):
     prompt: str
 
@@ -517,168 +484,9 @@ async def generate_plan(
     current_user: User = Depends(get_current_user),
 ):
     """Llama al agente de marketing con un prompt y crea los posts en DB."""
-    from app.agents.marketing import run_agent
+    from app.services.marketing.plan_generation import generate_plan as _generate_plan
 
-    run_started = datetime.datetime.now(datetime.timezone.utc)
-
-    async def _created_since():
-        # Posts creados EN ESTA EJECUCIÓN, en cualquier estado: borradores
-        # (create_post) y programados de campaña (create_campaign → scheduled).
-        from sqlalchemy import select as _select
-        r = await db.execute(
-            _select(ScheduledPost)
-            .where(
-                ScheduledPost.tenant_id == current_user.tenant_id,
-                ScheduledPost.created_at >= run_started,
-            )
-            .order_by(ScheduledPost.created_at.desc())
-            .limit(50)
-        )
-        return r.scalars().all()
-
-    results = await run_agent(prompt=body.prompt, tenant_id=str(current_user.tenant_id))
-    created = await _created_since()
-
-    if not created:
-        # El modelo respondió preguntando/ofreciendo opciones en vez de crear.
-        # Reintenta UNA vez forzando la acción (algunos modelos ignoran la regla
-        # del system prompt según el fraseo del usuario).
-        forced = (
-            body.prompt
-            + "\n\n[INSTRUCCIÓN OBLIGATORIA] No preguntes ni ofrezcas opciones: crea "
-            "YA los posts con create_campaign (varios) o create_post (uno) para TODAS "
-            "las cuentas conectadas. Debes dejar la campaña/borradores creados."
-        )
-        results = await run_agent(prompt=forced, tenant_id=str(current_user.tenant_id))
-        created = await _created_since()
-
-    # ── Fallback determinista: si el agente (claude_code) NO creó nada, generamos
-    # un plan básico desde el catálogo, sin depender del LLM. Borradores editables.
-    fallback_used = False
-    fallback_blocked_manual = False
-    if not created:
-        from sqlalchemy import select as _select
-
-        from app.db.models.inventory import Product
-        from app.services.autonomy_gate import evaluate_autonomy
-
-        # Respeta SEC.AUT: en modo MANUAL el tenant pidió "solo sugerir, no crear",
-        # así que crear borradores aquí saltándose el gate violaría ese contrato.
-        # En CONFIRM (default de marketing) los borradores SÍ son válidos: son la
-        # "acción preparada" que el humano publica luego con un clic explícito.
-        decision = await evaluate_autonomy(
-            db,
-            tenant_id=current_user.tenant_id,
-            domain="marketing",
-            action_summary="Generar plan de marketing (borradores) desde el catálogo",
-        )
-        if decision.mode == "MANUAL":
-            fallback_blocked_manual = True
-        else:
-            prod_res = await db.execute(
-                _select(Product)
-                .where(Product.tenant_id == current_user.tenant_id)
-                .order_by(Product.created_at.desc())
-                .limit(3)
-            )
-            products = prod_res.scalars().all()
-            acc_res = await db.execute(
-                _select(SocialAccount).where(
-                    SocialAccount.tenant_id == current_user.tenant_id,
-                    SocialAccount.is_active.is_(True),
-                )
-            )
-            accounts = acc_res.scalars().all()
-
-            if products and accounts:
-                # Imágenes en paralelo con timeout global (no en serie): el proxy
-                # de Render puede estar frío y N búsquedas secuenciales colgaban
-                # la request HTTP. Sin imagen → None (editable después).
-                imgs = await _search_images_bounded([p.name for p in products])
-                for day, (prod, img) in enumerate(zip(products, imgs, strict=False), start=1):
-                    price = f"{prod.price:.0f}€" if prod.price else ""
-                    desc = (prod.description or "").strip()
-                    hook = desc[:180] if desc else "La solución que tu empresa necesita para dar el siguiente paso."
-                    tag = "".join(ch for ch in (prod.name.split()[0] if prod.name else "") if ch.isalnum()).lower()
-                    cuerpo = (
-                        f"✨ {prod.name}" + (f" · {price}" if price else "") + "\n\n"
-                        + f"{hook}\n\n"
-                        + "👉 Escríbenos y te asesoramos sin compromiso.\n\n"
-                        + f"#pyme #negocio{(' #' + tag) if tag else ''}"
-                    )
-                    for acc in accounts:
-                        db.add(ScheduledPost(
-                            tenant_id=current_user.tenant_id,
-                            social_account_id=acc.id,
-                            platform=acc.platform,
-                            content=cuerpo[:280] if acc.platform == "twitter" else cuerpo[:2200],
-                            image_url=img,
-                            scheduled_at=run_started + datetime.timedelta(days=day, hours=10),
-                            status="draft",
-                        ))
-                await db.commit()
-                created = await _created_since()
-                fallback_used = bool(created)
-
-    # ── Red de seguridad determinista ─────────────────────────────────────────
-    # El LLM a veces ignora plataformas (solo crea 1 red) o no añade imagen. Aquí
-    # garantizamos, sin depender del modelo: (1) un post por CADA cuenta conectada
-    # (replicando contenido si falta), y (2) una imagen en todos los posts.
-    if created:
-        from sqlalchemy import select as _select
-
-        acc_res = await db.execute(
-            _select(SocialAccount).where(
-                SocialAccount.tenant_id == current_user.tenant_id,
-                SocialAccount.is_active.is_(True),
-            )
-        )
-        accounts = acc_res.scalars().all()
-        covered = {p.platform for p in created}
-        template = created[0]
-
-        # (1) Cobertura: crea un post espejo en cada plataforma sin post.
-        for acc in accounts:
-            if acc.platform not in covered:
-                mirror = ScheduledPost(
-                    tenant_id=current_user.tenant_id,
-                    social_account_id=acc.id,
-                    platform=acc.platform,
-                    content=template.content,
-                    image_url=template.image_url,
-                    scheduled_at=template.scheduled_at,
-                    status=template.status,
-                )
-                db.add(mirror)
-                created.append(mirror)
-                covered.add(acc.platform)
-
-        # (2) Imágenes: rellena las que falten en paralelo con timeout global
-        # (Instagram las exige). Si el proxy está frío, no cuelga la request.
-        missing = [p for p in created if not p.image_url]
-        if missing:
-            imgs = await _search_images_bounded([p.content[:80] for p in missing])
-            for p, img in zip(missing, imgs, strict=False):
-                if img:
-                    p.image_url = img
-
-        await db.commit()
-
-    post_ids = [str(p.id) for p in created]
-    if fallback_blocked_manual:
-        agent_text = results[0].get("result", "") if results else ""
-        summary = (
-            "Tu política de marketing está en modo MANUAL: te propongo el plan, "
-            "pero no creo borradores automáticamente. Revísalo y créalos tú, o "
-            "cambia la autonomía a 'Confirmar' en Ajustes.\n\n" + agent_text
-        ).strip()
-    elif fallback_used:
-        summary = (
-            f"Plan básico generado desde tu catálogo: {len(created)} posts en borrador "
-            "con imagen, listos para que los edites y publiques."
-        )
-    else:
-        summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
+    summary, post_ids = await _generate_plan(db, current_user.tenant_id, body.prompt)
     return GeneratePlanResponse(summary=summary, post_ids=post_ids)
 
 
