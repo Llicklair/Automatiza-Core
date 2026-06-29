@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.tenant import (
@@ -13,7 +12,6 @@ from app.api.v1.schemas.tenant import (
 )
 from app.core.dependencies import get_current_user, require_role
 from app.db.base import get_db
-from app.db.models.auth import Tenant
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services import tenant_service as svc
@@ -133,15 +131,7 @@ async def get_certificate_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = res.scalar_one_or_none()
-    if not tenant or not tenant.cert_path:
-        return {"has_certificate": False}
-    return {
-        "has_certificate": True,
-        "cert_subject": tenant.cert_subject,
-        "cert_expires_at": tenant.cert_expires_at.isoformat() if tenant.cert_expires_at else None,
-    }
+    return await svc.get_certificate_status(db, current_user.tenant_id)
 
 
 @router.post("/certificate", tags=["tenant"])
@@ -184,22 +174,11 @@ async def delete_certificate(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
-    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = res.scalar_one_or_none()
-    if tenant and tenant.cert_path:
-        p = Path(tenant.cert_path)
-        if p.exists():
-            p.unlink()
-        tenant.cert_path = None
-        tenant.cert_password = None
-        tenant.cert_subject = None
-        tenant.cert_expires_at = None
-        await db.commit()
+    await svc.delete_certificate(db, current_user.tenant_id)
 
 
 # ── Logo corporativo ─────────────────────────────────────────────────────────
 
-_LOGO_DIR = Path("uploads/logos")
 _LOGO_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 _LOGO_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
 
@@ -211,11 +190,7 @@ async def get_logo_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = res.scalar_one_or_none()
-    if not tenant or not tenant.logo_path or not Path(tenant.logo_path).exists():
-        return {"has_logo": False}
-    return {"has_logo": True, "logo_path": tenant.logo_path}
+    return await svc.get_logo_status(db, current_user.tenant_id)
 
 
 @router.post("/logo", tags=["tenant"])
@@ -241,23 +216,7 @@ async def upload_logo(
     if not content:
         raise HTTPException(status_code=400, detail="Archivo vacío")
 
-    logo_dir = _LOGO_DIR / str(current_user.tenant_id)
-    logo_dir.mkdir(parents=True, exist_ok=True)
-    # Borrar logo previo si existía con otra extensión
-    for prev in logo_dir.glob("logo.*"):
-        try:
-            prev.unlink()
-        except OSError:
-            pass
-    logo_path = logo_dir / f"logo{ext}"
-    logo_path.write_bytes(content)
-
-    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = res.scalar_one_or_none()
-    tenant.logo_path = str(logo_path)
-    await db.commit()
-
-    return {"message": "Logo cargado correctamente", "logo_path": str(logo_path)}
+    return await svc.upload_logo(db, current_user.tenant_id, content, ext)
 
 
 @router.delete("/logo", status_code=204, tags=["tenant"])
@@ -267,11 +226,4 @@ async def delete_logo(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
-    res = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    tenant = res.scalar_one_or_none()
-    if tenant and tenant.logo_path:
-        p = Path(tenant.logo_path)
-        if p.exists():
-            p.unlink(missing_ok=True)
-        tenant.logo_path = None
-        await db.commit()
+    await svc.delete_logo(db, current_user.tenant_id)

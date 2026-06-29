@@ -7,6 +7,7 @@ import json as _json
 import os
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -377,3 +378,78 @@ async def claude_code_logout() -> dict[str, Any]:
         "version": None,
         "message": f"Error al cerrar sesión: {err or out}",
     }
+
+
+# ── Certificate status / delete ───────────────────────────────────────────────
+
+
+async def get_certificate_status(db: AsyncSession, tenant_id: UUID) -> dict[str, Any]:
+    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    if not tenant or not tenant.cert_path:
+        return {"has_certificate": False}
+    return {
+        "has_certificate": True,
+        "cert_subject": tenant.cert_subject,
+        "cert_expires_at": tenant.cert_expires_at.isoformat() if tenant.cert_expires_at else None,
+    }
+
+
+async def delete_certificate(db: AsyncSession, tenant_id: UUID) -> None:
+    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    if tenant and tenant.cert_path:
+        p = Path(tenant.cert_path)
+        if p.exists():
+            p.unlink()
+        tenant.cert_path = None
+        tenant.cert_password = None
+        tenant.cert_subject = None
+        tenant.cert_expires_at = None
+        await db.commit()
+
+
+# ── Logo ──────────────────────────────────────────────────────────────────────
+
+_LOGO_DIR = Path("uploads/logos")
+
+
+async def get_logo_status(db: AsyncSession, tenant_id: UUID) -> dict[str, Any]:
+    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    if not tenant or not tenant.logo_path or not Path(tenant.logo_path).exists():
+        return {"has_logo": False}
+    return {"has_logo": True, "logo_path": tenant.logo_path}
+
+
+async def upload_logo(
+    db: AsyncSession, tenant_id: UUID, content: bytes, ext: str
+) -> dict[str, Any]:
+    logo_dir = _LOGO_DIR / str(tenant_id)
+    logo_dir.mkdir(parents=True, exist_ok=True)
+    # Borrar logo previo si existía con otra extensión
+    for prev in logo_dir.glob("logo.*"):
+        try:
+            prev.unlink()
+        except OSError:
+            pass
+    logo_path = logo_dir / f"logo{ext}"
+    logo_path.write_bytes(content)
+
+    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    tenant.logo_path = str(logo_path)
+    await db.commit()
+
+    return {"message": "Logo cargado correctamente", "logo_path": str(logo_path)}
+
+
+async def delete_logo(db: AsyncSession, tenant_id: UUID) -> None:
+    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    if tenant and tenant.logo_path:
+        p = Path(tenant.logo_path)
+        if p.exists():
+            p.unlink(missing_ok=True)
+        tenant.logo_path = None
+        await db.commit()
