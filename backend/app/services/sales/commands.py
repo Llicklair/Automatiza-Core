@@ -176,8 +176,12 @@ async def delete_product(db: AsyncSession, tenant_id: UUID, product_id: UUID) ->
 async def create_stock_movement(
     db: AsyncSession, tenant_id: UUID, product_id: UUID, data: dict
 ) -> StockMovement:
+    # Row-level FOR UPDATE serializes concurrent stock movements of the same
+    # product at the DB; products locked in sorted order to avoid deadlock.
     result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)
+        select(Product)
+        .where(Product.id == product_id, Product.tenant_id == tenant_id)
+        .with_for_update()
     )
     product = result.scalar_one_or_none()
     if not product:
@@ -518,17 +522,25 @@ async def _deduct_stock_for_albaran(
     if existing.scalar_one_or_none():
         return
 
-    for line in note.lines:
-        if line.product_id is None:
-            continue
+    # Sort lines by product_id (deterministic lock order) to prevent deadlocks
+    # when two concurrent transactions lock multiple products simultaneously.
+    sorted_lines = sorted(
+        (l for l in note.lines if l.product_id is not None),
+        key=lambda l: l.product_id,
+    )
+    for line in sorted_lines:
         qty = int(line.quantity or 0)
         if qty <= 0:
             continue
+        # Row-level FOR UPDATE serializes concurrent stock deductions of the same
+        # product at the DB; products locked in sorted order to avoid deadlock.
         product_res = await db.execute(
-            select(Product).where(
+            select(Product)
+            .where(
                 Product.id == line.product_id,
                 Product.tenant_id == note.tenant_id,
             )
+            .with_for_update()
         )
         product = product_res.scalar_one_or_none()
         if product is None:
@@ -601,17 +613,25 @@ async def _revert_stock_for_albaran(
     if not forward.scalar_one_or_none():
         return
 
-    for line in note.lines:
-        if line.product_id is None:
-            continue
+    # Sort lines by product_id (deterministic lock order) to prevent deadlocks
+    # when two concurrent transactions lock multiple products simultaneously.
+    sorted_lines = sorted(
+        (l for l in note.lines if l.product_id is not None),
+        key=lambda l: l.product_id,
+    )
+    for line in sorted_lines:
         qty = int(line.quantity or 0)
         if qty <= 0:
             continue
+        # Row-level FOR UPDATE serializes concurrent stock reverts of the same
+        # product at the DB; products locked in sorted order to avoid deadlock.
         product_res = await db.execute(
-            select(Product).where(
+            select(Product)
+            .where(
                 Product.id == line.product_id,
                 Product.tenant_id == note.tenant_id,
             )
+            .with_for_update()
         )
         product = product_res.scalar_one_or_none()
         if product is None:
