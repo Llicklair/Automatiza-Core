@@ -4654,7 +4654,10 @@
       "viewList": "List",
       "viewCalendar": "Calendar",
       "emptyState": "No posts in this status",
-      "editTitle": "Edit text, image and date"
+      "editTitle": "Edit text, image and date",
+      "deleteAll": "Delete all",
+      "deleteAllConfirm": "Delete all {count} in the list?",
+      "deleteAllYes": "Yes, delete"
     },
     "planIa": {
       "generateError": "Error generating the plan",

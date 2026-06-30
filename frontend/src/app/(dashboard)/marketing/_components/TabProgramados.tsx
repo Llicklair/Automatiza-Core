@@ -23,6 +23,7 @@ export function TabProgramados() {
     const t = useTranslations("marketing.programados");
     const ts = useTranslations("marketing.status");
     const tc = useTranslations("marketing.common");
+    const tcom = useTranslations("common");
     const toast = useToastStore();
     const [posts, setPosts] = useState<ScheduledPost[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,6 +31,8 @@ export function TabProgramados() {
     const [view, setView] = useState<"list" | "calendar">("list");
     const [publishing, setPublishing] = useState<Set<string>>(new Set());
     const [editing, setEditing] = useState<ScheduledPost | null>(null);
+    const [removingAll, setRemovingAll] = useState(false);
+    const [confirmingAll, setConfirmingAll] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -69,9 +72,27 @@ export function TabProgramados() {
         }
     };
 
+    const removeAll = async () => {
+        // "Toda la lista" = los posts borrables (no publicados) actualmente visibles.
+        const ids = posts.filter((p) => p.status !== "published").map((p) => p.id);
+        if (ids.length === 0) return;
+        setRemovingAll(true);
+        try {
+            await marketingApi.posts.bulkDelete({ ids });
+            setConfirmingAll(false);
+            await load();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("deleteFail"));
+        } finally {
+            setRemovingAll(false);
+        }
+    };
+
     const fmt = (iso: string | null) => iso
         ? new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
         : "—";
+
+    const deletableCount = posts.filter((p) => p.status !== "published").length;
 
     return (
         <div className="space-y-4">
@@ -92,8 +113,41 @@ export function TabProgramados() {
                 ))}
             </div>
 
-            {/* Toggle Lista / Calendario */}
-            <div className="flex justify-end">
+            {/* Acciones: eliminar todos + toggle de vista */}
+            <div className="flex justify-between items-center gap-2 flex-wrap">
+                {deletableCount > 0 ? (
+                    confirmingAll ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] text-muted-foreground">
+                                {t("deleteAllConfirm", { count: deletableCount })}
+                            </span>
+                            <button
+                                onClick={removeAll}
+                                disabled={removingAll}
+                                className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                                {removingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                {t("deleteAllYes")}
+                            </button>
+                            <button
+                                onClick={() => setConfirmingAll(false)}
+                                disabled={removingAll}
+                                className="text-[11px] px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                            >
+                                {tcom("cancel")}
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setConfirmingAll(true)}
+                            className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" /> {t("deleteAll")}
+                        </button>
+                    )
+                ) : (
+                    <span />
+                )}
                 <div className="inline-flex bg-card border border-border rounded-lg p-0.5">
                     {([["list", t("viewList")], ["calendar", t("viewCalendar")]] as const).map(([v, label]) => (
                         <button
