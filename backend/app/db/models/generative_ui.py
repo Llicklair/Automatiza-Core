@@ -22,5 +22,7 @@ class GeneratedUI(Base):
     content_html = Column(Text, nullable=False)
     is_pinned = Column(Boolean, default=True)
     metadata_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=utcnow)
-    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+    # timezone=True: utcnow() devuelve datetime.now(UTC) (aware). Sin esto la columna
+    # era naive y asyncpg rechazaba el INSERT en Postgres (mismo bug que hr_documents).
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
