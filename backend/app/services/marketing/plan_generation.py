@@ -7,6 +7,8 @@ The autonomy gate check is positioned BEFORE any db.add() call — do not reorde
 import asyncio
 import datetime
 import logging
+import re
+import unicodedata
 from typing import Optional
 from uuid import UUID
 
@@ -51,6 +53,64 @@ async def _search_images_bounded(
         return [None] * len(queries)
 
 
+# ── Emparejado petición → catálogo (route-local) ────────────────────────────────
+
+# Tokens muy cortos ("pro", "de", "la"…) provocan falsos positivos al emparejar
+# nombres de producto con el texto del usuario. Solo contamos como "señal" los
+# tokens significativos de 4+ caracteres.
+_MIN_TOKEN_LEN = 4
+
+
+def _norm(text: str) -> str:
+    """Minúsculas sin tildes, para comparar nombre de producto y petición."""
+    text = unicodedata.normalize("NFKD", text or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return text.lower()
+
+
+def _significant_tokens(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9]+", _norm(text)) if len(t) >= _MIN_TOKEN_LEN}
+
+
+def _match_products_to_prompt(products: list, prompt: str) -> list:
+    """Devuelve los productos del catálogo que el usuario nombra en `prompt`.
+
+    Un producto coincide si su nombre completo aparece como subcadena del texto
+    (señal fuerte) o si comparte algún token significativo (4+ chars) con él.
+    Se ordena por relevancia y se devuelven hasta 3. Lista vacía = el usuario no
+    nombró ningún producto concreto (el caller usa entonces los más recientes).
+    """
+    prompt_norm = _norm(prompt)
+    prompt_tokens = _significant_tokens(prompt)
+    scored: list[tuple[int, object]] = []
+    for p in products:
+        name_norm = _norm(getattr(p, "name", ""))
+        overlap = _significant_tokens(getattr(p, "name", "")) & prompt_tokens
+        full = bool(name_norm) and name_norm in prompt_norm
+        if full or overlap:
+            # El nombre completo presente pesa más que un único token suelto.
+            scored.append(((2 if full else 0) + len(overlap), p))
+    scored.sort(key=lambda sp: sp[0], reverse=True)
+    return [p for _score, p in scored[:3]]
+
+
+# Directiva del flujo interactivo "Generar plan": el panel produce BORRADORES que
+# el humano revisa y publica con un clic. create_campaign está gateada por la
+# política de autonomía (marketing=CONFIRM por defecto) y bajo CONFIRM no crea
+# nada, así que en ESTE flujo dirigimos al agente a create_post. No se toca el
+# system prompt compartido (lo usa también el dispatcher del orquestador).
+_DRAFT_FLOW_DIRECTIVE = (
+    "[FLUJO INTERACTIVO — CREAR BORRADORES]\n"
+    "Estás en el panel 'Generar plan'. Crea los posts como BORRADORES con la tool "
+    "create_post (uno por cada cuenta conectada). NO uses create_campaign en este "
+    "flujo. Si el usuario nombra un producto concreto, construye TODO el plan en "
+    "torno a ESE producto del catálogo (su nombre, precio y descripción reales). "
+    "Si ese producto no aparece en el catálogo, crea igualmente contenido de marca "
+    "atractivo sobre lo que pide.\n\n"
+    "Petición del usuario:\n"
+)
+
+
 # ── Public service function ─────────────────────────────────────────────────────
 
 async def generate_plan(
@@ -81,18 +141,35 @@ async def generate_plan(
         )
         return r.scalars().all()
 
-    results = await run_agent(prompt=prompt, tenant_id=str(tenant_id))
+    # Política de autonomía del tenant para marketing. Se calcula UNA vez aquí
+    # (antes de cualquier db.add) y se reutiliza en el fallback. SEC.AUT: en
+    # modo MANUAL no se crean borradores en ningún caso — no reordenar este check.
+    from app.services.autonomy_gate import evaluate_autonomy
+
+    decision = await evaluate_autonomy(
+        db,
+        tenant_id=tenant_id,
+        domain="marketing",
+        action_summary="Generar plan de marketing (borradores) desde el catálogo",
+    )
+
+    # En el flujo interactivo dirigimos al agente a crear BORRADORES con create_post
+    # (create_campaign está gateada y bajo CONFIRM no crearía nada). En MANUAL el
+    # agente solo sugiere: no le empujamos a crear.
+    agent_prompt = prompt if decision.mode == "MANUAL" else _DRAFT_FLOW_DIRECTIVE + prompt
+
+    results = await run_agent(prompt=agent_prompt, tenant_id=str(tenant_id))
     created = await _created_since()
 
-    if not created:
+    if not created and decision.mode != "MANUAL":
         # El modelo respondió preguntando/ofreciendo opciones en vez de crear.
         # Reintenta UNA vez forzando la acción (algunos modelos ignoran la regla
         # del system prompt según el fraseo del usuario).
         forced = (
-            prompt
+            agent_prompt
             + "\n\n[INSTRUCCIÓN OBLIGATORIA] No preguntes ni ofrezcas opciones: crea "
-            "YA los posts con create_campaign (varios) o create_post (uno) para TODAS "
-            "las cuentas conectadas. Debes dejar la campaña/borradores creados."
+            "YA los posts con create_post para TODAS las cuentas conectadas. "
+            "Debes dejar los borradores creados."
         )
         results = await run_agent(prompt=forced, tenant_id=str(tenant_id))
         created = await _created_since()
@@ -101,30 +178,30 @@ async def generate_plan(
     # un plan básico desde el catálogo, sin depender del LLM. Borradores editables.
     fallback_used = False
     fallback_blocked_manual = False
+    fallback_matched_names: list[str] = []
     if not created:
         from app.db.models.inventory import Product
-        from app.services.autonomy_gate import evaluate_autonomy
 
         # Respeta SEC.AUT: en modo MANUAL el tenant pidió "solo sugerir, no crear",
         # así que crear borradores aquí saltándose el gate violaría ese contrato.
         # En CONFIRM (default de marketing) los borradores SÍ son válidos: son la
         # "acción preparada" que el humano publica luego con un clic explícito.
-        decision = await evaluate_autonomy(
-            db,
-            tenant_id=tenant_id,
-            domain="marketing",
-            action_summary="Generar plan de marketing (borradores) desde el catálogo",
-        )
         if decision.mode == "MANUAL":
             fallback_blocked_manual = True
         else:
+            # Emparejamos el catálogo con la petición para respetar el producto
+            # que el usuario nombró. Antes se cogían los 3 más NUEVOS a ciegas,
+            # ignorando el texto (bug: "pido Switch Pro y salen otros productos").
             prod_res = await db.execute(
                 select(Product)
                 .where(Product.tenant_id == tenant_id)
                 .order_by(Product.created_at.desc())
-                .limit(3)
+                .limit(200)
             )
-            products = prod_res.scalars().all()
+            catalog = prod_res.scalars().all()
+            matched = _match_products_to_prompt(catalog, prompt)
+            products = matched or catalog[:3]
+            fallback_matched_names = [p.name for p in matched]
             acc_res = await db.execute(
                 select(SocialAccount).where(
                     SocialAccount.tenant_id == tenant_id,
@@ -214,10 +291,17 @@ async def generate_plan(
             "cambia la autonomía a 'Confirmar' en Ajustes.\n\n" + agent_text
         ).strip()
     elif fallback_used:
-        summary = (
-            f"Plan básico generado desde tu catálogo: {len(created)} posts en borrador "
-            "con imagen, listos para que los edites y publiques."
-        )
+        if fallback_matched_names:
+            nombres = ", ".join(fallback_matched_names)
+            summary = (
+                f"Plan generado para {nombres}: {len(created)} borradores con imagen, "
+                "listos para que los edites y publiques."
+            )
+        else:
+            summary = (
+                f"Plan básico generado desde tu catálogo: {len(created)} posts en borrador "
+                "con imagen, listos para que los edites y publiques."
+            )
     else:
         summary = results[0].get("result", "Plan generado.") if results else "Plan generado."
 
