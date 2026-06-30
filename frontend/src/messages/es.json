@@ -5482,7 +5482,8 @@
       "overdueInvoice": "Factura vencida",
       "dueSoonInvoice": "Factura próxima a vencer",
       "lowStock": "Stock bajo",
-      "pendingPayroll": "Nómina pendiente de pago"
+      "pendingPayroll": "Nómina pendiente de pago",
+      "expiringLot": "Lote por caducar"
     },
     "list": {
       "loading": "Cargando alertas…",

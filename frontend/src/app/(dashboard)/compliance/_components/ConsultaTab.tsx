@@ -36,6 +36,11 @@ export function ConsultaTab() {
         }
     }
 
+    // El dispatcher de compliance usa el genérico _run_graph_agent → output={action,response}.
+    // El LLM mock rellenaba `respuesta_consulta`, por eso solo se veía en demo. Leemos ambos
+    // (+ resumen_boe) para no quedarnos en blanco con el backend real.
+    const answer = results && (results.respuesta_consulta || results.response || results.resumen_boe);
+
     return (
         <div className="max-w-2xl">
             <div className="rounded-xl border border-border bg-card p-6 mb-8">
@@ -84,7 +89,7 @@ export function ConsultaTab() {
                 )}
             </div>
 
-            {results && results.respuesta_consulta && (
+            {answer && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 shadow-lg shadow-primary/20">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -95,7 +100,7 @@ export function ConsultaTab() {
                         </div>
                     </div>
                     <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed space-y-4">
-                        {results.respuesta_consulta}
+                        {answer}
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-primary/20">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-    AlertTriangle, Bell, CheckCircle2, Info, Loader2, PackageX,
+    AlertTriangle, Bell, CalendarClock, CheckCircle2, Info, Loader2, PackageX,
     RefreshCw, ReceiptText, Sparkles, Wallet,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -20,6 +20,7 @@ const buildTypeMeta = (t: ReturnType<typeof useTranslations>): Record<string, Ty
     due_soon_invoice: { label: t("types.dueSoonInvoice"),  icon: ReceiptText, href: "/ventas/facturas" },
     low_stock:        { label: t("types.lowStock"),        icon: PackageX,    href: "/inventario/stock" },
     pending_payroll:  { label: t("types.pendingPayroll"),  icon: Wallet,      href: "/rrhh/nominas" },
+    expiring_lot:     { label: t("types.expiringLot"),     icon: CalendarClock, href: "/inventario/stock" },
 });
 
 const SEVERITY_CLS: Record<string, string> = {

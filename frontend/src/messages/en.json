@@ -5482,7 +5482,8 @@
       "overdueInvoice": "Overdue invoice",
       "dueSoonInvoice": "Invoice due soon",
       "lowStock": "Low stock",
-      "pendingPayroll": "Payroll pending payment"
+      "pendingPayroll": "Payroll pending payment",
+      "expiringLot": "Expiring batch"
     },
     "list": {
       "loading": "Loading alerts…",
