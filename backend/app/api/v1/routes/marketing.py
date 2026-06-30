@@ -465,6 +465,30 @@ async def delete_post(
         raise HTTPException(status_code=404, detail="Post no encontrado o ya publicado")
 
 
+class BulkDeletePostsRequest(BaseModel):
+    ids: Optional[list[UUID]] = None
+    status: Optional[str] = None
+
+
+@router.post("/posts/bulk-delete")
+async def bulk_delete_posts(
+    body: BulkDeletePostsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Elimina en masa los posts NO publicados: toda la lista o un subconjunto.
+
+    `ids` acota a posts concretos; `status` a un estado (ej. "scheduled"). Sin
+    ninguno de los dos, borra todos los posts no publicados del tenant.
+    """
+    from app.services.marketing.posts import delete_posts_bulk
+
+    deleted = await delete_posts_bulk(
+        current_user.tenant_id, db, ids=body.ids, status_filter=body.status
+    )
+    return {"deleted": deleted}
+
+
 # ── Agent: generar plan ────────────────────────────────────────────────────────
 
 

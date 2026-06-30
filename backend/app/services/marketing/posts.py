@@ -85,6 +85,39 @@ async def delete_post(post_id: UUID, tenant_id, db: AsyncSession) -> bool:
     return True
 
 
+async def delete_posts_bulk(
+    tenant_id,
+    db: AsyncSession,
+    *,
+    ids: Optional[list[UUID]] = None,
+    status_filter: Optional[str] = None,
+) -> int:
+    """Elimina en masa los posts NO publicados del tenant.
+
+    - Si `ids` viene, borra solo esos (excluyendo siempre los ya publicados).
+    - Si no, borra todos los no publicados, opcionalmente acotados por
+      `status_filter` (ej. "scheduled"). "all"/None = sin filtrar por estado.
+
+    Un post publicado NUNCA se borra. Devuelve el número de posts eliminados.
+    """
+    q = select(ScheduledPost).where(
+        ScheduledPost.tenant_id == tenant_id,
+        ScheduledPost.status != "published",
+    )
+    if ids:
+        q = q.where(ScheduledPost.id.in_(ids))
+    if status_filter and status_filter != "all":
+        q = q.where(ScheduledPost.status == status_filter)
+
+    result = await db.execute(q)
+    posts = list(result.scalars().all())
+    for post in posts:
+        await db.delete(post)
+    if posts:
+        await db.commit()
+    return len(posts)
+
+
 async def update_post(
     post_id: UUID,
     tenant_id,

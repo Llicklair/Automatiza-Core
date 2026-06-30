@@ -125,6 +125,11 @@ export const marketingApi = {
             }),
         delete: (id: string) =>
             request<void>(`/api/v1/marketing/posts/${id}`, { method: "DELETE" }),
+        bulkDelete: (params?: { ids?: string[]; status?: string }) =>
+            request<{ deleted: number }>("/api/v1/marketing/posts/bulk-delete", {
+                method: "POST",
+                body: JSON.stringify(params ?? {}),
+            }),
         update: (id: string, data: UpdatePostInput) =>
             request<ScheduledPost>(`/api/v1/marketing/posts/${id}`, {
                 method: "PATCH",
