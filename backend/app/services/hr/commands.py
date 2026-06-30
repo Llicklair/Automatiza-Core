@@ -198,6 +198,16 @@ async def generate_document(
         logger.error("Error generando documento con LLM: %s", e)
         raise ValueError(f"Error al generar el documento: {e}") from e
 
+    # Guarda: algunos proveedores (p.ej. claude_code en timeout) NO lanzan: devuelven
+    # un texto "Error: ..." como contenido. No guardamos un documento cuyo cuerpo es un
+    # error — lo tratamos como fallo de generación para que la UI lo muestre claro.
+    if not content_html or content_html.lstrip().lower().startswith("error:"):
+        raise ValueError(
+            "El modelo de IA no devolvió un documento válido (posible timeout o "
+            "proveedor sin configurar). Reintenta, o cambia tu proveedor de IA en "
+            "Ajustes → Claves API."
+        )
+
     # R2: guardar con el `db` inyectado (atómico con la request), no con una sesión
     # aparte. `refresh` recarga id/doc_number/created_at sin lazy-load — mismo patrón
     # que create_invoice/create_payroll.

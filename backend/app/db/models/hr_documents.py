@@ -27,5 +27,9 @@ class HRDocument(Base):
     doc_number = Column(String(40), nullable=True, index=True)
     instructions = Column(Text, nullable=True)
     metadata_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    approved_at = Column(DateTime, nullable=True)
+    # timezone=True: el modelo y el servicio insertan datetime.now(UTC) (tz-aware),
+    # igual que el resto de la app. Sin esto la columna era naive (TIMESTAMP WITHOUT
+    # TIME ZONE) y asyncpg rechazaba el INSERT con DataError en Postgres real (SQLite
+    # no distingue naive/aware, por eso los tests no lo veían). Ver migración 0069.
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    approved_at = Column(DateTime(timezone=True), nullable=True)
