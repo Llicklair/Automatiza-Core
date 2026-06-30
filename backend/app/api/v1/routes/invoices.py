@@ -16,7 +16,7 @@ from app.db.models.auth import Tenant
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as svc
-from app.services.billing.facturae import generate_facturae_xml, mark_verifactu_sent
+from app.services.billing.facturae import generate_facturae_xml
 from app.services.event_bus import emit_event
 
 logger = logging.getLogger(__name__)
@@ -525,7 +525,16 @@ async def send_to_verifactu(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Pipeline REAL de envío a VeriFactu, cableado pero INACTIVO: con confirmed=False
+    # solo valida (dry-run), NUNCA hace POST a la AEAT ni marca 'sent' sin acuse real.
+    # Activar el envío real exige modo voluntary + certificado + homologación AEAT
+    # (entonces se pasará confirmed=True). Antes esto era una simulación que fingía
+    # "enviado"; ahora no se finge nada.
+    from app.services.billing.verifactu_submit import submit_invoice_to_verifactu
+
     try:
-        return await mark_verifactu_sent(invoice_id, current_user.tenant_id, db)
+        return await submit_invoice_to_verifactu(
+            db, invoice_id, current_user.tenant_id, confirmed=False
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
