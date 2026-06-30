@@ -114,9 +114,13 @@ def send_email(
             "¿Confirmas el envío? Responde 'sí, envía' para proceder o 'no' para cancelar.\n"
             "(DEMO: configura credenciales de email en Integraciones para envíos reales)"
         )
+    # NO afirmar "enviado": sin credenciales no se envía nada. Antes devolvía
+    # "[DEMO] Correo enviado a ..." y el usuario/LLM lo daba por enviado (exito
+    # silencioso falso). Hay que dejar inequivoco que el correo NO salió.
     return (
-        f"[DEMO] Correo '{subject}' enviado a {to}{attachments_str}.\n"
-        "(Configura las credenciales de email en Integraciones para envíos reales)"
+        f"⚠ NO se envió el correo '{subject}' a {to}{attachments_str}: no hay "
+        "credenciales de email configuradas (modo demo). Configúralas en "
+        "Integraciones para poder enviar correos de verdad."
     )
 
 
