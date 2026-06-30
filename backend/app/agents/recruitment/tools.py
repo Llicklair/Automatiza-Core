@@ -254,7 +254,13 @@ async def list_candidates(
 
 @tool
 async def update_candidate_status(tenant_id: str, candidate_id: str, new_status: str) -> str:
-    """Mueve un candidato en el pipeline. new_status: new|reviewed|shortlisted|rejected|hired"""
+    """Mueve un candidato en el pipeline. new_status: new|reviewed|shortlisted|rejected|hired
+
+    Cambiar el estado de un candidato (p. ej. hired/rejected) es una decisión que
+    afecta a una persona: pasa por el gate de autonomía (recruitment=CONFIRM por
+    defecto). Bajo CONFIRM/MANUAL NO se aplica automáticamente (queda pendiente de
+    aprobación); solo en AUTO se aplica directo.
+    """
     valid = {"new", "reviewed", "shortlisted", "rejected", "hired"}
     if new_status not in valid:
         return f"Estado inválido. Opciones: {', '.join(valid)}"
@@ -264,6 +270,24 @@ async def update_candidate_status(tenant_id: str, candidate_id: str, new_status:
         candidate_uuid = _parse_uuid(candidate_id, "candidate_id")
     except ValueError as e:
         return f"Error: {e}"
+
+    # Gate de autonomía DESPUÉS de validar el input (no encolamos peticiones
+    # inválidas). Bajo CONFIRM/MANUAL no aplicamos el cambio: queda pendiente.
+    from app.services.autonomy_gate import evaluate_autonomy
+
+    async with AsyncSessionLocal() as gate_db:
+        decision = await evaluate_autonomy(
+            gate_db,
+            tenant_id=tenant_uuid,
+            domain="recruitment",
+            action_summary=f"Cambiar candidato {candidate_id} a estado '{new_status}'",
+        )
+    if decision.mode != "AUTO":
+        return (
+            f"⏸ Cambio pendiente de aprobación (recruitment={decision.mode}): "
+            f"candidato {candidate_id} → '{new_status}'. No se ha aplicado; "
+            "apruébalo o ajusta la política de autonomía en Ajustes."
+        )
 
     try:
         async with AsyncSessionLocal() as db:

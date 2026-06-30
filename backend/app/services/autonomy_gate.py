@@ -228,12 +228,30 @@ def gated_tool(
             from app.db.base import AsyncSessionLocal
 
             tenant_raw = kwargs.get("tenant_id") or (args[0] if args else None)
+            # FALLO CERRADO: sin un tenant_id resoluble no se puede evaluar la
+            # política de autonomía, así que NO ejecutamos una tool con efecto
+            # secundario (antes se ejecutaba sin gate = fallo ABIERTO, un bypass
+            # del único mecanismo de autonomía). En el flujo real,
+            # enforce_tenant/isolated inyecta el tenant del ContextVar, por lo que
+            # esto solo se dispara cuando de verdad no hay tenant.
+            _deny = (
+                f"⚠ No ejecuto `{func.__name__}` (dominio {domain}): no se pudo "
+                "verificar la política de autonomía (tenant no resuelto). Acción "
+                "cancelada por seguridad."
+            )
             if not tenant_raw:
-                return await func(*args, **kwargs)
+                logger.warning(
+                    "gated_tool FAIL-CLOSED: sin tenant_id para %s/%s", func.__name__, domain
+                )
+                return _deny
             try:
                 tenant_uuid = UUID(str(tenant_raw))
             except (ValueError, TypeError):
-                return await func(*args, **kwargs)
+                logger.warning(
+                    "gated_tool FAIL-CLOSED: tenant_id no-UUID (%r) para %s/%s",
+                    tenant_raw, func.__name__, domain,
+                )
+                return _deny
 
             summary = (
                 summary_fn(kwargs) if summary_fn

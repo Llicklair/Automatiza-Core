@@ -84,8 +84,11 @@ class TestGatedTool:
         assert called["count"] == 0
         assert "MANUAL" in result
 
-    async def test_sin_tenant_id_ejecuta_sin_gate(self, db, seed_tenant_and_user):
-        """Si la tool no recibe tenant_id, no se puede gatear — ejecuta."""
+    async def test_sin_tenant_id_no_ejecuta_fail_closed(self, db, seed_tenant_and_user):
+        """FALLO CERRADO: sin tenant_id no se puede gatear → NO ejecuta.
+
+        (Antes ejecutaba sin gate = fallo ABIERTO; este test blindaba el bug.)
+        """
         called = {"count": 0}
 
         @gated_tool(domain="banking_write")
@@ -96,13 +99,14 @@ class TestGatedTool:
         with self._patched_session(db):
             result = await fake_tool()
 
-        assert called["count"] == 1
-        assert result == "ok"
+        assert called["count"] == 0
+        assert result != "ok"
+        assert "seguridad" in result.lower()
 
-    async def test_tenant_id_no_uuid_ejecuta_sin_gate(
+    async def test_tenant_id_no_uuid_no_ejecuta_fail_closed(
         self, db, seed_tenant_and_user
     ):
-        """Si el tenant_id no es UUID válido, no se puede gatear — ejecuta."""
+        """FALLO CERRADO: tenant_id no-UUID no se puede gatear → NO ejecuta."""
         called = {"count": 0}
 
         @gated_tool(domain="banking_write")
@@ -111,9 +115,10 @@ class TestGatedTool:
             return "ok"
 
         with self._patched_session(db):
-            await fake_tool(tenant_id="not-a-uuid")
+            result = await fake_tool(tenant_id="not-a-uuid")
 
-        assert called["count"] == 1
+        assert called["count"] == 0
+        assert "seguridad" in result.lower()
 
     async def test_summary_default_menciona_tool_y_dominio(
         self, db, seed_tenant_and_user
