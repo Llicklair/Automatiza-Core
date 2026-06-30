@@ -314,3 +314,94 @@ async def get_submitter(
     if mode != "voluntary":
         return NoRemissionSubmitter()
     return PreproduccionSubmitter(transport=transport)
+
+
+async def submit_invoice_to_verifactu(
+    db: AsyncSession,
+    invoice_id: UUID,
+    tenant_id: UUID,
+    *,
+    confirmed: bool = False,
+) -> dict:
+    """Remite una factura a VeriFactu por el pipeline REAL. Seguro e INACTIVO por defecto.
+
+    Garantías (NUNCA se finge un envío):
+      - modo no_remission (default del tenant) → no-op, NO marca enviado.
+      - voluntary + confirmed=False → dry-run: valida el XML, NO hace POST, NO marca enviado.
+      - voluntary + confirmed=True sin certificado/firma real → aborta SIN enviar.
+      - SOLO un acuse REAL 'Correcto' de la AEAT pone verifactu_status='sent'.
+
+    La ruta pasa confirmed=False mientras el envío no esté homologado contra la AEAT:
+    queda cableado pero inactivo. Lanza ValueError si la factura no existe.
+    """
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from app.db.models.billing import Invoice, VerifactuRecord
+    from app.services.aeat.certificate_storage import CertificateError
+
+    inv = (
+        await db.execute(
+            select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id)
+        )
+    ).scalar_one_or_none()
+    if inv is None:
+        raise ValueError("Factura no encontrada")
+
+    record = (
+        await db.execute(
+            select(VerifactuRecord).where(
+                VerifactuRecord.invoice_id == invoice_id,
+                VerifactuRecord.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if record is None:
+        return {
+            "invoice_id": str(invoice_id),
+            "remitted": False,
+            "status": inv.verifactu_status,
+            "message": (
+                "La factura no tiene registro en la cadena VeriFactu (¿emitida antes "
+                "de activar la cadena?). No se ha enviado nada."
+            ),
+        }
+
+    submitter = await get_submitter(db, tenant_id=tenant_id)
+    try:
+        ack = await submitter.submit(db, record=record, confirmed=confirmed)
+    except (VerifactuSubmitError, CertificateError) as exc:
+        # Aborta SIN tocar el estado de la factura: nunca se finge un envío.
+        return {
+            "invoice_id": str(invoice_id),
+            "remitted": False,
+            "status": inv.verifactu_status,
+            "message": f"No remitido a la AEAT: {exc}",
+        }
+
+    if not ack.remitted:
+        # no_remission o dry-run: nada enviado, no se marca nada.
+        return {
+            "invoice_id": str(invoice_id),
+            "remitted": False,
+            "dry_run": ack.dry_run,
+            "status": inv.verifactu_status,
+            "message": ack.detail or "No remitido.",
+        }
+
+    # Acuse REAL de la AEAT: solo 'Correcto' marca enviado; cualquier otro → error.
+    if (ack.estado_envio or "").strip().lower() == "correcto":
+        inv.verifactu_status = "sent"
+        inv.verifactu_sent_at = datetime.now(tz=UTC)
+    else:
+        inv.verifactu_status = "error"
+    await db.commit()
+    return {
+        "invoice_id": str(invoice_id),
+        "remitted": True,
+        "status": inv.verifactu_status,
+        "estado_envio": ack.estado_envio,
+        "csv": ack.csv,
+        "message": f"Acuse AEAT: {ack.estado_envio}",
+    }
