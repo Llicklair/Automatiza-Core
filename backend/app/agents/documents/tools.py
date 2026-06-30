@@ -282,7 +282,12 @@ async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, par
     """Genera embeddings y los almacena en BD. Devuelve embeddings_info string."""
     try:
         embedder = get_embedder()
-        if not embedder or not raw_text.strip():
+        if not embedder:
+            # Sin proveedor de embeddings: el documento NO es buscable por
+            # semántica, pero SÍ por texto (ILIKE sobre parsed_content). No es un
+            # fallo; lo indicamos para no presentarlo como RAG pleno.
+            return "\n(Sin proveedor de embeddings: el documento será buscable por texto, no por semántica.)"
+        if not raw_text.strip():
             return ""
 
         if parsed_doc and parsed_doc.elements:
@@ -320,7 +325,13 @@ async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, par
         parser_label = f" ({parsed_doc.parser_used})" if parsed_doc else ""
         return f"\nEmbeddings RAG{parser_label}: {len(doc_chunks)} chunks indexados para búsqueda semántica."
     except Exception as e:
-        return f"\nEmbeddings no generados: {e}"
+        # Antes el fallo se tragaba SIN log: invisible a ops y el documento quedaba
+        # sin índice semántico sin dejar rastro. Lo registramos para diagnosticarlo
+        # (el documento sigue siendo buscable por texto, no se pierde).
+        logger.warning(
+            "Fallo generando embeddings para el documento %s: %s", document_id, e, exc_info=True
+        )
+        return f"\n⚠ Embeddings NO generados ({e}). El documento es buscable por texto pero no por semántica."
 
 
 async def _update_doc_status(document_id: str, raw_text: str) -> None:
