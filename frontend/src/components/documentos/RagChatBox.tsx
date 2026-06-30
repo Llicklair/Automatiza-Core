@@ -37,11 +37,15 @@ export default function RagChatBox() {
             if (current.status === "done" && current.agent_results) {
                 const ragResult = current.agent_results.find((r: any) => r.agent === "rag");
                 if (ragResult?.success) {
+                    // El dispatcher genérico (_run_graph_agent) devuelve output={action,response}.
+                    // Antes se leía output.answer (inexistente) → burbuja en blanco pese a haber
+                    // respuesta. Las fuentes van embebidas en el texto, no en campos aparte.
+                    const out = ragResult.output || {};
                     setChatMessages(prev => [...prev, {
                         role: "ai",
-                        content: ragResult.output.answer,
-                        sources: ragResult.output.sources_used,
-                        sourceNames: ragResult.output.source_names
+                        content: out.answer || out.response || "Sin respuesta.",
+                        sources: out.sources_used,
+                        sourceNames: out.source_names
                     }]);
                 } else {
                     setChatMessages(prev => [...prev, { role: "ai", content: "No pude procesar la respuesta." }]);
