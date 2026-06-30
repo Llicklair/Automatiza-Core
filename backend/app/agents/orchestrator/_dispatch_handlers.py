@@ -244,16 +244,26 @@ async def _invoke_dispatcher_impl(
             logger.warning("Error en dynamic employee routing para '%s': %s", agent_name, e)
 
     logger.warning(
-        "[DISPATCH] Agente '%s' sin dispatcher ni empleado dinámico; devolviendo no-op "
-        "(revisar plan/blueprint: ¿nodo sin 'domain'?)",
+        "[DISPATCH] Agente '%s' sin dispatcher ni empleado dinámico (revisar "
+        "plan/blueprint: ¿nodo sin 'domain'?)",
         agent_name,
     )
+    # FALLO, no éxito: no hay handler para este agente, así que el paso NO se
+    # ejecutó. Antes devolvía success=True con "[PENDIENTE]" y la tarea se marcaba
+    # completada sin hacer nada (éxito falso). Marcarlo como fallo deja que el
+    # orquestador lo trate como crítico/no-crítico y NO finja que se hizo.
     return {
         "subtask_id": subtask["id"],
         "agent": agent_name,
-        "success": True,
-        "output": {"message": f"[PENDIENTE] Agente '{agent_name}' no implementado aún"},
-        "error": None,
+        "success": False,
+        "output": {
+            "action": "failed",
+            "message": f"Agente '{agent_name}' no implementado / sin dispatcher.",
+        },
+        "error": (
+            f"No hay dispatcher ni empleado para el agente '{agent_name}'. El paso "
+            "no se ejecutó (revisa el plan/blueprint: ¿nodo sin 'domain'?)."
+        ),
     }
 
 
