@@ -158,7 +158,7 @@ jobs:
         run: poetry run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-fail-under=57
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: backend/coverage.xml
           flags: backend
@@ -218,7 +218,7 @@ jobs:
         run: npm run test:ci
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: frontend/coverage/coverage-final.json
           flags: frontend
