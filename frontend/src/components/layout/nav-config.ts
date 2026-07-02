@@ -100,7 +100,6 @@ export const NAV_SECTIONS: NavSection[] = [
                 label: "Proyectos", icon: FolderKanban, subItems: [
                     { label: "Panel", href: "/proyectos" },
                     { label: "Tareas", href: "/proyectos/tareas" },
-                    { label: "Mis tareas", href: "/proyectos/mis-tareas" },
                 ],
             },
         ],

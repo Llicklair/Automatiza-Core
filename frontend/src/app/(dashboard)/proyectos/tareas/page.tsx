@@ -1,8 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { KanbanSquare, Plus, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ProjectGroupedView } from "./_components/ProjectGroupedView";
 import { useTasksKanban } from "./_hooks/useTasksKanban";
 import { KanbanColumn } from "./_components/KanbanColumn";
 import { CreateTaskModal } from "./_components/CreateTaskModal";
@@ -91,10 +94,48 @@ function TasksKanbanContent() {
     );
 }
 
+function TasksPageContent() {
+    const t = useTranslations("proyectos");
+    const searchParams = useSearchParams();
+    // Vista fusionada (audit UX 2026-07-02): tablero drag&drop o agrupada por
+    // proyecto (la antigua /proyectos/mis-tareas), misma tabla ProjectTask.
+    const [vista, setVista] = useState<"tablero" | "proyecto">(
+        searchParams.get("vista") === "proyecto" ? "proyecto" : "tablero"
+    );
+
+    return (
+        <div>
+            <div className="flex justify-end px-8 pt-6 -mb-2">
+                <div className="inline-flex rounded-full border border-border bg-card p-1 text-xs font-medium">
+                    <button
+                        onClick={() => setVista("tablero")}
+                        className={cn(
+                            "px-3 py-1.5 rounded-full transition-colors",
+                            vista === "tablero" ? "bg-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t("tareas.viewBoard")}
+                    </button>
+                    <button
+                        onClick={() => setVista("proyecto")}
+                        className={cn(
+                            "px-3 py-1.5 rounded-full transition-colors",
+                            vista === "proyecto" ? "bg-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t("tareas.viewByProject")}
+                    </button>
+                </div>
+            </div>
+            {vista === "tablero" ? <TasksKanbanContent /> : <ProjectGroupedView />}
+        </div>
+    );
+}
+
 export default function TasksKanbanPage() {
     return (
         <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div></div>}>
-            <TasksKanbanContent />
+            <TasksPageContent />
         </Suspense>
     );
 }

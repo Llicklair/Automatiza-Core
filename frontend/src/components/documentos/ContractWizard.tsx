@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
     FileSignature, Loader2, Send, Save, ChevronDown, ChevronUp, CheckCircle2,
 } from "lucide-react";
@@ -99,6 +100,15 @@ export default function ContractWizard() {
 
             {open && (
                 <div className="px-5 pb-5 space-y-4 border-t border-border pt-4">
+                    {type === "trabajo" && (
+                        <div className="text-xs text-amber-400/90 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
+                            Para contratos laborales de empleados con registro y flujo de aprobación usa la{" "}
+                            <Link href="/rrhh/documentos" className="underline hover:text-amber-300">
+                                Gestoría Documental de RRHH
+                            </Link>
+                            . Este asistente guarda el resultado como documento general, sin aprobación.
+                        </div>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                         <select
                             value={type}
