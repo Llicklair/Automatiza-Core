@@ -1,10 +1,16 @@
 """Validación de licencia contra el servidor externo.
 
 Protecciones:
-- Caché firmada con HMAC(machine_id) → edición manual invalida la firma.
-- machine_id verificado en caché → el JSON copiado a otra máquina no sirve.
-- Gracia offline limitada a 7 días → bloquear el servidor solo aguanta una semana.
+- GRANT firmado por el servidor (Ed25519) que ata clave+machine_id+fecha+plan;
+  se verifica OFFLINE con la clave pública embebida. Un license.json forjado a
+  mano NO puede producir esta firma sin la clave privada → caché infalsificable.
+- machine_id verificado en el grant → el JSON copiado a otra máquina no sirve.
+- Gracia offline limitada a 7 días desde la fecha del SERVIDOR (no el reloj
+  local) + marca de agua monotónica → adelantar/atrasar el reloj no la alarga.
 - Sin bypass por entorno: no existe modo desarrollo que salte la validación.
+
+Nota: nada de esto protege contra editar este propio .py (corre en la máquina
+del atacante). Esa barrera es el empaquetado sin fuente, no este módulo.
 """
 
 import base64
@@ -50,6 +56,24 @@ def _verify_server_sig(nonce: str, plan: str, sig_b64: str) -> bool:
         return False
 
 
+def _verify_grant(key: str, machine_id: str, issued_at: str, plan: str, grant_sig: str) -> bool:
+    """Verifica el grant firmado por el servidor (clave privada Ed25519).
+
+    Es el ancla de confianza REAL de la caché: sin la clave privada del servidor
+    nadie puede fabricar un grant válido, así que un license.json escrito a mano
+    no pasa por aquí aunque el atacante conozca el esquema (a diferencia del HMAC,
+    cuya clave —el machine_id— es pública para quien lee este archivo)."""
+    if not grant_sig or not key or not issued_at:
+        return False
+    try:
+        pub_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(_PUBLIC_KEY_B64))
+        message = f"{key}:{machine_id}:{issued_at}:{plan}".encode()
+        pub_key.verify(base64.b64decode(grant_sig), message)
+        return True
+    except (InvalidSignature, Exception):
+        return False
+
+
 LICENSE_FILE = app_data_dir("license.json")
 
 
@@ -82,6 +106,18 @@ def _sign(payload: str, machine_id: str) -> str:
 
 def _cache_payload(key: str, plan: str, last_validated: str, machine_id: str) -> str:
     return f"{key}|{plan}|{last_validated}|{machine_id}"
+
+
+def _within_grace(issued_at: str) -> bool:
+    """True si `issued_at` (fecha del SERVIDOR) está dentro de la gracia offline.
+
+    Ancla en la fecha firmada por el servidor, no en el reloj local, así que
+    adelantar el reloj no crea gracia nueva (la fecha va dentro del grant firmado).
+    """
+    try:
+        return datetime.now(timezone.utc) - datetime.fromisoformat(issued_at) <= timedelta(days=OFFLINE_GRACE_DAYS)
+    except Exception:
+        return False
 
 
 # ── Lectura / escritura ───────────────────────────────────────────────────────
@@ -123,7 +159,7 @@ def get_stored_key() -> str | None:
     return _read_cache().get("key")
 
 
-def save_license(key: str, plan: str) -> None:
+def save_license(key: str, plan: str, issued_at: str = "", grant_sig: str = "") -> None:
     machine_id = get_machine_id()
     last_validated = datetime.now(timezone.utc).isoformat()
     payload = _cache_payload(key, plan, last_validated, machine_id)
@@ -132,6 +168,9 @@ def save_license(key: str, plan: str) -> None:
         "plan": plan,
         "machine_id": machine_id,
         "last_validated": last_validated,
+        # Grant firmado por el servidor (ancla de confianza offline) + su fecha.
+        "issued_at": issued_at,
+        "grant_sig": grant_sig,
         "sig": _sign(payload, machine_id),
     }
     _write_cache(cache)
@@ -164,14 +203,16 @@ def cached_license_state() -> LicenseResult:
         return LicenseResult(valid=False, reason="sin licencia")
     if not _verify_cache(cache, machine_id):
         return LicenseResult(valid=False, reason="caché inválida o manipulada")
-    last_str = cache.get("last_validated", "")
-    if last_str:
-        try:
-            last = datetime.fromisoformat(last_str)
-            if datetime.now(timezone.utc) - last <= timedelta(days=OFFLINE_GRACE_DAYS):
-                return LicenseResult(valid=True, plan=cache.get("plan", "pro"), reason="cache")
-        except Exception:
-            logger.debug("Fecha de caché ilegible", exc_info=True)
+    # Ancla de confianza real: el grant firmado por el servidor. Sin grant válido
+    # (caché forjada o de una versión antigua) no hay acceso offline: fuerza una
+    # revalidación online que lo re-emite. La firma HMAC de arriba solo detecta
+    # ediciones torpes; el grant es lo que un atacante NO puede fabricar.
+    if not _verify_grant(
+        key, machine_id, cache.get("issued_at", ""), cache.get("plan", ""), cache.get("grant_sig", "")
+    ):
+        return LicenseResult(valid=False, reason="grant no verificado (revalida online)")
+    if _within_grace(cache.get("issued_at", "")):
+        return LicenseResult(valid=True, plan=cache.get("plan", "pro"), reason="cache")
     return LicenseResult(valid=False, reason="caché caducada")
 
 
@@ -194,12 +235,20 @@ async def validate_license() -> LicenseResult:
         logger.warning("[LICENSE] Caché inválida — forzando validación con servidor")
         cache = {}  # forzar llamada al servidor
 
-    # Comprobar caché < 24 h (solo si la firma es válida)
+    # El grant firmado es requisito para CUALQUIER acceso sin ir al servidor.
+    # Una caché sin grant válido (forjada, o de una versión anterior a esta
+    # protección) obliga a revalidar online, que lo re-emite.
+    grant_ok = _verify_grant(
+        key, machine_id, cache.get("issued_at", ""), cache.get("plan", ""), cache.get("grant_sig", "")
+    )
+
+    # Ruta rápida: evita llamar al servidor si la última validación fue hace <24h.
+    # Requiere grant verificado Y que el grant siga dentro de la gracia (anclado en
+    # issued_at, la fecha FIRMADA), no solo que la caché se escribiera hace poco.
     last_str = cache.get("last_validated", "")
-    if last_str:
+    if grant_ok and last_str and _within_grace(cache.get("issued_at", "")):
         try:
-            last = datetime.fromisoformat(last_str)
-            age = datetime.now(timezone.utc) - last
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(last_str)
             if age < timedelta(hours=CACHE_TTL_HOURS):
                 logger.info("[LICENSE] Caché válida (%s)", age)
                 return LicenseResult(valid=True, plan=cache.get("plan", "pro"))
@@ -221,23 +270,27 @@ async def validate_license() -> LicenseResult:
             if not _verify_server_sig(nonce, plan, sig):
                 logger.error("[LICENSE] Firma del servidor inválida — posible servidor falso")
                 return LicenseResult(valid=False, reason="Respuesta del servidor no autenticada.")
-            save_license(key, plan)
+            # Persistir el grant firmado (ancla offline). Si el servidor no lo
+            # devuelve (versión antigua), issued_at/grant_sig quedan vacíos y la
+            # próxima gracia offline no se concederá — se degrada seguro.
+            issued_at = data.get("issued_at", "")
+            grant_sig = data.get("grant_sig", "")
+            if grant_sig and not _verify_grant(key, machine_id, issued_at, plan, grant_sig):
+                logger.error("[LICENSE] Grant del servidor no verifica — descartado")
+                grant_sig, issued_at = "", ""
+            save_license(key, plan, issued_at=issued_at, grant_sig=grant_sig)
             logger.info("[LICENSE] Válida · plan=%s", plan)
             return LicenseResult(valid=True, plan=plan)
         logger.warning("[LICENSE] Servidor rechazó la clave: %s", resp.text[:200])
         return LicenseResult(valid=False, reason="Licencia desactivada o inválida.")
 
     except Exception as e:
-        # Servidor inalcanzable — gracia máxima 7 días desde la última validación exitosa
+        # Servidor inalcanzable — gracia offline anclada en la fecha FIRMADA por el
+        # servidor (issued_at dentro del grant), no en el reloj local manipulable.
         logger.warning("[LICENSE] Servidor inalcanzable: %s", e)
-        if last_str:
-            try:
-                last = datetime.fromisoformat(last_str)
-                if datetime.now(timezone.utc) - last <= timedelta(days=OFFLINE_GRACE_DAYS):
-                    logger.info("[LICENSE] Gracia offline concedida")
-                    return LicenseResult(valid=True, plan=cache.get("plan", "pro"), reason="offline")
-            except Exception:
-                logger.debug("Fecha de última validación ilegible; sin gracia offline", exc_info=True)
+        if grant_ok and _within_grace(cache.get("issued_at", "")):
+            logger.info("[LICENSE] Gracia offline concedida")
+            return LicenseResult(valid=True, plan=cache.get("plan", "pro"), reason="offline")
         return LicenseResult(valid=False, reason="No se pudo verificar la licencia y el período de gracia ha expirado.")
 
 
@@ -251,8 +304,13 @@ async def activate_license(key: str) -> LicenseResult:
                 json={"key": key, "machine_id": machine_id},
             )
         if resp.status_code == 200:
-            plan = resp.json().get("plan", "pro")
-            save_license(key, plan)
+            data = resp.json()
+            plan = data.get("plan", "pro")
+            issued_at = data.get("issued_at", "")
+            grant_sig = data.get("grant_sig", "")
+            if grant_sig and not _verify_grant(key, machine_id, issued_at, plan, grant_sig):
+                grant_sig, issued_at = "", ""
+            save_license(key, plan, issued_at=issued_at, grant_sig=grant_sig)
             return LicenseResult(valid=True, plan=plan)
         detail = resp.json().get("detail", resp.text[:200])
         return LicenseResult(valid=False, reason=detail)
