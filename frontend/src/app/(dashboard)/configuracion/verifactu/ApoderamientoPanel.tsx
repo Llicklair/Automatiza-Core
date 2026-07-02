@@ -2,9 +2,10 @@
  * PRES.REG — wizard onboarding REGAP (apoderamiento AEAT).
  *
  * Tres ramas (Cl@ve PIN / Cl@ve Permanente / Cert FNMT) más verificación
- * final contra REGAP. La consulta REGAP está mocked hasta DEC.14 (alta
- * colaborador social) — la UI ya está completa para que cuando el endpoint
- * real esté disponible sea solo flip de feature flag en el backend.
+ * final contra REGAP. Los endpoints del backend son reales, pero la consulta
+ * REGAP sigue mockeada en el servidor (services/onboarding/regap.py, pendiente
+ * del alta como colaborador social AEAT) — la UI ya está completa: activar la
+ * consulta real será solo un cambio en el backend.
  */
 "use client";
 

@@ -32,6 +32,7 @@ def _validate_future(v: datetime.datetime | None) -> datetime.datetime | None:
             raise ValueError("scheduled_at debe ser una fecha futura")
     return v
 
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 
@@ -203,7 +204,7 @@ async def send_campaign(
         str(campaign_id),
         str(current_user.tenant_id),
     )
-    return {"queued": campaign.total_count}
+    return {"queued": campaign.total_count}  # type: ignore[dict-item]
 
 
 @router.get("/recipients/count")

@@ -144,6 +144,9 @@ module = [
     "prometheus_client", "prometheus_client.*",
     "xhtml2pdf", "xhtml2pdf.*",
     "opendataloader_pdf", "opendataloader_pdf.*",
+    # Libs de firma XAdES opcionales por diseno (xades_signer hace fallback a stub):
+    "signxml", "signxml.*",
+    "xmlsec", "xmlsec.*",
 ]
 ignore_missing_imports = true
 
