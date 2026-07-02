@@ -21,6 +21,7 @@ export default function ActivitiesPage() {
     const t = useTranslations("crm");
     const {
         activities, clients, isLoading,
+        search, setSearch,
         showModal, setShowModal,
         selectedClient, setSelectedClient,
         type, setType,
@@ -51,6 +52,8 @@ export default function ActivitiesPage() {
                     <Input
                         placeholder={t("actividades.searchPlaceholder")}
                         className="pl-9"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
                     />
                 </div>
                 <Select

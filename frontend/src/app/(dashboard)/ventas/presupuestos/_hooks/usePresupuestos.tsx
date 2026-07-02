@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api, Quote, Client, Product } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -36,6 +36,24 @@ export function usePresupuestos() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [convertingId, setConvertingId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
+    const [search, setSearch] = useState("");
+    const [expiredOnly, setExpiredOnly] = useState(false);
+
+    const filteredQuotes = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        const todayStart = new Date().setHours(0, 0, 0, 0);
+        // Expirado = venció su valid_until sin resolverse (accepted/rejected ya no son accionables).
+        const isExpired = (q: Quote) =>
+            !!q.valid_until &&
+            (q.status === "draft" || q.status === "sent") &&
+            new Date(q.valid_until).getTime() < todayStart;
+        return quotes.filter(q =>
+            (!expiredOnly || isExpired(q)) &&
+            (!term ||
+                (q.quote_number ?? "").toLowerCase().includes(term) ||
+                (q.client?.name ?? "").toLowerCase().includes(term))
+        );
+    }, [quotes, search, expiredOnly]);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
@@ -142,7 +160,8 @@ export function usePresupuestos() {
     const addLine = () => setLines(prev => [...prev, { ...EMPTY_LINE }]);
 
     return {
-        quotes, isLoading, showModal, setShowModal,
+        quotes: filteredQuotes, isLoading, showModal, setShowModal,
+        search, setSearch, expiredOnly, setExpiredOnly,
         clients, products,
         selectedClient, setSelectedClient,
         validUntil, setValidUntil,

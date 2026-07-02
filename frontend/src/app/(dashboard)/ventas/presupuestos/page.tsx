@@ -13,6 +13,7 @@ import { PageContainer } from "@/components/shared/PageContainer";
 export default function QuotesPage() {
     const {
         quotes, isLoading, showModal, setShowModal,
+        search, setSearch, expiredOnly, setExpiredOnly,
         clients, products,
         selectedClient, setSelectedClient,
         validUntil, setValidUntil,
@@ -31,7 +32,10 @@ export default function QuotesPage() {
                 icon={FileText}
                 actions={
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => {}}>
+                        <Button
+                            variant={expiredOnly ? "default" : "outline"}
+                            onClick={() => setExpiredOnly(v => !v)}
+                        >
                             <Clock className="w-4 h-4 mr-2" /> {t("quoteExpired")}
                         </Button>
                         <Button onClick={() => setShowModal(true)}>
@@ -48,6 +52,8 @@ export default function QuotesPage() {
                         <Input
                             placeholder={t("quoteSearchPlaceholder")}
                             className="pl-10 w-72"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
                         />
                     </div>
                 </div>
