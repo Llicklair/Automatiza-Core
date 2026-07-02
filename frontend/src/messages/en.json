@@ -2182,7 +2182,7 @@
   },
   "miEquipo": {
     "tabs": {
-      "tareas": "Tasks",
+      "tareas": "AI tasks",
       "equipo": "AI Team"
     },
     "toast": {
@@ -2490,6 +2490,8 @@
       "filter": "Filter",
       "addTask": "Add Task",
       "columnTodo": "To Do",
+      "viewBoard": "Board",
+      "viewByProject": "By project",
       "columnInProgress": "In Progress",
       "columnDone": "Done"
     },
@@ -5820,6 +5822,8 @@
       "varsInDoc": "Variables in the document",
       "noVarsDetected": "No <code>{{ }}</code> were detected in the converted text.",
       "generateFor": "Generate draft for:",
+      "employeeCanonicalHint": "The download is not recorded in the system. For employee contracts with tracking and approval use the",
+      "employeeCanonicalLink": "HR Document Management",
       "client": "Client",
       "employee": "Employee",
       "loading": "Loading…",

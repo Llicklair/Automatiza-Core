@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { api, type Task } from "@/lib/api";
 import { surfaceIfConnectivity } from "@/lib/api/errors";
 import type { AIEmployee } from "@/lib/api/ai_employees";
+import { useAiChatStore } from "@/stores/aiChat";
 import { useNotificationStore } from "@/stores/notifications";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
@@ -23,13 +24,11 @@ export function useTaskPanel(isActive: boolean) {
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState("");
     const [chatQuery, setChatQuery] = useState("");
-    const [chatLoading, setChatLoading] = useState(false);
-    const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
-    // UI.AGT — task_id activo del chat para suscribir SSE de progreso.
-    const [chatTaskId, setChatTaskId] = useState<string | null>(null);
+    // Hilo de chat ÚNICO compartido con AiChatBar (dashboard) — vive en el store.
+    const aiChat = useAiChatStore();
     // UI.COST — task_id congelado tras cancel/complete para mostrar modal de coste.
     const [costModal, setCostModal] = useState<{ taskId: string; reason: "cancelled" | "completed" } | null>(null);
-    const stream = useAgentStream(chatTaskId);
+    const stream = useAgentStream(aiChat.activeTaskId);
     const chatProgress = useMemo(() => {
         for (let i = stream.events.length - 1; i >= 0; i--) {
             const e = stream.events[i];
@@ -74,50 +73,21 @@ export function useTaskPanel(isActive: boolean) {
     }, [showNew]);
 
     async function handleChat() {
-        if (!chatQuery.trim() || chatLoading) return;
+        if (!chatQuery.trim() || aiChat.sending) return;
         const userText = chatQuery.trim();
         setChatQuery("");
-        setChatLoading(true);
-        setChatMessages(prev => [...prev, { role: "user", content: userText }]);
-        try {
-            const task = await api.tasks.create("chat", userText);
-            setChatTaskId(task.id);
-            let answer = "";
-            for (let i = 0; i < 30; i++) {
-                await new Promise(r => setTimeout(r, 1000));
-                const updated = await api.tasks.get(task.id);
-                if (updated.status === "done" || updated.status === "failed") {
-                    const results = updated.agent_results as any[];
-                    if (Array.isArray(results)) {
-                        for (let j = results.length - 1; j >= 0; j--) {
-                            if (results[j]?.output?.response) {
-                                answer = results[j].output.response;
-                                break;
-                            }
-                        }
-                    }
-                    if (!answer) answer = updated.error_message ? t("taskPanel.errorWithMessage", { message: updated.error_message }) : t("taskPanel.noResponse");
-                    break;
-                }
-            }
-            if (!answer) answer = t("taskPanel.aiTimeout");
-            setChatMessages(prev => [...prev, { role: "assistant", content: answer }]);
-        } catch (e: any) {
-            if (surfaceIfConnectivity(e)) return;
-            setChatMessages(prev => [...prev, { role: "assistant", content: t("taskPanel.errorWithMessage", { message: e.message || t("taskPanel.couldNotProcess") }) }]);
-        } finally {
-            setChatLoading(false);
-            setChatTaskId(null);
-        }
+        await aiChat.send(userText, {
+            noResponse: t("taskPanel.noResponse"),
+            timeout: t("taskPanel.aiTimeout"),
+            sendError: t("taskPanel.couldNotProcess"),
+        });
     }
 
     async function stopChat() {
         // UI.AGT — botón "Detener": cancela la task en backend + cierra stream local.
-        const idAtStop = chatTaskId;
+        const idAtStop = aiChat.activeTaskId;
         await stream.stop();
-        setChatLoading(false);
-        setChatMessages(prev => [...prev, { role: "assistant", content: t("taskPanel.generationStopped") }]);
-        setChatTaskId(null);
+        aiChat.markStopped(t("taskPanel.generationStopped"));
         // UI.COST — abre modal con tokens consumidos antes de detener.
         if (idAtStop) {
             setCostModal({ taskId: idAtStop, reason: "cancelled" });
@@ -189,11 +159,14 @@ export function useTaskPanel(isActive: boolean) {
         tasks, loading, showNew, setShowNew, domain, setDomain,
         selectedEmployeeId, setSelectedEmployeeId, employees,
         intent, setIntent, creating, error,
-        chatQuery, setChatQuery, chatLoading, chatMessages, setChatMessages,
+        chatQuery, setChatQuery,
+        chatLoading: aiChat.sending,
+        chatMessages: aiChat.messages,
+        setChatMessages: aiChat.setMessages,
         handleChat, createTask, replyToTask, cancelTask, cleanupTasks,
         load, activeTasks, doneTasks,
-        chatTaskId, chatProgress, stopChat,
-        chatStreaming: chatTaskId !== null && stream.status === "streaming",
+        chatTaskId: aiChat.activeTaskId, chatProgress, stopChat,
+        chatStreaming: aiChat.activeTaskId !== null && stream.status === "streaming",
         costModal,
         closeCostModal: () => setCostModal(null),
     };

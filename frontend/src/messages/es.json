@@ -2182,7 +2182,7 @@
   },
   "miEquipo": {
     "tabs": {
-      "tareas": "Tareas",
+      "tareas": "Tareas IA",
       "equipo": "Equipo IA"
     },
     "toast": {
@@ -2490,6 +2490,8 @@
       "filter": "Filtrar",
       "addTask": "Añadir Tarea",
       "columnTodo": "Por Hacer",
+      "viewBoard": "Tablero",
+      "viewByProject": "Por proyecto",
       "columnInProgress": "En Curso",
       "columnDone": "Completadas"
     },
@@ -5820,6 +5822,8 @@
       "varsInDoc": "Variables en el documento",
       "noVarsDetected": "No se detectaron <code>{{ }}</code> en el texto convertido.",
       "generateFor": "Generar borrador para:",
+      "employeeCanonicalHint": "La descarga no queda registrada en el sistema. Para contratos de empleado con registro y aprobación usa la",
+      "employeeCanonicalLink": "Gestoría Documental de RRHH",
       "client": "Cliente",
       "employee": "Empleado",
       "loading": "Cargando…",

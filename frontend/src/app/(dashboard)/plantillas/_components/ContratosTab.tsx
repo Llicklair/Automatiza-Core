@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FileText, Loader2, Trash2, Eye, FileCode2, Upload, ExternalLink, Copy, PenLine } from "lucide-react";
@@ -312,6 +313,14 @@ export default function ContratosTab() {
                                                 <option value="">{panel.entityType === "client" ? t("contracts.selectClient") : t("contracts.selectEmployee")}</option>
                                                 {panel.entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                             </select>
+                                        )}
+                                        {panel.entityType === "employee" && (
+                                            <p className="text-[11px] text-amber-400/90 bg-amber-500/5 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+                                                {t("contracts.employeeCanonicalHint")}{" "}
+                                                <Link href="/rrhh/documentos" className="underline hover:text-amber-300">
+                                                    {t("contracts.employeeCanonicalLink")}
+                                                </Link>
+                                            </p>
                                         )}
                                         <div className="flex gap-2">
                                             <button onClick={handleGenerate} disabled={!panel.entityId || panel.generating}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { api } from "@/lib/api";
+import { useAiChatStore } from "@/stores/aiChat";
 import { Bot, Loader2, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -17,9 +17,8 @@ export function AiChatBar() {
         t("aiChat.suggestion5"),
     ];
     const [input, setInput] = useState("");
-    const [sending, setSending] = useState(false);
-    const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-    const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+    // Hilo ÚNICO compartido con el chat de mi-equipo (mismo dominio "chat").
+    const { messages, sending, activeTaskId, setMessages, send: sendShared } = useAiChatStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = useCallback(() => {
@@ -28,48 +27,14 @@ export function AiChatBar() {
 
     useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-    async function send(text: string) {
-        const msg = text.trim();
-        if (!msg || sending) return;
-        setSending(true);
+    function send(text: string) {
+        if (!text.trim() || sending) return;
         setInput("");
-        setMessages(prev => [...prev, { role: "user", content: msg }]);
-        try {
-            const task = await api.tasks.create("chat", msg);
-            setActiveTaskId(task.id);
-            let answer = "";
-            for (let i = 0; i < 30; i++) {
-                await new Promise(r => setTimeout(r, 1000));
-                const tk = await api.tasks.get(task.id);
-                if (tk.status === "done" || tk.status === "failed") {
-                    const results = tk.agent_results as any[];
-                    if (Array.isArray(results)) {
-                        for (let j = results.length - 1; j >= 0; j--) {
-                            if (results[j]?.output?.response) { answer = results[j].output.response; break; }
-                        }
-                    }
-                    if (!answer) {
-                        if (tk.error_message) {
-                            // Una petición de aclaración no es un error: se muestra
-                            // tal cual, sin el prefijo "Error:".
-                            const isClarification = Boolean(
-                                (tk.additional_metadata as Record<string, unknown> | null)?.clarification,
-                            );
-                            answer = isClarification ? tk.error_message : `Error: ${tk.error_message}`;
-                        } else {
-                            answer = t("aiChat.noResponse");
-                        }
-                    }
-                    break;
-                }
-            }
-            if (!answer) answer = t("aiChat.timeout");
-            setMessages(prev => [...prev, { role: "assistant", content: answer }]);
-        } catch {
-            setMessages(prev => [...prev, { role: "assistant", content: t("aiChat.sendError") }]);
-        } finally {
-            setSending(false);
-        }
+        void sendShared(text, {
+            noResponse: t("aiChat.noResponse"),
+            timeout: t("aiChat.timeout"),
+            sendError: t("aiChat.sendError"),
+        });
     }
 
     return (
