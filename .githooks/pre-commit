@@ -1,10 +1,36 @@
 #!/usr/bin/env bash
+# Gates rápidas de pre-commit (las lentas — pytest/mypy/vitest — viven en CI).
+# Activación (una vez por clon): git config core.hooksPath .githooks
 set -e
 
-RUFF="C:/Users/Marcos/AppData/Local/Programs/Python/Python314/Scripts/ruff.exe"
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 
-if [ -f "$RUFF" ]; then
-    echo "[pre-commit] ruff format backend..."
-    "$RUFF" format backend/app/ --quiet
-    git add backend/app/
+# ── Backend: auto-format + lint sobre lo staged ──────────────────────────────
+if echo "$STAGED" | grep -q "^backend/app/.*\.py$"; then
+    RUFF=""
+    if command -v ruff >/dev/null 2>&1; then
+        RUFF="ruff"
+    elif [ -f "C:/Users/Marcos/AppData/Local/Programs/Python/Python311/Scripts/ruff.exe" ]; then
+        RUFF="C:/Users/Marcos/AppData/Local/Programs/Python/Python311/Scripts/ruff.exe"
+    elif [ -f "C:/Users/Marcos/AppData/Local/Programs/Python/Python314/Scripts/ruff.exe" ]; then
+        RUFF="C:/Users/Marcos/AppData/Local/Programs/Python/Python314/Scripts/ruff.exe"
+    fi
+    if [ -n "$RUFF" ]; then
+        echo "[pre-commit] ruff format + check backend/app..."
+        "$RUFF" format backend/app/ --quiet
+        git add backend/app/
+        "$RUFF" check backend/app/ --select E,W,F,I --ignore E501,E402,E701,E702,E731,W293 --quiet
+    fi
+fi
+
+# ── Frontend: tsc si hay TS staged ────────────────────────────────────────────
+if echo "$STAGED" | grep -qE "^frontend/src/.*\.(ts|tsx)$"; then
+    echo "[pre-commit] tsc --noEmit..."
+    (cd frontend && npx tsc --noEmit)
+fi
+
+# ── i18n: paridad es/en si se tocaron los diccionarios ───────────────────────
+if echo "$STAGED" | grep -q "^frontend/src/messages/"; then
+    echo "[pre-commit] paridad i18n es/en..."
+    python frontend/scripts/check_i18n_parity.py
 fi
