@@ -19,16 +19,14 @@ from app.services.email.sender import send_email, send_failed
 logger = logging.getLogger(__name__)
 
 
-def _render(
-    template: str, recipient: EmailCampaignRecipient, *, escape_html: bool = False
-) -> str:
+def _render(template: str, recipient: EmailCampaignRecipient, *, escape_html: bool = False) -> str:
     # En el CUERPO HTML escapamos los valores sustituidos (no la plantilla, que es
     # HTML que el tenant escribe a propósito) para que `&`, `<`, `>`… no rompan el
     # HTML ni permitan inyección de marcado/XSS. En el ASUNTO (cabecera de texto
     # plano) NO se escapa: el cliente de correo no decodifica entidades HTML en el
     # Subject, así que escaparlo mostraría `&amp;` literal.
-    name = recipient.name or ""
-    email = recipient.email or ""
+    name = str(recipient.name or "")
+    email = str(recipient.email or "")
     if escape_html:
         name = html.escape(name)
         email = html.escape(email)
@@ -120,6 +118,4 @@ async def send_campaign(campaign_id: str, tenant_id: str) -> None:
             output_data={"campaign_id": campaign_id, "sent": sent, "failed": failed},
         )
         await db.commit()
-        logger.info(
-            "[EMAIL-MKT] Campaña %s enviada: %s ok, %s fallidos", campaign_id, sent, failed
-        )
+        logger.info("[EMAIL-MKT] Campaña %s enviada: %s ok, %s fallidos", campaign_id, sent, failed)

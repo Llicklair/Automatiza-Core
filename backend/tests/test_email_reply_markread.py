@@ -48,7 +48,7 @@ async def test_imap_no_soporta_reply_ni_markread():
     assert "solo está soportado" in out2
 
 
-def test_build_tools_list_incluye_extra_solo_en_real():
+async def test_build_tools_list_incluye_extra_solo_en_real():
     sin = build_tools_list()
     tools = _tools({"gmail": "tok"})
     con = build_tools_list(*tools)
