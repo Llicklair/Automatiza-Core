@@ -53,7 +53,17 @@ async def lifespan(app: FastAPI):
     from app.services.workflow.recovery import recover_stale_executions
 
     try:
-        await recover_stale_executions()
+        _recovery_stats, _requeued = await recover_stale_executions()
+        # Tasks programadas interrumpidas por el reinicio sin llegar a ejecutar
+        # ningún paso: re-despacharlas (dispatch no bloquea, encola en el runner).
+        if _requeued:
+            from app.services.workflow.task_dispatch import dispatch_orchestrator
+
+            for _tid, _tenant in _requeued:
+                try:
+                    await dispatch_orchestrator(_tid, tenant_id=_tenant)
+                except Exception:
+                    logger.exception("[STARTUP] No se pudo re-despachar la task reencolada %s", _tid)
     except Exception:
         # Un fallo del recovery (p. ej. BD recién limpiada/sin migrar) NO debe
         # romper el arranque ni dejar el lifespan a medias (antes tumbaba el

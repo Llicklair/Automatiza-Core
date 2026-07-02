@@ -1,9 +1,10 @@
 """Tests para app.services.workflow.recovery.
 
-Cubre los 3 caminos del startup recovery:
+Cubre los 4 caminos del startup recovery:
   1. Tasks `executing` con started_at antiguo → failed (zombie).
-  2. WorkflowExecutions pending/running con task inexistente → cancelled.
-  3. WorkflowExecutions pending/running cuya task fue marcada failed
+  2. Tasks zombi PROGRAMADAS (con WorkflowExecution) sin progreso → reencoladas.
+  3. WorkflowExecutions pending/running con task inexistente → cancelled.
+  4. WorkflowExecutions pending/running cuya task fue marcada failed
      en este mismo recovery → failed (sincronización).
 
 También verifica que las tasks vivas y los execs ya terminales no se tocan.
@@ -59,9 +60,7 @@ def _patch_session(monkeypatch):
 
 @pytest.mark.asyncio
 class TestRecoverStaleExecutions:
-    async def test_zombie_task_sin_progreso_y_vieja_se_marca_failed(
-        self, db, _tenant
-    ):
+    async def test_zombie_task_sin_progreso_y_vieja_se_marca_failed(self, db, _tenant):
         old = _utcnow() - timedelta(minutes=40)
         zombie = Task(
             tenant_id=_tenant.id,
@@ -75,23 +74,19 @@ class TestRecoverStaleExecutions:
         await db.commit()
         zombie_id = zombie.id
 
-        stats = await recover_stale_executions()
+        stats, _ = await recover_stale_executions()
         db.expire_all()
         assert stats["tasks_failed"] >= 1
 
         # re-fetch (otra sesión interna ya hizo commit)
         from sqlalchemy import select
 
-        row = (
-            await db.execute(select(Task).where(Task.id == zombie_id))
-        ).scalar_one()
+        row = (await db.execute(select(Task).where(Task.id == zombie_id))).scalar_one()
         assert row.status == "failed"
         assert "Backend reiniciado" in (row.error_message or "")
         assert row.completed_at is not None
 
-    async def test_zombie_sin_progreso_5min_aunque_no_supere_30min(
-        self, db, _tenant
-    ):
+    async def test_zombie_sin_progreso_5min_aunque_no_supere_30min(self, db, _tenant):
         """Umbral agresivo: <5 min Y plan=None Y sin agent_results → zombie."""
         old = _utcnow() - timedelta(minutes=7)  # >5min, <30min
         zombie = Task(
@@ -107,20 +102,16 @@ class TestRecoverStaleExecutions:
         await db.commit()
         z_id = zombie.id
 
-        stats = await recover_stale_executions()
+        stats, _ = await recover_stale_executions()
         db.expire_all()
         assert stats["tasks_failed"] >= 1
 
         from sqlalchemy import select
 
-        row = (
-            await db.execute(select(Task).where(Task.id == z_id))
-        ).scalar_one()
+        row = (await db.execute(select(Task).where(Task.id == z_id))).scalar_one()
         assert row.status == "failed"
 
-    async def test_task_viva_con_progreso_pero_solo_7min_NO_se_toca(
-        self, db, _tenant
-    ):
+    async def test_task_viva_con_progreso_pero_solo_7min_NO_se_toca(self, db, _tenant):
         """Task con plan ya generado y <30min de antigüedad NO es zombie."""
         recent = _utcnow() - timedelta(minutes=7)
         alive = Task(
@@ -135,21 +126,17 @@ class TestRecoverStaleExecutions:
         await db.commit()
         a_id = alive.id
 
-        stats = await recover_stale_executions()
+        stats, _ = await recover_stale_executions()
         db.expire_all()
         # No se toca esta task
         from sqlalchemy import select
 
-        row = (
-            await db.execute(select(Task).where(Task.id == a_id))
-        ).scalar_one()
+        row = (await db.execute(select(Task).where(Task.id == a_id))).scalar_one()
         assert row.status == "executing"
         # stats["tasks_failed"] puede ser 0 (solo si esta era la única) o >=0
         assert stats["tasks_failed"] == 0 or row.status != "failed"
 
-    async def test_execution_huerfana_sin_task_se_marca_cancelled(
-        self, db, _tenant
-    ):
+    async def test_execution_huerfana_sin_task_se_marca_cancelled(self, db, _tenant):
         """Execution con task_id apuntando a inexistente → cancelled."""
         wf = await _make_workflow(db, _tenant.id)
         # Crear exec con task_id=None (orfanidad explícita)
@@ -163,30 +150,28 @@ class TestRecoverStaleExecutions:
         await db.commit()
         o_id = orphan.id
 
-        stats = await recover_stale_executions()
+        stats, _ = await recover_stale_executions()
         db.expire_all()
         assert stats["execs_cancelled"] >= 1
 
         from sqlalchemy import select
 
-        row = (
-            await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == o_id))
-        ).scalar_one()
+        row = (await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == o_id))).scalar_one()
         assert row.status == "cancelled"
         assert "Task asociada no existe" in (row.result_log or "")
 
-    async def test_execution_con_task_zombie_se_sincroniza_a_failed(
-        self, db, _tenant
-    ):
+    async def test_execution_con_task_zombie_se_sincroniza_a_failed(self, db, _tenant):
         """Execution running cuya task quedó marcada failed por el recovery → failed."""
         old = _utcnow() - timedelta(minutes=40)
+        # CON progreso (plan generado): no es candidata a reencolado, debe
+        # fallar y sincronizar su execution.
         zombie = Task(
             tenant_id=_tenant.id,
             domain="x",
             status="executing",
             user_intent="z",
             started_at=old,
-            plan=None,
+            plan={"steps": ["step1"]},
         )
         db.add(zombie)
         await db.commit()
@@ -203,21 +188,61 @@ class TestRecoverStaleExecutions:
         await db.commit()
         e_id = exec_running.id
 
-        stats = await recover_stale_executions()
+        stats, _ = await recover_stale_executions()
         db.expire_all()
         assert stats["execs_failed"] >= 1
 
         from sqlalchemy import select
 
-        row = (
-            await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == e_id))
-        ).scalar_one()
+        row = (await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == e_id))).scalar_one()
         assert row.status == "failed"
         assert row.completed_at is not None
 
     async def test_recovery_idempotente_sin_zombies(self, db, _tenant):
         """Llamarlo varias veces sin zombies devuelve stats en cero."""
-        stats1 = await recover_stale_executions()
-        stats2 = await recover_stale_executions()
-        assert stats1 == {"tasks_failed": 0, "execs_cancelled": 0, "execs_failed": 0}
-        assert stats2 == {"tasks_failed": 0, "execs_cancelled": 0, "execs_failed": 0}
+        zero = {"tasks_failed": 0, "tasks_requeued": 0, "execs_cancelled": 0, "execs_failed": 0}
+        stats1, req1 = await recover_stale_executions()
+        stats2, req2 = await recover_stale_executions()
+        assert stats1 == zero and req1 == []
+        assert stats2 == zero and req2 == []
+
+    async def test_task_programada_sin_progreso_se_reencola(self, db, _tenant):
+        """Zombi SIN progreso y CON WorkflowExecution vinculada → pending (reencolada)."""
+        old = _utcnow() - timedelta(minutes=40)
+        zombie = Task(
+            tenant_id=_tenant.id,
+            domain="hr",
+            status="executing",
+            user_intent="[Schedule Based] Genera las nóminas",
+            started_at=old,
+            plan=None,
+            agent_results=[],
+        )
+        db.add(zombie)
+        await db.commit()
+        await db.refresh(zombie)
+
+        wf = await _make_workflow(db, _tenant.id)
+        exec_running = WorkflowExecution(
+            tenant_id=_tenant.id,
+            workflow_id=wf.id,
+            status="running",
+            task_id=zombie.id,
+        )
+        db.add(exec_running)
+        await db.commit()
+        z_id, e_id, tenant_id_str = zombie.id, exec_running.id, str(_tenant.id)
+
+        stats, requeued = await recover_stale_executions()
+        db.expire_all()
+        assert stats["tasks_requeued"] >= 1
+        assert (str(z_id), tenant_id_str) in requeued
+
+        from sqlalchemy import select
+
+        t_row = (await db.execute(select(Task).where(Task.id == z_id))).scalar_one()
+        assert t_row.status == "pending"
+        assert t_row.started_at is None
+        e_row = (await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == e_id))).scalar_one()
+        assert e_row.status == "pending"
+        assert "Reencolada" in (e_row.result_log or "")

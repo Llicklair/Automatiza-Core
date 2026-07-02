@@ -32,6 +32,10 @@ from app.services.orchestration.executor import (
 
 logger = logging.getLogger(__name__)
 
+# Timeout por intento de dispatch de un agente. Fuente única: el mensaje de
+# error al usuario deriva de aquí (antes decía "180s" con el timeout ya en 300).
+_AGENT_TIMEOUT_S = 300
+
 _TRANSIENT_ERRORS = (asyncio.TimeoutError, ConnectionError, OSError)
 
 
@@ -219,10 +223,10 @@ async def _invoke_dispatcher_impl(enriched_state: dict, subtask: dict, agent_nam
 
     dispatcher_fn = DISPATCHER_MAP.get(agent_name)
     if dispatcher_fn:
-        # 180s alineado con custom employees. Builtin agents pueden necesitar
-        # cold-start de embeddings (BAAI/bge-m3 ~570MB en primer uso) o LLM
-        # call de un solo tool con prompt grande. 120s era ajustado.
-        return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=300)
+        # Builtin agents pueden necesitar cold-start de embeddings
+        # (BAAI/bge-m3 ~570MB en primer uso) o LLM call de un solo tool con
+        # prompt grande; 120s era ajustado.
+        return await asyncio.wait_for(dispatcher_fn(enriched_state, subtask), timeout=_AGENT_TIMEOUT_S)
 
     if agent_name == "skill" or (isinstance(agent_name, str) and agent_name.startswith("skill:")):
         return await _dispatch_skill(enriched_state, subtask)
@@ -356,8 +360,8 @@ async def _execute_one(idx: int, subtask: dict, state: dict, exec_ctx) -> "tuple
                 subtask,
                 agent_name,
                 action="timeout",
-                error=f"Timeout: el agente '{agent_name}' no respondió en 180s (2 intentos)",
-                summary=f"Timeout: agente {agent_name} excedió 180s tras 2 intentos",
+                error=f"Timeout: el agente '{agent_name}' no respondió en {_AGENT_TIMEOUT_S}s (2 intentos)",
+                summary=f"Timeout: agente {agent_name} excedió {_AGENT_TIMEOUT_S}s tras 2 intentos",
             )
         except _TRANSIENT_ERRORS as e:
             err_str = str(e)
