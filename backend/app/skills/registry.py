@@ -36,11 +36,18 @@ class SkillRegistry:
         """Escanea dinámicamente el directorio actual de skills y las auto-registra."""
         skills_dir = Path(__file__).parent
 
-        for file in skills_dir.glob("*.py"):
-            if file.name.startswith("_") or file.name in ["base.py", "registry.py"]:
+        # Descubre por stem, aceptando .py (dev) y .pyc (build sin fuente): en el
+        # instalador se compila a bytecode y se borran los .py, así que buscar
+        # solo *.py dejaría cero skills. Deduplica por stem si coexisten ambos.
+        stems: set[str] = set()
+        for file in list(skills_dir.glob("*.py")) + list(skills_dir.glob("*.pyc")):
+            stem = file.stem  # "mod" tanto para mod.py como para mod.pyc
+            if stem.startswith("_") or stem in ("base", "registry"):
                 continue
+            stems.add(stem)
 
-            module_name = f"app.skills.{file.stem}"
+        for stem in sorted(stems):
+            module_name = f"app.skills.{stem}"
             try:
                 module = importlib.import_module(module_name)
                 # Buscar clases concretas que hereden de BaseSkill
