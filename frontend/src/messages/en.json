@@ -2307,6 +2307,7 @@
       "cleanup": "Clear",
       "newTask": "New task",
       "infoTitle": "What is a task?",
+      "infoBody": "A one-off instruction an agent runs ONCE, leaving the result in the history, e.g. <example>“Generate this month's payrolls”</example> or <example>“Summarise unpaid invoices”</example>. The chat above is for asking; a task is for delegating work.",
       "infoLink": "Looking for automated rules? Go to Automations →",
       "inProgress": "In progress ({n})",
       "colInstruction": "Instruction",
@@ -3764,7 +3765,9 @@
       "loadingShort": "Loading...",
       "noMovements": "No movements logged.",
       "noReference": "No reference",
-      "unitsShort": "{value} units"
+      "unitsShort": "{value} units",
+      "boxesShort": "{value} boxes",
+      "writeOff": "Write off stock"
     },
     "movementModal": {
       "title": "Log movement",

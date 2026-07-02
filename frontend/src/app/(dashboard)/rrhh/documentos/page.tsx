@@ -31,27 +31,27 @@ export default function HRDocumentosPage() {
                 icon={FileText}
             />
 
-            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-                <Wand2 className="w-4 h-4 text-violet-400 shrink-0" />
-                <input
-                    value={nlText}
-                    onChange={e => setNlText(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleNLGenerate()}
-                    placeholder={t("documentos.nlPlaceholder")}
-                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                />
-                <Button size="sm" onClick={handleNLGenerate} disabled={!nlText.trim()}>
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
-                    {t("documentos.nlPrepare")}
-                </Button>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 <div className="lg:col-span-2">
                     <div className="bg-card border border-border rounded-xl p-5 space-y-4 sticky top-6">
                         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                             <Plus className="w-3.5 h-3.5" /> {t("documentos.generateDocument")}
                         </h2>
+                        {/* Atajo NL dentro del formulario: interpreta y rellena los campos de abajo. */}
+                        <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2">
+                            <Wand2 className="w-4 h-4 text-violet-400 shrink-0" />
+                            <input
+                                value={nlText}
+                                onChange={e => setNlText(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && handleNLGenerate()}
+                                placeholder={t("documentos.nlPlaceholder")}
+                                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                            />
+                            <Button size="sm" variant="ghost" onClick={handleNLGenerate} disabled={!nlText.trim()}>
+                                <Send className="w-3.5 h-3.5 mr-1.5" />
+                                {t("documentos.nlPrepare")}
+                            </Button>
+                        </div>
                         <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">{t("documentos.docType")}</label>
                             <Select

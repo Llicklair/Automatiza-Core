@@ -169,7 +169,6 @@ export const NAV_SECTIONS: NavSection[] = [
                     { label: "Preferencias", href: "/configuracion/preferencias" },
                     { label: "Idioma", href: "/configuracion/idioma" },
                     { label: "Usuarios", href: "/configuracion/usuarios", adminOnly: true },
-                    { label: "Mensajería", href: "/configuracion/integraciones" },
                     { label: "Claves API", href: "/configuracion/api-keys", adminOnly: true },
                     { label: "Copias de seguridad", href: "/configuracion/backups", adminOnly: true },
                     { label: "Autonomía de agentes", href: "/configuracion/autonomia", adminOnly: true },
@@ -196,7 +195,6 @@ for (const section of NAV_SECTIONS) {
 Object.assign(ROUTE_LABELS, {
     "/configuracion/empresa": "Empresa",
     "/configuracion/actualizaciones": "Actualizaciones",
-    "/configuracion/integraciones": "Mensajería",
     "/configuracion/perfil": "Perfil",
     "/configuracion/api-keys": "Claves API",
     "/configuracion/backups": "Copias de seguridad",
