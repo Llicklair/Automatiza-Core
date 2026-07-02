@@ -143,6 +143,15 @@
       "title": "Actividad IA",
       "viewAll": "Ver todo"
     },
+    "alertsWidget": {
+      "title": "Alertas activas",
+      "overdueInvoice": "Factura vencida",
+      "dueSoonInvoice": "Factura próxima a vencer",
+      "lowStock": "Stock bajo",
+      "pendingPayroll": "Nómina pendiente",
+      "generic": "Alerta",
+      "more": "y {n} más…"
+    },
     "aiChat": {
       "clear": "Limpiar",
       "noResponse": "No se obtuvo respuesta.",
@@ -5526,7 +5535,8 @@
       "event": "Reunión / evento",
       "reservation": "Reserva",
       "invoiceDue": "Vencimiento factura",
-      "payroll": "Nómina"
+      "payroll": "Nómina",
+      "leave": "Ausencias / vacaciones"
     },
     "weekdays": {
       "mon": "L",

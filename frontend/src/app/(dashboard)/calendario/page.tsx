@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
     CalendarDays, ChevronLeft, ChevronRight, Loader2, ReceiptText,
-    Users, Wallet, CalendarCheck, Plus,
+    Users, Wallet, CalendarCheck, Plus, Plane,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { UnifiedCalendarEvent } from "@/lib/api";
@@ -48,6 +48,7 @@ const COLOR_BG: Record<string, string> = {
     red:    "bg-red-500/20 text-red-300 border-red-500/30",
     amber:  "bg-amber-500/20 text-amber-300 border-amber-500/30",
     green:  "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    teal:   "bg-teal-500/20 text-teal-300 border-teal-500/30",
 };
 
 const SOURCE_ICON: Record<string, React.ElementType> = {
@@ -55,6 +56,7 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
     reservation:  Users,
     invoice_due:  ReceiptText,
     payroll:      Wallet,
+    leave:        Plane,
 };
 
 const buildSourceLabel = (t: ReturnType<typeof useTranslations>): Record<string, string> => ({
@@ -62,6 +64,7 @@ const buildSourceLabel = (t: ReturnType<typeof useTranslations>): Record<string,
     reservation:  t("sources.reservation"),
     invoice_due:  t("sources.invoiceDue"),
     payroll:      t("sources.payroll"),
+    leave:        t("sources.leave"),
 });
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -231,7 +234,7 @@ export default function CalendarioPage() {
                 {/* Legend */}
                 <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
                     {Object.entries(SOURCE_LABEL).map(([src, lbl]) => {
-                        const colorKey = src === "event" ? "blue" : src === "reservation" ? "purple" : src === "invoice_due" ? "amber" : "green";
+                        const colorKey = src === "event" ? "blue" : src === "reservation" ? "purple" : src === "invoice_due" ? "amber" : src === "leave" ? "teal" : "green";
                         return (
                             <span key={src} className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${COLOR_BG[colorKey]}`}>
                                 {lbl}

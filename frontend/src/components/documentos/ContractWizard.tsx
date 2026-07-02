@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
     FileSignature, Loader2, Send, Save, ChevronDown, ChevronUp, CheckCircle2,
@@ -17,6 +17,8 @@ const CONTRACT_TYPES = [
 ];
 
 type Msg = { role: "user" | "assistant"; content: string };
+
+const DRAFT_KEY = "contract-wizard-draft";
 
 /**
  * Asistente conversacional: la IA entrevista al usuario una pregunta a la vez y
@@ -35,6 +37,32 @@ export default function ContractWizard() {
     const [saved, setSaved] = useState(false);
 
     const typeLabel = CONTRACT_TYPES.find((t) => t.value === type)?.label ?? type;
+
+    // Persistencia del borrador: la entrevista es trabajo del usuario y no debe
+    // perderse por navegar antes de guardar. Se limpia al guardar.
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(DRAFT_KEY);
+            if (!raw) return;
+            const d = JSON.parse(raw);
+            if (Array.isArray(d.messages) && d.messages.length) {
+                setType(d.type ?? "servicios");
+                setMessages(d.messages);
+                setContract(d.contract ?? null);
+                setStarted(true);
+                setOpen(true);
+            }
+        } catch { /* borrador corrupto: ignorar */ }
+    }, []);
+
+    useEffect(() => {
+        try {
+            if (saved) localStorage.removeItem(DRAFT_KEY);
+            else if (started && messages.length) {
+                localStorage.setItem(DRAFT_KEY, JSON.stringify({ type, messages, contract }));
+            }
+        } catch { /* almacenamiento no disponible: el borrador simplemente no persiste */ }
+    }, [type, started, messages, contract, saved]);
 
     const send = async (history: Msg[]) => {
         setLoading(true);

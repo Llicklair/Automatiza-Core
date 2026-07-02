@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api, Workflow } from "@/lib/api";
+import { waitForTask, TaskTimeoutError } from "@/lib/api/tasks";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { logError } from "@/lib/logger";
 import { useToastStore } from "@/stores/toast";
@@ -257,28 +258,29 @@ export function useAutomatizacionesCRUD() {
             setNlQuery("");
             try {
                 const task = await api.tasks.create("chat", question, { context: "workflows" });
-                const taskId = task.id;
-                let found = false;
-                for (let i = 0; i < 30; i++) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    const updated = await api.tasks.get(taskId);
-                    if (updated.status === "done" || updated.status === "failed") {
-                        const results = updated.agent_results as AgentResult[] | undefined;
-                        if (Array.isArray(results)) {
-                            for (let j = results.length - 1; j >= 0; j--) {
-                                if (results[j]?.output?.response) {
-                                    setChatResponse(results[j].output!.response!);
-                                    found = true;
-                                    break;
-                                }
+                const updated = await waitForTask(task.id, { timeoutMs: 30_000, intervalMs: 1_000 });
+                // awaiting_approval no muestra respuesta, igual que el bucle
+                // original (solo trataba done/failed como terminales).
+                if (updated.status === "done" || updated.status === "failed") {
+                    const results = updated.agent_results as AgentResult[] | undefined;
+                    let found = false;
+                    if (Array.isArray(results)) {
+                        for (let j = results.length - 1; j >= 0; j--) {
+                            if (results[j]?.output?.response) {
+                                setChatResponse(results[j].output!.response!);
+                                found = true;
+                                break;
                             }
                         }
-                        if (!found) setChatResponse(updated.error_message || t("chat.noResponse"));
-                        break;
                     }
+                    if (!found) setChatResponse(updated.error_message || t("chat.noResponse"));
                 }
             } catch (e: unknown) {
-                setChatResponse(t("chat.error", { detail: e instanceof Error ? e.message : t("chat.processError") }));
+                // Timeout: el bucle original agotaba los 30 intentos sin
+                // mostrar mensaje alguno; se conserva ese comportamiento.
+                if (!(e instanceof TaskTimeoutError)) {
+                    setChatResponse(t("chat.error", { detail: e instanceof Error ? e.message : t("chat.processError") }));
+                }
             } finally { setChatLoading(false); }
         } else {
             setIsParsing(true);

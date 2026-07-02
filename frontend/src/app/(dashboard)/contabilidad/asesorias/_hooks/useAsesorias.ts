@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { waitForTask, TaskTimeoutError } from "@/lib/api/tasks";
 import { logError } from "@/lib/logger";
 
 const CALENDAR_TYPES: Record<string, string[]> = {
@@ -58,12 +59,9 @@ export function useAsesorias() {
 
         try {
             const task = await api.tasks.create("compliance", prompt);
-            let current = task;
-
-            while (current.status !== "done" && current.status !== "failed" && current.status !== "cancelled") {
-                await new Promise(r => setTimeout(r, 2000));
-                current = await api.tasks.get(task.id);
-            }
+            // Antes: bucle infinito cada 2s sin timeout. waitForTask añade el
+            // timeout unificado (120s por defecto, mismo intervalo de 2s).
+            const current = await waitForTask(task.id);
 
             if (current.status === "done" && current.agent_results?.length) {
                 const results: any[] = current.agent_results;
@@ -81,7 +79,12 @@ export function useAsesorias() {
                 setChatMessages(prev => [...prev, { role: "ai", content: current.error_message || t("asesorias.chatTaskFailed") }]);
             }
         } catch (err: any) {
-            setChatMessages(prev => [...prev, { role: "ai", content: t("asesorias.chatConnectionError", { message: err.message }) }]);
+            // En timeout se muestra el mismo texto que cuando la task no
+            // termina en "done" (sin claves i18n nuevas).
+            const content = err instanceof TaskTimeoutError
+                ? t("asesorias.chatTaskFailed")
+                : t("asesorias.chatConnectionError", { message: err.message });
+            setChatMessages(prev => [...prev, { role: "ai", content }]);
         } finally {
             setChatLoading(false);
         }
