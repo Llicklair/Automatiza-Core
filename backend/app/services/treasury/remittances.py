@@ -2,6 +2,7 @@
 
 Ciclo de vida:
     generated → sent → executed → reconciled
+    generated → cancelled   (una remesa nunca enviada puede descartarse)
 
 La creación genera el XML (pain.001 o pain.008 vía `sepa.py`) y persiste
 la remesa con sus órdenes en la misma transacción.
@@ -10,7 +11,7 @@ la remesa con sus órdenes en la misma transacción.
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.treasury import SepaRemittance, SepaRemittanceOrder
@@ -25,7 +26,8 @@ from app.services.treasury.sepa import (
 
 # Transiciones de estado permitidas
 _TRANSITIONS: dict[str, set[str]] = {
-    "generated": {"sent", "executed"},
+    "generated": {"sent", "executed", "cancelled"},
+    "cancelled": set(),
     "sent": {"executed"},
     "executed": {"reconciled"},
     "reconciled": set(),
@@ -44,6 +46,40 @@ def _ensure_e2e(orders: list) -> None:
             o.end_to_end_id = f"E2E-{uuid.uuid4().hex[:16].upper()}"
 
 
+async def _assert_links_free(db: AsyncSession, tenant_id: uuid.UUID, links: list[dict] | None) -> None:
+    """Rechaza la creación si alguna factura/nómina vinculada ya está en otra
+    remesa viva (no cancelada): evita el doble pago/cobro cuando el usuario
+    reintenta porque perdió el feedback de una generación anterior."""
+    if not links:
+        return
+    invoice_ids = [ln["invoice_id"] for ln in links if ln and ln.get("invoice_id")]
+    payroll_ids = [ln["payroll_id"] for ln in links if ln and ln.get("payroll_id")]
+    conds = []
+    if invoice_ids:
+        conds.append(SepaRemittanceOrder.invoice_id.in_(invoice_ids))
+    if payroll_ids:
+        conds.append(SepaRemittanceOrder.payroll_id.in_(payroll_ids))
+    if not conds:
+        return
+    msg_id = (
+        await db.execute(
+            select(SepaRemittance.msg_id)
+            .join(SepaRemittanceOrder, SepaRemittanceOrder.remittance_id == SepaRemittance.id)
+            .where(
+                SepaRemittance.tenant_id == tenant_id,
+                SepaRemittance.status != "cancelled",
+                or_(*conds),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if msg_id:
+        raise RemittanceError(
+            f"Alguna factura o nómina de esta remesa ya está incluida en la remesa {msg_id}. "
+            "Cancélala antes de volver a generar una remesa con los mismos elementos."
+        )
+
+
 async def create_transfer_remittance(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -58,6 +94,7 @@ async def create_transfer_remittance(
     `links` (opcional, alineado por índice con `orders`) permite asociar
     cada orden a su origen: {"invoice_id": ..., "payroll_id": ...}.
     """
+    await _assert_links_free(db, tenant_id, links)
     _ensure_e2e(orders)
     xml_str, summary = build_pain001(debtor, execution_date, orders)
     return await _persist(
@@ -92,6 +129,7 @@ async def create_direct_debit_remittance(
     links: list[dict] | None = None,
 ) -> SepaRemittance:
     """Genera pain.008 (adeudos CORE) y persiste la remesa."""
+    await _assert_links_free(db, tenant_id, links)
     _ensure_e2e(orders)
     xml_str, summary = build_pain008(creditor, collection_date, orders)
     return await _persist(

@@ -1,5 +1,6 @@
 """System routes — frontend error reporting, diagnostics, backups."""
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -95,6 +96,12 @@ async def download_backup_endpoint(filename: str):
     )
 
 
+# Mutex de proceso: dos pg_restore concurrentes sobre la misma BD la corrompen.
+# El caso real: el usuario lanza la restauración, navega (pierde el indicador
+# local de "restaurando") y al volver la relanza sobre el mismo backup.
+_restore_lock = asyncio.Lock()
+
+
 @router.post(
     "/backups/{filename}/restore",
     response_model=RestoreResult,
@@ -104,12 +111,18 @@ async def restore_backup_endpoint(filename: str):
     """OPERACIÓN DESTRUCTIVA: restaura la BD desde un backup. Borra los
     objetos existentes antes de recrearlos. Asegúrate de tener el backup
     actual descargado antes de invocar."""
-    try:
-        return await backup_service.restore_backup(filename)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if _restore_lock.locked():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ya hay una restauración en curso. Espera a que termine.",
+        )
+    async with _restore_lock:
+        try:
+            return await backup_service.restore_backup(filename)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete(
